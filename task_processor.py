@@ -2,7 +2,7 @@ import logging
 import sys
 from model_context import get_watsonx_predictor
 
-def task_processor(conversation, tasklist, original_query):
+def task_processor(conversation, model, tasklist, original_query):
     logging.info(conversation + ' Beginning task processing')
     for task in tasklist:
         logging.info(conversation + " task: " + task)
@@ -16,8 +16,8 @@ def task_processor(conversation, tasklist, original_query):
         )
         logging.info(conversation + ' task query: ' + task_query)
 
-        bare_llm = get_watsonx_predictor(model="ibm/granite-13b-instruct-v1")
-        response = bare_llm.complete(task_query)
+        bare_llm = get_watsonx_predictor(model=model)
+        response = bare_llm(task_query)
 
         logging.info(conversation + ' task response: ' + str(response))
 

@@ -4,13 +4,15 @@ from pydantic import BaseModel
 from task_breakdown import task_breakdown
 from task_processor import task_processor
 
-import logging, sys
+import logging, sys, os
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 import uuid
 
 ## internal stuff
 from model_context import get_watsonx_predictor
+
+instruct_model = os.getenv('INSTRUCT_MODEL', 'falcon-40b')
 
 class LLMRequest(BaseModel):
     query: str
@@ -35,13 +37,14 @@ def ols_request(llm_request: LLMRequest):
     logging.info(conversation + ' Incoming request: ' + llm_request.query)
 
 
-    #task_list, referenced_documents = task_breakdown(conversation, llm_request.query)
+    task_list, referenced_documents = task_breakdown(conversation, instruct_model, llm_request.query)
 
-    task_list = ['1. Define the minimum and maximum cluster size using the ClusterAutoscaler object',
-    '2. Define the MachineSet to be autoscaled and the minimum and maximum size using the MachineAutoscaler object']
-    task_processor(conversation, task_list, llm_request.query)
+    #task_list = ['1. Define the minimum and maximum cluster size using the ClusterAutoscaler object',
+    #'2. Define the MachineSet to be autoscaled and the minimum and maximum size using the MachineAutoscaler object']
+    task_processor(conversation, instruct_model, task_list, llm_request.query)
 
-    return task_list
+    return 'x:y'
+    #return task_list
 
 @app.post("/base_llm_completion")
 def base_llm_completion(llm_request: LLMRequest):
@@ -50,10 +53,10 @@ def base_llm_completion(llm_request: LLMRequest):
     logging.info(conversation + ' New conversation')
 
     logging.info(conversation + ' Incoming request: ' + llm_request.query)
-    bare_llm = get_watsonx_predictor(model="ibm/granite-13b-instruct-v1")
+    bare_llm = get_watsonx_predictor(model=instruct_model)
 
-    response = bare_llm.complete(llm_request.query)
+    response = bare_llm(llm_request.query)
 
-    logging.info(conversation + ' Model returned: ' + response.text)
+    logging.info(conversation + ' Model returned: ' + response)
 
     return {'request':llm_request.query, 'response':response}

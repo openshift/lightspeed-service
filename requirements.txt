@@ -3,5 +3,6 @@ uvicorn
 llama_index
 langchain
 ibm_watson_machine_learning
+ibm-generative-ai
 transformers
 torch
