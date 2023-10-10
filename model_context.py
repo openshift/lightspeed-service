@@ -8,7 +8,7 @@ from genai.schemas import GenerateParams
 from genai.credentials import Credentials
 
 
-def get_watsonx_predictor(model):
+def get_watsonx_predictor(model, min_new_tokens = 1):
     # project_id = os.getenv("WATSON_PROJECT_ID", None)
     # creds = {
     #    "url": "https://us-south.ml.cloud.ibm.com",
@@ -21,7 +21,7 @@ def get_watsonx_predictor(model):
 
     params = {
         GenParams.DECODING_METHOD: "greedy",
-        GenParams.MIN_NEW_TOKENS: 1,
+        GenParams.MIN_NEW_TOKENS: min_new_tokens,
         GenParams.MAX_NEW_TOKENS: 256,
     }
 
