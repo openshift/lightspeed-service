@@ -7,7 +7,7 @@ from task_processor import TaskProcessor
 
 import logging, sys, os
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stdout, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s', level=logging.INFO)
 
 import uuid
 
@@ -38,6 +38,10 @@ def read_root():
 
 @app.post("/ols")
 def ols_request(llm_request: LLMRequest):
+
+    # TODO: probably should setup all models to use here to avoid setting them
+    # up over and over
+
     # generate a unique UUID for the request:
     conversation = get_suid()
     llm_response = LLMRequest(query=llm_request.query)
@@ -51,18 +55,18 @@ def ols_request(llm_request: LLMRequest):
     # determine what tasks are required to perform the query
     task_breakdown = TaskBreakdown()
 
-    # task_list, referenced_documents = task_breakdown.breakdown_tasks(
-    #    conversation, rag_model, llm_request.query
-    # )
+    #task_list, referenced_documents = task_breakdown.breakdown_tasks(
+    #   conversation, rag_model, llm_request.query
+    #)
 
-    # task_list = ['1. Define the minimum and maximum cluster size using the ClusterAutoscaler object',
-    #'2. Define the MachineSet to be autoscaled and the minimum and maximum size using the MachineAutoscaler object']
+    task_list = ['1. Define the maximum cluster size using the ClusterAutoscaler object',
+    '2. Define the MachineSet to be autoscaled and the minimum and maximum size using the MachineAutoscaler object']
 
-    task_list = [
-        "1. Determine the maximum number of nodes desired for the cluster.",
-        "2. Create a ClusterAutoscaler that specifies the size of the cluster.",
-        "3. Create a MachineAutoscaler object to specify which MachineSet should be scale and the minimum and maximum number of replicas.",
-    ]
+    #task_list = [
+    #    "1. Determine the maximum number of nodes desired for the cluster.",
+    #    "2. Create a ClusterAutoscaler that specifies the size of the cluster.",
+    #    "3. Create a MachineAutoscaler object to specify which MachineSet should be scale and the minimum and maximum number of replicas.",
+    #]
 
     logging.info(conversation + " Task list: " + str(task_list))
 
