@@ -8,13 +8,7 @@ from genai.schemas import GenerateParams
 from genai.credentials import Credentials
 
 
-def get_watsonx_predictor(model, min_new_tokens = 1):
-    # project_id = os.getenv("WATSON_PROJECT_ID", None)
-    # creds = {
-    #    "url": "https://us-south.ml.cloud.ibm.com",
-    #    "apikey": os.getenv("WATSON_API_KEY", None),
-    # }
-
+def get_watsonx_predictor(model, min_new_tokens=1):
     api_key = os.getenv("BAM_API_KEY", None)
     api_url = os.getenv("BAM_URL", None)
     creds = Credentials(api_key, api_endpoint=api_url)
@@ -25,10 +19,9 @@ def get_watsonx_predictor(model, min_new_tokens = 1):
         GenParams.MAX_NEW_TOKENS: 256,
     }
 
-    # predictor = LangChainLLM(
-    #    WatsonxLLM(model=model, credentials=creds, params=params, project_id=project_id)
-    # )
-    predictor = LangChainInterface(model=model, params=params, credentials=creds)
+    predictor = LangChainInterface(
+        model=model, params=params, credentials=creds, verbose=True
+    )
     return predictor
 
 
