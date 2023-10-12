@@ -1,9 +1,11 @@
 import logging
 import sys
-from string import Template
 from model_context import get_watsonx_predictor
 from yes_no_classifier import YesNoClassifier
 from task_performer import TaskPerformer
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
 
 class TaskProcessor:
     def __init__(self):
@@ -14,8 +16,10 @@ class TaskProcessor:
         )
         self.logger = logging.getLogger("task_processor")
 
-    def process_tasks(self, conversation, model, tasklist, original_query):
-        prompt_instructions = Template(
+    def process_tasks(
+        self, conversation, model, tasklist, original_query, verbose_chain=False
+    ):
+        prompt_instructions = PromptTemplate.from_template(
             """Instructions:
         - You are a helpful assistant.
         - You are an expert in Kubernetes and OpenShift.
@@ -25,9 +29,9 @@ class TaskProcessor:
         - Base your answer on the provided task and query and not on prior knowledge.
 
         TASK:
-        ${task}
+        {task}
         QUERY:
-        ${query}
+        {query}
 
         Question:
         Does the above query contain enough information about the task? Provide a yes or no answer with explanation.
@@ -42,28 +46,36 @@ class TaskProcessor:
         # build a dictionary of stuff to use later
         to_do_stuff = list()
 
+        self.logger.info(conversation + " usng model: " + model)
+        bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)
+        llm_chain = LLMChain(
+            llm=bare_llm,
+            prompt=prompt_instructions,
+            verbose=verbose_chain
+        )
+
         for task in tasklist:
             self.logger.info(conversation + " task: " + task)
 
             # determine if we have enough information to answer the task
-            task_query = prompt_instructions.substitute(task=task, query=original_query)
+            task_query = prompt_instructions.format(task=task, query=original_query)
 
             self.logger.info(conversation + " task query: " + task_query)
 
-            self.logger.info(conversation + " usng model: " + model)
-            bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)
-            response = str(bare_llm(task_query))
+            response = llm_chain(inputs={"task": task, "query": original_query})
 
-            self.logger.info(conversation + " task response: " + response)
+            self.logger.info(conversation + " task response: " + str(response))
 
             # strip <|endoftext|> from the reponse
-            clean_response = response.split("<|endoftext|>")[0]
+            clean_response = response["text"].split("<|endoftext|>")[0]
 
             yes_no_classifier = YesNoClassifier()
 
             # check if the response was a yes or no answer
             # TODO: need to handle when this fails to return an integer
-            response_status = int(yes_no_classifier.classify(conversation, model, clean_response))
+            response_status = int(
+                yes_no_classifier.classify(conversation, model, clean_response)
+            )
 
             self.logger.info(conversation + " response status: " + str(response_status))
 
@@ -95,13 +107,13 @@ class TaskProcessor:
 
             return [1, to_do_stuff]
 
+
 if __name__ == "__main__":
     task_breakdown = TaskProcessor()
     # arg 1 is the conversation id
     # arg 2 is the desired model
     # arg 3 is a string represnting a python list with the tasks
     # arg 3 is a quoted string to pass as the query
-    task_breakdown.process_tasks(sys.argv[1], 
-                                   sys.argv[2], 
-                                   sys.argv[3].split(','),
-                                   sys.argv[4])
+    task_breakdown.process_tasks(
+        sys.argv[1], sys.argv[2], sys.argv[3].split(","), sys.argv[4]
+    )

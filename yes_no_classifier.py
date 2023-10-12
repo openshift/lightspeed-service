@@ -1,8 +1,11 @@
 import logging, sys
 from string import Template
 from model_context import get_watsonx_predictor
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 
-class YesNoClassifier():
+
+class YesNoClassifier:
     def __init__(self):
         logging.basicConfig(
             stream=sys.stdout,
@@ -11,8 +14,8 @@ class YesNoClassifier():
         )
         self.logger = logging.getLogger("yes_no_classifier")
 
-    def classify(self, conversation, model, string):
-        prompt_instructions = Template(
+    def classify(self, conversation, model, string, verbose_chain=False):
+        prompt_instructions = PromptTemplate.from_template(
             """Instructions:
         - determine if a statement is a yes or a no
         - return a 1 if the statement is a yes statement
@@ -29,25 +32,35 @@ class YesNoClassifier():
         Statement: Apples are red.
         Response: 9
 
-        Statement: ${statement}
+        Statement: {statement}
         Response:
         """
         )
 
         self.logger.info(conversation + " usng model: " + model)
         self.logger.info(conversation + " determining yes/no: " + string)
-        query = prompt_instructions.substitute(statement=string)
+        query = prompt_instructions.format(statement=string)
 
         self.logger.info(conversation + " yes/no query: " + query)
         self.logger.info(conversation + " usng model: " + model)
+
         bare_llm = get_watsonx_predictor(model=model)
-        response = str(bare_llm(query))
-        clean_response = response.split("<|endoftext|>")[0]
+        llm_chain = LLMChain(
+            llm=bare_llm,
+            prompt=prompt_instructions,
+            verbose=verbose_chain
+        )
+
+        response = llm_chain(inputs={"statement": string})
+
+        # strip <|endoftext|> from the reponse
+        clean_response = response["text"].split("<|endoftext|>")[0]
 
         self.logger.info(conversation + " yes/no response: " + clean_response)
 
         # TODO: handle when this doesn't end up with an integer
         return int(clean_response)
+
 
 if __name__ == "__main__":
     yes_no_classifier = YesNoClassifier()
