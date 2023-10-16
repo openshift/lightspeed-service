@@ -16,7 +16,13 @@ class TaskBreakdown:
         )
         self.logger = logging.getLogger("task_breakdown")
 
-    def breakdown_tasks(self, conversation, query, model=DEFAULT_MODEL):
+    def breakdown_tasks(self, conversation, query, **kwargs):
+
+        if 'model' in kwargs:
+            model = kwargs['model']
+        else:
+            model = DEFAULT_MODEL
+
         # make llama index show the prompting
         llama_index.set_global_handler("simple")
         summary_task_breakdown_template_str = """
