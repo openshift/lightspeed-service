@@ -93,8 +93,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Search the RAG and find a summary document with tasks')
     parser.add_argument('-c', '--conversation-id', default='1234', type=str, help="A short identifier for the conversation")
     parser.add_argument('-q', '--query', default='What is the weather like today?', type=str, help="The user query to use")
-    parser.add_argument('-m', '--model', default=DEFAULT_MODEL, type=str, help="The model to use [True/False]")
-    parser.add_argument('-v', '--verbose', default=False, help="Show the llama index prompting")
+    parser.add_argument('-m', '--model', default=DEFAULT_MODEL, type=str, help="The model to use")
+    parser.add_argument('-v', '--verbose', default=False, help="Set Verbose status of langchains [True/False]")
 
     args = parser.parse_args()
 
