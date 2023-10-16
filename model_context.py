@@ -8,7 +8,12 @@ from genai.schemas import GenerateParams
 from genai.credentials import Credentials
 
 
-def get_watsonx_predictor(model, min_new_tokens=1):
+def get_watsonx_predictor(model, min_new_tokens=1, **kwargs):
+    if "verbose" in kwargs:
+        verbose = kwargs["verbose"]
+    else:
+        verbose = False
+
     api_key = os.getenv("BAM_API_KEY", None)
     api_url = os.getenv("BAM_URL", None)
     creds = Credentials(api_key, api_endpoint=api_url)
@@ -20,7 +25,7 @@ def get_watsonx_predictor(model, min_new_tokens=1):
     }
 
     predictor = LangChainInterface(
-        model=model, params=params, credentials=creds, verbose=True
+        model=model, params=params, credentials=creds, verbose=verbose
     )
     return predictor
 
