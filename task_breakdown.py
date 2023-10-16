@@ -89,11 +89,14 @@ Answer:
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Search the RAG and find a summary document with tasks')
+    parser.add_argument('-c', '--conversation-id', default='1234', type=str, help="A short identifier for the conversation")
+    parser.add_argument('-q', '--query', default='What is the weather like today?', type=str, help="The user query to use")
+    parser.add_argument('-m', '--model', default=DEFAULT_MODEL, type=str, help="The model to use [True/False]")
+    parser.add_argument('-v', '--verbose', default=False, help="Show the llama index prompting")
+
+    args = parser.parse_args()
+
     task_breakdown = TaskBreakdown()
-    # arg 1 is the conversation id
-    # arg 2 is a quoted string to pass as the query
-    # arg 3 is optionally the name of the model to use
-    if len(sys.argv) > 3:
-        task_breakdown.breakdown_tasks(sys.argv[1], sys.argv[2], sys.argv[3])
-    else:
-        task_breakdown.breakdown_tasks(sys.argv[1], sys.argv[2])
+    task_breakdown.breakdown_tasks(args.conversation_id, args.query, model=args.model, verbose=args.verbose)
