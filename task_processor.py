@@ -80,7 +80,7 @@ class TaskProcessor:
             # check if the response was a yes or no answer
             # TODO: need to handle when this fails to return an integer
             response_status = int(
-                yes_no_classifier.classify(conversation, model, clean_response)
+                yes_no_classifier.classify(conversation, clean_response)
             )
 
             self.logger.info(conversation + " response status: " + str(response_status))
