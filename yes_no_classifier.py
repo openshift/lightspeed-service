@@ -4,6 +4,8 @@ from model_context import get_watsonx_predictor
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
+DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+
 
 class YesNoClassifier:
     def __init__(self):
@@ -14,7 +16,17 @@ class YesNoClassifier:
         )
         self.logger = logging.getLogger("yes_no_classifier")
 
-    def classify(self, conversation, model, string, verbose_chain=False):
+    def classify(self, conversation, string, **kwargs):
+        if "model" in kwargs:
+            model = kwargs["model"]
+        else:
+            model = DEFAULT_MODEL
+
+        if "verbose" in kwargs:
+            verbose = kwargs["verbose"]
+        else:
+            verbose = False
+
         prompt_instructions = PromptTemplate.from_template(
             """Instructions:
         - determine if a statement is a yes or a no
@@ -45,11 +57,7 @@ class YesNoClassifier:
         self.logger.info(conversation + " usng model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model)
-        llm_chain = LLMChain(
-            llm=bare_llm,
-            prompt=prompt_instructions,
-            verbose=verbose_chain
-        )
+        llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         response = llm_chain(inputs={"statement": string})
 
@@ -63,8 +71,36 @@ class YesNoClassifier:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Process a list of tasks")
+    parser.add_argument(
+        "-c",
+        "--conversation-id",
+        default="1234",
+        type=str,
+        help="A short identifier for the conversation",
+    )
+    parser.add_argument(
+        "-q",
+        "--query",
+        default="Yes, we have no bananas",
+        type=str,
+        help="The string to classify",
+    )
+    parser.add_argument(
+        "-m", "--model", default=DEFAULT_MODEL, type=str, help="The model to use"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        default=False,
+        help="Set Verbose status of langchains [True/False]",
+    )
+
+    args = parser.parse_args()
+
     yes_no_classifier = YesNoClassifier()
-    # arg 1 is the conversation id
-    # arg 2 is the desired model
-    # arg 3 is the string to classify
-    yes_no_classifier.classify(sys.argv[1], sys.argv[2], sys.argv[3])
+    yes_no_classifier.classify(
+        args.conversation_id, args.query, model=args.model, verbose=args.verbose
+    )
