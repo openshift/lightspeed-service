@@ -6,6 +6,8 @@ from task_performer import TaskPerformer
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
+DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+
 
 class TaskProcessor:
     def __init__(self):
@@ -16,9 +18,17 @@ class TaskProcessor:
         )
         self.logger = logging.getLogger("task_processor")
 
-    def process_tasks(
-        self, conversation, model, tasklist, original_query, verbose_chain=False
-    ):
+    def process_tasks(self, conversation, tasklist, original_query, **kwargs):
+        if "model" in kwargs:
+            model = kwargs["model"]
+        else:
+            model = DEFAULT_MODEL
+
+        if "verbose" in kwargs:
+            verbose = kwargs["verbose"]
+        else:
+            verbose = False
+
         prompt_instructions = PromptTemplate.from_template(
             """Instructions:
         - You are a helpful assistant.
@@ -34,7 +44,7 @@ class TaskProcessor:
         {query}
 
         Question:
-        Does the above query contain enough information about the task? Provide a yes or no answer with explanation.
+        Does the above query contain enough background information to complete the task? Provide a yes or no answer with explanation.
 
         Response:
         """
@@ -48,11 +58,7 @@ class TaskProcessor:
 
         self.logger.info(conversation + " usng model: " + model)
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)
-        llm_chain = LLMChain(
-            llm=bare_llm,
-            prompt=prompt_instructions,
-            verbose=verbose_chain
-        )
+        llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         for task in tasklist:
             self.logger.info(conversation + " task: " + task)
@@ -109,11 +115,47 @@ class TaskProcessor:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Process a list of tasks")
+    parser.add_argument(
+        "-c",
+        "--conversation-id",
+        default="1234",
+        type=str,
+        help="A short identifier for the conversation",
+    )
+    parser.add_argument(
+        "-t",
+        "--tasklist",
+        default="task1,task2",
+        type=str,
+        help="A comma-separated list of tasks to process eg: 'task1,task2'",
+    )
+    parser.add_argument(
+        "-q",
+        "--query",
+        default="What is the weather like today?",
+        type=str,
+        help="The user query to use",
+    )
+    parser.add_argument(
+        "-m", "--model", default=DEFAULT_MODEL, type=str, help="The model to use"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        default=False,
+        help="Set Verbose status of langchains [True/False]",
+    )
+
+    args = parser.parse_args()
+
     task_breakdown = TaskProcessor()
-    # arg 1 is the conversation id
-    # arg 2 is the desired model
-    # arg 3 is a string represnting a python list with the tasks
-    # arg 3 is a quoted string to pass as the query
     task_breakdown.process_tasks(
-        sys.argv[1], sys.argv[2], sys.argv[3].split(","), sys.argv[4]
+        args.conversation_id,
+        args.tasklist.split(","),
+        args.query,
+        model=args.model,
+        verbose=args.verbose
     )
