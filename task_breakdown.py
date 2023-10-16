@@ -5,7 +5,8 @@ from llama_index.prompts import Prompt, PromptTemplate
 import logging
 import sys
 
-DEFAULT_MODEL="ibm/granite-13b-chat-grounded-v01"
+DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+
 
 class TaskBreakdown:
     def __init__(self):
@@ -17,14 +18,20 @@ class TaskBreakdown:
         self.logger = logging.getLogger("task_breakdown")
 
     def breakdown_tasks(self, conversation, query, **kwargs):
-
-        if 'model' in kwargs:
-            model = kwargs['model']
+        if "model" in kwargs:
+            model = kwargs["model"]
         else:
             model = DEFAULT_MODEL
 
+        if "verbose" in kwargs:
+            verbose = kwargs["verbose"]
+        else:
+            verbose = False
+
         # make llama index show the prompting
-        llama_index.set_global_handler("simple")
+        if verbose == True:
+            llama_index.set_global_handler("simple")
+
         summary_task_breakdown_template_str = """
 Instructions:
 - analyze the summary documentation
@@ -61,7 +68,7 @@ Answer:
         self.logger.info(conversation + " Setting up query engine")
         query_engine = index.as_query_engine(
             text_qa_template=summary_task_breakdown_template,
-            verbose=True,
+            verbose=verbose,
             streaming=False,
         )
 
@@ -86,7 +93,7 @@ if __name__ == "__main__":
     # arg 1 is the conversation id
     # arg 2 is a quoted string to pass as the query
     # arg 3 is optionally the name of the model to use
-    if (len(sys.argv) > 3):
+    if len(sys.argv) > 3:
         task_breakdown.breakdown_tasks(sys.argv[1], sys.argv[2], sys.argv[3])
     else:
         task_breakdown.breakdown_tasks(sys.argv[1], sys.argv[2])
