@@ -28,7 +28,7 @@ class TaskProcessor:
             model = DEFAULT_MODEL
 
         if "verbose" in kwargs:
-            if kwargs["verbose"] == 'True' or kwargs["verbose"] == 'true':
+            if kwargs["verbose"] == "True" or kwargs["verbose"] == "true":
                 verbose = True
             else:
                 verbose = False
@@ -44,11 +44,16 @@ class TaskProcessor:
             conversation
             + " call settings: "
             + settings_string.substitute(
-                conversation=conversation, tasks=tasklist, query=original_query, model=model, verbose=verbose
+                conversation=conversation,
+                tasks=tasklist,
+                query=original_query,
+                model=model,
+                verbose=verbose,
             )
         )
 
-        prompt_instructions = PromptTemplate.from_template("""
+        prompt_instructions = PromptTemplate.from_template(
+            """
 Instructions:
 - You are a helpful assistant.
 - You are an expert in Kubernetes and OpenShift.
@@ -66,13 +71,14 @@ Question:
 Does the above query contain enough background information to complete the task? Provide a yes or no answer with explanation.
 
 Response:
-""")
+"""
+        )
 
         self.logger.info(conversation + " Beginning task processing")
         # iterate over the tasks and figure out if we should abort and request more information
 
-        # build a dictionary of stuff to use later
-        to_do_stuff = list()
+        # build a list of stuff to use later
+        outputs = list()
 
         self.logger.info(conversation + " usng model: " + model)
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)
@@ -126,16 +132,24 @@ Response:
 
                 # rephrase the task and query
                 task_rephraser = TaskRephraser()
-                task_rephraser.rephrase_task(conversation, clean_response, original_query)
-                #to_do_stuff.append(task)
-                
-                #task_performer = TaskPerformer()
-                #task_performer.perform_task(conversation, model, task, original_query)
+                task_rephraser.rephrase_task(
+                    conversation, clean_response, original_query
+                )
+                # to_do_stuff.append(task)
+
+                task_performer = TaskPerformer()
+                outputs.append(
+                    task_performer.perform_task(
+                        conversation, model, task, original_query
+                    )
+                )
+                self.logger.info(conversation + " current outputs: " + str(outputs))
+
             else:
                 self.logger.info(conversation + " Unknown response status")
                 return [response_status, "Unknown error occurred"]
 
-            return [1, to_do_stuff]
+            return [1, outputs]
 
 
 if __name__ == "__main__":
@@ -181,5 +195,5 @@ if __name__ == "__main__":
         args.tasklist.split(","),
         args.query,
         model=args.model,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
