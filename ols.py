@@ -65,9 +65,12 @@ def ols_request(llm_request: LLMRequest):
     # )
 
     task_list = [
-        "1. Create a ClusterAutoscaler YAML that specifies the maximum size of the cluster",
-        "2. Create a MachineAutoscaler YAML object to specify which MachineSet should be scaled and the minimum and maximum number of replicas."
-    ]
+        "1. Create a ClusterAutoscaler YAML that specifies the maximum size of the cluster"]
+
+    #task_list = [
+    #    "1. Create a ClusterAutoscaler YAML that specifies the maximum size of the cluster",
+    #    "2. Create a MachineAutoscaler YAML object to specify which MachineSet should be scaled and the minimum and maximum number of replicas."
+    #]
 
     # task_list = [
     #    "1. Determine the maximum number of nodes desired for the cluster.",
@@ -81,7 +84,7 @@ def ols_request(llm_request: LLMRequest):
     # TODO: should this maybe be called task validator?
     task_processor = TaskProcessor()
     processed = task_processor.process_tasks(
-        conversation, rag_model, task_list, llm_request.query
+        conversation, task_list, llm_request.query
     )
 
     # when the 0th element is 0, the task processor has encountered an error, likely that it can't figure out what to do
@@ -91,6 +94,8 @@ def ols_request(llm_request: LLMRequest):
         raise HTTPException(status_code=500, detail=llm_response.dict())
 
     # TODO: handle a response of a 9 which means there was some other issue in understanding the task
+
+    llm_response.response = processed[1]
 
     # if we got this far, all of the tasks can be completed, so do something
     return llm_response
