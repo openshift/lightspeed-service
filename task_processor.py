@@ -102,33 +102,33 @@ Response:
 
             self.logger.info(conversation + " response status: " + str(response_status))
 
-            #if response_status == 0:
-            #    self.logger.info(
-            #        conversation
-            #        + " Aborting task processing for no response - need details"
-            #    )
-            #    resolution_request = str(
-            #        "In trying to answer your question, we were unable to determine how to proceed."
-            #        " The step we failed on was the following:\n "
-            #        + task
-            #        + " The failure message was:\n "
-            #        + clean_response
-            #        + " Please try rephrasing your request to include information that might help complete the task."
-            #    )
-            #    self.logger.info(
-            #        conversation + " resolution request: " + resolution_request
-            #    )
-            #    return [response_status, resolution_request]
-            #elif response_status == 1:
-            #    # we have enough information for the task, so go ahead and try to perform it
-            #    to_do_stuff.append(task)
-            #    task_performer = TaskPerformer()
-            #    task_performer.perform_task(conversation, model, task, original_query)
-            #else:
-            #    self.logger.info(conversation + " Unknown response status")
-            #    return [response_status, "Unknown error occurred"]
+            if response_status == 0:
+                self.logger.info(
+                    conversation
+                    + " Aborting task processing for no response - need details"
+                )
+                resolution_request = str(
+                    "In trying to answer your question, we were unable to determine how to proceed."
+                    " The step we failed on was the following:\n "
+                    + task
+                    + " The failure message was:\n "
+                    + clean_response
+                    + " Please try rephrasing your request to include information that might help complete the task."
+                )
+                self.logger.info(
+                    conversation + " resolution request: " + resolution_request
+                )
+                return [response_status, resolution_request]
+            elif response_status == 1:
+                # we have enough information for the task, so go ahead and try to perform it
+                #to_do_stuff.append(task)
+                task_performer = TaskPerformer()
+                task_performer.perform_task(conversation, model, task, original_query)
+            else:
+                self.logger.info(conversation + " Unknown response status")
+                return [response_status, "Unknown error occurred"]
 
-            #return [1, to_do_stuff]
+            return [1, to_do_stuff]
 
 
 if __name__ == "__main__":
