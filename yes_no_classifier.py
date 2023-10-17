@@ -4,6 +4,8 @@ from model_context import get_watsonx_predictor
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
+from string import Template
+
 DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
 
 
@@ -23,9 +25,25 @@ class YesNoClassifier:
             model = DEFAULT_MODEL
 
         if "verbose" in kwargs:
-            verbose = kwargs["verbose"]
+            if kwargs["verbose"] == "True" or kwargs["verbose"] == "true":
+                verbose = True
+            else:
+                verbose = False
         else:
             verbose = False
+
+        # TODO: must be a smarter way to do this
+        settings_string = Template(
+            '{"conversation": "$conversation", "query": "$query","model": "$model", "verbose": "$verbose"}'
+        )
+
+        self.logger.info(
+            conversation
+            + " call settings: "
+            + settings_string.substitute(
+                conversation=conversation, query=string, model=model, verbose=verbose
+            )
+        )
 
         prompt_instructions = PromptTemplate.from_template(
             """Instructions:
