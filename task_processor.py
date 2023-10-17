@@ -3,6 +3,7 @@ import sys
 from model_context import get_watsonx_predictor
 from yes_no_classifier import YesNoClassifier
 from task_performer import TaskPerformer
+from task_rephraser import TaskRephraser
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -89,6 +90,7 @@ Response:
 
             self.logger.info(conversation + " task response: " + str(response))
 
+            # TODO: doesn't look like it's needed any more
             # strip <|endoftext|> from the reponse
             clean_response = response["text"].split("<|endoftext|>")[0]
 
@@ -120,10 +122,15 @@ Response:
                 )
                 return [response_status, resolution_request]
             elif response_status == 1:
-                # we have enough information for the task, so go ahead and try to perform it
+                # we have enough information for the task
+
+                # rephrase the task and query
+                task_rephraser = TaskRephraser()
+                task_rephraser.rephrase_task(conversation, clean_response, original_query)
                 #to_do_stuff.append(task)
-                task_performer = TaskPerformer()
-                task_performer.perform_task(conversation, model, task, original_query)
+                
+                #task_performer = TaskPerformer()
+                #task_performer.perform_task(conversation, model, task, original_query)
             else:
                 self.logger.info(conversation + " Unknown response status")
                 return [response_status, "Unknown error occurred"]
