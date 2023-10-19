@@ -132,7 +132,7 @@ Response:
 
                 # rephrase the task and query
                 task_rephraser = TaskRephraser()
-                task_rephraser.rephrase_task(
+                rephrased_task = task_rephraser.rephrase_task(
                     conversation, clean_response, original_query
                 )
                 # to_do_stuff.append(task)
@@ -140,7 +140,7 @@ Response:
                 task_performer = TaskPerformer()
                 outputs.append(
                     task_performer.perform_task(
-                        conversation, model, task, original_query
+                        conversation, model, rephrased_task, original_query
                     )
                 )
                 self.logger.info(conversation + " current outputs: " + str(outputs))
