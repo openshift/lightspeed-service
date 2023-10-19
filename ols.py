@@ -60,10 +60,12 @@ def ols_request(llm_request: LLMRequest):
     # determine what tasks are required to perform the query
     task_breakdown = TaskBreakdown()
 
+    # TODO: make a real task breakdown call
     # task_list, referenced_documents = task_breakdown.breakdown_tasks(
     #   conversation, llm_request.query
     # )
 
+    # TODO: remove fake response
     task_list = [
         "1. Create a ClusterAutoscaler YAML that specifies the maximum size of the cluster"]
 
@@ -71,12 +73,6 @@ def ols_request(llm_request: LLMRequest):
     #    "1. Create a ClusterAutoscaler YAML that specifies the maximum size of the cluster",
     #    "2. Create a MachineAutoscaler YAML object to specify which MachineSet should be scaled and the minimum and maximum number of replicas."
     #]
-
-    # task_list = [
-    #    "1. Determine the maximum number of nodes desired for the cluster.",
-    #    "2. Create a ClusterAutoscaler that specifies the size of the cluster.",
-    #    "3. Create a MachineAutoscaler object to specify which MachineSet should be scale and the minimum and maximum number of replicas.",
-    # ]
 
     logging.info(conversation + " Task list: " + str(task_list))
 
