@@ -7,7 +7,7 @@ import sys
 
 from string import Template
 
-DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+DEFAULT_MODEL = "ibm/granite-13b-instruct-v1"
 
 
 class TaskBreakdown:
@@ -51,21 +51,15 @@ class TaskBreakdown:
         )
 
         summary_task_breakdown_template_str = """
-Instructions:
-- analyze the summary documentation
-- produce a list of steps based on the summary documentation
-- each step should be on a new line
-- if the summary documentation does not provide help with the question, please respond with "I do not know what to do with this query and documentation pairing"
+The following documentation contains a task list. Your job is to extract the list of tasks. If the user-supplied query seems unrelated to the list of tasks, please reply that you do not know what to do with the query and the summary documentation. Use only the supplied content and extract the task list.
 
-Summary documentation:
+Summary document:
 {context_str}
 
-Question:
+User query:
 {query_str}
 
-Given the question and the summary documentation, how would you answer the question with a set of steps?
-
-Answer:
+What are the tasks?
 """
         summary_task_breakdown_template = PromptTemplate(
             summary_task_breakdown_template_str
