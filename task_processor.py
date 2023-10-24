@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 
 from string import Template
 
-DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+DEFAULT_MODEL = "ibm/granite-13b-instruct-v1"
 
 
 class TaskProcessor:
