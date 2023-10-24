@@ -8,7 +8,7 @@ from genai.schemas import GenerateParams
 from genai.credentials import Credentials
 
 
-def get_watsonx_predictor(model, min_new_tokens=1, **kwargs):
+def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs):
     if "verbose" in kwargs:
         verbose = kwargs["verbose"]
     else:
@@ -21,7 +21,7 @@ def get_watsonx_predictor(model, min_new_tokens=1, **kwargs):
     params = {
         GenParams.DECODING_METHOD: "greedy",
         GenParams.MIN_NEW_TOKENS: min_new_tokens,
-        GenParams.MAX_NEW_TOKENS: 256,
+        GenParams.MAX_NEW_TOKENS: max_new_tokens,
     }
 
     predictor = LangChainInterface(
