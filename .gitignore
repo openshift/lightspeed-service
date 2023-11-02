@@ -2,3 +2,6 @@ __pycache__
 tmp
 data
 vector-db
+
+# ignore files that begin with tmptest_
+tmptest_*

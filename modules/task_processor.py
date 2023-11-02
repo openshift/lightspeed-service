@@ -1,9 +1,9 @@
 import logging
 import sys
-from model_context import get_watsonx_predictor
-from yes_no_classifier import YesNoClassifier
-from task_performer import TaskPerformer
-from task_rephraser import TaskRephraser
+from modules.model_context import get_watsonx_predictor
+from modules.yes_no_classifier import YesNoClassifier
+from modules.task_performer import TaskPerformer
+from modules.task_rephraser import TaskRephraser
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -153,6 +153,7 @@ Response:
 
 
 if __name__ == "__main__":
+    """to execute, from the repo root, use python -m modules.task_processor.py"""
     import argparse
 
     parser = argparse.ArgumentParser(description="Process a list of tasks")

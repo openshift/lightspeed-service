@@ -2,7 +2,7 @@
 import llama_index
 from llama_index import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.storage.storage_context import StorageContext
-from model_context import get_watsonx_context
+from modules.model_context import get_watsonx_context
 
 import logging, sys, os
 #logging.basicConfig(stream=sys.stdout, level=logging.INFO)

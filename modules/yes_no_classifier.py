@@ -1,6 +1,6 @@
 import logging, sys
 from string import Template
-from model_context import get_watsonx_predictor
+from modules.model_context import get_watsonx_predictor
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -89,6 +89,7 @@ class YesNoClassifier:
 
 
 if __name__ == "__main__":
+    """to execute, from the repo root, use PYTHONPATH="$PYTHONPATH:`pwd`" python modules/yes_no_classifier.py"""
     import argparse
 
     parser = argparse.ArgumentParser(description="Process a list of tasks")

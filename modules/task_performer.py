@@ -1,7 +1,7 @@
 import logging
 import sys
 from string import Template
-from model_context import get_watsonx_predictor
+from modules.model_context import get_watsonx_predictor
 
 DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
 
@@ -67,6 +67,7 @@ spec:
 
 
 if __name__ == "__main__":
+    """to execute, from the repo root, use python -m modules.task_performer.py"""
     import argparse
 
     parser = argparse.ArgumentParser(description="Perform a task")
