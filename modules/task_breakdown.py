@@ -1,6 +1,6 @@
 import llama_index
 from llama_index import StorageContext, load_index_from_storage
-from model_context import get_watsonx_context
+from modules.model_context import get_watsonx_context
 from llama_index.prompts import Prompt, PromptTemplate
 import logging
 import sys
@@ -101,6 +101,7 @@ What are the tasks?
 
 
 if __name__ == "__main__":
+    """to execute, from the repo root, use python -m modules.task_breakdown.py"""
     import argparse
 
     parser = argparse.ArgumentParser(

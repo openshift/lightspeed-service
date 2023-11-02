@@ -1,8 +1,9 @@
 fastapi
-uvicorn
-llama_index
-langchain
-ibm_watson_machine_learning
 ibm-generative-ai
-transformers
+ibm_watson_machine_learning
+kubernetes
+langchain
+llama_index
 torch
+transformers
+uvicorn
