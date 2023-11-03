@@ -120,25 +120,50 @@ def ols2_request(llm_request: LLMRequest):
     question_validator = QuestionValidator()
 
     is_valid = question_validator.validate_question(conversation, llm_request.query)
-    if is_valid == "INVALID":
+    if is_valid[0] == "INVALID":
+        logging.info(conversation + " question was determined to not be k8s/ocp, so rejecting")
         llm_response.response = ("Sorry, I can only answer questions about "
                                  "OpenShift and Kubernetes. This does not look "
                                  "like something I know how to handle.")
         raise HTTPException(status_code=422, detail=llm_response.dict())
-    if is_valid == "VALID":
-        # the LLM thought the question was valid, so pass it to the YAML generator
-        yaml_generator = YamlGenerator()
-        generated_yaml = yaml_generator.generate_yaml(conversation, llm_request.query)
+    if is_valid[0] == "VALID":
+        logging.info(conversation + " question is about k8s/ocp")
+        # the LLM thought the question was valid, so decide if it's about YAML or not
 
-        # TODO: raise an exception on a failure of the yaml generator
+        if is_valid[1] == "NOYAML":
+            logging.info(conversation + " question is not about yaml, so send for generic info")
+            llm_response.response = "Documentation-based response here"
+            return llm_response
+        elif is_valid[1] == "YAML":
+            logging.info(conversation + " question is about yaml, so send to the YAML generator")
+            yaml_generator = YamlGenerator()
+            generated_yaml = yaml_generator.generate_yaml(conversation, llm_request.query)
 
-        # filter/clean/lint the YAML response
+            if generated_yaml == "some failure":
+                # we didn't get any kind of yaml markdown block back from the model
+                llm_response.response = (
+                    "Sorry, something bad happened internally. Please try again."
+                )
+                raise HTTPException(status_code=500, detail=llm_response.dict())
 
-        # RAG for supporting documentation
+            # we got some kind of valid yaml back from the yaml generator, so proceed
 
-        # generate a user-friendly response to wrap the YAML and/or the supporting information
-        llm_response.response = generated_yaml
-        return llm_response
+            # filter/clean/lint the YAML response
+
+            # RAG for supporting documentation
+
+            # generate a user-friendly response to wrap the YAML and/or the supporting information
+            llm_response.response = generated_yaml
+
+
+            return llm_response
+        else:
+            # something weird happened, so generate an internal error
+            # something bad happened with the validation
+            llm_response.response = (
+                "Sorry, something bad happened internally. Please try again."
+            )
+        raise HTTPException(status_code=500, detail=llm_response.dict())
     else:
         # something bad happened with the validation
         llm_response.response = (

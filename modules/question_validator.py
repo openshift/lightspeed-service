@@ -54,24 +54,32 @@ Instructions:
 - You are a question classifying tool
 - You are an expert in kubernetes and openshift
 - Your job is to determine if a question is about kubernetes or openshift and to provide a one word response
-- If a question is not about kubernetes or openshift, answer with only the word "INVALID"
-- If a question is about kubernetes or openshift, answer with only the word "VALID"
-- Do not provide explanation, only respond with the single chosen word
+- If a question is not about kubernetes or openshift, answer with only the word INVALID
+- If a question is about kubernetes or openshift, answer with the word VALID
+- If a question is not about creating kubernetes or openshift yaml, answer with the word NOYAML
+- If a question is about creating kubernetes or openshift yaml, add the word YAML
+- Use a comma to separate the words
+- Do not provide explanation, only respond with the chosen words
 
 Example Question:
 Can you make me lunch with ham and cheese?
 Example Response:
-INVALID
+INVALID,NOYAML
 
 Example Question:
 Why is the sky blue?
 Example Response:
-INVALID
+INVALID,NOYAML
 
 Example Question:
 Can you help configure my cluster to automatically scale?
 Example Response:
-VALID
+VALID,NOYAML
+
+Example Question:
+please give me a vertical pod autoscaler configuration to manage my frontend deployment automatically.  Don't update the workload if there are less than 2 pods running.
+Example Response:
+VALID,YAML
 
 Question:
 {query}
@@ -82,7 +90,7 @@ Response:
         self.logger.info(conversation + " Validating query")
         self.logger.info(conversation + " usng model: " + model)
 
-        bare_llm = get_watsonx_predictor(model=model, min_new_tokens=1, max_new_tokens=2)
+        bare_llm = get_watsonx_predictor(model=model, min_new_tokens=1, max_new_tokens=4)
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         task_query = prompt_instructions.format(query=query)
@@ -90,11 +98,15 @@ Response:
         self.logger.info(conversation + " task query: " + task_query)
 
         response = llm_chain(inputs={"query": query})
+        clean_response = str(response['text']).strip()
 
-        self.logger.info(conversation + " response: " + str(response))
+        self.logger.info(conversation + " response: " + clean_response)
 
-        # should only return "VALID" or "INVALID"
-        return response['text'].strip()
+        # will return an array:
+        # [INVALID,NOYAML]
+        # [VALID,NOYAML]
+        # [VALID,YAML]
+        return clean_response.split(",")
 
 if __name__ == "__main__":
     """to execute, from the repo root, use python -m modules.question_validator.py"""
