@@ -6,6 +6,7 @@ from modules.task_breakdown import TaskBreakdown
 from modules.task_processor import TaskProcessor
 from modules.question_validator import QuestionValidator
 from modules.yaml_generator import YamlGenerator
+from modules.happy_response_generator import HappyResponseGenerator
 import logging, sys, os
 
 logging.basicConfig(
@@ -153,10 +154,12 @@ def ols2_request(llm_request: LLMRequest):
             # RAG for supporting documentation
 
             # generate a user-friendly response to wrap the YAML and/or the supporting information
-            llm_response.response = generated_yaml
+            response_wrapper = HappyResponseGenerator()
+            wrapper = response_wrapper.generate(conversation, llm_request.query)
 
-
+            llm_response.response = wrapper + "\n" + generated_yaml
             return llm_response
+
         else:
             # something weird happened, so generate an internal error
             # something bad happened with the validation
