@@ -6,7 +6,7 @@ from langchain.prompts import PromptTemplate
 
 from string import Template
 
-DEFAULT_MODEL = "ibm/granite-13b-instruct-v1"
+DEFAULT_MODEL = "ibm/granite-20b-code-instruct-v1"
 
 
 class QuestionValidator:
@@ -79,7 +79,7 @@ Response:
 """
         )
 
-        self.logger.info(conversation + " Validatin query")
+        self.logger.info(conversation + " Validating query")
         self.logger.info(conversation + " usng model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=1, max_new_tokens=2)
@@ -92,7 +92,9 @@ Response:
         response = llm_chain(inputs={"query": query})
 
         self.logger.info(conversation + " response: " + str(response))
-        return response['text']
+
+        # should only return "VALID" or "INVALID"
+        return response['text'].strip()
 
 if __name__ == "__main__":
     """to execute, from the repo root, use python -m modules.question_validator.py"""
