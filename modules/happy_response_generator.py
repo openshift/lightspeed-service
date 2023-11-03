@@ -6,19 +6,19 @@ from langchain.prompts import PromptTemplate
 
 from string import Template
 
-DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+DEFAULT_MODEL = "ibm/granite-13b-chat-v1"
 
 
-class YesNoClassifier:
+class HappyResponseGenerator:
     def __init__(self):
         logging.basicConfig(
             stream=sys.stdout,
             format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
             level=logging.INFO,
         )
-        self.logger = logging.getLogger("yes_no_classifier")
+        self.logger = logging.getLogger("happy_response_generator")
 
-    def classify(self, conversation, string, **kwargs):
+    def generate(self, conversation, string, **kwargs):
         if "model" in kwargs:
             model = kwargs["model"]
         else:
@@ -47,52 +47,47 @@ class YesNoClassifier:
 
         prompt_instructions = PromptTemplate.from_template(
             """Instructions:
-        - determine if a statement is a yes or a no
-        - return a 1 if the statement is a yes statement
-        - return a 0 if the statement is a no statement
-        - return a 9 if you cannot determine if the statement is a yes or no
+- you are a helpful assistant
+- your job is to generate a pleasant response to a question
+- you should try to paraphrase the question that was asked in your response
+- here are several examples
 
-        Examples:
-        Statement: Yes, that sounds good.
-        Response: 1
+Examples:
+Question: How do I configure autoscaling for my cluster?
+Response: I'd be happy to help you with configuring autoscaling for your cluster.
 
-        Statement: No, I don't think that is wise.
-        Response: 0
+Question: ensure that all volumes created in the namespace backend-recommendations-staging are at least 2 gigabytes in size
+Response: OK, I help you with ensuring the volumes are at least 2 gigabytes in size.
 
-        Statement: Apples are red.
-        Response: 9
+Question: give me 5 pod nginx deployment with the 200mi memory limit
+Response: I can definitely help create a deployment for that.
 
-        Statement: {statement}
-        Response:
-        """
+Question: {question}
+Response:
+"""
         )
 
         self.logger.info(conversation + " usng model: " + model)
-        self.logger.info(conversation + " determining yes/no: " + string)
-        query = prompt_instructions.format(statement=string)
+        self.logger.info(conversation + " user query: " + string)
+        query = prompt_instructions.format(question=string)
 
-        self.logger.info(conversation + " yes/no query: " + query)
-        self.logger.info(conversation + " usng model: " + model)
+        self.logger.info(conversation + " full prompt: " + query)
 
-        bare_llm = get_watsonx_predictor(model=model)
+        bare_llm = get_watsonx_predictor(model=model, temperature=2)
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
-        response = llm_chain(inputs={"statement": string})
+        response = llm_chain(inputs={"question": string})
 
-        # strip <|endoftext|> from the reponse
-        clean_response = response["text"].split("<|endoftext|>")[0]
+        self.logger.info(conversation + " happy response: " + str(response))
 
-        self.logger.info(conversation + " yes/no response: " + clean_response)
-
-        # TODO: handle when this doesn't end up with an integer
-        return int(clean_response)
+        return str(response)
 
 
 if __name__ == "__main__":
-    """to execute, from the repo root, use python -m modules.yes_no_classifier.py"""
+    """to execute, from the repo root, use python -m modules.happy_response_generator"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Process a list of tasks")
+    parser = argparse.ArgumentParser(description="Generate a pleasant prefix for the response to the user")
     parser.add_argument(
         "-c",
         "--conversation-id",
@@ -103,9 +98,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-q",
         "--query",
-        default="Yes, we have no bananas",
+        default="create a quota to cap the total memory requests to 128 gigabytes in the namespace sunless-sunshine",
         type=str,
-        help="The string to classify",
+        help="The user prompt",
     )
     parser.add_argument(
         "-m", "--model", default=DEFAULT_MODEL, type=str, help="The model to use"
@@ -119,7 +114,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    yes_no_classifier = YesNoClassifier()
-    yes_no_classifier.classify(
+    happy_response_generator = HappyResponseGenerator()
+    happy_response_generator.generate(
         args.conversation_id, args.query, model=args.model, verbose=args.verbose
     )
+
