@@ -61,7 +61,7 @@ class YamlGenerator:
         response = llm_chain(inputs={"string": string})
 
         # https://stackoverflow.com/a/63082323/2328066
-        regex = r"(?:\n+|\A)?\`{3,}yaml\n+(?P<code_block>[\S\s]*)\`{3,}"
+        regex = r"(?:\n+|\A)?(?P<code_block>\`{3,}yaml\n+[\S\s]*\`{3,})"
 
         match = re.search(regex, response["text"])
 
