@@ -89,7 +89,7 @@ class YesNoClassifier:
 
 
 if __name__ == "__main__":
-    """to execute, from the repo root, use PYTHONPATH="$PYTHONPATH:`pwd`" python modules/yes_no_classifier.py"""
+    """to execute, from the repo root, use python -m modules.yes_no_classifier.py"""
     import argparse
 
     parser = argparse.ArgumentParser(description="Process a list of tasks")
