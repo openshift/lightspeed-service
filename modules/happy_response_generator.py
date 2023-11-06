@@ -78,9 +78,9 @@ Response:
 
         response = llm_chain(inputs={"question": string})
 
-        self.logger.info(conversation + " happy response: " + str(response))
+        self.logger.info(conversation + " happy response: " + str(response['text']))
 
-        return str(response)
+        return str(response['text'])
 
 
 if __name__ == "__main__":
