@@ -18,10 +18,19 @@ filename_fn = lambda filename: {'file_name': filename}
 
 storage_context = StorageContext.from_defaults()
 
+# index the summary documents
+print("Indexing summary documents...")
 summary_documents = SimpleDirectoryReader('data/summary-docs', file_metadata=filename_fn).load_data()
-summary_index = VectorStoreIndex.from_documents(summary_documents, storage_context=storage_context, service_context=service_context)
+summary_index = VectorStoreIndex.from_documents(summary_documents, storage_context=storage_context, service_context=service_context, show_progress=True)
 summary_index.set_index_id("summary")
-storage_context.persist(persist_dir="./vector-db")
+storage_context.persist(persist_dir="./vector-db/summary-docs")
+
+# index the product documentation
+print("Indexing product documents...")
+product_documents = SimpleDirectoryReader('data/ocp-product-docs-md', file_metadata=filename_fn).load_data()
+product_index = VectorStoreIndex.from_documents(product_documents, storage_context=storage_context, service_context=service_context, show_progress=True)
+product_index.set_index_id("product")
+storage_context.persist(persist_dir="./vector-db/ocp-product-docs")
 
 print("Done indexing!")
 
