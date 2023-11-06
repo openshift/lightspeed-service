@@ -7,6 +7,7 @@ from modules.task_processor import TaskProcessor
 from modules.question_validator import QuestionValidator
 from modules.yaml_generator import YamlGenerator
 from modules.happy_response_generator import HappyResponseGenerator
+from modules.docs_summarizer import DocsSummarizer
 import logging, sys, os
 
 logging.basicConfig(
@@ -131,9 +132,17 @@ def ols2_request(llm_request: LLMRequest):
         logging.info(conversation + " question is about k8s/ocp")
         # the LLM thought the question was valid, so decide if it's about YAML or not
 
+        # generate a user-friendly response to wrap the YAML and/or the supporting information
+        response_wrapper = HappyResponseGenerator()
+        wrapper = response_wrapper.generate(conversation, llm_request.query)
+
         if is_valid[1] == "NOYAML":
             logging.info(conversation + " question is not about yaml, so send for generic info")
-            llm_response.response = "Documentation-based response here"
+
+            docs_summarizer = DocsSummarizer()
+            summary, referenced_documents = docs_summarizer.summarize(conversation, llm_request.query)
+
+            llm_response.response = wrapper + "\n" + summary
             return llm_response
         elif is_valid[1] == "YAML":
             logging.info(conversation + " question is about yaml, so send to the YAML generator")
@@ -152,10 +161,6 @@ def ols2_request(llm_request: LLMRequest):
             # filter/clean/lint the YAML response
 
             # RAG for supporting documentation
-
-            # generate a user-friendly response to wrap the YAML and/or the supporting information
-            response_wrapper = HappyResponseGenerator()
-            wrapper = response_wrapper.generate(conversation, llm_request.query)
 
             llm_response.response = wrapper + "\n" + generated_yaml
             return llm_response
