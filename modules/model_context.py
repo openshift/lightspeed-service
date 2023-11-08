@@ -1,4 +1,5 @@
 import os
+
 from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
 from llama_index.llms import LangChainLLM
 from llama_index import ServiceContext
@@ -18,11 +19,12 @@ def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs)
     api_url = os.getenv("BAM_URL", None)
     creds = Credentials(api_key, api_endpoint=api_url)
 
-    params = {
-        GenParams.DECODING_METHOD: "greedy",
-        GenParams.MIN_NEW_TOKENS: min_new_tokens,
-        GenParams.MAX_NEW_TOKENS: max_new_tokens,
-    }
+    # params = {
+    #     GenParams.DECODING_METHOD: "greedy",
+    #     GenParams.MIN_NEW_TOKENS: min_new_tokens,
+    #     GenParams.MAX_NEW_TOKENS: max_new_tokens,
+    # }
+    params = GenerateParams(decoding_method="greedy", min_new_tokens=min_new_tokens, max_new_tokens=max_new_tokens)
 
     predictor = LangChainInterface(
         model=model, params=params, credentials=creds, verbose=verbose
