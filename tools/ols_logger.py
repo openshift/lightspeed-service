@@ -10,13 +10,15 @@ class OLSLogger:
         #)
         #self.logger = logging.getLogger(module_name)
 
-        self.logger = logging.getLogger("")
+        self.logger = logging.getLogger(module_name)
+        #self.stdout_logger = logging.getLogger(module_name)
 
         # TODO: make loglevel configurable
         self.logger.setLevel(logging.INFO)
+        #self.stdout_logger.setLevel(logging.INFO)
 
         # standardize log format
-        formatter = logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")
+        formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s")
 
         # log to files
         file_handler = logging.handlers.RotatingFileHandler("logs/ols.log", maxBytes=(1048576*100), backupCount=7)
@@ -24,5 +26,8 @@ class OLSLogger:
         self.logger.addHandler(file_handler)
 
         # also log to stdout
-        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+
+        stdoutHandler=logging.StreamHandler(sys.stdout)
+        stdoutHandler.setFormatter(formatter)
+        self.logger.addHandler(stdoutHandler)
 

@@ -1,5 +1,6 @@
 # base python things
-from string import Template
+import os
+from dotenv import load_dotenv
 
 # external deps
 from langchain.chains import LLMChain
@@ -7,14 +8,14 @@ from langchain.prompts import PromptTemplate
 
 # internal modules
 from modules.model_context import get_watsonx_predictor
-from modules.yes_no_classifier import YesNoClassifier
-from modules.task_performer import TaskPerformer
 
 # internal tools
 from tools.ols_logger import OLSLogger
 
 
-DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+load_dotenv()
+
+DEFAULT_MODEL = os.getenv("REPHRASE_MODEL", "ibm/granite-13b-chat-v1")
 
 
 class TaskRephraser:
@@ -35,21 +36,11 @@ class TaskRephraser:
         else:
             verbose = False
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "task": "$task", "query": "$original_query","model": "$model", "verbose": "$verbose"}'
-        )
-
+        settings_string = f"conversation: {conversation}, query: {original_query},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation,
-                task=task,
-                original_query=original_query,
-                model=model,
-                verbose=verbose,
-            )
+            + settings_string
         )
 
         prompt_instructions = PromptTemplate.from_template(
@@ -71,7 +62,7 @@ Response:
         )
 
         self.logger.info(conversation + " Rephrasing task and query")
-        self.logger.info(conversation + " usng model: " + model)
+        self.logger.info(conversation + " using model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)

@@ -1,11 +1,13 @@
 # base python things
-from string import Template
+import os
+from dotenv import load_dotenv
 
 # internal tools
 from tools.ols_logger import OLSLogger
 
+load_dotenv()
 
-DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
+DEFAULT_MODEL = os.getenv("TASK_PERFORMER_MODEL", "ibm/granite-13b-chat-v1")
 
 
 class TaskPerformer:
@@ -26,17 +28,12 @@ class TaskPerformer:
         else:
             verbose = False
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "task": "$task", "model": "$model", "verbose": "$verbose"}'
-        )
 
+        settings_string = f"conversation: {conversation}, task: {task},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation, task=task, model=model, verbose=verbose
-            )
+            + settings_string
         )
 
         # determine if this should go to a general LLM, the YAML generator, or elsewhere

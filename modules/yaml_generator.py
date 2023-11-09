@@ -1,6 +1,6 @@
 # base python things
-from string import Template
-import re
+import re, os
+from dotenv import load_dotenv
 
 # external deps
 from langchain.chains import LLMChain
@@ -12,8 +12,9 @@ from modules.model_context import get_watsonx_predictor
 # internal tools
 from tools.ols_logger import OLSLogger
 
+load_dotenv()
 
-DEFAULT_MODEL = "ibm/granite-20b-code-instruct-v1"
+DEFAULT_MODEL = os.getenv("YAML_MODEL", "ibm/granite-20b-code-instruct-v1")
 
 
 class YamlGenerator:
@@ -34,20 +35,14 @@ class YamlGenerator:
         else:
             verbose = False
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "query": "$query","model": "$model", "verbose": "$verbose"}'
-        )
-
+        settings_string = f"conversation: {conversation}, query: {string},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation, query=string, model=model, verbose=verbose
-            )
+            + settings_string
         )
 
-        self.logger.info(conversation + " usng model: " + model)
+        self.logger.info(conversation + " using model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model)
 
@@ -71,6 +66,7 @@ class YamlGenerator:
             return clean_response
         else:
             # TODO: need to do the right thing here - raise an exception?
+            self.logger.error(conversation + " could not parse response:\n"+ response["text"])
             return "some failure"
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 # base python things
-from string import Template
+import os
+from dotenv import load_dotenv
 
 # external deps
 import llama_index
 from llama_index import StorageContext, load_index_from_storage
-from llama_index.prompts import Prompt, PromptTemplate
+from llama_index.prompts import PromptTemplate
 
 # internal modules
 from modules.model_context import get_watsonx_context
@@ -12,9 +13,9 @@ from modules.model_context import get_watsonx_context
 # internal tools
 from tools.ols_logger import OLSLogger
 
+load_dotenv()
 
-DEFAULT_MODEL = "ibm/granite-13b-instruct-v1"
-
+DEFAULT_MODEL = os.getenv("TASK_BREAKDOWN_MODEL", "ibm/granite-13b-chat-v1")
 
 class TaskBreakdown:
     def __init__(self):
@@ -38,17 +39,11 @@ class TaskBreakdown:
         if verbose == True:
             llama_index.set_global_handler("simple")
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "query": "$query", "model": "$model", "verbose": "$verbose"}'
-        )
-
+        settings_string = f"conversation: {conversation}, query: {query},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation, query=query, model=model, verbose=verbose
-            )
+            + settings_string
         )
 
         summary_task_breakdown_template_str = """
