@@ -29,11 +29,15 @@ rag_model = os.getenv("RAG_MODEL", "ibm/granite-13b-chat-v1")
 
 # TODO: env for verbose chains
 
-
+# TODO: should this class get moved to a separate file?
 class LLMRequest(BaseModel):
     query: str
     conversation_id: Union[int, None] = None
     response: Union[str, None] = None
+
+class FeedbackRequest(BaseModel):
+    conversation_id: int # required
+    feedback_object: str # a json blob 
 
 
 app = FastAPI()
@@ -149,3 +153,11 @@ def base_llm_completion(llm_request: LLMRequest):
     logging.info(conversation + " Model returned: " + llm_response.response)
 
     return llm_response
+
+@app.post("/feedback")
+def feedback_request(feedback_request: FeedbackRequest):
+    conversation = str(feedback_request.conversation_id)
+    logging.info(conversation + " New feedback received")
+    logging.info(conversation + " Feedback blob: " + feedback_request.feedback_object)
+
+    return {"status":"feedback received"}
