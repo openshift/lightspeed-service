@@ -1,22 +1,23 @@
-import logging
-import sys
-from modules.model_context import get_watsonx_predictor
+# base python things
+from string import Template
+
+# external deps
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from string import Template
+# internal modules
+from modules.model_context import get_watsonx_predictor
+
+# internal tools
+from tools.ols_logger import OLSLogger
+
 
 DEFAULT_MODEL = "ibm/granite-20b-code-instruct-v1"
 
 
 class QuestionValidator:
     def __init__(self):
-        logging.basicConfig(
-            stream=sys.stdout,
-            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-            level=logging.INFO,
-        )
-        self.logger = logging.getLogger("question_validator")
+        self.logger = OLSLogger("question_validator").logger
 
     def validate_question(self, conversation, query, **kwargs):
         if "model" in kwargs:

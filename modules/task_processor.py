@@ -1,25 +1,26 @@
-import logging
-import sys
+# base python things
+from string import Template
+
+# external deps
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
+# internal modules
 from modules.model_context import get_watsonx_predictor
 from modules.yes_no_classifier import YesNoClassifier
 from modules.task_performer import TaskPerformer
 from modules.task_rephraser import TaskRephraser
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 
-from string import Template
+# internal tools
+from tools.ols_logger import OLSLogger
+
 
 DEFAULT_MODEL = "ibm/granite-13b-instruct-v1"
 
 
 class TaskProcessor:
     def __init__(self):
-        logging.basicConfig(
-            stream=sys.stdout,
-            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-            level=logging.INFO,
-        )
-        self.logger = logging.getLogger("task_processor")
+        self.logger = OLSLogger("task_processor").logger
 
     def process_tasks(self, conversation, tasklist, original_query, **kwargs):
         if "model" in kwargs:

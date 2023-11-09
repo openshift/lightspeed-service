@@ -6,3 +6,6 @@ vector-db
 
 # ignore files that begin with tmptest_
 tmptest_*
+
+# don't keep log files
+logs/*.log

@@ -1,19 +1,16 @@
-import logging
-import sys
+# base python things
 from string import Template
-from modules.model_context import get_watsonx_predictor
+
+# internal tools
+from tools.ols_logger import OLSLogger
+
 
 DEFAULT_MODEL = "ibm/granite-13b-chat-grounded-v01"
 
 
 class TaskPerformer:
     def __init__(self):
-        logging.basicConfig(
-            stream=sys.stdout,
-            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-            level=logging.INFO,
-        )
-        self.logger = logging.getLogger("task_rephraser")
+        self.logger = OLSLogger("task_performer").logger
 
     def perform_task(self, conversation, task, **kwargs):
         if "model" in kwargs:
