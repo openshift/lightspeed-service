@@ -36,7 +36,6 @@ class LLMRequest(BaseModel):
     response: Union[str, None] = None
 
 class FeedbackRequest(BaseModel):
-    query: str # the original query submitted by the user
     conversation_id: int # required
     feedback_object: str # a json blob 
 
@@ -159,7 +158,6 @@ def base_llm_completion(llm_request: LLMRequest):
 def feedback_request(feedback_request: FeedbackRequest):
     conversation = str(feedback_request.conversation_id)
     logging.info(conversation + " New feedback received")
-    logging.info(conversation + " Original query: " + feedback_request.query)
     logging.info(conversation + " Feedback blob: " + feedback_request.feedback_object)
 
     return {"status":"feedback received"}
