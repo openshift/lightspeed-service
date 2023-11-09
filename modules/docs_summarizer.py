@@ -1,23 +1,24 @@
+# base python things
+from string import Template
+
+# external deps
 import llama_index
 from llama_index import StorageContext, load_index_from_storage
-from modules.model_context import get_watsonx_context
 from llama_index.prompts import Prompt, PromptTemplate
-import logging
-import sys
 
-from string import Template
+# internal modules
+from modules.model_context import get_watsonx_context
+
+# internal tools
+from tools.ols_logger import OLSLogger
+
 
 DEFAULT_MODEL = "ibm/granite-13b-chat-v1"
 
 
 class DocsSummarizer:
     def __init__(self):
-        logging.basicConfig(
-            stream=sys.stdout,
-            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-            level=logging.INFO,
-        )
-        self.logger = logging.getLogger("docs_summarizer")
+        self.logger = OLSLogger("docs_summarizer").logger
 
     def summarize(self, conversation, query, **kwargs):
         if "model" in kwargs:
