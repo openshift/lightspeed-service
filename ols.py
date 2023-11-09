@@ -1,5 +1,6 @@
 from typing import Union
 from fastapi import FastAPI, HTTPException
+from dotenv import load_dotenv
 
 from pydantic import BaseModel
 from modules.task_breakdown import TaskBreakdown
@@ -20,6 +21,8 @@ import uuid
 
 ## internal stuff
 from modules.model_context import get_watsonx_predictor
+
+load_dotenv()
 
 instruct_model = os.getenv("INSTRUCT_MODEL", "ibm/granite-13b-instruct-v1")
 rag_model = os.getenv("RAG_MODEL", "ibm/granite-13b-chat-grounded-v01")
