@@ -1,6 +1,7 @@
 import os
 from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
 from llama_index.llms import LangChainLLM
+from llama_index.embeddings import TextEmbeddingsInference
 from llama_index import ServiceContext
 
 from genai.extensions.langchain import LangChainInterface
@@ -30,8 +31,18 @@ def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs)
     return predictor
 
 
-def get_watsonx_context(model, **kwargs):
-    embed_model = "local:BAAI/bge-base-en"
+def get_watsonx_context(model, url='local', tei_embedding_model = None, **kwargs):
+
+    if url != 'local':
+        # MUST set tei_embedding_model to do this
+        # TODO: make this appropriately blow up
+        embed_model = TextEmbeddingsInference(
+            model_name=tei_embedding_model,
+            base_url=url,
+        )
+    else:
+        embed_model = "local:BAAI/bge-base-en"
+
     predictor = get_watsonx_predictor(model)
 
     service_context = ServiceContext.from_defaults(
