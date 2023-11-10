@@ -38,7 +38,7 @@ class TaskProcessor:
         else:
             verbose = False
 
-        settings_string = f"conversation: {conversation}, query: {original_query},model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversation}, tasklist: {tasklist}, query: {original_query},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
