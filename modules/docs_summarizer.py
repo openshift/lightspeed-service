@@ -14,7 +14,7 @@ from modules.model_context import get_watsonx_context
 from tools.ols_logger import OLSLogger
 
 load_dotenv()
-DEFAULT_MODEL = os.getenv("DOC_SUMMARIZER", "ibm/granite-13b-chat-v1")
+DEFAULT_MODEL = os.getenv("DOC_SUMMARIZER_MODEL", "ibm/granite-13b-chat-v1")
 
 
 class DocsSummarizer:
@@ -60,7 +60,19 @@ Summary:
 
         self.logger.info(conversation + " Getting sevice context")
         self.logger.info(conversation + " using model: " + model)
-        service_context = get_watsonx_context(model=model)
+
+        ## check if we are using remote embeddings via env
+        tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
+        
+        if tei_embedding_url != None:
+            self.logger.info(conversation + " using TEI embedding server")
+            service_context = get_watsonx_context(model=model, 
+                                              tei_embedding_model='BAAI/bge-base-en-v1.5',
+                                              url=tei_embedding_url)
+        else:
+          service_context = get_watsonx_context(model=model)
+
+        self.logger.info(conversation + " using embed model: " + str(service_context.embed_model))
 
         storage_context = StorageContext.from_defaults(persist_dir="vector-db/ocp-product-docs")
         self.logger.info(conversation + " Setting up index")
@@ -68,6 +80,7 @@ Summary:
             storage_context=storage_context,
             index_id="product",
             service_context=service_context,
+            verbose=verbose
         )
 
         self.logger.info(conversation + " Setting up query engine")
