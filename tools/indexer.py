@@ -1,14 +1,22 @@
-# Imports
+# base python things
+import logging, sys, os
+from dotenv import load_dotenv
+
+# external deps
 import llama_index
 from llama_index import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.storage.storage_context import StorageContext
+
+# internal modules
 from modules.model_context import get_watsonx_context
 
-import logging, sys, os
 #logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 #logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
 llama_index.set_global_handler("simple")
+
+load_dotenv()
+DEFAULT_MODEL = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
+
 
 # Select Model
 ## check if we are using remote embeddings via env
@@ -20,6 +28,8 @@ if tei_embedding_url != None:
                                       url=tei_embedding_url)
 else:
   service_context = get_watsonx_context(model="ibm/granite-13b-chat-v1")
+
+print("Using embed model: " + str(service_context.embed_model))
 
 # Load data
 filename_fn = lambda filename: {'file_name': filename}
