@@ -22,7 +22,6 @@ class DocsSummarizer:
         self.logger = OLSLogger("docs_summarizer").logger
 
     def summarize(self, conversation, query, **kwargs):
-        llama_index.set_global_handler("simple")
         if "model" in kwargs:
             model = kwargs["model"]
         else:

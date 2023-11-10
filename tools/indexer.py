@@ -15,7 +15,7 @@ from modules.model_context import get_watsonx_context
 llama_index.set_global_handler("simple")
 
 load_dotenv()
-DEFAULT_MODEL = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
+model = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
 
 
 # Select Model
@@ -23,11 +23,11 @@ DEFAULT_MODEL = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
 tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
 
 if tei_embedding_url != None:
-    service_context = get_watsonx_context(model="ibm/granite-13b-chat-v1", 
+    service_context = get_watsonx_context(model=model, 
                                       tei_embedding_model='BAAI/bge-base-en-v1.5',
                                       url=tei_embedding_url)
 else:
-  service_context = get_watsonx_context(model="ibm/granite-13b-chat-v1")
+  service_context = get_watsonx_context(model=model)
 
 print("Using embed model: " + str(service_context.embed_model))
 
