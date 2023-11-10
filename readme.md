@@ -40,24 +40,23 @@ _Below is an example of how you can instruct your audience on installing and set
    ```sh
    pip install -r requirement.txt
    ```
-4. Create a new file `.env` and Enter your BAM_API_KEY and BAM_URL  
-   ```sh
-       BAM_API_KEY=<your key>
-       BAM_URL=<url>
-   ```
-
-
-
-
+4. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
+### Run the server
 in order to run the API service  
    ```sh
         uvicorn ols:app --reload
    ```
 
+### Query the server
+
+To send a request to the server you can use the following curl command:
+   ```sh
+      curl -X 'POST' 'http://127.0.0.1:8000/ols' -H2 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
+   ```
 
 
 <!-- ROADMAP -->
@@ -74,9 +73,6 @@ See the [open issues](https://github.com/othneildrew/Best-README-Template/issues
 
 <!-- CONTRIBUTING -->
 ## Contributing
-
-
-
 
 
 <!-- LICENSE -->
