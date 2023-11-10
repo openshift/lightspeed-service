@@ -1,5 +1,6 @@
 # base python things
-from string import Template
+import os
+from dotenv import load_dotenv
 
 # external deps
 import llama_index
@@ -12,8 +13,8 @@ from modules.model_context import get_watsonx_context
 # internal tools
 from tools.ols_logger import OLSLogger
 
-
-DEFAULT_MODEL = "ibm/granite-13b-chat-v1"
+load_dotenv()
+DEFAULT_MODEL = os.getenv("DOC_SUMMARIZER", "ibm/granite-13b-chat-v1")
 
 
 class DocsSummarizer:
@@ -38,17 +39,11 @@ class DocsSummarizer:
         if verbose == True:
             llama_index.set_global_handler("simple")
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "query": "$query", "model": "$model", "verbose": "$verbose"}'
-        )
-
+        settings_string = f"conversation: {conversation}, query: {query},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation, query=query, model=model, verbose=verbose
-            )
+            + settings_string
         )
 
         summarization_template_str = """

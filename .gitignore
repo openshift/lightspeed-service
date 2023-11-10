@@ -3,6 +3,8 @@ tmp
 data
 vector-db
 .env
+.vscode
+vendor
 
 # ignore files that begin with tmptest_
 tmptest_*

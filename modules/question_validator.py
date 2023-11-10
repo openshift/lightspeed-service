@@ -1,5 +1,6 @@
 # base python things
-from string import Template
+import os
+from dotenv import load_dotenv
 
 # external deps
 from langchain.chains import LLMChain
@@ -12,8 +13,9 @@ from modules.model_context import get_watsonx_predictor
 from tools.ols_logger import OLSLogger
 
 
-DEFAULT_MODEL = "ibm/granite-20b-code-instruct-v1"
+load_dotenv()
 
+DEFAULT_MODEL = os.getenv("QUESTION_VALIDATOR_MODEL", "ibm/granite-20b-code-instruct-v1")
 
 class QuestionValidator:
     def __init__(self):
@@ -33,20 +35,11 @@ class QuestionValidator:
         else:
             verbose = False
 
-        # TODO: must be a smarter way to do this
-        settings_string = Template(
-            '{"conversation": "$conversation", "query": "$query","model": "$model", "verbose": "$verbose"}'
-        )
-
+        settings_string = f"conversation: {conversation}, query: {query},model: {model}, verbose: {verbose}"
         self.logger.info(
             conversation
             + " call settings: "
-            + settings_string.substitute(
-                conversation=conversation,
-                query=query,
-                model=model,
-                verbose=verbose,
-            )
+            + settings_string
         )
 
         prompt_instructions = PromptTemplate.from_template(
@@ -89,7 +82,7 @@ Response:
         )
 
         self.logger.info(conversation + " Validating query")
-        self.logger.info(conversation + " usng model: " + model)
+        self.logger.info(conversation + " using model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=1, max_new_tokens=4)
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)

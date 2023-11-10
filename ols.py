@@ -3,7 +3,7 @@ from typing import Union
 from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 from pydantic import BaseModel
-import sys, os
+import os
 import uuid
 
 # internal modules
@@ -20,8 +20,7 @@ from tools.ols_logger import OLSLogger
 
 load_dotenv()
 
-instruct_model = os.getenv("INSTRUCT_MODEL", "ibm/granite-13b-instruct-v1")
-rag_model = os.getenv("RAG_MODEL", "ibm/granite-13b-chat-v1")
+base_completion_model = os.getenv("BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1")
 
 # TODO: env for verbose chains
 
@@ -49,7 +48,7 @@ def read_root():
 
 
 @app.post("/ols")
-def ols2_request(llm_request: LLMRequest):
+def ols_request(llm_request: LLMRequest):
     logger = OLSLogger("ols_endpoint").logger
 
     # this endpoint is for the alternative flow
@@ -142,7 +141,7 @@ def base_llm_completion(llm_request: LLMRequest):
     logger.info(conversation + " New conversation")
 
     logger.info(conversation + " Incoming request: " + llm_request.query)
-    bare_llm = get_watsonx_predictor(model=instruct_model)
+    bare_llm = get_watsonx_predictor(model=base_completion_model)
 
     response = bare_llm(llm_request.query)
 
