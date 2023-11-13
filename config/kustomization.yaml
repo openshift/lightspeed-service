@@ -1,0 +1,7 @@
+resources:
+  - namespace.yaml
+  - ols.yaml
+  - ols-rbac.yaml
+  - ols-client.yaml
+
+namespace: ols

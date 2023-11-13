@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ols-client
+spec:
+  template:
+    metadata:
+      name: ols-client
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: ols-client
+        image: quay.io/brancz/krp-curl:v0.0.2
+        command:
+        - /bin/sh
+        - -c
+        - 'curl -v -s -k -H "Authorization: Bearer `cat /service-account/token`" https://ols-proxy.ols.svc:8443/docs'
+        volumeMounts:
+        - name: token-vol
+          mountPath: "/service-account"
+          readOnly: true
+      volumes:
+      - name: token-vol
+        projected:
+          sources:
+          - serviceAccountToken:
+              audience: ols-proxy.ols.svc
+              expirationSeconds: 3600
+              path: token
+  backoffLimit: 10
