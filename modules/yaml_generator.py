@@ -46,7 +46,17 @@ class YamlGenerator:
 
         bare_llm = get_watsonx_predictor(model=model)
 
-        prompt_instructions = PromptTemplate.from_template("{string}\n")
+        prompt_instructions = PromptTemplate.from_template(
+            """Instructions:
+- Produce only a yaml response to the user request
+- Do not augment the response with markdown or other formatting beyond standard yaml formatting
+- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
+
+User Request: {string}
+"""
+        )
+
+
         llm_chain = LLMChain(llm=bare_llm, verbose=verbose, prompt=prompt_instructions)
 
         task_query = prompt_instructions.format(string=string)
@@ -56,18 +66,19 @@ class YamlGenerator:
         response = llm_chain(inputs={"string": string})
 
         # https://stackoverflow.com/a/63082323/2328066
-        regex = r"(?:\n+|\A)?(?P<code_block>\`{3,}yaml\n+[\S\s]*\`{3,})"
+        # regex = r"(?:\n+|\A)?(?P<code_block>\`{3,}yaml\n+[\S\s]*\`{3,})"
 
-        match = re.search(regex, response["text"])
+        # match = re.search(regex, response["text"])
 
-        if match:
-            clean_response = match.group("code_block")
-            self.logger.info(conversation + " generated yaml: " + clean_response)
-            return clean_response
-        else:
-            # TODO: need to do the right thing here - raise an exception?
-            self.logger.error(conversation + " could not parse response:\n"+ response["text"])
-            return "some failure"
+        # if match:
+        #     clean_response = match.group("code_block")
+        #     self.logger.info(conversation + " generated yaml: " + clean_response)
+        #     return clean_response
+        # else:
+        #     # TODO: need to do the right thing here - raise an exception?
+        #     self.logger.error(conversation + " could not parse response:\n"+ response["text"])
+        #     return "some failure"
+        return response["text"]
 
 if __name__ == "__main__":
     """to execute, from the repo root, use python -m modules.yaml_generator"""
