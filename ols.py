@@ -14,6 +14,7 @@ from modules.yaml_generator import YamlGenerator
 from modules.happy_response_generator import HappyResponseGenerator
 from modules.docs_summarizer import DocsSummarizer
 from modules.model_context import get_watsonx_predictor
+from modules.conversation_cache import LRUCache
 
 # internal tools
 from tools.ols_logger import OLSLogger
@@ -27,7 +28,7 @@ base_completion_model = os.getenv("BASE_COMPLETION_MODEL", "ibm/granite-20b-inst
 # TODO: should this class get moved to a separate file?
 class LLMRequest(BaseModel):
     query: str
-    conversation_id: Union[int, None] = None
+    conversation_id: Union[str, None] = None
     response: Union[str, None] = None
 
 class FeedbackRequest(BaseModel):
@@ -36,6 +37,7 @@ class FeedbackRequest(BaseModel):
 
 
 app = FastAPI()
+conversation_cache=LRUCache(100)
 
 
 def get_suid():
@@ -58,12 +60,20 @@ def ols_request(llm_request: LLMRequest):
     # 4. RAG for supporting documentation
     # 5. user-friendly summary
 
-    # generate a unique UUID for the request:
-    conversation = get_suid()
-    llm_response = LLMRequest(query=llm_request.query)
-    llm_response.conversation_id = conversation
+    previous_input=None
 
-    logger.info(conversation + " New conversation")
+    conversation=llm_request.conversation_id
+    if conversation==None:   
+        # generate a new unique UUID for the request:
+        conversation = get_suid()
+        logger.info(conversation + " New conversation")
+    else:
+        previous_input=conversation_cache.get(conversation)
+        logger.info(conversation + " Previous conversation input: " + previous_input)
+
+
+    llm_response = LLMRequest(query=llm_request.query,conversation_id=conversation)
+
 
     # TODO: some kind of logging module that includes the conversation automatically?
     logger.info(conversation + " Incoming request: " + llm_request.query)
@@ -97,7 +107,7 @@ def ols_request(llm_request: LLMRequest):
         elif is_valid[1] == "YAML":
             logger.info(conversation + " question is about yaml, so send to the YAML generator")
             yaml_generator = YamlGenerator()
-            generated_yaml = yaml_generator.generate_yaml(conversation, llm_request.query)
+            generated_yaml = yaml_generator.generate_yaml(conversation, llm_request.query, previous_input)
 
             if generated_yaml == "some failure":
                 # we didn't get any kind of yaml markdown block back from the model
@@ -113,6 +123,7 @@ def ols_request(llm_request: LLMRequest):
             # RAG for supporting documentation
 
             llm_response.response = wrapper + "\n" + generated_yaml
+            conversation_cache.upsert(conversation,llm_response.response)
             return llm_response
 
         else:
