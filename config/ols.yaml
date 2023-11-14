@@ -5,6 +5,7 @@ metadata:
   labels:
     app: ols-proxy
   name: ols-proxy
+  namespace: ols
 spec:
   ports:
   - name: https
@@ -17,6 +18,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ols-proxy
+  namespace: ols
 spec:
   replicas: 1
   selector:
@@ -32,10 +34,10 @@ spec:
       serviceAccountName: ols-proxy
       containers:
       - name: ols-proxy
-        image: quay.io/brancz/kube-rbac-proxy:v0.15.0
+        image: quay.io/openshift/origin-kube-rbac-proxy:4.14.0
         args:
         - "--secure-listen-address=0.0.0.0:8443"
-        - "--upstream=http://0.0.0.0:8080"
+        - "--upstream=http://0.0.0.0:8080/"
         - "--ignore-paths=/healthz"
         - "--auth-token-audiences=ols-proxy.ols.svc"
         - "--logtostderr=true"
@@ -46,4 +48,4 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
       - name: ols
-        image: quay.io/vchalla/lightspeed-service:latest
+        image: ${OLS_IMAGE}

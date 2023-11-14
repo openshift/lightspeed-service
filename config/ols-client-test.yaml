@@ -2,11 +2,13 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: ols-client
+  namespace: ols-client-test
 spec:
   template:
     metadata:
       name: ols-client
     spec:
+      serviceAccountName: ols-client-test
       restartPolicy: OnFailure
       containers:
       - name: ols-client
@@ -14,7 +16,7 @@ spec:
         command:
         - /bin/sh
         - -c
-        - 'curl -v -s -k -H "Authorization: Bearer `cat /service-account/token`" https://ols-proxy.ols.svc:8443/docs'
+        - 'curl -v -X POST -s -k -H2 "accept: application/json" -H "Content-Type: application/json" -H "Authorization: Bearer `cat /service-account/token`" -d "{\"query\": \"write a deployment yaml for the mongodb image\"}" https://ols-proxy.ols.svc:8443/ols'
         volumeMounts:
         - name: token-vol
           mountPath: "/service-account"

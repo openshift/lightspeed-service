@@ -45,19 +45,37 @@ _Below is an example of how you can instruct your audience on installing and set
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-### Run the server
+### Local Deployment
+
+#### Run the server
 in order to run the API service  
    ```sh
         uvicorn ols:app --reload
    ```
 
-### Query the server
+#### Query the server
 
 To send a request to the server you can use the following curl command:
    ```sh
       curl -X 'POST' 'http://127.0.0.1:8000/ols' -H2 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
    ```
 
+### In Cluster Deployment
+Deploying OLS on an openshift cluster is fairly easy with the configuration files we have in [config](./config) folder.
+
+Initial step would be to build and publish our own image to an image registry. Example:
+
+```
+podman build -f Containerfile -t=quay.io/<your-repo>/ols:latest .
+podman push quay.io/<your-repo>/ols:latest
+```
+
+Once we have our image ready, export it as an ENV and use the below [kustomize](https://kustomize.io/) command to deploy resources.
+```
+export OLS_IMAGE=quay.io/<your-repo>/ols:latest
+kustomize build . | envsubst | oc apply -f -
+``` 
+This should deploy ols fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the ols endpoints demonstrating client usage of our service.
 
 <!-- ROADMAP -->
 ## Roadmap
