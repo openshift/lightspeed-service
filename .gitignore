@@ -5,7 +5,7 @@ venv
 .vscode
 .DS_Store
 
-# ignore locally significat directories
+# ignore locally significant directories
 tmp
 data
 vector-db
