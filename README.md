@@ -62,13 +62,7 @@ To send a request to the server you can use the following curl command:
 
 ### Gradio UI
 
-There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then start the Gradio interface:
-
-   ```sh
-      python gradio/main.py
-   ```
-
-And then point your browser to http://localhost:7860/
+There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then browse to the built in gradio interface at http://localhost:8000/ui
 
 By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
 

@@ -1,6 +1,7 @@
 # base python things
 from typing import Union
 from fastapi import FastAPI, HTTPException
+import gradio as gr
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import os
@@ -15,6 +16,7 @@ from modules.happy_response_generator import HappyResponseGenerator
 from modules.docs_summarizer import DocsSummarizer
 from modules.model_context import get_watsonx_predictor
 from modules.conversation_cache import LRUCache
+from modules.gradio_ui import ui
 
 # internal tools
 from tools.ols_logger import OLSLogger
@@ -36,8 +38,9 @@ class FeedbackRequest(BaseModel):
     feedback_object: str # a json blob 
 
 
-app = FastAPI()
 conversation_cache=LRUCache(100)
+app = FastAPI()
+gr.mount_gradio_app(app,ui,path="/ui")
 
 
 def get_suid():
