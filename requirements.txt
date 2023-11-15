@@ -1,4 +1,5 @@
 fastapi
+gradio
 ibm-generative-ai
 ibm_watson_machine_learning
 kubernetes

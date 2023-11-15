@@ -77,6 +77,18 @@ kustomize build . | envsubst | oc apply -f -
 ``` 
 This should deploy ols fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the ols endpoints demonstrating client usage of our service.
 
+### Gradio UI
+
+There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then start the Gradio interface:
+
+   ```sh
+      python gradio/main.py
+   ```
+
+And then point your browser to http://localhost:7860/
+
+By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
+
 <!-- ROADMAP -->
 ## Roadmap
 
