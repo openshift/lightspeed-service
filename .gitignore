@@ -1,9 +1,14 @@
+# ignore python and editors cache
 __pycache__
+venv
+.env*
+.vscode
+.DS_Store
+
+# ignore locally significant directories
 tmp
 data
 vector-db
-.env
-.vscode
 vendor
 
 # ignore files that begin with tmptest_
