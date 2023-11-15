@@ -51,7 +51,8 @@ ENV BASH_ENV="${APP_ROOT}/venv/bin/activate" \
     PATH="${APP_ROOT}/venv/bin:${PATH}"
 
 # Run the application
-CMD ["uvicorn", "ols:app", "--host", "0.0.0.0"]
+EXPOSE 8080
+CMD ["uvicorn", "ols:app", "--host", "0.0.0.0", "--port", "8080"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \

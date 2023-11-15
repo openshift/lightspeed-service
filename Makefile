@@ -7,3 +7,6 @@ test-unit:
 test-e2e:
 	@echo "Running end-to-end tests..."
 	# Command to run end-to-end tests goes here
+
+images:
+	scripts/build-container.sh
