@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 Happy hacking!
 
-## Before a PR
+## Updating Dependencies
 
 If updating `requirements.txt` follow the guidance for "main" branch. If a dependency is no longer required, remove it from the list.
 
