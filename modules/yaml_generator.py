@@ -16,12 +16,36 @@ load_dotenv()
 
 DEFAULT_MODEL = os.getenv("YAML_MODEL", "ibm/granite-20b-code-instruct-v1")
 
+PROMPT_TEMPLATE = PromptTemplate.from_template(
+            """Instructions:
+- Produce only a yaml response to the user request
+- Do not augment the response with markdown or other formatting beyond standard yaml formatting
+- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
+
+User Request: {query}
+"""
+        )
+
+PROMPT_WITH_HISTORY_TEMPLATE = PromptTemplate.from_template(
+            """Instructions:
+- Produce only a yaml response to the user request
+- Do not augment the response with markdown or other formatting beyond standard yaml formatting
+- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
+
+Here is the history of the conversation so far, you may find this relevant to the user request below:
+
+{history}
+
+User Request: {query}
+"""
+        )
+
 
 class YamlGenerator:
     def __init__(self):
         self.logger = OLSLogger("yaml_generator").logger
 
-    def generate_yaml(self, conversation, string, **kwargs):
+    def generate_yaml(self, conversationId, query, history=None, **kwargs):
         if "model" in kwargs:
             model = kwargs["model"]
         else:
@@ -35,35 +59,29 @@ class YamlGenerator:
         else:
             verbose = False
 
-        settings_string = f"conversation: {conversation}, query: {string},model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversationId}, query: {query},model: {model}, verbose: {verbose}"
         self.logger.info(
-            conversation
+            conversationId
             + " call settings: "
             + settings_string
         )
 
-        self.logger.info(conversation + " using model: " + model)
+        self.logger.info(conversationId + " using model: " + model)
 
         bare_llm = get_watsonx_predictor(model=model)
 
-        prompt_instructions = PromptTemplate.from_template(
-            """Instructions:
-- Produce only a yaml response to the user request
-- Do not augment the response with markdown or other formatting beyond standard yaml formatting
-- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
 
-User Request: {string}
-"""
-        )
+        if history:
+            prompt_instructions= PROMPT_WITH_HISTORY_TEMPLATE
+            task_query = prompt_instructions.format(query=query,history=history)
+        else:
+            prompt_instructions = PROMPT_TEMPLATE
+            task_query = prompt_instructions.format(query=query)
 
+        self.logger.info(conversationId + " task query: " + task_query)
 
-        llm_chain = LLMChain(llm=bare_llm, verbose=verbose, prompt=prompt_instructions)
-
-        task_query = prompt_instructions.format(string=string)
-
-        self.logger.info(conversation + " task query: " + task_query)
-        
-        response = llm_chain(inputs={"string": string})
+        llm_chain = LLMChain(llm=bare_llm, verbose=verbose, prompt=prompt_instructions)       
+        response = llm_chain(inputs={"query": query, "history": history})
 
         # https://stackoverflow.com/a/63082323/2328066
         # regex = r"(?:\n+|\A)?(?P<code_block>\`{3,}yaml\n+[\S\s]*\`{3,})"
@@ -78,6 +96,7 @@ User Request: {string}
         #     # TODO: need to do the right thing here - raise an exception?
         #     self.logger.error(conversation + " could not parse response:\n"+ response["text"])
         #     return "some failure"
+        self.logger.info(conversationId + " response:\n" + response["text"])
         return response["text"]
 
 if __name__ == "__main__":
