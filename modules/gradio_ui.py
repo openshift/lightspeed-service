@@ -50,12 +50,13 @@ def yaml_gen(prompt,history,use_history):
 
 
 use_history=gr.Checkbox(value=True, label="Use history")
-demo = gr.ChatInterface(yaml_gen,
+ui = gr.ChatInterface(yaml_gen,
                         additional_inputs=[
                             use_history
                         ])
 
+
 if __name__ == "__main__":
-    demo.launch(show_api=False)   
+    ui.launch(show_api=False)   
 
 
