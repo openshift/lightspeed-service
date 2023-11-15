@@ -8,7 +8,7 @@
 
 ## Setting up your development environment
 
-The development should prefer [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) or later due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
+The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) or later due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
 
 ```bash
 # Clone your fork
@@ -35,7 +35,9 @@ Happy hacking!
 
 ## Before a PR
 
-If updating `requirements.txt` identify if doing so for the `main` branch or a release branch and follow the corresponding guidance. If a dependency is no longer required, remove it from the list.
+If updating `requirements.txt` follow the guidance for "main" branch. If a dependency is no longer required, remove it from the list.
+
+***Note:*** *If cutting a release branch freeze the `requirements.txt` list as described in the corresponding section below.*
 
 ### For "main" branch
 - The "main" branch is the development branch and we expect to be moving forward and taking advantages of the latest releases of libraries, etc. When updating `requirements.txt` on main branch ONLY include the main dependency without version or with minimum version >= X, but DO NOT specify fixed versions or sub-depdencies
