@@ -10,3 +10,6 @@ test-e2e:
 
 images:
 	scripts/build-container.sh
+
+run:
+	uvicorn ols:app --reload --port 8080

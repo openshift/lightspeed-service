@@ -10,4 +10,4 @@ podman build --no-cache --build-arg=VERSION=${OLS_VERSION} -t ols:latest -f Cont
 # podman tag ols:latest quay.io/<org>/ols:$OLS_VERSION
 
 # To test-run for local development
-# podman run --rm -ti -p 8000:8000 localhost/ols:latest
+# podman run --rm -ti -p 8080:8080 localhost/ols:latest

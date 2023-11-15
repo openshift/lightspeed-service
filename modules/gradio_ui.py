@@ -7,7 +7,7 @@ conversation_id=None
 def yaml_gen(prompt,history,use_history):
     global conversation_id
     # URL of the HTTP endpoint
-    url = "http://127.0.0.1:8000/ols"
+    url = "http://127.0.0.1:8080/ols"
 
     # Headers for the HTTP request
     headers = {
