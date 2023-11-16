@@ -126,7 +126,7 @@ def ols_request(llm_request: LLMRequest):
             # RAG for supporting documentation
 
             llm_response.response = wrapper + "\n" + generated_yaml
-            conversation_cache.upsert(conversation,llm_response.response)
+            conversation_cache.upsert(conversation,llm_request.query+"\n\n"+llm_response.response)
             return llm_response
 
         else:
