@@ -25,7 +25,6 @@ WORKDIR ${APP_ROOT}
 COPY modules ./modules
 COPY tools ./tools
 COPY logs ./logs
-COPY gradio ./gradio
 COPY src ./src
 COPY ./ols.py ./requirements.txt ./
 RUN chown -R 1001:0 ${APP_ROOT}
