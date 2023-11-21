@@ -14,15 +14,12 @@ class gradioUI:
     
         # ui specific
         use_history=gr.Checkbox(value=True, label="Use history")
-        self.ui = gr.ChatInterface(self.yaml_gen,
+        self.ui = gr.ChatInterface(self.chat_ui,
                                     additional_inputs=[
                                         use_history
                                     ])
 
-    def yaml_gen(self, prompt, history, use_history=None):
-        # URL of the HTTP endpoint
-        url = self.ols_url
-
+    def chat_ui(self, prompt, history, use_history=None):
         # Headers for the HTTP request
         headers = {
             "Accept": "application/json",
@@ -47,7 +44,8 @@ class gradioUI:
 
         try:
             # Make the HTTP POST request
-            response = requests.post(url, headers=headers, data=json_data)
+            response = requests.post(
+                self.ols_url, headers=headers, data=json_data)
 
             # Check if the request was successful (status code 200)
             if response.status_code == 200:

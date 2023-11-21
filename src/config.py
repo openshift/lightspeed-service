@@ -16,8 +16,8 @@ class Config:
         """
         Set default global required parameters if none was found
         """
-        # set logs file
-        self.logfile = os.getenv("OLS_LOGFILE", "logs/ols.logs")
+        # set logs file. Disable logging to file when not defined.
+        self.logfile = os.getenv("OLS_LOGFILE", None)
 
         # enable local ui?
         self.enable_ui = True if os.getenv("OLS_ENABLE_UI", True) in [True,"True"] else False

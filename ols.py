@@ -38,7 +38,7 @@ logger = config.logger
 if config.enable_ui:
     app=gradioUI().mount_ui(app)
 else:
-    logger.info("Local UI is disabled. To enable set OLS_ENABLE_UI=True")
+    logger.info("Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True")
 
 # application global variables
 base_completion_model = config.base_completion_model
@@ -56,7 +56,7 @@ def read_root():
 @app.get("/status")
 def root(request: Request):
     """
-    TODO: In the future should resond
+    TODO: In the future should respond
     """
     return {
         "message" : "This is the default endpoint for OLS",
