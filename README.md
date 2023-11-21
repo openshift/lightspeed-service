@@ -69,16 +69,18 @@ By default this interface will ask the OLS server to retain and use your convers
 ### In Cluster Deployment
 Deploying OLS on an openshift cluster is fairly easy with the configuration files we have in [config](./config) folder.
 
-Initial step would be to build and publish our own image to an image registry. Example:
+You can use the existing image built from the latest code via this image pullspec: quay.io/openshift/lightspeed-service-api:latest
+
+If you need to build your own image, you can use the following commands:
 
 ```
-podman build -f Containerfile -t=quay.io/<your-repo>/ols:latest .
-podman push quay.io/<your-repo>/ols:latest
+podman build -f Containerfile -t=<your-image-pullspec> .
+podman push <your-image-pullspec>
 ```
 
 Once we have our image ready, export it as an ENV and use the below [kustomize](https://kustomize.io/) command to deploy resources.
 ```
-export OLS_IMAGE=quay.io/<your-repo>/ols:latest
+export OLS_IMAGE=<image-pullspec>
 kustomize build . | envsubst | oc apply -f -
 ``` 
 This should deploy ols fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the ols endpoints demonstrating client usage of our service.
