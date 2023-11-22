@@ -1,16 +1,19 @@
 import os, dotenv
 from .logger import Logger
 
+
 class Config:
-    def __init__(self,
-                 logger=None):
+    def __init__(self, logger=None):
         # Load the dotenv configuration & set defaults
         dotenv.load_dotenv()
         self.set_defaults()
 
         # Parse arguments & set logger
-        self.logger = logger if logger else Logger(
-            logger_name="default", logfile=self.logfile).logger
+        self.logger = (
+            logger
+            if logger
+            else Logger(logger_name="default", logfile=self.logfile).logger
+        )
 
     def set_defaults(self):
         """
@@ -20,8 +23,11 @@ class Config:
         self.logfile = os.getenv("OLS_LOGFILE", None)
 
         # enable local ui?
-        self.enable_ui = True if os.getenv("OLS_ENABLE_UI", True) in [True,"True"] else False
+        self.enable_ui = (
+            True if os.getenv("OLS_ENABLE_UI", True) in [True, "True"] else False
+        )
 
         # set default LLM model
-        self.base_completion_model = os.getenv("BASE_COMPLETION_MODEL", 
-                                               "ibm/granite-20b-instruct-v1")
+        self.base_completion_model = os.getenv(
+            "BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1"
+        )

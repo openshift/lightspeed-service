@@ -5,8 +5,6 @@ import re
 from json import JSONDecodeError
 from typing import Any, Callable, List, Optional
 
-import jsonpatch
-
 
 def _replace_new_line(match: re.Match[str]) -> str:
     value = match.group(2)

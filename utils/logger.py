@@ -1,5 +1,6 @@
 import logging, sys, os
 
+
 class Logger:
     """
     This class is a simple wrapper around the Python logging function
@@ -9,7 +10,7 @@ class Logger:
         # Simple usage
 
         logger = Logger().logger
-    
+
         logger.debug('Debug message')
         logger.info('Info message')
         logger.warning('Warning message')
@@ -21,7 +22,7 @@ class Logger:
         logger = Logger(logfile=None).logger
 
         # If want to pass the name of the function generating the message
-        # you may use the "inspect" library and generate the message as follows 
+        # you may use the "inspect" library and generate the message as follows
 
         self.logger.debug(f"[{inspect.stack()[0][3]}] Message here.")
 
@@ -30,28 +31,45 @@ class Logger:
         self.logger = logger if logger else Logger(show_message=False).logger
 
     """
-    def __init__(self,
-                 logger_name="default",
-                 log_level=logging.INFO, 
-                 logfile="logs/ols.logs",
-                 show_message=False):
-        msg=f"""
+
+    def __init__(
+        self,
+        logger_name="default",
+        log_level=logging.INFO,
+        logfile="logs/ols.logs",
+        show_message=False,
+    ):
+        """
+        Initializes the Logger instance.
+
+        Args:
+        - `logger_name` (str): The name of the logger instance.
+        - `log_level` (int): The logging level for general logging verbosity.
+        - `logfile` (str): The path to the log file. Set to `None` to disable file logging.
+        - `show_message` (bool): Whether to display a message about setting logging levels.
+
+        Note:
+        - The default values can be overridden using environment variables `LOG_LEVEL`
+          and `LOG_LEVEL_CONSOLE`.
+        """
+        msg = f"""
         ############################################################################
         Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG) 
         to control general logging verbosity or console specific logging level
         ############################################################################
         """
-        if show_message: print(msg)
+        if show_message:
+            print(msg)
 
-        self.logger_name=logger_name
-        self.log_level=os.getenv("LOG_LEVEL", log_level)
-        self.log_level_console=os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
-        self.logfile=logfile
-        self.logfile_maxSize=1048576*100
-        self.logfile_backupCount=3
+        self.logger_name = logger_name
+        self.log_level = os.getenv("LOG_LEVEL", log_level)
+        self.log_level_console = os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
+        self.logfile = logfile
+        self.logfile_maxSize = 1048576 * 100
+        self.logfile_backupCount = 3
 
         self.set_handlers()
-        
+
     def set_handlers(self):
         """
         A simple logger function that logs messages at a specified level.
@@ -61,8 +79,10 @@ class Logger:
         """
         self.logger = logging.getLogger(self.logger_name)
         self.logger.setLevel(self.log_level)
-        
-        formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s")
+
+        formatter = logging.Formatter(
+            "%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s"
+        )
 
         # console logging handler
         console_handler = logging.StreamHandler()
@@ -75,10 +95,11 @@ class Logger:
         # file logging handler (if not disabled)
         if self.logfile is not None:
             file_handler = logging.handlers.RotatingFileHandler(
-                                                                self.logfile, 
-                                                                maxBytes=self.logfile_maxSize, 
-                                                                backupCount=self.logfile_backupCount)
+                self.logfile,
+                maxBytes=self.logfile_maxSize,
+                backupCount=self.logfile_backupCount,
+            )
             file_handler.setLevel(self.log_level)
             file_handler.setFormatter(formatter)
-            
+
             self.logger.addHandler(file_handler)
