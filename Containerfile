@@ -1,10 +1,10 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal
+FROM registry.access.redhat.com/ubi9/python-311:latest
 
 ARG VERSION
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip jq shadow-utils \
+    jq shadow-utils \
     && microdnf clean all --enablerepo='*' \
     && useradd -r -u 1001 -g 0 -m -c "Default Application User" -d ${APP_ROOT} -s /bin/bash default
 
