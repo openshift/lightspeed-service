@@ -1,33 +1,24 @@
 # base python things
-from typing import Union
-from fastapi import FastAPI, HTTPException
-import gradio as gr
-from dotenv import load_dotenv
-from pydantic import BaseModel
-import os
 import uuid
+from typing import Union
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+
+# auxiliary functionalities
+from src.config import Config
 
 # internal modules
-from modules.task_breakdown import TaskBreakdown
-from modules.task_processor import TaskProcessor
 from modules.question_validator import QuestionValidator
 from modules.yaml_generator import YamlGenerator
 from modules.happy_response_generator import HappyResponseGenerator
 from modules.docs_summarizer import DocsSummarizer
 from modules.model_context import get_watsonx_predictor
 from modules.conversation_cache import LRUCache
-from modules.gradio_ui import ui
 
-# internal tools
-from tools.ols_logger import OLSLogger
+# gradio ui
+from modules.gradio_ui import gradioUI
 
-load_dotenv()
-
-base_completion_model = os.getenv("BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1")
-
-# TODO: env for verbose chains
-
-# TODO: should this class get moved to a separate file?
+# TODO: Move to external file
 class LLMRequest(BaseModel):
     query: str
     conversation_id: Union[str, None] = None
@@ -35,34 +26,53 @@ class LLMRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     conversation_id: int # required
-    feedback_object: str # a json blob 
+    feedback_object: str # a json blob
 
-
-conversation_cache=LRUCache(100)
+# common globals
 app = FastAPI()
-gr.mount_gradio_app(app,ui,path="/ui")
 
+config = Config()
+logger = config.logger
+
+# determine if need to enable local UI
+if config.enable_ui:
+    app=gradioUI().mount_ui(app)
+else:
+    logger.info("Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True")
+
+# application global variables
+base_completion_model = config.base_completion_model
+conversation_cache = LRUCache(100)
 
 def get_suid():
     return str(uuid.uuid4().hex)
 
-
 @app.get("/healthz")
+@app.get("/readyz")
 def read_root():
     return {"status": "1"}
 
+@app.get("/")
+@app.get("/status")
+def root(request: Request):
+    """
+    TODO: In the future should respond
+    """
+    return {
+        "message" : "This is the default endpoint for OLS",
+        "status" : "running"
+        }
 
 @app.post("/ols")
 def ols_request(llm_request: LLMRequest):
-    logger = OLSLogger("ols_endpoint").logger
-
-    # this endpoint is for the alternative flow
-    # 1. validate whether the query is about k8s/ocp
-    # 2. pass to yaml generator
-    # 3. filter/clean/lint
-    # 4. RAG for supporting documentation
-    # 5. user-friendly summary
-
+    """
+    This endpoint is for the alternative flow
+        1. validate whether the query is about k8s/ocp
+        2. pass to yaml generator
+        3. filter/clean/lint
+        4. RAG for supporting documentation
+        5. user-friendly summary
+    """
     previous_input=None
 
     conversation=llm_request.conversation_id
@@ -74,9 +84,7 @@ def ols_request(llm_request: LLMRequest):
         previous_input=conversation_cache.get(conversation)
         logger.info(conversation + " Previous conversation input: " + previous_input)
 
-
     llm_response = LLMRequest(query=llm_request.query,conversation_id=conversation)
-
 
     # TODO: some kind of logging module that includes the conversation automatically?
     logger.info(conversation + " Incoming request: " + llm_request.query)
@@ -144,9 +152,12 @@ def ols_request(llm_request: LLMRequest):
         raise HTTPException(status_code=500, detail=llm_response.dict())
 
 
+@app.post("/ols/raw_prompt")
 @app.post("/base_llm_completion")
 def base_llm_completion(llm_request: LLMRequest):
-    logger = OLSLogger("base_llm_completion_endpoint").logger
+    """
+    Raw pass through to backend LLM
+    """
     conversation = get_suid()
 
     llm_response = LLMRequest(query=llm_request.query)
@@ -169,8 +180,9 @@ def base_llm_completion(llm_request: LLMRequest):
 
 @app.post("/feedback")
 def feedback_request(feedback_request: FeedbackRequest):
-
-    logger = OLSLogger("feedback_endpoint").logger
+    """
+    Endpoint to collect direct feedback on conversation
+    """
 
     conversation = str(feedback_request.conversation_id)
     logger.info(conversation + " New feedback received")

@@ -15,4 +15,4 @@ vendor
 tmptest_*
 
 # don't keep log files
-logs/*.log
+logs/*
