@@ -15,8 +15,10 @@ def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs)
     else:
         verbose = False
 
-    api_key = os.getenv("BAM_API_KEY", None)
-    api_url = os.getenv("BAM_URL", None)
+    # when no ENV is available, having None values results in errors during
+    # testing, so default to bogus values
+    api_key = os.getenv("BAM_API_KEY", "BOGUS_VALUE")
+    api_url = os.getenv("BAM_URL", "http://bogus.url")
     creds = Credentials(api_key, api_endpoint=api_url)
 
     params = GenerateParams(decoding_method="greedy", min_new_tokens=min_new_tokens, max_new_tokens=max_new_tokens)

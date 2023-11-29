@@ -158,7 +158,11 @@ def base_llm_completion(llm_request: LLMRequest):
     """
     Raw pass through to backend LLM
     """
-    conversation = get_suid()
+
+    if (llm_request.conversation_id == None):
+        conversation = get_suid()
+    else:
+        conversation = llm_request.conversation_id
 
     llm_response = LLMRequest(query=llm_request.query)
     llm_response.conversation_id = conversation

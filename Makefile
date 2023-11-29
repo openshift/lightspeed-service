@@ -1,12 +1,18 @@
-.PHONY: unit e2e-test
+.PHONY: test-unit test-e2e
 
 test-unit:
+	@echo "Installing test deps..."
+	pip install -r requirements.txt
+	pip install -r requirements-test.txt
 	@echo "Running unit tests..."
-	# Command to run unit tests goes here
+	pytest test_*.py
 
 test-e2e:
+	@echo "Installing test deps..."
+	pip install -r requirements.txt
+	pip install -r requirements-test.txt
 	@echo "Running end-to-end tests..."
-	# Command to run end-to-end tests goes here
+	# Command to run e2e tests goes here
 
 images:
 	scripts/build-container.sh
