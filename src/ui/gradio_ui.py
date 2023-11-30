@@ -7,12 +7,10 @@ class gradioUI:
     def __init__(
         self,
         ols_url="http://127.0.0.1:8080/ols",
-        mount_path="/ui",
         conversation_id=None,
     ) -> None:
         # class variable
         self.ols_url = ols_url
-        self.mount_path = mount_path
         self.conversation_id = conversation_id
 
         # ui specific
@@ -55,8 +53,8 @@ class gradioUI:
             # Handle any exceptions that may occur during the request
             return f"An error occurred: {e}"
 
-    def mount_ui(self, fast_api_instance):
-        return gr.mount_gradio_app(fast_api_instance, self.ui, path=self.mount_path)
+    def mount_ui(self, fast_api_instance, mount_path="/ui"):
+        return gr.mount_gradio_app(fast_api_instance, self.ui, path=mount_path)
 
 
 if __name__ == "__main__":

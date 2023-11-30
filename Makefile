@@ -22,3 +22,4 @@ run:
 
 verify:
 	black . --check
+
