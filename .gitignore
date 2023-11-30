@@ -16,3 +16,6 @@ tmptest_*
 
 # don't keep log files
 logs/*
+
+# ignore test results
+tests/test_results/*

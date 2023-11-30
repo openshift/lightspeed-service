@@ -5,13 +5,10 @@ test-unit:
 	pip install -r requirements.txt
 	pip install -r requirements-test.txt
 	@echo "Running unit tests..."
-	pytest test_*.py
+	# Command to run unit tests goes here
+	python -m pytest tests/ --junit-xml=tests/test_results/results.xml
 
 test-e2e:
-	@echo "Installing test deps..."
-	pip install -r requirements.txt
-	pip install -r requirements-test.txt
-	@echo "Running end-to-end tests..."
 	# Command to run e2e tests goes here
 
 images:
