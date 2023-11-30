@@ -8,7 +8,7 @@ from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
 from src.query_helpers.happy_response_generator import HappyResponseGenerator
 from src.docs.docs_summarizer import DocsSummarizer
-from src.cache.conversation_cache import LRUCache
+from src.cache.cache_factory import CacheFactory
 from utils.logger import Logger
 
 router = APIRouter(prefix="/ols", tags=["ols"])
@@ -25,7 +25,7 @@ def ols_request(llm_request: LLMRequest):
     Returns:
         dict: Response containing the processed information.
     """
-    conversation_cache = LRUCache(constants.MAX_CACHE_SIZE)
+    conversation_cache = CacheFactory.conversation_cache()
     logger = Logger("ols_endpoint").logger
 
     # Initialize variables
@@ -99,7 +99,7 @@ def ols_request(llm_request: LLMRequest):
             # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
 
             llm_response.response = wrapper + "\n" + generated_yaml
-            conversation_cache.upsert(
+            conversation_cache.insert_or_append(
                 conversation, llm_request.query + "\n\n" + llm_response.response
             )
             return llm_response

@@ -167,3 +167,12 @@ PRODUCT_INDEX = "product"
 PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
 SUMMARY_INDEX = "summary"
 SUMMARY_DOCS_PERSIST_DIR = "./vector-db/summary-docs"
+
+# cache constants
+IN_MEMORY_CACHE = "in-memory"
+IN_MEMORY_CACHE_MAX_ENTRIES = 1000
+REDIS_CACHE = "redis"
+REMOTE_CACHE_HOST = "redis-stack.ols.svc"
+REMOTE_CACHE_PORT = 6379
+REMOTE_CACHE_MAX_MEMORY = "500mb"
+REMOTE_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
