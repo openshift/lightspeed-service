@@ -22,11 +22,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR ${APP_ROOT}
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
-COPY modules ./modules
-COPY tools ./tools
+COPY app ./app
+COPY utils ./utils
 COPY logs ./logs
 COPY src ./src
-COPY ./ols.py ./requirements.txt ./
+COPY ./requirements.txt ./
 RUN chown -R 1001:0 ${APP_ROOT}
 
 # default user for Python app
@@ -51,7 +51,7 @@ ENV BASH_ENV="${APP_ROOT}/venv/bin/activate" \
 
 # Run the application
 EXPOSE 8080
-CMD ["uvicorn", "ols:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \
