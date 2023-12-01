@@ -8,3 +8,4 @@ llama_index
 torch
 transformers
 uvicorn
+redis
