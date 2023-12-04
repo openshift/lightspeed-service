@@ -3,6 +3,9 @@
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: test test-unit test-e2e images run format verify
 
+ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
+
+
 images:
 	scripts/build-container.sh
 
@@ -19,13 +22,13 @@ test: test-unit test-integration test-e2e
 
 test-unit:
 	@echo "Running unit tests..."
-	# Command to run unit tests goes here
-	python -m pytest tests/unit --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report xml:tests/test_results/unit/coverage.xml --junit-xml=tests/test_results/unit/results.xml
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	python -m pytest tests/unit --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report xml:${ARTIFACT_DIR}/coverage_unit.xml --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
 
 test-integration:
 	@echo "Running unit tests..."
-	# Command to run unit tests goes here
-	python -m pytest tests/integration --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report xml:tests/test_results/integration/coverage.xml --junit-xml=tests/test_results/unit/results.xml
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	python -m pytest tests/integration --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report xml:${ARTIFACT_DIR}/coverage_integration.xml --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
 
 test-e2e:
 	# Command to run e2e tests goes here
