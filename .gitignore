@@ -1,9 +1,15 @@
 # ignore python and editors cache
 __pycache__
-venv
 .env*
 .vscode
 .DS_Store
+
+# ignore venv
+venv
+.venv
+
+# ignore dev dotenv file
+.env
 
 # ignore locally significant directories
 tmp
@@ -19,3 +25,4 @@ logs/*
 
 # ignore test results
 tests/test_results/*
+.coverage
