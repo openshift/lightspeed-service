@@ -50,7 +50,7 @@ _Below is an example of how you can instruct your audience on installing and set
 #### Run the server
 in order to run the API service  
 ```sh
-uvicorn app.main:ols --reload
+uvicorn app.main:app --reload
 ```
 
 #### Query the server
