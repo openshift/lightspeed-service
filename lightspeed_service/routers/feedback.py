@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.models.models import FeedbackRequest
-from utils.logger import Logger
+from lightspeed_service.models import FeedbackRequest
+from lightspeed_service.utils.logger import Logger
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 

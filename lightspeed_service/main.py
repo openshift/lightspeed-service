@@ -1,12 +1,15 @@
 import gradio as gr
 from fastapi import FastAPI, Request
-from src.ui.gradio_ui import gradioUI
-from utils.config import Config
-from app.endpoints import ols, feedback
+import uvicorn
+from lightspeed_service.ui.gradio_ui import gradioUI
+from lightspeed_service.utils.config import Config
+from lightspeed_service.routers import ols, feedback
+
 
 app = FastAPI()
 
 config = Config()
+
 logger = config.logger
 
 if config.enable_ui:

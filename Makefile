@@ -16,7 +16,7 @@ install-deps-test:
 	pip install -r requirements-test.txt
 
 run:
-	uvicorn app.main:app --reload --port 8080
+	uvicorn lightspeed_service.main:app --reload --port 8080
 
 test: test-unit test-integration test-e2e
 
@@ -38,4 +38,3 @@ format:
 
 verify:
 	black . --check
-

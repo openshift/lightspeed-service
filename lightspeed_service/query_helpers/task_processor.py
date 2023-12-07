@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-import src.constants as constants
-from utils.model_context import get_watsonx_predictor
+from lightspeed_service import constants
+from lightspeed_service.utils.model_context import get_watsonx_predictor
 from query_helpers.yes_no_classifier import YesNoClassifier
-from src.query_helpers.task_performer import TaskPerformer
-from src.query_helpers.task_rephraser import TaskRephraser
-from utils.logger import Logger
+from lightspeed_service.query_helpers.task_performer import TaskPerformer
+from lightspeed_service.query_helpers.task_rephraser import TaskRephraser
+from lightspeed_service.utils.logger import Logger
 
 load_dotenv()
 

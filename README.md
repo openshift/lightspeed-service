@@ -40,7 +40,7 @@ _Below is an example of how you can instruct your audience on installing and set
    ```sh
    pip install -r requirement.txt
    ```
-4. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
+4. Create a new root level file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line.
 
 <!-- USAGE EXAMPLES -->
 ## Usage
@@ -50,7 +50,7 @@ _Below is an example of how you can instruct your audience on installing and set
 #### Run the server
 in order to run the API service  
 ```sh
-uvicorn app.main:ols --reload
+uvicorn lightspeed_service.main:ols --reload
 ```
 
 #### Query the server

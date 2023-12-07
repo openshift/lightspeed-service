@@ -1,7 +1,7 @@
 import redis
 from typing import Union
 import threading
-import src.constants as constants
+from lightspeed_service import constants
 
 
 # TODO

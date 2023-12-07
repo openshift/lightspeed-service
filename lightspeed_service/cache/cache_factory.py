@@ -3,9 +3,9 @@
 import os
 from abc import ABC, abstractmethod
 from typing import Union
-import src.constants as constants
-from src.cache.in_memory_cache import InMemoryCache
-from src.cache.redis_cache import RedisCache
+from lightspeed_service import constants
+from lightspeed_service.cache.in_memory_cache import InMemoryCache
+from lightspeed_service.cache.redis_cache import RedisCache
 
 
 class Cache(ABC):

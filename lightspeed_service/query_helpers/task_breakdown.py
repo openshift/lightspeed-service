@@ -3,9 +3,9 @@ import llama_index
 from dotenv import load_dotenv
 from llama_index import StorageContext, load_index_from_storage
 from llama_index.prompts import PromptTemplate
-from src import constants
-from utils.model_context import get_watsonx_context
-from utils.logger import Logger
+from lightspeed_service import constants
+from lightspeed_service.utils.model_context import get_watsonx_context
+from lightspeed_service.utils.logger import Logger
 
 load_dotenv()
 

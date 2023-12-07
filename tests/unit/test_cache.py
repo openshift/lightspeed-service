@@ -1,5 +1,5 @@
 import pytest
-from src.cache.in_memory_cache import InMemoryCache
+from lightspeed_service.cache.in_memory_cache import InMemoryCache
 
 
 @pytest.fixture

@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-import src.constants as constants
-from utils.model_context import get_watsonx_predictor
-from utils.logger import Logger
+from lightspeed_service import constants
+from lightspeed_service.utils.model_context import get_watsonx_predictor
+from lightspeed_service.utils.logger import Logger
 
 load_dotenv()
 

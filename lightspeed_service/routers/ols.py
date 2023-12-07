@@ -1,15 +1,15 @@
 import os
 from fastapi import APIRouter, HTTPException
-import app.constants as constants
-from app.models.models import LLMRequest
-from app.utils import Utils
-from utils.model_context import get_watsonx_predictor
-from src.query_helpers.question_validator import QuestionValidator
-from src.query_helpers.yaml_generator import YamlGenerator
-from src.query_helpers.happy_response_generator import HappyResponseGenerator
-from src.docs.docs_summarizer import DocsSummarizer
-from src.cache.cache_factory import CacheFactory
-from utils.logger import Logger
+import lightspeed_service.constants as constants
+from lightspeed_service.models import LLMRequest
+from lightspeed_service.utils.suid import get_suid
+from lightspeed_service.utils.model_context import get_watsonx_predictor
+from lightspeed_service.query_helpers.question_validator import QuestionValidator
+from lightspeed_service.query_helpers.yaml_generator import YamlGenerator
+from lightspeed_service.query_helpers.happy_response_generator import HappyResponseGenerator
+from lightspeed_service.docs.docs_summarizer import DocsSummarizer
+from lightspeed_service.cache.cache_factory import CacheFactory
+from lightspeed_service.utils.logger import Logger
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 
@@ -34,7 +34,7 @@ def ols_request(llm_request: LLMRequest):
 
     # Generate a new conversation ID if not provided
     if conversation is None:
-        conversation = Utils.get_suid()
+        conversation = get_suid()
         logger.info(f"{conversation} New conversation")
     else:
         previous_input = conversation_cache.get(conversation)
@@ -133,7 +133,7 @@ def base_llm_completion(llm_request: LLMRequest):
     )
     logger = Logger("base_llm_completion_endpoint").logger
     if llm_request.conversation_id == None:
-        conversation = Utils.get_suid()
+        conversation = get_suid()
     else:
         conversation = llm_request.conversation_id
 

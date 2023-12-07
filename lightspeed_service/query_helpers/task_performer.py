@@ -1,7 +1,7 @@
 import os
-import src.constants as constants
+from lightspeed_service import constants
 from dotenv import load_dotenv
-from utils.logger import Logger
+from lightspeed_service.utils.logger import Logger
 
 load_dotenv()
 
