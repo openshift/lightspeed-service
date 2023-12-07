@@ -1,7 +1,12 @@
+import os
 import redis
 from typing import Union
 import threading
 import src.constants as constants
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 # TODO
@@ -34,14 +39,14 @@ class RedisCache:
             None
         """
         self.redis_client = redis.StrictRedis(
-            host=constants.REMOTE_CACHE_HOST,
-            port=constants.REMOTE_CACHE_PORT,
+            host=os.environ.get("REDIS_CACHE_HOST", constants.REDIS_CACHE_HOST),
+            port=os.environ.get("REDIS_CACHE_PORT", constants.REDIS_CACHE_PORT),
             decode_responses=True,
         )
         # Set custom configuration parameters
-        self.redis_client.config_set("maxmemory", constants.REMOTE_CACHE_MAX_MEMORY)
+        self.redis_client.config_set("maxmemory", constants.REDIS_CACHE_MAX_MEMORY)
         self.redis_client.config_set(
-            "maxmemory-policy", constants.REMOTE_CACHE_MAX_MEMORY_POLICY
+            "maxmemory-policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
 
     def get(self, key: str) -> Union[str, None]:
