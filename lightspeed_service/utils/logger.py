@@ -1,4 +1,6 @@
-import logging, sys, os
+import logging
+import os
+import sys
 
 
 class Logger:
@@ -44,20 +46,23 @@ class Logger:
 
         Args:
         - `logger_name` (str): The name of the logger instance.
-        - `log_level` (int): The logging level for general logging verbosity.
-        - `logfile` (str): The path to the log file. Set to `None` to disable file logging.
-        - `show_message` (bool): Whether to display a message about setting logging levels.
+        - `log_level` (int): The logging level for general logging
+            verbosity.
+        - `logfile` (str): The path to the log file. Set to `None` to
+            disable file logging.
+        - `show_message` (bool): Whether to display a message about
+            setting logging levels.
 
         Note:
-        - The default values can be overridden using environment variables `LOG_LEVEL`
-          and `LOG_LEVEL_CONSOLE`.
+        - The default values can be overridden using environment
+            variables `LOG_LEVEL` and `LOG_LEVEL_CONSOLE`.
         """
         msg = f"""
-        ############################################################################
-        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG) 
+        ################################################################
+        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG)
         to control general logging verbosity or console specific logging level
-        ############################################################################
-        """
+        ################################################################
+        """  # noqa E501
         if show_message:
             print(msg)
 
@@ -74,7 +79,8 @@ class Logger:
         """
         A simple logger function that logs messages at a specified level.
 
-        :param level:   The logging level (e.g. 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+        :param level:   The logging level (e.g. 'DEBUG', 'INFO', 'WARNING',
+            'ERROR', 'CRITICAL')
         :param message: The message to log
         """
         self.logger = logging.getLogger(self.logger_name)

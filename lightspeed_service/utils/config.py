@@ -1,4 +1,7 @@
-import os, dotenv
+import os
+
+import dotenv
+
 from .logger import Logger
 
 
@@ -24,7 +27,9 @@ class Config:
 
         # enable local ui?
         self.enable_ui = (
-            True if os.getenv("OLS_ENABLE_UI", True) in [True, "True"] else False
+            True
+            if os.getenv("OLS_ENABLE_UI", True) in [True, "True"]
+            else False
         )
 
         # set default LLM model

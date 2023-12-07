@@ -10,7 +10,7 @@
 
 
 ### Built With
-this project is built using IBM watson machine learning 
+this project is built using IBM watson machine learning
 
 
 
@@ -22,8 +22,8 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 
-* python 
-* BAM account 
+* python
+* BAM account
     - BAM_API_KEY
     - BAM_URL
 
@@ -48,7 +48,7 @@ _Below is an example of how you can instruct your audience on installing and set
 ### Local Deployment
 
 #### Run the server
-in order to run the API service  
+in order to run the API service
 ```sh
 uvicorn lightspeed_service.main:app --reload
 ```
@@ -82,13 +82,13 @@ Once we have our image ready, export it as an ENV and use the below [kustomize](
 ```
 export OLS_IMAGE=<image-pullspec>
 kustomize build . | envsubst | oc apply -f -
-``` 
+```
 This should deploy ols fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the ols endpoints demonstrating client usage of our service.
 
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] 
+- [ ]
 
 
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).

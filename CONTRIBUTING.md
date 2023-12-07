@@ -18,7 +18,7 @@ These tools needs the be present in your system
 The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) or later due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
 
 ```bash
-# Clone your fork
+# clone your fork
 git clone https://github.com/williamcaban/lightspeed-service.git
 
 # move into the directory
@@ -33,8 +33,8 @@ poetry shell
 # install project and its dependencies (from lock)
 poetry install --with=dev
 
-# Code formatting (Run this as a pre-commit step for your code changes)
-black .
+# code formatting (Run this as a pre-commit step for your code changes)
+make format
 ```
 
 Happy hacking!

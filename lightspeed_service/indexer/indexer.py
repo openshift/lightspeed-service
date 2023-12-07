@@ -1,10 +1,13 @@
 import os
-from dotenv import load_dotenv
+
 import llama_index
-from llama_index import VectorStoreIndex, SimpleDirectoryReader
+from dotenv import load_dotenv
+from llama_index import SimpleDirectoryReader
+from llama_index import VectorStoreIndex
 from llama_index.storage.storage_context import StorageContext
-from lightspeed_service.utils.model_context import get_watsonx_context
+
 from lightspeed_service import constants
+from lightspeed_service.utils.model_context import get_watsonx_context
 
 llama_index.set_global_handler("simple")
 
@@ -13,12 +16,14 @@ model = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
 
 
 # Select Model
-## check if we are using remote embeddings via env
+# check if we are using remote embeddings via env
 tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
 
-if tei_embedding_url != None:
+if tei_embedding_url is not None:
     service_context = get_watsonx_context(
-        model=model, tei_embedding_model="BAAI/bge-base-en-v1.5", url=tei_embedding_url
+        model=model,
+        tei_embedding_model="BAAI/bge-base-en-v1.5",
+        url=tei_embedding_url,
     )
 else:
     service_context = get_watsonx_context(model=model)
@@ -26,7 +31,7 @@ else:
 print("Using embed model: " + str(service_context.embed_model))
 
 # Load data
-filename_fn = lambda filename: {"file_name": filename}
+filename_fn = lambda filename: {"file_name": filename}  # noqa E731
 
 storage_context = StorageContext.from_defaults()
 

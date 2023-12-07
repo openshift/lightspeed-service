@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from lightspeed_service.models import FeedbackRequest
 from lightspeed_service.utils.logger import Logger
 
@@ -11,7 +12,8 @@ def feedback_request(feedback_request: FeedbackRequest):
     Handle feedback requests.
 
     Args:
-        feedback_request (FeedbackRequest): The request containing feedback information.
+        feedback_request (FeedbackRequest): The request containing
+            feedback information.
 
     Returns:
         dict: Response indicating the status of the feedback.
@@ -20,6 +22,8 @@ def feedback_request(feedback_request: FeedbackRequest):
 
     conversation = str(feedback_request.conversation_id)
     logger.info(f"{conversation} New feedback received")
-    logger.info(f"{conversation} Feedback blob: {feedback_request.feedback_object}")
+    logger.info(
+        f"{conversation} Feedback blob: {feedback_request.feedback_object}"
+    )
 
     return {"status": "feedback received"}

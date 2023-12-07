@@ -1,6 +1,7 @@
+import json
+
 import gradio as gr
 import requests
-import json
 
 
 class gradioUI:
@@ -15,11 +16,16 @@ class gradioUI:
 
         # ui specific
         use_history = gr.Checkbox(value=True, label="Use history")
-        self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=[use_history])
+        self.ui = gr.ChatInterface(
+            self.chat_ui, additional_inputs=[use_history]
+        )
 
     def chat_ui(self, prompt, history, use_history=None):
         # Headers for the HTTP request
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
 
         print("Using history: " + str(use_history))
         # Body of the request (a JSON object with a "query" field)
@@ -28,7 +34,7 @@ class gradioUI:
 
         if not use_history:
             print("Ignoring conversation history")
-        elif use_history and self.conversation_id != None:
+        elif use_history and self.conversation_id is not None:
             data["conversation_id"] = self.conversation_id
             print(f"Using conversation ID: {self.conversation_id}")
 
@@ -37,7 +43,9 @@ class gradioUI:
 
         try:
             # Make the HTTP POST request
-            response = requests.post(self.ols_url, headers=headers, data=json_data)
+            response = requests.post(
+                self.ols_url, headers=headers, data=json_data
+            )
 
             # Check if the request was successful (status code 200)
             if response.status_code == 200:
@@ -45,7 +53,9 @@ class gradioUI:
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
             else:
-                print(f"Request failed with status code {response.status_code}")
+                print(
+                    f"Request failed with status code {response.status_code}"
+                )
                 print(f"Response text: {response.text}")
                 return "Sorry, an error occurred: " + response.text
 

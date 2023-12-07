@@ -1,4 +1,5 @@
 import pytest
+
 from lightspeed_service.cache.in_memory_cache import InMemoryCache
 
 

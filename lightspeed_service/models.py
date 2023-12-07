@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Union
+
+from pydantic import BaseModel
 
 
 class LLMRequest(BaseModel):
@@ -29,7 +30,8 @@ class FeedbackRequest(BaseModel):
         feedback_object (str): The JSON blob representing feedback.
 
     Example:
-        feedback_request = FeedbackRequest(conversation_id=123, feedback_object='{"rating": 5, "comment": "Great service!"}')
+        feedback_request = FeedbackRequest(conversation_id=123,
+            feedback_object='{"rating": 5, "comment": "Great service!"}')
     """
 
     conversation_id: int

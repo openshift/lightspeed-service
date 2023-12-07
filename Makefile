@@ -9,7 +9,7 @@ ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 images:
 	scripts/build-container.sh
 
-install-deps: 
+install-deps:
 	poetry install
 
 install-deps-test:
@@ -34,7 +34,4 @@ test-e2e:
 	# Command to run e2e tests goes here
 
 format:
-	black .
-
-verify:
-	black . --check
+	pre-commit run --all

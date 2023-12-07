@@ -1,19 +1,24 @@
 import os
-from llama_index.embeddings import TextEmbeddingsInference
-from llama_index import ServiceContext
+
+from genai.credentials import Credentials
 from genai.extensions.langchain import LangChainInterface
 from genai.schemas import GenerateParams
-from genai.credentials import Credentials
+from llama_index import ServiceContext
+from llama_index.embeddings import TextEmbeddingsInference
 
 
-def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs):
+def get_watsonx_predictor(
+    model, min_new_tokens=1, max_new_tokens=256, **kwargs
+):
     """
     Get a predictor for WatsonX.
 
     Args:
         model (str): The model to use.
-        min_new_tokens (int): Minimum number of new tokens in the generated output.
-        max_new_tokens (int): Maximum number of new tokens in the generated output.
+        min_new_tokens (int): Minimum number of new tokens in the
+            generated output.
+        max_new_tokens (int): Maximum number of new tokens in the
+            generated output.
         verbose (bool): Whether to print verbose output.
 
     Returns:
@@ -37,7 +42,9 @@ def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs)
     return predictor
 
 
-def get_watsonx_context(model, url="local", tei_embedding_model=None, **kwargs):
+def get_watsonx_context(
+    model, url="local", tei_embedding_model=None, **kwargs
+):
     """
     Get a WatsonX service context.
 

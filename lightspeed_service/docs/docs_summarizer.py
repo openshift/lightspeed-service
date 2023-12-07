@@ -1,11 +1,14 @@
 import os
+
 import llama_index
-from lightspeed_service import constants
 from dotenv import load_dotenv
-from llama_index import StorageContext, load_index_from_storage
+from llama_index import load_index_from_storage
+from llama_index import StorageContext
 from llama_index.prompts import PromptTemplate
-from lightspeed_service.utils.model_context import get_watsonx_context
+
+from lightspeed_service import constants
 from lightspeed_service.utils.logger import Logger
+from lightspeed_service.utils.model_context import get_watsonx_context
 
 load_dotenv()
 
@@ -23,18 +26,22 @@ class DocsSummarizer:
 
     def summarize(self, conversation, query, **kwargs):
         """
-        Summarize the given query based on the provided conversation context.
+        Summarize the given query based on the provided conversation
+        context.
 
         Args:
         - conversation: The unique identifier for the conversation.
         - query: The query to be summarized.
-        - kwargs: Additional keyword arguments for customization (model, verbose, etc.).
+        - kwargs: Additional keyword arguments for customization (model,
+            verbose, etc.).
 
         Returns:
-        - Tuple[str, str]: A tuple containing the summary as a string and referenced documents as a string.
+        - Tuple[str, str]: A tuple containing the summary as a string
+            and referenced documents as a string.
         """
         model = kwargs.get(
-            "model", os.getenv("DOC_SUMMARIZER_MODEL", "ibm/granite-13b-chat-v1")
+            "model",
+            os.getenv("DOC_SUMMARIZER_MODEL", "ibm/granite-13b-chat-v1"),
         )
         verbose = kwargs.get("verbose", "").lower() == "true"
 
@@ -42,10 +49,15 @@ class DocsSummarizer:
         if verbose:
             llama_index.set_global_handler("simple")
 
-        settings_string = f"conversation: {conversation}, query: {query}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, query: {query}, model: {model}, "
+            f"verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
-        summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
+        summarization_template = PromptTemplate(
+            constants.SUMMARIZATION_TEMPLATE
+        )
 
         self.logger.info(f"{conversation} Getting service context")
         self.logger.info(f"{conversation} using model: {model}")
@@ -62,7 +74,8 @@ class DocsSummarizer:
             service_context = get_watsonx_context(model=model)
 
         self.logger.info(
-            f"{conversation} using embed model: {str(service_context.embed_model)}"
+            f"{conversation} using embed model: "
+            f"{str(service_context.embed_model)}"
         )
 
         storage_context = StorageContext.from_defaults(
@@ -95,6 +108,8 @@ class DocsSummarizer:
         )
 
         self.logger.info(f"{conversation} Summary response: {str(summary)}")
-        self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
+        self.logger.info(
+            f"{conversation} Referenced documents: {referenced_documents}"
+        )
 
         return str(summary), referenced_documents

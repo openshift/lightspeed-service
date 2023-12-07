@@ -1,8 +1,9 @@
 # cache_factory.py
-
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from typing import Union
+
 from lightspeed_service import constants
 from lightspeed_service.cache.in_memory_cache import InMemoryCache
 from lightspeed_service.cache.redis_cache import RedisCache
@@ -17,7 +18,8 @@ class Cache(ABC):
             key (str): The key associated with the value.
 
         Returns:
-            Union[str, None]: The value associated with the key, or None if not found.
+            Union[str, None]: The value associated with the key, or None
+            if not found.
         """
         pass
 
@@ -38,10 +40,12 @@ class Cache(ABC):
 class CacheFactory:
     @staticmethod
     def conversation_cache() -> Cache:
-        """Factory method to create an instance of Cache based on environment variable.
+        """Factory method to create an instance of Cache based on
+        environment variable.
 
         Returns:
-            Cache: An instance of Cache (either RedisCache or InMemoryCache).
+            Cache: An instance of Cache (either RedisCache or
+            InMemoryCache).
         """
         cache_type = os.environ.get(
             "OLS_CONVERSATION_CACHE", constants.IN_MEMORY_CACHE
@@ -52,4 +56,6 @@ class CacheFactory:
         elif cache_type == constants.IN_MEMORY_CACHE:
             return InMemoryCache()
         else:
-            raise ValueError("Invalid cache type. Use 'redis' or 'in-memory' options.")
+            raise ValueError(
+                "Invalid cache type. Use 'redis' or 'in-memory' options."
+            )

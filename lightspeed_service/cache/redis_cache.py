@@ -1,6 +1,8 @@
-import redis
-from typing import Union
 import threading
+from typing import Union
+
+import redis
+
 from lightspeed_service import constants
 
 
@@ -20,7 +22,7 @@ class RedisCache:
         """
         with cls._lock:
             if not cls._instance:
-                cls._instance = super(RedisCache, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance.initialize_redis()
         return cls._instance
 
@@ -28,7 +30,8 @@ class RedisCache:
         """
         Initialize the Redis client and logger.
 
-        This method sets up the Redis client with custom configuration parameters.
+        This method sets up the Redis client with custom configuration
+        parameters.
 
         Returns:
             None
@@ -39,7 +42,9 @@ class RedisCache:
             decode_responses=True,
         )
         # Set custom configuration parameters
-        self.redis_client.config_set("maxmemory", constants.REMOTE_CACHE_MAX_MEMORY)
+        self.redis_client.config_set(
+            "maxmemory", constants.REMOTE_CACHE_MAX_MEMORY
+        )
         self.redis_client.config_set(
             "maxmemory-policy", constants.REMOTE_CACHE_MAX_MEMORY_POLICY
         )
@@ -52,7 +57,8 @@ class RedisCache:
             key (str): The key for the desired value.
 
         Returns:
-            Union[str, None]: The value associated with the key, or None if not found.
+            Union[str, None]: The value associated with the key, or None
+                if not found.
         """
         return self.redis_client.get(key)
 

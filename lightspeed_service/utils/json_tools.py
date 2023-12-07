@@ -1,9 +1,10 @@
-# taken from: https://github.com/langchain-ai/langchain/blob/v0.0.314/libs/langchain/langchain/output_parsers/json.py
-
+# taken from
+# https://github.com/langchain-ai/langchain/blob/v0.0.314/libs/langchain/langchain/output_parsers/json.py
 import json
 import re
-from json import JSONDecodeError
-from typing import Any, Callable, List, Optional
+from typing import Any
+from typing import Callable
+from typing import List
 
 
 def _replace_new_line(match: re.Match[str]) -> str:

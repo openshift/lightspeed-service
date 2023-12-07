@@ -1,15 +1,22 @@
 import os
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
+from fastapi import HTTPException
+
 import lightspeed_service.constants as constants
-from lightspeed_service.models import LLMRequest
-from lightspeed_service.utils.suid import get_suid
-from lightspeed_service.utils.model_context import get_watsonx_predictor
-from lightspeed_service.query_helpers.question_validator import QuestionValidator
-from lightspeed_service.query_helpers.yaml_generator import YamlGenerator
-from lightspeed_service.query_helpers.happy_response_generator import HappyResponseGenerator
-from lightspeed_service.docs.docs_summarizer import DocsSummarizer
 from lightspeed_service.cache.cache_factory import CacheFactory
+from lightspeed_service.docs.docs_summarizer import DocsSummarizer
+from lightspeed_service.models import LLMRequest
+from lightspeed_service.query_helpers.happy_response_generator import (
+    HappyResponseGenerator,
+)
+from lightspeed_service.query_helpers.question_validator import (
+    QuestionValidator,
+)
+from lightspeed_service.query_helpers.yaml_generator import YamlGenerator
 from lightspeed_service.utils.logger import Logger
+from lightspeed_service.utils.model_context import get_watsonx_predictor
+from lightspeed_service.utils.suid import get_suid
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 
@@ -20,7 +27,8 @@ def ols_request(llm_request: LLMRequest):
     Handle requests for the OLS endpoint.
 
     Args:
-        llm_request (LLMRequest): The request containing a query and conversation ID.
+        llm_request (LLMRequest): The request containing a query and
+            conversation ID.
 
     Returns:
         dict: Response containing the processed information.
@@ -38,9 +46,13 @@ def ols_request(llm_request: LLMRequest):
         logger.info(f"{conversation} New conversation")
     else:
         previous_input = conversation_cache.get(conversation)
-        logger.info(f"{conversation} Previous conversation input: {previous_input}")
+        logger.info(
+            f"{conversation} Previous conversation input: {previous_input}"
+        )
 
-    llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation)
+    llm_response = LLMRequest(
+        query=llm_request.query, conversation_id=conversation
+    )
 
     # Log incoming request
     logger.info(f"{conversation} Incoming request: {llm_request.query}")
@@ -71,19 +83,23 @@ def ols_request(llm_request: LLMRequest):
 
         if validation_result[1] == constants.NOYAML:
             logger.info(
-                f"{conversation} Question is not about yaml, sending for generic info"
+                f"{conversation} Question is not about yaml, sending for "
+                "generic info"
             )
 
             # Summarize documentation
             docs_summarizer = DocsSummarizer()
-            summary, _ = docs_summarizer.summarize(conversation, llm_request.query)
+            summary, _ = docs_summarizer.summarize(
+                conversation, llm_request.query
+            )
 
             llm_response.response = wrapper + "\n" + summary
             return llm_response
 
         elif validation_result[1] == constants.YAML:
             logger.info(
-                f"{conversation} Question is about yaml, sending to the YAML generator"
+                f"{conversation} Question is about yaml, sending to the YAML "
+                "generator"
             )
             yaml_generator = YamlGenerator()
             generated_yaml = yaml_generator.generate_yaml(
@@ -93,21 +109,27 @@ def ols_request(llm_request: LLMRequest):
             if generated_yaml == constants.SOME_FAILURE:
                 raise HTTPException(
                     status_code=500,
-                    detail={"response": "Internal server error. Please try again."},
+                    detail={
+                        "response": "Internal server error. Please try again."
+                    },
                 )
 
-            # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
+            # Further processing of YAML response (filtering, cleaning,
+            # linting, RAG, etc.)
 
             llm_response.response = wrapper + "\n" + generated_yaml
             conversation_cache.insert_or_append(
-                conversation, llm_request.query + "\n\n" + llm_response.response
+                conversation,
+                llm_request.query + "\n\n" + llm_response.response,
             )
             return llm_response
 
         else:
             raise HTTPException(
                 status_code=500,
-                detail={"response": "Internal server error. Please try again."},
+                detail={
+                    "response": "Internal server error. Please try again."
+                },
             )
     else:
         raise HTTPException(
@@ -132,7 +154,7 @@ def base_llm_completion(llm_request: LLMRequest):
         "BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1"
     )
     logger = Logger("base_llm_completion_endpoint").logger
-    if llm_request.conversation_id == None:
+    if llm_request.conversation_id is None:
         conversation = get_suid()
     else:
         conversation = llm_request.conversation_id

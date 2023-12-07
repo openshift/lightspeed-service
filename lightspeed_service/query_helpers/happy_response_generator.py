@@ -1,17 +1,20 @@
 import os
+
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+
 from lightspeed_service import constants
-from lightspeed_service.utils.model_context import get_watsonx_predictor
 from lightspeed_service.utils.logger import Logger
+from lightspeed_service.utils.model_context import get_watsonx_predictor
 
 load_dotenv()
 
 
 class HappyResponseGenerator:
     """
-    This class is responsible for generating a pleasant response to a user question.
+    This class is responsible for generating a pleasant response to a
+    user question.
     """
 
     def __init__(self):
@@ -25,7 +28,8 @@ class HappyResponseGenerator:
         Generates a pleasant response to a user question.
 
         Args:
-        - conversation (str): The identifier for the conversation or task context.
+        - conversation (str): The identifier for the conversation or
+            task context.
         - user_question (str): The question posed by the user.
         - **kwargs: Additional keyword arguments for customization.
 
@@ -34,11 +38,16 @@ class HappyResponseGenerator:
         """
         model = kwargs.get(
             "model",
-            os.getenv("HAPPY_RESPONSE_GENERATOR_MODEL", constants.GRANITE_13B_CHAT_V1),
+            os.getenv(
+                "HAPPY_RESPONSE_GENERATOR_MODEL", constants.GRANITE_13B_CHAT_V1
+            ),
         )
         verbose = kwargs.get("verbose", "").lower() == "true"
 
-        settings_string = f"conversation: {conversation}, query: {user_question}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, query: {user_question}, model: "
+            f"{model}, verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
@@ -52,10 +61,14 @@ class HappyResponseGenerator:
         self.logger.info(f"{conversation} full prompt: {query}")
 
         bare_llm = get_watsonx_predictor(model=model, temperature=2)
-        llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
+        llm_chain = LLMChain(
+            llm=bare_llm, prompt=prompt_instructions, verbose=verbose
+        )
 
         response = llm_chain(inputs={"question": user_question})
 
-        self.logger.info(f"{conversation} happy response: {str(response['text'])}")
+        self.logger.info(
+            f"{conversation} happy response: {str(response['text'])}"
+        )
 
         return str(response["text"])

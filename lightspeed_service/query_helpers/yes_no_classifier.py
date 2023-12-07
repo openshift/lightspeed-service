@@ -1,17 +1,20 @@
 import os
+
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+
 from lightspeed_service import constants
-from lightspeed_service.utils.model_context import get_watsonx_predictor
 from lightspeed_service.utils.logger import Logger
+from lightspeed_service.utils.model_context import get_watsonx_predictor
 
 load_dotenv()
 
 
 class YesNoClassifier:
     """
-    This class is responsible for classifying a statement as yes, no, or undetermined.
+    This class is responsible for classifying a statement as yes, no, or
+    undetermined.
     """
 
     def __init__(self):
@@ -25,19 +28,24 @@ class YesNoClassifier:
         Classifies a statement as yes, no, or undetermined.
 
         Args:
-        - conversation (str): The identifier for the conversation or task context.
+        - conversation (str): The identifier for the conversation or
+            task context.
         - statement (str): The statement to be classified.
         - **kwargs: Additional keyword arguments for customization.
 
         Returns:
-        - int: The classification result (1 for yes, 0 for no, 9 for undetermined).
+        - int: The classification result (1 for yes, 0 for no, 9 for
+            undetermined).
         """
         model = kwargs.get(
             "model", os.getenv("YESNO_MODEL", constants.GRANITE_13B_CHAT_V1)
         )
         verbose = kwargs.get("verbose", "").lower() == "true"
 
-        settings_string = f"conversation: {conversation}, query: {statement}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, query: {statement}, model: "
+            f"{model}, verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
@@ -52,7 +60,9 @@ class YesNoClassifier:
         self.logger.info(f"{conversation} using model: {model}")
 
         bare_llm = get_watsonx_predictor(model=model)
-        llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
+        llm_chain = LLMChain(
+            llm=bare_llm, prompt=prompt_instructions, verbose=verbose
+        )
 
         response = llm_chain(inputs={"statement": statement})
 

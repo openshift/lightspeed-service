@@ -13,7 +13,7 @@ RUN pip3.11 install poetry
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stadout and stderr streams to be unbufferred
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip lgeacy locales and use UTF-8 mode
-ENV PYTHONDONTWRITEBYTECODE=1 \ 
+ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONCOERCECLOCALE=0 \
     PYTHONUTF8=1 \

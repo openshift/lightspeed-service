@@ -1,11 +1,14 @@
 import os
+
 import llama_index
 from dotenv import load_dotenv
-from llama_index import StorageContext, load_index_from_storage
+from llama_index import load_index_from_storage
+from llama_index import StorageContext
 from llama_index.prompts import PromptTemplate
+
 from lightspeed_service import constants
-from lightspeed_service.utils.model_context import get_watsonx_context
 from lightspeed_service.utils.logger import Logger
+from lightspeed_service.utils.model_context import get_watsonx_context
 
 load_dotenv()
 
@@ -34,7 +37,8 @@ class TaskBreakdown:
             tuple: Task breakdown response and referenced documents.
         """
         model = kwargs.get(
-            "model", os.getenv("TASK_BREAKDOWN_MODEL", constants.GRANITE_13B_CHAT_V1)
+            "model",
+            os.getenv("TASK_BREAKDOWN_MODEL", constants.GRANITE_13B_CHAT_V1),
         )
         verbose = kwargs.get("verbose", False)
 
@@ -42,7 +46,10 @@ class TaskBreakdown:
         if verbose:
             llama_index.set_global_handler("simple")
 
-        settings_string = f"conversation: {conversation}, query: {query}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, query: {query}, model: {model}, "
+            f"verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         summary_task_breakdown_template = PromptTemplate(

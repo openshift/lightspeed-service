@@ -1,7 +1,5 @@
 from fastapi.testclient import TestClient
 
-from unittest.mock import MagicMock
-
 from lightspeed_service.main import app
 
 client = TestClient(app)
@@ -47,9 +45,9 @@ def test_feedback():
 
 
 def test_raw_prompt(monkeypatch):
-    # the raw prompt should just return stuff from LangChainInterface, so mock that base method
-    # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
-    # of it in our tests
+    # the raw prompt should just return stuff from LangChainInterface, so mock
+    # that base method model_context is what imports LangChainInterface, so we
+    # have to mock that particular usage/"instance" of it in our tests
 
     from lightspeed_service.utils import model_context
 
@@ -65,10 +63,13 @@ def test_raw_prompt(monkeypatch):
         def __call__(self, *args, **kwargs):
             return "test response"
 
-    monkeypatch.setattr(model_context, "LangChainInterface", MockChainInterface)
+    monkeypatch.setattr(
+        model_context, "LangChainInterface", MockChainInterface
+    )
 
     response = client.post(
-        "/ols/raw_prompt", json={"conversation_id": "1234", "query": "test query"}
+        "/ols/raw_prompt",
+        json={"conversation_id": "1234", "query": "test query"},
     )
     print(response)
     assert response.status_code == 200

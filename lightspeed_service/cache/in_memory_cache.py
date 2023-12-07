@@ -1,6 +1,7 @@
+import threading
 from collections import deque
 from typing import Union
-import threading
+
 from lightspeed_service import constants
 
 
@@ -14,7 +15,7 @@ class InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
-                cls._instance = super(InMemoryCache, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance.initialize_cache()
         return cls._instance
 
@@ -34,7 +35,8 @@ class InMemoryCache:
         - key (str): The key to look up in the cache.
 
         Returns:
-        - Union[str, None]: The value associated with the key, or None if the key is not present.
+        - Union[str, None]: The value associated with the key, or None
+            if the key is not present.
         """
         if key not in self.cache:
             return None

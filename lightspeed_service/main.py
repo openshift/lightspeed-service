@@ -1,9 +1,10 @@
-import gradio as gr
-from fastapi import FastAPI, Request
-import uvicorn
+from fastapi import FastAPI
+from fastapi import Request
+
+from lightspeed_service.routers import feedback
+from lightspeed_service.routers import ols
 from lightspeed_service.ui.gradio_ui import gradioUI
 from lightspeed_service.utils.config import Config
-from lightspeed_service.routers import ols, feedback
 
 
 app = FastAPI()
@@ -15,7 +16,9 @@ logger = config.logger
 if config.enable_ui:
     app = gradioUI().mount_ui(app)
 else:
-    logger.info("Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True")
+    logger.info(
+        "Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True"
+    )
 
 
 def include_routers(app: FastAPI):
@@ -48,4 +51,7 @@ def root(request: Request):
     """
     TODO: In the future should respond
     """
-    return {"message": "This is the default endpoint for OLS", "status": "running"}
+    return {
+        "message": "This is the default endpoint for OLS",
+        "status": "running",
+    }

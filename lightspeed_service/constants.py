@@ -1,3 +1,4 @@
+# flake8: noqa
 # ols endpoint constants
 VALID = "VALID"
 INVALID = "INVALID"
