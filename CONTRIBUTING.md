@@ -6,6 +6,13 @@
 2. Make changes to the code in your fork
 3. Submit PR from your fork to main branch of the project repo
 
+## System prerequisities
+
+These tools needs the be present in your system
+
+- `poetry` - dependency management, [install guide](https://python-poetry.org/docs/)
+- `podman` - image builder, [install guide](https://podman.io/docs/installation)
+
 ## Setting up your development environment
 
 The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) or later due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
@@ -17,18 +24,14 @@ git clone https://github.com/williamcaban/lightspeed-service.git
 # move into the directory
 cd lightspeed-service
 
-# Setup your Python Virtual Environment 
-# to avoid conflicts with your system packages
-python3.11 -m venv venv
+# ensure poetry uses correct python version for venv (in case its not a default in your system)
+poetry env use `which python3.11`
 
-# Activate the virtual environment
-source ./venv/bin/activate
+# spawn a shell/virtual env
+poetry shell
 
-# Upgrade pip to the most recent version
-pip install --upgrade pip
-
-# Install dependencies
-pip install -r requirements.txt
+# install project and its dependencies (from lock)
+poetry install --with=dev
 
 # Code formatting (Run this as a pre-commit step for your code changes)
 black .
@@ -38,44 +41,10 @@ Happy hacking!
 
 ## Updating Dependencies
 
-If updating `requirements.txt` follow the guidance for "main" branch. If a dependency is no longer required, remove it from the list.
+Do `poetry add dep` for adding main dependency or `poetry add --group=dev dep` for adding development dependency.
 
-***Note:*** *If cutting a release branch freeze the `requirements.txt` list as described in the corresponding section below.*
+Do `poetry lock` after adding/bumping dependency to regenerate lock file.
 
-### For "main" branch
-- The "main" branch is the development branch and we expect to be moving forward and taking advantages of the latest releases of libraries, etc. When updating `requirements.txt` on main branch ONLY include the main dependency without version or with minimum version >= X, but DO NOT specify fixed versions or sub-depdencies
+## CI/CD
 
-```bash
-# Good definitions on main branch
-langchain
-langchain>=0.0.335
-
-# Bad definitions on main branch (fixed version)
-langchain==0.0.335
-```
-
-### For a release branch
-- A release branch or tag is expected to always lead to identical results. For this, when cutting a release branch create a prescriptive versioned `requirements.txt`
-
-```bash
-# Create dependency list with fixed versions
-pip freeze -l --isolated > requirements.txt
-```
-
-This will create a requirements file with the exact versions of the main dependencies and their corresponding sub-dependencies. 
-
-```bash
-# Example for a requirements.txt for a release
-# using fixed versions for all dependencies
-ibm-generative-ai==0.5.0
-idna==3.4
-jsonpatch==1.33
-jsonpointer==2.4
-langchain==0.0.335
-langsmith==0.0.64
-marshmallow==3.20.1
-multidict==6.0.4
-mypy-extensions==1.0.0
-numpy==1.26.2
-# ...more entries
-```
+We use OpenShift PROW. Its configration is stored [here](https://github.com/openshift/release/blob/master/ci-operator/config/openshift/lightspeed-service/openshift-lightspeed-service-main.yaml).

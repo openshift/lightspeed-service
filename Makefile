@@ -10,10 +10,10 @@ images:
 	scripts/build-container.sh
 
 install-deps: 
-	pip install -r requirements.txt
+	poetry install
 
 install-deps-test:
-	pip install -r requirements-test.txt
+	poetry install --with=dev
 
 run:
 	uvicorn lightspeed_service.main:app --reload --port 8080

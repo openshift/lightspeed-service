@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "lightspeed-service"
+version = "0.1.0"
+description = ""
+authors = [
+    "Ben Parees <bparees@redhat.com>",
+    "Erik Jacobs <ejacobs@redhat.com>",
+    "Vishnu Challa <vchalla@redhat.com>",
+    "Ondrej Metelka <ometelka@redhat.com>",
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.104.1"
+gradio = "^4.8.0"
+ibm-generative-ai = "^0.5.1"
+ibm-watson-machine-learning = "^1.0.335"
+kubernetes = "^28.1.0"
+langchain = "^0.0.347"
+llama-index = "^0.9.13"
+torch = "^2.1.1"
+transformers = "^4.35.2"
+uvicorn = "^0.24.0.post1"
+redis = "^5.0.1"
+python-dotenv = "^1.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+httpx = "^0.25.2"
+pytest-cov = "^4.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -8,6 +8,8 @@ RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     && microdnf clean all --enablerepo='*' \
     && useradd -r -u 1001 -g 0 -m -c "Default Application User" -d ${APP_ROOT} -s /bin/bash default
 
+RUN pip3.11 install poetry
+
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stadout and stderr streams to be unbufferred
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip lgeacy locales and use UTF-8 mode
@@ -25,25 +27,22 @@ RUN chown -R 1001:0 ${APP_ROOT}
 
 # default user for Python app
 USER 1001
-RUN python3.11 -m venv ${APP_ROOT}/venv \
-    && source ${APP_ROOT}/venv/bin/activate \
-    # Install wheel for optimized dependency installation \
-    # avoid using or leaving cache on final image \
-    && pip install --no-cache-dir --upgrade pip wheel \
-    && pip install --no-cache-dir --upgrade -r requirements.txt \
-    # The following echo adds the unset command for the variables set below to the \
-    # venv activation script. This is inspired from scl_enable script and prevents \
-    # the virtual environment to be activated multiple times and also every time \
-    # the prompt is rendered. \
-    && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate
 
-# activate virtualenv with workaround RHEL/CentOS 8+
-ENV BASH_ENV="${APP_ROOT}/venv/bin/activate" \
-    ENV="${APP_ROOT}/venv/bin/activate" \
-    PROMPT_COMMAND=". ${APP_ROOT}/venv/bin/activate" \
-    PATH="${APP_ROOT}/venv/bin:${PATH}"
+# envs related to correct venv activation
+ENV APP_VENV=$APP_ROOT/.venv
+ENV BASH_ENV=$APP_VENV/bin/activate
+ENV ENV=$APP_VENV/bin/activate
+ENV PROMPT_COMMAND=". $APP_VENV/bin/activate"
+ENV PATH=$APP_VENV/bin:$PATH
 
-# Run the application
+# NOTE: build is a bit slow - would deserve further refactoring
+# install the dependencies
+RUN poetry config virtualenvs.create true \
+  && poetry config virtualenvs.in-project true \
+  && poetry config installer.max-workers 10 \
+  && poetry install --no-dev --no-interaction --no-ansi
+
+# run the application
 EXPOSE 8080
 CMD ["uvicorn", "lightspeed_service.main:app", "--host", "0.0.0.0", "--port", "8080"]
 
