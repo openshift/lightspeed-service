@@ -29,9 +29,9 @@ spec:
       labels:
         app: ols-proxy
     spec:
-      securityContext:
-        runAsUser: 65532
       serviceAccountName: ols-proxy
+      securityContext:
+        allowPrivilegeEscalation: false
       containers:
       - name: ols-proxy
         image: quay.io/openshift/origin-kube-rbac-proxy:4.14.0
@@ -45,7 +45,5 @@ spec:
         ports:
         - containerPort: 8443
           name: https
-        securityContext:
-          allowPrivilegeEscalation: false
       - name: ols
-        image: ${OLS_IMAGE}
+        image: quay.io/openshift/lightspeed-service-api:latest
