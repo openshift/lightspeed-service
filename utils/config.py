@@ -24,7 +24,7 @@ class Config:
 
         # enable local ui?
         self.enable_ui = (
-            True if os.getenv("OLS_ENABLE_UI", True) in [True, "True"] else False
+            True if os.getenv("OLS_ENABLE_UI", "True").lower() == "true" else False
         )
 
         # set default LLM model
