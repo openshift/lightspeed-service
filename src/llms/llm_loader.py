@@ -7,49 +7,51 @@ from langchain.callbacks.manager import CallbackManager
 
 import os, inspect
 
-## append path of current caller when __main__
-if __name__ == '__main__':
-    import sys 
-    sys.path.insert(0,'')
-
 from utils.logger import Logger
 
 class LLMLoader:
     """
-    Note: This class loads the LLM backend librearies if the specific LLM is loaded.
+    Note: This class loads the LLM backend libraries if the specific LLM is loaded.
     Known caveats: Currently supports a single instance/model per backend
+
+    llm_backends    :   a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
+    params          :   (optional) array of parameters to override and pass to the llm backend
+
+    # using the class and overriding specific parameters
+    llm_backend = 'ollama'
+    params = {'temperature': 0.02, 'top_p': 0.95}
+
+    llm_config = LLMLoader(llm_backend=llm_backend, params=params)
+    llm_chain = LLMChain(llm=llm_config.llm, prompt=prompt)
+
     """
-    def __init__(self, llm_backends=set(),
-                 inference_url=None,
-                 prompt_type=None,
-                 api_key=None,
-                 model=None, logger=None) -> None:
-        self.logger = logger if logger is not None else Logger("llm_loader").logger
-        # a set of backend LLMs to activate
-        self.llm_backends = set(os.environ.get('LLM_BACKENDS', {'ollama'})) if len(llm_backends) == 0 else llm_backends
-        # defalt LLM backend to use or use the first index from loaded ones
-        self.llm_default = os.environ.get('LLM_DEFAULT', list(self.llm_backends)[0])
-        self.llm = {}
+
+    def __init__(self, llm_backend: str = None, params: dict = None, logger=None) -> None:
+        self.logger = logger if logger is not None else Logger(
+            "llm_loader").logger
+        self.llm_backend = llm_backend if llm_backend else os.environ.get(
+            'LLM_DEFAULT', None)
+        # return empty dictionary if not defined
+        self.llm_params = params if params else {}
+        self.llm = None
         self._set_llm_instance()
 
-    def _set_llm_instance(self, inference_url=None, api_key=None, model=None):
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Loading LLM instances with default {self.llm_default}")
-
-        for backend in self.llm_backends:
-            self.logger.debug(f"Loading backend LLM {backend}")
-            match backend:
-                case 'openai':
-                    self._openai_llm_instance()
-                case 'ollama':
-                    self._ollama_llm_instance()
-                case 'tgi':
-                    self._tgi_llm_instance()
-                case 'watson':
-                    self._watson_llm_instance()
-                case 'bam':
-                    self._bam_llm_instance()
-                case _:
-                    self.logger.warning(f"WARNING: Unsupported LLM {backend}")
+    def _set_llm_instance(self):
+        self.logger.debug(f"[{inspect.stack()[0][3]}] Loading LLM instances with default {str(self.llm_backend)}")
+        # convert to string to handle None or False definitions
+        match str(self.llm_backend):
+            case 'openai':
+                self._openai_llm_instance()
+            case 'ollama':
+                self._ollama_llm_instance()
+            case 'tgi':
+                self._tgi_llm_instance()
+            case 'watson':
+                self._watson_llm_instance()
+            case 'bam':
+                self._bam_llm_instance()
+            case _:
+                self.logger.error(f"ERROR: Unsupported LLM {str(self.llm_backend)}")
 
     def _openai_llm_instance(self):
         self.logger.debug(
@@ -75,9 +77,10 @@ class LLMLoader:
             'frequency_penalty': 1.03,
             'verbose': False
         }
-        self.llm['openai']=OpenAI(**params)
+        params.update(self.llm_params) # override parameters
+        self.llm=OpenAI(**params)
         self.logger.debug(
-            f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm['openai']}")
+            f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
 
     def _ollama_llm_instance(self):
         self.logger.debug(
@@ -98,7 +101,8 @@ class LLMLoader:
             'verbose': False,
             'callback_manager': CallbackManager([StreamingStdOutCallbackHandler()])
         }
-        self.llm['ollama'] = Ollama(**params)
+        params.update(self.llm_params)  # override parameters
+        self.llm = Ollama(**params)
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Ollama LLM instance {self.llm}")
 
@@ -126,7 +130,8 @@ class LLMLoader:
             'verbose': False,
             'callback_manager': CallbackManager([StreamingStdOutCallbackHandler()])
         }        
-        self.llm['tgi'] = HuggingFaceTextGenInference(**params)
+        params.update(self.llm_params)  # override parameters
+        self.llm = HuggingFaceTextGenInference(**params)
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {self.llm}")
 
@@ -144,28 +149,39 @@ class LLMLoader:
             return
         # BAM Research lab
         creds = Credentials(
-                        api_key=os.environ.get('BAM_API_KEY', None),
-                        api_endpoint=os.environ.get('BAM_API_URL', 'https://bam-api.res.ibm.com')
-                        )
-        params = GenerateParams(decoding_method="sample",
-                                max_new_tokens=512,
-                                min_new_tokens=1,
-                                random_seed=42,
-                                top_k=10,
-                                top_p=0.95,
-                                repetition_penalty=1.03,
-                                temperature=0.05)
-        self.llm['bam'] = LangChainInterface(
-                                        model=os.environ.get('BAM_MODEL', None),
-                                        params=params,
-                                        credentials=creds
-                                        )
+            api_key=self.llm_params.get('api_key') if self.llm_params.get(
+                'api_key') is not None else os.environ.get('BAM_API_KEY', None),
+            api_endpoint=self.llm_params.get('api_endpoint') if self.llm_params.get(
+                'api_endpoint') is not None else os.environ.get('BAM_API_URL', 'https://bam-api.res.ibm.com')
+        )
+        model_id = self.llm_params.get('model') if self.llm_params.get(
+            'model') is not None else os.environ.get('BAM_MODEL', None)
+        bam_params = {'decoding_method': "sample",
+                      'max_new_tokens': 512,
+                      'min_new_tokens': 1,
+                      'random_seed': 42,
+                      'top_k': 10,
+                      'top_p': 0.95,
+                      'repetition_penalty': 1.03,
+                      'temperature': 0.05
+                      }
+        bam_params.update(self.llm_params)  # override parameters
+        # remove none BAM params from dictionary
+        for k in ['model','api_key','api_endpoint']:
+            _ = bam_params.pop(k, None)
+        params = GenerateParams(**bam_params)
+
+        self.llm = LangChainInterface(
+            model=model_id,
+            params=params,
+            credentials=creds
+        )
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] BAM LLM instance {self.llm}")
 
     def _watson_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
-        # watsonX (requires WansonX libraries)
+        # WatsonX (requires WansonX libraries)
         try:
             from ibm_watson_machine_learning.foundation_models import Model
             from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
@@ -173,80 +189,38 @@ class LLMLoader:
         except e:
             self.logger.error(f"ERROR: Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM.")
             return
-        #
+        # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": os.environ.get('WATSON_API_URL', None),
-            "apikey": os.environ.get('WATSON_API_KEY', None)
+            "url": self.llm_params.get('url') if self.llm_params.get(
+                'url') is not None else os.environ.get('WATSON_API_URL', None),
+            "apikey": self.llm_params.get('apikey') if self.llm_params.get(
+                'apikey') is not None else os.environ.get('WATSON_API_KEY', None)
         }
+        # WatsonX uses different mechanism for defining parameters
         params = {
-            GenParams.DECODING_METHOD: "sample",
-            GenParams.MIN_NEW_TOKENS: 1,
-            GenParams.MAX_NEW_TOKENS: 512,
-            GenParams.RANDOM_SEED: 42,
-            GenParams.TEMPERATURE: 0.05,
-            GenParams.TOP_K: 10,
-            GenParams.TOP_P: 0.95,
+            GenParams.DECODING_METHOD: self.llm_params.get('decoding_method', 'sample'),
+            GenParams.MIN_NEW_TOKENS: self.llm_params.get('min_new_tokens', 1),
+            GenParams.MAX_NEW_TOKENS: self.llm_params.get('max_new_tokens',512),
+            GenParams.RANDOM_SEED: self.llm_params.get('random_seed', 42),
+            GenParams.TEMPERATURE: self.llm_params.get('temperature', 0.05),
+            GenParams.TOP_K: self.llm_params.get('top_k',10),
+            GenParams.TOP_P: self.llm_params.get('top_p',0.95),
             # https://www.ibm.com/docs/en/watsonx-as-a-service?topic=models-parameters
-            GenParams.REPETITION_PENALTY: 1.03
+            GenParams.REPETITION_PENALTY: self.llm_params.get('repeatition_penallty', 1.03)
         }
-        llm_model = Model(model_id=os.environ.get('WATSON_MODEL', None),
+        # WatsonX uses different parameter names
+        llm_model = Model(model_id=self.llm_params.get('model_id', os.environ.get('WATSON_MODEL', None)),
                           credentials=creds,
                           params=params,
-                          project_id=os.environ.get('WATSON_PROJECT_ID', None)
+                          project_id=self.llm_params.get(
+                              'project_id', os.environ.get('WATSON_PROJECT_ID', None))
                           )
-        self.llm['watson'] = WatsonxLLM(model=llm_model)
+        self.llm = WatsonxLLM(model=llm_model)
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Watson LLM instance {self.llm}")
 
     def status(self):
         import json
-        return json.dumps(self.llm, indent=4)
+        return json.dumps(self.llm.schema_json, indent=4)
 
-###
-# FOR LOCAL DEVELOPMENT
-###
-if __name__ == '__main__':
-    # only load for local development
-    from langchain.prompts import PromptTemplate
-    from langchain.chains import LLMChain
-    from utils.config import Config
-
-    config = Config()
-    #logger = config.logger
-
-    # prompt="What is Kubernetes?"
-    prompt = PromptTemplate(
-        input_variables=["question"],
-        template="""\
-            {question}
-            Instruction:
-            - You are a helpful assistant with expertise in OpenShift and Kubernetes.
-            - Do not address questions unrelated to Kubernetes or OpenShift.
-            - Refuse to participate in anything that could harm a human.
-            - Provide the answer for the question based on the given context.
-            - Refuse to answer questions unrelated to topics in Kubernetes or OpenShift.
-            - Prefer succinct answers with YAML examples.
-            Answer:
-            """,
-    )
-
-    llm_backends = {'ollama','tgi','openai','bam','watson'}
-    print(f"Loading LLM backends {llm_backends}")
-    llm_config = LLMLoader(llm_backends=llm_backends)
-
-    for backend in llm_backends:
-        print(f"{'#'*40}\n#### Testing LLM backend {backend}")
-
-        llm_chain = LLMChain(llm=llm_config.llm[backend], prompt=prompt)
-
-        q1 = "How to build an application in OpenShift"
-        print(f"# Test Prompt 1: {q1}")
-        print(llm_chain.run(q1))
-
-        # system should reject this request
-        q2 = "Tell me a joke"
-        print(f"# Test Prompt 2: {q2}")
-        print(llm_chain.run(q2))
-
-        print(f"#### Completed LLM backend {backend} ###")
