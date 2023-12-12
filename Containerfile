@@ -27,10 +27,7 @@ COPY utils ./utils
 COPY logs ./logs
 COPY src ./src
 COPY ./requirements.txt ./
-RUN chown -R 1001:0 ${APP_ROOT}
 
-# default user for Python app
-USER 1001
 RUN python3.11 -m venv ${APP_ROOT}/venv \
     && source ${APP_ROOT}/venv/bin/activate \
     # Install wheel for optimized dependency installation \
@@ -41,13 +38,19 @@ RUN python3.11 -m venv ${APP_ROOT}/venv \
     # venv activation script. This is inspired from scl_enable script and prevents \
     # the virtual environment to be activated multiple times and also every time \
     # the prompt is rendered. \
-    && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate
+    && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate \
+
+RUN chown -R 1001:0 ${APP_ROOT} && \
+    chmod -R g+rx ${APP_ROOT}
 
 # activate virtualenv with workaround RHEL/CentOS 8+
 ENV BASH_ENV="${APP_ROOT}/venv/bin/activate" \
     ENV="${APP_ROOT}/venv/bin/activate" \
     PROMPT_COMMAND=". ${APP_ROOT}/venv/bin/activate" \
     PATH="${APP_ROOT}/venv/bin:${PATH}"
+
+# default user for Python app
+USER 1001
 
 # Run the application
 EXPOSE 8080
