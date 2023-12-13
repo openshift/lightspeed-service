@@ -2,12 +2,10 @@ import gradio as gr
 import requests, json
 from utils.logger import Logger
 
+
 class gradioUI:
     def __init__(
-        self,
-        ols_url="http://127.0.0.1:8080/ols",
-        conversation_id=None,
-        logger=None
+        self, ols_url="http://127.0.0.1:8080/ols", conversation_id=None, logger=None
     ) -> None:
         self.logger = logger if logger is not None else Logger("gradio_ui").logger
         # class variable
@@ -47,7 +45,8 @@ class gradioUI:
                 return response.json().get("response")
             else:
                 self.logger.info(
-                    f"Request failed with status code {response.status_code}")
+                    f"Request failed with status code {response.status_code}"
+                )
                 self.logger.info(f"Response text: {response.text}")
                 return "Sorry, an error occurred: " + response.text
 

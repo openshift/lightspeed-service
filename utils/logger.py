@@ -1,4 +1,6 @@
-import logging, logging.handlers, sys, os, dotenv
+import logging, sys, os, dotenv
+from logging.handlers import RotatingFileHandler
+
 
 class Logger:
     """
@@ -61,7 +63,7 @@ class Logger:
         """
         if show_message:
             print(msg)
-        
+
         # Load the dotenv configuration in case config class has not been used
         dotenv.load_dotenv()
 
@@ -72,9 +74,9 @@ class Logger:
         if _logfile is not None and len(str(_logfile)) >= 1:
             # enforce the use of logs/ directory
             # use last token if user attemps to provide full paths
-            _logfile = "logs/"+str(_logfile).split('/')[-1]
+            _logfile = "logs/" + str(_logfile).split("/")[-1]
         self.logfile = _logfile if _logfile else logfile
-        self.logfile_maxSize = os.getenv("LOG_FILE_SIZE", (1048576 * 100)) 
+        self.logfile_maxSize = os.getenv("LOG_FILE_SIZE", (1048576 * 100))
         self.logfile_backupCount = 3
 
         self.set_handlers()
@@ -103,7 +105,7 @@ class Logger:
 
         # file logging handler (if not disabled)
         if self.logfile is not None:
-            file_handler = logging.handlers.RotatingFileHandler(
+            file_handler = RotatingFileHandler(
                 self.logfile,
                 maxBytes=self.logfile_maxSize,
                 backupCount=self.logfile_backupCount,
