@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: docker.io/redis/redis-stack:latest
+        image: ${OLS_REDIS_IMAGE}
         ports:
         - containerPort: 6379
         - containerPort: 8001
