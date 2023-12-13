@@ -51,21 +51,12 @@ def test_raw_prompt(monkeypatch):
     # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
     # of it in our tests
 
+    from tests.mock_classes.langchain_interface import mock_langchain_interface
     import utils.model_context
 
-    class MockChainInterface:
-        """
-        Unfortunately, LangChainInterface is a callable class, which makes
-        testing extra ugly
-        """
+    ml = mock_langchain_interface("test response")
 
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def __call__(self, *args, **kwargs):
-            return "test response"
-
-    monkeypatch.setattr(utils.model_context, "LangChainInterface", MockChainInterface)
+    monkeypatch.setattr(utils.model_context, "LangChainInterface", ml)
 
     response = client.post(
         "/ols/raw_prompt", json={"conversation_id": "1234", "query": "test query"}
