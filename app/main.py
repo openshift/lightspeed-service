@@ -10,7 +10,7 @@ config = Config()
 logger = config.logger
 
 if config.enable_ui:
-    app = gradioUI().mount_ui(app)
+    app = gradioUI(logger=logger).mount_ui(app)
 else:
     logger.info("Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True")
 
