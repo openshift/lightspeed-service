@@ -31,16 +31,20 @@ To get a local copy up and running follow these simple example steps.
 
 _Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
 
-1. Get a BAM API Key at [https://ibmmid.com](https://www.ibm.com/account/reg/us-en/signup?formid=urx-19776&target=https%3A%2F%2Flogin.ibm.com%2Foidc%2Fendpoint%2Fdefault%2Fauthorize%3FqsId%3D5b380573-b65b-469c-b3d3-e60c31c89011%26client_id%3DMyIBMDallasProdCI)
-2. Clone the repo
+1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
+   * Login with your IBM W3 Id credentials.
+   * Copy the API Key from the Documentation section.
+     ![BAM API Key](docs/bam_api_key.png)
+2. BAM URL: https://bam.res.ibm.com
+3. Clone the repo
    ```sh
    git clone <project gti>
    ```
-3. Install python packages
+4. Install python packages
    ```sh
    pip install -r requirement.txt
    ```
-4. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
+5. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
 
 <!-- USAGE EXAMPLES -->
 ## Usage
@@ -50,7 +54,7 @@ _Below is an example of how you can instruct your audience on installing and set
 #### Run the server
 in order to run the API service  
 ```sh
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8080
 ```
 
 #### Query the server
