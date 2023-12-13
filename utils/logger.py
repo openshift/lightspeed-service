@@ -1,4 +1,4 @@
-import logging, sys, os
+import logging, logging.handlers, sys, os
 
 
 class Logger:

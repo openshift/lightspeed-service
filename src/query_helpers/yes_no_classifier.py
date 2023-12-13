@@ -56,10 +56,10 @@ class YesNoClassifier:
 
         response = llm_chain(inputs={"statement": statement})
 
-        # strip  from the response
-        clean_response = response["text"].split("")[0]
+        self.logger.info(f"{conversation} bare response: {response}")
+        self.logger.info(f"{conversation} yes/no response: {response['text']}")
 
-        self.logger.info(f"{conversation} yes/no response: {clean_response}")
+        if response["text"] not in ["0", "1", "9"]:
+            raise ValueError("Returned response not 0, 1, or 9")
 
-        # TODO: handle when this doesn't end up with an integer
-        return int(clean_response)
+        return int(response["text"])
