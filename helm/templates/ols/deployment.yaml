@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ols-proxy
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: ols-proxy
+spec:
+  replicas: {{ .Values.ols.replicaCount }}
+  selector:
+    matchLabels:
+      app: ols-proxy
+  template:
+    metadata:
+      labels:
+        app: ols-proxy
+    spec:
+      serviceAccountName: ols-proxy
+      containers:
+      - name: ols-proxy
+        image: {{ include "proxy.image" . }}
+        args:
+          - "--secure-listen-address=0.0.0.0:8443"
+          - "--upstream=http://0.0.0.0:8080/"
+          - "--ignore-paths=/healthz"
+          - "--auth-token-audiences=ols-proxy.ols.svc"
+          - "--logtostderr=true"
+          - "--v=10"
+        ports:
+          - containerPort: {{ .Values.ols.proxy.containerPorts.https }}
+            name: https
+        securityContext:
+          allowPrivilegeEscalation: false
+      - name: ols
+        image: {{ include "ols.image" . }}
+        securityContext:
+          allowPrivilegeEscalation: false
