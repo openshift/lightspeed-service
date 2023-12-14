@@ -132,7 +132,7 @@ def base_llm_completion(llm_request: LLMRequest):
         "BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1"
     )
     logger = Logger("base_llm_completion_endpoint").logger
-    if llm_request.conversation_id == None:
+    if llm_request.conversation_id is None:
         conversation = Utils.get_suid()
     else:
         conversation = llm_request.conversation_id

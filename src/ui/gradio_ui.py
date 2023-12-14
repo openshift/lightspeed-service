@@ -27,7 +27,7 @@ class gradioUI:
 
         if not use_history:
             self.logger.info("Ignoring conversation history")
-        elif use_history and self.conversation_id != None:
+        elif use_history and self.conversation_id is not None:
             data["conversation_id"] = self.conversation_id
             self.logger.info(f"Using conversation ID: {self.conversation_id}")
 

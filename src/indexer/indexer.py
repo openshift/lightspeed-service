@@ -16,7 +16,7 @@ model = os.getenv("INDEXER_MODEL", "ibm/granite-13b-chat-v1")
 ## check if we are using remote embeddings via env
 tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
 
-if tei_embedding_url != None:
+if tei_embedding_url is not None:
     service_context = get_watsonx_context(
         model=model, tei_embedding_model="BAAI/bge-base-en-v1.5", url=tei_embedding_url
     )
