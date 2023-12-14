@@ -2,9 +2,10 @@ from collections import deque
 from typing import Union
 import threading
 import src.constants as constants
+from src.cache.cache import Cache
 
 
-class InMemoryCache:
+class InMemoryCache():
     """An in-memory LRU cache implementation in O(1) time."""
 
     _instance = None
