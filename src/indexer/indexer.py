@@ -25,8 +25,11 @@ else:
 
 print("Using embed model: " + str(service_context.embed_model))
 
+
 # Load data
-filename_fn = lambda filename: {"file_name": filename}
+def filename_fn(filename):
+    return {"file_name": filename}
+
 
 storage_context = StorageContext.from_defaults()
 
