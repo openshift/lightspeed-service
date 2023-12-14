@@ -42,7 +42,7 @@ _Below is an example of how you can instruct your audience on installing and set
    ```
 4. Install python packages
    ```sh
-   pip install -r requirement.txt
+   pip install -r requirements.txt
    ```
 5. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
 
