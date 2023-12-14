@@ -13,7 +13,7 @@ load_dotenv()
 # TODO
 # Good for on-premise hosting for now
 # Extend it to distributed setting using cloud offerings
-class RedisCache():
+class RedisCache(Cache):
     _instance = None
     _lock = threading.Lock()
 

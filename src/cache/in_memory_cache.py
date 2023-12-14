@@ -5,7 +5,7 @@ import src.constants as constants
 from src.cache.cache import Cache
 
 
-class InMemoryCache():
+class InMemoryCache(Cache):
     """An in-memory LRU cache implementation in O(1) time."""
 
     _instance = None
