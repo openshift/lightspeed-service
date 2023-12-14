@@ -20,7 +20,16 @@ def test_parse_json_markdown(json, expected):
     assert parse_json_markdown(json) == expected
 
 
-incorrect_inputs = (None, "", "foo", "\n", '"')
+incorrect_inputs = (
+    None,
+    "",
+    "foo",
+    "\n",
+    '"',
+    "```foo```",
+    "```json{foo}```",
+    "```json{```",
+)
 
 
 @pytest.mark.parametrize("json", incorrect_inputs)
