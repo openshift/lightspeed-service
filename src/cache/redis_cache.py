@@ -4,6 +4,7 @@ from typing import Union
 import threading
 import src.constants as constants
 from dotenv import load_dotenv
+from src.cache.cache import Cache
 
 
 load_dotenv()
@@ -12,7 +13,7 @@ load_dotenv()
 # TODO
 # Good for on-premise hosting for now
 # Extend it to distributed setting using cloud offerings
-class RedisCache:
+class RedisCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
