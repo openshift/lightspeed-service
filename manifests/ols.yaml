@@ -29,8 +29,6 @@ spec:
       labels:
         app: ols-proxy
     spec:
-      securityContext:
-        runAsUser: 65532
       serviceAccountName: ols-proxy
       containers:
       - name: ols-proxy
@@ -49,3 +47,5 @@ spec:
           allowPrivilegeEscalation: false
       - name: ols
         image: ${OLS_IMAGE}
+        securityContext:
+          allowPrivilegeEscalation: false
