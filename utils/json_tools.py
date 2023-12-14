@@ -2,8 +2,7 @@
 
 import json
 import re
-from json import JSONDecodeError
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 
 def _replace_new_line(match: re.Match[str]) -> str:
