@@ -1,4 +1,3 @@
-import gradio as gr
 from fastapi import FastAPI, Request
 from src.ui.gradio_ui import gradioUI
 from utils.config import Config
