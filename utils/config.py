@@ -1,4 +1,5 @@
-import os, dotenv
+import os
+import dotenv
 from .logger import Logger
 
 
