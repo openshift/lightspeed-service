@@ -28,3 +28,9 @@ redis:
     server: 6379
     insights: 8001
   replicaCount: 1
+## Authentication parameters
+auth:
+  ## API key to access IBM Research BAM
+  key: ""
+  ## IBM Research BAM URL
+  url: "https://bam.res.ibm.com"

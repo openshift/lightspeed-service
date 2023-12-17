@@ -33,5 +33,8 @@ spec:
           allowPrivilegeEscalation: false
       - name: ols
         image: {{ include "ols.image" . }}
+        envFrom:
+            - secretRef:
+                name: ols-secret
         securityContext:
           allowPrivilegeEscalation: false

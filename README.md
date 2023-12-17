@@ -74,6 +74,8 @@ By default this interface will ask the OLS server to retain and use your convers
 
 A Helm chart is available for installing the service in OpenShift.
 
+Before installing the chart, you must configure the `auth.key` parameter in the [Values](helm/values.yaml) file
+
 To install the chart with the release name `ols-release` in the namespace `ols`:
 
 ```shell
@@ -90,7 +92,7 @@ To uninstall/delete the chart with the release name `ols-release`:
 helm delete ols-release --namespace ols
 ```
 
-Chart customization is available using the [Values](helm/values.yaml) file
+Chart customization is available using the [Values](helm/values.yaml) file.
 
 <!-- ROADMAP -->
 ## Roadmap
