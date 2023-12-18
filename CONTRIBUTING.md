@@ -30,8 +30,12 @@ pip install --upgrade pip
 # Install dependencies
 pip install -r requirements.txt
 
-# Code formatting (Run this as a pre-commit step for your code changes)
+# Code formatting (run this as a pre-commit step for your code changes)
 black .
+
+# Code style and docstring style (run this as a pre-commit step for your code changes)
+ruff .
+
 ```
 
 Happy hacking!
