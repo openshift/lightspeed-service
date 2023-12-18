@@ -27,4 +27,4 @@ def test_conversation_cache(in_memory_cache_env_var):
 def test_conversation_cache_wrong_cache(wrong_cache_env_var):
     """Check if wrong cache env.variable is detected properly."""
     with pytest.raises(ValueError):
-        cache = CacheFactory.conversation_cache()
+        CacheFactory.conversation_cache()

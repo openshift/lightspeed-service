@@ -49,7 +49,7 @@ class TaskProcessor:
         )
 
         self.logger.info(f"{conversation} Beginning task processing")
-        outputs = list()
+        outputs = []
 
         self.logger.info(f"{conversation} using model: {model}")
         bare_llm = get_watsonx_predictor(model=model, min_new_tokens=5)

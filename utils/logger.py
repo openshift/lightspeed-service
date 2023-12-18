@@ -58,9 +58,9 @@ class Logger:
         - To set logfile name set `LOG_FILE_NAME`
         - To override logfile maximum size set `LOG_FILE_SIZE`
         """
-        msg = f"""
+        msg = """
         ############################################################################
-        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG) 
+        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG)
         to control general logging verbosity or console specific logging level
         ############################################################################
         """

@@ -40,5 +40,5 @@ format:
 
 verify:
 	black . --check
-	ruff .
+	ruff . --per-file-ignores=tests/*:S101
 
