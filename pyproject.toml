@@ -1,5 +1,5 @@
 [tool.ruff]
-select = ["E"]
+select = ["E", "F"]
 ignore = ["E501"]
 
 line-length = 100
