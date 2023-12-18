@@ -17,8 +17,8 @@ spec:
     spec:
       serviceAccountName: ols-proxy
       containers:
-      - name: ols-proxy
-        image: {{ include "proxy.image" . }}
+      - name: ols-rbac-proxy
+        image: {{ include "rbac-proxy.image" . }}
         args:
           - "--secure-listen-address=0.0.0.0:8443"
           - "--upstream=http://0.0.0.0:8080/"
@@ -27,7 +27,7 @@ spec:
           - "--logtostderr=true"
           - "--v=10"
         ports:
-          - containerPort: {{ .Values.ols.proxy.containerPorts.https }}
+          - containerPort: {{ index .Values.ols "rbac-proxy" "containerPorts" "https" }}
             name: https
         securityContext:
           allowPrivilegeEscalation: false
@@ -35,6 +35,6 @@ spec:
         image: {{ include "ols.image" . }}
         envFrom:
             - secretRef:
-                name: ols-secret
+                name: ols-llm-credentials
         securityContext:
           allowPrivilegeEscalation: false

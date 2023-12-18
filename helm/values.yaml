@@ -1,6 +1,6 @@
 ols:
   replicaCount: 1
-  proxy:
+  rbac-proxy:
     image:
       registry: quay.io
       repository: openshift/origin-kube-rbac-proxy

@@ -81,16 +81,8 @@ Return the proper OLS image name
 {{- end -}}
 
 {{/*
-Return the proper OLS client image name
-*/}}
-{{- define "client.image" -}}
-{{- printf "%s/%s:%s" .Values.client.image.registry .Values.client.image.repository .Values.client.image.tag | quote -}}
-{{- end -}}
-
-
-{{/*
 Return the proper kube-rbac-proxy image name
 */}}
-{{- define "proxy.image" -}}
-{{- printf "%s/%s:%s" .Values.ols.proxy.image.registry .Values.ols.proxy.image.repository .Values.ols.proxy.image.tag | quote -}}
+{{- define "rbac-proxy.image" -}}
+{{- printf "%s/%s:%s" (index .Values.ols "rbac-proxy" "image" "registry") (index .Values.ols "rbac-proxy" "image" "repository") (index .Values.ols "rbac-proxy" "image" "tag") | quote -}}
 {{- end -}}

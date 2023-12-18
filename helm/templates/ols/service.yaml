@@ -8,7 +8,7 @@ metadata:
 spec:
   ports:
     - name: https
-      port: {{ .Values.ols.proxy.containerPorts.https }}
+      port: {{ index .Values.ols "rbac-proxy" "containerPorts" "https" }}
       targetPort: https
   selector:
     app: ols-proxy

@@ -70,26 +70,26 @@ There is a minimal Gradio UI you can use when running the OLS server locally.  T
 
 By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
 
-### Deploying OLS using OpenShift
+### Deploying OLS on OpenShift
 
 A Helm chart is available for installing the service in OpenShift.
 
 Before installing the chart, you must configure the `auth.key` parameter in the [Values](helm/values.yaml) file
 
-To install the chart with the release name `ols-release` in the namespace `ols`:
+To install the chart with the release name `ols-release` in the namespace `openshift-lightspeed`:
 
 ```shell
-helm upgrade --install ols-release helm/ --create-namespace --namespace ols
+helm upgrade --install ols-release helm/ --create-namespace --namespace openshift-lightspeed
 ```
 
 The command deploys the service in the default configuration.
 
-The default configuration contains OLS fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample client that makes requests to one of the OLS endpoints demonstrating client usage of the service.
+The default configuration contains OLS fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy).
 
 To uninstall/delete the chart with the release name `ols-release`:
 
 ```shell
-helm delete ols-release --namespace ols
+helm delete ols-release --namespace openshift-lightspeed
 ```
 
 Chart customization is available using the [Values](helm/values.yaml) file.
