@@ -1,14 +1,14 @@
-# workaround to disable UserWarning
 import warnings
-
-warnings.simplefilter("ignore", UserWarning)
+import os
+import inspect
 
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 
-import os, inspect
-
 from utils.logger import Logger
+
+# workaround to disable UserWarning
+warnings.simplefilter("ignore", UserWarning)
 
 
 class LLMLoader:
@@ -62,11 +62,10 @@ class LLMLoader:
     def _openai_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
-            import openai
             from langchain.llms import OpenAI
-        except e:
+        except Exception:
             self.logger.error(
-                f"ERROR: Missing openai libraries. Skipping loading backend LLM."
+                "ERROR: Missing openai libraries. Skipping loading backend LLM."
             )
             return
         params = {
@@ -92,9 +91,9 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
         try:
             from langchain.llms import Ollama
-        except e:
+        except Exception:
             self.logger.error(
-                f"ERROR: Missing ollama libraries. Skipping loading backend LLM."
+                "ERROR: Missing ollama libraries. Skipping loading backend LLM."
             )
             return
         params = {
@@ -121,9 +120,9 @@ class LLMLoader:
         )
         try:
             from langchain.llms import HuggingFaceTextGenInference
-        except e:
+        except Exception:
             self.logger.error(
-                f"ERROR: Missing HuggingFaceTextGenInference libraries. Skipping loading backend LLM."
+                "ERROR: Missing HuggingFaceTextGenInference libraries. Skipping loading backend LLM."
             )
             return
         params = {
@@ -152,11 +151,10 @@ class LLMLoader:
             # BAM Research lab
             from genai.extensions.langchain import LangChainInterface
             from genai.credentials import Credentials
-            from genai.model import Model
             from genai.schemas import GenerateParams
-        except e:
+        except Exception:
             self.logger.error(
-                f"ERROR: Missing ibm-generative-ai libraries. Skipping loading backend LLM."
+                "ERROR: Missing ibm-generative-ai libraries. Skipping loading backend LLM."
             )
             return
         # BAM Research lab
@@ -203,9 +201,9 @@ class LLMLoader:
             from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
                 WatsonxLLM,
             )
-        except e:
+        except Exception:
             self.logger.error(
-                f"ERROR: Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
+                "ERROR: Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
             )
             return
         # WatsonX uses different keys
