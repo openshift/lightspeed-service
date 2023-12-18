@@ -74,10 +74,6 @@ class Logger:
         self.log_level = os.getenv("LOG_LEVEL", log_level)
         self.log_level_console = os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
         _logfile = os.getenv("LOG_FILE_NAME")
-        if _logfile is not None and len(str(_logfile)) >= 1:
-            # enforce the use of logs/ directory
-            # use last token if user attemps to provide full paths
-            _logfile = "logs/" + str(_logfile).split("/")[-1]
         self.logfile = _logfile if _logfile else logfile
         self.logfile_maxSize = os.getenv("LOG_FILE_SIZE", (1048576 * 100))
         self.logfile_backupCount = 3
