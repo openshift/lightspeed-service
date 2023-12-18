@@ -31,10 +31,10 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Code formatting (run this as a pre-commit step for your code changes)
-black .
+make format
 
 # Code style and docstring style (run this as a pre-commit step for your code changes)
-ruff .
+make verify
 
 ```
 
