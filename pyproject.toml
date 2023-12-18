@@ -4,6 +4,7 @@ select = ["E", "F", "W", "C", "S"]
 
 # E501 rule checks for maximum line length
 # S113 rule checks for HTTP request being made without specifying timeout
+# TODO: verify which timeout value for HTTP request should be added (src/ui/gradio_ui.py:40), then S113 can be enabled
 ignore = ["E501", "S113"]
 
 line-length = 100
