@@ -40,4 +40,5 @@ format:
 
 verify:
 	black . --check
+	ruff .
 

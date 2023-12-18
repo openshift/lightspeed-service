@@ -1,0 +1,6 @@
+[tool.ruff]
+select = ["E"]
+ignore = ["E501"]
+
+line-length = 100
+
