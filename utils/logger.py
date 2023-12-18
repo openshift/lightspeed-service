@@ -60,7 +60,7 @@ class Logger:
         """
         msg = """
         ############################################################################
-        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG) 
+        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG)
         to control general logging verbosity or console specific logging level
         ############################################################################
         """

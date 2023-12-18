@@ -49,8 +49,8 @@ metadata:
 spec:
   resourceLimits:
     maxNodesTotal: 10
-  scaleDown: 
-    enabled: true 
+  scaleDown:
+    enabled: true
 """
         self.logger.info(f"{conversation} response: {response}")
         return response
