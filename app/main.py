@@ -2,17 +2,20 @@ from fastapi import FastAPI, Request
 
 from app.endpoints import feedback, ols
 from src.ui.gradio_ui import gradioUI
-from utils.config import Config
+from utils import config
+
 
 app = FastAPI()
 
-config = Config()
-logger = config.logger
-
-if config.enable_ui:
-    app = gradioUI(logger=logger).mount_ui(app)
+# config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
+config.load_config_from_env()
+# config = Config()
+if config.ols_config.enable_debug_ui:
+    app = gradioUI(logger=config.default_logger).mount_ui(app)
 else:
-    logger.info("Embedded Gradio UI is disabled. To enable set OLS_ENABLE_UI=True")
+    config.default_logger.info(
+        "Embedded Gradio UI is disabled. To enable set ols_config.enable_debug_ui to True"
+    )
 
 
 def include_routers(app: FastAPI):

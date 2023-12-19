@@ -1,14 +1,12 @@
-import os
 
-from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from src import constants
-from utils.logger import Logger
 from utils.model_context import get_watsonx_predictor
 
-load_dotenv()
+from utils.logger import Logger
+from utils import config
+from src.llms.llm_loader import LLMLoader
 
 
 class QuestionValidator:
@@ -34,15 +32,12 @@ class QuestionValidator:
         Returns:
         - list: A list of one-word responses.
         """
-        model = kwargs.get(
-            "model",
-            os.getenv(
-                "QUESTION_VALIDATOR_MODEL", constants.GRANITE_20B_CODE_INSTRUCT_V1
-            ),
-        )
+
+        model = config.ols_config.validator_model
+        provider = config.ols_config.validator_provider
         verbose = kwargs.get("verbose", "").lower() == "true"
 
-        settings_string = f"conversation: {conversation}, query: {query}, model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversation}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
@@ -52,9 +47,8 @@ class QuestionValidator:
         self.logger.info(f"{conversation} Validating query")
         self.logger.info(f"{conversation} using model: {model}")
 
-        bare_llm = get_watsonx_predictor(
-            model=model, min_new_tokens=1, max_new_tokens=4
-        )
+        bare_llm = LLMLoader(provider, model).llm
+
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         task_query = prompt_instructions.format(query=query)

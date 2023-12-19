@@ -1,14 +1,12 @@
-import os
 
-from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from src import constants
-from utils.logger import Logger
 from utils.model_context import get_watsonx_predictor
 
-load_dotenv()
+from utils.logger import Logger
+from utils import config
+from src.llms.llm_loader import LLMLoader
 
 
 class YesNoClassifier:
@@ -34,12 +32,12 @@ class YesNoClassifier:
         Returns:
         - int: The classification result (1 for yes, 0 for no, 9 for undetermined).
         """
-        model = kwargs.get(
-            "model", os.getenv("YESNO_MODEL", constants.GRANITE_13B_CHAT_V1)
-        )
+
+        model = config.ols_config.validator_model
+        provider = config.ols_config.validator_provider
         verbose = kwargs.get("verbose", "").lower() == "true"
 
-        settings_string = f"conversation: {conversation}, query: {statement}, model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversation}, query: {statement}, provider: {provider}, model: {model}, verbose: {verbose}"
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
@@ -53,7 +51,7 @@ class YesNoClassifier:
         self.logger.info(f"{conversation} yes/no query: {query}")
         self.logger.info(f"{conversation} using model: {model}")
 
-        bare_llm = get_watsonx_predictor(model=model)
+        bare_llm = LLMLoader(provider, model).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         response = llm_chain(inputs={"statement": statement})

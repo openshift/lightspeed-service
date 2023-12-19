@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.models.models import FeedbackRequest
-from utils.logger import Logger
+from utils import config
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -17,10 +17,11 @@ def feedback_request(feedback_request: FeedbackRequest):
     Returns:
         dict: Response indicating the status of the feedback.
     """
-    logger = Logger("feedback_endpoint").logger
 
     conversation = str(feedback_request.conversation_id)
-    logger.info(f"{conversation} New feedback received")
-    logger.info(f"{conversation} Feedback blob: {feedback_request.feedback_object}")
+    config.default_logger.info(f"{conversation} New feedback received")
+    config.default_logger.info(
+        f"{conversation} Feedback blob: {feedback_request.feedback_object}"
+    )
 
     return {"status": "feedback received"}

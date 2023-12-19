@@ -157,10 +157,19 @@ Here is the history of the conversation so far, you may find this relevant to th
 User Request: {query}
 """
 
+# providers
+PROVIDER_BAM = "bam"
+PROVIDER_OPENAI = "openai"
+PROVIDER_WATSONX = "watsonx"
+PROVIDER_TGI = "tgi"
+PROVIDER_OLLAMA = "ollama"
+
 # models
 TEI_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 GRANITE_13B_CHAT_V1 = "ibm/granite-13b-chat-v1"
 GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
+GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
+GPT35_TURBO = "gpt-3.5-turbo"
 
 # indexing constants
 PRODUCT_INDEX = "product"

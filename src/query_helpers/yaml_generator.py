@@ -1,14 +1,12 @@
-import os
 
-from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from src import constants
-from utils.logger import Logger
 from utils.model_context import get_watsonx_predictor
 
-load_dotenv()
+from utils.logger import Logger
+from utils import config
+from src.llms.llm_loader import LLMLoader
 
 
 class YamlGenerator:
@@ -35,14 +33,16 @@ class YamlGenerator:
         Returns:
         - str: The generated YAML response.
         """
-        model = kwargs.get(
-            "model", os.getenv("YAML_MODEL", constants.GRANITE_20B_CODE_INSTRUCT_V1)
-        )
+
+        model = config.ols_config.validator_model
+        provider = config.ols_config.validator_provider
+
         verbose = kwargs.get("verbose", "").lower() == "true"
-        settings_string = f"conversation: {conversation_id}, query: {query}, model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversation_id}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
         self.logger.info(f"{conversation_id} call settings: {settings_string}")
         self.logger.info(f"{conversation_id} using model: {model}")
-        bare_llm = get_watsonx_predictor(model=model)
+
+        bare_llm = LLMLoader(provider, model).llm
 
         if history:
             prompt_instructions = PromptTemplate.from_template(
