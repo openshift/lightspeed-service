@@ -37,7 +37,9 @@ class gradioUI:
 
         try:
             # Make the HTTP POST request, wait for response with 10 seconds timeout
-            response = requests.post(self.ols_url, headers=headers, data=json_data, timeout=10)
+            response = requests.post(
+                self.ols_url, headers=headers, data=json_data, timeout=10
+            )
 
             # Check if the request was successful (status code 200)
             if response.status_code == 200:
