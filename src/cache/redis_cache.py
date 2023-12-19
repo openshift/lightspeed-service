@@ -2,7 +2,7 @@ import os
 import redis
 from typing import Union
 import threading
-import src.constants as constants
+from src import constants
 from dotenv import load_dotenv
 from src.cache.cache import Cache
 

@@ -1,5 +1,5 @@
 import os
-import src.constants as constants
+from src import constants
 from dotenv import load_dotenv
 from utils.logger import Logger
 

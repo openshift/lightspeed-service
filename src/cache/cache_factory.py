@@ -1,7 +1,7 @@
 # cache_factory.py
 
 import os
-import src.constants as constants
+from src import constants
 from src.cache.cache import Cache
 from src.cache.in_memory_cache import InMemoryCache
 from src.cache.redis_cache import RedisCache
