@@ -36,8 +36,10 @@ class gradioUI:
         json_data = json.dumps(data)
 
         try:
-            # Make the HTTP POST request
-            response = requests.post(self.ols_url, headers=headers, data=json_data)
+            # Make the HTTP POST request, wait for response with 30 seconds timeout
+            response = requests.post(
+                self.ols_url, headers=headers, data=json_data, timeout=30
+            )
 
             # Check if the request was successful (status code 200)
             if response.status_code == 200:
@@ -49,7 +51,7 @@ class gradioUI:
                     f"Request failed with status code {response.status_code}"
                 )
                 self.logger.info(f"Response text: {response.text}")
-                return "Sorry, an error occurred: " + response.text
+                return f"Sorry, an error occurred: {response.text}"
 
         except (ValueError, requests.RequestException) as e:
             # Handle any exceptions that may occur during the request
