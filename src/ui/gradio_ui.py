@@ -51,7 +51,7 @@ class gradioUI:
                 self.logger.info(f"Response text: {response.text}")
                 return "Sorry, an error occurred: " + response.text
 
-        except requests.RequestException as e:
+        except (ValueError, requests.RequestException) as e:
             # Handle any exceptions that may occur during the request
             return f"An error occurred: {e}"
 
