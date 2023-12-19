@@ -10,7 +10,8 @@
 
 
 ### Built With
-this project is built using IBM watson machine learning 
+
+This project is built using IBM Watson machine learning.
 
 
 
@@ -22,7 +23,8 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 
-* python 
+* Python 3.11 or newer
+* Git and pip installed
 * BAM account 
     - BAM_API_KEY
     - BAM_URL
@@ -66,12 +68,12 @@ curl -X 'POST' 'http://127.0.0.1:8080/ols' -H2 'accept: application/json' -H 'Co
 
 ### Gradio UI
 
-There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then browse to the built in gradio interface at http://localhost:8080/ui
+There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then browse to the built in Gradio interface at http://localhost:8080/ui
 
 By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
 
 ### In Cluster Deployment
-Deploying OLS on an openshift cluster is fairly easy with the configuration files we have in [manifests](./manifests) folder.
+Deploying OLS on an OpenShift cluster is fairly easy with the configuration files we have in [manifests](./manifests) folder.
 
 You can use the existing image built from the latest code via this image pullspec: quay.io/openshift/lightspeed-service-api:latest
 
@@ -87,7 +89,7 @@ Once we have our image ready, export it as an ENV and use the below [kustomize](
 export OLS_IMAGE=<image-pullspec>
 kustomize build . | envsubst | oc apply -f -
 ``` 
-This should deploy ols fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the ols endpoints demonstrating client usage of our service.
+This should deploy OLS fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the OLS endpoints demonstrating client usage of our service.
 
 <!-- ROADMAP -->
 ## Roadmap
