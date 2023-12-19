@@ -48,7 +48,9 @@ class QuestionValidator:
         self.logger.info(f"{conversation} Validating query")
         self.logger.info(f"{conversation} using model: {model}")
 
-        bare_llm = LLMLoader(provider, model).llm
+        bare_llm = LLMLoader(
+            provider, model, params={"min_new_tokens": 1, "max_new_tokens": 4}
+        ).llm
 
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 

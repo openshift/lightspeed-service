@@ -9,7 +9,7 @@ from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
 from utils import config
 from src.llms.llm_loader import LLMLoader
-from src import constants
+from app import constants
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 

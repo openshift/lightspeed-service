@@ -3,7 +3,6 @@ gradio
 kubernetes
 langchain
 llama_index
-munch
 torch
 transformers
 uvicorn

@@ -5,8 +5,8 @@ from src.cache.in_memory_cache import InMemoryCache
 
 @pytest.fixture
 def cache():
-    c = InMemoryCache()
-    c.initialize_cache()
+    c = InMemoryCache(10)
+    c.initialize_cache(10)
     return c
 
 
@@ -40,6 +40,6 @@ def test_get_nonexistent_key(cache):
 
 
 def test_singleton_pattern():
-    cache1 = InMemoryCache()
-    cache2 = InMemoryCache()
+    cache1 = InMemoryCache(10)
+    cache2 = InMemoryCache(10)
     assert cache1 is cache2

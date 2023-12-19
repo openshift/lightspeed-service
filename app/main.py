@@ -9,12 +9,11 @@ app = FastAPI()
 
 # config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
 config.load_config_from_env()
-# config = Config()
 if config.ols_config.enable_debug_ui:
     app = gradioUI(logger=config.default_logger).mount_ui(app)
 else:
     config.default_logger.info(
-        "Embedded Gradio UI is disabled. To enable set ols_config.enable_debug_ui to True"
+        "Embedded Gradio UI is disabled. To enable set ENABLE_DEV_UI to True"
     )
 
 

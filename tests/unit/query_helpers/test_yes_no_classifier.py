@@ -3,6 +3,7 @@ import pytest
 import src.query_helpers.yes_no_classifier
 from src.query_helpers.yes_no_classifier import YesNoClassifier
 from tests.mock_classes.llm_chain import mock_llm_chain
+from tests.mock_classes.llm_loader import mock_llm_loader
 
 
 @pytest.fixture
@@ -15,6 +16,9 @@ def test_bad_value_response(yes_no_classifier, monkeypatch):
     ml = mock_llm_chain({"text": "default"})
 
     monkeypatch.setattr(src.query_helpers.yes_no_classifier, "LLMChain", ml)
+    monkeypatch.setattr(
+        src.query_helpers.yes_no_classifier, "LLMLoader", mock_llm_loader()
+    )
 
     with pytest.raises(ValueError):
         yes_no_classifier.classify(conversation="1234", statement="The sky is blue.")
@@ -26,6 +30,9 @@ def test_good_value_response(yes_no_classifier, monkeypatch):
         ml = mock_llm_chain({"text": x})
 
         monkeypatch.setattr(src.query_helpers.yes_no_classifier, "LLMChain", ml)
+        monkeypatch.setattr(
+            src.query_helpers.yes_no_classifier, "LLMLoader", mock_llm_loader()
+        )
 
         assert yes_no_classifier.classify(
             conversation="1234", statement="The sky is blue."

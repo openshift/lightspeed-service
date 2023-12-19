@@ -15,6 +15,13 @@ feedback_logger = None
 conversation_cache = None
 
 
+def load_empty_config():
+    global ols_config
+    global llm_config
+    ols_config = config_model.OLSConfig()
+    llm_config = config_model.LLMConfig()
+
+
 def load_config_from_env():
     global ols_config
     global llm_config
@@ -95,6 +102,7 @@ def load_config_from_env():
 
         for model in [
             constants.GRANITE_13B_CHAT_V1,
+            constants.GRANITE_13B_CHAT_V2,
             constants.GRANITE_20B_CODE_INSTRUCT_V1,
         ]:
             m = config_model.ModelConfig()
@@ -107,9 +115,14 @@ def load_config_from_env():
         oai_provider.name = constants.PROVIDER_OPENAI
         oai_provider.credentials = os.getenv("OPENAI_API_KEY", None)
         oai_provider.url = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1")
-        m = config_model.ModelConfig()
-        m.name = constants.GPT35_TURBO_1106
-        oai_provider.models[m.name] = m
+
+        for model in [
+            constants.GPT35_TURBO_1106,
+            constants.GPT35_TURBO,
+        ]:
+            m = config_model.ModelConfig()
+            m.name = model
+            oai_provider.models[m.name] = m
         llm_config.providers[oai_provider.name] = oai_provider
 
 

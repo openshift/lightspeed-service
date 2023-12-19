@@ -39,6 +39,8 @@ class LLMLoader:
         logger=None,
     ) -> None:
         self.logger = logger if logger is not None else Logger("llm_loader").logger
+        if provider is None:
+            raise Exception("ERROR: Missing provider")
         self.provider = provider
         self.url = url
         if model is None:
@@ -102,7 +104,6 @@ class LLMLoader:
             "verbose": False,
         }
         params.update(self.llm_params)  # override parameters
-        # self.llm = OpenAI(**params)
         self.llm = ChatOpenAI(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
 
@@ -155,6 +156,7 @@ class LLMLoader:
         )
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {self.llm}")
 
+    # TODO: update this to use config not direct env vars
     def _ollama_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
         try:
@@ -179,6 +181,7 @@ class LLMLoader:
         self.llm = Ollama(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {self.llm}")
 
+    # TODO: update this to use config not direct env vars
     def _tgi_llm_instance(self):
         """
         Note: TGI does not support specifying the model, it is an instance per model.
@@ -213,6 +216,7 @@ class LLMLoader:
         )
             from genai.extensions.langchain import LangChainInterface
 
+    # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)
