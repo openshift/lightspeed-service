@@ -9,7 +9,7 @@ from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
 from utils import config
 from src.llms.llm_loader import LLMLoader
-from utils.model_context import get_watsonx_predictor
+from src import constants
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 

@@ -7,6 +7,7 @@ from utils.model_context import get_watsonx_predictor
 from utils.logger import Logger
 from utils import config
 from src.llms.llm_loader import LLMLoader
+from src import constants
 
 
 class YesNoClassifier:
