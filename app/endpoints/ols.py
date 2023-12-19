@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException
-import app.constants as constants
+from app import constants
 from app.models.models import LLMRequest
 from app.utils import Utils
 from utils.model_context import get_watsonx_predictor

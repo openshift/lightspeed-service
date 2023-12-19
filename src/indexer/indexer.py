@@ -4,7 +4,7 @@ import llama_index
 from llama_index import VectorStoreIndex, SimpleDirectoryReader
 from llama_index.storage.storage_context import StorageContext
 from utils.model_context import get_watsonx_context
-import src.constants as constants
+from src import constants
 
 llama_index.set_global_handler("simple")
 

@@ -1,7 +1,7 @@
 import os
 import pytest
 
-import src.constants as constants
+from src import constants
 from src.cache.cache_factory import CacheFactory
 from src.cache.cache_factory import InMemoryCache
 
