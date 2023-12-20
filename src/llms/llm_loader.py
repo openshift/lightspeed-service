@@ -50,6 +50,8 @@ class LLMLoader:
                 self._openai_llm_instance()
             case "ollama":
                 self._ollama_llm_instance()
+            case "google":
+                self._google_llm_instance()
             case "tgi":
                 self._tgi_llm_instance()
             case "watson":
@@ -110,6 +112,29 @@ class LLMLoader:
         params.update(self.llm_params)  # override parameters
         self.llm = Ollama(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {self.llm}")
+
+    def _google_llm_instance(self):
+        self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Google LLM instance")
+        try:
+            from langchain_google_genai import GoogleGenerativeAI
+        except Exception:
+            self.logger.error(
+                "ERROR: Missing langchain-google-genai libraries. Skipping loading backend LLM."
+            )
+            return
+        params = {
+            "google_api_key": os.environ.get("GOOGLE_API_KEY", None),
+            "model": os.environ.get("GOOGLE_MODEL", "gemini-pro"),
+            "cache": None,
+            "temperature": 0.01,
+            "top_k": 10,
+            "top_p": 0.95,
+            "verbose": False,
+            "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
+        }
+        params.update(self.llm_params)  # override parameters
+        self.llm = GoogleGenerativeAI(**params)
+        self.logger.debug(f"[{inspect.stack()[0][3]}] Google LLM instance {self.llm}")
 
     def _tgi_llm_instance(self):
         """
