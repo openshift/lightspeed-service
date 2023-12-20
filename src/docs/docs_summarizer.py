@@ -1,11 +1,13 @@
 import os
+
 import llama_index
-from src import constants
 from dotenv import load_dotenv
 from llama_index import StorageContext, load_index_from_storage
 from llama_index.prompts import PromptTemplate
-from utils.model_context import get_watsonx_context
+
+from src import constants
 from utils.logger import Logger
+from utils.model_context import get_watsonx_context
 
 load_dotenv()
 

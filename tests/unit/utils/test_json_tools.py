@@ -1,7 +1,6 @@
 import pytest
-from utils.json_tools import parse_json_markdown
-from utils.json_tools import parse_and_check_json_markdown
 
+from utils.json_tools import parse_and_check_json_markdown, parse_json_markdown
 
 correct_inputs = (
     ("{}", {}),

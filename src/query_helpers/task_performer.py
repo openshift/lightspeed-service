@@ -1,6 +1,8 @@
 import os
-from src import constants
+
 from dotenv import load_dotenv
+
+from src import constants
 from utils.logger import Logger
 
 load_dotenv()

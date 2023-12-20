@@ -1,7 +1,6 @@
 import json
 import sys
 
-
 """
 Utility script to convert a Python to GO coverage report.
 """

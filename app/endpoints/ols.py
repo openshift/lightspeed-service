@@ -1,15 +1,17 @@
 import os
+
 from fastapi import APIRouter, HTTPException
+
 from app import constants
 from app.models.models import LLMRequest
 from app.utils import Utils
-from utils.model_context import get_watsonx_predictor
+from src.cache.cache_factory import CacheFactory
+from src.docs.docs_summarizer import DocsSummarizer
+from src.query_helpers.happy_response_generator import HappyResponseGenerator
 from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
-from src.query_helpers.happy_response_generator import HappyResponseGenerator
-from src.docs.docs_summarizer import DocsSummarizer
-from src.cache.cache_factory import CacheFactory
 from utils.logger import Logger
+from utils.model_context import get_watsonx_predictor
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 

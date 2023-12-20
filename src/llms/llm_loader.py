@@ -1,9 +1,9 @@
-import warnings
-import os
 import inspect
+import os
+import warnings
 
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 from utils.logger import Logger
 
@@ -149,8 +149,8 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
             # BAM Research lab
-            from genai.extensions.langchain import LangChainInterface
             from genai.credentials import Credentials
+            from genai.extensions.langchain import LangChainInterface
             from genai.schemas import GenerateParams
         except Exception:
             self.logger.error(
@@ -195,11 +195,11 @@ class LLMLoader:
         # WatsonX (requires WansonX libraries)
         try:
             from ibm_watson_machine_learning.foundation_models import Model
-            from ibm_watson_machine_learning.metanames import (
-                GenTextParamsMetaNames as GenParams,
-            )
             from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
                 WatsonxLLM,
+            )
+            from ibm_watson_machine_learning.metanames import (
+                GenTextParamsMetaNames as GenParams,
             )
         except Exception:
             self.logger.error(
