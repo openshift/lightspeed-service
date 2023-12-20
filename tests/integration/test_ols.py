@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import requests
 
 
 from app.main import app
@@ -8,19 +9,19 @@ client = TestClient(app)
 
 def test_healthz():
     response = client.get("/healthz")
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
 def test_readyz():
     response = client.get("/healthz")
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
 def test_root():
     response = client.get("/")
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {
         "message": "This is the default endpoint for OLS",
         "status": "running",
@@ -29,7 +30,7 @@ def test_root():
 
 def test_status():
     response = client.get("/")
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {
         "message": "This is the default endpoint for OLS",
         "status": "running",
@@ -41,7 +42,7 @@ def test_feedback():
     response = client.post(
         "/feedback", json={"conversation_id": 1234, "feedback_object": "blah"}
     )
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "feedback received"}
 
 
@@ -61,7 +62,7 @@ def test_raw_prompt(monkeypatch):
         "/ols/raw_prompt", json={"conversation_id": "1234", "query": "test query"}
     )
     print(response)
-    assert response.status_code == 200
+    assert response.status_code == requests.codes.ok
     assert response.json() == {
         "conversation_id": "1234",
         "query": "test query",
