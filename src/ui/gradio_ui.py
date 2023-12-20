@@ -42,7 +42,7 @@ class gradioUI:
             )
 
             # Check if the request was successful (status code 200)
-            if response.status_code == 200:
+            if response.status_code == requests.codes.ok:
                 self.logger.info("Response JSON:", response.json())
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
