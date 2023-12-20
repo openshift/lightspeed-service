@@ -214,7 +214,6 @@ class LLMLoader:
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {self.llm}"
         )
-            from genai.extensions.langchain import LangChainInterface
 
     # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self):

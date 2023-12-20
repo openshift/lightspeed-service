@@ -1,8 +1,5 @@
-
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-
-from utils.model_context import get_watsonx_predictor
 
 from utils.logger import Logger
 from utils import config

@@ -5,7 +5,6 @@ from llama_index import StorageContext, load_index_from_storage
 from llama_index.prompts import PromptTemplate
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index import ServiceContext
-from utils.model_context import get_watsonx_context
 
 from utils.logger import Logger
 from utils import config
