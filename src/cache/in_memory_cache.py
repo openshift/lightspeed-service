@@ -1,6 +1,7 @@
+import threading
 from collections import deque
 from typing import Union
-import threading
+
 from src import constants
 from src.cache.cache import Cache
 

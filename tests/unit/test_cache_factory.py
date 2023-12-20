@@ -1,9 +1,9 @@
 import os
+
 import pytest
 
 from src import constants
-from src.cache.cache_factory import CacheFactory
-from src.cache.cache_factory import InMemoryCache
+from src.cache.cache_factory import CacheFactory, InMemoryCache
 
 
 @pytest.fixture(scope="module")

@@ -1,8 +1,9 @@
 import logging
-import sys
 import os
-import dotenv
+import sys
 from logging.handlers import RotatingFileHandler
+
+import dotenv
 
 
 class Logger:

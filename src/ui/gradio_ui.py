@@ -1,6 +1,8 @@
+import json
+
 import gradio as gr
 import requests
-import json
+
 from utils.logger import Logger
 
 

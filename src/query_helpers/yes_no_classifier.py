@@ -1,10 +1,12 @@
 import os
+
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+
 from src import constants
-from utils.model_context import get_watsonx_predictor
 from utils.logger import Logger
+from utils.model_context import get_watsonx_predictor
 
 load_dotenv()
 

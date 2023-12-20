@@ -1,11 +1,12 @@
 import os
-import redis
-from typing import Union
 import threading
-from src import constants
-from dotenv import load_dotenv
-from src.cache.cache import Cache
+from typing import Union
 
+import redis
+from dotenv import load_dotenv
+
+from src import constants
+from src.cache.cache import Cache
 
 load_dotenv()
 

@@ -1,9 +1,10 @@
 import os
-from llama_index.embeddings import TextEmbeddingsInference
-from llama_index import ServiceContext
+
+from genai.credentials import Credentials
 from genai.extensions.langchain import LangChainInterface
 from genai.schemas import GenerateParams
-from genai.credentials import Credentials
+from llama_index import ServiceContext
+from llama_index.embeddings import TextEmbeddingsInference
 
 
 def get_watsonx_predictor(model, min_new_tokens=1, max_new_tokens=256, **kwargs):

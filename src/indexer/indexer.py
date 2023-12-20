@@ -1,11 +1,10 @@
 import os
-from dotenv import load_dotenv
 
 import llama_index
-from llama_index import ServiceContext
-from llama_index import VectorStoreIndex, SimpleDirectoryReader
-from llama_index.storage.storage_context import StorageContext
+from dotenv import load_dotenv
+from llama_index import ServiceContext, SimpleDirectoryReader, VectorStoreIndex
 from llama_index.embeddings import TextEmbeddingsInference
+from llama_index.storage.storage_context import StorageContext
 
 import src.constants as constants
 
