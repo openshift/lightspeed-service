@@ -75,7 +75,7 @@ class Logger:
         self.log_level_console = os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
         _logfile = os.getenv("LOG_FILE_NAME")
         self.logfile = _logfile if _logfile else logfile
-        self.logfile_maxSize = os.getenv("LOG_FILE_SIZE", (1048576 * 100))
+        self.logfile_maxSize = int(os.getenv("LOG_FILE_SIZE", (1048576 * 100)))
         self.logfile_backupCount = 3
 
         self.set_handlers()
