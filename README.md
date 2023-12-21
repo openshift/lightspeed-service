@@ -72,24 +72,29 @@ There is a minimal Gradio UI you can use when running the OLS server locally.  T
 
 By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
 
-### In Cluster Deployment
-Deploying OLS on an OpenShift cluster is fairly easy with the configuration files we have in [manifests](./manifests) folder.
+### Deploying OLS on OpenShift
 
-You can use the existing image built from the latest code via this image pullspec: quay.io/openshift/lightspeed-service-api:latest
+A Helm chart is available for installing the service in OpenShift.
 
-If you need to build your own image, you can use the following commands:
+Before installing the chart, you must configure the `auth.key` parameter in the [Values](helm/values.yaml) file
 
+To install the chart with the release name `ols-release` in the namespace `openshift-lightspeed`:
+
+```shell
+helm upgrade --install ols-release helm/ --create-namespace --namespace openshift-lightspeed
 ```
-podman build -f Containerfile -t=<your-image-pullspec> .
-podman push <your-image-pullspec>
+
+The command deploys the service in the default configuration.
+
+The default configuration contains OLS fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy).
+
+To uninstall/delete the chart with the release name `ols-release`:
+
+```shell
+helm delete ols-release --namespace openshift-lightspeed
 ```
 
-Once we have our image ready, export it as an ENV and use the below [kustomize](https://kustomize.io/) command to deploy resources.
-```
-export OLS_IMAGE=<image-pullspec>
-kustomize build . | envsubst | oc apply -f -
-``` 
-This should deploy OLS fronting with a [kube-rbac-proxy](https://github.com/brancz/kube-rbac-proxy) along with a sample [client](./config/ols-client-test.yaml) that makes requests to one of the OLS endpoints demonstrating client usage of our service.
+Chart customization is available using the [Values](helm/values.yaml) file.
 
 <!-- ROADMAP -->
 ## Roadmap
