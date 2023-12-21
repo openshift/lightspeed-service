@@ -1,0 +1,36 @@
+ols:
+  replicaCount: 1
+  rbac-proxy:
+    image:
+      registry: quay.io
+      repository: openshift/origin-kube-rbac-proxy
+      tag: 4.14.0
+    containerPorts:
+      https: 8443
+  api:
+    image:
+      registry: quay.io
+      repository: openshift/lightspeed-service-api
+      tag: latest
+client:
+  image:
+    registry: quay.io
+    repository: brancz/krp-curl
+    tag: v0.0.2
+redis:
+  ## Redis image version
+  ## ref: https://hub.docker.com/r/redis/redis-stack/tags
+  image:
+    registry: docker.io
+    repository: redis/redis-stack
+    tag: latest
+  containerPorts:
+    server: 6379
+    insights: 8001
+  replicaCount: 1
+## Authentication parameters
+auth:
+  ## API key to access IBM Research BAM
+  key: ""
+  ## IBM Research BAM URL
+  url: "https://bam.res.ibm.com"
