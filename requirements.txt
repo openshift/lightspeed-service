@@ -1,7 +1,8 @@
 fastapi
 gradio
 kubernetes
-langchain
+# version > 0.0.352 required for LLMChain support of Google GenAI (gemini-pro)
+langchain>=0.0.352
 llama_index
 torch
 transformers
