@@ -1,17 +1,14 @@
-import os
-
 from fastapi import APIRouter, HTTPException
 
-from app import constants
 from app.models.models import LLMRequest
 from app.utils import Utils
-from src.cache.cache_factory import CacheFactory
 from src.docs.docs_summarizer import DocsSummarizer
 from src.query_helpers.happy_response_generator import HappyResponseGenerator
 from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
-from utils.logger import Logger
-from utils.model_context import get_watsonx_predictor
+from utils import config
+from src.llms.llm_loader import LLMLoader
+from app import constants
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 
@@ -27,8 +24,8 @@ def ols_request(llm_request: LLMRequest):
     Returns:
         dict: Response containing the processed information.
     """
-    conversation_cache = CacheFactory.conversation_cache()
-    logger = Logger("ols_endpoint").logger
+
+    logger = config.default_logger
 
     # Initialize variables
     previous_input = None
@@ -39,7 +36,7 @@ def ols_request(llm_request: LLMRequest):
         conversation = Utils.get_suid()
         logger.info(f"{conversation} New conversation")
     else:
-        previous_input = conversation_cache.get(conversation)
+        previous_input = config.conversation_cache.get(conversation)
         logger.info(f"{conversation} Previous conversation input: {previous_input}")
 
     llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation)
@@ -101,7 +98,7 @@ def ols_request(llm_request: LLMRequest):
             # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
 
             llm_response.response = wrapper + "\n" + generated_yaml
-            conversation_cache.insert_or_append(
+            config.conversation_cache.insert_or_append(
                 conversation, llm_request.query + "\n\n" + llm_response.response
             )
             return llm_response
@@ -130,10 +127,7 @@ def base_llm_completion(llm_request: LLMRequest):
     Returns:
         dict: Response containing the processed information.
     """
-    base_completion_model = os.getenv(
-        "BASE_COMPLETION_MODEL", "ibm/granite-20b-instruct-v1"
-    )
-    logger = Logger("base_llm_completion_endpoint").logger
+
     if llm_request.conversation_id is None:
         conversation = Utils.get_suid()
     else:
@@ -142,16 +136,21 @@ def base_llm_completion(llm_request: LLMRequest):
     llm_response = LLMRequest(query=llm_request.query)
     llm_response.conversation_id = conversation
 
-    logger.info(f"{conversation} New conversation")
-    logger.info(f"{conversation} Incoming request: {llm_request.query}")
+    config.default_logger.info(f"{conversation} New conversation")
+    config.default_logger.info(f"{conversation} Incoming request: {llm_request.query}")
 
-    bare_llm = get_watsonx_predictor(model=base_completion_model)
+    bare_llm = LLMLoader(
+        config.ols_config.default_provider,
+        config.ols_config.default_model,
+    ).llm
     response = bare_llm(llm_request.query)
 
     # TODO: Make the removal of endoftext some kind of function
     clean_response = response.split("<|endoftext|>")[0]
     llm_response.response = clean_response
 
-    logger.info(f"{conversation} Model returned: {llm_response.response}")
+    config.default_logger.info(
+        f"{conversation} Model returned: {llm_response.response}"
+    )
 
     return llm_response

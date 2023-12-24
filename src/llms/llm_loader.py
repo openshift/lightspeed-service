@@ -6,6 +6,8 @@ from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 from utils.logger import Logger
+from utils import config
+import src.constants as constants
 
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)
@@ -29,12 +31,22 @@ class LLMLoader:
     """
 
     def __init__(
-        self, llm_backend: str = None, params: dict = None, logger=None
+        self,
+        provider: str = None,
+        model: str = None,
+        url: str = None,
+        params: dict = None,
+        logger=None,
     ) -> None:
         self.logger = logger if logger is not None else Logger("llm_loader").logger
-        self.llm_backend = (
-            llm_backend if llm_backend else os.environ.get("LLM_DEFAULT", None)
-        )
+        if provider is None:
+            raise Exception("ERROR: Missing provider")
+        self.provider = provider
+        self.url = url
+        if model is None:
+            raise Exception("ERROR: Missing model")
+        self.model = model
+
         # return empty dictionary if not defined
         self.llm_params = params if params else {}
         self.llm = None
@@ -42,19 +54,19 @@ class LLMLoader:
 
     def _set_llm_instance(self):
         self.logger.debug(
-            f"[{inspect.stack()[0][3]}] Loading LLM {str(self.llm_backend)}"
+            f"[{inspect.stack()[0][3]}] Loading LLM {self.model} from {self.provider}"
         )
         # convert to string to handle None or False definitions
-        match str(self.llm_backend):
-            case "openai":
+        match str(self.provider).lower():
+            case constants.PROVIDER_OPENAI:
                 self._openai_llm_instance()
-            case "ollama":
+            case constants.PROVIDER_OLLAMA:
                 self._ollama_llm_instance()
-            case "tgi":
+            case constants.PROVIDER_TGI:
                 self._tgi_llm_instance()
-            case "watson":
+            case constants.PROVIDER_WATSONX:
                 self._watson_llm_instance()
-            case "bam":
+            case constants.PROVIDER_BAM:
                 self._bam_llm_instance()
             case _:
                 self.logger.error(f"ERROR: Unsupported LLM {str(self.llm_backend)}")
@@ -62,16 +74,24 @@ class LLMLoader:
     def _openai_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
-            from langchain.llms import OpenAI
+            from langchain.chat_models import ChatOpenAI
         except Exception:
             self.logger.error(
                 "ERROR: Missing openai libraries. Skipping loading backend LLM."
             )
             return
+        provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
+        model = provider.models[self.model]
+        if model is None:
+            raise Exception(
+                f"model {self.model} is not configured for provider {constants.PROVIDER_OPENAI}"
+            )
         params = {
-            "base_url": os.environ.get("OPENAI_API_URL", "https://api.openai.com/v1"),
-            "api_key": os.environ.get("OPENAI_API_KEY", None),
-            "model": os.environ.get("OPENAI_MODEL", None),
+            "base_url": provider.url
+            if provider.url is not None
+            else "https://api.openai.com/v1",
+            "api_key": provider.credentials,
+            "model": self.model,
             "model_kwargs": {},  # TODO: add model args
             "organization": os.environ.get("OPENAI_ORGANIZATION", None),
             "timeout": os.environ.get("OPENAI_TIMEOUT", None),
@@ -84,9 +104,59 @@ class LLMLoader:
             "verbose": False,
         }
         params.update(self.llm_params)  # override parameters
-        self.llm = OpenAI(**params)
+        self.llm = ChatOpenAI(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
 
+    def _bam_llm_instance(self):
+        """BAM Research Lab"""
+        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
+        try:
+            # BAM Research lab
+            from genai.extensions.langchain import LangChainInterface
+            from genai.credentials import Credentials
+            from genai.schemas import GenerateParams
+        except Exception:
+            self.logger.error(
+                "ERROR: Missing ibm-generative-ai libraries. Skipping loading backend LLM."
+            )
+            return
+        # BAM Research lab
+        provider = config.llm_config.providers[constants.PROVIDER_BAM]
+        model = provider.models[self.model]
+        if model is None:
+            raise Exception(
+                f"model {self.model} is not configured for provider {constants.PROVIDER_BAM}"
+            )
+
+        creds = Credentials(
+            api_key=provider.credentials,
+            api_endpoint=provider.url
+            if provider.url is not None
+            else "https://bam-api.res.ibm.com",
+        )
+
+        bam_params = {
+            "decoding_method": "sample",
+            "max_new_tokens": 512,
+            "min_new_tokens": 1,
+            "random_seed": 42,
+            "top_k": 10,
+            "top_p": 0.95,
+            "repetition_penalty": 1.03,
+            "temperature": 0.05,
+        }
+        bam_params.update(self.llm_params)  # override parameters
+        # remove none BAM params from dictionary
+        for k in ["model", "api_key", "api_endpoint"]:
+            _ = bam_params.pop(k, None)
+        params = GenerateParams(**bam_params)
+
+        self.llm = LangChainInterface(
+            model=self.model, params=params, credentials=creds
+        )
+        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {self.llm}")
+
+    # TODO: update this to use config not direct env vars
     def _ollama_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
         try:
@@ -111,6 +181,7 @@ class LLMLoader:
         self.llm = Ollama(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {self.llm}")
 
+    # TODO: update this to use config not direct env vars
     def _tgi_llm_instance(self):
         """
         Note: TGI does not support specifying the model, it is an instance per model.
@@ -144,52 +215,7 @@ class LLMLoader:
             f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {self.llm}"
         )
 
-    def _bam_llm_instance(self):
-        """BAM Research Lab"""
-        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
-        try:
-            # BAM Research lab
-            from genai.credentials import Credentials
-            from genai.extensions.langchain import LangChainInterface
-            from genai.schemas import GenerateParams
-        except Exception:
-            self.logger.error(
-                "ERROR: Missing ibm-generative-ai libraries. Skipping loading backend LLM."
-            )
-            return
-        # BAM Research lab
-        creds = Credentials(
-            api_key=self.llm_params.get("api_key")
-            if self.llm_params.get("api_key") is not None
-            else os.environ.get("BAM_API_KEY", None),
-            api_endpoint=self.llm_params.get("api_endpoint")
-            if self.llm_params.get("api_endpoint") is not None
-            else os.environ.get("BAM_API_URL", "https://bam-api.res.ibm.com"),
-        )
-        model_id = (
-            self.llm_params.get("model")
-            if self.llm_params.get("model") is not None
-            else os.environ.get("BAM_MODEL", None)
-        )
-        bam_params = {
-            "decoding_method": "sample",
-            "max_new_tokens": 512,
-            "min_new_tokens": 1,
-            "random_seed": 42,
-            "top_k": 10,
-            "top_p": 0.95,
-            "repetition_penalty": 1.03,
-            "temperature": 0.05,
-        }
-        bam_params.update(self.llm_params)  # override parameters
-        # remove none BAM params from dictionary
-        for k in ["model", "api_key", "api_endpoint"]:
-            _ = bam_params.pop(k, None)
-        params = GenerateParams(**bam_params)
-
-        self.llm = LangChainInterface(model=model_id, params=params, credentials=creds)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {self.llm}")
-
+    # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)

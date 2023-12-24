@@ -1,15 +1,15 @@
 import os
 
 import llama_index
-from dotenv import load_dotenv
 from llama_index import StorageContext, load_index_from_storage
 from llama_index.prompts import PromptTemplate
+from llama_index.embeddings import TextEmbeddingsInference
+from llama_index import ServiceContext
 
-from src import constants
 from utils.logger import Logger
-from utils.model_context import get_watsonx_context
-
-load_dotenv()
+from utils import config
+from src.llms.llm_loader import LLMLoader
+from src import constants
 
 
 class DocsSummarizer:
@@ -35,16 +35,20 @@ class DocsSummarizer:
         Returns:
         - Tuple[str, str]: A tuple containing the summary as a string and referenced documents as a string.
         """
-        model = kwargs.get(
-            "model", os.getenv("DOC_SUMMARIZER_MODEL", "ibm/granite-13b-chat-v1")
-        )
+
+        provider = config.ols_config.summarizer_provider
+        model = config.ols_config.summarizer_model
+        bare_llm = LLMLoader(provider, model).llm
+
         verbose = kwargs.get("verbose", "").lower() == "true"
 
         # Set up llama index to show prompting if verbose is True
+        # TODO: remove this, we can't be setting global handlers, it will
+        # affect other calls
         if verbose:
             llama_index.set_global_handler("simple")
 
-        settings_string = f"conversation: {conversation}, query: {query}, model: {model}, verbose: {verbose}"
+        settings_string = f"conversation: {conversation}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
@@ -52,21 +56,27 @@ class DocsSummarizer:
         self.logger.info(f"{conversation} Getting service context")
         self.logger.info(f"{conversation} using model: {model}")
 
+        embed_model = "local:BAAI/bge-base-en"
+        # TODO get this from global config instead of env
+        # Not a priority because embedding model probably won't be configurable in the final product
         tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
         if tei_embedding_url:
             self.logger.info(f"{conversation} using TEI embedding server")
-            service_context = get_watsonx_context(
-                model=model,
-                tei_embedding_model=constants.TEI_EMBEDDING_MODEL,
-                url=tei_embedding_url,
+
+            embed_model = TextEmbeddingsInference(
+                model_name=constants.TEI_EMBEDDING_MODEL,
+                base_url=tei_embedding_url,
             )
-        else:
-            service_context = get_watsonx_context(model=model)
+
+        service_context = ServiceContext.from_defaults(
+            chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs
+        )
 
         self.logger.info(
             f"{conversation} using embed model: {str(service_context.embed_model)}"
         )
 
+        # TODO get this from global config
         storage_context = StorageContext.from_defaults(
             persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
         )
