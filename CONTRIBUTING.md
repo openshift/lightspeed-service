@@ -30,6 +30,9 @@ pip install --upgrade pip
 # install project dependencies
 make install-deps
 
+# install dev/tests dependencies
+make install-deps-test
+
 # code formatting (run this as a pre-commit step for your code changes)
 make format
 
