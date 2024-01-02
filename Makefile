@@ -6,39 +6,39 @@
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 
 
-images:
+images: ## Build container images
 	scripts/build-container.sh
 
-install-deps: 
+install-deps: ## Install all required dependencies needed to run the service
 	pip install -r requirements.txt
 
-install-deps-test:
+install-deps-test: ## Install all required dependencies needed to test the service
 	pip install -r requirements-test.txt
 
-run:
+run: ## Run the service locally
 	uvicorn app.main:app --reload --port 8080
 
-test: test-unit test-integration test-e2e
+test: test-unit test-integration test-e2e ## Run all tests
 
-test-unit:
+test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/unit --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_unit.json --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_unit.json ${ARTIFACT_DIR}/coverage_unit.out
 
-test-integration:
+test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/integration --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
 
-test-e2e:
+test-e2e: ## Run e2e tests
 	# Command to run e2e tests goes here
 
-format:
+format: ## Format the code into unified format
 	black .
 
-verify:
+verify: ## Verify the code using various linters
 	black . --check
 	ruff . --per-file-ignores=tests/*:S101
 
