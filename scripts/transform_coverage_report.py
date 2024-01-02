@@ -64,7 +64,6 @@ if __name__ == "__main__":
     try:
         with open(output_file_path, "w") as output_file:
             output_file.write("mode: set\n")
-            pass
 
         with open(json_file_path, "r") as json_file:
             json_content = json_file.read()
