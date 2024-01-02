@@ -3,8 +3,11 @@
 - [ ] Refactor
 - [ ] New feature
 - [ ] Bug fix
+- [ ] CVE fix
 - [ ] Optimization
 - [ ] Documentation Update
+- [ ] Configuration Update
+- [ ] Bump-up dependent library
 
 ## Description
 
@@ -18,6 +21,7 @@
 ## Checklist before requesting a review
 
 - [ ] I have performed a self-review of my code.
+- [ ] Unit tests passed locally.
 - [ ] If it is a core feature, I have added thorough tests.
 
 ## Testing
