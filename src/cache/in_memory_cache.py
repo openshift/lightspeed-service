@@ -11,7 +11,7 @@ class InMemoryCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, size: int):
+    def __new__(cls, size: int) -> InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
@@ -19,13 +19,13 @@ class InMemoryCache(Cache):
                 cls._instance.initialize_cache(size)
         return cls._instance
 
-    def initialize_cache(self, size: int):
+    def initialize_cache(self, size: int) -> None:
         """
         Initialize the InMemoryCache.
         """
         self.capacity = size
-        self.deque = deque()
-        self.cache = {}
+        self.deque: deque[str] = deque()
+        self.cache: dict[str, str] = {}
 
     def get(self, key: str) -> Union[str, None]:
         """
