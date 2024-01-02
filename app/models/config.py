@@ -6,12 +6,12 @@ import src.constants as constants
 
 
 class ModelConfig(BaseModel):
-    name: str = None
-    url: str = None
-    credential_path: str = None
-    credentials: str = None
+    name: Optional[str] = None
+    url: Optional[str] = None
+    credential_path: Optional[str] = None
+    credentials: Optional[str] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -21,13 +21,13 @@ class ModelConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    name: str = None
-    url: str = None
-    credential_path: str = None
-    credentials: str = None
+    name: Optional[str] = None
+    url: Optional[str] = None
+    credential_path: Optional[str] = None
+    credentials: Optional[str] = None
     models: Dict[str, ModelConfig] = {}
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -46,7 +46,7 @@ class ProviderConfig(BaseModel):
 class LLMConfig(BaseModel):
     providers: Dict[str, ProviderConfig] = {}
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -58,12 +58,12 @@ class LLMConfig(BaseModel):
 
 
 class RedisConfig(BaseModel):
-    host: str = None
-    port: int = None
-    max_memory: str = None
-    max_memory_policy: str = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    max_memory: Optional[str] = None
+    max_memory_policy: Optional[str] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -76,9 +76,9 @@ class RedisConfig(BaseModel):
 
 
 class MemoryConfig(BaseModel):
-    max_entries: int = None
+    max_entries: Optional[int] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -88,11 +88,11 @@ class MemoryConfig(BaseModel):
 
 
 class ConversationCacheConfig(BaseModel):
-    type: str = None
+    type: Optional[str] = None
     redis: Optional[RedisConfig] = None
     memory: Optional[MemoryConfig] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -108,11 +108,11 @@ class ConversationCacheConfig(BaseModel):
 
 
 class LoggerConfig(BaseModel):
-    default_level: int = None
-    default_filename: str = None
-    default_size: int = None
+    default_level: Optional[int] = None
+    default_filename: Optional[str] = None
+    default_size: Optional[int] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -127,25 +127,25 @@ class LoggerConfig(BaseModel):
 
 
 class OLSConfig(BaseModel):
-    conversation_cache: ConversationCacheConfig = None
-    logger_config: LoggerConfig = None
+    conversation_cache: Optional[ConversationCacheConfig] = None
+    logger_config: Optional[LoggerConfig] = None
 
-    enable_debug_ui: bool = False
-    default_model: str = None
-    default_provider: str = None
+    enable_debug_ui: Optional[bool] = False
+    default_model: Optional[str] = None
+    default_provider: Optional[str] = None
 
-    classifier_provider: str = None
-    classifier_model: str = None
-    happy_response_provider: str = None
-    happy_response_model: str = None
-    summarizer_provider: str = None
-    summarizer_model: str = None
-    validator_provider: str = None
-    validator_model: str = None
-    yaml_provider: str = None
-    yaml_model: str = None
+    classifier_provider: Optional[str] = None
+    classifier_model: Optional[str] = None
+    happy_response_provider: Optional[str] = None
+    happy_response_model: Optional[str] = None
+    summarizer_provider: Optional[str] = None
+    summarizer_model: Optional[str] = None
+    validator_provider: Optional[str] = None
+    validator_model: Optional[str] = None
+    yaml_provider: Optional[str] = None
+    yaml_model: Optional[str] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
@@ -176,10 +176,10 @@ class OLSConfig(BaseModel):
 
 
 class Config:
-    llm_config: LLMConfig = None
-    ols_config: OLSConfig = None
+    llm_config: Optional[LLMConfig] = None
+    ols_config: Optional[OLSConfig] = None
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         super().__init__()
         if data is None:
             return
