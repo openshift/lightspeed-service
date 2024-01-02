@@ -5,5 +5,6 @@ select = ["E", "F", "W", "C", "S"]
 # E501 rule checks for maximum line length
 ignore = ["E501"]
 
+target-version = "py311"
 line-length = 100
 
