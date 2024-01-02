@@ -4,10 +4,10 @@
 OLS_VERSION=v0.0.0
 
 # To build container for local use
-if [ -z $OLS_NO_IMAGE_CACHE ]; then
-  podman build --no-cache --build-arg=VERSION=${OLS_VERSION} -t ${OLS_API_IMAGE:-quay.io/openshift/lightspeed-service-api:latest} -f Containerfile
+if [ -z "$OLS_NO_IMAGE_CACHE" ]; then
+  podman build --no-cache --build-arg=VERSION="${OLS_VERSION}" -t "${OLS_API_IMAGE:-quay.io/openshift/lightspeed-service-api:latest}" -f Containerfile
 else
-  podman build --build-arg=VERSION=${OLS_VERSION} -t ${OLS_API_IMAGE:-quay.io/openshift/lightspeed-service-api:latest} -f Containerfile
+  podman build --build-arg=VERSION=${OLS_VERSION} -t "${OLS_API_IMAGE:-quay.io/openshift/lightspeed-service-api:latest}" -f Containerfile
 fi
 
 # To test-run for local development
