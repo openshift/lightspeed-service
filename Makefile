@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e images run format verify help
+.PHONY: test test-unit test-e2e images run format verify
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 
