@@ -11,29 +11,33 @@
 The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) or later due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
 
 ```bash
-# Clone your fork
+# clone your fork
 git clone https://github.com/williamcaban/lightspeed-service.git
 
 # move into the directory
 cd lightspeed-service
 
-# Setup your Python Virtual Environment 
-# to avoid conflicts with your system packages
+# setup your python virtual environment to avoid conflicts with your
+# system packages
 python3.11 -m venv venv
 
-# Activate the virtual environment
+# activate the virtual environment
 source ./venv/bin/activate
 
-# Upgrade pip to the most recent version
+# upgrade pip to the most recent version
 pip install --upgrade pip
 
-# Install dependencies
-pip install -r requirements.txt
+# install project dependencies
+make install-deps
 
-# Code formatting (run this as a pre-commit step for your code changes)
+# install dev/tests dependencies
+make install-deps-test
+
+# code formatting (run this as a pre-commit step for your code changes)
 make format
 
-# Code style and docstring style (run this as a pre-commit step for your code changes)
+# code style and docstring style (run this as a pre-commit step for your
+# code changes)
 make verify
 
 ```
