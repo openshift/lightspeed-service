@@ -23,7 +23,6 @@ def write_go_coverage_format(file_path, file_data, output_file):
 
         for line in missing_lines:
             f.write(f"{file_path}:{line}.0,{line + 1}.0 1 0\n")
-    f.close()
 
 
 def parse_coverage_json(json_content, output_file):
@@ -70,9 +69,6 @@ if __name__ == "__main__":
         with open(json_file_path, "r") as json_file:
             json_content = json_file.read()
             parse_coverage_json(json_content, output_file_path)
-
-        json_file.close()
-        output_file.close()
 
     except FileNotFoundError:
         print(f"File not found: {json_file_path}")
