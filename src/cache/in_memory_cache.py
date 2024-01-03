@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import Union
+from typing import Type, Union
 
 from src.cache.cache import Cache
 
@@ -13,7 +13,7 @@ class InMemoryCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, size: int) -> InMemoryCache:
+    def __new__(cls: Type[InMemoryCache], size: int) -> InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:

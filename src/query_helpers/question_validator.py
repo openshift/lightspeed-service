@@ -18,7 +18,7 @@ class QuestionValidator:
         """
         self.logger = Logger("question_validator").logger
 
-    def validate_question(self, conversation: str, query: str, verbose: bool = False):
+    def validate_question(self, conversation: str, query: str, verbose: bool = False) -> list[str]:
         """
         Validates a question and provides a one-word response.
 

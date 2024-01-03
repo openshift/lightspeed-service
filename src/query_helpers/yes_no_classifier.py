@@ -18,7 +18,7 @@ class YesNoClassifier:
         """
         self.logger = Logger("yes_no_classifier").logger
 
-    def classify(self, conversation, statement, **kwargs):
+    def classify(self, conversation: str, statement: str, **kwargs) -> int:
         """
         Classifies a statement as yes, no, or undetermined.
 
