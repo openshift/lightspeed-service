@@ -186,7 +186,7 @@ class Config:
         self.llm_config = LLMConfig(data.get("llm_providers", None))
         self.ols_config = OLSConfig(data.get("ols_config", None))
 
-    def validate(self):
+    def validate(self) -> None:
         if self.llm_config is None:
             raise Exception("no llm config found")
         if self.llm_config.providers is None or len(self.llm_config.providers) == 0:
