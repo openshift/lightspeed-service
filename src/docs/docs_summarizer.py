@@ -1,15 +1,14 @@
 import os
 
 import llama_index
-from llama_index import StorageContext, load_index_from_storage
-from llama_index.prompts import PromptTemplate
+from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
-from llama_index import ServiceContext
+from llama_index.prompts import PromptTemplate
 
-from utils.logger import Logger
-from utils import config
-from src.llms.llm_loader import LLMLoader
 from src import constants
+from src.llms.llm_loader import LLMLoader
+from utils import config
+from utils.logger import Logger
 
 
 class DocsSummarizer:

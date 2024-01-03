@@ -1,8 +1,8 @@
-from fastapi.testclient import TestClient
 import requests
+from fastapi.testclient import TestClient
 
-from app.main import app
 from app.endpoints import ols
+from app.main import app
 
 client = TestClient(app)
 
@@ -51,8 +51,8 @@ def test_raw_prompt(monkeypatch):
     # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
     # of it in our tests
 
-    from tests.mock_classes.llm_loader import mock_llm_loader
     from tests.mock_classes.langchain_interface import mock_langchain_interface
+    from tests.mock_classes.llm_loader import mock_llm_loader
 
     ml = mock_langchain_interface("test response")
 

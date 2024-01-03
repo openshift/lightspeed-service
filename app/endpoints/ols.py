@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
+from app import constants
 from app.models.models import LLMRequest
 from app.utils import Utils
 from src.docs.docs_summarizer import DocsSummarizer
+from src.llms.llm_loader import LLMLoader
 from src.query_helpers.happy_response_generator import HappyResponseGenerator
 from src.query_helpers.question_validator import QuestionValidator
 from src.query_helpers.yaml_generator import YamlGenerator
 from utils import config
-from src.llms.llm_loader import LLMLoader
-from app import constants
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 
