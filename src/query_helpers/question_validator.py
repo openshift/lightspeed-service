@@ -12,7 +12,7 @@ class QuestionValidator:
     This class is responsible for validating questions and providing one-word responses.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the QuestionValidator instance.
         """

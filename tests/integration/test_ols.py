@@ -7,19 +7,19 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_healthz():
+def test_healthz() -> None:
     response = client.get("/healthz")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
-def test_readyz():
+def test_readyz() -> None:
     response = client.get("/healthz")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
-def test_root():
+def test_root() -> None:
     response = client.get("/")
     assert response.status_code == requests.codes.ok
     assert response.json() == {
@@ -28,7 +28,7 @@ def test_root():
     }
 
 
-def test_status():
+def test_status() -> None:
     response = client.get("/")
     assert response.status_code == requests.codes.ok
     assert response.json() == {
@@ -37,7 +37,7 @@ def test_status():
     }
 
 
-def test_feedback():
+def test_feedback() -> None:
     # TODO: should we validate that the correct log messages are written?
     response = client.post(
         "/feedback", json={"conversation_id": 1234, "feedback_object": "blah"}
@@ -46,7 +46,7 @@ def test_feedback():
     assert response.json() == {"status": "feedback received"}
 
 
-def test_raw_prompt(monkeypatch):
+def test_raw_prompt(monkeypatch) -> None:
     # the raw prompt should just return stuff from LangChainInterface, so mock that base method
     # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
     # of it in our tests

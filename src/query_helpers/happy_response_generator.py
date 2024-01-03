@@ -12,7 +12,7 @@ class HappyResponseGenerator:
     This class is responsible for generating a pleasant response to a user question.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the HappyResponseGenerator instance.
         """

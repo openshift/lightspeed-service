@@ -13,14 +13,14 @@ feedback_logger = None
 conversation_cache = None
 
 
-def load_empty_config():
+def load_empty_config() -> None:
     global ols_config
     global llm_config
     ols_config = config_model.OLSConfig()
     llm_config = config_model.LLMConfig()
 
 
-def load_config_from_env():
+def load_config_from_env() -> None:
     global ols_config
     global llm_config
     global default_logger

@@ -12,7 +12,7 @@ class YamlGenerator:
     This class is responsible for generating YAML responses to user requests.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the YamlGenerator instance.
         """

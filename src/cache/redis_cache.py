@@ -31,7 +31,7 @@ class RedisCache(Cache):
                 cls._instance.initialize_redis()
         return cls._instance
 
-    def initialize_redis(self):
+    def initialize_redis(self) -> None:
         """
         Initialize the Redis client and logger.
 

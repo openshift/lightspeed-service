@@ -12,7 +12,7 @@ class YesNoClassifier:
     This class is responsible for classifying a statement as yes, no, or undetermined.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the YesNoClassifier instance.
         """
