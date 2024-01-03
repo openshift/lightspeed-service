@@ -1,8 +1,8 @@
 import pytest
 
+from app.models.config import ConversationCacheConfig
 from src import constants
 from src.cache.cache_factory import CacheFactory, InMemoryCache
-from app.models.config import ConversationCacheConfig
 
 
 @pytest.fixture(scope="module")

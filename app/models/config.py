@@ -1,6 +1,7 @@
 import logging
+from typing import Dict, Optional
+
 from pydantic import BaseModel
-from typing import Optional, Dict
 
 import src.constants as constants
 

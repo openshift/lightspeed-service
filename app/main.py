@@ -4,7 +4,6 @@ from app.endpoints import feedback, ols
 from src.ui.gradio_ui import gradioUI
 from utils import config
 
-
 app = FastAPI()
 
 # config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))

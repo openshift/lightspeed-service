@@ -1,10 +1,10 @@
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from utils.logger import Logger
-from utils import config
-from src.llms.llm_loader import LLMLoader
 from src import constants
+from src.llms.llm_loader import LLMLoader
+from utils import config
+from utils.logger import Logger
 
 
 class YesNoClassifier:
