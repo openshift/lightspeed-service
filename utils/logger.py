@@ -81,7 +81,7 @@ class Logger:
 
         self.set_handlers()
 
-    def set_handlers(self):
+    def set_handlers(self) -> None:
         """
         A simple logger function that logs messages at a specified level.
 
