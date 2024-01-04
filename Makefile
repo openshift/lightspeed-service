@@ -35,6 +35,9 @@ test-integration: ## Run integration tests tests
 test-e2e: ## Run e2e tests
 	# Command to run e2e tests goes here
 
+coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
+	coverage html
+
 format: ## Format the code into unified format
 	black .
 

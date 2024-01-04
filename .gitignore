@@ -25,6 +25,7 @@ logs/*
 
 # ignore test results
 tests/test_results/*
+htmlcov/
 .coverage
 
 # ignore cache directories
