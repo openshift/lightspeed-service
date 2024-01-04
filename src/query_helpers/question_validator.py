@@ -18,14 +18,14 @@ class QuestionValidator:
         """
         self.logger = Logger("question_validator").logger
 
-    def validate_question(self, conversation, query, **kwargs):
+    def validate_question(self, conversation: str, query: str, verbose: bool = False):
         """
         Validates a question and provides a one-word response.
 
         Args:
         - conversation (str): The identifier for the conversation or task context.
         - query (str): The question to be validated.
-        - **kwargs: Additional keyword arguments for customization.
+        - verbose (bool): If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
         - list: A list of one-word responses.
@@ -33,7 +33,6 @@ class QuestionValidator:
 
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider
-        verbose = kwargs.get("verbose", "").lower() == "true"
 
         settings_string = f"conversation: {conversation}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
         self.logger.info(f"{conversation} call settings: {settings_string}")
