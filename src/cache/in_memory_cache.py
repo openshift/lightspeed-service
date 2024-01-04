@@ -13,7 +13,7 @@ class InMemoryCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, size: int) -> InMemoryCache:
+    def __new__(cls: type[InMemoryCache], size: int) -> InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
