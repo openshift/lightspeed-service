@@ -26,3 +26,8 @@ logs/*
 # ignore test results
 tests/test_results/*
 .coverage
+
+# ignore cache directories
+.mypy_cache
+.pytest_cache
+.ruff_cache
