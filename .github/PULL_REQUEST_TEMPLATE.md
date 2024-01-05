@@ -21,6 +21,7 @@
 ## Checklist before requesting a review
 
 - [ ] I have performed a self-review of my code.
+- [ ] Source code has been verified by linters (`make verify`).
 - [ ] Unit tests passed locally.
 - [ ] If it is a core feature, I have added thorough tests.
 
