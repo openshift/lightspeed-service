@@ -21,7 +21,7 @@
 ## Checklist before requesting a review
 
 - [ ] I have performed a self-review of my code.
-- [ ] Unit tests passed locally.
+- [ ] PR has passed all pre-merge test jobs.
 - [ ] If it is a core feature, I have added thorough tests.
 
 ## Testing
