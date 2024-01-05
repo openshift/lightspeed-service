@@ -109,7 +109,7 @@ class ConversationCacheConfig(BaseModel):
 
 
 class LoggerConfig(BaseModel):
-    default_level: Optional[int] = None
+    default_level: Optional[int | str] = None
     default_filename: Optional[str] = None
     default_size: Optional[int] = None
 
