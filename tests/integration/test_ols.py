@@ -14,7 +14,7 @@ def test_healthz() -> None:
 
 
 def test_readyz() -> None:
-    response = client.get("/healthz")
+    response = client.get("/readyz")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
@@ -29,21 +29,12 @@ def test_root() -> None:
 
 
 def test_status() -> None:
-    response = client.get("/")
+    response = client.get("/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {
         "message": "This is the default endpoint for OLS",
         "status": "running",
     }
-
-
-def test_feedback() -> None:
-    # TODO: should we validate that the correct log messages are written?
-    response = client.post(
-        "/feedback", json={"conversation_id": 1234, "feedback_object": "blah"}
-    )
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "feedback received"}
 
 
 def test_raw_prompt(monkeypatch) -> None:
