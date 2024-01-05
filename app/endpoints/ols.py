@@ -98,9 +98,12 @@ def ols_request(llm_request: LLMRequest):
             # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
 
             llm_response.response = wrapper + "\n" + generated_yaml
-            config.conversation_cache.insert_or_append(
-                conversation, llm_request.query + "\n\n" + llm_response.response
-            )
+
+            if config.conversation_cache is not None:
+                config.conversation_cache.insert_or_append(
+                    conversation,
+                    llm_request.query + "\n\n" + str(llm_response.response or ""),
+                )
             return llm_response
 
         else:

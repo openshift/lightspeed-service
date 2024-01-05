@@ -1,6 +1,7 @@
 import inspect
 import os
 import warnings
+from typing import Optional
 
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -32,10 +33,10 @@ class LLMLoader:
 
     def __init__(
         self,
-        provider: str = None,
-        model: str = None,
-        url: str = None,
-        params: dict = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        url: Optional[str] = None,
+        params: Optional[dict] = None,
         logger=None,
     ) -> None:
         self.logger = logger if logger is not None else Logger("llm_loader").logger
