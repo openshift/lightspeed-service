@@ -13,6 +13,8 @@ llama_index.set_global_handler("simple")
 load_dotenv()
 
 # Select Model
+embed_model: TextEmbeddingsInference | str
+
 ## check if we are using remote embeddings via env
 url = os.getenv("TEI_SERVER_URL", "local")
 if url != "local":
