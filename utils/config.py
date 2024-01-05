@@ -88,7 +88,9 @@ def load_config_from_env() -> None:
     elif cache_config.type == constants.IN_MEMORY_CACHE:
         memory_config = config_model.MemoryConfig({})
         cache_config.memory = memory_config
-        memory_config.max_entries = int(os.getenv("MEMORY_CACHE_MAX_ENTRIES", 1000))
+        memory_config.max_entries = int(
+            os.getenv("MEMORY_CACHE_MAX_ENTRIES", constants.IN_MEMORY_CACHE_MAX_ENTRIES)
+        )
     else:
         raise Exception(f"Invalid cache type: {cache_config.type}")
     conversation_cache = CacheFactory.conversation_cache(cache_config)
