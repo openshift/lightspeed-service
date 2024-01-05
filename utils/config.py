@@ -31,9 +31,9 @@ def load_config_from_env() -> None:
     logger_config = config_model.LoggerConfig()
     ols_config.logger_config = logger_config
 
-    logger_config.default_level = os.getenv("LOG_LEVEL", logging.INFO)
+    logger_config.default_level = int(os.getenv("LOG_LEVEL", logging.INFO))
     logger_config.default_filename = os.getenv("LOG_FILE_NAME", None)
-    logger_config.default_size = os.getenv("LOG_FILE_SIZE", (1048576 * 100))
+    logger_config.default_size = int(os.getenv("LOG_FILE_SIZE", (1048576 * 100)))
     default_logger = Logger(
         logger_name="default",
         logfile=logger_config.default_filename,
@@ -80,13 +80,15 @@ def load_config_from_env() -> None:
         redis_config = config_model.RedisConfig()
         cache_config.redis = redis_config
         redis_config.host = os.getenv("REDIS_CACHE_HOST", constants.REDIS_CACHE_HOST)
-        redis_config.port = os.getenv("REDIS_CACHE_PORT", constants.REDIS_CACHE_PORT)
+        redis_config.port = int(
+            os.getenv("REDIS_CACHE_PORT", constants.REDIS_CACHE_PORT)
+        )
         redis_config.max_memory = constants.REDIS_CACHE_MAX_MEMORY
         redis_config.max_memory_policy = constants.REDIS_CACHE_MAX_MEMORY_POLICY
     elif cache_config.type == constants.IN_MEMORY_CACHE:
         memory_config = config_model.MemoryConfig({})
         cache_config.memory = memory_config
-        memory_config.max_entries = os.getenv("MEMORY_CACHE_MAX_ENTRIES", 1000)
+        memory_config.max_entries = int(os.getenv("MEMORY_CACHE_MAX_ENTRIES", 1000))
     else:
         raise Exception(f"Invalid cache type: {cache_config.type}")
     conversation_cache = CacheFactory.conversation_cache(cache_config)
