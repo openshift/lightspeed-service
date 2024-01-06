@@ -25,12 +25,14 @@ test-unit: ## Run the unit tests
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/unit --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_unit.json --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_unit.json ${ARTIFACT_DIR}/coverage_unit.out
+	hack/codecov.sh ${ARTIFACT_DIR}/coverage_unit.out
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/integration --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
+	hack/codecov.sh ${ARTIFACT_DIR}/coverage_integration.out
 
 test-e2e: ## Run e2e tests
 	# Command to run e2e tests goes here
