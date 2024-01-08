@@ -15,8 +15,7 @@ warnings.simplefilter("ignore", UserWarning)
 
 
 class LLMLoader:
-    """
-    Note: This class loads the LLM backend libraries if the specific LLM is loaded.
+    """Note: This class loads the LLM backend libraries if the specific LLM is loaded.
     Known caveats: Currently supports a single instance/model per backend
 
     llm_backends    :   a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
@@ -184,9 +183,7 @@ class LLMLoader:
 
     # TODO: update this to use config not direct env vars
     def _tgi_llm_instance(self):
-        """
-        Note: TGI does not support specifying the model, it is an instance per model.
-        """
+        """Note: TGI does not support specifying the model, it is an instance per model."""
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Creating Hugging Face TGI LLM instance"
         )

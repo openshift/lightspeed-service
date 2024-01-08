@@ -8,19 +8,14 @@ from utils.logger import Logger
 
 
 class YesNoClassifier:
-    """
-    This class is responsible for classifying a statement as yes, no, or undetermined.
-    """
+    """This class is responsible for classifying a statement as yes, no, or undetermined."""
 
     def __init__(self) -> None:
-        """
-        Initializes the YesNoClassifier instance.
-        """
+        """Initializes the YesNoClassifier instance."""
         self.logger = Logger("yes_no_classifier").logger
 
     def classify(self, conversation: str, statement: str, **kwargs) -> int:
-        """
-        Classifies a statement as yes, no, or undetermined.
+        """Classifies a statement as yes, no, or undetermined.
 
         Args:
         - conversation (str): The identifier for the conversation or task context.
@@ -30,7 +25,6 @@ class YesNoClassifier:
         Returns:
         - int: The classification result (1 for yes, 0 for no, 9 for undetermined).
         """
-
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider
         verbose = kwargs.get("verbose", "").lower() == "true"

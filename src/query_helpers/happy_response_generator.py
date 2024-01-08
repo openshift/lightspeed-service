@@ -8,19 +8,14 @@ from utils.logger import Logger
 
 
 class HappyResponseGenerator:
-    """
-    This class is responsible for generating a pleasant response to a user question.
-    """
+    """This class is responsible for generating a pleasant response to a user question."""
 
     def __init__(self) -> None:
-        """
-        Initializes the HappyResponseGenerator instance.
-        """
+        """Initializes the HappyResponseGenerator instance."""
         self.logger = Logger("happy_response_generator").logger
 
     def generate(self, conversation, user_question, **kwargs):
-        """
-        Generates a pleasant response to a user question.
+        """Generates a pleasant response to a user question.
 
         Args:
         - conversation (str): The identifier for the conversation or task context.
@@ -30,7 +25,6 @@ class HappyResponseGenerator:
         Returns:
         - str: The generated happy response.
         """
-
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider
 

@@ -16,8 +16,7 @@ def _replace_new_line(match: re.Match[str]) -> str:
 
 
 def _custom_parser(multiline_string: str) -> str:
-    """
-    The LLM response for `action_input` may be a multiline
+    """The LLM response for `action_input` may be a multiline
     string containing unescaped newlines, tabs or quotes. This function
     replaces those characters with their escaped counterparts.
     (newlines in JSON must be double-escaped: `\\n`)
@@ -38,8 +37,7 @@ def _custom_parser(multiline_string: str) -> str:
 def parse_json_markdown(
     json_string: str, *, parser: Callable[[str], Any] = json.loads
 ) -> dict:
-    """
-    Parse a JSON string from a Markdown string.
+    """Parse a JSON string from a Markdown string.
 
     Args:
         json_string: The Markdown string.
@@ -70,8 +68,7 @@ def parse_json_markdown(
 
 
 def parse_and_check_json_markdown(text: str, expected_keys: List[str]) -> dict:
-    """
-    Parse a JSON string from a Markdown string and check that it
+    """Parse a JSON string from a Markdown string and check that it
     contains the expected keys.
 
     Args:
