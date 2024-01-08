@@ -4,7 +4,9 @@
 
 1. Create your own fork of the repo
 2. Make changes to the code in your fork
-3. Submit PR from your fork to main branch of the project repo
+3. Run unit tests and integration tests
+4. Check the code with linters
+5. Submit PR from your fork to main branch of the project repo
 
 ## Setting up your development environment
 
@@ -33,6 +35,9 @@ make install-deps
 # install dev/tests dependencies
 make install-deps-test
 
+# run all tests
+make test
+
 # code formatting (run this as a pre-commit step for your code changes)
 make format
 
@@ -43,6 +48,10 @@ make verify
 ```
 
 Happy hacking!
+
+### Code coverage measurement
+
+During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
 
 ## Updating Dependencies
 
