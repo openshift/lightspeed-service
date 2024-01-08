@@ -8,8 +8,11 @@ Summary:
 
 """
 
-SUMMARY_TASK_BREAKDOWN_TEMPLATE = """
-The following documentation contains a task list. Your job is to extract the list of tasks. If the user-supplied query seems unrelated to the list of tasks, please reply that you do not know what to do with the query and the summary documentation. Use only the supplied content and extract the task list.
+SUMMARY_TASK_BREAKDOWN_TEMPLATE = (
+    """
+The following documentation contains a task list. Your job is to extract the list of tasks. """
+    """If the user-supplied query seems unrelated to the list of tasks, please reply that you do not know what to do with the query and the summary documentation. """
+    """Use only the supplied content and extract the task list.
 
 Summary document:
 {context_str}
@@ -19,6 +22,7 @@ User query:
 
 What are the tasks?
 """
+)
 
 TASK_PERFORMER_PROMPT_TEMPLATE = """
 Instructions:
