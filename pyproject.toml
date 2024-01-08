@@ -8,3 +8,6 @@ ignore = ["E501"]
 target-version = "py311"
 line-length = 100
 
+[tool.coverage.report]
+# unit tests fails if the total coverage measurement is under this threshold value
+fail_under = 40
