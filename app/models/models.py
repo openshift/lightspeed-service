@@ -4,8 +4,7 @@ from pydantic import BaseModel
 
 
 class LLMRequest(BaseModel):
-    """
-    Model representing a request for the LLM (Language Model).
+    """Model representing a request for the LLM (Language Model).
 
     Attributes:
         query (str): The query string.
@@ -22,8 +21,7 @@ class LLMRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    """
-    Model representing a feedback request.
+    """Model representing a feedback request.
 
     Attributes:
         conversation_id (int): The required conversation ID.

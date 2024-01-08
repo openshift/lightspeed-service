@@ -12,19 +12,14 @@ from utils.logger import Logger
 
 
 class DocsSummarizer:
-    """
-    A class for summarizing documentation context.
-    """
+    """A class for summarizing documentation context."""
 
     def __init__(self):
-        """
-        Initialize the DocsSummarizer.
-        """
+        """Initialize the DocsSummarizer."""
         self.logger = Logger("docs_summarizer").logger
 
     def summarize(self, conversation, query, **kwargs):
-        """
-        Summarize the given query based on the provided conversation context.
+        """Summarize the given query based on the provided conversation context.
 
         Args:
         - conversation: The unique identifier for the conversation.
@@ -34,7 +29,6 @@ class DocsSummarizer:
         Returns:
         - Tuple[str, str]: A tuple containing the summary as a string and referenced documents as a string.
         """
-
         provider = config.ols_config.summarizer_provider
         model = config.ols_config.summarizer_model
         bare_llm = LLMLoader(provider, model).llm

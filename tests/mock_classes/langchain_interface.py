@@ -1,7 +1,6 @@
 def mock_langchain_interface(retval):
     class MockLangChainInterface:
-        """
-        Mock LangChainInterface class for testing
+        """Mock LangChainInterface class for testing
 
         Example usage in a test:
 

@@ -17,8 +17,7 @@ else:
 
 
 def include_routers(app: FastAPI):
-    """
-    Include FastAPI routers for different endpoints.
+    """Include FastAPI routers for different endpoints.
 
     Args:
         app (FastAPI): The FastAPI app instance.
@@ -43,7 +42,5 @@ def read_root():
 @app.get("/")
 @app.get("/status")
 def root(request: Request):
-    """
-    TODO: In the future should respond
-    """
+    """TODO: In the future should respond"""
     return {"message": "This is the default endpoint for OLS", "status": "running"}
