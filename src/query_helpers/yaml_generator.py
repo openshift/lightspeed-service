@@ -8,19 +8,14 @@ from utils.logger import Logger
 
 
 class YamlGenerator:
-    """
-    This class is responsible for generating YAML responses to user requests.
-    """
+    """This class is responsible for generating YAML responses to user requests."""
 
     def __init__(self) -> None:
-        """
-        Initializes the YamlGenerator instance.
-        """
+        """Initializes the YamlGenerator instance."""
         self.logger = Logger("yaml_generator").logger
 
     def generate_yaml(self, conversation_id, query, history=None, **kwargs):
-        """
-        Generates YAML response to a user request.
+        """Generates YAML response to a user request.
 
         Args:
         - conversation_id (str): The identifier for the conversation or task context.
@@ -31,7 +26,6 @@ class YamlGenerator:
         Returns:
         - str: The generated YAML response.
         """
-
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider
 

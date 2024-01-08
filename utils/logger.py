@@ -7,8 +7,7 @@ import dotenv
 
 
 class Logger:
-    """
-    This class is a simple wrapper around the Python logging function
+    """This class is a simple wrapper around the Python logging function
 
     Usage:
 
@@ -44,8 +43,7 @@ class Logger:
         logfile=None,
         show_message=False,
     ):
-        """
-        Initializes the Logger instance.
+        """Initializes the Logger instance.
 
         Args:
         - `logger_name` (str): The name of the logger instance.
@@ -82,8 +80,7 @@ class Logger:
         self.set_handlers()
 
     def set_handlers(self) -> None:
-        """
-        A simple logger function that logs messages at a specified level.
+        """A simple logger function that logs messages at a specified level.
 
         :param level:   The logging level (e.g. 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
         :param message: The message to log
