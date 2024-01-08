@@ -7,4 +7,5 @@ ignore = ["E501"]
 
 target-version = "py311"
 line-length = 100
+pydocstyle.convention = "google"
 
