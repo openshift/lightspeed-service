@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from app import constants
 from app.models.models import LLMRequest
@@ -53,7 +53,7 @@ def ols_request(llm_request: LLMRequest):
     if validation_result[0] == constants.INVALID:
         logger.info(f"{conversation} Question is not about k8s/ocp, rejecting")
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "response": "Sorry, I can only answer questions about "
                 "OpenShift and Kubernetes. This does not look "
@@ -108,12 +108,12 @@ def ols_request(llm_request: LLMRequest):
 
         else:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"response": "Internal server error. Please try again."},
             )
     else:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"response": "Internal server error. Please try again."},
         )
 
