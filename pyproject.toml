@@ -6,7 +6,7 @@ select = ["E", "F", "W", "C", "S", "I", "TCH"]
 ignore = ["E501"]
 
 target-version = "py311"
-line-length = 100
+line-length = 79
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
