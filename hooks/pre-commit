@@ -1,0 +1,11 @@
+#!/usr/bin/sh
+# Script to verify what is about to be committed.
+
+# If any command fails, exit immediately with that command's exit status
+set -eo pipefail
+
+make format
+echo "Code formatting step passed"
+
+make verify
+echo "Code verification and linting passed"

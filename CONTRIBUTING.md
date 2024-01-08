@@ -33,11 +33,12 @@ make install-deps
 # install dev/tests dependencies
 make install-deps-test
 
-# code formatting (run this as a pre-commit step for your code changes)
+# code formatting
+# (this is also run automaticall as part of pre-commit hook)
 make format
 
-# code style and docstring style (run this as a pre-commit step for your
-# code changes)
+# code style and docstring style
+# (this is also run automaticall as part of pre-commit hook)
 make verify
 
 ```
