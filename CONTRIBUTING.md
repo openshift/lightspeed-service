@@ -38,20 +38,30 @@ make install-deps-test
 # run all tests
 make test
 
-# code formatting (run this as a pre-commit step for your code changes)
+# code formatting
+# (this is also run automatically as part of pre-commit hook)
 make format
 
-# code style and docstring style (run this as a pre-commit step for your
-# code changes)
+# code style and docstring style
+# (this is also run automatically as part of pre-commit hook)
 make verify
 
 ```
 
 Happy hacking!
 
+### Pre-commit hook settings
+
+It is possible to run formatters and linters automatically for all commits. You just need
+to copy file `hooks/pre-commit` into subdirectory `.git/hooks/`. It must be done manually
+because the copied file is an executable script (so from GIT point of view it is unsafe
+to enable it automatically).
+
+
 ### Code coverage measurement
 
 During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
+
 
 ## Updating Dependencies
 
