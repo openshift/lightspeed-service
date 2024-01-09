@@ -5,6 +5,7 @@ select = ["E", "F", "W", "C", "S", "I", "TCH"]
 ignore = []
 
 target-version = "py311"
+pydocstyle.convention = "google"
 line-length = 168
 
 [tool.coverage.report]
