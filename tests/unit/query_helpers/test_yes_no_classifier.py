@@ -1,3 +1,5 @@
+"""Unit tests for YesNoClassifier class."""
+
 import pytest
 
 import src.query_helpers.yes_no_classifier
@@ -8,10 +10,12 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 
 @pytest.fixture
 def yes_no_classifier():
+    """Fixture containing constructed and initialized YesNoClassifier."""
     return YesNoClassifier()
 
 
 def test_bad_value_response(yes_no_classifier, monkeypatch):
+    """Test how YesNoClassifier handles improper responses."""
     # response that isn't 1, 0, or 9 should generate a ValueError
     ml = mock_llm_chain({"text": "default"})
 
@@ -25,6 +29,7 @@ def test_bad_value_response(yes_no_classifier, monkeypatch):
 
 
 def test_good_value_response(yes_no_classifier, monkeypatch):
+    """Test how YesNoClassifier handles proper responses."""
     # response that is 1, 0, or 9 should return the value
     for x in ["0", "1", "9"]:
         ml = mock_llm_chain({"text": x})
