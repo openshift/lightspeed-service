@@ -105,3 +105,25 @@ def test_post_question_on_invalid_question(monkeypatch) -> None:
             "know how to handle."
         }
     }
+
+
+def test_post_question_on_unknown_response_type(monkeypatch) -> None:
+    """Check the REST API /ols/ with POST HTTP method when unknown response type is returned."""
+
+    def dummy_validator(
+        self, conversation: str, query: str, verbose: bool = False
+    ) -> list[str]:
+        return constants.VALID, constants.SOME_FAILURE
+
+    # let's pretend the question is valid without even asking LLM
+    # but the question type is unknown
+    monkeypatch.setattr(QuestionValidator, "validate_question", dummy_validator)
+
+    response = client.post(
+        "/ols/", json={"conversation_id": "1234", "query": "test query"}
+    )
+    print(response)
+    assert response.status_code == requests.codes.internal_server_error
+    assert response.json() == {
+        "detail": {"response": "Internal server error. Please try again."}
+    }
