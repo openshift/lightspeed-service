@@ -35,10 +35,10 @@ class ProviderConfig(BaseModel):
         self.name = data.get("name", None)
         self.url = data.get("url", None)
         self.credential_path = data.get("credential_path", None)
-        if data.get("models", None) is None or len(data["models"]) == 0:
+        if "models" not in data or len(data["models"]) == 0:
             raise Exception(f"no models configured for provider {data['name']}")
         for m in data["models"]:
-            if m.get("name", None) is None:
+            if "name" not in m:
                 raise Exception("model name is missing")
             model = ModelConfig(m)
             self.models[m["name"]] = model
@@ -52,7 +52,7 @@ class LLMConfig(BaseModel):
         if data is None:
             return
         for p in data:
-            if p.get("name", None) is None:
+            if "name" not in p:
                 raise Exception("provider name is missing")
             provider = ProviderConfig(p)
             self.providers[p["name"]] = provider
@@ -99,11 +99,11 @@ class ConversationCacheConfig(BaseModel):
             return
         self.type = data.get("type", None)
         if self.type == "redis":
-            if data.get("redis", None) is None:
+            if "redis" not in data:
                 raise Exception("redis config is missing")
-            self.redis = RedisConfig(data.get("redis", None))
+            self.redis = RedisConfig(data["redis"])
         elif self.type == "in-memory":
-            if data.get("in-memory", None) is None:
+            if "in-memory" not in data:
                 raise Exception("in-memory config is missing")
             self.memory = MemoryConfig(data.get("memory", None))
 
