@@ -34,16 +34,25 @@ make install-deps
 make install-deps-test
 
 # code formatting
-# (this is also run automaticall as part of pre-commit hook)
+# (this is also run automatically as part of pre-commit hook)
 make format
 
 # code style and docstring style
-# (this is also run automaticall as part of pre-commit hook)
+# (this is also run automatically as part of pre-commit hook)
 make verify
 
 ```
 
 Happy hacking!
+
+
+### Pre-commit hook settings
+
+It is possible to run formatters and linters automatically for all commits. You just need
+to copy file `hooks/pre-commit` into subdirectory `.git/hooks/`. It must be done manually
+because the copied file is an executable script (so from GIT point of view it is unsafe
+to enable it automatically).
+
 
 ## Updating Dependencies
 
