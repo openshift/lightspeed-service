@@ -1,3 +1,5 @@
+"""Integration tests for basic OLS REST API endpoints."""
+
 import requests
 from fastapi.testclient import TestClient
 
@@ -10,18 +12,21 @@ client = TestClient(app)
 
 
 def test_healthz() -> None:
+    """Test handler for /healthz REST API endpoint."""
     response = client.get("/healthz")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
 def test_readyz() -> None:
+    """Test handler for /readyz REST API endpoint."""
     response = client.get("/readyz")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
 def test_root() -> None:
+    """Test handler for / REST API endpoint."""
     response = client.get("/")
     assert response.status_code == requests.codes.ok
     assert response.json() == {
@@ -31,6 +36,7 @@ def test_root() -> None:
 
 
 def test_status() -> None:
+    """Test handler for /status REST API endpoint."""
     response = client.get("/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {
@@ -40,6 +46,7 @@ def test_status() -> None:
 
 
 def test_raw_prompt(monkeypatch) -> None:
+    """Check the REST API /ols/raw_prompt with POST HTTP method when expected payload is posted."""
     # the raw prompt should just return stuff from LangChainInterface, so mock that base method
     # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
     # of it in our tests
@@ -65,7 +72,6 @@ def test_raw_prompt(monkeypatch) -> None:
 
 def test_post_question_on_unexpected_payload() -> None:
     """Check the REST API /ols/ with POST HTTP method when unexpected payload is posted."""
-
     response = client.post("/ols/", json="this is really not proper payload")
     print(response)
     assert response.status_code == requests.codes.unprocessable
