@@ -1,3 +1,5 @@
+"""Unit tests for QuestionValidator class."""
+
 import pytest
 
 import src.query_helpers.question_validator
@@ -9,11 +11,13 @@ from utils import config
 
 @pytest.fixture
 def question_validator():
+    """Fixture containing constructed and initialized QuestionValidator."""
     config.load_empty_config()
     return QuestionValidator()
 
 
 def test_invalid_response(question_validator, monkeypatch):
+    """Test how invalid responses are handled by QuestionValidator."""
     # response not in the following set should generate a ValueError
     # [INVALID,NOYAML]
     # [VALID,NOYAML]
@@ -32,6 +36,7 @@ def test_invalid_response(question_validator, monkeypatch):
 
 
 def test_valid_responses(question_validator, monkeypatch):
+    """Test how valid responses are handled by QuestionValidator."""
     for retval in ["INVALID,NOYAML", "VALID,NOYAML", "VALID,YAML"]:
         ml = mock_llm_chain({"text": retval})
         monkeypatch.setattr(src.query_helpers.question_validator, "LLMChain", ml)

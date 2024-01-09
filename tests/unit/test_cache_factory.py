@@ -1,3 +1,5 @@
+"""Unit tests for CacheFactory class."""
+
 import pytest
 
 from app.models.config import ConversationCacheConfig
@@ -7,6 +9,7 @@ from src.cache.cache_factory import CacheFactory, InMemoryCache
 
 @pytest.fixture(scope="module")
 def in_memory_cache_config():
+    """Fixture containing initialized instance of ConversationCacheConfig."""
     # os.environ["OLS_CONVERSATION_CACHE"] = constants.IN_MEMORY_CACHE
     c = ConversationCacheConfig(
         {
@@ -19,6 +22,7 @@ def in_memory_cache_config():
 
 @pytest.fixture(scope="module")
 def invalid_cache_type_config():
+    """Fixture containing instance of ConversationCacheConfig with improper settings."""
     # os.environ["OLS_CONVERSATION_CACHE"] = "foo bar baz"
     c = ConversationCacheConfig()
     c.type = "foo bar baz"
