@@ -1,7 +1,6 @@
 def mock_llm_chain(retval):
     class MockLLMChain:
-        """
-        Mock LLMChain class for testing
+        """Mock LLMChain class for testing
 
         Example usage in a test:
 

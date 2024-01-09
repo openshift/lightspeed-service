@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from app import constants
 from app.models.models import LLMRequest
@@ -15,8 +15,7 @@ router = APIRouter(prefix="/ols", tags=["ols"])
 
 @router.post("")
 def ols_request(llm_request: LLMRequest):
-    """
-    Handle requests for the OLS endpoint.
+    """Handle requests for the OLS endpoint.
 
     Args:
         llm_request (LLMRequest): The request containing a query and conversation ID.
@@ -24,7 +23,6 @@ def ols_request(llm_request: LLMRequest):
     Returns:
         dict: Response containing the processed information.
     """
-
     logger = config.default_logger
 
     # Initialize variables
@@ -53,7 +51,7 @@ def ols_request(llm_request: LLMRequest):
     if validation_result[0] == constants.INVALID:
         logger.info(f"{conversation} Question is not about k8s/ocp, rejecting")
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "response": "Sorry, I can only answer questions about "
                 "OpenShift and Kubernetes. This does not look "
@@ -108,12 +106,12 @@ def ols_request(llm_request: LLMRequest):
 
         else:
             raise HTTPException(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"response": "Internal server error. Please try again."},
             )
     else:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"response": "Internal server error. Please try again."},
         )
 
@@ -121,8 +119,7 @@ def ols_request(llm_request: LLMRequest):
 @router.post("/raw_prompt")
 @router.post("/base_llm_completion")
 def base_llm_completion(llm_request: LLMRequest):
-    """
-    Handle requests for the base LLM completion endpoint.
+    """Handle requests for the base LLM completion endpoint.
 
     Args:
         llm_request (LLMRequest): The request containing a query.
@@ -130,7 +127,6 @@ def base_llm_completion(llm_request: LLMRequest):
     Returns:
         dict: Response containing the processed information.
     """
-
     if llm_request.conversation_id is None:
         conversation = Utils.get_suid()
     else:

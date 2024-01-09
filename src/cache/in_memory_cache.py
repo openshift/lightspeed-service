@@ -22,16 +22,13 @@ class InMemoryCache(Cache):
         return cls._instance
 
     def initialize_cache(self, size: int) -> None:
-        """
-        Initialize the InMemoryCache.
-        """
+        """Initialize the InMemoryCache."""
         self.capacity = size
         self.deque: deque[str] = deque()
         self.cache: dict[str, str] = {}
 
     def get(self, key: str) -> Union[str, None]:
-        """
-        Get the value associated with the given key.
+        """Get the value associated with the given key.
 
         Args:
         - key (str): The key to look up in the cache.
@@ -48,8 +45,7 @@ class InMemoryCache(Cache):
         return value
 
     def insert_or_append(self, key: str, value: str) -> None:
-        """
-        sets the value if a key is not present or else simply appends.
+        """Sets the value if a key is not present or else simply appends.
 
         Args:
         - key (str): The key to set in the cache.

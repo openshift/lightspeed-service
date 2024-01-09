@@ -4,7 +4,9 @@
 
 1. Create your own fork of the repo
 2. Make changes to the code in your fork
-3. Submit PR from your fork to main branch of the project repo
+3. Run unit tests and integration tests
+4. Check the code with linters
+5. Submit PR from your fork to main branch of the project repo
 
 ## Setting up your development environment
 
@@ -33,6 +35,9 @@ make install-deps
 # install dev/tests dependencies
 make install-deps-test
 
+# run all tests
+make test
+
 # code formatting
 # (this is also run automatically as part of pre-commit hook)
 make format
@@ -45,13 +50,17 @@ make verify
 
 Happy hacking!
 
-
 ### Pre-commit hook settings
 
 It is possible to run formatters and linters automatically for all commits. You just need
 to copy file `hooks/pre-commit` into subdirectory `.git/hooks/`. It must be done manually
 because the copied file is an executable script (so from GIT point of view it is unsafe
 to enable it automatically).
+
+
+### Code coverage measurement
+
+During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
 
 
 ## Updating Dependencies
