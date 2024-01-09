@@ -61,12 +61,22 @@ def ols_request(llm_request: LLMRequest):
 
     if validation_result[0] == constants.VALID:
         logger.info(f"{conversation} Question is about k8s/ocp")
+        question_type = validation_result[1]
+
+        # check if question type is from known categories
+        if question_type not in {constants.NOYAML, constants.YAML}:
+            # not known question type has been detected
+            logger.error(f"Unknown question type {question_type}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"response": "Internal server error. Please try again."},
+            )
 
         # Generate a user-friendly response wrapper
         response_wrapper = HappyResponseGenerator()
         wrapper = response_wrapper.generate(conversation, llm_request.query)
 
-        if validation_result[1] == constants.NOYAML:
+        if question_type == constants.NOYAML:
             logger.info(
                 f"{conversation} Question is not about yaml, sending for generic info"
             )
@@ -78,7 +88,7 @@ def ols_request(llm_request: LLMRequest):
             llm_response.response = wrapper + "\n" + summary
             return llm_response
 
-        elif validation_result[1] == constants.YAML:
+        elif question_type == constants.YAML:
             logger.info(
                 f"{conversation} Question is about yaml, sending to the YAML generator"
             )
@@ -103,12 +113,6 @@ def ols_request(llm_request: LLMRequest):
                     llm_request.query + "\n\n" + str(llm_response.response or ""),
                 )
             return llm_response
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"response": "Internal server error. Please try again."},
-            )
     else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
