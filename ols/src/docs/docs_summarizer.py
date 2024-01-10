@@ -66,7 +66,7 @@ class DocsSummarizer:
         )
 
         self.logger.info(
-            f"{conversation} using embed model: {str(service_context.embed_model)}"
+            f"{conversation} using embed model: {service_context.embed_model!s}"
         )
 
         # TODO get this from global config
@@ -99,7 +99,7 @@ class DocsSummarizer:
             ]
         )
 
-        self.logger.info(f"{conversation} Summary response: {str(summary)}")
+        self.logger.info(f"{conversation} Summary response: {summary!s}")
         self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
 
         return str(summary), referenced_documents

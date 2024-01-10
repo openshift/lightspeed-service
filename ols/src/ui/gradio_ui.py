@@ -23,7 +23,7 @@ class gradioUI:
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-        self.logger.info(f"Using history: {str(use_history)}")
+        self.logger.info(f"Using history: {use_history!s}")
         # Body of the request (a JSON object with a "query" field)
 
         data = {"query": prompt}

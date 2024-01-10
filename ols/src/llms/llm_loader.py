@@ -69,7 +69,7 @@ class LLMLoader:
             case constants.PROVIDER_BAM:
                 self._bam_llm_instance()
             case _:
-                self.logger.error(f"ERROR: Unsupported LLM {str(self.llm_backend)}")
+                self.logger.error(f"ERROR: Unsupported LLM {self.llm_backend!s}")
 
     def _openai_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
