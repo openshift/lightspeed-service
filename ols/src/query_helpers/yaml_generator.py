@@ -1,10 +1,10 @@
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from src import constants
-from src.llms.llm_loader import LLMLoader
-from utils import config
-from utils.logger import Logger
+from ols.src import constants
+from ols.src.llms.llm_loader import LLMLoader
+from ols.utils import config
+from ols.utils.logger import Logger
 
 
 class YamlGenerator:

@@ -7,4 +7,4 @@ torch
 transformers
 uvicorn
 redis
--r src/llms/requirements.txt
+-r ols/src/llms/requirements.txt

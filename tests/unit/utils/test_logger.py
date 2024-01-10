@@ -2,7 +2,7 @@ import logging
 import os
 from tempfile import gettempdir
 
-from utils.logger import Logger
+from ols.utils.logger import Logger
 
 # log file should be stored in temporary directory
 log_file_name = os.path.join(gettempdir(), "test.log")

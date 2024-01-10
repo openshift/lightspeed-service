@@ -1,11 +1,11 @@
 # cache_factory.py
 
 
-from app.models.config import ConversationCacheConfig
-from src import constants
-from src.cache.cache import Cache
-from src.cache.in_memory_cache import InMemoryCache
-from src.cache.redis_cache import RedisCache
+from ols.app.models.config import ConversationCacheConfig
+from ols.src import constants
+from ols.src.cache.cache import Cache
+from ols.src.cache.in_memory_cache import InMemoryCache
+from ols.src.cache.redis_cache import RedisCache
 
 
 class CacheFactory:

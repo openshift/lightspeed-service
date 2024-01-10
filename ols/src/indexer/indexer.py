@@ -6,7 +6,7 @@ from llama_index import ServiceContext, SimpleDirectoryReader, VectorStoreIndex
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.storage.storage_context import StorageContext
 
-import src.constants as constants
+import ols.src.constants as constants
 
 llama_index.set_global_handler("simple")
 
