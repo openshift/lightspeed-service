@@ -11,13 +11,12 @@ from ols.src.cache.cache_factory import CacheFactory, InMemoryCache
 def in_memory_cache_config():
     """Fixture containing initialized instance of ConversationCacheConfig."""
     # os.environ["OLS_CONVERSATION_CACHE"] = constants.IN_MEMORY_CACHE
-    c = ConversationCacheConfig(
+    return ConversationCacheConfig(
         {
             "type": constants.IN_MEMORY_CACHE,
             constants.IN_MEMORY_CACHE: {"max_entries": 10},
         }
     )
-    return c
 
 
 @pytest.fixture(scope="module")
