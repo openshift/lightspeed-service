@@ -1,17 +1,19 @@
+"""Unit tests for Logger class."""
+
 import logging
-import os
+from pathlib import Path
 from tempfile import gettempdir
 
 from utils.logger import Logger
 
 # log file should be stored in temporary directory
-log_file_name = os.path.join(gettempdir(), "test.log")
+log_file_name = Path(gettempdir()).joinpath("test.log")
 
 
 def remove_logfile():
     """Remove logfile, if exists."""
-    if os.path.exists(log_file_name):
-        os.remove(log_file_name)
+    if log_file_name.exists():
+        log_file_name.unlink()
 
 
 def setup_function(function):
@@ -72,6 +74,6 @@ def test_logging_to_file():
     logging.shutdown()
 
     # check if the message has been logged properly
-    with open(log_file_name, "r") as fin:
+    with log_file_name.open("r") as fin:
         content = fin.read()
         assert "Info message" in content
