@@ -1,3 +1,5 @@
+"""Class responsible for classifying a statement as yes, no, or undetermined."""
+
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -18,9 +20,9 @@ class YesNoClassifier:
         """Classifies a statement as yes, no, or undetermined.
 
         Args:
-        - conversation (str): The identifier for the conversation or task context.
-        - statement (str): The statement to be classified.
-        - **kwargs: Additional keyword arguments for customization.
+          conversation (str): The identifier for the conversation or task context.
+          statement (str): The statement to be classified.
+          **kwargs: Additional keyword arguments for customization.
 
         Returns:
         - int: The classification result (1 for yes, 0 for no, 9 for undetermined).

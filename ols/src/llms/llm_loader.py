@@ -16,7 +16,7 @@ warnings.simplefilter("ignore", UserWarning)
 
 class LLMLoader:
     """Note: This class loads the LLM backend libraries if the specific LLM is loaded.
-    Known caveats: Currently supports a single instance/model per backend
+    Known caveats: Currently supports a single instance/model per backend.
 
     llm_backends    :   a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
     params          :   (optional) array of parameters to override and pass to the llm backend
@@ -108,7 +108,7 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
 
     def _bam_llm_instance(self):
-        """BAM Research Lab"""
+        """BAM Research Lab."""
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
             # BAM Research lab

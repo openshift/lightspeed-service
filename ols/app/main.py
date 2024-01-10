@@ -42,5 +42,5 @@ def read_root():
 @app.get("/")
 @app.get("/status")
 def root(request: Request):
-    """TODO: In the future should respond"""
+    """TODO: In the future should respond."""
     return {"message": "This is the default endpoint for OLS", "status": "running"}

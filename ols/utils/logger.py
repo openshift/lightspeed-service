@@ -1,3 +1,5 @@
+"""Simple wrapper around the Pyton logging function."""
+
 import logging
 import os
 import sys
@@ -7,7 +9,7 @@ import dotenv
 
 
 class Logger:
-    """This class is a simple wrapper around the Python logging function
+    """This class is a simple wrapper around the Python logging function.
 
     Usage:
 
@@ -46,10 +48,10 @@ class Logger:
         """Initializes the Logger instance.
 
         Args:
-        - `logger_name` (str): The name of the logger instance.
-        - `log_level` (int): The logging level for general logging verbosity.
-        - `logfile` (str): The path to the log file. Set to `None` to disable file logging.
-        - `show_message` (bool): Whether to display a message about setting logging levels.
+          logger_name (str): The name of the logger instance.
+          log_level (int): The logging level for general logging verbosity.
+          logfile (str): The path to the log file. Set to `None` to disable file logging.
+          show_message (bool): Whether to display a message about setting logging levels.
 
         Note:
         - The default values can be overridden using environment variables `LOG_LEVEL`
