@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
 
-from app.endpoints import feedback, ols
-from src.ui.gradio_ui import gradioUI
-from utils import config
+from ols.app.endpoints import feedback, ols
+from ols.src.ui.gradio_ui import gradioUI
+from ols.utils import config
 
 app = FastAPI()
 

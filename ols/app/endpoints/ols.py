@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app import constants
-from app.models.models import LLMRequest
-from app.utils import Utils
-from src.docs.docs_summarizer import DocsSummarizer
-from src.llms.llm_loader import LLMLoader
-from src.query_helpers.happy_response_generator import HappyResponseGenerator
-from src.query_helpers.question_validator import QuestionValidator
-from src.query_helpers.yaml_generator import YamlGenerator
-from utils import config
+from ols.app import constants
+from ols.app.models.models import LLMRequest
+from ols.app.utils import Utils
+from ols.src.docs.docs_summarizer import DocsSummarizer
+from ols.src.llms.llm_loader import LLMLoader
+from ols.src.query_helpers.happy_response_generator import HappyResponseGenerator
+from ols.src.query_helpers.question_validator import QuestionValidator
+from ols.src.query_helpers.yaml_generator import YamlGenerator
+from ols.utils import config
 
 router = APIRouter(prefix="/ols", tags=["ols"])
 

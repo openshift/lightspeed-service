@@ -6,9 +6,9 @@ from typing import Optional
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
-import src.constants as constants
-from utils import config
-from utils.logger import Logger
+import ols.src.constants as constants
+from ols.utils import config
+from ols.utils.logger import Logger
 
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)

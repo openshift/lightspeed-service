@@ -2,9 +2,9 @@
 
 import pytest
 
-from app.models.config import ConversationCacheConfig
-from src import constants
-from src.cache.cache_factory import CacheFactory, InMemoryCache
+from ols.app.models.config import ConversationCacheConfig
+from ols.src import constants
+from ols.src.cache.cache_factory import CacheFactory, InMemoryCache
 
 
 @pytest.fixture(scope="module")

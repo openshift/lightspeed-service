@@ -4,7 +4,7 @@ import threading
 from collections import deque
 from typing import Union
 
-from src.cache.cache import Cache
+from ols.src.cache.cache import Cache
 
 
 class InMemoryCache(Cache):

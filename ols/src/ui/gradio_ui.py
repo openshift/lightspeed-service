@@ -3,7 +3,7 @@ import json
 import gradio as gr
 import requests
 
-from utils.logger import Logger
+from ols.utils.logger import Logger
 
 
 class gradioUI:

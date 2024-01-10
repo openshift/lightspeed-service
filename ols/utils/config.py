@@ -1,10 +1,10 @@
 import logging
 import os
 
-import app.models.config as config_model
-import src.constants as constants
-from src.cache.cache_factory import CacheFactory
-from utils.logger import Logger
+import ols.app.models.config as config_model
+import ols.src.constants as constants
+from ols.src.cache.cache_factory import CacheFactory
+from ols.utils.logger import Logger
 
 ols_config = None
 llm_config = None

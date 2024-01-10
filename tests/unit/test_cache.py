@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.cache.in_memory_cache import InMemoryCache
+from ols.src.cache.in_memory_cache import InMemoryCache
 
 
 @pytest.fixture

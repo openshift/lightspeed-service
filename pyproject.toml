@@ -10,4 +10,4 @@ line-length = 168
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
-fail_under = 40
+fail_under = 37

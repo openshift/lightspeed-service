@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.models.models import FeedbackRequest
-from utils import config
+from ols.app.models.models import FeedbackRequest
+from ols.utils import config
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
