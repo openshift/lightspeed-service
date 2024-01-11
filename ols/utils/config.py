@@ -2,7 +2,7 @@ import logging
 import os
 
 import ols.app.models.config as config_model
-import ols.src.constants as constants
+from ols.src import constants
 from ols.src.cache.cache_factory import CacheFactory
 from ols.utils.logger import Logger
 

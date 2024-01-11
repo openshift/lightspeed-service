@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-import ols.src.constants as constants
+from ols.src import constants
 
 
 class ModelConfig(BaseModel):
