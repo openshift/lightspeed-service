@@ -1,3 +1,5 @@
+"""Class responsible for generating YAML responses to user requests."""
+
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -18,10 +20,10 @@ class YamlGenerator:
         """Generates YAML response to a user request.
 
         Args:
-        - conversation_id (str): The identifier for the conversation or task context.
-        - query (str): The user request.
-        - history (str): The history of the conversation (if available).
-        - **kwargs: Additional keyword arguments for customization.
+          conversation_id (str): The identifier for the conversation or task context.
+          query (str): The user request.
+          history (str): The history of the conversation (if available).
+          **kwargs: Additional keyword arguments for customization.
 
         Returns:
         - str: The generated YAML response.

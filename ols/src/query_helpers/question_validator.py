@@ -1,3 +1,5 @@
+"""Class responsible for validating questions and providing one-word responses."""
+
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -20,9 +22,9 @@ class QuestionValidator:
         """Validates a question and provides a one-word response.
 
         Args:
-        - conversation (str): The identifier for the conversation or task context.
-        - query (str): The question to be validated.
-        - verbose (bool): If `LLMChain` should be verbose. Defaults to `False`.
+          conversation (str): The identifier for the conversation or task context.
+          query (str): The question to be validated.
+          verbose (bool): If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
         - list: A list of one-word responses.

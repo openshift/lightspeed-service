@@ -1,3 +1,5 @@
+"""Web-based user interface handler."""
+
 import json
 
 import gradio as gr
@@ -7,6 +9,8 @@ from ols.utils.logger import Logger
 
 
 class gradioUI:
+    """Handlers for UI-related requests."""
+
     def __init__(
         self, ols_url="http://127.0.0.1:8080/ols", conversation_id=None, logger=None
     ) -> None:
@@ -20,6 +24,7 @@ class gradioUI:
         self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=[use_history])
 
     def chat_ui(self, prompt, history, use_history=None):
+        """Handler for requests from web-based user interface."""
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
@@ -60,6 +65,7 @@ class gradioUI:
             return f"An error occurred: {e}"
 
     def mount_ui(self, fast_api_instance, mount_path="/ui"):
+        """Register REST API endpoint to handle UI-related requests."""
         return gr.mount_gradio_app(fast_api_instance, self.ui, path=mount_path)
 
 

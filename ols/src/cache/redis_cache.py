@@ -1,3 +1,5 @@
+"""Cache that uses Redis to store cached values."""
+
 import os
 import threading
 from typing import Union
@@ -15,6 +17,8 @@ load_dotenv()
 # Good for on-premise hosting for now
 # Extend it to distributed setting using cloud offerings
 class RedisCache(Cache):
+    """Cache that uses Redis to store cached values."""
+
     _instance = None
     _lock = threading.Lock()
 

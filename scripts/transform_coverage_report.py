@@ -1,9 +1,7 @@
+"""Utility script to convert a Python to GO coverage report."""
+
 import json
 import sys
-
-"""
-Utility script to convert a Python to GO coverage report.
-"""
 
 
 def write_go_coverage_format(file_path, file_data, output_file):

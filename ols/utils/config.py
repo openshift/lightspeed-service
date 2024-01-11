@@ -1,3 +1,5 @@
+"""Configuration loader."""
+
 import logging
 import os
 
@@ -14,6 +16,7 @@ conversation_cache = None
 
 
 def load_empty_config() -> None:
+    """Load empty configuration."""
     global ols_config
     global llm_config
     ols_config = config_model.OLSConfig()
@@ -21,6 +24,7 @@ def load_empty_config() -> None:
 
 
 def load_config_from_env() -> None:
+    """Load configuration from environment variables."""
     global ols_config
     global llm_config
     global default_logger

@@ -1,8 +1,12 @@
+"""Abstract class that is parent for all cache implementations."""
+
 from abc import ABC, abstractmethod
 from typing import Union
 
 
 class Cache(ABC):
+    """Abstract class that is parent for all cache implementations."""
+
     @abstractmethod
     def get(self, key: str) -> Union[str, None]:
         """Abstract method to retrieve a value from the cache.

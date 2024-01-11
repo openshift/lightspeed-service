@@ -1,3 +1,5 @@
+"""Class responsible for generating a pleasant response to a user question."""
+
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -18,9 +20,9 @@ class HappyResponseGenerator:
         """Generates a pleasant response to a user question.
 
         Args:
-        - conversation (str): The identifier for the conversation or task context.
-        - user_question (str): The question posed by the user.
-        - **kwargs: Additional keyword arguments for customization.
+          conversation (str): The identifier for the conversation or task context.
+          user_question (str): The question posed by the user.
+          **kwargs: Additional keyword arguments for customization.
 
         Returns:
         - str: The generated happy response.

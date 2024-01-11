@@ -1,5 +1,4 @@
-# cache_factory.py
-
+"""Cache factory class."""
 
 from ols.app.models.config import ConversationCacheConfig
 from ols.src import constants
@@ -9,6 +8,8 @@ from ols.src.cache.redis_cache import RedisCache
 
 
 class CacheFactory:
+    """Cache factory class."""
+
     @staticmethod
     def conversation_cache(config: ConversationCacheConfig) -> Cache:
         """Factory method to create an instance of Cache based on environment variable.
