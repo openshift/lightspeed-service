@@ -1,3 +1,7 @@
+## Description
+
+<!--- Describe your changes in detail -->
+
 ## Type of change
 
 - [ ] Refactor
@@ -8,10 +12,6 @@
 - [ ] Documentation Update
 - [ ] Configuration Update
 - [ ] Bump-up dependent library
-
-## Description
-
-<!--- Describe your changes in detail -->
 
 ## Related Tickets & Documents
 
