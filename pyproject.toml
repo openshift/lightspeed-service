@@ -11,3 +11,7 @@ line-length = 168
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
 fail_under = 37
+
+[tool.ruff.lint.mccabe]
+# Flag errors (`C901`) whenever the complexity level exceeds 5.
+max-complexity = 10
