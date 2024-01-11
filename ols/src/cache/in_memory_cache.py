@@ -43,8 +43,7 @@ class InMemoryCache(Cache):
 
         self.deque.remove(key)
         self.deque.appendleft(key)
-        value = self.cache[key]
-        return value
+        return self.cache[key]
 
     def insert_or_append(self, key: str, value: str) -> None:
         """Sets the value if a key is not present or else simply appends.
