@@ -49,6 +49,6 @@ class HappyResponseGenerator:
 
         response = llm_chain(inputs={"question": user_question})
 
-        self.logger.info(f"{conversation} happy response: {str(response['text'])}")
+        self.logger.info(f"{conversation} happy response: {response['text']!s}")
 
         return str(response["text"])
