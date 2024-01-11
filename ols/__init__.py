@@ -1,0 +1,1 @@
+"""OpenShift Lightspeed service."""
