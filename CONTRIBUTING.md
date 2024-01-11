@@ -14,7 +14,7 @@ The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.ht
 
 ```bash
 # clone your fork
-git clone https://github.com/williamcaban/lightspeed-service.git
+git clone https://github.com/YOUR-GIT-PROFILE/lightspeed-service.git
 
 # move into the directory
 cd lightspeed-service
@@ -106,3 +106,24 @@ mypy-extensions==1.0.0
 numpy==1.26.2
 # ...more entries
 ```
+
+## Code style
+
+### Docstrings style
+We are using [Google's docstring style](https://google.github.io/styleguide/pyguide.html).
+
+Here is simple example:
+```python
+def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
+    """Example function with PEP 484 type annotations.
+    
+    Args:
+        param1: The first parameter.
+        param2: The second parameter.
+    
+    Returns:
+        The return value. True for success, False otherwise.
+    """
+```
+
+For further guidance, see the rest of our codebase, or check sources online. There are many, eg. [this one](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e).
