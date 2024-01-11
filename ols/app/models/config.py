@@ -6,6 +6,12 @@ from pydantic import BaseModel
 from ols.src import constants
 
 
+class InvalidConfigurationError(Exception):
+    """Exception raised when configuration is invalid."""
+
+    pass
+
+
 class ModelConfig(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
@@ -36,10 +42,12 @@ class ProviderConfig(BaseModel):
         self.url = data.get("url", None)
         self.credential_path = data.get("credential_path", None)
         if "models" not in data or len(data["models"]) == 0:
-            raise Exception(f"no models configured for provider {data['name']}")
+            raise InvalidConfigurationError(
+                f"no models configured for provider {data['name']}"
+            )
         for m in data["models"]:
             if "name" not in m:
-                raise Exception("model name is missing")
+                raise InvalidConfigurationError("model name is missing")
             model = ModelConfig(m)
             self.models[m["name"]] = model
 
@@ -53,7 +61,7 @@ class LLMConfig(BaseModel):
             return
         for p in data:
             if "name" not in p:
-                raise Exception("provider name is missing")
+                raise InvalidConfigurationError("provider name is missing")
             provider = ProviderConfig(p)
             self.providers[p["name"]] = provider
 
@@ -100,11 +108,11 @@ class ConversationCacheConfig(BaseModel):
         self.type = data.get("type", None)
         if self.type == "redis":
             if "redis" not in data:
-                raise Exception("redis config is missing")
+                raise InvalidConfigurationError("redis config is missing")
             self.redis = RedisConfig(data["redis"])
         elif self.type == "in-memory":
             if "in-memory" not in data:
-                raise Exception("in-memory config is missing")
+                raise InvalidConfigurationError("in-memory config is missing")
             self.memory = MemoryConfig(data.get("memory", None))
 
 
@@ -119,7 +127,7 @@ class LoggerConfig(BaseModel):
             return
         level = logging.getLevelName(data.get("default_level", "INFO"))
         if level is None:
-            raise Exception(
+            raise InvalidConfigurationError(
                 f"invalid log level for default log: {data.get('default_level',None)}"
             )
         self.default_level = level
@@ -189,16 +197,16 @@ class Config:
 
     def validate(self) -> None:
         if self.llm_config is None:
-            raise Exception("no llm config found")
+            raise InvalidConfigurationError("no llm config found")
         if self.llm_config.providers is None or len(self.llm_config.providers) == 0:
-            raise Exception("no llm providers found")
+            raise InvalidConfigurationError("no llm providers found")
         if self.ols_config is None:
-            raise Exception("no ols config found")
+            raise InvalidConfigurationError("no ols config found")
         if self.ols_config.default_model is None:
-            raise Exception("default model is not set")
+            raise InvalidConfigurationError("default model is not set")
         if self.ols_config.classifier_model is None:
-            raise Exception("classifier model is not set")
+            raise InvalidConfigurationError("classifier model is not set")
         if self.ols_config.conversation_cache is None:
-            raise Exception("conversation cache is not set")
+            raise InvalidConfigurationError("conversation cache is not set")
         if self.ols_config.logger_config is None:
-            raise Exception("logger config is not set")
+            raise InvalidConfigurationError("logger config is not set")
