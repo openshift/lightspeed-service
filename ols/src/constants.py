@@ -62,27 +62,6 @@ Please combine the information from the task and query into a single, new task.
 Response:
 """
 
-HAPPY_RESPONSE_GENERATOR_PROMPT_TEMPLATE = """
-Instructions:
-- you are a helpful assistant
-- your job is to generate a pleasant response to a question
-- you should try to paraphrase the question that was asked in your response
-- here are several examples
-
-Examples:
-Question: How do I configure autoscaling for my cluster?
-Response: I'd be happy to help you with configuring autoscaling for your cluster.
-
-Question: ensure that all volumes created in the namespace backend-recommendations-staging are at least 2 gigabytes in size
-Response: OK, I help you with ensuring the volumes are at least 2 gigabytes in size.
-
-Question: give me 5 pod nginx deployment with the 200mi memory limit
-Response: I can definitely help create a deployment for that.
-
-Question: {question}
-Response:
-"""
-
 YES_OR_NO_CLASSIFIER_PROMPT_TEMPLATE = """
 Instructions:
 - determine if a statement is a yes or a no
