@@ -56,7 +56,7 @@ _Below is an example of how you can instruct your audience on installing and set
 #### Run the server
 in order to run the API service  
 ```sh
-uvicorn app.main:app --reload --port 8080
+uvicorn ols.app.main:app --reload --port 8080
 ```
 
 #### Query the server
