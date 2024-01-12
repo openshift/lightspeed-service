@@ -63,7 +63,7 @@ uvicorn ols.app.main:app --reload --port 8080
 
 To send a request to the server you can use the following curl command:
 ```sh
-curl -X 'POST' 'http://127.0.0.1:8080/ols' -H2 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
+curl -X 'POST' 'http://127.0.0.1:8080/ols' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
 ```
 
 ### Gradio UI
