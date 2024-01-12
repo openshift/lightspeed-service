@@ -1,3 +1,5 @@
+"""Entry point to FastAPI-based web service."""
+
 from fastapi import FastAPI, Request
 
 from ols.app.endpoints import feedback, ols
@@ -34,6 +36,7 @@ include_routers(app)
 @app.get("/healthz")
 @app.get("/readyz")
 def read_root():
+    """Health status of service."""
     return {"status": "1"}
 
 

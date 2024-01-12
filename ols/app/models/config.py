@@ -1,3 +1,5 @@
+"""Config classes for the configuration structure."""
+
 import logging
 from typing import Dict, Optional
 
@@ -13,12 +15,15 @@ class InvalidConfigurationError(Exception):
 
 
 class ModelConfig(BaseModel):
+    """Model configuration."""
+
     name: Optional[str] = None
     url: Optional[str] = None
     credential_path: Optional[str] = None
     credentials: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -28,6 +33,8 @@ class ModelConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
+    """LLM provider configuration."""
+
     name: Optional[str] = None
     url: Optional[str] = None
     credential_path: Optional[str] = None
@@ -35,6 +42,7 @@ class ProviderConfig(BaseModel):
     models: Dict[str, ModelConfig] = {}
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -53,9 +61,12 @@ class ProviderConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
+    """LLM configuration."""
+
     providers: Dict[str, ProviderConfig] = {}
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -67,12 +78,15 @@ class LLMConfig(BaseModel):
 
 
 class RedisConfig(BaseModel):
+    """Redis configuration."""
+
     host: Optional[str] = None
     port: Optional[int] = None
     max_memory: Optional[str] = None
     max_memory_policy: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -85,9 +99,12 @@ class RedisConfig(BaseModel):
 
 
 class MemoryConfig(BaseModel):
+    """In-memory cache configuration."""
+
     max_entries: Optional[int] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -97,11 +114,14 @@ class MemoryConfig(BaseModel):
 
 
 class ConversationCacheConfig(BaseModel):
+    """Conversation cache configuration."""
+
     type: Optional[str] = None
     redis: Optional[RedisConfig] = None
     memory: Optional[MemoryConfig] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -117,11 +137,14 @@ class ConversationCacheConfig(BaseModel):
 
 
 class LoggerConfig(BaseModel):
+    """Logger configuration."""
+
     default_level: Optional[int | str] = None
     default_filename: Optional[str] = None
     default_size: Optional[int] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -136,6 +159,8 @@ class LoggerConfig(BaseModel):
 
 
 class OLSConfig(BaseModel):
+    """OLS configuration."""
+
     conversation_cache: Optional[ConversationCacheConfig] = None
     logger_config: Optional[LoggerConfig] = None
 
@@ -155,6 +180,7 @@ class OLSConfig(BaseModel):
     yaml_model: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -185,10 +211,13 @@ class OLSConfig(BaseModel):
 
 
 class Config:
+    """Global service configuration."""
+
     llm_config: Optional[LLMConfig] = None
     ols_config: Optional[OLSConfig] = None
 
     def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
@@ -196,6 +225,7 @@ class Config:
         self.ols_config = OLSConfig(data.get("ols_config", None))
 
     def validate(self) -> None:
+        """Validate all configurations."""
         if self.llm_config is None:
             raise InvalidConfigurationError("no llm config found")
         if self.llm_config.providers is None or len(self.llm_config.providers) == 0:

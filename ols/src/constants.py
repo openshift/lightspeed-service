@@ -1,3 +1,5 @@
+"""Constants used in business logic."""
+
 # templates
 SUMMARIZATION_TEMPLATE = """
 The following context contains several pieces of documentation. Please summarize the context for the user.

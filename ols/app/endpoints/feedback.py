@@ -1,3 +1,5 @@
+"""Handler for REST API call to provide user feedback."""
+
 from fastapi import APIRouter
 
 from ols.app.models.models import FeedbackRequest

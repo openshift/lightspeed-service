@@ -1,3 +1,5 @@
+"""Handlers for all OLS-related REST API endpoints."""
+
 from fastapi import APIRouter, HTTPException, status
 
 from ols.app import constants

@@ -1,3 +1,5 @@
+"""A class for summarizing documentation context."""
+
 import os
 
 import llama_index
