@@ -40,6 +40,7 @@ coverage-report:	test-unit ## Export unit test coverage report into interactive 
 
 format: ## Format the code into unified format
 	black .
+	ruff . --fix --per-file-ignores=tests/*:S101
 
 verify: ## Verify the code using various linters
 	black . --check
