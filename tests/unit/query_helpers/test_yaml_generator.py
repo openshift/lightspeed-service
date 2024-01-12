@@ -18,7 +18,6 @@ def yaml_generator():
 
 def test_yaml_generator(yaml_generator, monkeypatch):
     """Test the basic functionality of YAML generator."""
-
     ml = mock_llm_chain({"text": "default"})
     monkeypatch.setattr(ols.src.query_helpers.yaml_generator, "LLMChain", ml)
     monkeypatch.setattr(

@@ -1,3 +1,5 @@
+"""Utility class containing common methods."""
+
 import uuid
 
 

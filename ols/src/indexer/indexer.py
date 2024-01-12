@@ -1,3 +1,5 @@
+"""Document indexer."""
+
 import os
 
 import llama_index
@@ -34,6 +36,7 @@ print("Using embed model: " + str(service_context.embed_model))
 
 # Load data
 def filename_fn(filename):
+    """Constructs file metadata with filename."""
     return {"file_name": filename}
 
 

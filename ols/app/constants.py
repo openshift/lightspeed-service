@@ -1,4 +1,5 @@
-# ols endpoint constants
+"""OLS endpoint constants."""
+
 VALID = "VALID"
 INVALID = "INVALID"
 YAML = "YAML"

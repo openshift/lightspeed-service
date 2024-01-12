@@ -1,3 +1,5 @@
+"""Data models representing payloads for REST API calls."""
+
 from typing import Union
 
 from pydantic import BaseModel

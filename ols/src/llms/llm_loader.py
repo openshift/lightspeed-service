@@ -1,3 +1,5 @@
+"""LLM backend libraries loader."""
+
 import inspect
 import os
 import warnings
@@ -39,6 +41,7 @@ class LLMLoader:
         params: Optional[dict] = None,
         logger=None,
     ) -> None:
+        """Initialize loader using provided provider, model, and other parameters."""
         self.logger = logger if logger is not None else Logger("llm_loader").logger
         if provider is None:
             raise Exception("ERROR: Missing provider")
@@ -270,6 +273,7 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {self.llm}")
 
     def status(self):
+        """Provide LLM schema as a string containing formatted and indented JSON."""
         import json
 
         return json.dumps(self.llm.schema_json, indent=4)
