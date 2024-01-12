@@ -17,7 +17,6 @@ class Cache(ABC):
         Returns:
             The value associated with the key, or None if not found.
         """
-        pass
 
     @abstractmethod
     def insert_or_append(self, key: str, value: str) -> None:
@@ -27,4 +26,3 @@ class Cache(ABC):
             key: The key to associate with the value.
             value: The value to be stored in the cache.
         """
-        pass
