@@ -17,7 +17,6 @@ class Cache(ABC):
         Returns:
             Union[str, None]: The value associated with the key, or None if not found.
         """
-        pass
 
     @abstractmethod
     def insert_or_append(self, key: str, value: str) -> None:
@@ -30,4 +29,3 @@ class Cache(ABC):
         Returns:
             None
         """
-        pass
