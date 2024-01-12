@@ -23,11 +23,7 @@ class RedisCache(Cache):
     _lock = threading.Lock()
 
     def __new__(cls):
-        """Create a new instance of the RedisCache class.
-
-        Returns:
-            RedisCache: The singleton instance of RedisCache.
-        """
+        """Create a new instance of the `RedisCache` class."""
         with cls._lock:
             if not cls._instance:
                 cls._instance = super(RedisCache, cls).__new__(cls)
@@ -38,9 +34,6 @@ class RedisCache(Cache):
         """Initialize the Redis client and logger.
 
         This method sets up the Redis client with custom configuration parameters.
-
-        Returns:
-            None
         """
         self.redis_client = redis.StrictRedis(
             host=os.environ.get("REDIS_CACHE_HOST", constants.REDIS_CACHE_HOST),
@@ -57,10 +50,10 @@ class RedisCache(Cache):
         """Get the value associated with the given key.
 
         Args:
-            key (str): The key for the desired value.
+            key: The key for the desired value.
 
         Returns:
-            Union[str, None]: The value associated with the key, or None if not found.
+            The value associated with the key, or None if not found.
         """
         return self.redis_client.get(key)
 
@@ -68,11 +61,8 @@ class RedisCache(Cache):
         """Set the value associated with the given key.
 
         Args:
-            key (str): The key for the value.
-            value (str): The value to set.
-
-        Returns:
-            None
+            key: The key for the value.
+            value: The value to set.
         """
         oldValue = self.get(key)
         with self._lock:

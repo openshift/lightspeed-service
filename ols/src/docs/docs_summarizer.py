@@ -20,16 +20,16 @@ class DocsSummarizer:
         """Initialize the DocsSummarizer."""
         self.logger = Logger("docs_summarizer").logger
 
-    def summarize(self, conversation, query, **kwargs):
+    def summarize(self, conversation, query, **kwargs) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
-        - conversation: The unique identifier for the conversation.
-        - query: The query to be summarized.
-        - kwargs: Additional keyword arguments for customization (model, verbose, etc.).
+            conversation: The unique identifier for the conversation.
+            query: The query to be summarized.
+            kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-        - Tuple[str, str]: A tuple containing the summary as a string and referenced documents as a string.
+            A tuple containing the summary as a string and referenced documents as a string.
         """
         provider = config.ols_config.summarizer_provider
         model = config.ols_config.summarizer_model

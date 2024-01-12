@@ -15,7 +15,7 @@ class CacheFactory:
         """Factory method to create an instance of Cache based on environment variable.
 
         Returns:
-            Cache: An instance of Cache (either RedisCache or InMemoryCache).
+            An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
         """
         if config.type == constants.REDIS_CACHE:
             return RedisCache()

@@ -12,10 +12,10 @@ class Cache(ABC):
         """Abstract method to retrieve a value from the cache.
 
         Args:
-            key (str): The key associated with the value.
+            key: The key associated with the value.
 
         Returns:
-            Union[str, None]: The value associated with the key, or None if not found.
+            The value associated with the key, or None if not found.
         """
         pass
 
@@ -24,10 +24,7 @@ class Cache(ABC):
         """Abstract method to store a value in the cache.
 
         Args:
-            key (str): The key to associate with the value.
-            value (str): The value to be stored in the cache.
-
-        Returns:
-            None
+            key: The key to associate with the value.
+            value: The value to be stored in the cache.
         """
         pass
