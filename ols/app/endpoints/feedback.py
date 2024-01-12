@@ -7,14 +7,14 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
 @router.post("")
-def feedback_request(feedback_request: FeedbackRequest):
+def feedback_request(feedback_request: FeedbackRequest) -> dict:
     """Handle feedback requests.
 
     Args:
-        feedback_request (FeedbackRequest): The request containing feedback information.
+        feedback_request: The request containing feedback information.
 
     Returns:
-        dict: Response indicating the status of the feedback.
+        Response indicating the status of the feedback.
     """
     conversation = str(feedback_request.conversation_id)
     config.default_logger.info(f"{conversation} New feedback received")

@@ -20,7 +20,7 @@ def include_routers(app: FastAPI):
     """Include FastAPI routers for different endpoints.
 
     Args:
-        app (FastAPI): The FastAPI app instance.
+        app: The `FastAPI` app instance.
     """
     app.include_router(ols.router)
     app.include_router(feedback.router)

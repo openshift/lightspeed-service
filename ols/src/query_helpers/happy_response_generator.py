@@ -13,19 +13,19 @@ class HappyResponseGenerator:
     """This class is responsible for generating a pleasant response to a user question."""
 
     def __init__(self) -> None:
-        """Initializes the HappyResponseGenerator instance."""
+        """Initializes the `HappyResponseGenerator` instance."""
         self.logger = Logger("happy_response_generator").logger
 
-    def generate(self, conversation, user_question, **kwargs):
+    def generate(self, conversation: str, user_question: str, **kwargs) -> str:
         """Generates a pleasant response to a user question.
 
         Args:
-          conversation (str): The identifier for the conversation or task context.
-          user_question (str): The question posed by the user.
+          conversation: The identifier for the conversation or task context.
+          user_question: The question posed by the user.
           **kwargs: Additional keyword arguments for customization.
 
         Returns:
-        - str: The generated happy response.
+            The generated happy response.
         """
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider

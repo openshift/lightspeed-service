@@ -33,10 +33,10 @@ class InMemoryCache(Cache):
         """Get the value associated with the given key.
 
         Args:
-          key (str): The key to look up in the cache.
+          key: The key to look up in the cache.
 
         Returns:
-          Union[str, None]: The value associated with the key, or None if the key is not present.
+          The value associated with the key, or `None` if the key is not present.
         """
         if key not in self.cache:
             return None
@@ -49,11 +49,8 @@ class InMemoryCache(Cache):
         """Sets the value if a key is not present or else simply appends.
 
         Args:
-          key (str): The key to set in the cache.
-          value (str): The value to associate with the key.
-
-        Returns:
-          None
+          key: The key to set in the cache.
+          value: The value to associate with the key.
         """
         with self._lock:
             if key not in self.cache:

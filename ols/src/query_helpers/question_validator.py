@@ -13,7 +13,7 @@ class QuestionValidator:
     """This class is responsible for validating questions and providing one-word responses."""
 
     def __init__(self) -> None:
-        """Initializes the QuestionValidator instance."""
+        """Initializes the `QuestionValidator` instance."""
         self.logger = Logger("question_validator").logger
 
     def validate_question(
@@ -22,12 +22,12 @@ class QuestionValidator:
         """Validates a question and provides a one-word response.
 
         Args:
-          conversation (str): The identifier for the conversation or task context.
-          query (str): The question to be validated.
-          verbose (bool): If `LLMChain` should be verbose. Defaults to `False`.
+          conversation: The identifier for the conversation or task context.
+          query: The question to be validated.
+          verbose: If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
-        - list: A list of one-word responses.
+            A list of one-word responses.
         """
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider

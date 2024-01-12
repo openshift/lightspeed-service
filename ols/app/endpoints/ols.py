@@ -14,14 +14,14 @@ router = APIRouter(prefix="/ols", tags=["ols"])
 
 
 @router.post("")
-def ols_request(llm_request: LLMRequest):
+def ols_request(llm_request: LLMRequest) -> dict:
     """Handle requests for the OLS endpoint.
 
     Args:
-        llm_request (LLMRequest): The request containing a query and conversation ID.
+        llm_request: The request containing a query and conversation ID.
 
     Returns:
-        dict: Response containing the processed information.
+        Response containing the processed information.
     """
     logger = config.default_logger
 
@@ -122,14 +122,14 @@ def ols_request(llm_request: LLMRequest):
 
 @router.post("/raw_prompt")
 @router.post("/base_llm_completion")
-def base_llm_completion(llm_request: LLMRequest):
+def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the base LLM completion endpoint.
 
     Args:
-        llm_request (LLMRequest): The request containing a query.
+        llm_request: The request containing a query.
 
     Returns:
-        dict: Response containing the processed information.
+        Response containing the processed information.
     """
     if llm_request.conversation_id is None:
         conversation = Utils.get_suid()

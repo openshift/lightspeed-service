@@ -40,18 +40,18 @@ class Logger:
 
     def __init__(
         self,
-        logger_name="default",
-        log_level=logging.INFO,
-        logfile=None,
-        show_message=False,
+        logger_name: str = "default",
+        log_level: int = logging.INFO,
+        logfile: str = None,
+        show_message: bool = False,
     ):
         """Initializes the Logger instance.
 
         Args:
-          logger_name (str): The name of the logger instance.
-          log_level (int): The logging level for general logging verbosity.
-          logfile (str): The path to the log file. Set to `None` to disable file logging.
-          show_message (bool): Whether to display a message about setting logging levels.
+          logger_name: The name of the logger instance.
+          log_level: The logging level for general logging verbosity.
+          logfile: The path to the log file. Set to `None` to disable file logging.
+          show_message: Whether to display a message about setting logging levels.
 
         Note:
         - The default values can be overridden using environment variables `LOG_LEVEL`
@@ -82,11 +82,7 @@ class Logger:
         self.set_handlers()
 
     def set_handlers(self) -> None:
-        """A simple logger function that logs messages at a specified level.
-
-        :param level:   The logging level (e.g. 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
-        :param message: The message to log
-        """
+        """Sets formatting, handlers and logging levels."""
         self.logger = logging.getLogger(self.logger_name)
         self.logger.setLevel(self.log_level)
 

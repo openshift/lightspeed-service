@@ -19,8 +19,8 @@ class LLMLoader:
 
     Known caveats: Currently supports a single instance/model per backend.
 
-    llm_backends    :   a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
-    params          :   (optional) array of parameters to override and pass to the llm backend
+    llm_backends: a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
+    params      : (optional) array of parameters to override and pass to the llm backend
 
     # using the class and overriding specific parameters
     llm_backend = 'ollama'
