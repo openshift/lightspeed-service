@@ -55,14 +55,14 @@ class Logger:
 
         Note:
         - The default values can be overridden using environment variables `LOG_LEVEL`
-          and `LOG_LEVEL_CONSOLE`.
+          or `LOG_LEVEL_CONSOLE` and `LOG_LEVEL_FILE`.
         - To set logfile name set `LOG_FILE_NAME`
         - To override logfile maximum size set `LOG_FILE_SIZE`
         """
         msg = """
         ############################################################################
-        Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variable (e.g., INFO, DEBUG)
-        to control general logging verbosity or console specific logging level
+        Set LOG_LEVEL or LOG_LEVEL_CONSOLE and LOG_LEVEL_FILE environment variable (e.g., INFO, DEBUG)
+        to control general logging verbosity or console/file specific logging level
         ############################################################################
         """
         if show_message:
@@ -74,6 +74,7 @@ class Logger:
         self.logger_name = logger_name
         self.log_level = os.getenv("LOG_LEVEL", log_level)
         self.log_level_console = os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
+        self.log_level_file = os.getenv("LOG_LEVEL_FILE", self.log_level)
         _logfile = os.getenv("LOG_FILE_NAME")
         self.logfile = _logfile if _logfile else logfile
         self.logfile_maxSize = int(os.getenv("LOG_FILE_SIZE", (1048576 * 100)))
@@ -105,7 +106,7 @@ class Logger:
                 maxBytes=self.logfile_maxSize,
                 backupCount=self.logfile_backupCount,
             )
-            file_handler.setLevel(self.log_level)
+            file_handler.setLevel(self.log_level_file)
             file_handler.setFormatter(formatter)
 
             self.logger.addHandler(file_handler)

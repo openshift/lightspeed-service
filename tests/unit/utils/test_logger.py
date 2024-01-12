@@ -60,7 +60,7 @@ def test_logger_show_message_flag(capsys):
     # the log message should not be captured due to log level
     # but the message should be shown
     captured_out = capsys.readouterr().out
-    assert "Set LOG_LEVEL or LOG_LEVEL_CONSOLE environment variabl" in captured_out
+    assert "Set LOG_LEVEL or LOG_LEVEL_CONSOLE and LOG_LEVEL_FI" in captured_out
     captured_err = capsys.readouterr().out
     assert captured_err == ""
 
