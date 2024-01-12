@@ -7,7 +7,6 @@ from ols.app.models.models import LLMRequest
 from ols.app.utils import Utils
 from ols.src.docs.docs_summarizer import DocsSummarizer
 from ols.src.llms.llm_loader import LLMLoader
-from ols.src.query_helpers.happy_response_generator import HappyResponseGenerator
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config
@@ -74,10 +73,6 @@ def ols_request(llm_request: LLMRequest) -> dict:
                 detail={"response": "Internal server error. Please try again."},
             )
 
-        # Generate a user-friendly response wrapper
-        response_wrapper = HappyResponseGenerator()
-        wrapper = response_wrapper.generate(conversation, llm_request.query)
-
         if question_type == constants.NOYAML:
             logger.info(
                 f"{conversation} Question is not about yaml, sending for generic info"
@@ -85,9 +80,10 @@ def ols_request(llm_request: LLMRequest) -> dict:
 
             # Summarize documentation
             docs_summarizer = DocsSummarizer()
-            summary, _ = docs_summarizer.summarize(conversation, llm_request.query)
+            llm_response.response, _ = docs_summarizer.summarize(
+                conversation, llm_request.query
+            )
 
-            llm_response.response = wrapper + "\n" + summary
             return llm_response
 
         elif question_type == constants.YAML:
@@ -107,7 +103,7 @@ def ols_request(llm_request: LLMRequest) -> dict:
 
             # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
 
-            llm_response.response = wrapper + "\n" + generated_yaml
+            llm_response.response = generated_yaml
 
             if config.conversation_cache is not None:
                 config.conversation_cache.insert_or_append(

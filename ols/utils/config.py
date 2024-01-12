@@ -56,12 +56,6 @@ def load_config_from_env() -> None:
     ols_config.classifier_model = os.getenv(
         "CLASSIFIER_MODEL", ols_config.default_model
     )
-    ols_config.happy_response_provider = os.getenv(
-        "HAPPY_RESPONSE_PROVIDER", ols_config.default_provider
-    )
-    ols_config.happy_response_model = os.getenv(
-        "HAPPY_RESPONSE_MODEL", ols_config.default_model
-    )
     ols_config.summarizer_provider = os.getenv(
         "SUMMARIZER_PROVIDER", ols_config.default_provider
     )

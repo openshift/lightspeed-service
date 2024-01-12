@@ -170,8 +170,6 @@ class OLSConfig(BaseModel):
 
     classifier_provider: Optional[str] = None
     classifier_model: Optional[str] = None
-    happy_response_provider: Optional[str] = None
-    happy_response_model: Optional[str] = None
     summarizer_provider: Optional[str] = None
     summarizer_model: Optional[str] = None
     validator_provider: Optional[str] = None
@@ -190,10 +188,6 @@ class OLSConfig(BaseModel):
             "classifier_provider", self.default_provider
         )
         self.classifier_model = data.get("classifier_model", self.default_model)
-        self.happy_response_model = data.get("happy_response_model", self.default_model)
-        self.happy_response_provider = data.get(
-            "happy_response_provider", self.default_provider
-        )
         self.summarizer_provider = data.get(
             "summarizer_provider", self.default_provider
         )
