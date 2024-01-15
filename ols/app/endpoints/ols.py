@@ -111,11 +111,10 @@ def ols_request(llm_request: LLMRequest) -> dict:
                     llm_request.query + "\n\n" + str(llm_response.response or ""),
                 )
             return llm_response
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"response": "Internal server error. Please try again."},
-        )
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={"response": "Internal server error. Please try again."},
+    )
 
 
 @router.post("/raw_prompt")
