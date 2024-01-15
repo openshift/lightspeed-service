@@ -15,7 +15,7 @@ router = APIRouter(prefix="/ols", tags=["ols"])
 
 
 @router.post("")
-def ols_request(llm_request: LLMRequest) -> dict:
+def ols_request(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the OLS endpoint.
 
     Args:
