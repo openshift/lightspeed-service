@@ -13,7 +13,7 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 @pytest.fixture
 def yaml_generator():
     """Fixture containing constructed and initialized YamlGenerator."""
-    config.load_empty_config()
+    config.init_empty_config()
     return YamlGenerator()
 
 

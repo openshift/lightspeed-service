@@ -13,7 +13,7 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 @pytest.fixture
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
-    config.load_empty_config()
+    config.init_empty_config()
     return QuestionValidator()
 
 

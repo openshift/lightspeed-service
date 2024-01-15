@@ -16,7 +16,7 @@ from tests.mock_classes.mock_llama_index import MockLlamaIndex
 @patch.dict(os.environ, {"TEI_SERVER_URL": "localhost"}, clear=True)
 def test_summarize(storage_context, service_context):
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.load_empty_config()
+    config.init_empty_config()
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
     summary, documents = summarizer.summarize("1234", question)

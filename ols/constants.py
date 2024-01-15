@@ -187,3 +187,6 @@ REDIS_CACHE_HOST = "redis-stack.ols.svc"
 REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "500mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
+
+# provider and model roles
+PROVIDER_MODEL_ROLES = ("default", "classifier", "summarizer", "validator", "yaml")

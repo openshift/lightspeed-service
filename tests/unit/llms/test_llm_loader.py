@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ols import constants
-from ols.app.models.config import LLMConfig, ProviderConfig
+from ols.app.models.config import ProviderConfig
 from ols.src.llms.llm_loader import (
     LLMConfigurationError,
     LLMLoader,
@@ -24,8 +24,7 @@ def setup():
     """Provide environment for tests."""
     # this function is called automatically by Pytest tool
     # before unit tests are started
-    config.load_empty_config()
-    config.llm_config = LLMConfig()
+    config.init_empty_config()
 
     # the following modules should not be loaded during unit testing
     # (these are not available on CI anyway)

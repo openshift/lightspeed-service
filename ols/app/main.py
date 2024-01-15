@@ -1,5 +1,7 @@
 """Entry point to FastAPI-based web service."""
 
+import os
+
 from fastapi import FastAPI
 
 from ols.app.endpoints import feedback, health, ols
@@ -13,8 +15,7 @@ app = FastAPI(
                   """,
 )
 
-# config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
-config.load_config_from_env()
+config.init_config(os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml"))
 if config.ols_config.enable_debug_ui:
     app = GradioUI(logger=config.default_logger).mount_ui(app)
 else:
