@@ -16,6 +16,10 @@ from ols.utils.logger import Logger
 warnings.simplefilter("ignore", UserWarning)
 
 
+class UnsupportedProvider(Exception):
+    """Exception thrown when provided provider is not supported or is unknown."""
+
+
 class LLMLoader:
     """Note: This class loads the LLM backend libraries if the specific LLM is loaded.
 
@@ -73,7 +77,9 @@ class LLMLoader:
             case constants.PROVIDER_BAM:
                 self._bam_llm_instance()
             case _:
-                self.logger.error(f"ERROR: Unsupported LLM {self.llm_backend!s}")
+                msg = f"ERROR: Unsupported LLM {self.provider}"
+                self.logger.error(msg)
+                raise UnsupportedProvider(msg)
 
     def _openai_llm_instance(self):
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
