@@ -82,8 +82,8 @@ class RedisConfig(BaseModel):
 
     host: Optional[str] = None
     port: Optional[int] = None
-    max_memory: Optional[str] = None
-    max_memory_policy: Optional[str] = None
+    max_memory: str = constants.REDIS_CACHE_MAX_MEMORY
+    max_memory_policy: str = constants.REDIS_CACHE_MAX_MEMORY_POLICY
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -101,7 +101,7 @@ class RedisConfig(BaseModel):
 class MemoryConfig(BaseModel):
     """In-memory cache configuration."""
 
-    max_entries: Optional[int] = None
+    max_entries: int = constants.IN_MEMORY_CACHE_MAX_ENTRIES
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
