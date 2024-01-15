@@ -41,8 +41,8 @@ class Logger:
     def __init__(
         self,
         logger_name: str = "default",
-        log_level: int = logging.INFO,
-        logfile: str = None,
+        log_level: str = logging.getLevelName(logging.INFO),
+        logfile: str | None = None,
         show_message: bool = False,
     ):
         """Initializes the Logger instance.

@@ -17,7 +17,7 @@ class YamlGenerator:
         self.logger = Logger("yaml_generator").logger
 
     def generate_yaml(
-        self, conversation_id: str, query: str, history: str = None, **kwargs
+        self, conversation_id: str, query: str, history: str | None = None, **kwargs
     ) -> str:
         """Generates YAML response to a user request.
 
