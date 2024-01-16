@@ -35,7 +35,9 @@ def load_config_from_env() -> None:
     logger_config = config_model.LoggerConfig()
     ols_config.logger_config = logger_config
 
-    logger_config.default_level = os.getenv("LOG_LEVEL", logging.INFO)
+    logger_config.default_level = os.getenv(
+        "LOG_LEVEL", logging.getLevelName(logging.INFO)
+    )
     default_logger = Logger(
         logger_name="default",
         log_level=logger_config.default_level,
