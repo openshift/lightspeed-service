@@ -12,7 +12,7 @@ class CacheFactory:
 
     @staticmethod
     def conversation_cache(config: ConversationCacheConfig) -> Cache:
-        """Factory method to create an instance of Cache based on environment variable.
+        """Create an instance of Cache based on environment variable.
 
         Returns:
             An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
