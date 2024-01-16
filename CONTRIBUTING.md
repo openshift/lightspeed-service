@@ -50,6 +50,23 @@ make verify
 
 Happy hacking!
 
+
+## Definition of Done
+
+### A deliverable is to be considered “done” when
+
+* Code is complete, commented, and merged to the relevant release branch
+* User facing documentation written (where relevant)
+* Acceptance criteria in the related Jira ticket(where applicable) are verified and fulfilled
+* Pull request title+commit includes JIRA number
+* Changes are covered by unit tests that run cleanly in the CI environment (where relevant)
+* Changes are covered by integration tests that run cleanly in the CI environment (where relevant)
+* Changes are covered by E2E tests that run cleanly in the CI environment (where relevant)
+* All linters are running cleanly in the CI environment
+* Code changes reviewed by at least one peer
+* Code changes acked by at least one project owner
+
+
 ### Pre-commit hook settings
 
 It is possible to run formatters and linters automatically for all commits. You just need
