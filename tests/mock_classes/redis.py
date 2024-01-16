@@ -23,11 +23,11 @@ class MockRedis:
         pass
 
     def get(self, key):
-        """Implementation of GET command."""
+        """Return item from cache (implementation of GET command)."""
         if key in self.cache:
             return self.cache[key]
         return None
 
     def set(self, key, value, *args, **kwargs):
-        """Implementation of SET command."""
+        """Set item into the cache (implementation of SET command)."""
         self.cache[key] = value

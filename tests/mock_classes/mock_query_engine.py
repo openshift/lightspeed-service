@@ -7,10 +7,10 @@ class MockQueryEngine:
     """Mocked query engine."""
 
     def __init__(self, *args, **kwargs):
-        """Constructor accepting all parameters."""
+        """Store all provided arguments for later usage."""
         self.args = args
         self.kwargs = kwargs
 
     def query(self, query):
-        """Returns summary for given query."""
+        """Return summary for given query."""
         return MockSummary(query)

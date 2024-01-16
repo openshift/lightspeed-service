@@ -17,10 +17,10 @@ class MockLlamaIndex:
     """
 
     def __init__(self, *args, **kwargs):
-        """Constructor accepting all parameters."""
+        """Store all provided arguments for later usage."""
         self.args = args
         self.kwargs = kwargs
 
     def as_query_engine(self, **kwargs):
-        """Returns mocked query engine."""
+        """Return mocked query engine."""
         return MockQueryEngine(kwargs)
