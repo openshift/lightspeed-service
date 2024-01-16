@@ -16,8 +16,24 @@ from ols.utils.logger import Logger
 warnings.simplefilter("ignore", UserWarning)
 
 
+class MissingProvider(Exception):
+    """Provider is not specified."""
+
+
+class MissingModel(Exception):
+    """Model is not specified."""
+
+
 class UnsupportedProvider(Exception):
-    """Exception thrown when provided provider is not supported or is unknown."""
+    """Provider is not supported or is unknown."""
+
+
+class ModelConfigMissingException(Exception):
+    """No configuration exists for the requested model name."""
+
+
+class ModelConfigInvalidException(Exception):
+    """Model configuration is not valid."""
 
 
 class LLMLoader:
@@ -48,11 +64,15 @@ class LLMLoader:
         """Initialize loader using provided provider, model, and other parameters."""
         self.logger = logger if logger is not None else Logger("llm_loader").logger
         if provider is None:
-            raise Exception("ERROR: Missing provider")
+            msg = "Missing provider"
+            self.logger.error(msg)
+            raise MissingProvider(msg)
         self.provider = provider
         self.url = url
         if model is None:
-            raise Exception("ERROR: Missing model")
+            msg = "Missing model"
+            self.logger.error(msg)
+            raise MissingModel(msg)
         self.model = model
 
         # return empty dictionary if not defined
@@ -77,7 +97,7 @@ class LLMLoader:
             case constants.PROVIDER_BAM:
                 self._bam_llm_instance()
             case _:
-                msg = f"ERROR: Unsupported LLM {self.provider}"
+                msg = f"Unsupported LLM provider {self.provider}"
                 self.logger.error(msg)
                 raise UnsupportedProvider(msg)
 
@@ -93,9 +113,9 @@ class LLMLoader:
         provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
         model = provider.models[self.model]
         if model is None:
-            raise Exception(
-                f"model {self.model} is not configured for provider {constants.PROVIDER_OPENAI}"
-            )
+            msg = f"No configuration provided for model {self.model} under LLM provider {constants.PROVIDER_OPENAI}"
+            self.logger.error(msg)
+            raise ModelConfigMissingException(msg)
         params = {
             "base_url": provider.url
             if provider.url is not None
@@ -134,9 +154,9 @@ class LLMLoader:
         provider = config.llm_config.providers[constants.PROVIDER_BAM]
         model = provider.models[self.model]
         if model is None:
-            raise Exception(
-                f"model {self.model} is not configured for provider {constants.PROVIDER_BAM}"
-            )
+            msg = f"No configuration provided for model {self.model} under LLM provider {constants.PROVIDER_BAM}"
+            self.logger.error(msg)
+            raise ModelConfigMissingException(msg)
 
         creds = Credentials(
             api_key=provider.credentials,
@@ -172,9 +192,7 @@ class LLMLoader:
         try:
             from langchain.llms import Ollama
         except Exception:
-            self.logger.error(
-                "ERROR: Missing ollama libraries. Skipping loading backend LLM."
-            )
+            self.logger.error("Missing ollama libraries. Skipping loading backend LLM.")
             return
         params = {
             "base_url": os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434"),
@@ -201,7 +219,7 @@ class LLMLoader:
             from langchain.llms import HuggingFaceTextGenInference
         except Exception:
             self.logger.error(
-                "ERROR: Missing HuggingFaceTextGenInference libraries. Skipping loading backend LLM."
+                "Missing HuggingFaceTextGenInference libraries. Skipping loading backend LLM."
             )
             return
         params = {
@@ -237,7 +255,7 @@ class LLMLoader:
             )
         except Exception:
             self.logger.error(
-                "ERROR: Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
+                "Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
             )
             return
         # WatsonX uses different keys
