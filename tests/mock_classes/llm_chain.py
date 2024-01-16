@@ -11,7 +11,13 @@ def mock_llm_chain(retval):
 
             from tests.mock_classes.llm_chain import mock_llm_chain
             ml = mock_llm_chain({"text": "default"})
-            monkeypatch.setattr(src.query_helpers.yes_no_classifier, "LLMChain", ml)
+
+            @patch("ols.src.query_helpers.yes_no_classifier.LLMChain", new=ml)
+            def test_xyz():
+
+            or within test function or test method:
+            with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
+                some test steps
 
         """
 
