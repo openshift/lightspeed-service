@@ -1,5 +1,12 @@
 """Constants used in business logic."""
 
+VALID = "VALID"
+INVALID = "INVALID"
+YAML = "YAML"
+NOYAML = "NOYAML"
+SOME_FAILURE = "some failure"
+
+
 # templates
 SUMMARIZATION_TEMPLATE = """
 The following context contains several pieces of documentation. Please summarize the context for the user.

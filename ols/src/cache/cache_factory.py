@@ -1,7 +1,7 @@
 """Cache factory class."""
 
+from ols import constants
 from ols.app.models.config import ConversationCacheConfig
-from ols.src import constants
 from ols.src.cache.cache import Cache
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.src.cache.redis_cache import RedisCache

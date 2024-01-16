@@ -8,7 +8,7 @@ from typing import Optional
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
-from ols.src import constants
+from ols import constants
 from ols.utils import config
 from ols.utils.logger import Logger
 

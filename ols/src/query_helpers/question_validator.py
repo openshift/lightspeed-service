@@ -3,7 +3,7 @@
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from ols.src import constants
+from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
 from ols.utils import config
 from ols.utils.logger import Logger
