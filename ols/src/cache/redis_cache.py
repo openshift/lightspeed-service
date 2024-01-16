@@ -7,7 +7,7 @@ from typing import Union
 import redis
 from dotenv import load_dotenv
 
-from ols.src import constants
+from ols import constants
 from ols.src.cache.cache import Cache
 
 load_dotenv()

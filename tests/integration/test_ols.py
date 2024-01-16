@@ -3,7 +3,7 @@
 import requests
 from fastapi.testclient import TestClient
 
-from ols.app import constants
+from ols import constants
 from ols.app.endpoints import ols
 from ols.app.main import app
 from ols.src.query_helpers.question_validator import QuestionValidator

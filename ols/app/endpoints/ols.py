@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from ols.app import constants
+from ols import constants
 from ols.app.models.models import LLMRequest
 from ols.app.utils import Utils
 from ols.src.docs.docs_summarizer import DocsSummarizer

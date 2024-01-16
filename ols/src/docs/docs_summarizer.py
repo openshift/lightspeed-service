@@ -7,7 +7,7 @@ from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
 
-from ols.src import constants
+from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
 from ols.utils import config
 from ols.utils.logger import Logger

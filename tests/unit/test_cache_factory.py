@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import constants
 from ols.app.models.config import ConversationCacheConfig
-from ols.src import constants
 from ols.src.cache.cache_factory import CacheFactory, InMemoryCache, RedisCache
 from tests.mock_classes.redis import MockRedis
 
