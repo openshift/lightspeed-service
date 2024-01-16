@@ -33,7 +33,10 @@ test-integration: ## Run integration tests tests
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
 
 test-e2e: ## Run e2e tests
-	# Command to run e2e tests goes here
+	@echo "Running e2e tests..."
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	python -m pytest tests/e2e --junit-xml=${ARTIFACT_DIR}/junit_e2e.xml
+		
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html
