@@ -2,7 +2,17 @@
 
 
 class MockRedis:
-    """Mock for StrictRedis client."""
+    """Mock for StrictRedis client.
+
+    Example usage in a test:
+
+        @patch("redis.StrictRedis", new=MockRedis)
+        def test_xyz():
+
+        or within test function or test method:
+        with patch("redis.StrictRedis", new=MockRedis):
+            some test steps
+    """
 
     def __init__(self, **kwargs):
         """Initialize simple dict used instead of Redis storage."""
