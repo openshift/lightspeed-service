@@ -1,3 +1,7 @@
+## Description
+
+<!--- Describe your changes in detail -->
+
 ## Type of change
 
 - [ ] Refactor
@@ -9,10 +13,6 @@
 - [ ] Configuration Update
 - [ ] Bump-up dependent library
 
-## Description
-
-<!--- Describe your changes in detail -->
-
 ## Related Tickets & Documents
 
 - Related Issue #
@@ -21,7 +21,7 @@
 ## Checklist before requesting a review
 
 - [ ] I have performed a self-review of my code.
-- [ ] Unit tests passed locally.
+- [ ] PR has passed all pre-merge test jobs.
 - [ ] If it is a core feature, I have added thorough tests.
 
 ## Testing

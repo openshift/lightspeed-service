@@ -16,20 +16,20 @@ install-deps-test: ## Install all required dependencies needed to test the servi
 	pip install -r requirements-test.txt
 
 run: ## Run the service locally
-	uvicorn app.main:app --reload --port 8080
+	uvicorn ols.app.main:app --reload --port 8080
 
 test: test-unit test-integration test-e2e ## Run all tests
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/unit --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_unit.json --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
+	python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_unit.json --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_unit.json ${ARTIFACT_DIR}/coverage_unit.out
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/integration --cov=app --cov=src --cov=utils --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
+	python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
 
 test-e2e: ## Run e2e tests
@@ -40,6 +40,7 @@ coverage-report:	test-unit ## Export unit test coverage report into interactive 
 
 format: ## Format the code into unified format
 	black .
+	ruff . --fix --per-file-ignores=tests/*:S101
 
 verify: ## Verify the code using various linters
 	black . --check

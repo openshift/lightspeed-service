@@ -1,7 +1,11 @@
+"""Mock for LLMChain to be used in unit tests."""
+
+
 def mock_llm_chain(retval):
+    """Constructs mock for LLMChain."""
+
     class MockLLMChain:
-        """
-        Mock LLMChain class for testing
+        """Mock LLMChain class for testing.
 
         Example usage in a test:
 

@@ -22,10 +22,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR ${APP_ROOT}
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
-COPY app ./app
-COPY utils ./utils
-COPY logs ./logs
-COPY src ./src
+COPY ols ./ols
 COPY ./requirements.txt ./
 
 RUN python3.11 -m venv ${APP_ROOT}/venv \
@@ -38,7 +35,7 @@ RUN python3.11 -m venv ${APP_ROOT}/venv \
     # venv activation script. This is inspired from scl_enable script and prevents \
     # the virtual environment to be activated multiple times and also every time \
     # the prompt is rendered. \
-    && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate \
+    && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate
 
 RUN chown -R 1001:0 ${APP_ROOT} && \
     chmod -R g+rx ${APP_ROOT}
@@ -54,7 +51,7 @@ USER 1001
 
 # Run the application
 EXPOSE 8080
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "ols.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \

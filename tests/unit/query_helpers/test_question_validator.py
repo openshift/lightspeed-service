@@ -1,29 +1,33 @@
+"""Unit tests for QuestionValidator class."""
+
+from unittest.mock import patch
+
 import pytest
 
-import src.query_helpers.question_validator
-from src.query_helpers.question_validator import QuestionValidator
+from ols.src.query_helpers.question_validator import QuestionValidator
+from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
-from utils import config
 
 
 @pytest.fixture
 def question_validator():
+    """Fixture containing constructed and initialized QuestionValidator."""
     config.load_empty_config()
     return QuestionValidator()
 
 
-def test_invalid_response(question_validator, monkeypatch):
+@patch(
+    "ols.src.query_helpers.question_validator.LLMChain",
+    new=mock_llm_chain({"text": "default"}),
+)
+@patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
+def test_invalid_response(question_validator):
+    """Test how invalid responses are handled by QuestionValidator."""
     # response not in the following set should generate a ValueError
     # [INVALID,NOYAML]
     # [VALID,NOYAML]
     # [VALID,YAML]
-
-    ml = mock_llm_chain({"text": "default"})
-    monkeypatch.setattr(src.query_helpers.question_validator, "LLMChain", ml)
-    monkeypatch.setattr(
-        src.query_helpers.question_validator, "LLMLoader", mock_llm_loader()
-    )
 
     with pytest.raises(ValueError):
         question_validator.validate_question(
@@ -31,16 +35,16 @@ def test_invalid_response(question_validator, monkeypatch):
         )
 
 
-def test_valid_responses(question_validator, monkeypatch):
+@patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
+def test_valid_responses(question_validator):
+    """Test how valid responses are handled by QuestionValidator."""
     for retval in ["INVALID,NOYAML", "VALID,NOYAML", "VALID,YAML"]:
+        # basically `@patch` and `with patch():` do the same thing, but the latter
+        # allow us to change the class/method/function behaviour in runtime
         ml = mock_llm_chain({"text": retval})
-        monkeypatch.setattr(src.query_helpers.question_validator, "LLMChain", ml)
-        monkeypatch.setattr(
-            src.query_helpers.question_validator, "LLMLoader", mock_llm_loader()
-        )
+        with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
+            response = question_validator.validate_question(
+                conversation="1234", query="What is the meaning of life?"
+            )
 
-        response = question_validator.validate_question(
-            conversation="1234", query="What is the meaning of life?"
-        )
-
-        assert response == retval.split(",")
+            assert response == retval.split(",")

@@ -1,10 +1,13 @@
 [tool.ruff]
 
-select = ["E", "F", "W", "C", "S", "I", "TCH"]
+select = ["D", "E", "F", "W", "C", "S", "I", "TCH"]
 
-# E501 rule checks for maximum line length
-ignore = ["E501"]
+ignore = []
 
 target-version = "py311"
-line-length = 79
+pydocstyle.convention = "google"
+line-length = 100
 
+[tool.coverage.report]
+# unit tests fails if the total coverage measurement is under this threshold value
+fail_under = 37

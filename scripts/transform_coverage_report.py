@@ -1,14 +1,11 @@
+"""Utility script to convert a Python to GO coverage report."""
+
 import json
 import sys
 
-"""
-Utility script to convert a Python to GO coverage report.
-"""
-
 
 def write_go_coverage_format(file_path, file_data, output_file):
-    """
-    Write coverage information in a format similar to GO test report to a file.
+    """Write coverage information in a format similar to GO test report to a file.
 
     Args:
         file_path (str): Path of the file.
@@ -26,8 +23,7 @@ def write_go_coverage_format(file_path, file_data, output_file):
 
 
 def parse_coverage_json(json_content, output_file):
-    """
-    Parse the content of a Python coverage report in JSON format and write to a file.
+    """Parse the content of a Python coverage report in JSON format and write to a file.
 
     Args:
         json_content (str): The JSON content of the coverage report.

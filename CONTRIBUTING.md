@@ -4,7 +4,9 @@
 
 1. Create your own fork of the repo
 2. Make changes to the code in your fork
-3. Submit PR from your fork to main branch of the project repo
+3. Run unit tests and integration tests
+4. Check the code with linters
+5. Submit PR from your fork to main branch of the project repo
 
 ## Setting up your development environment
 
@@ -12,7 +14,7 @@ The development prefers [Python 3.11](https://docs.python.org/3/whatsnew/3.11.ht
 
 ```bash
 # clone your fork
-git clone https://github.com/williamcaban/lightspeed-service.git
+git clone https://github.com/YOUR-GIT-PROFILE/lightspeed-service.git
 
 # move into the directory
 cd lightspeed-service
@@ -33,16 +35,36 @@ make install-deps
 # install dev/tests dependencies
 make install-deps-test
 
-# code formatting (run this as a pre-commit step for your code changes)
+# run all tests
+make test
+
+# code formatting
+# (this is also run automatically as part of pre-commit hook)
 make format
 
-# code style and docstring style (run this as a pre-commit step for your
-# code changes)
+# code style and docstring style
+# (this is also run automatically as part of pre-commit hook)
 make verify
 
 ```
 
 Happy hacking!
+
+### Pre-commit hook settings
+
+It is possible to run formatters and linters automatically for all commits. You just need
+to copy file `hooks/pre-commit` into subdirectory `.git/hooks/`. It must be done manually
+because the copied file is an executable script (so from GIT point of view it is unsafe
+to enable it automatically).
+
+
+### Code coverage measurement
+
+During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
+
+Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
+
+
 
 ## Updating Dependencies
 
@@ -87,3 +109,24 @@ mypy-extensions==1.0.0
 numpy==1.26.2
 # ...more entries
 ```
+
+## Code style
+
+### Docstrings style
+We are using [Google's docstring style](https://google.github.io/styleguide/pyguide.html).
+
+Here is simple example:
+```python
+def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
+    """Example function with PEP 484 type annotations.
+    
+    Args:
+        param1: The first parameter.
+        param2: The second parameter.
+    
+    Returns:
+        The return value. True for success, False otherwise.
+    """
+```
+
+For further guidance, see the rest of our codebase, or check sources online. There are many, eg. [this one](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e).
