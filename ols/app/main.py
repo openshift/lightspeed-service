@@ -8,7 +8,6 @@ from ols.utils import config
 
 app = FastAPI()
 
-# config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
 config.load_config_from_env()
 if config.ols_config.enable_debug_ui:
     app = gradioUI(logger=config.default_logger).mount_ui(app)

@@ -124,30 +124,3 @@ def load_config_from_env() -> None:
             m.name = model
             oai_provider.models[m.name] = m
         llm_config.providers[oai_provider.name] = oai_provider
-
-
-# def load_config(config_file):
-#     try:
-#         with open(config_file, "r") as f:
-#             data = yaml.safe_load(f)
-#             c=Config(data)
-#     except Exception as e:
-#         print(f"Failed to load config file {config_file}: {str(e)}")
-#         print(traceback.format_exc())
-#         exit(1)
-#     try:
-#         c.validate()
-#     except Exception as e:
-#         print(f"Failed to validate config file {config_file}: {str(e)}")
-#         print(traceback.format_exc())
-#         exit(1)
-#     global config
-#     global default_logger
-#     global feedback_logger
-#     global conversation_cache
-#     config = c
-#     default_logger = Logger(logger_name="default", logfile=c.ols_config.logger_config.default_filename,log_level=c.ols_config.logger_config.default_level).logger
-#     feedback_logger = Logger(logger_name="feedback", logfile=c.ols_config.logger_config.feedback_filename,log_level=c.ols_config.logger_config.feedback_level).logger
-
-#     conversation_cache = CacheFactory.conversation_cache(c.ols_config.conversation_cache)
-#     return c
