@@ -133,7 +133,9 @@ class LLMLoader:
             "frequency_penalty": 1.03,
             "verbose": False,
         }
-        params.update(self.llm_params)  # override parameters
+        # TODO: We need to verify if the overridden params are valid for the LLM
+        # before updating the default.
+        # params.update(self.llm_params)  # override parameters
         self.llm = ChatOpenAI(**params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
 
