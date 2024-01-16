@@ -1,11 +1,15 @@
 """Unit tests for Logger class."""
 
 import logging
+import os
+from unittest.mock import patch
 
 from ols.utils.logger import Logger
 
 
-def test_logger_debug_level(capsys):
+@patch("dotenv.load_dotenv")
+@patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"})
+def test_logger_debug_level(mock_load_dotenv, capsys):
     """Test logger set with log level to DEBUG."""
     logger = Logger(logger_name="foo", log_level=logging.DEBUG)
     logger.logger.debug("Debug message")
@@ -17,7 +21,9 @@ def test_logger_debug_level(capsys):
     assert captured_err == ""
 
 
-def test_logger_info_level(capsys):
+@patch("dotenv.load_dotenv")
+@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
+def test_logger_info_level(mock_load_dotenv, capsys):
     """Test logger set with log level to INFO."""
     logger = Logger(logger_name="foo", log_level=logging.INFO)
     logger.logger.debug("Debug message")
@@ -30,7 +36,9 @@ def test_logger_info_level(capsys):
     assert captured_err == ""
 
 
-def test_logger_show_message_flag(capsys):
+@patch("dotenv.load_dotenv")
+@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
+def test_logger_show_message_flag(mock_load_dotenv, capsys):
     """Test logger set with show_message flag."""
     logger = Logger(logger_name="foo", log_level=logging.INFO, show_message=True)
     logger.logger.debug("Debug message")
