@@ -13,7 +13,7 @@ class YesNoClassifier:
     """This class is responsible for classifying a statement as yes, no, or undetermined."""
 
     def __init__(self) -> None:
-        """Initializes the `YesNoClassifier` instance."""
+        """Initialize the `YesNoClassifier` instance."""
         self.logger = Logger("yes_no_classifier").logger
 
     def classify(self, conversation: str, statement: str, **kwargs) -> int:

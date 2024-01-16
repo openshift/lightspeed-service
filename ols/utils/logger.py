@@ -39,7 +39,7 @@ class Logger:
         log_level: str = logging.getLevelName(logging.INFO),
         show_message: bool = False,
     ):
-        """Initializes the Logger instance.
+        """Initialize the Logger instance.
 
         Args:
           logger_name: The name of the logger instance.
@@ -68,7 +68,7 @@ class Logger:
         self.set_handlers()
 
     def set_handlers(self) -> None:
-        """Sets formatting, handler and logging levels."""
+        """Set formatting, handlers and logging levels."""
         self.logger = logging.getLogger(self.logger_name)
         self.logger.setLevel(self.log_level)
 

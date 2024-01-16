@@ -13,13 +13,13 @@ class YamlGenerator:
     """This class is responsible for generating YAML responses to user requests."""
 
     def __init__(self) -> None:
-        """Initializes the `YamlGenerator` instance."""
+        """Initialize the `YamlGenerator` instance."""
         self.logger = Logger("yaml_generator").logger
 
     def generate_yaml(
         self, conversation_id: str, query: str, history: str | None = None, **kwargs
     ) -> str:
-        """Generates YAML response to a user request.
+        """Generate YAML response to a user request.
 
         Args:
           conversation_id: The identifier for the conversation or task context.
