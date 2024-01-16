@@ -140,8 +140,6 @@ class LoggerConfig(BaseModel):
     """Logger configuration."""
 
     default_level: Optional[int | str] = None
-    default_filename: Optional[str] = None
-    default_size: Optional[int] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -154,8 +152,6 @@ class LoggerConfig(BaseModel):
                 f"invalid log level for default log: {data.get('default_level',None)}"
             )
         self.default_level = level
-        self.default_filename = data.get("default_filename", None)
-        self.default_size = data.get("default_size", (1048576 * 100))
 
 
 class OLSConfig(BaseModel):

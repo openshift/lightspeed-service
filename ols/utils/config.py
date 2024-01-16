@@ -36,11 +36,8 @@ def load_config_from_env() -> None:
     ols_config.logger_config = logger_config
 
     logger_config.default_level = os.getenv("LOG_LEVEL", logging.INFO)
-    logger_config.default_filename = os.getenv("LOG_FILE_NAME", None)
-    logger_config.default_size = int(os.getenv("LOG_FILE_SIZE", (1048576 * 100)))
     default_logger = Logger(
         logger_name="default",
-        logfile=logger_config.default_filename,
         log_level=logger_config.default_level,
     ).logger
 

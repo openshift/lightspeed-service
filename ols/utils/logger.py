@@ -3,7 +3,6 @@
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
 
 import dotenv
 
@@ -23,10 +22,6 @@ class Logger:
         logger.error('Error message')
         logger.critical('Critical message')
 
-        # To disable logging to file set logfile to None
-
-        logger = Logger(logfile=None).logger
-
         # If want to pass the name of the function generating the message
         # you may use the "inspect" library and generate the message as follows
 
@@ -42,7 +37,6 @@ class Logger:
         self,
         logger_name: str = "default",
         log_level: str = logging.getLevelName(logging.INFO),
-        logfile: str | None = None,
         show_message: bool = False,
     ):
         """Initializes the Logger instance.
@@ -50,20 +44,16 @@ class Logger:
         Args:
           logger_name: The name of the logger instance.
           log_level: The logging level for general logging verbosity.
-          logfile: The path to the log file. Set to `None` to disable file logging.
           show_message: Whether to display a message about setting logging levels.
 
         Note:
-        - The default values can be overridden using environment variables `LOG_LEVEL`
-          or `LOG_LEVEL_CONSOLE` and `LOG_LEVEL_FILE`.
-        - To set logfile name set `LOG_FILE_NAME`
-        - To override logfile maximum size set `LOG_FILE_SIZE`
+        - The default values can be overridden using environment variable `LOG_LEVEL`.
         """
         msg = """
-        ############################################################################
-        Set LOG_LEVEL or LOG_LEVEL_CONSOLE and LOG_LEVEL_FILE environment variable (e.g., INFO, DEBUG)
-        to control general logging verbosity or console/file specific logging level
-        ############################################################################
+        #################################################################
+        Set LOG_LEVEL environment variable (e.g., INFO, DEBUG) to control
+        general logging verbosity.
+        #################################################################
         """
         if show_message:
             print(msg)
@@ -74,16 +64,11 @@ class Logger:
         self.logger_name = logger_name
         self.log_level = os.getenv("LOG_LEVEL", log_level)
         self.log_level_console = os.getenv("LOG_LEVEL_CONSOLE", self.log_level)
-        self.log_level_file = os.getenv("LOG_LEVEL_FILE", self.log_level)
-        _logfile = os.getenv("LOG_FILE_NAME")
-        self.logfile = _logfile if _logfile else logfile
-        self.logfile_maxSize = int(os.getenv("LOG_FILE_SIZE", (1048576 * 100)))
-        self.logfile_backupCount = 3
 
         self.set_handlers()
 
     def set_handlers(self) -> None:
-        """Sets formatting, handlers and logging levels."""
+        """Sets formatting, handler and logging levels."""
         self.logger = logging.getLogger(self.logger_name)
         self.logger.setLevel(self.log_level)
 
@@ -98,15 +83,3 @@ class Logger:
         console_handler.setFormatter(formatter)
 
         self.logger.addHandler(console_handler)
-
-        # file logging handler (if not disabled)
-        if self.logfile is not None:
-            file_handler = RotatingFileHandler(
-                self.logfile,
-                maxBytes=self.logfile_maxSize,
-                backupCount=self.logfile_backupCount,
-            )
-            file_handler.setLevel(self.log_level_file)
-            file_handler.setFormatter(formatter)
-
-            self.logger.addHandler(file_handler)
