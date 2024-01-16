@@ -20,7 +20,7 @@ class DocsSummarizer:
         """Initialize the DocsSummarizer."""
         self.logger = Logger("docs_summarizer").logger
 
-    def summarize(self, conversation, query, **kwargs) -> tuple[str, str]:
+    def summarize(self, conversation: str, query: str, **kwargs) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
