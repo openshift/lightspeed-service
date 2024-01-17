@@ -85,7 +85,8 @@ class DocsSummarizer:
                 verbose=verbose,
             )
         except FileNotFoundError as err:
-            self.logger.error("FileNotFoundError error:", err)
+            self.logger.error(f"FileNotFoundError: {err.strerror}, file= {err.filename}")
+            self.logger.info("Initializing empty vector index.")
             index = VectorStoreIndex([])
 
         self.logger.info(f"{conversation} Setting up query engine")
