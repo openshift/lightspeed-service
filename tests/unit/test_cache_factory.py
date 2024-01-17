@@ -13,7 +13,6 @@ from tests.mock_classes.redis import MockRedis
 @pytest.fixture(scope="module")
 def in_memory_cache_config():
     """Fixture containing initialized instance of ConversationCacheConfig."""
-    # os.environ["OLS_CONVERSATION_CACHE"] = constants.IN_MEMORY_CACHE
     return ConversationCacheConfig(
         {
             "type": constants.IN_MEMORY_CACHE,
