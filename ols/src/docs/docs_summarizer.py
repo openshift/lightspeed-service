@@ -6,6 +6,7 @@ import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
+from llama_index import VectorStoreIndex
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
@@ -72,16 +73,20 @@ class DocsSummarizer:
         )
 
         # TODO get this from global config
-        storage_context = StorageContext.from_defaults(
-            persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
-        )
-        self.logger.info(f"{conversation} Setting up index")
-        index = load_index_from_storage(
-            storage_context=storage_context,
-            index_id=constants.PRODUCT_INDEX,
-            service_context=service_context,
-            verbose=verbose,
-        )
+        try:
+            storage_context = StorageContext.from_defaults(
+                persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
+            )
+            self.logger.info(f"{conversation} Setting up index")
+            index = load_index_from_storage(
+                storage_context=storage_context,
+                index_id=constants.PRODUCT_INDEX,
+                service_context=service_context,
+                verbose=verbose,
+            )
+        except FileNotFoundError as err:
+            self.logger.error("FileNotFoundError error:", err)
+            index = VectorStoreIndex([])
 
         self.logger.info(f"{conversation} Setting up query engine")
         query_engine = index.as_query_engine(
