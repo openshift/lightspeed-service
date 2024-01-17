@@ -65,6 +65,60 @@ During testing, code coverage is measured. If the coverage is below defined thre
 Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
 
+## Tips and hints for developing unit tests
+
+### Patching
+
+For patching, for example introducing mock object instead of real object, it is
+possible to use `patch` imported from `unittest.mock`. It is usually used as
+decorator put before test implementation:
+
+```python
+@patch("redis.StrictRedis", new=MockRedis)
+def test_conversation_cache_in_redis(redis_cache_config):
+   ...
+   ...
+   ...
+```
+
+- `new=` allow us to use different function or class
+- `return_value=` allow us to define return value (no mock will be called)
+
+It is also possible to use it inside the test implementation as context manager:
+
+```python
+def test_xyz():
+    ml = mock_llm_chain({"text": retval})
+    with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
+        ...
+        ...
+        ...
+```
+
+### Verifying that some exception is thrown
+
+Sometimes it is needed to test whether some exception is thrown from tested function or method. In this case `pytest.raises` can be used:
+
+
+```python
+def test_conversation_cache_wrong_cache(invalid_cache_type_config):
+    """Check if wrong cache env.variable is detected properly."""
+    with pytest.raises(ValueError):
+        CacheFactory.conversation_cache(invalid_cache_type_config)
+```
+
+It is also possible to check if the exception is thrown with expected message. The message (or its part) is written as regexp:
+
+```python
+def test_constructor_no_provider():
+    """Test that constructor checks for provider."""
+    # we use bare Exception in the code, so need to check
+    # message, at least
+    with pytest.raises(Exception, match="ERROR: Missing provider"):
+        LLMLoader(provider=None)
+```
+
+
 
 ## Updating Dependencies
 
