@@ -41,7 +41,8 @@ class LLMLoader:
 
     Known caveats: Currently supports a single instance/model per backend.
 
-    llm_backends: a string with a supported llm backend name ('openai','ollama','tgi','watson','bam').
+    llm_backends: a string with a supported llm backend name ('openai',
+        'ollama','tgi','watson','bam').
     params      : (optional) array of parameters to override and pass to the llm backend
 
     # using the class and overriding specific parameters
@@ -113,7 +114,10 @@ class LLMLoader:
         provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
         model = provider.models[self.model]
         if model is None:
-            msg = f"No configuration provided for model {self.model} under LLM provider {constants.PROVIDER_OPENAI}"
+            msg = (
+                f"No configuration provided for model {self.model} under "
+                f"LLM provider {constants.PROVIDER_OPENAI}"
+            )
             self.logger.error(msg)
             raise ModelConfigMissingException(msg)
         params = {
@@ -149,14 +153,18 @@ class LLMLoader:
             from genai.schemas import GenerateParams
         except Exception as e:
             self.logger.error(
-                "Missing ibm-generative-ai libraries. ibm-generative-ai provider will be unavailable."
+                "Missing ibm-generative-ai libraries. ibm-generative-ai "
+                "provider will be unavailable."
             )
             raise e
         # BAM Research lab
         provider = config.llm_config.providers[constants.PROVIDER_BAM]
         model = provider.models[self.model]
         if model is None:
-            msg = f"No configuration provided for model {self.model} under LLM provider {constants.PROVIDER_BAM}"
+            msg = (
+                f"No configuration provided for model {self.model} under "
+                f"LLM provider {constants.PROVIDER_BAM}"
+            )
             self.logger.error(msg)
             raise ModelConfigMissingException(msg)
 
@@ -223,7 +231,8 @@ class LLMLoader:
             from langchain.llms import HuggingFaceTextGenInference
         except Exception as e:
             self.logger.error(
-                "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference provider will be unavailable."
+                "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference "
+                "provider will be unavailable."
             )
             raise e
         params = {

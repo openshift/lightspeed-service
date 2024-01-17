@@ -31,7 +31,12 @@ class YesNoClassifier:
         provider = config.ols_config.validator_provider
         verbose = kwargs.get("verbose", "").lower() == "true"
 
-        settings_string = f"conversation: {conversation}, query: {statement}, provider: {provider}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, "
+            f"query: {statement}, "
+            f"provider: {provider}, "
+            f"model: {model}, verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(

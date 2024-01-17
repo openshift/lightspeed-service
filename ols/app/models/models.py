@@ -30,7 +30,12 @@ class FeedbackRequest(BaseModel):
         feedback_object: The JSON blob representing feedback.
 
     Example:
-        feedback_request = FeedbackRequest(conversation_id=123, feedback_object='{"rating": 5, "comment": "Great service!"}')
+        ```python
+        feedback_request = FeedbackRequest(
+            conversation_id=123,
+            feedback_object='{"rating": 5, "comment": "Great service!"}'
+        )
+        ```
     """
 
     conversation_id: int
