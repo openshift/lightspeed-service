@@ -2,6 +2,9 @@
 
 select = ["D", "E", "F", "W", "C", "S", "I", "TCH"]
 
+# we need to check 'mood' of all docstrings, this needs to be enabled explicitly
+extend-select = ["D401"]
+
 ignore = []
 
 target-version = "py311"
