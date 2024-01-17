@@ -34,7 +34,7 @@ def test_yaml_generator_history_enabled(yaml_generator, monkeypatch):
     history_value = "conversation history"
 
     def llmchain_param_check(self, *args, **kwargs):
-        """Modified version of __call__ special method for LLMChain mock."""
+        """Modify __call__ special method for LLMChain mock."""
         assert "inputs" in kwargs, "Missing keyword argument 'input'"
         inputs = kwargs["inputs"]
         assert "history" in inputs, f"Missing attribute 'history' in {inputs}"
@@ -62,7 +62,7 @@ def test_yaml_generator_verbose_enabled(yaml_generator, monkeypatch):
     """Test the basic functionality of YAML generator when verbosity is enabled."""
 
     def llmchain_param_check(self, *args, **kwargs):
-        """Modified version of __init__ special method for LLMChain mock."""
+        """Modify __init__ special method for LLMChain mock."""
         assert "verbose" in kwargs, f"Missing attribute 'verbose' in {kwargs}"
 
     # use mocked LLMChain
