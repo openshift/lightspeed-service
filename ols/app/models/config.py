@@ -131,7 +131,7 @@ class ConversationCacheConfig(BaseModel):
         elif self.type == "in-memory":
             if "in-memory" not in data:
                 raise InvalidConfigurationError("in-memory config is missing")
-            self.memory = MemoryConfig(data.get("memory", None))
+            self.memory = MemoryConfig(data.get("in-memory", None))
 
 
 class LoggerConfig(BaseModel):
