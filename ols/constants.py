@@ -93,40 +93,41 @@ Statement: {statement}
 Response:
 """
 
-QUESTION_VALIDATOR_PROMPT_TEMPLATE = """
+# {{query}} is escaped because it will be replaced as a parameter at time of use
+QUESTION_VALIDATOR_PROMPT_TEMPLATE = f"""
 Instructions:
 - You are a question classifying tool
 - You are an expert in kubernetes and openshift
 - Your job is to determine if a question is about kubernetes or openshift and to provide a one-word response
-- If a question is not about kubernetes or openshift, answer with only the word INVALID
-- If a question is about kubernetes or openshift, answer with the word VALID
-- If a question is not about creating kubernetes or openshift yaml, answer with the word NOYAML
-- If a question is about creating kubernetes or openshift yaml, add the word YAML
+- If a question is not about kubernetes or openshift, answer with only the word {INVALID}
+- If a question is about kubernetes or openshift, answer with the word {VALID}
+- If a question is not about creating kubernetes or openshift yaml, answer with the word {NOYAML}
+- If a question is about creating kubernetes or openshift yaml, add the word {YAML}
 - Use a comma to separate the words
 - Do not provide explanation, only respond with the chosen words
 
 Example Question:
 Can you make me lunch with ham and cheese?
 Example Response:
-INVALID,NOYAML
+{INVALID},{NOYAML}
 
 Example Question:
 Why is the sky blue?
 Example Response:
-INVALID,NOYAML
+{INVALID},{NOYAML}
 
 Example Question:
 Can you help configure my cluster to automatically scale?
 Example Response:
-VALID,NOYAML
+{VALID},{NOYAML}
 
 Example Question:
 please give me a vertical pod autoscaler configuration to manage my frontend deployment automatically.  Don't update the workload if there are less than 2 pods running.
 Example Response:
-VALID,YAML
+{VALID},{YAML}
 
 Question:
-{query}
+{{query}}
 Response:
 """
 
