@@ -105,11 +105,11 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
             from langchain.chat_models import ChatOpenAI
-        except Exception:
+        except Exception as e:
             self.logger.error(
-                "ERROR: Missing openai libraries. Skipping loading backend LLM."
+                "Missing openai libraries. Openai provider will be unavailable."
             )
-            return
+            raise e
         provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
         model = provider.models[self.model]
         if model is None:
@@ -147,11 +147,11 @@ class LLMLoader:
             from genai.credentials import Credentials
             from genai.extensions.langchain import LangChainInterface
             from genai.schemas import GenerateParams
-        except Exception:
+        except Exception as e:
             self.logger.error(
-                "ERROR: Missing ibm-generative-ai libraries. Skipping loading backend LLM."
+                "Missing ibm-generative-ai libraries. ibm-generative-ai provider will be unavailable."
             )
-            return
+            raise e
         # BAM Research lab
         provider = config.llm_config.providers[constants.PROVIDER_BAM]
         model = provider.models[self.model]
@@ -193,9 +193,11 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
         try:
             from langchain.llms import Ollama
-        except Exception:
-            self.logger.error("Missing ollama libraries. Skipping loading backend LLM.")
-            return
+        except Exception as e:
+            self.logger.error(
+                "Missing ollama libraries. ollama provider will be unavailable."
+            )
+            raise e
         params = {
             "base_url": os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434"),
             "model": os.environ.get("OLLAMA_MODEL", "Mistral"),
@@ -219,11 +221,11 @@ class LLMLoader:
         )
         try:
             from langchain.llms import HuggingFaceTextGenInference
-        except Exception:
+        except Exception as e:
             self.logger.error(
-                "Missing HuggingFaceTextGenInference libraries. Skipping loading backend LLM."
+                "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference provider will be unavailable."
             )
-            return
+            raise e
         params = {
             "inference_server_url": os.environ.get("TGI_API_URL", None),
             "model_kwargs": {},  # TODO: add model args
@@ -255,11 +257,11 @@ class LLMLoader:
             from ibm_watson_machine_learning.metanames import (
                 GenTextParamsMetaNames as GenParams,
             )
-        except Exception:
+        except Exception as e:
             self.logger.error(
                 "Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
             )
-            return
+            raise e
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
