@@ -1,8 +1,9 @@
 """Data models representing payloads for REST API calls."""
 
 from typing import Union
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LLMRequest(BaseModel):
@@ -10,7 +11,7 @@ class LLMRequest(BaseModel):
 
     Attributes:
         query: The query string.
-        conversation_id: The optional conversation ID.
+        conversation_id: The optional conversation id in valid UUID format.
         response: The optional response.
 
     Example:
@@ -18,7 +19,7 @@ class LLMRequest(BaseModel):
     """
 
     query: str
-    conversation_id: Union[str, None] = None
+    conversation_id: UUID = Field(default_factory=uuid4)
     response: Union[str, None] = None
 
 

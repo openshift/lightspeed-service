@@ -27,16 +27,15 @@ def ols_request(llm_request: LLMRequest) -> LLMRequest:
     logger = config.default_logger
 
     # Initialize variables
-    previous_input = None
-    conversation = llm_request.conversation_id
+    conversation = str(llm_request.conversation_id)
+    previous_input = config.conversation_cache.get(conversation)
 
-    # Generate a new conversation ID if not provided
-    if conversation is None:
-        conversation = Utils.get_suid()
-        logger.info(f"{conversation} New conversation")
+    if previous_input:
+        logger.info(
+            f"conversation {conversation} with previous conversation input {previous_input}"
+        )
     else:
-        previous_input = config.conversation_cache.get(conversation)
-        logger.info(f"{conversation} Previous conversation input: {previous_input}")
+        logger.info(f"new conversation {conversation}")
 
     llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation)
 
