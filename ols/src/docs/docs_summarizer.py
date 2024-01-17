@@ -43,7 +43,13 @@ class DocsSummarizer:
         if verbose:
             llama_index.set_global_handler("simple")
 
-        settings_string = f"conversation: {conversation}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, "
+            f"query: {query}, "
+            f"provider: {provider}, "
+            f"model: {model}, "
+            f"verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)

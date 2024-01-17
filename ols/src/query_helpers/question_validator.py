@@ -32,7 +32,13 @@ class QuestionValidator:
         model = config.ols_config.validator_model
         provider = config.ols_config.validator_provider
 
-        settings_string = f"conversation: {conversation}, query: {query}, provider: {provider}, model: {model}, verbose: {verbose}"
+        settings_string = (
+            f"conversation: {conversation}, "
+            f"query: {query}, "
+            f"provider: {provider}, "
+            f"model: {model}, "
+            f"verbose: {verbose}"
+        )
         self.logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(

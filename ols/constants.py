@@ -1,3 +1,6 @@
+# there is no need for enforcing line length in this file as those are
+# mostly special purpose constants
+# ruff: noqa: E501
 """Constants used in business logic."""
 
 VALID = "VALID"
