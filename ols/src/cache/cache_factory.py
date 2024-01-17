@@ -17,11 +17,12 @@ class CacheFactory:
         Returns:
             An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
         """
-        if config.type == constants.REDIS_CACHE:
-            return RedisCache()
-        elif config.type == constants.IN_MEMORY_CACHE:
-            return InMemoryCache(config.memory.max_entries)
-        else:
-            raise ValueError(
-                f"Invalid cache type: {config.type}. Use 'redis' or 'in-memory' options."
-            )
+        match config.type:
+            case constants.REDIS_CACHE:
+                return RedisCache()
+            case constants.IN_MEMORY_CACHE:
+                return InMemoryCache(config.memory.max_entries)
+            case _:
+                raise ValueError(
+                    f"Invalid cache type: {config.type}. Use 'redis' or 'in-memory' options."
+                )
