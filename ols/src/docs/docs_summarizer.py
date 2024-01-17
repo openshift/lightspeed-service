@@ -6,7 +6,6 @@ import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
-from llama_index import VectorStoreIndex
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
@@ -84,30 +83,34 @@ class DocsSummarizer:
                 service_context=service_context,
                 verbose=verbose,
             )
+            self.logger.info(f"{conversation} Setting up query engine")
+            query_engine = index.as_query_engine(
+                text_qa_template=summarization_template,
+                verbose=verbose,
+                streaming=False,
+                similarity_top_k=1,
+            )
+
+            self.logger.info(f"{conversation} Submitting summarization query")
+            summary = query_engine.query(query)
+
+            referenced_documents = "\n".join(
+                [
+                    source_node.node.metadata["file_name"]
+                    for source_node in summary.source_nodes
+                ]
+            )
         except FileNotFoundError as err:
             self.logger.error(f"FileNotFoundError: {err.strerror}, file= {err.filename}")
-            self.logger.info("Initializing empty vector index.")
-            index = VectorStoreIndex([])
+            self.logger.info("Using llm to answer the query without RAG content")
+           
+            response = bare_llm.invoke(query)
+            summary = f""" The following response was generated without access to RAG content:
 
-        self.logger.info(f"{conversation} Setting up query engine")
-        query_engine = index.as_query_engine(
-            text_qa_template=summarization_template,
-            verbose=verbose,
-            streaming=False,
-            similarity_top_k=1,
-        )
-
-        self.logger.info(f"{conversation} Submitting summarization query")
-        summary = query_engine.query(query)
-
-        referenced_documents = "\n".join(
-            [
-                source_node.node.metadata["file_name"]
-                for source_node in summary.source_nodes
-            ]
-        )
-
+                        {response.content}
+                      """
+            referenced_documents = ""
+        
         self.logger.info(f"{conversation} Summary response: {summary!s}")
         self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
-
         return str(summary), referenced_documents
