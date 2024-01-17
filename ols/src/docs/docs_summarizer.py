@@ -101,16 +101,19 @@ class DocsSummarizer:
                 ]
             )
         except FileNotFoundError as err:
-            self.logger.error(f"FileNotFoundError: {err.strerror}, file= {err.filename}")
+            self.logger.error(
+                f"FileNotFoundError: {err.strerror}, file= {err.filename}"
+            )
             self.logger.info("Using llm to answer the query without RAG content")
-           
+
             response = bare_llm.invoke(query)
             summary = f""" The following response was generated without access to RAG content:
 
                         {response.content}
                       """
             referenced_documents = ""
-        
+
         self.logger.info(f"{conversation} Summary response: {summary!s}")
         self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
+
         return str(summary), referenced_documents
