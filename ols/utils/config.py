@@ -44,7 +44,7 @@ def load_config_from_env() -> None:
     ).logger
 
     ols_config.enable_debug_ui = (
-        True if os.getenv("ENABLE_DEV_UI", "False").lower() == "true" else False
+        os.getenv("OLS_ENABLE_DEV_UI", "False").lower() == "true"
     )
 
     ols_config.default_provider = os.getenv("DEFAULT_PROVIDER", constants.PROVIDER_BAM)
