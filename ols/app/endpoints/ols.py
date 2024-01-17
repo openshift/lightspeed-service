@@ -1,6 +1,8 @@
 """Handlers for all OLS-related REST API endpoints."""
 
 from fastapi import APIRouter, HTTPException, status
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.app.models.models import LLMRequest
@@ -143,11 +145,12 @@ def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
         config.ols_config.default_provider,
         config.ols_config.default_model,
     ).llm
-    response = bare_llm(llm_request.query)
 
-    # TODO: Make the removal of endoftext some kind of function
-    clean_response = response.split("<|endoftext|>")[0]
-    llm_response.response = clean_response
+    prompt = PromptTemplate.from_template("{query}")
+    llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
+    response = llm_chain(inputs={"query": llm_request.query})
+
+    llm_response.response = response
 
     config.default_logger.info(
         f"{conversation} Model returned: {llm_response.response}"

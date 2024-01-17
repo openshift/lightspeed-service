@@ -1,12 +1,14 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+from unittest.mock import patch
+
 import requests
 from fastapi.testclient import TestClient
 
 from ols import constants
-from ols.app.endpoints import ols
 from ols.app.main import app
 from ols.src.query_helpers.question_validator import QuestionValidator
+from tests.mock_classes.llm_chain import mock_llm_chain
 
 client = TestClient(app)
 
@@ -45,19 +47,10 @@ def test_status() -> None:
     }
 
 
+# the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain("test response"))
 def test_raw_prompt(monkeypatch) -> None:
     """Check the REST API /ols/raw_prompt with POST HTTP method when expected payload is posted."""
-    # the raw prompt should just return stuff from LangChainInterface, so mock that base method
-    # model_context is what imports LangChainInterface, so we have to mock that particular usage/"instance"
-    # of it in our tests
-
-    from tests.mock_classes.langchain_interface import mock_langchain_interface
-    from tests.mock_classes.llm_loader import mock_llm_loader
-
-    ml = mock_langchain_interface("test response")
-
-    monkeypatch.setattr(ols, "LLMLoader", mock_llm_loader(ml()))
-
     response = client.post(
         "/ols/raw_prompt", json={"conversation_id": "1234", "query": "test query"}
     )
