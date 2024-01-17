@@ -9,6 +9,7 @@ from ols import constants
 from ols.app.main import app
 from ols.src.query_helpers.question_validator import QuestionValidator
 from tests.mock_classes.llm_chain import mock_llm_chain
+from tests.mock_classes.llm_loader import mock_llm_loader
 
 client = TestClient(app)
 
@@ -49,7 +50,9 @@ def test_status() -> None:
 
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain("test response"))
-def test_raw_prompt(monkeypatch) -> None:
+# during LLM init, exceptins will occur on CI, so let's mock that too
+@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+def test_raw_prompt() -> None:
     """Check the REST API /ols/raw_prompt with POST HTTP method when expected payload is posted."""
     response = client.post(
         "/ols/raw_prompt", json={"conversation_id": "1234", "query": "test query"}
