@@ -16,6 +16,14 @@ from ols.src.llms.llm_loader import (
 from ols.utils import config
 
 
+def setup():
+    """Provide environment for tests."""
+    # this function is called automatically by Pytest tool
+    # before unit tests are started
+    config.load_empty_config()
+    config.llm_config = LLMConfig()
+
+
 def test_constructor_no_provider():
     """Test that constructor checks for provider."""
     with pytest.raises(MissingProvider, match="Missing provider"):
@@ -48,8 +56,6 @@ llm_cfgs = [
 @pytest.mark.parametrize("provider, model", llm_cfgs)
 def test_constructor_correct_provider_no_models(provider, model):
     """Test if model setup is check for given provider."""
-    config.load_empty_config()
-    config.llm_config = LLMConfig()
     providerConfig = ProviderConfig()
     providerConfig.models = {model: None}
     config.llm_config.providers = {provider: providerConfig}
@@ -73,8 +79,6 @@ llm_providers = [
 @pytest.mark.parametrize("provider", llm_providers)
 def test_constructor_unsatisfied_requirements(provider):
     """Test how unsatisfied requirements are handled by LLM loader."""
-    config.load_empty_config()
-    config.llm_config = LLMConfig()
     providerConfig = ProviderConfig()
     providerConfig.models = {constants.GRANITE_13B_CHAT_V1: None}
     config.llm_config.providers = {provider: providerConfig}
