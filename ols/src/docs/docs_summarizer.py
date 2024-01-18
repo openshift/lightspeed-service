@@ -57,7 +57,7 @@ class DocsSummarizer:
         self.logger.info(f"{conversation} Getting service context")
         self.logger.info(f"{conversation} using model: {model}")
 
-        embed_model = "local:BAAI/bge-base-en"
+        embed_model: str | TextEmbeddingsInference = "local:BAAI/bge-base-en"
         # TODO get this from global config instead of env
         # Not a priority because embedding model probably won't be configurable in the final product
         tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
