@@ -82,6 +82,17 @@ During testing, code coverage is measured. If the coverage is below defined thre
 Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
 
+### Type hints checks
+
+It is possible to check if type hints added into the code are correct and whether assignments, function calls etc. use values of the right type. This check is invoked by following command:
+
+```
+make check-types
+```
+
+Please note that type hints check might be very slow.
+
+
 
 ## Testing
 
