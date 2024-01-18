@@ -28,6 +28,10 @@ class UnsupportedProvider(Exception):
     """Provider is not supported or is unknown."""
 
 
+class UnsupportedModelError(Exception):
+    """Model is not supported by provider or is unknown."""
+
+
 class ModelConfigMissingException(Exception):
     """No configuration exists for the requested model name."""
 
@@ -112,14 +116,14 @@ class LLMLoader:
             )
             raise e
         provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
-        model = provider.models[self.model]
+        model = provider.models.get(self.model)
         if model is None:
             msg = (
                 f"No configuration provided for model {self.model} under "
                 f"LLM provider {constants.PROVIDER_OPENAI}"
             )
             self.logger.error(msg)
-            raise ModelConfigMissingException(msg)
+            raise UnsupportedModelError(msg)
         params = {
             "base_url": provider.url
             if provider.url is not None
