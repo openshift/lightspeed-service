@@ -1,6 +1,8 @@
 """Unit tests for LLMLoader class."""
 
-from unittest.mock import patch
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,6 +25,21 @@ def setup():
     config.load_empty_config()
     config.llm_config = LLMConfig()
 
+    # the following modules should not be loaded during unit testing
+    # (these are not available on CI anyway)
+    mock_modules = [
+        "genai.credentials",
+        "genai.extensions.langchain",
+        "genai.schemas",
+        "langchain.llms",
+        "ibm_watson_machine_learning.foundation_models",
+        "ibm_watson_machine_learning.foundation_models.extensions.langchain",
+        "ibm_watson_machine_learning.metanames",
+    ]
+    # make Python think that the modules are loaded already
+    for module in mock_modules:
+        sys.modules[module] = MagicMock()
+
 
 def test_constructor_no_provider():
     """Test that constructor checks for provider."""
@@ -44,12 +61,12 @@ def test_constructor_wrong_provider():
 
 llm_cfgs = [
     [constants.PROVIDER_OPENAI, constants.GRANITE_13B_CHAT_V1],
+    [constants.PROVIDER_BAM, constants.GRANITE_13B_CHAT_V1],
     # following providers has no checks for params provided
     # TODO: update the code itself
     # [constants.PROVIDER_OLLAMA, constants.GRANITE_13B_CHAT_V1],
     # [constants.PROVIDER_WATSONX, constants.GRANITE_13B_CHAT_V1],
     # [constants.PROVIDER_TGI, constants.GRANITE_13B_CHAT_V1],
-    # [constants.PROVIDER_BAM, constants.GRANITE_13B_CHAT_V1],
 ]
 
 
@@ -91,3 +108,29 @@ def test_constructor_unsatisfied_requirements(provider):
     with patch("builtins.__import__", side_effect=mock_import):
         with pytest.raises(Exception):
             LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)
+
+
+def _prepare_openapi_config():
+    providerConfig = ProviderConfig()
+    providerConfig.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
+    config.llm_config.providers = {constants.PROVIDER_OPENAI: providerConfig}
+
+
+def test_constructor_openai_llm_instance_no_api_key():
+    """Test the construction fo LLM instance for OpenAI when API key is not provided."""
+    _prepare_openapi_config()
+
+    # no API key is provided so validation should fail
+    with pytest.raises(Exception, match="Did not find openai_api_key"):
+        LLMLoader(
+            provider=constants.PROVIDER_OPENAI, model=constants.GRANITE_13B_CHAT_V1
+        )
+
+
+@patch.dict(os.environ, {"OPENAI_API_KEY": "key"})
+def test_constructor_openai_llm_instance_provided_api_key():
+    """Test the construction fo LLM instance for OpenAI when API key is provided."""
+    _prepare_openapi_config()
+
+    # API key is provided so validation must not fail
+    LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GRANITE_13B_CHAT_V1)
