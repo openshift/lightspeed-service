@@ -83,6 +83,34 @@ Code coverage reports are generated in JSON and also in format compatible with _
 
 
 
+## Testing
+
+Three group of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:
+
+1. Unit Tests
+1. Integration Tests
+1. End to End tests (e2e)
+
+Unit tests followed by integration tests can be started by using the following command:
+
+```
+make tests
+```
+
+It is also possible to run just one selected group of tests:
+
+```
+test-unit                 Run the unit tests
+test-integration          Run integration tests tests
+test-e2e                  Run end to end tests
+```
+
+All tests are based on [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
+
+As specified in Definition of Done, new changes needs to be covered by tests.
+
+
+
 ## Tips and hints for developing unit tests
 
 ### Patching
