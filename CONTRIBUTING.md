@@ -82,6 +82,7 @@ During testing, code coverage is measured. If the coverage is below defined thre
 Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
 
+
 ## Tips and hints for developing unit tests
 
 ### Patching
@@ -133,6 +134,41 @@ def test_constructor_no_provider():
     # message, at least
     with pytest.raises(Exception, match="ERROR: Missing provider"):
         LLMLoader(provider=None)
+```
+
+### Checking what was printed and logged to stdout or stderr by the tested code
+
+It is possible to capture stdour and stderr by using standard fixture `capsys`:
+
+```python
+def test_foobar(capsys):
+    """Test the foobar function that prints to stdout."""
+    foobar("argument1", "argument2")
+
+    # check captured log output
+    captured_out = capsys.readouterr().out
+    assert captured_out == "Output printed by foobar function"
+    captured_err = capsys.readouterr().err
+    assert captured_err == ""
+```
+
+Capturing logs:
+
+```python
+@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
+def test_logger_show_message_flag(mock_load_dotenv, capsys):
+    """Test logger set with show_message flag."""
+    logger = Logger(logger_name="foo", log_level=logging.INFO, show_message=True)
+    logger.logger.info("This is my debug message")
+
+    # check captured log output
+    # the log message should be captured
+    captured_out = capsys.readouterr().out
+    assert "This is my debug message" in captured_out
+
+    # error output should be empty
+    captured_err = capsys.readouterr().err
+    assert captured_err == ""
 ```
 
 
