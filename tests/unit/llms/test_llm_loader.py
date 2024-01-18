@@ -9,9 +9,11 @@ import pytest
 from ols import constants
 from ols.app.models.config import LLMConfig, ProviderConfig
 from ols.src.llms.llm_loader import (
+    LLMConfigurationError,
     LLMLoader,
     MissingModelError,
     MissingProviderError,
+    ModelConfigInvalidError,
     ModelConfigMissingError,
     UnsupportedProviderError,
 )
@@ -39,6 +41,15 @@ def setup():
     # make Python think that the modules are loaded already
     for module in mock_modules:
         sys.modules[module] = MagicMock()
+
+
+def test_errors_relationship():
+    """Test the relationship between LLMConfigurationError and its subclasses."""
+    assert issubclass(MissingProviderError, LLMConfigurationError)
+    assert issubclass(MissingModelError, LLMConfigurationError)
+    assert issubclass(UnsupportedProviderError, LLMConfigurationError)
+    assert issubclass(ModelConfigMissingError, LLMConfigurationError)
+    assert issubclass(ModelConfigInvalidError, LLMConfigurationError)
 
 
 def test_constructor_no_provider():

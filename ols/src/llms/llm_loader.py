@@ -17,23 +17,27 @@ from ols.utils.logger import Logger
 warnings.simplefilter("ignore", UserWarning)
 
 
-class MissingProviderError(Exception):
+class LLMConfigurationError(Exception):
+    """LLM configuration is wrong."""
+
+
+class MissingProviderError(LLMConfigurationError):
     """Provider is not specified."""
 
 
-class MissingModelError(Exception):
+class MissingModelError(LLMConfigurationError):
     """Model is not specified."""
 
 
-class UnsupportedProviderError(Exception):
+class UnsupportedProviderError(LLMConfigurationError):
     """Provider is not supported or is unknown."""
 
 
-class ModelConfigMissingError(Exception):
+class ModelConfigMissingError(LLMConfigurationError):
     """No configuration exists for the requested model name."""
 
 
-class ModelConfigInvalidError(Exception):
+class ModelConfigInvalidError(LLMConfigurationError):
     """Model configuration is not valid."""
 
 
