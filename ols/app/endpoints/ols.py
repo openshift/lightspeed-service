@@ -13,10 +13,10 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config
 
-router = APIRouter(prefix="/ols", tags=["ols"])
+router = APIRouter(tags=["query"])
 
 
-@router.post("")
+@router.post("/query")
 def ols_request(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the OLS endpoint.
 
@@ -119,8 +119,7 @@ def ols_request(llm_request: LLMRequest) -> LLMRequest:
     )
 
 
-@router.post("/raw_prompt")
-@router.post("/base_llm_completion")
+@router.post("/debug/query")
 def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the base LLM completion endpoint.
 
@@ -142,8 +141,7 @@ def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
     config.default_logger.info(f"{conversation} Incoming request: {llm_request.query}")
 
     bare_llm = LLMLoader(
-        config.ols_config.default_provider,
-        config.ols_config.default_model,
+        config.ols_config.default_provider, config.ols_config.default_model,
     ).llm
 
     prompt = PromptTemplate.from_template("{query}")

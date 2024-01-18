@@ -20,6 +20,17 @@ class LLMRequest(BaseModel):
     query: str
     conversation_id: Union[str, None] = None
     response: Union[str, None] = None
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "query": "write a deployment yaml for the mongodb image",
+                    "conversation_id": "",
+                    "response": "",
+                }
+            ]
+        }
+    }
 
 
 class FeedbackRequest(BaseModel):
@@ -40,3 +51,14 @@ class FeedbackRequest(BaseModel):
 
     conversation_id: int
     feedback_object: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "feedback_object": '{"rating": 5, "comment": "Great service!"}',
+                    "conversation_id": "1234",
+                }
+            ]
+        }
+    }
