@@ -17,23 +17,23 @@ from ols.utils.logger import Logger
 warnings.simplefilter("ignore", UserWarning)
 
 
-class MissingProvider(Exception):
+class MissingProviderError(Exception):
     """Provider is not specified."""
 
 
-class MissingModel(Exception):
+class MissingModelError(Exception):
     """Model is not specified."""
 
 
-class UnsupportedProvider(Exception):
+class UnsupportedProviderError(Exception):
     """Provider is not supported or is unknown."""
 
 
-class ModelConfigMissingException(Exception):
+class ModelConfigMissingError(Exception):
     """No configuration exists for the requested model name."""
 
 
-class ModelConfigInvalidException(Exception):
+class ModelConfigInvalidError(Exception):
     """Model configuration is not valid."""
 
 
@@ -68,13 +68,13 @@ class LLMLoader:
         if provider is None:
             msg = "Missing provider"
             self.logger.error(msg)
-            raise MissingProvider(msg)
+            raise MissingProviderError(msg)
         self.provider = provider
         self.url = url
         if model is None:
             msg = "Missing model"
             self.logger.error(msg)
-            raise MissingModel(msg)
+            raise MissingModelError(msg)
         self.model = model
 
         # return empty dictionary if not defined
@@ -100,7 +100,7 @@ class LLMLoader:
             case _:
                 msg = f"Unsupported LLM provider {self.provider}"
                 self.logger.error(msg)
-                raise UnsupportedProvider(msg)
+                raise UnsupportedProviderError(msg)
 
     def _openai_llm_instance(self) -> LLM:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
@@ -119,7 +119,7 @@ class LLMLoader:
                 f"LLM provider {constants.PROVIDER_OPENAI}"
             )
             self.logger.error(msg)
-            raise ModelConfigMissingException(msg)
+            raise ModelConfigMissingError(msg)
         params: dict = {
             "base_url": provider.url
             if provider.url is not None
@@ -167,7 +167,7 @@ class LLMLoader:
                 f"LLM provider {constants.PROVIDER_BAM}"
             )
             self.logger.error(msg)
-            raise ModelConfigMissingException(msg)
+            raise ModelConfigMissingError(msg)
 
         creds = Credentials(
             api_key=provider.credentials,
