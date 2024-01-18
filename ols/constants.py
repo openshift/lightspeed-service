@@ -180,7 +180,7 @@ SUMMARY_INDEX = "summary"
 SUMMARY_DOCS_PERSIST_DIR = "./vector-db/summary-docs"
 
 # cache constants
-IN_MEMORY_CACHE = "in-memory"
+IN_MEMORY_CACHE = "memory"
 IN_MEMORY_CACHE_MAX_ENTRIES = 1000
 REDIS_CACHE = "redis"
 REDIS_CACHE_HOST = "redis-stack.ols.svc"

@@ -257,13 +257,13 @@ def test_conversation_cache_config():
     """Test the ConversationCacheConfig model."""
     conversation_cache_config = ConversationCacheConfig(
         {
-            "type": "in-memory",
-            "in-memory": {
+            "type": "memory",
+            "memory": {
                 "max_entries": 100,
             },
         }
     )
-    assert conversation_cache_config.type == "in-memory"
+    assert conversation_cache_config.type == "memory"
     assert conversation_cache_config.memory.max_entries == 100
 
     conversation_cache_config = ConversationCacheConfig(
@@ -293,8 +293,8 @@ def test_conversation_cache_config():
     assert "redis config is missing" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
-        ConversationCacheConfig({"type": "in-memory"})
-    assert "in-memory config is missing" in str(excinfo.value)
+        ConversationCacheConfig({"type": "memory"})
+    assert "memory config is missing" in str(excinfo.value)
 
 
 def test_ols_config():
@@ -313,8 +313,8 @@ def test_ols_config():
             "yaml_model": "test_yaml_model",
             "ols_enable_dev_ui": True,
             "conversation_cache": {
-                "type": "in-memory",
-                "in-memory": {
+                "type": "memory",
+                "memory": {
                     "max_entries": 100,
                 },
             },
@@ -334,7 +334,7 @@ def test_ols_config():
     assert ols_config.yaml_provider == "test_yaml_provider"
     assert ols_config.yaml_model == "test_yaml_model"
     assert ols_config.enable_debug_ui is True
-    assert ols_config.conversation_cache.type == "in-memory"
+    assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logger_config.default_level == logging.INFO
 
@@ -370,8 +370,8 @@ def test_config():
                 "yaml_model": "test_yaml_model",
                 "ols_enable_dev_ui": True,
                 "conversation_cache": {
-                    "type": "in-memory",
-                    "in-memory": {
+                    "type": "memory",
+                    "memory": {
                         "max_entries": 100,
                     },
                 },
@@ -417,7 +417,7 @@ def test_config():
     assert config.ols_config.yaml_provider == "test_yaml_provider"
     assert config.ols_config.yaml_model == "test_yaml_model"
     assert config.ols_config.enable_debug_ui is True
-    assert config.ols_config.conversation_cache.type == "in-memory"
+    assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logger_config.default_level == logging.INFO
 
