@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 
 from ols import constants
 from ols.app.main import app
-from ols.src.query_helpers.question_validator import QuestionValidator
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -84,48 +83,37 @@ def test_post_question_on_unexpected_payload() -> None:
     }
 
 
-def test_post_question_on_invalid_question(monkeypatch) -> None:
+def test_post_question_on_invalid_question() -> None:
     """Check the REST API /ols/ with POST HTTP method for invalid question."""
-
-    def dummy_validator(
-        self, conversation: str, query: str, verbose: bool = False
-    ) -> list[str]:
-        return constants.INVALID, "anything"
-
     # let's pretend the question is invalid without even asking LLM
-    monkeypatch.setattr(QuestionValidator, "validate_question", dummy_validator)
-
-    response = client.post(
-        "/ols/", json={"conversation_id": "1234", "query": "test query"}
-    )
-    print(response)
-    assert response.status_code == requests.codes.unprocessable
-    assert response.json() == {
-        "detail": {
-            "response": "Sorry, I can only answer questions about OpenShift "
-            "and Kubernetes. This does not look like something I "
-            "know how to handle."
+    answer = (constants.INVALID, "anything")
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        response = client.post(
+            "/ols/", json={"conversation_id": "1234", "query": "test query"}
+        )
+        assert response.status_code == requests.codes.unprocessable
+        assert response.json() == {
+            "detail": {
+                "response": "Sorry, I can only answer questions about OpenShift "
+                "and Kubernetes. This does not look like something I "
+                "know how to handle."
+            }
         }
-    }
 
 
-def test_post_question_on_unknown_response_type(monkeypatch) -> None:
+def test_post_question_on_unknown_response_type() -> None:
     """Check the REST API /ols/ with POST HTTP method when unknown response type is returned."""
-
-    def dummy_validator(
-        self, conversation: str, query: str, verbose: bool = False
-    ) -> list[str]:
-        return constants.VALID, constants.SOME_FAILURE
-
-    # let's pretend the question is valid without even asking LLM
-    # but the question type is unknown
-    monkeypatch.setattr(QuestionValidator, "validate_question", dummy_validator)
-
-    response = client.post(
-        "/ols/", json={"conversation_id": "1234", "query": "test query"}
-    )
-    print(response)
-    assert response.status_code == requests.codes.internal_server_error
-    assert response.json() == {
-        "detail": {"response": "Internal server error. Please try again."}
-    }
+    # let's pretend the question is valid, but there's an error, without even asking LLM
+    answer = (constants.VALID, constants.SOME_FAILURE)
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        response = client.post(
+            "/ols/", json={"conversation_id": "1234", "query": "test query"}
+        )
+        assert response.status_code == requests.codes.internal_server_error
+        assert response.json() == {
+            "detail": {"response": "Internal server error. Please try again."}
+        }
