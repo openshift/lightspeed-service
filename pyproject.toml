@@ -14,3 +14,7 @@ line-length = 100
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
 fail_under = 50
+
+[tool.mypy]
+disable_error_code = ["union-attr", "return-value", "arg-type"]
+ignore_missing_imports = true

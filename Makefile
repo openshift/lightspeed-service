@@ -38,6 +38,9 @@ test-e2e: ## Run e2e tests
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html
 
+check-types: ## Checks type hints in sources
+	mypy ols/
+
 format: ## Format the code into unified format
 	black .
 	ruff . --fix --per-file-ignores=tests/*:S101
