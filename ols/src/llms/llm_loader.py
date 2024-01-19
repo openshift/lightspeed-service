@@ -83,7 +83,7 @@ class LLMLoader:
         self.llm_params = params if params else {}
         self.llm: LLM = self._llm_instance()
 
-    def _llm_instance(self):
+    def _llm_instance(self) -> LLM:
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Loading LLM {self.model} from {self.provider}"
         )
@@ -104,7 +104,7 @@ class LLMLoader:
                 self.logger.error(msg)
                 raise UnsupportedProvider(msg)
 
-    def _openai_llm_instance(self):
+    def _openai_llm_instance(self) -> LLM:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
             from langchain.chat_models import ChatOpenAI
@@ -146,7 +146,7 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
         return llm
 
-    def _bam_llm_instance(self):
+    def _bam_llm_instance(self) -> LLM:
         """BAM Research Lab."""
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
@@ -199,7 +199,7 @@ class LLMLoader:
         return llm
 
     # TODO: update this to use config not direct env vars
-    def _ollama_llm_instance(self):
+    def _ollama_llm_instance(self) -> LLM:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
         try:
             from langchain.llms import Ollama
@@ -225,7 +225,7 @@ class LLMLoader:
         return llm
 
     # TODO: update this to use config not direct env vars
-    def _tgi_llm_instance(self):
+    def _tgi_llm_instance(self) -> LLM:
         """Note: TGI does not support specifying the model, it is an instance per model."""
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Creating Hugging Face TGI LLM instance"
@@ -259,7 +259,7 @@ class LLMLoader:
         return llm
 
     # TODO: update this to use config not direct env vars
-    def _watson_llm_instance(self):
+    def _watson_llm_instance(self) -> LLM:
         self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)
         try:
