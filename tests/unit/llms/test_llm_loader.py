@@ -116,6 +116,7 @@ def _prepare_openapi_config():
     config.llm_config.providers = {constants.PROVIDER_OPENAI: providerConfig}
 
 
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})
 def test_constructor_openai_llm_instance_no_api_key():
     """Test the construction fo LLM instance for OpenAI when API key is not provided."""
     _prepare_openapi_config()
