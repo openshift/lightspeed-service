@@ -3,17 +3,15 @@
 import inspect
 import os
 import warnings
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.llms.base import LLM
 
 from ols import constants
 from ols.utils import config
 from ols.utils.logger import Logger
-
-if TYPE_CHECKING:
-    from langchain.llms.base import LLM
 
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)
