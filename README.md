@@ -63,7 +63,7 @@ uvicorn ols.app.main:app --reload --port 8080
 
 To send a request to the server you can use the following curl command:
 ```sh
-curl -X 'POST' 'http://127.0.0.1:8080/ols' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
+curl -X 'POST' 'http://127.0.0.1:8080/v1/query' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
 ```
 
 ### Gradio UI
@@ -71,6 +71,11 @@ curl -X 'POST' 'http://127.0.0.1:8080/ols' -H 'accept: application/json' -H 'Con
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, first start the OLS server per [Run the server](#run-the-server) and then browse to the built in Gradio interface at http://localhost:8080/ui
 
 By default this interface will ask the OLS server to retain and use your conversation history for subsequent interactions.  To disable this behavior, expand the `Additional Inputs` configuration at the bottom of the page and uncheck the `Use history` checkbox.  When not using history each message you submit to OLS will be treated independently with no context of previous interactions.
+
+###  Swagger UI
+
+OLS API documentation is available at http://localhost:8080/docs
+
 
 ### Deploying OLS on OpenShift
 
