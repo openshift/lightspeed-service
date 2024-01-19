@@ -3,7 +3,7 @@
 import inspect
 import os
 import warnings
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -11,6 +11,9 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from ols import constants
 from ols.utils import config
 from ols.utils.logger import Logger
+
+if TYPE_CHECKING:
+    from langchain.llms.base import LLM
 
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)
@@ -78,25 +81,24 @@ class LLMLoader:
 
         # return empty dictionary if not defined
         self.llm_params = params if params else {}
-        self.llm = None
-        self._set_llm_instance()
+        self.llm: LLM = self._llm_instance()
 
-    def _set_llm_instance(self):
+    def _llm_instance(self):
         self.logger.debug(
             f"[{inspect.stack()[0][3]}] Loading LLM {self.model} from {self.provider}"
         )
         # convert to string to handle None or False definitions
         match str(self.provider).lower():
             case constants.PROVIDER_OPENAI:
-                self._openai_llm_instance()
+                return self._openai_llm_instance()
             case constants.PROVIDER_OLLAMA:
-                self._ollama_llm_instance()
+                return self._ollama_llm_instance()
             case constants.PROVIDER_TGI:
-                self._tgi_llm_instance()
+                return self._tgi_llm_instance()
             case constants.PROVIDER_WATSONX:
-                self._watson_llm_instance()
+                return self._watson_llm_instance()
             case constants.PROVIDER_BAM:
-                self._bam_llm_instance()
+                return self._bam_llm_instance()
             case _:
                 msg = f"Unsupported LLM provider {self.provider}"
                 self.logger.error(msg)
@@ -140,8 +142,9 @@ class LLMLoader:
         # TODO: We need to verify if the overridden params are valid for the LLM
         # before updating the default.
         # params.update(self.llm_params)  # override parameters
-        self.llm = ChatOpenAI(**params)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {self.llm}")
+        llm = ChatOpenAI(**params)
+        self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
+        return llm
 
     def _bam_llm_instance(self):
         """BAM Research Lab."""
@@ -191,10 +194,9 @@ class LLMLoader:
             _ = bam_params.pop(k, None)
         params = GenerateParams(**bam_params)
 
-        self.llm = LangChainInterface(
-            model=self.model, params=params, credentials=creds
-        )
-        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {self.llm}")
+        llm = LangChainInterface(model=self.model, params=params, credentials=creds)
+        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
+        return llm
 
     # TODO: update this to use config not direct env vars
     def _ollama_llm_instance(self):
@@ -218,8 +220,9 @@ class LLMLoader:
             "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
         }
         params.update(self.llm_params)  # override parameters
-        self.llm = Ollama(**params)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {self.llm}")
+        llm = Ollama(**params)
+        self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {llm}")
+        return llm
 
     # TODO: update this to use config not direct env vars
     def _tgi_llm_instance(self):
@@ -249,10 +252,11 @@ class LLMLoader:
             "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
         }
         params.update(self.llm_params)  # override parameters
-        self.llm = HuggingFaceTextGenInference(**params)
+        llm = HuggingFaceTextGenInference(**params)
         self.logger.debug(
-            f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {self.llm}"
+            f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {llm}"
         )
+        return llm
 
     # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self):
@@ -306,8 +310,9 @@ class LLMLoader:
                 "project_id", os.environ.get("WATSON_PROJECT_ID", None)
             ),
         )
-        self.llm = WatsonxLLM(model=llm_model)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {self.llm}")
+        llm = WatsonxLLM(model=llm_model)
+        self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")
+        return llm
 
     def status(self):
         """Provide LLM schema as a string containing formatted and indented JSON."""
