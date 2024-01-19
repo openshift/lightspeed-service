@@ -120,7 +120,7 @@ class LLMLoader:
             )
             self.logger.error(msg)
             raise ModelConfigMissingException(msg)
-        params = {
+        params: dict = {
             "base_url": provider.url
             if provider.url is not None
             else "https://api.openai.com/v1",
@@ -236,7 +236,7 @@ class LLMLoader:
                 "provider will be unavailable."
             )
             raise e
-        params = {
+        params: dict = {
             "inference_server_url": os.environ.get("TGI_API_URL", None),
             "model_kwargs": {},  # TODO: add model args
             "max_new_tokens": 512,
