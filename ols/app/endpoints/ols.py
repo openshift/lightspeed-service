@@ -17,8 +17,8 @@ router = APIRouter(tags=["query"])
 
 
 @router.post("/query")
-def ols_request(llm_request: LLMRequest) -> LLMRequest:
-    """Handle requests for the OLS endpoint.
+def conversation_request(llm_request: LLMRequest) -> LLMRequest:
+    """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The request containing a query and conversation ID.
@@ -120,7 +120,7 @@ def ols_request(llm_request: LLMRequest) -> LLMRequest:
 
 
 @router.post("/debug/query")
-def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
+def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the base LLM completion endpoint.
 
     Args:
@@ -141,7 +141,8 @@ def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
     config.default_logger.info(f"{conversation} Incoming request: {llm_request.query}")
 
     bare_llm = LLMLoader(
-        config.ols_config.default_provider, config.ols_config.default_model,
+        config.ols_config.default_provider,
+        config.ols_config.default_model,
     ).llm
 
     prompt = PromptTemplate.from_template("{query}")

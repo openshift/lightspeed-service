@@ -1,12 +1,17 @@
 """Entry point to FastAPI-based web service."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
-from ols.app.endpoints import feedback, ols, health
+from ols.app.endpoints import feedback, health, ols
 from ols.src.ui.gradio_ui import gradioUI
 from ols.utils import config
 
-app = FastAPI()
+app = FastAPI(
+    title="Swagger OpenShift LightSpeed Service - OpenAPI",
+    description="""
+              OpenShift LightSpeed Service API specification.
+                  """,
+)
 
 # config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
 config.load_config_from_env()
