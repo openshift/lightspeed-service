@@ -9,9 +9,7 @@ from ols import constants
 
 
 class InvalidConfigurationError(Exception):
-    """Exception raised when configuration is invalid."""
-
-    pass
+    """OLS Configuration is invalid."""
 
 
 class ModelConfig(BaseModel):
