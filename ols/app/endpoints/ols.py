@@ -13,12 +13,12 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config
 
-router = APIRouter(prefix="/ols", tags=["ols"])
+router = APIRouter(tags=["query"])
 
 
-@router.post("")
-def ols_request(llm_request: LLMRequest) -> LLMRequest:
-    """Handle requests for the OLS endpoint.
+@router.post("/query")
+def conversation_request(llm_request: LLMRequest) -> LLMRequest:
+    """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The request containing a query and conversation ID.
@@ -119,9 +119,8 @@ def ols_request(llm_request: LLMRequest) -> LLMRequest:
     )
 
 
-@router.post("/raw_prompt")
-@router.post("/base_llm_completion")
-def base_llm_completion(llm_request: LLMRequest) -> LLMRequest:
+@router.post("/debug/query")
+def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     """Handle requests for the base LLM completion endpoint.
 
     Args:

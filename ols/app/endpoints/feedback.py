@@ -9,7 +9,7 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
 @router.post("")
-def feedback_request(feedback_request: FeedbackRequest) -> dict:
+def user_feedback(feedback_request: FeedbackRequest) -> dict:
     """Handle feedback requests.
 
     Args:

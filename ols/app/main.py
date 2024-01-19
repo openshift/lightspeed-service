@@ -1,12 +1,17 @@
 """Entry point to FastAPI-based web service."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
-from ols.app.endpoints import feedback, ols
+from ols.app.endpoints import feedback, health, ols
 from ols.src.ui.gradio_ui import gradioUI
 from ols.utils import config
 
-app = FastAPI()
+app = FastAPI(
+    title="Swagger OpenShift LightSpeed Service - OpenAPI",
+    description="""
+              OpenShift LightSpeed Service API specification.
+                  """,
+)
 
 # config = load_config(os.environ.get("OLS_CONFIG_FILE","olsconfig.yaml"))
 config.load_config_from_env()
@@ -24,26 +29,9 @@ def include_routers(app: FastAPI):
     Args:
         app: The `FastAPI` app instance.
     """
-    app.include_router(ols.router)
-    app.include_router(feedback.router)
+    app.include_router(ols.router, prefix="/v1")
+    app.include_router(feedback.router, prefix="/v1")
+    app.include_router(health.router)
 
 
 include_routers(app)
-
-
-# TODO
-# Still to be decided on their functionality
-@app.get("/healthz")
-@app.get("/readyz")
-def read_root():
-    """Health status of service."""
-    return {"status": "1"}
-
-
-# TODO
-# Still to be decided on their functionality
-@app.get("/")
-@app.get("/status")
-def root(request: Request):
-    """TODO: In the future should respond."""
-    return {"message": "This is the default endpoint for OLS", "status": "running"}
