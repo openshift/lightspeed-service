@@ -86,9 +86,9 @@ def test_constructor_correct_provider_no_models(provider, model):
 # all LLM providers that can be initialized
 llm_providers = [
     constants.PROVIDER_OPENAI,
-    constants.PROVIDER_OLLAMA,
+    # constants.PROVIDER_OLLAMA,
     constants.PROVIDER_WATSONX,
-    constants.PROVIDER_TGI,
+    # constants.PROVIDER_TGI,
     constants.PROVIDER_BAM,
 ]
 

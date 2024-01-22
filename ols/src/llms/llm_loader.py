@@ -5,8 +5,8 @@ import os
 import warnings
 from typing import Optional
 
-from langchain.callbacks.manager import CallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+# from langchain.callbacks.manager import CallbackManager
+# from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.llms.base import LLM
 
 from ols import constants
@@ -42,12 +42,11 @@ class LLMLoader:
 
     Known caveats: Currently supports a single instance/model per backend.
 
-    llm_backends: a string with a supported llm backend name ('openai',
-        'ollama','tgi','watson','bam').
+    llm_backends: a string with a supported llm backend name ('openai', 'watson', 'bam').
     params      : (optional) array of parameters to override and pass to the llm backend
 
     # using the class and overriding specific parameters
-    llm_backend = 'ollama'
+    llm_backend = 'openai'
     params = {'temperature': 0.02, 'top_p': 0.95}
 
     llm_config = LLMLoader(llm_backend=llm_backend, params=params)
@@ -89,10 +88,10 @@ class LLMLoader:
         match str(self.provider).lower():
             case constants.PROVIDER_OPENAI:
                 return self._openai_llm_instance()
-            case constants.PROVIDER_OLLAMA:
-                return self._ollama_llm_instance()
-            case constants.PROVIDER_TGI:
-                return self._tgi_llm_instance()
+            # case constants.PROVIDER_OLLAMA:
+            #     return self._ollama_llm_instance()
+            # case constants.PROVIDER_TGI:
+            #     return self._tgi_llm_instance()
             case constants.PROVIDER_WATSONX:
                 return self._watson_llm_instance()
             case constants.PROVIDER_BAM:
@@ -196,65 +195,65 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
         return llm
 
-    # TODO: update this to use config not direct env vars
-    def _ollama_llm_instance(self) -> LLM:
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
-        try:
-            from langchain.llms import Ollama
-        except Exception as e:
-            self.logger.error(
-                "Missing ollama libraries. ollama provider will be unavailable."
-            )
-            raise e
-        params = {
-            "base_url": os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434"),
-            "model": os.environ.get("OLLAMA_MODEL", "Mistral"),
-            "cache": None,
-            "temperature": 0.01,
-            "top_k": 10,
-            "top_p": 0.95,
-            "repeat_penalty": 1.03,
-            "verbose": False,
-            "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
-        }
-        params.update(self.llm_params)  # override parameters
-        llm = Ollama(**params)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {llm}")
-        return llm
+    # # TODO: refactor after OLS-233
+    # def _ollama_llm_instance(self) -> LLM:
+    #     self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
+    #     try:
+    #         from langchain.llms import Ollama
+    #     except Exception as e:
+    #         self.logger.error(
+    #             "Missing ollama libraries. ollama provider will be unavailable."
+    #         )
+    #         raise e
+    #     params = {
+    #         "base_url": os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434"),
+    #         "model": os.environ.get("OLLAMA_MODEL", "Mistral"),
+    #         "cache": None,
+    #         "temperature": 0.01,
+    #         "top_k": 10,
+    #         "top_p": 0.95,
+    #         "repeat_penalty": 1.03,
+    #         "verbose": False,
+    #         "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
+    #     }
+    #     params.update(self.llm_params)  # override parameters
+    #     llm = Ollama(**params)
+    #     self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {llm}")
+    #     return llm
 
-    # TODO: update this to use config not direct env vars
-    def _tgi_llm_instance(self) -> LLM:
-        """Note: TGI does not support specifying the model, it is an instance per model."""
-        self.logger.debug(
-            f"[{inspect.stack()[0][3]}] Creating Hugging Face TGI LLM instance"
-        )
-        try:
-            from langchain.llms import HuggingFaceTextGenInference
-        except Exception as e:
-            self.logger.error(
-                "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference "
-                "provider will be unavailable."
-            )
-            raise e
-        params: dict = {
-            "inference_server_url": os.environ.get("TGI_API_URL", None),
-            "model_kwargs": {},  # TODO: add model args
-            "max_new_tokens": 512,
-            "cache": None,
-            "temperature": 0.01,
-            "top_k": 10,
-            "top_p": 0.95,
-            "repetition_penalty": 1.03,
-            "streaming": True,
-            "verbose": False,
-            "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
-        }
-        params.update(self.llm_params)  # override parameters
-        llm = HuggingFaceTextGenInference(**params)
-        self.logger.debug(
-            f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {llm}"
-        )
-        return llm
+    # # TODO: update this to use config not direct env vars
+    # def _tgi_llm_instance(self) -> LLM:
+    #     """Note: TGI does not support specifying the model, it is an instance per model."""
+    #     self.logger.debug(
+    #         f"[{inspect.stack()[0][3]}] Creating Hugging Face TGI LLM instance"
+    #     )
+    #     try:
+    #         from langchain.llms import HuggingFaceTextGenInference
+    #     except Exception as e:
+    #         self.logger.error(
+    #             "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference "
+    #             "provider will be unavailable."
+    #         )
+    #         raise e
+    #     params: dict = {
+    #         "inference_server_url": os.environ.get("TGI_API_URL", None),
+    #         "model_kwargs": {},  # TODO: add model args
+    #         "max_new_tokens": 512,
+    #         "cache": None,
+    #         "temperature": 0.01,
+    #         "top_k": 10,
+    #         "top_p": 0.95,
+    #         "repetition_penalty": 1.03,
+    #         "streaming": True,
+    #         "verbose": False,
+    #         "callback_manager": CallbackManager([StreamingStdOutCallbackHandler()]),
+    #     }
+    #     params.update(self.llm_params)  # override parameters
+    #     llm = HuggingFaceTextGenInference(**params)
+    #     self.logger.debug(
+    #         f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {llm}"
+    #     )
+    #     return llm
 
     # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self) -> LLM:

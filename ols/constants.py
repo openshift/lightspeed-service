@@ -157,8 +157,8 @@ User Request: {query}
 PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
 PROVIDER_WATSONX = "watsonx"
-PROVIDER_TGI = "tgi"
-PROVIDER_OLLAMA = "ollama"
+# PROVIDER_TGI = "tgi"
+# PROVIDER_OLLAMA = "ollama"
 
 # models
 # embedding
