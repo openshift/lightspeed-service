@@ -124,14 +124,14 @@ class ConversationCacheConfig(BaseModel):
         if data is None:
             return
         self.type = data.get("type", None)
-        if self.type == "redis":
-            if "redis" not in data:
+        if self.type == constants.REDIS_CACHE:
+            if constants.REDIS_CACHE not in data:
                 raise InvalidConfigurationError("redis config is missing")
-            self.redis = RedisConfig(data["redis"])
-        elif self.type == "in-memory":
-            if "in-memory" not in data:
-                raise InvalidConfigurationError("in-memory config is missing")
-            self.memory = MemoryConfig(data.get("memory", None))
+            self.redis = RedisConfig(data[constants.REDIS_CACHE])
+        elif self.type == constants.IN_MEMORY_CACHE:
+            if constants.IN_MEMORY_CACHE not in data:
+                raise InvalidConfigurationError("memory config is missing")
+            self.memory = MemoryConfig(data.get(constants.IN_MEMORY_CACHE, None))
 
 
 class LoggerConfig(BaseModel):
