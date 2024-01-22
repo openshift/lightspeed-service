@@ -63,6 +63,10 @@ class RedisCache(Cache):
         Args:
             key: The key for the value.
             value: The value to set.
+
+        Raises:
+            OutOfMemoryError: If item is evicted when Redis allocated
+                memory is higher than maxmemory.
         """
         oldValue = self.get(key)
         with self._lock:
