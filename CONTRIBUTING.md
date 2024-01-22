@@ -272,6 +272,9 @@ def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
     
     Returns:
         The return value. True for success, False otherwise.
+    
+    Raises:
+        ValueError: If the first parameter does not contain proper model name
     """
 ```
 
