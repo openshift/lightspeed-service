@@ -1,6 +1,8 @@
-pytest
+black
 httpx
+mypy
+pytest
 pytest-cov
 ruff
-black
-mypy
+types-requests
+

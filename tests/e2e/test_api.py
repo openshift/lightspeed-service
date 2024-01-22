@@ -33,7 +33,7 @@ def test_raw_prompt() -> None:
     assert r.status_code == requests.codes.ok
     assert response["conversation_id"] == "1234"
     assert response["query"] == "say hello"
-    assert "hello" in response["response"]["text"].lower()
+    assert "hello" in response["response"].lower()
 
 
 def test_invalid_question() -> None:

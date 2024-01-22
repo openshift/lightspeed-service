@@ -149,10 +149,8 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
     response = llm_chain(inputs={"query": llm_request.query})
 
-    llm_response.response = response
+    config.default_logger.info(f"{conversation} Model returned: {response}")
 
-    config.default_logger.info(
-        f"{conversation} Model returned: {llm_response.response}"
-    )
+    llm_response.response = response["text"]
 
     return llm_response
