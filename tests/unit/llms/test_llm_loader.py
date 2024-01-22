@@ -28,9 +28,9 @@ def setup():
     # the following modules should not be loaded during unit testing
     # (these are not available on CI anyway)
     mock_modules = [
-        "genai.credentials",
+        "genai",
         "genai.extensions.langchain",
-        "genai.schemas",
+        "genai.text.generation",
         "langchain.llms",
         "ibm_watson_machine_learning.foundation_models",
         "ibm_watson_machine_learning.foundation_models.extensions.langchain",
