@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "dependency"
+      include: "scope"
+    pull-request:
+      body: |
+        This pull request updates the following dependencies:\n
+        {{this.name}} ({{this.from}} → {{this.to}})\n{{/each}}
+        \nThis is an automated update by Dependabot.
+        Please review the changes and approve if appropriate.
