@@ -148,9 +148,9 @@ class LLMLoader:
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
             # BAM Research lab
-            from genai.credentials import Credentials
+            from genai import Client, Credentials
             from genai.extensions.langchain import LangChainInterface
-            from genai.schemas import GenerateParams
+            from genai.text.generation import TextGenerationParameters
         except Exception as e:
             self.logger.error(
                 "Missing ibm-generative-ai libraries. ibm-generative-ai "
@@ -189,9 +189,11 @@ class LLMLoader:
         # remove none BAM params from dictionary
         for k in ["model", "api_key", "api_endpoint"]:
             _ = bam_params.pop(k, None)
-        params = GenerateParams(**bam_params)
 
-        llm = LangChainInterface(model=self.model, params=params, credentials=creds)
+        client = Client(credentials=creds)
+        params = TextGenerationParameters(**bam_params)
+
+        llm = LangChainInterface(client=client, model_id=self.model, parameters=params)
         self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
         return llm
 
