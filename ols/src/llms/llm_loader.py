@@ -58,7 +58,6 @@ class LLMLoader:
         self,
         provider: Optional[str] = None,
         model: Optional[str] = None,
-        url: Optional[str] = None,
         params: Optional[dict] = None,
         logger=None,
     ) -> None:
@@ -69,7 +68,6 @@ class LLMLoader:
             self.logger.error(msg)
             raise MissingProvider(msg)
         self.provider = provider
-        self.url = url
         if model is None:
             msg = "Missing model"
             self.logger.error(msg)
