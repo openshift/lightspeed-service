@@ -46,6 +46,10 @@ make format
 # (this is also run automatically as part of pre-commit hook)
 make verify
 
+# check type hints
+# (this is also run automatically as part of pre-commit hook)
+make check-types
+
 ```
 
 Happy hacking!
@@ -91,6 +95,7 @@ make check-types
 ```
 
 Please note that type hints check might be very slow on the first run. Subsequent runs are much faster thanks to cache that Mypy uses.
+This check is part of CI job that verifies sources.
 
 
 
