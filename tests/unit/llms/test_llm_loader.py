@@ -74,9 +74,9 @@ def test_constructor_when_missing_model():
     """Test raise when no model is provided."""
     test_provider = "test-provider"
     test_model = "test-model"
-    providerConfig = ProviderConfig()
-    providerConfig.models = {}  # no models configured
-    config.llm_config.providers = {test_provider: providerConfig}
+    provider_config = ProviderConfig()
+    provider_config.models = {}  # no models configured
+    config.llm_config.providers = {test_provider: provider_config}
     message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
     # ModelConfigMissingException instead of KeyError is raised
     with pytest.raises(ModelConfigMissingError, match=message):
@@ -87,11 +87,11 @@ def test_constructor_when_missing_model_config():
     """Test raise when model configuration is missing."""
     test_provider = "test-provider"
     test_model = "test-model"
-    providerConfig = ProviderConfig()
-    providerConfig.models = {
+    provider_config = ProviderConfig()
+    provider_config.models = {
         test_model: None
     }  # model configured but no config provided
-    config.llm_config.providers = {test_provider: providerConfig}
+    config.llm_config.providers = {test_provider: provider_config}
     message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
     with pytest.raises(ModelConfigMissingError, match=message):
         LLMLoader(provider=test_provider, model=test_model)
@@ -110,9 +110,9 @@ llm_providers = [
 @pytest.mark.parametrize("provider", llm_providers)
 def test_constructor_unsatisfied_requirements(provider):
     """Test how unsatisfied requirements are handled by LLM loader."""
-    providerConfig = ProviderConfig()
-    providerConfig.models = {constants.GRANITE_13B_CHAT_V1: None}
-    config.llm_config.providers = {provider: providerConfig}
+    provider_config = ProviderConfig()
+    provider_config.models = {constants.GRANITE_13B_CHAT_V1: None}
+    config.llm_config.providers = {provider: provider_config}
 
     def mock_import(module, *args, **kwargs):
         """Mock the import and from x import statements."""
@@ -125,9 +125,9 @@ def test_constructor_unsatisfied_requirements(provider):
 
 
 def _prepare_openapi_config():
-    providerConfig = ProviderConfig()
-    providerConfig.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
-    config.llm_config.providers = {constants.PROVIDER_OPENAI: providerConfig}
+    provider_config = ProviderConfig()
+    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
+    config.llm_config.providers = {constants.PROVIDER_OPENAI: provider_config}
 
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": ""})
