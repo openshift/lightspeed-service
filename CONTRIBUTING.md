@@ -57,8 +57,8 @@ Happy hacking!
 
 * Code is complete, commented, and merged to the relevant release branch
 * User facing documentation written (where relevant)
-* Acceptance criteria in the related Jira ticket(where applicable) are verified and fulfilled
-* Pull request title+commit includes JIRA number
+* Acceptance criteria in the related Jira ticket (where applicable) are verified and fulfilled
+* Pull request title+commit includes Jira number
 * Changes are covered by unit tests that run cleanly in the CI environment (where relevant)
 * Changes are covered by integration tests that run cleanly in the CI environment (where relevant)
 * Changes are covered by E2E tests that run cleanly in the CI environment (where relevant)
@@ -90,7 +90,7 @@ It is possible to check if type hints added into the code are correct and whethe
 make check-types
 ```
 
-Please note that type hints check might be very slow.
+Please note that type hints check might be very slow on the first run. Subsequent runs are much faster thanks to cache that Mypy uses.
 
 
 
