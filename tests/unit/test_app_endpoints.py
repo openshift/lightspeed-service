@@ -109,7 +109,7 @@ def fake_llm_chain_call(self, **kwargs):
     return f"response to: {query}"
 
 
-@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain("llm response"))
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_conversation_request_debug_api(load_config):
     """Test conversation request debug API endpoint."""

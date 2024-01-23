@@ -1,6 +1,5 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Union
 
 from pydantic import BaseModel
 
@@ -18,8 +17,8 @@ class LLMRequest(BaseModel):
     """
 
     query: str
-    conversation_id: Union[str, None] = None
-    response: Union[str, None] = None
+    conversation_id: str | None = None
+    response: str | None = None
     model_config = {
         "json_schema_extra": {
             "examples": [

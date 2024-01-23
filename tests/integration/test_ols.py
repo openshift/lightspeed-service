@@ -28,7 +28,7 @@ def test_readiness() -> None:
 
 
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
-@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain("test response"))
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptins will occur on CI, so let's mock that too
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_debug_query() -> None:
