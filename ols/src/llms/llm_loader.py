@@ -10,6 +10,7 @@ from typing import Optional
 from langchain.llms.base import LLM
 
 from ols import constants
+from ols.app.models.config import ProviderConfig
 from ols.utils import config
 from ols.utils.logger import Logger
 
@@ -77,10 +78,27 @@ class LLMLoader:
             self.logger.error(msg)
             raise MissingModelError(msg)
         self.model = model
+        self.provider_config = self._get_provider_config()
 
         # return empty dictionary if not defined
-        self.llm_params = params if params else {}
+        self.llm_params = params or {}
         self.llm: LLM = self._llm_instance()
+
+    # TODO: refactor after config implementation OLS-89
+    def _get_provider_config(self) -> ProviderConfig:
+        cfg = config.llm_config.providers.get(self.provider)
+        if not cfg:
+            raise UnsupportedProviderError()
+
+        model = cfg.models.get(self.model)
+        if not model:
+            msg = (
+                f"No configuration provided for model {self.model} under "
+                f"LLM provider {self.provider}"
+            )
+            self.logger.error(msg)
+            raise ModelConfigMissingError(msg)
+        return cfg
 
     def _llm_instance(self) -> LLM:
         self.logger.debug(
@@ -112,20 +130,11 @@ class LLMLoader:
                 "Missing openai libraries. Openai provider will be unavailable."
             )
             raise e
-        provider = config.llm_config.providers[constants.PROVIDER_OPENAI]
-        model = provider.models[self.model]
-        if model is None:
-            msg = (
-                f"No configuration provided for model {self.model} under "
-                f"LLM provider {constants.PROVIDER_OPENAI}"
-            )
-            self.logger.error(msg)
-            raise ModelConfigMissingError(msg)
         params: dict = {
-            "base_url": provider.url
-            if provider.url is not None
+            "base_url": self.provider_config.url
+            if self.provider_config.url is not None
             else "https://api.openai.com/v1",
-            "api_key": provider.credentials,
+            "api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
             "organization": os.environ.get("OPENAI_ORGANIZATION", None),
@@ -160,20 +169,10 @@ class LLMLoader:
             )
             raise e
         # BAM Research lab
-        provider = config.llm_config.providers[constants.PROVIDER_BAM]
-        model = provider.models[self.model]
-        if model is None:
-            msg = (
-                f"No configuration provided for model {self.model} under "
-                f"LLM provider {constants.PROVIDER_BAM}"
-            )
-            self.logger.error(msg)
-            raise ModelConfigMissingError(msg)
-
         creds = Credentials(
-            api_key=provider.credentials,
-            api_endpoint=provider.url
-            if provider.url is not None
+            api_key=self.provider_config.credentials,
+            api_endpoint=self.provider_config.url
+            if self.provider_config.url is not None
             else "https://bam-api.res.ibm.com",
         )
 
