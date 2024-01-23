@@ -70,28 +70,31 @@ def test_constructor_wrong_provider():
         LLMLoader(provider="invalid-provider", model=constants.GRANITE_13B_CHAT_V1)
 
 
-llm_cfgs = [
-    [constants.PROVIDER_OPENAI, constants.GRANITE_13B_CHAT_V1],
-    [constants.PROVIDER_BAM, constants.GRANITE_13B_CHAT_V1],
-    # following providers has no checks for params provided
-    # TODO: update the code itself
-    # [constants.PROVIDER_OLLAMA, constants.GRANITE_13B_CHAT_V1],
-    # [constants.PROVIDER_WATSONX, constants.GRANITE_13B_CHAT_V1],
-    # [constants.PROVIDER_TGI, constants.GRANITE_13B_CHAT_V1],
-]
-
-
-@pytest.mark.parametrize("provider, model", llm_cfgs)
-def test_constructor_correct_provider_no_models(provider, model):
-    """Test if model setup is check for given provider."""
+def test_constructor_when_missing_model():
+    """Test raise when no model is provided."""
+    test_provider = "test-provider"
+    test_model = "test-model"
     providerConfig = ProviderConfig()
-    providerConfig.models = {model: None}
-    config.llm_config.providers = {provider: providerConfig}
-    message = (
-        f"No configuration provided for model {model} under LLM provider {provider}"
-    )
+    providerConfig.models = {}  # no models configured
+    config.llm_config.providers = {test_provider: providerConfig}
+    message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
+    # ModelConfigMissingException instead of KeyError is raised
     with pytest.raises(ModelConfigMissingError, match=message):
-        LLMLoader(provider=provider, model=model)
+        LLMLoader(provider=test_provider, model=test_model)
+
+
+def test_constructor_when_missing_model_config():
+    """Test raise when model configuration is missing."""
+    test_provider = "test-provider"
+    test_model = "test-model"
+    providerConfig = ProviderConfig()
+    providerConfig.models = {
+        test_model: None
+    }  # model configured but no config provided
+    config.llm_config.providers = {test_provider: providerConfig}
+    message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
+    with pytest.raises(ModelConfigMissingError, match=message):
+        LLMLoader(provider=test_provider, model=test_model)
 
 
 # all LLM providers that can be initialized
