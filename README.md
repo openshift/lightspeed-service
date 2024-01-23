@@ -37,17 +37,27 @@ _Below is an example of how you can instruct your audience on installing and set
    * Login with your IBM W3 Id credentials.
    * Copy the API Key from the Documentation section.
      ![BAM API Key](docs/bam_api_key.png)
-2. BAM URL: https://bam.res.ibm.com
+2. BAM URL: https://bam-api.res.ibm.com
 3. Clone the repo
    ```sh
-   git clone <project gti>
+   git clone <project git>
+   cd lightspeed-service
    ```
 4. Install python packages
    ```sh
    pip install -r requirements.txt
    ```
 5. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
-
+6. Configure vector index store.
+   * Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
+   * Create vector index directory
+      ```sh
+       mkdir -p vector-db/ocp-product-docs
+      ```
+   * Unzip local.zip in vector-db/ocp-product-docs directory
+     ```sh
+     unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
+     ```
 <!-- USAGE EXAMPLES -->
 ## Usage
 

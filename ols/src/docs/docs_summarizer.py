@@ -78,34 +78,46 @@ class DocsSummarizer:
         )
 
         # TODO get this from global config
-        storage_context = StorageContext.from_defaults(
-            persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
-        )
-        self.logger.info(f"{conversation} Setting up index")
-        index = load_index_from_storage(
-            storage_context=storage_context,
-            index_id=constants.PRODUCT_INDEX,
-            service_context=service_context,
-            verbose=verbose,
-        )
+        try:
+            storage_context = StorageContext.from_defaults(
+                persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
+            )
+            self.logger.info(f"{conversation} Setting up index")
+            index = load_index_from_storage(
+                storage_context=storage_context,
+                index_id=constants.PRODUCT_INDEX,
+                service_context=service_context,
+                verbose=verbose,
+            )
+            self.logger.info(f"{conversation} Setting up query engine")
+            query_engine = index.as_query_engine(
+                text_qa_template=summarization_template,
+                verbose=verbose,
+                streaming=False,
+                similarity_top_k=1,
+            )
 
-        self.logger.info(f"{conversation} Setting up query engine")
-        query_engine = index.as_query_engine(
-            text_qa_template=summarization_template,
-            verbose=verbose,
-            streaming=False,
-            similarity_top_k=1,
-        )
+            self.logger.info(f"{conversation} Submitting summarization query")
+            summary = query_engine.query(query)
 
-        self.logger.info(f"{conversation} Submitting summarization query")
-        summary = query_engine.query(query)
+            referenced_documents = "\n".join(
+                [
+                    source_node.node.metadata["file_name"]
+                    for source_node in summary.source_nodes
+                ]
+            )
+        except FileNotFoundError as err:
+            self.logger.error(
+                f"FileNotFoundError: {err.strerror}, file= {err.filename}"
+            )
+            self.logger.info("Using llm to answer the query without RAG content")
 
-        referenced_documents = "\n".join(
-            [
-                source_node.node.metadata["file_name"]
-                for source_node in summary.source_nodes
-            ]
-        )
+            response = bare_llm.invoke(query)
+            summary = f""" The following response was generated without access to RAG content:
+
+                        {response.content}
+                      """
+            referenced_documents = ""
 
         self.logger.info(f"{conversation} Summary response: {summary!s}")
         self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
