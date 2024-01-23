@@ -9,3 +9,6 @@ echo "Code formatting step passed"
 
 make verify
 echo "Code verification and linting passed"
+
+make check-types
+echo "Type hints verification passed"
