@@ -16,5 +16,5 @@ line-length = 100
 fail_under = 50
 
 [tool.mypy]
-disable_error_code = ["union-attr", "return-value", "arg-type", "misc", "call-arg"]
+disable_error_code = ["union-attr", "return-value", "arg-type", "misc", "call-arg", "import-untyped"]
 ignore_missing_imports = true
