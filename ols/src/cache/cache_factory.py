@@ -24,5 +24,5 @@ class CacheFactory:
                 return InMemoryCache(config.memory.max_entries)
             case _:
                 raise ValueError(
-                    f"Invalid cache type: {config.type}. Use 'redis' or 'in-memory' options."
+                    f"Invalid cache type: {config.type}. Use 'redis' or 'memory' options."
                 )
