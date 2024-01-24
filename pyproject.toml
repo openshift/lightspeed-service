@@ -1,5 +1,6 @@
 [tool.ruff]
 
+# description of all rules are available on https://docs.astral.sh/ruff/rules/
 select = ["D", "E", "F", "W", "C", "S", "I", "TCH", "SLOT", "RUF", "C90", "N"]
 
 # we need to check 'mood' of all docstrings, this needs to be enabled explicitly

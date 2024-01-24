@@ -98,6 +98,16 @@ Please note that type hints check might be very slow on the first run. Subsequen
 This check is part of CI job that verifies sources.
 
 
+### Linters
+
+_Ruff_ tools is used as a linter. There are bunch of linters enabled for this repository. All of them are specified in `pyproject.toml` in section `[tool.ruff]`. Some specific rules can be disabled using `ignore` parameter (empty now). List of all linters recognized by Ruff can be retrieved by:
+
+```
+ruff linter
+```
+
+Description of all rules are available on https://docs.astral.sh/ruff/rules/
+
 
 ## Testing
 
