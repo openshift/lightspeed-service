@@ -1,6 +1,6 @@
 """Handlers for all OLS-related REST API endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -47,76 +47,73 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
     # Validate the query
     question_validator = QuestionValidator()
-    validation_result = question_validator.validate_question(
-        conversation, llm_request.query
-    )
-
-    if validation_result[0] == constants.INVALID:
-        logger.info(f"{conversation} Question is not about k8s/ocp, rejecting")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "response": "Sorry, I can only answer questions about "
-                "OpenShift and Kubernetes. This does not look "
-                "like something I know how to handle."
-            },
+    try:
+        validation_result = question_validator.validate_question(
+            conversation, llm_request.query
         )
+    except Exception as validation_error:
+        logger.error("Error while validating question")
+        logger.error(validation_error)
+        raise HTTPException(status_code=500, detail="Error while validating question")
 
-    if validation_result[0] == constants.VALID:
-        logger.info(f"{conversation} Question is about k8s/ocp")
-        question_type = validation_result[1]
+    validation = validation_result[0]
+    question_type = validation_result[1]
 
-        # check if question type is from known categories
-        if question_type not in {constants.NOYAML, constants.YAML}:
-            # not known question type has been detected
-            logger.error(f"Unknown question type {question_type}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"response": "Internal server error. Please try again."},
+    match (validation, question_type):
+        case (constants.INVALID, _):
+            logger.info(
+                f"{conversation} Query is not relevant to kubernetes or ocp, returning"
             )
-
-        if question_type == constants.NOYAML:
+            llm_response.response = "Sorry, I can only answer questions about \
+            OpenShift and Kubernetes. Please rephrase your question"
+        case (constants.VALID, constants.NOYAML):
             logger.info(
                 f"{conversation} Question is not about yaml, sending for generic info"
             )
-
             # Summarize documentation
             docs_summarizer = DocsSummarizer()
-            llm_response.response, _ = docs_summarizer.summarize(
-                conversation, llm_request.query
-            )
-
-            return llm_response
-
-        elif question_type == constants.YAML:
+            try:
+                llm_response.response, _ = docs_summarizer.summarize(
+                    conversation, llm_request.query
+                )
+            except Exception as summarizer_error:
+                logger.error("Error while obtainting answer for user question")
+                logger.error(summarizer_error)
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error while obtainting answer for user question",
+                )
+        case (constants.VALID, constants.YAML):
             logger.info(
                 f"{conversation} Question is about yaml, sending to the YAML generator"
             )
             yaml_generator = YamlGenerator()
-            generated_yaml = yaml_generator.generate_yaml(
-                conversation, llm_request.query, previous_input
-            )
-
-            if generated_yaml == constants.SOME_FAILURE:
+            try:
+                generated_yaml = yaml_generator.generate_yaml(
+                    conversation, llm_request.query, previous_input
+                )
+            except Exception as yamlgenerator_error:
+                logger.error("Error while obtainting yaml for user question")
+                logger.error(yamlgenerator_error)
                 raise HTTPException(
                     status_code=500,
-                    detail={"response": "Internal server error. Please try again."},
+                    detail="Error while obtainting answer for user question",
                 )
-
-            # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
-
             llm_response.response = generated_yaml
+        case (constants.VALID, constants.REPHRASE):
+            logger.info(
+                f"{conversation} Query is relevant, but cannot identify the intent"
+            )
+            llm_response.response = (
+                "Sorry, Please rephrase your question or provide more detail"
+            )
 
-            if config.conversation_cache is not None:
-                config.conversation_cache.insert_or_append(
-                    conversation,
-                    llm_request.query + "\n\n" + str(llm_response.response or ""),
-                )
-            return llm_response
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail={"response": "Internal server error. Please try again."},
-    )
+    if config.conversation_cache is not None:
+        config.conversation_cache.insert_or_append(
+            conversation,
+            llm_request.query + "\n\n" + str(llm_response.response or ""),
+        )
+    return llm_response
 
 
 @router.post("/debug/query")

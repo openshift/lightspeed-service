@@ -63,8 +63,9 @@ class QuestionValidator:
 
         self.logger.info(f"{conversation} response: {clean_response}")
 
+        # If we are not able to indentify the intent, request the user to rephrase the question
         if response["text"] not in ["INVALID,NOYAML", "VALID,NOYAML", "VALID,YAML"]:
-            raise ValueError("Returned response did not match the expected format")
+            return ["VALID", "REPHRASE"]
 
         # will return an array:
         # [INVALID,NOYAML]
