@@ -17,6 +17,9 @@ data
 vector-db
 vendor
 
+# ignore credential files
+*_api_key.txt
+
 # ignore files that begin with tmptest_
 tmptest_*
 
