@@ -8,7 +8,7 @@ import requests
 from ols.utils.logger import Logger
 
 
-class gradioUI:
+class GradioUI:
     """Handlers for UI-related requests."""
 
     def __init__(
@@ -74,4 +74,4 @@ class gradioUI:
 
 
 if __name__ == "__main__":
-    gradioUI.ui.launch(show_api=False)
+    GradioUI.ui.launch(show_api=False)

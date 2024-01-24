@@ -60,6 +60,6 @@ class InMemoryCache(Cache):
                 self.cache[key] = value
             else:
                 self.deque.remove(key)
-                oldValue = self.cache[key]
-                self.cache[key] = oldValue + "\n" + value
+                old_value = self.cache[key]
+                self.cache[key] = old_value + "\n" + value
             self.deque.appendleft(key)
