@@ -70,6 +70,15 @@ def test_constructor_wrong_provider():
         LLMLoader(provider="invalid-provider", model=constants.GRANITE_13B_CHAT_V1)
 
 
+def test_constructor_unsupported_provider():
+    """Test how wrong provider is checked."""
+    provider_config = ProviderConfig()
+    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock-model"}
+    config.llm_config.providers = {"unsupported-provider": provider_config}
+    with pytest.raises(UnsupportedProviderError):
+        LLMLoader(provider="unsupported-provider", model=constants.GRANITE_13B_CHAT_V1)
+
+
 def test_constructor_when_missing_model():
     """Test raise when no model is provided."""
     test_provider = "test-provider"
@@ -111,7 +120,7 @@ llm_providers = [
 def test_constructor_unsatisfied_requirements(provider):
     """Test how unsatisfied requirements are handled by LLM loader."""
     provider_config = ProviderConfig()
-    provider_config.models = {constants.GRANITE_13B_CHAT_V1: None}
+    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
     config.llm_config.providers = {provider: provider_config}
 
     def mock_import(module, *args, **kwargs):
@@ -120,7 +129,7 @@ def test_constructor_unsatisfied_requirements(provider):
 
     # check what happens if LLM libraries can not be loaded
     with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(Exception):
+        with pytest.raises(ImportError, match="cannot import name"):
             LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)
 
 
