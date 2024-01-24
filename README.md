@@ -25,7 +25,7 @@ To get a local copy up and running follow these simple example steps.
 
 * Python 3.11 or newer
 * Git and pip installed
-* BAM account 
+* BAM account
     - BAM_API_KEY
     - BAM_URL
 
@@ -47,7 +47,9 @@ _Below is an example of how you can instruct your audience on installing and set
    ```sh
    pip install -r requirements.txt
    ```
-5. Create a new file `.env` from the `default.env` example and enter your BAM_API_KEY in the top line
+5. OLS configuration is in YAML format. It is loaded from a file referred to by the OLS_CONFIG_FILE environment variable and defaults to olsconfig.yaml in the current directory. You can find
+a sample configuration in the olsconfig.yaml file in the top directory of this repository.
+API credentials are in turn loaded from their respective files, referred to by the credentials_path attributes in the configuration YAML. If these paths are relative, they are relative to the current working directory. Place your BAM API Key into the bam_api_key.txt file.
 6. Configure vector index store.
    * Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
    * Create vector index directory
@@ -64,7 +66,7 @@ _Below is an example of how you can instruct your audience on installing and set
 ### Local Deployment
 
 #### Run the server
-in order to run the API service  
+in order to run the API service
 ```sh
 uvicorn ols.app.main:app --reload --port 8080
 ```
@@ -114,7 +116,7 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] 
+- [ ]
 
 
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
