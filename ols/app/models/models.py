@@ -19,6 +19,8 @@ class LLMRequest(BaseModel):
     query: str
     conversation_id: str | None = None
     response: str | None = None
+
+    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -51,6 +53,7 @@ class FeedbackRequest(BaseModel):
     conversation_id: int
     feedback_object: str
 
+    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
