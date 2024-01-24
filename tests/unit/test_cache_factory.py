@@ -59,5 +59,5 @@ def test_conversation_cache_in_redis(redis_cache_config):
 
 def test_conversation_cache_wrong_cache(invalid_cache_type_config):
     """Check if wrong cache env.variable is detected properly."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid cache type"):
         CacheFactory.conversation_cache(invalid_cache_type_config)
