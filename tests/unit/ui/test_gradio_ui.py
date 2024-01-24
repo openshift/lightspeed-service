@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import requests
 
-from ols.src.ui.gradio_ui import gradioUI
+from ols.src.ui.gradio_ui import GradioUI
 
 
 def test_gradio_ui_constructor():
@@ -12,7 +12,7 @@ def test_gradio_ui_constructor():
     url = "locahost:8080"
     conversation_id = 1234
 
-    ui = gradioUI(ols_url=url, conversation_id=conversation_id, logger=None)
+    ui = GradioUI(ols_url=url, conversation_id=conversation_id, logger=None)
     assert ui is not None
     assert ui.ols_url == url
     assert ui.conversation_id == conversation_id
@@ -26,7 +26,7 @@ def test_chat_ui_handler_ok_response():
     ok_response.json = lambda: {"response": "this is response"}
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
-        ui = gradioUI()
+        ui = GradioUI()
         ret = ui.chat_ui("prompt", None, False)
         assert ret == "this is response"
 
@@ -37,7 +37,7 @@ def test_chat_ui_handler_bad_http_code():
     bad_response.status_code = requests.codes.internal_server_error
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=bad_response):
-        ui = gradioUI()
+        ui = GradioUI()
         ret = ui.chat_ui("prompt", None, False)
         assert "Sorry, an error occurred" in ret
 
@@ -47,6 +47,6 @@ def test_chat_ui_handler_error_handling():
     with patch(
         "ols.src.ui.gradio_ui.requests.post", side_effect=requests.exceptions.HTTPError
     ):
-        ui = gradioUI()
+        ui = GradioUI()
         ret = ui.chat_ui("prompt", None, False)
         assert "An error occurred" in ret

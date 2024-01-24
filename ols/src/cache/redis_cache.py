@@ -68,9 +68,9 @@ class RedisCache(Cache):
             OutOfMemoryError: If item is evicted when Redis allocated
                 memory is higher than maxmemory.
         """
-        oldValue = self.get(key)
+        old_value = self.get(key)
         with self._lock:
-            if oldValue:
-                self.redis_client.set(key, oldValue + "\n" + value)
+            if old_value:
+                self.redis_client.set(key, old_value + "\n" + value)
             else:
                 self.redis_client.set(key, value)
