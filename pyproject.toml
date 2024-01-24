@@ -1,6 +1,6 @@
 [tool.ruff]
 
-select = ["D", "E", "F", "W", "C", "S", "I", "TCH"]
+select = ["D", "E", "F", "W", "C", "S", "I", "TCH", "SLOT", "RUF", "C90", "N"]
 
 # we need to check 'mood' of all docstrings, this needs to be enabled explicitly
 extend-select = ["D401"]
