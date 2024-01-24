@@ -10,6 +10,7 @@ ignore = []
 target-version = "py311"
 pydocstyle.convention = "google"
 line-length = 100
+flake8-pytest-style.fixture-parentheses = false
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
