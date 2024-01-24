@@ -88,7 +88,9 @@ class LLMLoader:
     def _get_provider_config(self) -> ProviderConfig:
         cfg = config.llm_config.providers.get(self.provider)
         if not cfg:
-            raise UnsupportedProviderError()
+            msg = f"Unsupported LLM provider {self.provider}"
+            self.logger.error(msg)
+            raise UnsupportedProviderError(msg)
 
         model = cfg.models.get(self.model)
         if not model:
