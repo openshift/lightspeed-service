@@ -32,3 +32,9 @@ htmlcov/
 .mypy_cache
 .pytest_cache
 .ruff_cache
+
+# ignore faiss index directory
+index/
+
+# ignore .idea for pycharm
+.idea
