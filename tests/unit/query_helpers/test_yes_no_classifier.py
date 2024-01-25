@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.src.query_helpers.yes_no_classifier import YesNoClassifier
+from ols.src.query_helpers.yes_no_classifier import QueryHelper, YesNoClassifier
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -13,6 +13,11 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 def yes_no_classifier():
     """Fixture containing constructed and initialized YesNoClassifier."""
     return YesNoClassifier()
+
+
+def test_is_query_helper_subclass():
+    """Test that YesNoClassifier is a subclass of QueryHelper."""
+    assert issubclass(YesNoClassifier, QueryHelper)
 
 
 @patch("ols.src.query_helpers.yes_no_classifier.LLMLoader", new=mock_llm_loader(None))

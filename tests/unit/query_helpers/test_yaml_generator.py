@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.src.query_helpers.yaml_generator import YamlGenerator
+from ols.src.query_helpers.yaml_generator import QueryHelper, YamlGenerator
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -15,6 +15,11 @@ def yaml_generator():
     """Fixture containing constructed and initialized YamlGenerator."""
     config.init_empty_config()
     return YamlGenerator()
+
+
+def test_is_query_helper_subclass():
+    """Test that YamlGenerator is a subclass of QueryHelper."""
+    assert issubclass(YamlGenerator, QueryHelper)
 
 
 @patch("ols.src.query_helpers.yaml_generator.LLMLoader", new=mock_llm_loader(None))
