@@ -31,7 +31,7 @@ def test_user_feedback(load_config):
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.src.docs.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 @patch("ols.src.query_helpers.yaml_generator.YamlGenerator.generate_yaml")
 @patch("ols.utils.config.conversation_cache.get")
 def test_conversation_request(
