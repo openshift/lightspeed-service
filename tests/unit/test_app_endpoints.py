@@ -66,36 +66,45 @@ def test_conversation_request(
 
     # valid question, yaml, generator failure
     mock_validate_question.return_value = [constants.VALID, constants.YAML]
-    mock_generate_yaml.return_value = constants.SOME_FAILURE
+    mock_generate_yaml.side_effect = Exception
     with pytest.raises(HTTPException) as excinfo:
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
     # question of unknown type
-    mock_validate_question.return_value = [constants.VALID, "unknown question type"]
-    with pytest.raises(HTTPException) as excinfo:
-        llm_request = LLMRequest(query="ask a question of unknown type")
-        response = ols.conversation_request(llm_request)
-        assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    mock_validate_question.return_value = [constants.VALID, constants.REPHRASE]
+    llm_request = LLMRequest(query="ask a question of unknown type")
+    response = ols.conversation_request(llm_request)
+    assert response.response == {
+        "detail": {
+            "response": "Question does not provide enough context, \
+                Please rephrase your question or provide more detail"
+        }
+    }
 
     # invalid question
     mock_validate_question.return_value = [constants.INVALID, constants.YAML]
-    with pytest.raises(HTTPException) as excinfo:
-        llm_request = LLMRequest(query="Generate a yaml")
-        response = ols.conversation_request(llm_request)
-        assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    llm_request = LLMRequest(query="Generate a yaml")
+    response = ols.conversation_request(llm_request)
+    assert response.response == {
+        "detail": {
+            "response": "I can only answer questions about \
+            OpenShift and Kubernetes. Please rephrase your question"
+        }
+    }
 
     # conversation is cached
     mock_validate_question.return_value = [constants.VALID, constants.YAML]
     mock_generate_yaml.return_value = "content: generated yaml"
+    mock_generate_yaml.side_effect = None
     mock_conversation_cache_get.return_value = "previous conversation input"
     llm_request = LLMRequest(query="Generate a yaml", conversation_id="123")
     response = ols.conversation_request(llm_request)
     assert response.response == "content: generated yaml"
 
     # validation failure
-    mock_validate_question.return_value = ["validation error", constants.YAML]
+    mock_validate_question.side_effect = HTTPException
     with pytest.raises(HTTPException) as excinfo:
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request)

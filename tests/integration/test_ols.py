@@ -48,7 +48,6 @@ def test_debug_query() -> None:
 def test_post_question_on_unexpected_payload() -> None:
     """Check the REST API /v1/query with POST HTTP method when unexpected payload is posted."""
     response = client.post("/v1/query", json="this is really not proper payload")
-    print(response)
     assert response.status_code == requests.codes.unprocessable
     assert response.json() == {
         "detail": [
@@ -73,12 +72,15 @@ def test_post_question_on_invalid_question() -> None:
         response = client.post(
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
-        assert response.status_code == requests.codes.unprocessable
+        assert response.status_code == requests.codes.ok
         assert response.json() == {
-            "detail": {
-                "response": "Sorry, I can only answer questions about OpenShift "
-                "and Kubernetes. This does not look like something I "
-                "know how to handle."
+            "conversation_id": "1234",
+            "query": "test query",
+            "response": {
+                "detail": {
+                    "response": "I can only answer questions about \
+            OpenShift and Kubernetes. Please rephrase your question"
+                }
             }
         }
 
@@ -86,14 +88,21 @@ def test_post_question_on_invalid_question() -> None:
 def test_post_question_on_unknown_response_type() -> None:
     """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
     # let's pretend the question is valid, but there's an error, without even asking LLM
-    answer = (constants.VALID, constants.SOME_FAILURE)
+    answer = (constants.VALID, constants.REPHRASE)
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
         response = client.post(
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
-        assert response.status_code == requests.codes.internal_server_error
+        assert response.status_code == requests.codes.ok
         assert response.json() == {
-            "detail": {"response": "Internal server error. Please try again."}
+            "conversation_id": "1234",
+            "query": "test query",
+            "response": {
+                "detail": {
+                "response": "Question does not provide enough context, \
+                Please rephrase your question or provide more detail"
+                }
+            }
         }

@@ -64,8 +64,12 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             logger.info(
                 f"{conversation} Query is not relevant to kubernetes or ocp, returning"
             )
-            llm_response.response = "Sorry, I can only answer questions about \
+            llm_response.response = {
+                "detail": {
+                    "response": "I can only answer questions about \
             OpenShift and Kubernetes. Please rephrase your question"
+                }
+            }
         case (constants.VALID, constants.NOYAML):
             logger.info(
                 f"{conversation} Question is not about yaml, sending for generic info"
@@ -104,9 +108,12 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             logger.info(
                 f"{conversation} Query is relevant, but cannot identify the intent"
             )
-            llm_response.response = (
-                "Sorry, Please rephrase your question or provide more detail"
-            )
+            llm_response.response = {
+                "detail": {
+                    "response": "Question does not provide enough context, \
+                Please rephrase your question or provide more detail"
+                }
+            }
 
     if config.conversation_cache is not None:
         config.conversation_cache.insert_or_append(
