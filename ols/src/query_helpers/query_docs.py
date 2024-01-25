@@ -21,7 +21,7 @@ class QueryDocs:
     def get_relevant_docs(
         self,
         query: str,
-        vectordb: VectorStore = None,
+        vectordb: VectorStore,
         search_type: str = "similarity",
         **search_kwargs: Any,
     ) -> list[Document] | None:
