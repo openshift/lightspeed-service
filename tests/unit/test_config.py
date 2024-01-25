@@ -2,7 +2,7 @@
 
 import io
 import traceback
-from typing import Type, TypeVar
+from typing import TypeVar
 
 import pytest
 from yaml.parser import ParserError
@@ -15,7 +15,7 @@ E = TypeVar("E", bound=Exception)
 
 
 def check_expected_exception(
-    yaml_stream: str, expected_exception_type: Type[E], expected_error_msg: str
+    yaml_stream: str, expected_exception_type: type[E], expected_error_msg: str
 ) -> None:
     """Check that an expected exception is raised."""
     with pytest.raises(expected_exception_type, match=expected_error_msg):
