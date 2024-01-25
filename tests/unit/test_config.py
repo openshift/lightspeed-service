@@ -276,7 +276,7 @@ OLSConfig:
         )
     except Exception:
         print(traceback.format_exc())
-        assert False
+        pytest.fail()
 
 
 def test_valid_config_file() -> None:
@@ -345,7 +345,7 @@ def test_valid_config_file() -> None:
         assert config.config == expected_config
     except Exception:
         print(traceback.format_exc())
-        assert False
+        pytest.fail()
 
 
 def test_valid_config_file_with_redis() -> None:
@@ -393,4 +393,4 @@ def test_valid_config_file_with_redis() -> None:
         assert config.config == expected_config
     except Exception:
         print(traceback.format_exc())
-        assert False
+        pytest.fail()
