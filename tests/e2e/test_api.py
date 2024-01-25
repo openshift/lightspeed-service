@@ -44,12 +44,12 @@ def test_invalid_question() -> None:
     print(vars(response))
     assert response.status_code == requests.codes.ok
     assert response.json() == {
-            "conversation_id": "1234",
-            "query": "test query",
-            "response": {
-                "detail": {
-                    "response": "I can only answer questions about \
+        "conversation_id": "1234",
+        "query": "test query",
+        "response": {
+            "detail": {
+                "response": "I can only answer questions about \
             OpenShift and Kubernetes. Please rephrase your question"
-                }
             }
-        }
+        },
+    }

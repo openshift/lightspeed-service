@@ -81,7 +81,7 @@ def test_post_question_on_invalid_question() -> None:
                     "response": "I can only answer questions about \
             OpenShift and Kubernetes. Please rephrase your question"
                 }
-            }
+            },
         }
 
 
@@ -101,8 +101,8 @@ def test_post_question_on_unknown_response_type() -> None:
             "query": "test query",
             "response": {
                 "detail": {
-                "response": "Question does not provide enough context, \
+                    "response": "Question does not provide enough context, \
                 Please rephrase your question or provide more detail"
                 }
-            }
+            },
         }
