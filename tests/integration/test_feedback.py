@@ -1,9 +1,13 @@
 """Integration tests for REST API endpoints for providing user feedback."""
 
+import os
+
 import requests
 from fastapi.testclient import TestClient
 
-from ols.app.main import app
+# config file path needs to be set before importing app which tries to load the config
+os.environ["OLS_CONFIG_FILE"] = "tests/config/valid_config.yaml"
+from ols.app.main import app  # noqa: E402
 
 client = TestClient(app)
 

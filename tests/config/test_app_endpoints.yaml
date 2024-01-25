@@ -2,7 +2,7 @@
 LLMProviders:
   - name: bam
     url: "https://bam-api.res.ibm.com"
-    credentials_path: tests/config/test_app_endpoints.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: ibm/granite-13b-chat-v2
 OLSConfig:
