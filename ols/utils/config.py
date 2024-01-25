@@ -1,6 +1,3 @@
-# we are disabling ruff check for long lines because of the commented
-# code at the bottom
-# ruff: noqa: E501
 """Configuration loader."""
 
 import traceback
