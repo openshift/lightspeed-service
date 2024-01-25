@@ -8,7 +8,6 @@ INVALID = "INVALID"
 YAML = "YAML"
 NOYAML = "NOYAML"
 REPHRASE = "REPHRASE"
-SOME_FAILURE = "some failure"
 
 
 # templates
