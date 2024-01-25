@@ -7,8 +7,8 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app.models.models import LLMRequest
 from ols.app.utils import Utils
-from ols.src.docs.docs_summarizer import DocsSummarizer
 from ols.src.llms.llm_loader import LLMLoader
+from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config
