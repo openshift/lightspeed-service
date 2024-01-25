@@ -41,6 +41,14 @@ def test_malformed_yaml() -> None:
     )
 
 
+def test_missing_config_file() -> None:
+    """Check how missing configuration file is handled."""
+    with pytest.raises(Exception, match="Not a directory"):
+        # /dev/null is special file so it can't be directory
+        # at the same moment
+        config.init_config("/dev/null/non-existent")
+
+
 def test_invalid_config() -> None:
     """Check that invalid configuration is handled gracefully."""
     check_expected_exception("""""", InvalidConfigurationError, "no LLMProviders found")
