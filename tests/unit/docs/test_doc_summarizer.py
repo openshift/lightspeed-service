@@ -3,10 +3,15 @@
 import os
 from unittest.mock import patch
 
-from ols.src.query_helpers.docs_summarizer import DocsSummarizer
+from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import config
 from tests.mock_classes.llm_loader import mock_llm_loader
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
+
+
+def test_is_query_helper_subclass():
+    """Test that DocsSummarizer is a subclass of QueryHelper."""
+    assert issubclass(DocsSummarizer, QueryHelper)
 
 
 @patch("ols.src.query_helpers.docs_summarizer.LLMLoader", new=mock_llm_loader(None))

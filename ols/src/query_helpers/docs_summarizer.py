@@ -9,16 +9,11 @@ from llama_index.prompts import PromptTemplate
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
-from ols.utils import config
-from ols.utils.logger import Logger
+from ols.src.query_helpers import QueryHelper
 
 
-class DocsSummarizer:
+class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
-
-    def __init__(self):
-        """Initialize the DocsSummarizer."""
-        self.logger = Logger("docs_summarizer").logger
 
     def summarize(self, conversation: str, query: str, **kwargs) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
@@ -31,9 +26,7 @@ class DocsSummarizer:
         Returns:
             A tuple containing the summary as a string and referenced documents as a string.
         """
-        provider = config.ols_config.summarizer_provider
-        model = config.ols_config.summarizer_model
-        bare_llm = LLMLoader(provider, model).llm
+        bare_llm = LLMLoader(self.provider, self.model).llm
 
         verbose = kwargs.get("verbose", "").lower() == "true"
 
@@ -46,8 +39,8 @@ class DocsSummarizer:
         settings_string = (
             f"conversation: {conversation}, "
             f"query: {query}, "
-            f"provider: {provider}, "
-            f"model: {model}, "
+            f"provider: {self.provider}, "
+            f"model: {self.model}, "
             f"verbose: {verbose}"
         )
         self.logger.info(f"{conversation} call settings: {settings_string}")
@@ -55,7 +48,7 @@ class DocsSummarizer:
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
 
         self.logger.info(f"{conversation} Getting service context")
-        self.logger.info(f"{conversation} using model: {model}")
+        self.logger.info(f"{conversation} using model: {self.model}")
 
         embed_model: str | TextEmbeddingsInference = "local:BAAI/bge-base-en"
         # TODO get this from global config instead of env
