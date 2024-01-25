@@ -73,7 +73,7 @@ def test_post_question_on_invalid_question() -> None:
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
         assert response.status_code == requests.codes.ok
-        assert response.json().get("response") == str(
+        expected_details = str(
             {
                 "detail": {
                     "response": "I can only answer questions about \
@@ -81,6 +81,12 @@ def test_post_question_on_invalid_question() -> None:
                 }
             }
         )
+        expected_json = {
+            "conversation_id": "1234",
+            "query": "test query",
+            "response": expected_details,
+        }
+        assert response.json() == expected_json
 
 
 def test_post_question_on_unknown_response_type() -> None:
@@ -94,7 +100,7 @@ def test_post_question_on_unknown_response_type() -> None:
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
         assert response.status_code == requests.codes.ok
-        assert response.json().get("response") == str(
+        expected_details = str(
             {
                 "detail": {
                     "response": "Question does not provide enough context, \
@@ -102,3 +108,9 @@ def test_post_question_on_unknown_response_type() -> None:
                 }
             }
         )
+        expected_json = {
+            "conversation_id": "1234",
+            "query": "test query",
+            "response": expected_details,
+        }
+        assert response.json() == expected_json

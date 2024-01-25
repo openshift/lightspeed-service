@@ -43,7 +43,7 @@ def test_invalid_question() -> None:
     )
     print(vars(response))
     assert response.status_code == requests.codes.ok
-    response.json().get("response") == str(
+    expected_details = str(
         {
             "detail": {
                 "response": "I can only answer questions about \
@@ -51,3 +51,9 @@ def test_invalid_question() -> None:
             }
         }
     )
+    expected_json = {
+        "conversation_id": "1234",
+        "query": "test query",
+        "response": expected_details,
+    }
+    assert response.json() == expected_json

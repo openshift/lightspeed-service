@@ -62,7 +62,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     match (validation, question_type):
         case (constants.INVALID, _):
             logger.info(
-                f"{conversation} Query is not relevant to kubernetes or ocp, returning"
+                f"{conversation} - Query is not relevant to kubernetes or ocp, returning"
             )
             llm_response.response = str(
                 {
@@ -74,7 +74,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             )
         case (constants.VALID, constants.NOYAML):
             logger.info(
-                f"{conversation} Question is not about yaml, sending for generic info"
+                f"{conversation} - Question is not about yaml, sending for generic info"
             )
             # Summarize documentation
             docs_summarizer = DocsSummarizer()
@@ -91,7 +91,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                 )
         case (constants.VALID, constants.YAML):
             logger.info(
-                f"{conversation} Question is about yaml, sending to the YAML generator"
+                f"{conversation} - Question is about yaml, sending to the YAML generator"
             )
             yaml_generator = YamlGenerator()
             try:
@@ -108,7 +108,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             llm_response.response = generated_yaml
         case (constants.VALID, constants.REPHRASE):
             logger.info(
-                f"{conversation} Query is relevant, but cannot identify the intent"
+                f"{conversation} - Query is relevant, but cannot identify the intent"
             )
             llm_response.response = str(
                 {
