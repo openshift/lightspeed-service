@@ -29,7 +29,7 @@ def load_config_from_stream(stream) -> config_model.Config:
     """Load configuration from a YAML stream."""
     data = yaml.safe_load(stream)
     c = config_model.Config(data)
-    c.validate()
+    c.validate_yaml()
     return c
 
 
