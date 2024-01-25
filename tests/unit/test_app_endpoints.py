@@ -76,23 +76,27 @@ def test_conversation_request(
     mock_validate_question.return_value = [constants.VALID, constants.REPHRASE]
     llm_request = LLMRequest(query="ask a question of unknown type")
     response = ols.conversation_request(llm_request)
-    assert response.response == {
-        "detail": {
-            "response": "Question does not provide enough context, \
+    assert response.response == str(
+        {
+            "detail": {
+                "response": "Question does not provide enough context, \
                 Please rephrase your question or provide more detail"
+            }
         }
-    }
+    )
 
     # invalid question
     mock_validate_question.return_value = [constants.INVALID, constants.YAML]
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request)
-    assert response.response == {
-        "detail": {
-            "response": "I can only answer questions about \
+    assert response.response == str(
+        {
+            "detail": {
+                "response": "I can only answer questions about \
             OpenShift and Kubernetes. Please rephrase your question"
+            }
         }
-    }
+    )
 
     # conversation is cached
     mock_validate_question.return_value = [constants.VALID, constants.YAML]

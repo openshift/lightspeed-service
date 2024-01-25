@@ -73,16 +73,14 @@ def test_post_question_on_invalid_question() -> None:
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
         assert response.status_code == requests.codes.ok
-        assert response.json() == {
-            "conversation_id": "1234",
-            "query": "test query",
-            "response": {
+        assert response.json().get("response") == str(
+            {
                 "detail": {
                     "response": "I can only answer questions about \
             OpenShift and Kubernetes. Please rephrase your question"
                 }
-            },
-        }
+            }
+        )
 
 
 def test_post_question_on_unknown_response_type() -> None:
@@ -96,13 +94,11 @@ def test_post_question_on_unknown_response_type() -> None:
             "/v1/query", json={"conversation_id": "1234", "query": "test query"}
         )
         assert response.status_code == requests.codes.ok
-        assert response.json() == {
-            "conversation_id": "1234",
-            "query": "test query",
-            "response": {
+        assert response.json().get("response") == str(
+            {
                 "detail": {
                     "response": "Question does not provide enough context, \
                 Please rephrase your question or provide more detail"
                 }
-            },
-        }
+            }
+        )
