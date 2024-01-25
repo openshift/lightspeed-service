@@ -20,7 +20,7 @@ if config.ols_config.enable_debug_ui:
     app = GradioUI(logger=config.default_logger).mount_ui(app)
 else:
     config.default_logger.info(
-        "Embedded Gradio UI is disabled. To enable set OLS_ENABLE_DEV_UI to True"
+        "Embedded Gradio UI is disabled. To enable set enable_debug_ui: true in configuration file"
     )
 
 
