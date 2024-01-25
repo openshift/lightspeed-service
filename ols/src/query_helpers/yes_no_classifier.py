@@ -52,6 +52,8 @@ class YesNoClassifier(QueryHelper):
         self.logger.info(f"{conversation} yes/no response: {response['text']}")
 
         if response["text"] not in ["0", "1", "9"]:
-            raise ValueError("Returned response not 0, 1, or 9")
+            msg = f"Returned response not 0, 1, or 9: {response['text']}"
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         return int(response["text"])
