@@ -60,7 +60,7 @@ class ModelConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate model config."""
         if self.name is None:
             raise InvalidConfigurationError("model name is missing")
@@ -105,14 +105,14 @@ class ProviderConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate provider config."""
         if self.name is None:
             raise InvalidConfigurationError("provider name is missing")
         if self.url is not None and not is_valid_http_url(self.url):
             raise InvalidConfigurationError("provider URL is invalid")
         for v in self.models.values():
-            v.validate()
+            v.validate_yaml()
 
 
 class LLMProviders(BaseModel):
@@ -137,10 +137,10 @@ class LLMProviders(BaseModel):
             return self.providers == other.providers
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate LLM config."""
         for v in self.providers.values():
-            v.validate()
+            v.validate_yaml()
 
 
 class RedisCredentials(BaseModel):
@@ -163,7 +163,7 @@ class RedisCredentials(BaseModel):
             return self.user == other.user and self.password == other.password
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate redis credentials."""
         if (self.user is not None and self.password is None) or (
             self.user is None and self.password is not None
@@ -266,7 +266,7 @@ class ConversationCacheConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate conversation cache config."""
         pass
 
@@ -294,7 +294,7 @@ class LoggerConfig(BaseModel):
             return self.default_level == other.default_level
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate logger config."""
         pass
 
@@ -366,12 +366,12 @@ class OLSConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate OLS config."""
         if self.conversation_cache is None:
             raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
-        self.conversation_cache.validate()
-        self.logger_config.validate()
+        self.conversation_cache.validate_yaml()
+        self.logger_config.validate_yaml()
 
 
 class Config(BaseModel):
@@ -401,14 +401,14 @@ class Config(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate all configurations."""
         if self.llm_providers is None:
             raise InvalidConfigurationError("no LLMProviders found")
-        self.llm_providers.validate()
+        self.llm_providers.validate_yaml()
         if self.ols_config is None:
             raise InvalidConfigurationError("no OLSConfig found")
-        self.ols_config.validate()
+        self.ols_config.validate_yaml()
         for role in constants.PROVIDER_MODEL_ROLES:
             provider_attr_name = f"{role}_provider"
             provider_attr_value = getattr(self.ols_config, provider_attr_name, None)

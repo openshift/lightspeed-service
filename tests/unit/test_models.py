@@ -411,11 +411,11 @@ def test_config():
     assert config.ols_config.logger_config.default_level == logging.INFO
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
-        Config().validate()
+        Config().validate_yaml()
     assert "no LLMProviders found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
-        Config({"LLMProviders": []}).validate()
+        Config({"LLMProviders": []}).validate_yaml()
     assert "no OLSConfig found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
@@ -436,7 +436,7 @@ def test_config():
                     }
                 ],
             }
-        ).validate()
+        ).validate_yaml()
     assert "no OLSConfig found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
@@ -458,7 +458,7 @@ def test_config():
                 ],
                 "OLSConfig": {"default_provider": "test_default_provider"},
             }
-        ).validate()
+        ).validate_yaml()
     assert "default_provider is specified, but default_model is missing" in str(
         excinfo.value
     )
