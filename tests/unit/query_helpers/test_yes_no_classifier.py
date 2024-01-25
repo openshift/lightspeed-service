@@ -29,7 +29,7 @@ def test_bad_value_response(yes_no_classifier):
     with patch("ols.src.query_helpers.yes_no_classifier.LLMChain", new=ml):
         with pytest.raises(ValueError, match="Returned response not 0, 1, or 9"):
             yes_no_classifier.classify(
-                conversation="1234", statement="The sky is blue."
+                conversation="1234", statement="The sky is blue.",
             )
 
 
@@ -42,5 +42,5 @@ def test_good_value_response(yes_no_classifier):
 
         with patch("ols.src.query_helpers.yes_no_classifier.LLMChain", new=ml):
             assert yes_no_classifier.classify(
-                conversation="1234", statement="The sky is blue."
+                conversation="1234", statement="The sky is blue.",
             ) == int(x)

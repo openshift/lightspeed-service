@@ -35,10 +35,10 @@ def test_invalid_response(question_validator):
     # [VALID,YAML]
 
     with pytest.raises(
-        ValueError, match="Returned response did not match the expected format"
+        ValueError, match="Returned response did not match the expected format",
     ):
         question_validator.validate_question(
-            conversation="1234", query="What is the meaning of life?"
+            conversation="1234", query="What is the meaning of life?",
         )
 
 
@@ -51,7 +51,7 @@ def test_valid_responses(question_validator):
         ml = mock_llm_chain({"text": retval})
         with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
             response = question_validator.validate_question(
-                conversation="1234", query="What is the meaning of life?"
+                conversation="1234", query="What is the meaning of life?",
             )
 
             assert response == retval.split(",")

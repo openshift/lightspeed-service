@@ -53,7 +53,7 @@ def test_yaml_generator_history_enabled(yaml_generator):
 
         # response will be constant because we mocked LLMChain and LLMLoader
         response = yaml_generator.generate_yaml(
-            "1234", "the query", history="conversation history"
+            "1234", "the query", history="conversation history",
         )
         assert response == "default"
 
