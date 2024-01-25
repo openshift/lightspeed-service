@@ -56,11 +56,12 @@ class QuestionValidator(QueryHelper):
         self.logger.info(f"{conversation} response: {clean_response}")
 
         # If we are not able to indentify the intent, request the user to rephrase the question
-        if response["text"] not in ["INVALID,NOYAML", "VALID,NOYAML", "VALID,YAML"]:
-            return ["VALID", "REPHRASE"]
+        if response["text"] not in constants.POSSIBLE_QUESTION_VALIDATOR_RESPONSES:
+            return [constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN]
 
-        # will return an array:
-        # [INVALID,NOYAML]
-        # [VALID,NOYAML]
-        # [VALID,YAML]
+        # Will return list with one of the following:
+        # [SUBJECT_VALID, CATEGORY_YAML]
+        # [SUBJECT_VALID, CATEGORY_GENERIC]
+        # [SUBJECT_INVALID,CATEGORY_GENERIC]
+        # [SUBJECT_VALID, CATEGORY_UNKNOWN]
         return clean_response.split(",")

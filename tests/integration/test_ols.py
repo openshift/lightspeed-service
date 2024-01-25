@@ -69,7 +69,7 @@ def test_post_question_on_unexpected_payload() -> None:
 def test_post_question_on_invalid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
-    answer = (constants.INVALID, "anything")
+    answer = (constants.SUBJECT_INVALID, "anything")
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -96,7 +96,7 @@ def test_post_question_on_invalid_question() -> None:
 def test_post_question_on_unknown_response_type() -> None:
     """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
     # let's pretend the question is valid, but there's an error, without even asking LLM
-    answer = (constants.VALID, constants.REPHRASE)
+    answer = (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN)
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):

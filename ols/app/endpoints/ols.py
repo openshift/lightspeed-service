@@ -1,6 +1,6 @@
 """Handlers for all OLS-related REST API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -54,13 +54,16 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     except Exception as validation_error:
         logger.error("Error while validating question")
         logger.error(validation_error)
-        raise HTTPException(status_code=500, detail="Error while validating question")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while validating question",
+        )
 
     validation = validation_result[0]
     question_type = validation_result[1]
 
     match (validation, question_type):
-        case (constants.INVALID, _):
+        case (constants.SUBJECT_INVALID, _):
             logger.info(
                 f"{conversation} - Query is not relevant to kubernetes or ocp, returning"
             )
@@ -72,7 +75,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     }
                 }
             )
-        case (constants.VALID, constants.NOYAML):
+        case (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC):
             logger.info(
                 f"{conversation} - Question is not about yaml, sending for generic info"
             )
@@ -83,13 +86,13 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     conversation, llm_request.query
                 )
             except Exception as summarizer_error:
-                logger.error("Error while obtainting answer for user question")
+                logger.error("Error while obtaining answer for user question")
                 logger.error(summarizer_error)
                 raise HTTPException(
-                    status_code=500,
-                    detail="Error while obtainting answer for user question",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error while obtaining answer for user question",
                 )
-        case (constants.VALID, constants.YAML):
+        case (constants.SUBJECT_VALID, constants.CATEGORY_YAML):
             logger.info(
                 f"{conversation} - Question is about yaml, sending to the YAML generator"
             )
@@ -99,14 +102,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     conversation, llm_request.query, previous_input
                 )
             except Exception as yamlgenerator_error:
-                logger.error("Error while obtainting yaml for user question")
+                logger.error("Error while obtaining yaml for user question")
                 logger.error(yamlgenerator_error)
                 raise HTTPException(
-                    status_code=500,
-                    detail="Error while obtainting answer for user question",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error while obtaining answer for user question",
                 )
             llm_response.response = generated_yaml
-        case (constants.VALID, constants.REPHRASE):
+        case (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN):
             logger.info(
                 f"{conversation} - Query is relevant, but cannot identify the intent"
             )

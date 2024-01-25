@@ -3,11 +3,16 @@
 # ruff: noqa: E501
 """Constants used in business logic."""
 
-VALID = "VALID"
-INVALID = "INVALID"
-YAML = "YAML"
-NOYAML = "NOYAML"
-REPHRASE = "REPHRASE"
+SUBJECT_VALID = "SUBJECT_VALID"
+SUBJECT_INVALID = "SUBJECT_INVALID"
+CATEGORY_YAML = "CATEGORY_YAML"
+CATEGORY_GENERIC = "CATEGORY_GENERIC"
+CATEGORY_UNKNOWN = "CATEGORY_UNKNOWN"
+POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
+    SUBJECT_VALID + "," + CATEGORY_YAML,
+    SUBJECT_VALID + "," + CATEGORY_GENERIC,
+    SUBJECT_INVALID + "," + CATEGORY_GENERIC,
+)
 
 
 # templates
@@ -99,32 +104,32 @@ Instructions:
 - You are a question classifying tool
 - You are an expert in kubernetes and openshift
 - Your job is to determine if a question is about kubernetes or openshift and to provide a one-word response
-- If a question is not about kubernetes or openshift, answer with only the word {INVALID}
-- If a question is about kubernetes or openshift, answer with the word {VALID}
-- If a question is not about creating kubernetes or openshift yaml, answer with the word {NOYAML}
-- If a question is about creating kubernetes or openshift yaml, add the word {YAML}
+- If a question is not about kubernetes or openshift, answer with only the word {SUBJECT_INVALID}
+- If a question is about kubernetes or openshift, answer with the word {SUBJECT_VALID}
+- If a question is not about creating kubernetes or openshift yaml, answer with the word {CATEGORY_GENERIC}
+- If a question is about creating kubernetes or openshift yaml, add the word {CATEGORY_YAML}
 - Use a comma to separate the words
 - Do not provide explanation, only respond with the chosen words
 
 Example Question:
 Can you make me lunch with ham and cheese?
 Example Response:
-{INVALID},{NOYAML}
+{SUBJECT_INVALID},{CATEGORY_GENERIC}
 
 Example Question:
 Why is the sky blue?
 Example Response:
-{INVALID},{NOYAML}
+{SUBJECT_INVALID},{CATEGORY_GENERIC}
 
 Example Question:
 Can you help configure my cluster to automatically scale?
 Example Response:
-{VALID},{NOYAML}
+{SUBJECT_VALID},{CATEGORY_GENERIC}
 
 Example Question:
 please give me a vertical pod autoscaler configuration to manage my frontend deployment automatically.  Don't update the workload if there are less than 2 pods running.
 Example Response:
-{VALID},{YAML}
+{SUBJECT_VALID},{CATEGORY_YAML}
 
 Question:
 {{query}}
