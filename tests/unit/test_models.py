@@ -295,7 +295,7 @@ def test_ols_config():
             "validator_model": "test_validator_model",
             "yaml_provider": "test_yaml_provider",
             "yaml_model": "test_yaml_model",
-            "ols_enable_dev_ui": True,
+            "enable_debug_ui": True,
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -352,7 +352,7 @@ def test_config():
                 "validator_model": "test_validator_model",
                 "yaml_provider": "test_yaml_provider",
                 "yaml_model": "test_yaml_model",
-                "ols_enable_dev_ui": True,
+                "enable_debug_ui": True,
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {

@@ -340,7 +340,7 @@ class OLSConfig(BaseModel):
         self.yaml_provider = data.get("yaml_provider", self.default_provider)
         self.yaml_model = data.get("yaml_model", self.default_model)
 
-        self.enable_debug_ui = data.get("ols_enable_dev_ui", False)
+        self.enable_debug_ui = data.get("enable_debug_ui", False)
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
