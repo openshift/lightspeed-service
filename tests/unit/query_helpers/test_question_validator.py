@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.src.query_helpers.question_validator import QuestionValidator
+from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -13,9 +13,12 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 @pytest.fixture
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
-    config.load_empty_config()
+    config.init_empty_config()
     return QuestionValidator()
 
+def test_is_query_helper_subclass():
+    """Test that QuestionValidator is a subclass of QueryHelper."""
+    assert issubclass(QuestionValidator, QueryHelper)
 
 @patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
 def test_valid_responses(question_validator):

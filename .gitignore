@@ -17,6 +17,9 @@ data
 vector-db
 vendor
 
+# ignore credential files
+*_api_key.txt
+
 # ignore files that begin with tmptest_
 tmptest_*
 
@@ -32,3 +35,9 @@ htmlcov/
 .mypy_cache
 .pytest_cache
 .ruff_cache
+
+# ignore faiss index directory
+index/
+
+# ignore .idea for pycharm
+.idea

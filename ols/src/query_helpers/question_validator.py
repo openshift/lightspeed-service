@@ -5,16 +5,11 @@ from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
-from ols.utils import config
-from ols.utils.logger import Logger
+from ols.src.query_helpers import QueryHelper
 
 
-class QuestionValidator:
+class QuestionValidator(QueryHelper):
     """This class is responsible for validating questions and providing one-word responses."""
-
-    def __init__(self) -> None:
-        """Initialize the `QuestionValidator` instance."""
-        self.logger = Logger("question_validator").logger
 
     def validate_question(
         self, conversation: str, query: str, verbose: bool = False
@@ -29,14 +24,11 @@ class QuestionValidator:
         Returns:
             A list of one-word responses.
         """
-        model = config.ols_config.validator_model
-        provider = config.ols_config.validator_provider
-
         settings_string = (
             f"conversation: {conversation}, "
             f"query: {query}, "
-            f"provider: {provider}, "
-            f"model: {model}, "
+            f"provider: {self.provider}, "
+            f"model: {self.model}, "
             f"verbose: {verbose}"
         )
         self.logger.info(f"{conversation} call settings: {settings_string}")
@@ -46,10 +38,10 @@ class QuestionValidator:
         )
 
         self.logger.info(f"{conversation} Validating query")
-        self.logger.info(f"{conversation} using model: {model}")
+        self.logger.info(f"{conversation} using model: {self.model}")
 
         bare_llm = LLMLoader(
-            provider, model, params={"min_new_tokens": 1, "max_new_tokens": 4}
+            self.provider, self.model, params={"min_new_tokens": 1, "max_new_tokens": 4}
         ).llm
 
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)

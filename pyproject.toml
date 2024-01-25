@@ -1,5 +1,6 @@
 [tool.ruff]
 
+# description of all rules are available on https://docs.astral.sh/ruff/rules/
 select = ["D", "E", "F", "W", "C", "S", "I", "TCH", "SLOT", "RUF", "C90", "N"]
 
 # we need to check 'mood' of all docstrings, this needs to be enabled explicitly
@@ -10,6 +11,7 @@ ignore = []
 target-version = "py311"
 pydocstyle.convention = "google"
 line-length = 100
+flake8-pytest-style.fixture-parentheses = false
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value

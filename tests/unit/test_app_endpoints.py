@@ -1,6 +1,5 @@
 """Unit tests for app endpoints."""
 
-import os
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -16,10 +15,9 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 
 
 @pytest.fixture(scope="module")
-@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
 def load_config():
     """Load config before unit tests."""
-    config.load_config_from_env()
+    config.init_config("tests/config/test_app_endpoints.yaml")
 
 
 def test_user_feedback(load_config):
