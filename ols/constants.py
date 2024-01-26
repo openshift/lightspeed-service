@@ -112,9 +112,9 @@ Example Response:
 {INVALID},{NOYAML}
 
 Example Question:
-Why is the sky blue?
+Can you generate YAML for a Redis Transmogrifier?
 Example Response:
-{INVALID},{NOYAML}
+{INVALID},{YAML}
 
 Example Question:
 Can you help configure my cluster to automatically scale?
