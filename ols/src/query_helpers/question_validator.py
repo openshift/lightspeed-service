@@ -56,7 +56,9 @@ class QuestionValidator(QueryHelper):
         self.logger.info(f"{conversation} response: {clean_response}")
 
         if response["text"] not in ["INVALID,NOYAML", "VALID,NOYAML", "VALID,YAML"]:
-            raise ValueError("Returned response did not match the expected format")
+            msg = f"Returned response \"{response['text']}\" did not match the expected format"
+            self.logger.error(msg)
+            raise ValueError(msg)
 
         # will return an array:
         # [INVALID,NOYAML]

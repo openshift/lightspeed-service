@@ -35,7 +35,8 @@ def test_invalid_response(question_validator):
     # [VALID,YAML]
 
     with pytest.raises(
-        ValueError, match="Returned response did not match the expected format"
+        ValueError,
+        match='Returned response "default" did not match the expected format',
     ):
         question_validator.validate_question(
             conversation="1234", query="What is the meaning of life?"
