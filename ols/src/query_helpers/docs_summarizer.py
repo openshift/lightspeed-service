@@ -109,7 +109,7 @@ class DocsSummarizer(QueryHelper):
             response = bare_llm.invoke(query)
             summary = f""" The following response was generated without access to RAG content:
 
-                        {response.content}
+                        {response}
                       """
             referenced_documents = ""
 
