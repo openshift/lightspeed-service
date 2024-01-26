@@ -28,11 +28,11 @@ class QueryDocs:
         Args:
             query: string to find relevant documents for
             vectordb: Vector db from which you need to retrieve the docs.
-            search_type (Optional[str]): Defines the type of search that
+            search_type: Defines the type of search that
                 the retriever should perform.
                 Can be "similarity" (default), "mmr", or
                 "similarity_score_threshold".
-            search_kwargs (Optional[Dict]): Keyword arguments to pass to the
+            search_kwargs: Keyword arguments to pass to the
                 search function. Can include things like:
                     k: Amount of documents to return (Default: 4)
                     score_threshold: Minimum relevance threshold
@@ -45,11 +45,10 @@ class QueryDocs:
                     filter: Filter by document metadata
 
         Returns:
-            List[Document]: Returns a list of docs.
+            A list of docs.
 
-        Examples:
-           code-block:: python
-
+        Example:
+           ```python
             # Retrieve more documents with higher diversity
             # Useful if your dataset has many similar documents
             docsearch.as_retriever(
@@ -79,6 +78,7 @@ class QueryDocs:
                 search_kwargs={'filter': {'paper_title':'GPT-4 Technical
                 Report'}}
             )
+            ```
         """
         logger.info(
             f"""Retrieving docs for
