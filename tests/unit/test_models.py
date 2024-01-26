@@ -1,4 +1,5 @@
 """Unit tests for data models."""
+
 import logging
 
 import pytest

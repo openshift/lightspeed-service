@@ -1,4 +1,5 @@
 """Unit test for the token handler."""
+
 from unittest import TestCase, mock
 
 from ols.src.utils.token_handler import TokenHandler

@@ -133,9 +133,11 @@ class LLMLoader:
             )
             raise e
         params: dict = {
-            "base_url": self.provider_config.url
-            if self.provider_config.url is not None
-            else "https://api.openai.com/v1",
+            "base_url": (
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else "https://api.openai.com/v1"
+            ),
             "api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
@@ -173,9 +175,11 @@ class LLMLoader:
         # BAM Research lab
         creds = Credentials(
             api_key=self.provider_config.credentials,
-            api_endpoint=self.provider_config.url
-            if self.provider_config.url is not None
-            else "https://bam-api.res.ibm.com",
+            api_endpoint=(
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else "https://bam-api.res.ibm.com"
+            ),
         )
 
         bam_params = {
@@ -280,12 +284,16 @@ class LLMLoader:
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": self.llm_params.get("url")
-            if self.llm_params.get("url") is not None
-            else os.environ.get("WATSON_API_URL", None),
-            "apikey": self.llm_params.get("apikey")
-            if self.llm_params.get("apikey") is not None
-            else os.environ.get("WATSON_API_KEY", None),
+            "url": (
+                self.llm_params.get("url")
+                if self.llm_params.get("url") is not None
+                else os.environ.get("WATSON_API_URL", None)
+            ),
+            "apikey": (
+                self.llm_params.get("apikey")
+                if self.llm_params.get("apikey") is not None
+                else os.environ.get("WATSON_API_KEY", None)
+            ),
         }
         # WatsonX uses different mechanism for defining parameters
         params = {

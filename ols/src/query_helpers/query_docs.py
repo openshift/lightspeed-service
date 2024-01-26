@@ -1,4 +1,5 @@
 """This module has the components to retrieve docs from vector store."""
+
 from typing import Any
 
 from langchain_core.documents.base import Document

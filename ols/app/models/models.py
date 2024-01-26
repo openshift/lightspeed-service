@@ -1,6 +1,5 @@
 """Data models representing payloads for REST API calls."""
 
-
 from pydantic import BaseModel
 
 
