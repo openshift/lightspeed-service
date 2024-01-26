@@ -40,7 +40,7 @@ Get an [OpenAI api key](https://platform.openai.com/api-keys)
 #### Configure OLS
 
 OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory. 
-You can find a sample configuration in the `olsconfig.yaml`` file in the top directory of this repository.  
+You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.  
 
 API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative, 
 they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
