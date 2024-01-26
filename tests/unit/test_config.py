@@ -83,6 +83,51 @@ LLMProviders:
         """
 ---
 LLMProviders:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'this-is-not-valid-url'
+      - name: m2
+        url: 'https://murl2'
+  - name: p2
+    url: 'https://url2'
+    models:
+      - name: m1
+        url: 'http://murl1'
+      - name: m2
+        url: 'http://murl2'
+""",
+        InvalidConfigurationError,
+        "model URL is invalid",
+    )
+
+    check_expected_exception(
+        """
+---
+LLMProviders:
+  - name: p1
+    url: 'not-valid-url'
+    models:
+      - name: m1
+        url: 'https://murl1'
+      - name: m2
+        url: 'https://murl2'
+  - name: p2
+    url: 'https://url2'
+    models:
+      - name: m1
+        url: 'http://murl1'
+      - name: m2
+        url: 'http://murl2'
+""",
+        InvalidConfigurationError,
+        "provider URL is invalid",
+    )
+    check_expected_exception(
+        """
+---
+LLMProviders:
   - foo: p1
     url: 'http://url1'
     models:
