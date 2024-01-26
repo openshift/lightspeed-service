@@ -204,7 +204,7 @@ class TestLoggingConfig:
         assert logging_config.library_log_level == logging.DEBUG
 
         logging_config = LoggingConfig()
-        assert logging_config.app_log_level is None
+        assert logging_config.app_log_level == logging.INFO
 
     def test_invalid_values(self):
         """Test invalid values."""

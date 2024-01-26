@@ -1,6 +1,7 @@
 """Unit tests for the configuration model."""
 
 import io
+import logging
 import traceback
 from typing import TypeVar
 
@@ -402,3 +403,15 @@ def test_valid_config_file_with_redis() -> None:
     except Exception:
         print(traceback.format_exc())
         pytest.fail()
+
+
+def test_config_file_without_logging_config() -> None:
+    """Check how a configuration file without logging config is correctly initialized."""
+    # when logging configuration is not provided, default values will be used
+    # it means the following call should not fail
+    config.init_config("tests/config/config_without_logging.yaml")
+
+    # test if default values have been set
+    logging_config = config.ols_config.logging_config
+    assert logging_config.app_log_level == logging.INFO
+    assert logging_config.library_log_level == logging.WARNING
