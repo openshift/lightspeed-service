@@ -109,7 +109,7 @@ class QueryDocs:
                 f"exception raised while getting the docs for query: {query}"
             )
             raise RetrieveDocsExceptionError(
-                "error in getting the  docs from vectorstore"
+                "error in getting the docs from vectorstore"
             )
 
         return docs
