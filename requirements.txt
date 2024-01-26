@@ -7,7 +7,6 @@ torch
 transformers
 uvicorn
 redis
-genai>=2.1.0
 faiss-cpu
 sentence-transformers
 -r ols/src/llms/requirements.txt
