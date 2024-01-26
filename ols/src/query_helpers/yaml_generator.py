@@ -38,7 +38,6 @@ class YamlGenerator(QueryHelper):
             f"verbose: {verbose}"
         )
         logger.info(f"{conversation_id} call settings: {settings_string}")
-        logger.info(f"{conversation_id} using model: {self.model}")
 
         bare_llm = LLMLoader(self.provider, self.model).llm
 

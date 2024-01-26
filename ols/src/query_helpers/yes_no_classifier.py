@@ -40,12 +40,10 @@ class YesNoClassifier(QueryHelper):
             constants.YES_OR_NO_CLASSIFIER_PROMPT_TEMPLATE
         )
 
-        logger.info(f"{conversation} using model: {self.model}")
         logger.info(f"{conversation} determining yes/no: {statement}")
         query = prompt_instructions.format(statement=statement)
 
         logger.info(f"{conversation} yes/no query: {query}")
-        logger.info(f"{conversation} using model: {self.model}")
 
         bare_llm = LLMLoader(self.provider, self.model).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)

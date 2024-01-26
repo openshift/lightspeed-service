@@ -42,7 +42,6 @@ class QuestionValidator(QueryHelper):
         )
 
         logger.info(f"{conversation} Validating query")
-        logger.info(f"{conversation} using model: {self.model}")
 
         bare_llm = LLMLoader(
             self.provider, self.model, params={"min_new_tokens": 1, "max_new_tokens": 4}
