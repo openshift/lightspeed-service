@@ -9,7 +9,6 @@ class MockVectorStore:
     @staticmethod
     def as_retriever():
         """Pass."""
-        pass
 
 
 class MockVectorRetriever:
