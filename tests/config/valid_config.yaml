@@ -22,8 +22,8 @@ OLSConfig:
     type: memory
     memory:
       max_entries: 1000
-  logger_config:
-    default_level: INFO
+  logging_config:
+    logging_level: INFO
   default_provider: p1
   default_model: m1
   classifier_provider: p1

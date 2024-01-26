@@ -11,7 +11,7 @@ OLSConfig:
     type: memory
     memory:
       max_entries: 1000
-  logger_config:
-    default_level: INFO
+  logging_config:
+    logging_level: INFO
   default_provider: bam
   default_model: ibm/granite-13b-chat-v2

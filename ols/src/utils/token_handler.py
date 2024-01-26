@@ -1,12 +1,15 @@
 """Utility to handle tokens."""
 
+import logging
+
 import tiktoken
 
 from ols.src.utils.constants import (
     MINIMUM_CONTEXT_LIMIT,
     TOKENIZER_MODEL,
 )
-from ols.utils.logger import Logger
+
+logger = logging.getLogger(__name__)
 
 
 class TokenHandler:
@@ -19,7 +22,6 @@ class TokenHandler:
 
     def __init__(self):
         """Initialize the class instance."""
-        self._logger = Logger("token_handler").logger
         self._encoder = tiktoken.get_encoding(TOKENIZER_MODEL)
 
     def text_to_tokens(self, text: str) -> list[int]:
@@ -73,13 +75,11 @@ class TokenHandler:
 
             tokens = self.text_to_tokens(node.get_text())
             tokens_count = len(tokens)
-            self._logger.info(f"Tokens count: {tokens_count}.")
+            logger.info(f"Tokens count: {tokens_count}.")
             available_tokens = min(tokens_count, max_tokens)
 
             if available_tokens < MINIMUM_CONTEXT_LIMIT:
-                self._logger.warning(
-                    f"{available_tokens} tokens are less than threshold."
-                )
+                logger.warning(f"{available_tokens} tokens are less than threshold.")
                 break
 
             context_dict["text"] = self.tokens_to_text(tokens[:available_tokens])

@@ -1,75 +1,33 @@
-"""Unit tests for Logger class."""
+"""Unit tests for configure_logging function."""
 
 import logging
-import os
-from unittest.mock import patch
 
-from ols.utils.logger import Logger
+from ols.utils.logging import LoggingConfig, configure_logging
 
 
-@patch("dotenv.load_dotenv")
-@patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"})
-def test_logger_debug_level(mock_load_dotenv, capsys):
-    """Test logger set with log level to DEBUG."""
-    logger = Logger(logger_name="foo", log_level=logging.DEBUG)
-    logger.logger.debug("Debug message")
+def test_configure_logging_shouldnt_log(caplog):
+    """Test configure_logging function."""
+    logging_config = LoggingConfig(
+        {"app_log_level": "debug"},
+    )
 
-    # check captured log output
-    captured_out = capsys.readouterr().out
-    assert "Debug message" in captured_out
+    configure_logging(logging_config)
+    logger = logging.getLogger()
+    logger.info("level too high")
 
-    # error output should be empty
-    captured_err = capsys.readouterr().err
-    assert captured_err == ""
+    captured_out = caplog.text
+    assert "" in captured_out
 
 
-@patch("dotenv.load_dotenv")
-@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
-def test_logger_info_level(mock_load_dotenv, capsys):
-    """Test logger set with log level to INFO."""
-    logger = Logger(logger_name="foo", log_level=logging.INFO)
-    logger.logger.debug("Debug message")
+def test_configure_logging_should_log(caplog):
+    """Test configure_logging function."""
+    logging_config = LoggingConfig(
+        {"app_log_level": "warning"},
+    )
 
-    # check captured log output
-    # the log message should not be captured due to log level
-    captured_out = capsys.readouterr().out
-    assert captured_out == ""
+    configure_logging(logging_config)
+    logger = logging.getLogger()
+    logger.warning("tadada")
 
-    # error output should be empty as well
-    captured_err = capsys.readouterr().err
-    assert captured_err == ""
-
-
-@patch("dotenv.load_dotenv")
-@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
-def test_logger_show_message_flag(mock_load_dotenv, capsys):
-    """Test logger set with show_message flag."""
-    logger = Logger(logger_name="foo", log_level=logging.INFO, show_message=True)
-    logger.logger.debug("Debug message")
-
-    # check captured log output
-    # the log message should not be captured due to log level
-    captured_out = capsys.readouterr().out
-    assert "Set LOG_LEVEL environment variable (e.g., INFO, DEBUG)" in captured_out
-    assert "Debug message" not in captured_out
-
-    # error level should be empty
-    captured_err = capsys.readouterr().err
-    assert captured_err == ""
-
-
-@patch("dotenv.load_dotenv")
-@patch.dict(os.environ, {"LOG_LEVEL": "INFO"})
-def test_logger_error_messages(mock_load_dotenv, capsys):
-    """Test how logger log error messages."""
-    logger = Logger(logger_name="foo", log_level=logging.INFO)
-    logger.logger.error("Error message")
-
-    # check captured log output
-    # the log message should be captured
-    captured_out = capsys.readouterr().out
-    assert "ERROR: Error message" in captured_out
-
-    # error level should be empty
-    captured_err = capsys.readouterr().err
-    assert captured_err == ""
+    captured_out = caplog.text
+    assert "tadada" in captured_out

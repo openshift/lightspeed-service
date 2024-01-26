@@ -1,11 +1,12 @@
 """Web-based user interface handler."""
 
 import json
+import logging
 
 import gradio as gr
 import requests
 
-from ols.utils.logger import Logger
+logger = logging.getLogger(__name__)
 
 
 class GradioUI:
@@ -15,10 +16,8 @@ class GradioUI:
         self,
         ols_url="http://127.0.0.1:8080/v1/query",
         conversation_id=None,
-        logger=None,
     ) -> None:
         """Initialize UI API handlers."""
-        self.logger = logger if logger is not None else Logger("gradio_ui").logger
         # class variable
         self.ols_url = ols_url
         self.conversation_id = conversation_id
@@ -32,16 +31,16 @@ class GradioUI:
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-        self.logger.info(f"Using history: {use_history!s}")
+        logger.info(f"Using history: {use_history!s}")
         # Body of the request (a JSON object with a "query" field)
 
         data = {"query": prompt}
 
         if not use_history:
-            self.logger.info("Ignoring conversation history")
+            logger.info("Ignoring conversation history")
         elif use_history and self.conversation_id is not None:
             data["conversation_id"] = self.conversation_id
-            self.logger.info(f"Using conversation ID: {self.conversation_id}")
+            logger.info(f"Using conversation ID: {self.conversation_id}")
 
         # Convert the data dictionary to a JSON string
         json_data = json.dumps(data)
@@ -54,14 +53,12 @@ class GradioUI:
 
             # Check if the request was successful (status code 200)
             if response.status_code == requests.codes.ok:
-                self.logger.info("Response JSON:", response.json())
+                logger.info("Response JSON:", response.json())
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
             else:
-                self.logger.info(
-                    f"Request failed with status code {response.status_code}"
-                )
-                self.logger.info(f"Response text: {response.text}")
+                logger.info(f"Request failed with status code {response.status_code}")
+                logger.info(f"Response text: {response.text}")
                 return f"Sorry, an error occurred: {response.text}"
 
         except (ValueError, requests.RequestException) as e:

@@ -9,7 +9,7 @@ from ols.app.models.config import (
     ConversationCacheConfig,
     InvalidConfigurationError,
     LLMProviders,
-    LoggerConfig,
+    LoggingConfig,
     MemoryConfig,
     ModelConfig,
     OLSConfig,
@@ -183,24 +183,41 @@ def test_llm_providers():
     assert "provider name is missing" in str(excinfo.value)
 
 
-def test_logger_config():
-    """Test the LoggerConfig model."""
-    logger_config = LoggerConfig(
-        {
-            "default_level": "INFO",
-        }
-    )
-    assert logger_config.default_level == logging.INFO
+class TestLoggingConfig:
+    """Test the LoggingConfig model."""
 
-    logger_config = LoggerConfig(
-        {
-            "default_level": logging.INFO,
-        }
-    )
-    assert logger_config.default_level == "INFO"
+    def test_valid_values(self):
+        """Test valid values."""
+        # test default values
+        logging_config = LoggingConfig({})
+        assert logging_config.app_log_level == logging.INFO
+        assert logging_config.library_log_level == logging.WARNING
 
-    logger_config = LoggerConfig()
-    assert logger_config.default_level is None
+        # test custom values
+        logging_config = LoggingConfig(
+            {
+                "app_log_level": "debug",
+                "library_log_level": "debug",
+            }
+        )
+        assert logging_config.app_log_level == logging.DEBUG
+        assert logging_config.library_log_level == logging.DEBUG
+
+        logging_config = LoggingConfig()
+        assert logging_config.app_log_level is None
+
+    def test_invalid_values(self):
+        """Test invalid values."""
+        # value is not string
+        with pytest.raises(InvalidConfigurationError, match="invalid log level for 5"):
+            LoggingConfig({"app_log_level": 5})
+
+        # value is not valid log level
+        with pytest.raises(
+            InvalidConfigurationError,
+            match="invalid log level for app_log_level: dingdong",
+        ):
+            LoggingConfig({"app_log_level": "dingdong"})
 
 
 def test_redis_config():
@@ -303,8 +320,8 @@ def test_ols_config():
                     "max_entries": 100,
                 },
             },
-            "logger_config": {
-                "default_level": "INFO",
+            "logging_config": {
+                "logging_level": "INFO",
             },
         }
     )
@@ -321,7 +338,7 @@ def test_ols_config():
     assert ols_config.enable_debug_ui is True
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
-    assert ols_config.logger_config.default_level == logging.INFO
+    assert ols_config.logging_config.app_log_level == logging.INFO
 
 
 def test_config():
@@ -360,8 +377,8 @@ def test_config():
                         "max_entries": 100,
                     },
                 },
-                "logger_config": {
-                    "default_level": "INFO",
+                "logging_config": {
+                    "app_log_level": "error",
                 },
             },
         }
@@ -409,7 +426,7 @@ def test_config():
     assert config.ols_config.enable_debug_ui is True
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
-    assert config.ols_config.logger_config.default_level == logging.INFO
+    assert config.ols_config.logging_config.app_log_level == logging.ERROR
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         Config().validate_yaml()

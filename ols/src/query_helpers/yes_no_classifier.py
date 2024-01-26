@@ -1,11 +1,15 @@
 """Class responsible for classifying a statement as yes, no, or undetermined."""
 
+import logging
+
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
 from ols.src.query_helpers import QueryHelper
+
+logger = logging.getLogger(__name__)
 
 
 class YesNoClassifier(QueryHelper):
@@ -30,30 +34,30 @@ class YesNoClassifier(QueryHelper):
             f"provider: {self.provider}, "
             f"model: {self.model}, verbose: {verbose}"
         )
-        self.logger.info(f"{conversation} call settings: {settings_string}")
+        logger.info(f"{conversation} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
             constants.YES_OR_NO_CLASSIFIER_PROMPT_TEMPLATE
         )
 
-        self.logger.info(f"{conversation} using model: {self.model}")
-        self.logger.info(f"{conversation} determining yes/no: {statement}")
+        logger.info(f"{conversation} using model: {self.model}")
+        logger.info(f"{conversation} determining yes/no: {statement}")
         query = prompt_instructions.format(statement=statement)
 
-        self.logger.info(f"{conversation} yes/no query: {query}")
-        self.logger.info(f"{conversation} using model: {self.model}")
+        logger.info(f"{conversation} yes/no query: {query}")
+        logger.info(f"{conversation} using model: {self.model}")
 
         bare_llm = LLMLoader(self.provider, self.model).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         response = llm_chain(inputs={"statement": statement})
 
-        self.logger.info(f"{conversation} bare response: {response}")
-        self.logger.info(f"{conversation} yes/no response: {response['text']}")
+        logger.info(f"{conversation} bare response: {response}")
+        logger.info(f"{conversation} yes/no response: {response['text']}")
 
         if response["text"] not in ["0", "1", "9"]:
             msg = f"Returned response not 0, 1, or 9: {response['text']}"
-            self.logger.error(msg)
+            logger.error(msg)
             raise ValueError(msg)
 
         return int(response["text"])
