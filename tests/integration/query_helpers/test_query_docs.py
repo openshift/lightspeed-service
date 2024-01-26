@@ -1,4 +1,5 @@
 """Integration tests using light weight FAISS index."""
+
 import os
 
 import pytest

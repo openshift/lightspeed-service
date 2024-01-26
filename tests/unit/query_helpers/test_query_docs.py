@@ -1,4 +1,5 @@
 """Unit test for query doc retriever."""
+
 from unittest import mock
 
 import pytest

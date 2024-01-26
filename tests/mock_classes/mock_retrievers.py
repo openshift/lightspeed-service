@@ -1,4 +1,5 @@
 """Mocks for VectorStore and VectorStoreRetriever."""
+
 from langchain_core.documents import Document
 
 

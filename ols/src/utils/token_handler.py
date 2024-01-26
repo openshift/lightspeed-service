@@ -1,4 +1,5 @@
 """Utility to handle tokens."""
+
 import tiktoken
 
 from ols.src.utils.constants import (
