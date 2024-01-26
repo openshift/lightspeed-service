@@ -12,11 +12,10 @@ def test_gradio_ui_constructor():
     url = "locahost:8080"
     conversation_id = 1234
 
-    ui = GradioUI(ols_url=url, conversation_id=conversation_id, logger=None)
+    ui = GradioUI(ols_url=url, conversation_id=conversation_id)
     assert ui is not None
     assert ui.ols_url == url
     assert ui.conversation_id == conversation_id
-    assert ui.logger is not None
 
 
 def test_chat_ui_handler_ok_response():

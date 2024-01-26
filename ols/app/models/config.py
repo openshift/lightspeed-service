@@ -271,28 +271,42 @@ class ConversationCacheConfig(BaseModel):
         pass
 
 
-class LoggerConfig(BaseModel):
-    """Logger configuration."""
+class LoggingConfig(BaseModel):
+    """Logging configuration."""
 
-    default_level: Optional[int | str] = None
+    app_log_level: Optional[str] = None
+    library_log_level: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
-        level = logging.getLevelName(data.get("default_level", "INFO"))
-        if level is None:
-            raise InvalidConfigurationError(
-                f"invalid log level for default log: {data.get('default_level',None)}"
-            )
-        self.default_level = level
+
+        self.app_log_level = self._get_log_level(data, "app_log_level", "info")
+        self.library_log_level = self._get_log_level(
+            data, "library_log_level", "warning"
+        )
 
     def __eq__(self, other):
         """Compare two objects for equality."""
-        if isinstance(other, LoggerConfig):
-            return self.default_level == other.default_level
+        if isinstance(other, LoggingConfig):
+            return (
+                self.app_log_level == other.app_log_level
+                and self.library_log_level == other.library_log_level
+            )
         return False
+
+    def _get_log_level(self, data, key, default):
+        log_level = data.get(key, default)
+        if not isinstance(log_level, str):
+            raise InvalidConfigurationError(f"invalid log level for {log_level}")
+        log_level = logging.getLevelName(log_level.upper())
+        if not isinstance(log_level, int):
+            raise InvalidConfigurationError(
+                f"invalid log level for {key}: {data.get(key)}"
+            )
+        return log_level
 
     def validate_yaml(self) -> None:
         """Validate logger config."""
@@ -303,7 +317,7 @@ class OLSConfig(BaseModel):
     """OLS configuration."""
 
     conversation_cache: Optional[ConversationCacheConfig] = None
-    logger_config: Optional[LoggerConfig] = None
+    logging_config: Optional[LoggingConfig] = None
 
     enable_debug_ui: Optional[bool] = False
     default_provider: Optional[str] = None
@@ -344,14 +358,14 @@ class OLSConfig(BaseModel):
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
-        self.logger_config = LoggerConfig(data.get("logger_config", None))
+        self.logging_config = LoggingConfig(data.get("logging_config", None))
 
     def __eq__(self, other):
         """Compare two objects for equality."""
         if isinstance(other, OLSConfig):
             return (
                 self.conversation_cache == other.conversation_cache
-                and self.logger_config == other.logger_config
+                and self.logging_config == other.logging_config
                 and self.enable_debug_ui == other.enable_debug_ui
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
@@ -371,7 +385,7 @@ class OLSConfig(BaseModel):
         if self.conversation_cache is None:
             raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
         self.conversation_cache.validate_yaml()
-        self.logger_config.validate_yaml()
+        self.logging_config.validate_yaml()
 
 
 class Config(BaseModel):

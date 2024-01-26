@@ -3,7 +3,6 @@
 import re
 
 from ols.utils import config
-from ols.utils.logger import Logger
 
 
 def camel_to_snake(string: str) -> str:
@@ -26,4 +25,3 @@ class QueryHelper:
         """Initialize query helper."""
         self.provider = provider or config.ols_config.default_provider
         self.model = model or config.ols_config.default_model
-        self.logger = Logger(camel_to_snake(self.__class__.__name__)).logger

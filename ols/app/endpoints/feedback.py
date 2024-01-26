@@ -1,10 +1,12 @@
 """Handler for REST API call to provide user feedback."""
 
+import logging
+
 from fastapi import APIRouter
 
 from ols.app.models.models import FeedbackRequest
-from ols.utils import config
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
@@ -19,9 +21,7 @@ def user_feedback(feedback_request: FeedbackRequest) -> dict:
         Response indicating the status of the feedback.
     """
     conversation = str(feedback_request.conversation_id)
-    config.default_logger.info(f"{conversation} New feedback received")
-    config.default_logger.info(
-        f"{conversation} Feedback blob: {feedback_request.feedback_object}"
-    )
+    logger.info(f"{conversation} New feedback received")
+    logger.info(f"{conversation} Feedback blob: {feedback_request.feedback_object}")
 
     return {"status": "feedback received"}
