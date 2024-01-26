@@ -6,8 +6,6 @@ import os
 import warnings
 from typing import Optional
 
-# from langchain.callbacks.manager import CallbackManager
-# from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.llms.base import LLM
 
 from ols import constants
@@ -134,7 +132,7 @@ class LLMLoader:
     def _openai_llm_instance(self) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
-            from langchain.chat_models import ChatOpenAI
+            from langchain_community.chat_models import ChatOpenAI
         except Exception as e:
             logger.error(
                 "Missing openai libraries. Openai provider will be unavailable."
@@ -146,7 +144,7 @@ class LLMLoader:
                 if self.provider_config.url is not None
                 else "https://api.openai.com/v1"
             ),
-            "api_key": self.provider_config.credentials,
+            "openai_api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
             "organization": os.environ.get("OPENAI_ORGANIZATION", None),
@@ -159,6 +157,8 @@ class LLMLoader:
             "frequency_penalty": 1.03,
             "verbose": False,
         }
+        keylen=len(params["openai_api_key"])
+        logger.info(f"initializing openai with openai_api_key length {keylen}")
         # TODO: We need to verify if the overridden params are valid for the LLM
         # before updating the default.
         # params.update(self.llm_params)  # override parameters

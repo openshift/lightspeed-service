@@ -2,6 +2,7 @@ fastapi
 gradio
 kubernetes
 langchain
+langchain-community
 llama_index
 torch
 transformers
