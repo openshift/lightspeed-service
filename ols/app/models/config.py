@@ -60,7 +60,7 @@ class ModelConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate model config."""
         if self.name is None:
             raise InvalidConfigurationError("model name is missing")
@@ -105,14 +105,14 @@ class ProviderConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate provider config."""
         if self.name is None:
             raise InvalidConfigurationError("provider name is missing")
         if self.url is not None and not is_valid_http_url(self.url):
             raise InvalidConfigurationError("provider URL is invalid")
         for v in self.models.values():
-            v.validate()
+            v.validate_yaml()
 
 
 class LLMProviders(BaseModel):
@@ -137,10 +137,10 @@ class LLMProviders(BaseModel):
             return self.providers == other.providers
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate LLM config."""
         for v in self.providers.values():
-            v.validate()
+            v.validate_yaml()
 
 
 class RedisCredentials(BaseModel):
@@ -163,7 +163,7 @@ class RedisCredentials(BaseModel):
             return self.user == other.user and self.password == other.password
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate redis credentials."""
         if (self.user is not None and self.password is None) or (
             self.user is None and self.password is not None
@@ -266,35 +266,49 @@ class ConversationCacheConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate conversation cache config."""
         pass
 
 
-class LoggerConfig(BaseModel):
-    """Logger configuration."""
+class LoggingConfig(BaseModel):
+    """Logging configuration."""
 
-    default_level: Optional[int | str] = None
+    app_log_level: Optional[str] = None
+    library_log_level: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
-        level = logging.getLevelName(data.get("default_level", "INFO"))
-        if level is None:
-            raise InvalidConfigurationError(
-                f"invalid log level for default log: {data.get('default_level',None)}"
-            )
-        self.default_level = level
+
+        self.app_log_level = self._get_log_level(data, "app_log_level", "info")
+        self.library_log_level = self._get_log_level(
+            data, "library_log_level", "warning"
+        )
 
     def __eq__(self, other):
         """Compare two objects for equality."""
-        if isinstance(other, LoggerConfig):
-            return self.default_level == other.default_level
+        if isinstance(other, LoggingConfig):
+            return (
+                self.app_log_level == other.app_log_level
+                and self.library_log_level == other.library_log_level
+            )
         return False
 
-    def validate(self) -> None:
+    def _get_log_level(self, data, key, default):
+        log_level = data.get(key, default)
+        if not isinstance(log_level, str):
+            raise InvalidConfigurationError(f"invalid log level for {log_level}")
+        log_level = logging.getLevelName(log_level.upper())
+        if not isinstance(log_level, int):
+            raise InvalidConfigurationError(
+                f"invalid log level for {key}: {data.get(key)}"
+            )
+        return log_level
+
+    def validate_yaml(self) -> None:
         """Validate logger config."""
         pass
 
@@ -303,7 +317,7 @@ class OLSConfig(BaseModel):
     """OLS configuration."""
 
     conversation_cache: Optional[ConversationCacheConfig] = None
-    logger_config: Optional[LoggerConfig] = None
+    logging_config: Optional[LoggingConfig] = None
 
     enable_debug_ui: Optional[bool] = False
     default_provider: Optional[str] = None
@@ -344,14 +358,14 @@ class OLSConfig(BaseModel):
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
-        self.logger_config = LoggerConfig(data.get("logger_config", None))
+        self.logging_config = LoggingConfig(data.get("logging_config", None))
 
     def __eq__(self, other):
         """Compare two objects for equality."""
         if isinstance(other, OLSConfig):
             return (
                 self.conversation_cache == other.conversation_cache
-                and self.logger_config == other.logger_config
+                and self.logging_config == other.logging_config
                 and self.enable_debug_ui == other.enable_debug_ui
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
@@ -366,12 +380,12 @@ class OLSConfig(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate OLS config."""
         if self.conversation_cache is None:
             raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
-        self.conversation_cache.validate()
-        self.logger_config.validate()
+        self.conversation_cache.validate_yaml()
+        self.logging_config.validate_yaml()
 
 
 class Config(BaseModel):
@@ -401,14 +415,14 @@ class Config(BaseModel):
             )
         return False
 
-    def validate(self) -> None:
+    def validate_yaml(self) -> None:
         """Validate all configurations."""
         if self.llm_providers is None:
             raise InvalidConfigurationError("no LLMProviders found")
-        self.llm_providers.validate()
+        self.llm_providers.validate_yaml()
         if self.ols_config is None:
             raise InvalidConfigurationError("no OLSConfig found")
-        self.ols_config.validate()
+        self.ols_config.validate_yaml()
         for role in constants.PROVIDER_MODEL_ROLES:
             provider_attr_name = f"{role}_provider"
             provider_attr_value = getattr(self.ols_config, provider_attr_name, None)

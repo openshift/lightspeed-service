@@ -1,5 +1,7 @@
 """Handlers for all OLS-related REST API endpoints."""
 
+import logging
+
 from fastapi import APIRouter, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -7,11 +9,13 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app.models.models import LLMRequest
 from ols.app.utils import Utils
-from ols.src.docs.docs_summarizer import DocsSummarizer
 from ols.src.llms.llm_loader import LLMLoader
+from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["query"])
 
@@ -26,8 +30,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     Returns:
         Response containing the processed information.
     """
-    logger = config.default_logger
-
     # Initialize variables
     previous_input = None
     conversation = llm_request.conversation_id
@@ -148,8 +150,8 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     llm_response = LLMRequest(query=llm_request.query)
     llm_response.conversation_id = conversation
 
-    config.default_logger.info(f"{conversation} New conversation")
-    config.default_logger.info(f"{conversation} Incoming request: {llm_request.query}")
+    logger.info(f"{conversation} New conversation")
+    logger.info(f"{conversation} Incoming request: {llm_request.query}")
 
     bare_llm = LLMLoader(
         config.ols_config.default_provider,
@@ -160,7 +162,7 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
     response = llm_chain(inputs={"query": llm_request.query})
 
-    config.default_logger.info(f"{conversation} Model returned: {response}")
+    logger.info(f"{conversation} Model returned: {response}")
 
     llm_response.response = response["text"]
 

@@ -1,10 +1,12 @@
 """This module has the components to retrieve docs from vector store."""
+
+import logging
 from typing import Any
 
 from langchain_core.documents.base import Document
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 
-from ols.utils.logger import Logger
+logger = logging.getLogger(__name__)
 
 
 class RetrieveDocsExceptionError(Exception):
@@ -14,14 +16,10 @@ class RetrieveDocsExceptionError(Exception):
 class QueryDocs:
     """Generic interface for retrieving docs from any vector store."""
 
-    def __init__(self) -> None:
-        """Initialize the `QueryDocs` instance."""
-        self.logger = Logger("QueryDocs").logger
-
     def get_relevant_docs(
         self,
         query: str,
-        vectordb: VectorStore = None,
+        vectordb: VectorStore,
         search_type: str = "similarity",
         **search_kwargs: Any,
     ) -> list[Document] | None:
@@ -82,7 +80,7 @@ class QueryDocs:
                 Report'}}
             )
         """
-        self.logger.info(
+        logger.info(
             f"""Retrieving docs for
                 query: {query},
                 vectordb: {vectordb},
@@ -92,7 +90,7 @@ class QueryDocs:
         )
 
         if search_type not in ("mmr", "similarity", "similarity_score_threshold"):
-            self.logger.error(f"incorrect search type {search_type}")
+            logger.error(f"incorrect search type {search_type}")
             raise RetrieveDocsExceptionError(
                 f"""search type is invalid: {search_type}"""
             )
@@ -104,11 +102,9 @@ class QueryDocs:
         try:
             docs = db_retriever.get_relevant_documents(query=query)
         except Exception:
-            self.logger.error(
-                f"exception raised while getting the docs for query: {query}"
-            )
+            logger.error(f"exception raised while getting the docs for query: {query}")
             raise RetrieveDocsExceptionError(
-                "error in getting the  docs from vectorstore"
+                "error in getting the docs from vectorstore"
             )
 
         return docs

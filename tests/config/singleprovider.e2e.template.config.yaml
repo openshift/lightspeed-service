@@ -1,0 +1,16 @@
+---
+LLMProviders:
+  - name: $PROVIDER
+    credential_path: $PROVIDER_KEY_PATH
+    models:
+      - name: $MODEL
+OLSConfig:
+  enable_debug_ui: false
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logger_config:
+    default_level: INFO
+  default_provider: $PROVIDER
+  default_model: $MODEL

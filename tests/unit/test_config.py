@@ -273,7 +273,7 @@ OLSConfig:
     type: memory
     memory:
       max_entries: 1000
-  logger_config:
+  logging_config:
     level: info
   default_provider: p1
   default_model: m1
@@ -334,8 +334,8 @@ def test_valid_config_file() -> None:
                             "max_entries": 1000,
                         },
                     },
-                    "logger_config": {
-                        "default_level": "INFO",
+                    "logging_config": {
+                        "logging_level": "INFO",
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
@@ -390,8 +390,8 @@ def test_valid_config_file_with_redis() -> None:
                             },
                         },
                     },
-                    "logger_config": {
-                        "default_level": "INFO",
+                    "logging_config": {
+                        "logging_level": "INFO",
                     },
                     "default_provider": "p1",
                     "default_model": "m1",

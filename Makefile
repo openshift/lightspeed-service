@@ -32,7 +32,7 @@ test-integration: ## Run integration tests tests
 	python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
 	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
 
-test-e2e: ## Run e2e tests
+test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/e2e --junit-xml=${ARTIFACT_DIR}/junit_e2e.xml

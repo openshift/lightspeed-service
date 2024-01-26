@@ -1,24 +1,23 @@
 """A class for summarizing documentation context."""
 
+import logging
 import os
 
 import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
+from llama_index.response.schema import Response
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
-from ols.utils import config
-from ols.utils.logger import Logger
+from ols.src.query_helpers import QueryHelper
+
+logger = logging.getLogger(__name__)
 
 
-class DocsSummarizer:
+class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
-
-    def __init__(self):
-        """Initialize the DocsSummarizer."""
-        self.logger = Logger("docs_summarizer").logger
 
     def summarize(self, conversation: str, query: str, **kwargs) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
@@ -31,9 +30,7 @@ class DocsSummarizer:
         Returns:
             A tuple containing the summary as a string and referenced documents as a string.
         """
-        provider = config.ols_config.summarizer_provider
-        model = config.ols_config.summarizer_model
-        bare_llm = LLMLoader(provider, model).llm
+        bare_llm = LLMLoader(self.provider, self.model).llm
 
         verbose = kwargs.get("verbose", "").lower() == "true"
 
@@ -46,23 +43,23 @@ class DocsSummarizer:
         settings_string = (
             f"conversation: {conversation}, "
             f"query: {query}, "
-            f"provider: {provider}, "
-            f"model: {model}, "
+            f"provider: {self.provider}, "
+            f"model: {self.model}, "
             f"verbose: {verbose}"
         )
-        self.logger.info(f"{conversation} call settings: {settings_string}")
+        logger.info(f"{conversation} call settings: {settings_string}")
 
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
 
-        self.logger.info(f"{conversation} Getting service context")
-        self.logger.info(f"{conversation} using model: {model}")
+        logger.info(f"{conversation} Getting service context")
+        logger.info(f"{conversation} using model: {self.model}")
 
         embed_model: str | TextEmbeddingsInference = "local:BAAI/bge-base-en"
         # TODO get this from global config instead of env
         # Not a priority because embedding model probably won't be configurable in the final product
         tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
         if tei_embedding_url:
-            self.logger.info(f"{conversation} using TEI embedding server")
+            logger.info(f"{conversation} using TEI embedding server")
 
             embed_model = TextEmbeddingsInference(
                 model_name=constants.TEI_EMBEDDING_MODEL,
@@ -73,7 +70,7 @@ class DocsSummarizer:
             chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs
         )
 
-        self.logger.info(
+        logger.info(
             f"{conversation} using embed model: {service_context.embed_model!s}"
         )
 
@@ -82,14 +79,14 @@ class DocsSummarizer:
             storage_context = StorageContext.from_defaults(
                 persist_dir=constants.PRODUCT_DOCS_PERSIST_DIR
             )
-            self.logger.info(f"{conversation} Setting up index")
+            logger.info(f"{conversation} Setting up index")
             index = load_index_from_storage(
                 storage_context=storage_context,
                 index_id=constants.PRODUCT_INDEX,
                 service_context=service_context,
                 verbose=verbose,
             )
-            self.logger.info(f"{conversation} Setting up query engine")
+            logger.info(f"{conversation} Setting up query engine")
             query_engine = index.as_query_engine(
                 text_qa_template=summarization_template,
                 verbose=verbose,
@@ -97,7 +94,7 @@ class DocsSummarizer:
                 similarity_top_k=1,
             )
 
-            self.logger.info(f"{conversation} Submitting summarization query")
+            logger.info(f"{conversation} Submitting summarization query")
             summary = query_engine.query(query)
 
             referenced_documents = "\n".join(
@@ -107,19 +104,19 @@ class DocsSummarizer:
                 ]
             )
         except FileNotFoundError as err:
-            self.logger.error(
-                f"FileNotFoundError: {err.strerror}, file= {err.filename}"
-            )
-            self.logger.info("Using llm to answer the query without RAG content")
+            logger.error(f"FileNotFoundError: {err.strerror}, file= {err.filename}")
+            logger.info("Using llm to answer the query without RAG content")
 
             response = bare_llm.invoke(query)
-            summary = f""" The following response was generated without access to RAG content:
+            summary = Response(
+                f""" The following response was generated without access to RAG content:
 
-                        {response.content}
+                        {response}
                       """
+            )
             referenced_documents = ""
 
-        self.logger.info(f"{conversation} Summary response: {summary!s}")
-        self.logger.info(f"{conversation} Referenced documents: {referenced_documents}")
+        logger.info(f"{conversation} Summary response: {summary!s}")
+        logger.info(f"{conversation} Referenced documents: {referenced_documents}")
 
         return str(summary), referenced_documents

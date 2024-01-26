@@ -17,7 +17,7 @@ OLSConfig:
       credentials:
         user_path: tests/config/redis_user.txt
         password_path: tests/config/redis_password.txt
-  logger_config:
-    default_level: INFO
+  logging_config:
+    logging_level: INFO
   default_provider: p1
   default_model: m1

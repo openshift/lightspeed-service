@@ -1,4 +1,5 @@
 """Unit Test for the Utils class."""
+
 import re
 
 from ols.app.utils import Utils

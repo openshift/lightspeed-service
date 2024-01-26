@@ -1,6 +1,7 @@
 """LLM backend libraries loader."""
 
 import inspect
+import logging
 import os
 import warnings
 from typing import Optional
@@ -12,7 +13,8 @@ from langchain.llms.base import LLM
 from ols import constants
 from ols.app.models.config import ProviderConfig
 from ols.utils import config
-from ols.utils.logger import Logger
+
+logger = logging.getLogger(__name__)
 
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)
@@ -64,18 +66,16 @@ class LLMLoader:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         params: Optional[dict] = None,
-        logger=None,
     ) -> None:
         """Initialize loader using provided provider, model, and other parameters."""
-        self.logger = logger if logger is not None else Logger("llm_loader").logger
         if provider is None:
             msg = "Missing provider"
-            self.logger.error(msg)
+            logger.error(msg)
             raise MissingProviderError(msg)
         self.provider = provider
         if model is None:
             msg = "Missing model"
-            self.logger.error(msg)
+            logger.error(msg)
             raise MissingModelError(msg)
         self.model = model
         self.provider_config = self._get_provider_config()
@@ -89,7 +89,7 @@ class LLMLoader:
         cfg = config.llm_config.providers.get(self.provider)
         if not cfg:
             msg = f"Unsupported LLM provider {self.provider}"
-            self.logger.error(msg)
+            logger.error(msg)
             raise UnsupportedProviderError(msg)
 
         model = cfg.models.get(self.model)
@@ -98,12 +98,12 @@ class LLMLoader:
                 f"No configuration provided for model {self.model} under "
                 f"LLM provider {self.provider}"
             )
-            self.logger.error(msg)
+            logger.error(msg)
             raise ModelConfigMissingError(msg)
         return cfg
 
     def _llm_instance(self) -> LLM:
-        self.logger.debug(
+        logger.debug(
             f"[{inspect.stack()[0][3]}] Loading LLM {self.model} from {self.provider}"
         )
         # convert to string to handle None or False definitions
@@ -120,22 +120,24 @@ class LLMLoader:
                 return self._bam_llm_instance()
             case _:
                 msg = f"Unsupported LLM provider {self.provider}"
-                self.logger.error(msg)
+                logger.error(msg)
                 raise UnsupportedProviderError(msg)
 
     def _openai_llm_instance(self) -> LLM:
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
+        logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
             from langchain.chat_models import ChatOpenAI
         except Exception as e:
-            self.logger.error(
+            logger.error(
                 "Missing openai libraries. Openai provider will be unavailable."
             )
             raise e
         params: dict = {
-            "base_url": self.provider_config.url
-            if self.provider_config.url is not None
-            else "https://api.openai.com/v1",
+            "base_url": (
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else "https://api.openai.com/v1"
+            ),
             "api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
@@ -153,19 +155,19 @@ class LLMLoader:
         # before updating the default.
         # params.update(self.llm_params)  # override parameters
         llm = ChatOpenAI(**params)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
+        logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
         return llm
 
     def _bam_llm_instance(self) -> LLM:
         """BAM Research Lab."""
-        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
+        logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
             # BAM Research lab
             from genai import Client, Credentials
             from genai.extensions.langchain import LangChainInterface
             from genai.text.generation import TextGenerationParameters
         except Exception as e:
-            self.logger.error(
+            logger.error(
                 "Missing ibm-generative-ai libraries. ibm-generative-ai "
                 "provider will be unavailable."
             )
@@ -173,9 +175,11 @@ class LLMLoader:
         # BAM Research lab
         creds = Credentials(
             api_key=self.provider_config.credentials,
-            api_endpoint=self.provider_config.url
-            if self.provider_config.url is not None
-            else "https://bam-api.res.ibm.com",
+            api_endpoint=(
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else "https://bam-api.res.ibm.com"
+            ),
         )
 
         bam_params = {
@@ -197,16 +201,16 @@ class LLMLoader:
         params = TextGenerationParameters(**bam_params)
 
         llm = LangChainInterface(client=client, model_id=self.model, parameters=params)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
+        logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
         return llm
 
     # # TODO: refactor after OLS-233
     # def _ollama_llm_instance(self) -> LLM:
-    #     self.logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
+    #     logger.debug(f"[{inspect.stack()[0][3]}] Creating Ollama LLM instance")
     #     try:
     #         from langchain.llms import Ollama
     #     except Exception as e:
-    #         self.logger.error(
+    #         logger.error(
     #             "Missing ollama libraries. ollama provider will be unavailable."
     #         )
     #         raise e
@@ -223,19 +227,19 @@ class LLMLoader:
     #     }
     #     params.update(self.llm_params)  # override parameters
     #     llm = Ollama(**params)
-    #     self.logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {llm}")
+    #     logger.debug(f"[{inspect.stack()[0][3]}] Ollama LLM instance {llm}")
     #     return llm
 
     # # TODO: update this to use config not direct env vars
     # def _tgi_llm_instance(self) -> LLM:
     #     """Note: TGI does not support specifying the model, it is an instance per model."""
-    #     self.logger.debug(
+    #     logger.debug(
     #         f"[{inspect.stack()[0][3]}] Creating Hugging Face TGI LLM instance"
     #     )
     #     try:
     #         from langchain.llms import HuggingFaceTextGenInference
     #     except Exception as e:
-    #         self.logger.error(
+    #         logger.error(
     #             "Missing HuggingFaceTextGenInference libraries. HuggingFaceTextGenInference "
     #             "provider will be unavailable."
     #         )
@@ -255,14 +259,14 @@ class LLMLoader:
     #     }
     #     params.update(self.llm_params)  # override parameters
     #     llm = HuggingFaceTextGenInference(**params)
-    #     self.logger.debug(
+    #     logger.debug(
     #         f"[{inspect.stack()[0][3]}] Hugging Face TGI LLM instance {llm}"
     #     )
     #     return llm
 
     # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self) -> LLM:
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
+        logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)
         try:
             from ibm_watson_machine_learning.foundation_models import Model
@@ -273,19 +277,23 @@ class LLMLoader:
                 GenTextParamsMetaNames as GenParams,
             )
         except Exception as e:
-            self.logger.error(
+            logger.error(
                 "Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
             )
             raise e
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": self.llm_params.get("url")
-            if self.llm_params.get("url") is not None
-            else os.environ.get("WATSON_API_URL", None),
-            "apikey": self.llm_params.get("apikey")
-            if self.llm_params.get("apikey") is not None
-            else os.environ.get("WATSON_API_KEY", None),
+            "url": (
+                self.llm_params.get("url")
+                if self.llm_params.get("url") is not None
+                else os.environ.get("WATSON_API_URL", None)
+            ),
+            "apikey": (
+                self.llm_params.get("apikey")
+                if self.llm_params.get("apikey") is not None
+                else os.environ.get("WATSON_API_KEY", None)
+            ),
         }
         # WatsonX uses different mechanism for defining parameters
         params = {
@@ -313,7 +321,7 @@ class LLMLoader:
             ),
         )
         llm = WatsonxLLM(model=llm_model)
-        self.logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")
+        logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")
         return llm
 
     def status(self):

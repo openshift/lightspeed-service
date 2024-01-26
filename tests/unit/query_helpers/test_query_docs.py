@@ -1,4 +1,5 @@
 """Unit test for query doc retriever."""
+
 from unittest import mock
 
 import pytest
@@ -37,7 +38,7 @@ def test_query_docs_failure():
     ):
         with pytest.raises(
             RetrieveDocsExceptionError,
-            match="error in getting the  docs from vectorstore",
+            match="error in getting the docs from vectorstore",
         ):
             QueryDocs().get_relevant_docs(
                 vectordb=MockVectorStore(),
