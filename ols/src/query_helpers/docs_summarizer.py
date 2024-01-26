@@ -52,7 +52,6 @@ class DocsSummarizer(QueryHelper):
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
 
         logger.info(f"{conversation} Getting service context")
-        logger.info(f"{conversation} using model: {self.model}")
 
         embed_model: str | TextEmbeddingsInference = "local:BAAI/bge-base-en"
         # TODO get this from global config instead of env
