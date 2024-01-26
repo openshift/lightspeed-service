@@ -20,7 +20,6 @@ class MockRedis:
 
     def config_set(self, parameter, value):
         """Allow passing any parameter."""
-        pass
 
     def get(self, key):
         """Return item from cache (implementation of GET command)."""
