@@ -42,11 +42,18 @@ def test_invalid_question() -> None:
         "/v1/query", json={"conversation_id": "1234", "query": "test query"}, timeout=20
     )
     print(vars(response))
-    assert response.status_code == requests.codes.unprocessable
-    assert response.json() == {
-        "detail": {
-            "response": "Sorry, I can only answer questions about OpenShift "
-            "and Kubernetes. This does not look like something I "
-            "know how to handle."
+    assert response.status_code == requests.codes.ok
+    expected_details = str(
+        {
+            "detail": {
+                "response": "I can only answer questions about \
+            OpenShift and Kubernetes. Please rephrase your question"
+            }
         }
+    )
+    expected_json = {
+        "conversation_id": "1234",
+        "query": "test query",
+        "response": expected_details,
     }
+    assert response.json() == expected_json

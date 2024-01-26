@@ -49,76 +49,87 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
     # Validate the query
     question_validator = QuestionValidator()
-    validation_result = question_validator.validate_question(
-        conversation, llm_request.query
-    )
-
-    if validation_result[0] == constants.INVALID:
-        logger.info(f"{conversation} Question is not about k8s/ocp, rejecting")
+    try:
+        validation_result = question_validator.validate_question(
+            conversation, llm_request.query
+        )
+    except Exception as validation_error:
+        logger.error("Error while validating question")
+        logger.error(validation_error)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "response": "Sorry, I can only answer questions about "
-                "OpenShift and Kubernetes. This does not look "
-                "like something I know how to handle."
-            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while validating question",
         )
 
-    if validation_result[0] == constants.VALID:
-        logger.info(f"{conversation} Question is about k8s/ocp")
-        question_type = validation_result[1]
+    validation = validation_result[0]
+    question_type = validation_result[1]
 
-        # check if question type is from known categories
-        if question_type not in {constants.NOYAML, constants.YAML}:
-            # not known question type has been detected
-            logger.error(f"Unknown question type {question_type}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"response": "Internal server error. Please try again."},
-            )
-
-        if question_type == constants.NOYAML:
+    match (validation, question_type):
+        case (constants.SUBJECT_INVALID, _):
             logger.info(
-                f"{conversation} Question is not about yaml, sending for generic info"
+                f"{conversation} - Query is not relevant to kubernetes or ocp, returning"
             )
-
+            llm_response.response = str(
+                {
+                    "detail": {
+                        "response": "I can only answer questions about \
+            OpenShift and Kubernetes. Please rephrase your question"
+                    }
+                }
+            )
+        case (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC):
+            logger.info(
+                f"{conversation} - Question is not about yaml, sending for generic info"
+            )
             # Summarize documentation
             docs_summarizer = DocsSummarizer()
-            llm_response.response, _ = docs_summarizer.summarize(
-                conversation, llm_request.query
-            )
-
-            return llm_response
-
-        elif question_type == constants.YAML:
+            try:
+                llm_response.response, _ = docs_summarizer.summarize(
+                    conversation, llm_request.query
+                )
+            except Exception as summarizer_error:
+                logger.error("Error while obtaining answer for user question")
+                logger.error(summarizer_error)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error while obtaining answer for user question",
+                )
+        case (constants.SUBJECT_VALID, constants.CATEGORY_YAML):
             logger.info(
-                f"{conversation} Question is about yaml, sending to the YAML generator"
+                f"{conversation} - Question is about yaml, sending to the YAML generator"
             )
             yaml_generator = YamlGenerator()
-            generated_yaml = yaml_generator.generate_yaml(
-                conversation, llm_request.query, previous_input
+            try:
+                generated_yaml = yaml_generator.generate_yaml(
+                    conversation, llm_request.query, previous_input
+                )
+            except Exception as yamlgenerator_error:
+                logger.error("Error while obtaining yaml for user question")
+                logger.error(yamlgenerator_error)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error while obtaining answer for user question",
+                )
+            llm_response.response = generated_yaml
+        case (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN):
+            logger.info(
+                f"{conversation} - Query is relevant, but cannot identify the intent"
+            )
+            llm_response.response = str(
+                {
+                    "detail": {
+                        "response": "Question does not provide enough context, \
+                Please rephrase your question or provide more detail"
+                    }
+                }
             )
 
-            if generated_yaml == constants.SOME_FAILURE:
-                raise HTTPException(
-                    status_code=500,
-                    detail={"response": "Internal server error. Please try again."},
-                )
-
-            # Further processing of YAML response (filtering, cleaning, linting, RAG, etc.)
-
-            llm_response.response = generated_yaml
-
-            if config.conversation_cache is not None:
-                config.conversation_cache.insert_or_append(
-                    conversation,
-                    llm_request.query + "\n\n" + str(llm_response.response or ""),
-                )
-            return llm_response
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail={"response": "Internal server error. Please try again."},
-    )
+    if config.conversation_cache is not None:
+        config.conversation_cache.insert_or_append(
+            conversation,
+            llm_request.query + "\n\n" + str(llm_response.response or ""),
+        )
+    return llm_response
 
 
 @router.post("/debug/query")
