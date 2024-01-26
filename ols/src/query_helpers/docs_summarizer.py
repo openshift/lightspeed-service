@@ -7,6 +7,7 @@ import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
+from llama_index.response.schema import Response
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
@@ -107,10 +108,12 @@ class DocsSummarizer(QueryHelper):
             logger.info("Using llm to answer the query without RAG content")
 
             response = bare_llm.invoke(query)
-            summary = f""" The following response was generated without access to RAG content:
+            summary = Response(
+                f""" The following response was generated without access to RAG content:
 
                         {response}
                       """
+            )
             referenced_documents = ""
 
         logger.info(f"{conversation} Summary response: {summary!s}")
