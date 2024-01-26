@@ -63,3 +63,26 @@ def test_invalid_question():
         "response": expected_details,
     }
     assert response.json() == expected_json
+
+
+def test_valid_question() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    response = client.post(
+        "/v1/query",
+        json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+        timeout=90,
+    )
+    print(vars(response))
+    assert response.status_code == requests.codes.ok
+    json_response = response.json()
+    json_response["query"] == "what is kubernetes?"
+    json_response["conversation_id"] == conversation_id
+    # assuming the response will be consistent
+    assert (
+        "Kubernetes is an open source container orchestration tool"
+        in json_response["response"]
+    )
+    assert (
+        "The following response was generated without access to reference content:"
+        not in json_response["response"]
+    )

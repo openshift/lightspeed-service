@@ -6,8 +6,8 @@ llm_providers:
       - name: $MODEL
 ols_config:
   reference_content:
-    # product_docs_index_path: "./vector-db/ocp-product-docs"
-    # product_docs_index_id: product
+    product_docs_index_path: $RAG_INDEX_DIR
+    product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
