@@ -45,20 +45,16 @@ class ModelConfigInvalidError(LLMConfigurationError):
 
 
 class LLMLoader:
-    """Note: This class loads the LLM backend libraries if the specific LLM is loaded.
+    """Load LLM backend.
 
-    Known caveats: Currently supports a single instance/model per backend.
+    Example:
+        ```python
+        # using the class and overriding specific parameters
+        params = {'temperature': 0.02, 'top_p': 0.95}
 
-    llm_backends: a string with a supported llm backend name ('openai', 'watson', 'bam').
-    params      : (optional) array of parameters to override and pass to the llm backend
-
-    # using the class and overriding specific parameters
-    llm_backend = 'openai'
-    params = {'temperature': 0.02, 'top_p': 0.95}
-
-    llm_config = LLMLoader(llm_backend=llm_backend, params=params)
-    llm_chain = LLMChain(llm=llm_config.llm, prompt=prompt)
-
+        bare_llm = LLMLoader(provider="openai", model="gpt-3.5-turbo", params=params)
+        llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
+        ```
     """
 
     def __init__(
@@ -67,7 +63,19 @@ class LLMLoader:
         model: Optional[str] = None,
         params: Optional[dict] = None,
     ) -> None:
-        """Initialize loader using provided provider, model, and other parameters."""
+        """Initialize LLM loader.
+
+        Args:
+            provider: The LLM provider name.
+            model: The LLM model name.
+            params: The parameters to override and pass to the LLM backend.
+
+        Raises:
+            MissingProviderError: When provider is not specified.
+            MissingModelError: When model is not specified.
+            UnsupportedProviderError: When provider is not supported or is unknown.
+            ModelConfigMissingError: When no configuration exists for the requested model name.
+        """
         if provider is None:
             msg = "Missing provider"
             logger.error(msg)
