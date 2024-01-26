@@ -281,7 +281,7 @@ class LoggingConfig(BaseModel):
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
-            return
+            data = {}
 
         self.app_log_level = self._get_log_level(data, "app_log_level", "info")
         self.library_log_level = self._get_log_level(
