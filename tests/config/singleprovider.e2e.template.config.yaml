@@ -1,7 +1,7 @@
 ---
 LLMProviders:
   - name: $PROVIDER
-    credential_path: $PROVIDER_KEY_PATH
+    credentials_path: $PROVIDER_KEY_PATH
     models:
       - name: $MODEL
 OLSConfig:

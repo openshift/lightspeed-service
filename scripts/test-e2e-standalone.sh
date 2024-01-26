@@ -21,7 +21,12 @@ OLS_LOGS=$ARTIFACT_DIR/ols.log
 
 # Generate ols config.yaml
 export PROVIDER="${PROVIDER:-openai}"
-export PROVIDER_KEY_PATH="${PROVIDER_KEY_PATH:-/home/bparees/creds/llms/openai.key}"
+export PROVIDER_KEY_PATH="${PROVIDER_KEY_PATH:-openai_api_key.txt}"
+if [ ! -e "$PROVIDER_KEY_PATH" ]; then
+  echo "No key found at $PROVIDER_KEY_PATH"
+  exit 1
+fi
+
 export MODEL="${MODEL:-gpt-3.5-turbo-1106}"
 envsubst < $(pwd)/tests/config/singleprovider.e2e.template.config.yaml > $OLS_CONFIG_FILE
 
@@ -58,4 +63,3 @@ fi
 
 echo Done waiting for OLS server start, running e2e
 make test-e2e
-echo Done running e2e
