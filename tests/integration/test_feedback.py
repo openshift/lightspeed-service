@@ -1,15 +1,21 @@
 """Integration tests for REST API endpoints for providing user feedback."""
 
 import os
+from unittest.mock import patch
 
 import requests
 from fastapi.testclient import TestClient
 
-# config file path needs to be set before importing app which tries to load the config
-os.environ["OLS_CONFIG_FILE"] = "tests/config/valid_config.yaml"
-from ols.app.main import app  # noqa: E402
 
-client = TestClient(app)
+# we need to patch the config file path to point to the test
+# config file before we import anything from main.py
+@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+def setup():
+    """Setups the test client."""
+    global client
+    from ols.app.main import app
+
+    client = TestClient(app)
 
 
 def test_feedback() -> None:

@@ -8,8 +8,9 @@ __pycache__
 venv
 .venv
 
-# ignore dev dotenv file
+# ignore local configuration
 .env
+/olsconfig.yaml
 
 # ignore locally significant directories
 tmp

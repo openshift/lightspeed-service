@@ -10,11 +10,16 @@ from ols import constants
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
-# config file path needs to be set before importing app which tries to load the config
-os.environ["OLS_CONFIG_FILE"] = "tests/config/valid_config.yaml"
-from ols.app.main import app  # noqa: E402
 
-client = TestClient(app)
+# we need to patch the config file path to point to the test
+# config file before we import anything from main.py
+@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+def setup():
+    """Setups the test client."""
+    global client
+    from ols.app.main import app
+
+    client = TestClient(app)
 
 
 def test_liveness() -> None:
