@@ -1,75 +1,70 @@
-## About The Project
+# About The Project
 
-OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services.
+OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services.
 
-## Getting Started
 
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
+## Prerequisites
 
 * Python 3.11
 * Git and pip installed
-* An LLM api key, currently BAM(IBM's research environment) and OpenAI are offered as backends.
+* An LLM api key, currently BAM (IBM's research environment) and OpenAI are supported as backends.
 
-### Installation
+## Installation
 
-#### Get API keys
-
-##### BAM provided LLM
-1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
-   * Login with your IBM W3 Id credentials.
-   * Copy the API Key from the Documentation section.
-     ![BAM API Key](docs/bam_api_key.png)
-2. BAM API URL: https://bam-api.res.ibm.com
-
-##### OpenAI provided LLM
-Get an [OpenAI api key](https://platform.openai.com/api-keys)
-
-#### Install the code
 1. Clone the repo
    ```sh
-   git clone <project git>
+   git clone https://github.com/openshift/lightspeed-service.git
    cd lightspeed-service
    ```
 2. Install python packages
    ```sh
    make install-deps
    ```
+3. Get API keys
 
-#### Configure OLS
+   a. BAM provided LLM
+      1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
+         * Login with your IBM W3 Id credentials.
+         * Copy the API Key from the Documentation section.
+         ![BAM API Key](docs/bam_api_key.png)
+      2. BAM API URL: https://bam-api.res.ibm.com
 
-OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory. 
-You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.  
+   b. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
 
-API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative, 
-they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
-The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
-points to file containing a valid OpenAI api key, and change the `default_model` and `default_provider` values to reference the openai provider and model.
+4. Configure OpenShift LightSpeed (OLS)
+   
+   OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory. 
+   You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.  
 
-#### (Optional) Configure the document store
-1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
-2. Create vector index directory
-   ```sh
-      mkdir -p vector-db/ocp-product-docs
-   ```
-3. Unzip local.zip in vector-db/ocp-product-docs directory
-   ```sh
-   unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
-   ```
+   API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative, 
+   they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
-## Usage
+   The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
+   points to file containing a valid OpenAI api key, and change the `default_model` and `default_provider` values to reference the openai provider and model.
+   
+5. (Optional) Configure the document store
+   1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
+   2. Create vector index directory
+      ```sh
+         mkdir -p vector-db/ocp-product-docs
+      ```
+   3. Unzip local.zip in vector-db/ocp-product-docs directory
+      ```sh
+      unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
+      ```
 
-### Local Deployment
+# Usage
 
-#### Run the server
+## Local Deployment
+
+### Run the server
 in order to run the API service
 ```sh
 uvicorn ols.app.main:app --reload --port 8080
 ```
 
-#### Query the server
+### Query the server
 
 To send a request to the server you can use the following curl command:
 ```sh
@@ -94,7 +89,7 @@ By default this interface will ask the OLS server to retain and use your convers
 OLS API documentation is available at http://localhost:8080/docs
 
 
-### Deploying OLS on OpenShift
+## Deploying OLS on OpenShift
 
 A Helm chart is available for installing the service in OpenShift.
 
@@ -118,19 +113,12 @@ helm delete ols-release --namespace openshift-lightspeed
 
 Chart customization is available using the [Values](helm/values.yaml) file.
 
-## Roadmap
-
-- [ ]
-
-
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 ## Contributing
 
-See [contributors](CONTRIBUTING.md) guide.
+* See [contributors](CONTRIBUTING.md) guide.
+
+* See the [open issues](https://github.com/openshift/lightspeed-service/issues) for a full list of proposed features (and known issues).
 
 ## License
 Published under the Apache 2.0 License
