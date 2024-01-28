@@ -8,20 +8,20 @@ from pydantic import BaseModel
 
 from ols import constants
 
-
+# Helper functions
 def _is_valid_http_url(url: str) -> bool:
-    """Check is a string is a well-formed http or https URL."""
+    """Check if a string is a well-formed HTTP or HTTPS URL."""
+    if url is None:
+        return False
+
     result = urlparse(url)
-    return all([result.scheme, result.netloc]) and result.scheme in [
-        "http",
-        "https",
-    ]
+    return result.scheme in ["http", "https"] and result.netloc
 
 
 def _get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
     """Retrieve value of an attribute from a file."""
     file_path = data.get(file_name_key)
-    if file_path is not None:
+    if file_path:
         with open(file_path, mode="r") as f:
             return f.read().rstrip()
     return None
