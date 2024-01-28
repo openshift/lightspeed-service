@@ -30,6 +30,6 @@ dev_config:
 
 Authentication:
     ols_auth_check: False
-    k8s_cluster_api: "https://api.ocp-dev01.lab.eng.tlv2.redhat.com:6443"
-    k8s_ca_cert_path: "/Users/nimer/Desktop/d2d-work-ols/mine/update/decorators/lightspeed-service/ca.crt"
+    k8s_cluster_api: "https://api.example.com:6443"
+    k8s_ca_cert_path: "/Users/home/ca.crt"
     verify_ssl: False
