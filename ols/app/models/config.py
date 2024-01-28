@@ -51,7 +51,7 @@ class AuthenticationConfig(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate authentication config."""
-        if self.k8s_cluster_api and not is_valid_http_url(self.k8s_cluster_api):
+        if self.k8s_cluster_api and not _is_valid_http_url(self.k8s_cluster_api):
             raise InvalidConfigurationError("k8s_cluster_api URL is invalid")
         # Validate k8s_ca_cert_path
         if self.k8s_ca_cert_path:
