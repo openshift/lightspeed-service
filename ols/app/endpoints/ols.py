@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
@@ -13,6 +13,7 @@ from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config, suid
+from ols.utils.auth_dependency import auth_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,14 @@ def verify_request_provider_and_model(llm_request: LLMRequest) -> None:
 
 
 @router.post("/query")
-def conversation_request(llm_request: LLMRequest) -> LLMRequest:
+def conversation_request(
+    llm_request: LLMRequest, auth=Depends(auth_dependency)
+) -> LLMRequest:
     """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The request containing a query and conversation ID.
+        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
         Response containing the processed information.
@@ -190,11 +194,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
 
 @router.post("/debug/query")
-def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
+def conversation_request_debug_api(
+    llm_request: LLMRequest, auth=Depends(auth_dependency)
+) -> LLMRequest:
     """Handle requests for the base LLM completion endpoint.
 
     Args:
         llm_request: The request containing a query.
+        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
         Response containing the processed information.

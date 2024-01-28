@@ -1,7 +1,8 @@
 """Config classes for the configuration structure."""
 
 import logging
-from typing import Optional
+import os
+from typing import Optional, Dict
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -29,6 +30,39 @@ def _get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
 
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
+
+
+class AuthenticationConfig(BaseModel):
+    """Authentication configuration."""
+
+    ols_auth_check: Optional[bool] = False
+    verify_ssl: Optional[bool] = False
+    k8s_cluster_api: Optional[str] = "http://localhost:6443"
+    k8s_ca_cert_path: Optional[str] = None
+
+    def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is not None:
+            self.ols_auth_check = data.get("ols_auth_check", self.ols_auth_check)
+            self.verify_ssl = data.get("verify_ssl", self.verify_ssl)
+            self.k8s_cluster_api = data.get("k8s_cluster_api", self.k8s_cluster_api)
+            self.k8s_ca_cert_path = data.get("k8s_ca_cert_path", self.k8s_ca_cert_path)
+
+    def validate_yaml(self) -> None:
+        """Validate authentication config."""
+        if self.k8s_cluster_api and not is_valid_http_url(self.k8s_cluster_api):
+            raise InvalidConfigurationError("k8s_cluster_api URL is invalid")
+        # Validate k8s_ca_cert_path
+        if self.k8s_ca_cert_path:
+            if not os.path.exists(self.k8s_ca_cert_path):
+                raise InvalidConfigurationError(
+                    f"k8s_ca_cert_path does not exist: {self.k8s_ca_cert_path}"
+                )
+            if not os.path.isfile(self.k8s_ca_cert_path):
+                raise InvalidConfigurationError(
+                    f"k8s_ca_cert_path is not a file: {self.k8s_ca_cert_path}"
+                )
 
 
 class ModelConfig(BaseModel):
@@ -458,6 +492,8 @@ class Config(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""
+        if self.authentication:
+            self.authentication.validate_yaml()
         if self.llm_providers is None:
             raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()

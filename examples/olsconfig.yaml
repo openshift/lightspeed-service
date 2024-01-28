@@ -27,3 +27,8 @@ dev_config:
   # disable_question_validation: false
   # disable_auth: false
 
+Authentication:
+    ols_auth_check: False
+    k8s_cluster_api: "https://api.example.com:6443"
+    # k8s_ca_cert_path: "/home/user/ca.crt"
+    verify_ssl: True
