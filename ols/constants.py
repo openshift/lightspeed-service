@@ -163,6 +163,7 @@ REDIS_CACHE_HOST = "redis-stack.ols.svc"
 REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "500mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
+REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 
 # provider and model roles
-PROVIDER_MODEL_ROLES = ("default", "classifier", "summarizer", "validator")
+PROVIDER_MODEL_ROLES = frozenset({"default"})

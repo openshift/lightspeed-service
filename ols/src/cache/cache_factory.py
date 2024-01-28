@@ -19,9 +19,9 @@ class CacheFactory:
         """
         match config.type:
             case constants.REDIS_CACHE:
-                return RedisCache()
+                return RedisCache(config.redis)
             case constants.IN_MEMORY_CACHE:
-                return InMemoryCache(config.memory.max_entries)
+                return InMemoryCache(config.memory)
             case _:
                 raise ValueError(
                     f"Invalid cache type: {config.type}. "

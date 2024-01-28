@@ -1,0 +1,16 @@
+---
+llm_providers:
+  - name: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: gpt-3.5-turbo
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    logging_level: INFO
+  default_provider: openai
+  default_model: gpt-3.5-turbo

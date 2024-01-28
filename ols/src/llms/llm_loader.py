@@ -2,7 +2,6 @@
 
 import inspect
 import logging
-import os
 import warnings
 from typing import Optional
 
@@ -90,6 +89,24 @@ class LLMLoader:
         self.llm_params = params or {}
         self.llm: LLM = self._llm_instance()
 
+    def _get_llm_url(self, default: str) -> str:
+        return (
+            self.provider_config.models[self.model].url
+            if self.provider_config.models[self.model].url is not None
+            else (
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else default
+            )
+        )
+
+    def _get_llm_credentials(self) -> str:
+        return (
+            self.provider_config.models[self.model].credentials
+            if self.provider_config.models[self.model].credentials is not None
+            else self.provider_config.credentials
+        )
+
     # TODO: refactor after config implementation OLS-89
     def _get_provider_config(self) -> ProviderConfig:
         cfg = config.llm_config.providers.get(self.provider)
@@ -139,16 +156,12 @@ class LLMLoader:
             )
             raise e
         params: dict = {
-            "base_url": (
-                self.provider_config.url
-                if self.provider_config.url is not None
-                else "https://api.openai.com/v1"
-            ),
-            "openai_api_key": self.provider_config.credentials,
+            "base_url": self._get_llm_url("https://api.openai.com/v1"),
+            "openai_api_key": self._get_llm_credentials(),
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
-            "organization": os.environ.get("OPENAI_ORGANIZATION", None),
-            "timeout": os.environ.get("OPENAI_TIMEOUT", None),
+            "organization": None,
+            "timeout": None,
             "cache": None,
             "streaming": True,
             "temperature": 0.01,
@@ -184,12 +197,8 @@ class LLMLoader:
             raise e
         # BAM Research lab
         creds = Credentials(
-            api_key=self.provider_config.credentials,
-            api_endpoint=(
-                self.provider_config.url
-                if self.provider_config.url is not None
-                else "https://bam-api.res.ibm.com"
-            ),
+            api_key=self._get_llm_credentials(),
+            api_endpoint=self._get_llm_url("https://bam-api.res.ibm.com"),
         )
 
         bam_params = {
@@ -299,16 +308,8 @@ class LLMLoader:
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": (
-                self.llm_params.get("url")
-                if self.llm_params.get("url") is not None
-                else os.environ.get("WATSON_API_URL", None)
-            ),
-            "apikey": (
-                self.llm_params.get("apikey")
-                if self.llm_params.get("apikey") is not None
-                else os.environ.get("WATSON_API_KEY", None)
-            ),
+            "url": self._get_llm_url("https://us-south.ml.cloud.ibm.com"),
+            "apikey": self._get_llm_credentials(),
         }
         # WatsonX uses different mechanism for defining parameters
         params = {
@@ -331,14 +332,11 @@ class LLMLoader:
 
         # WatsonX uses different parameter names
         llm_model = Model(
-            model_id=self.llm_params.get(
-                "model_id", os.environ.get("WATSON_MODEL", None)
-            ),
+            model_id=self.model,
             credentials=creds,
             params=params,
-            project_id=self.llm_params.get(
-                "project_id", os.environ.get("WATSON_PROJECT_ID", None)
-            ),
+            # TODO syedriko: get project_id from config once we find a place for it
+            project_id=self.llm_params.get("project_id", None),
         )
         llm = WatsonxLLM(model=llm_model)
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")

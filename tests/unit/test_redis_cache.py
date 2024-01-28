@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
 from ols.utils import suid
 from tests.mock_classes.redis import MockRedis
@@ -17,7 +18,7 @@ def cache():
     # we don't want to connect to real Redis from unit tests
     # with patch("ols.src.cache.redis_cache.RedisCache.initialize_redis"):
     with patch("redis.StrictRedis", new=MockRedis):
-        return RedisCache()
+        return RedisCache(RedisConfig({}))
 
 
 def test_insert_or_append(cache):
@@ -56,6 +57,6 @@ def test_get_improper_conversation_id(cache):
 
 def test_singleton_pattern():
     """Test if in memory cache exists as one instance in memory."""
-    cache1 = RedisCache()
-    cache2 = RedisCache()
+    cache1 = RedisCache(RedisConfig({}))
+    cache2 = RedisCache(RedisConfig({}))
     assert cache1 is cache2

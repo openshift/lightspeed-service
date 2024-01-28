@@ -63,7 +63,9 @@ class ModelConfig(BaseModel):
         if self.name is None:
             raise InvalidConfigurationError("model name is missing")
         if self.url is not None and not _is_valid_http_url(self.url):
-            raise InvalidConfigurationError("model URL is invalid")
+            raise InvalidConfigurationError(
+                "model URL is invalid, only http:// and https:// URLs are supported"
+            )
 
 
 class ProviderConfig(BaseModel):
@@ -108,7 +110,9 @@ class ProviderConfig(BaseModel):
         if self.name is None:
             raise InvalidConfigurationError("provider name is missing")
         if self.url is not None and not _is_valid_http_url(self.url):
-            raise InvalidConfigurationError("provider URL is invalid")
+            raise InvalidConfigurationError(
+                "provider URL is invalid, only http:// and https:// URLs are supported"
+            )
         for v in self.models.values():
             v.validate_yaml()
 
@@ -144,7 +148,7 @@ class LLMProviders(BaseModel):
 class RedisCredentials(BaseModel):
     """Redis credentials."""
 
-    user: Optional[str] = None
+    username: Optional[str] = None
     password: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -152,22 +156,20 @@ class RedisCredentials(BaseModel):
         super().__init__()
         if not isinstance(data, dict):
             return
-        self.user = _get_attribute_from_file(data, "user_path")
+        self.username = _get_attribute_from_file(data, "username_path")
         self.password = _get_attribute_from_file(data, "password_path")
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, RedisCredentials):
-            return self.user == other.user and self.password == other.password
+            return self.username == other.username and self.password == other.password
         return False
 
     def validate_yaml(self) -> None:
         """Validate redis credentials."""
-        if (self.user is not None and self.password is None) or (
-            self.user is None and self.password is not None
-        ):
+        if self.username is not None and self.password is None:
             raise InvalidConfigurationError(
-                "both or neither user and password need to be specified for Redis"
+                "for Redis, if a username is specified, a password also needs to be specified"
             )
 
 
@@ -185,12 +187,24 @@ class RedisConfig(BaseModel):
         super().__init__()
         if data is None:
             return
-        self.host = data.get("host", None)
-        self.port = data.get("port", None)
+        self.host = data.get("host", constants.REDIS_CACHE_HOST)
+
+        try:
+            yaml_port = data.get("port", constants.REDIS_CACHE_PORT)
+            self.port = int(yaml_port)
+            if not (0 < self.port < 65536):
+                raise ValueError
+        except ValueError:
+            raise InvalidConfigurationError(
+                f"invalid Redis port {yaml_port}, valid ports are integers in the (0, 65536) range"
+            )
+
         self.max_memory = data.get("max_memory", constants.REDIS_CACHE_MAX_MEMORY)
+
         self.max_memory_policy = data.get(
             "max_memory_policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
+
         credentials = data.get("credentials")
         if credentials is not None:
             self.credentials = RedisCredentials(credentials)
@@ -207,6 +221,22 @@ class RedisConfig(BaseModel):
             )
         return False
 
+    def validate_yaml(self) -> None:
+        """Validate Redis cache config."""
+        if (
+            self.max_memory_policy is not None
+            and self.max_memory_policy not in constants.REDIS_CACHE_MAX_MEMORY_POLICIES
+        ):
+            valid_polices = ", ".join(
+                str(p) for p in constants.REDIS_CACHE_MAX_MEMORY_POLICIES
+            )
+            raise InvalidConfigurationError(
+                f"invalid Redis max_memory_policy {self.max_memory_policy},"
+                f" valid policies are ({valid_polices})"
+            )
+        if self.credentials is not None:
+            self.credentials.validate_yaml()
+
 
 class MemoryConfig(BaseModel):
     """In-memory cache configuration."""
@@ -218,15 +248,27 @@ class MemoryConfig(BaseModel):
         super().__init__()
         if data is None:
             return
-        self.max_entries = data.get(
-            "max_entries", constants.IN_MEMORY_CACHE_MAX_ENTRIES
-        )
+
+        try:
+            self.max_entries = int(
+                data.get("max_entries", constants.IN_MEMORY_CACHE_MAX_ENTRIES)
+            )
+            if self.max_entries < 0:
+                raise ValueError
+        except ValueError:
+            raise InvalidConfigurationError(
+                "invalid max_entries for memory conversation cache,"
+                " max_entries needs to be a non-negative integer"
+            )
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, MemoryConfig):
             return self.max_entries == other.max_entries
         return False
+
+    def validate_yaml(self) -> None:
+        """Validate memory cache config."""
 
 
 class ConversationCacheConfig(BaseModel):
@@ -245,14 +287,22 @@ class ConversationCacheConfig(BaseModel):
         if self.type is not None:
             if self.type == constants.REDIS_CACHE:
                 if constants.REDIS_CACHE not in data:
-                    raise InvalidConfigurationError("redis configuration is missing")
+                    raise InvalidConfigurationError(
+                        "redis conversation cache type is specified,"
+                        " but redis configuration is missing"
+                    )
                 self.redis = RedisConfig(data.get(constants.REDIS_CACHE))
             elif self.type == constants.IN_MEMORY_CACHE:
                 if constants.IN_MEMORY_CACHE not in data:
-                    raise InvalidConfigurationError("memory configuration is missing")
+                    raise InvalidConfigurationError(
+                        "memory conversation cache type is specified,"
+                        " but memory configuration is missing"
+                    )
                 self.memory = MemoryConfig(data.get(constants.IN_MEMORY_CACHE))
             else:
-                raise InvalidConfigurationError("unknown conversation cache store")
+                raise InvalidConfigurationError(
+                    f"unknown conversation cache type: {self.type}"
+                )
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
@@ -266,6 +316,18 @@ class ConversationCacheConfig(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate conversation cache config."""
+        if self.type is None:
+            raise InvalidConfigurationError("missing conversation cache type")
+        else:
+            match self.type:
+                case constants.REDIS_CACHE:
+                    return self.redis.validate_yaml()
+                case constants.IN_MEMORY_CACHE:
+                    return self.memory.validate_yaml()
+                case _:
+                    raise InvalidConfigurationError(
+                        f"unknown conversation cache type: {self.type}"
+                    )
 
 
 class LoggingConfig(BaseModel):
@@ -365,39 +427,20 @@ class OLSConfig(BaseModel):
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
-    classifier_provider: Optional[str] = None
-    classifier_model: Optional[str] = None
-    summarizer_provider: Optional[str] = None
-    summarizer_model: Optional[str] = None
-    validator_provider: Optional[str] = None
-    validator_model: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
-        self.conversation_cache = ConversationCacheConfig(
-            data.get("conversation_cache", None)
-        )
-        self.default_provider = data.get("default_provider", None)
-        self.default_model = data.get("default_model", None)
-        self.classifier_provider = data.get(
-            "classifier_provider", self.default_provider
-        )
-        self.classifier_model = data.get("classifier_model", self.default_model)
-        self.summarizer_provider = data.get(
-            "summarizer_provider", self.default_provider
-        )
-        self.summarizer_model = data.get("summarizer_model", self.default_model)
-        self.validator_provider = data.get("validator_provider", self.default_provider)
-        self.validator_model = data.get("validator_model", self.default_model)
 
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
         self.reference_content = ReferenceContent(data.get("reference_content", None))
+        self.default_provider = data.get("default_provider", None)
+        self.default_model = data.get("default_model", None)
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
@@ -405,22 +448,14 @@ class OLSConfig(BaseModel):
             return (
                 self.conversation_cache == other.conversation_cache
                 and self.logging_config == other.logging_config
+                and self.reference_content == other.reference_content
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
-                and self.classifier_provider == other.classifier_provider
-                and self.classifier_model == other.classifier_model
-                and self.summarizer_provider == other.summarizer_provider
-                and self.summarizer_model == other.summarizer_model
-                and self.validator_provider == other.validator_provider
-                and self.validator_model == other.validator_model
-                and self.reference_content == other.reference_content
             )
         return False
 
     def validate_yaml(self) -> None:
         """Validate OLS config."""
-        if self.conversation_cache is None:
-            raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
         self.conversation_cache.validate_yaml()
         self.logging_config.validate_yaml()
         if self.reference_content is not None:
@@ -505,6 +540,38 @@ class Config(BaseModel):
             )
         return False
 
+    def _validate_provider_and_model(
+        self, provider_attr_name: str, model_attr_name: str
+    ) -> None:
+        provider_attr_value = getattr(self.ols_config, provider_attr_name, None)
+        model_attr_value = getattr(self.ols_config, model_attr_name, None)
+        if isinstance(provider_attr_value, str) and isinstance(model_attr_value, str):
+            provider_config = self.llm_providers.providers.get(provider_attr_value)
+            if provider_config is None:
+                raise InvalidConfigurationError(
+                    f"{provider_attr_name} specifies an unknown provider {provider_attr_value}"
+                )
+            model_config = provider_config.models.get(model_attr_value)
+            if model_config is None:
+                raise InvalidConfigurationError(
+                    f"{model_attr_name} specifies an unknown model {model_attr_value}"
+                )
+        elif isinstance(provider_attr_value, str) and not isinstance(
+            model_attr_value, str
+        ):
+            raise InvalidConfigurationError(
+                f"{provider_attr_name} is specified, but {model_attr_name} is missing"
+            )
+        elif not isinstance(provider_attr_value, str) and isinstance(
+            model_attr_value, str
+        ):
+            raise InvalidConfigurationError(
+                f"{model_attr_name} is specified, but {provider_attr_name} is missing"
+            )
+
+    def _validate_providers_and_models(self) -> None:
+        self._validate_provider_and_model("default_provider", "default_model")
+
     def validate_yaml(self) -> None:
         """Validate all configurations."""
         if self.llm_providers is None:
@@ -514,33 +581,4 @@ class Config(BaseModel):
             raise InvalidConfigurationError("no OLS config section found")
         self.ols_config.validate_yaml()
         self.dev_config.validate_yaml()
-        for role in constants.PROVIDER_MODEL_ROLES:
-            provider_attr_name = f"{role}_provider"
-            provider_attr_value = getattr(self.ols_config, provider_attr_name, None)
-            model_attr_name = f"{role}_model"
-            model_attr_value = getattr(self.ols_config, model_attr_name, None)
-            if isinstance(provider_attr_value, str) and isinstance(
-                model_attr_value, str
-            ):
-                provider_config = self.llm_providers.providers.get(provider_attr_value)
-                if provider_config is None:
-                    raise InvalidConfigurationError(
-                        f"{provider_attr_name} specifies an unknown provider {provider_attr_value}"
-                    )
-                model_config = provider_config.models.get(model_attr_value)
-                if model_config is None:
-                    raise InvalidConfigurationError(
-                        f"{model_attr_name} specifies an unknown model {model_attr_value}"
-                    )
-            elif isinstance(provider_attr_value, str) and not isinstance(
-                model_attr_value, str
-            ):
-                raise InvalidConfigurationError(
-                    f"{provider_attr_name} is specified, but {model_attr_name} is missing"
-                )
-            elif not isinstance(provider_attr_value, str) and isinstance(
-                model_attr_value, str
-            ):
-                raise InvalidConfigurationError(
-                    f"{model_attr_name} is specified, but {provider_attr_name} is missing"
-                )
+        self._validate_providers_and_models()
