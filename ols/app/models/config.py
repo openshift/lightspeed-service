@@ -9,19 +9,16 @@ from pydantic import BaseModel
 from ols import constants
 
 
-def is_valid_http_url(url) -> bool:
+def _is_valid_http_url(url: str) -> bool:
     """Check is a string is a well-formed http or https URL."""
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc]) and result.scheme in [
-            "http",
-            "https",
-        ]
-    except ValueError:
-        return False
+    result = urlparse(url)
+    return all([result.scheme, result.netloc]) and result.scheme in [
+        "http",
+        "https",
+    ]
 
 
-def get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
+def _get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
     """Retrieve value of an attribute from a file."""
     file_path = data.get(file_name_key)
     if file_path is not None:
@@ -48,7 +45,7 @@ class ModelConfig(BaseModel):
             return
         self.name = data.get("name", None)
         self.url = data.get("url", None)
-        self.credentials = get_attribute_from_file(data, "credentials_path")
+        self.credentials = _get_attribute_from_file(data, "credentials_path")
 
     def __eq__(self, other):
         """Compare two objects for equality."""
@@ -64,7 +61,7 @@ class ModelConfig(BaseModel):
         """Validate model config."""
         if self.name is None:
             raise InvalidConfigurationError("model name is missing")
-        if self.url is not None and not is_valid_http_url(self.url):
+        if self.url is not None and not _is_valid_http_url(self.url):
             raise InvalidConfigurationError("model URL is invalid")
 
 
@@ -83,7 +80,7 @@ class ProviderConfig(BaseModel):
             return
         self.name = data.get("name", None)
         self.url = data.get("url", None)
-        self.credentials = get_attribute_from_file(data, "credentials_path")
+        self.credentials = _get_attribute_from_file(data, "credentials_path")
         if "models" not in data or len(data["models"]) == 0:
             raise InvalidConfigurationError(
                 f"no models configured for provider {data['name']}"
@@ -109,7 +106,7 @@ class ProviderConfig(BaseModel):
         """Validate provider config."""
         if self.name is None:
             raise InvalidConfigurationError("provider name is missing")
-        if self.url is not None and not is_valid_http_url(self.url):
+        if self.url is not None and not _is_valid_http_url(self.url):
             raise InvalidConfigurationError("provider URL is invalid")
         for v in self.models.values():
             v.validate_yaml()
@@ -154,8 +151,8 @@ class RedisCredentials(BaseModel):
         super().__init__()
         if not isinstance(data, dict):
             return
-        self.user = get_attribute_from_file(data, "user_path")
-        self.password = get_attribute_from_file(data, "password_path")
+        self.user = _get_attribute_from_file(data, "user_path")
+        self.password = _get_attribute_from_file(data, "password_path")
 
     def __eq__(self, other):
         """Compare two objects for equality."""
