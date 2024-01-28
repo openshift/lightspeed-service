@@ -10,7 +10,7 @@ from ols.src.ui.gradio_ui import GradioUI
 def test_gradio_ui_constructor():
     """Test if all attributes are setup correctly by constructor."""
     url = "locahost:8080"
-    conversation_id = 1234
+    conversation_id = "1234"
 
     ui = GradioUI(ols_url=url, conversation_id=conversation_id)
     assert ui is not None

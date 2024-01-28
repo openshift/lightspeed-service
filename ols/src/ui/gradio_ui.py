@@ -14,8 +14,8 @@ class GradioUI:
 
     def __init__(
         self,
-        ols_url="http://127.0.0.1:8080/v1/query",
-        conversation_id=None,
+        ols_url: str = "http://127.0.0.1:8080/v1/query",
+        conversation_id: str | None = None,
     ) -> None:
         """Initialize UI API handlers."""
         # class variable
@@ -26,7 +26,7 @@ class GradioUI:
         use_history = gr.Checkbox(value=True, label="Use history")
         self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=[use_history])
 
-    def chat_ui(self, prompt, history, use_history=None):
+    def chat_ui(self, prompt: str, history, use_history: bool | None = None) -> str:
         """Handle requests from web-based user interface."""
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
