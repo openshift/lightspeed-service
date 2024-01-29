@@ -35,7 +35,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     conversation = llm_request.conversation_id
 
     # Generate a new conversation ID if not provided
-    if conversation is None:
+    if not conversation:
         conversation = Utils.get_suid()
         logger.info(f"{conversation} New conversation")
     else:

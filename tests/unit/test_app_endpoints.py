@@ -57,6 +57,7 @@ def test_conversation_request(
         response.response
         == "Kubernetes is an open-source container-orchestration system..."
     )
+    assert len(response.conversation_id) > 0
 
     # valid question, yaml
     mock_validate_question.return_value = [
@@ -67,6 +68,7 @@ def test_conversation_request(
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request)
     assert response.response == "content: generated yaml"
+    assert len(response.conversation_id) > 0
 
     # valid question, yaml, generator failure
     mock_validate_question.return_value = [
@@ -78,6 +80,7 @@ def test_conversation_request(
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        assert len(response.conversation_id) == 0
 
     # question of unknown type
     mock_validate_question.return_value = [
@@ -94,6 +97,7 @@ def test_conversation_request(
             }
         }
     )
+    assert len(response.conversation_id) > 0
 
     # invalid question
     mock_validate_question.return_value = [
@@ -110,6 +114,7 @@ def test_conversation_request(
             }
         }
     )
+    assert len(response.conversation_id) > 0
 
     # conversation is cached
     mock_validate_question.return_value = [
@@ -129,6 +134,7 @@ def test_conversation_request(
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        assert len(response.conversation_id) == 0
 
 
 def fake_llm_chain_call(self, **kwargs):
