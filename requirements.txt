@@ -9,4 +9,5 @@ uvicorn
 redis
 faiss-cpu
 sentence-transformers
+pydantic==2.6.0
 -r ols/src/llms/requirements.txt
