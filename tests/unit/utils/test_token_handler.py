@@ -2,10 +2,10 @@
 
 from unittest import TestCase, mock
 
-from ols.src.utils.token_handler import TokenHandler
+from ols.src.utils.token_handler import RetrievedNode, TokenHandler
 
 
-class MockRetrievedNode:
+class MockRetrievedNode(RetrievedNode):
     """Class to create mock data for retrieved node."""
 
     def __init__(self, node_detail: dict):

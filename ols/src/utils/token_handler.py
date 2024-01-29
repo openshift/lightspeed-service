@@ -1,6 +1,7 @@
 """Utility to handle tokens."""
 
 import logging
+from abc import ABC
 
 import tiktoken
 
@@ -12,6 +13,21 @@ from ols.src.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
+class RetrievedNode(ABC):
+    """Representation of retrieved node to be processed and truncated."""
+
+    def get_text(self):
+        """Get text."""
+
+    @property
+    def score(self):
+        """Score property."""
+
+    @property
+    def metadata(self):
+        """Node metadata."""
+
+
 class TokenHandler:
     """This class handles tokens.
 
@@ -20,7 +36,7 @@ class TokenHandler:
     Truncate text based on token limit.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the class instance."""
         self._encoder = tiktoken.get_encoding(TOKENIZER_MODEL)
 
@@ -49,7 +65,7 @@ class TokenHandler:
         return self._encoder.decode(tokens)
 
     def truncate_rag_context(
-        self, retrieved_nodes, max_tokens: int = 500
+        self, retrieved_nodes: list[RetrievedNode], max_tokens: int = 500
     ) -> list[dict]:
         """Process retrieved node text and truncate if required.
 
