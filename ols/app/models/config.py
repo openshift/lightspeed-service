@@ -1,151 +1,81 @@
 """Config classes for the configuration structure."""
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from ols import constants
+# from ols import constants
 
 
 # Helper functions
 def _is_valid_http_url(url: str) -> bool:
     """Check if a string is a well-formed HTTP or HTTPS URL."""
-    if url is None:
-        return False
-
     result = urlparse(url)
     return result.scheme in ["http", "https"] and result.netloc
 
 
-def _get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
-    """Retrieve value of an attribute from a file."""
-    file_path = data.get(file_name_key)
-    if file_path:
-        with open(file_path, mode="r") as f:
-            return f.read().rstrip()
-    return None
+def _get_attribute_from_file(file_path):
+    try:
+        with open(file_path, mode="r") as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        raise ValueError(f"File not found at {file_path}")
+    except Exception as e:
+        raise ValueError(f"Error reading file at {file_path}: {str(e)}")
 
 
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
 
 
-class ModelConfig(BaseModel):
+class BaseConfig(BaseModel):
+    """Base configuration."""
+
+    name: str
+    url: str
+    _credentials_path: str
+
+    @field_validator("url")
+    def validate_url(cls, v):
+        if not _is_valid_http_url(v):
+            raise ValueError("URL is invalid")
+        return v
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.model_dump() == other.model_dump()
+
+
+class ModelConfig(BaseConfig):
     """Model configuration."""
 
-    name: Optional[str] = None
-    url: Optional[str] = None
     credentials: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        self.name = data.get("name", None)
-        self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
-
-    def __eq__(self, other):
-        """Compare two objects for equality."""
-        if isinstance(other, ModelConfig):
-            return (
-                self.name == other.name
-                and self.url == other.url
-                and self.credentials == other.credentials
-            )
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate model config."""
-        if self.name is None:
-            raise InvalidConfigurationError("model name is missing")
-        if self.url is not None and not _is_valid_http_url(self.url):
-            raise InvalidConfigurationError("model URL is invalid")
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.credentials = _get_attribute_from_file(
+            data.get("credentials_path", "default_value")
+        )
 
 
-class ProviderConfig(BaseModel):
+# TODO
+class ProviderConfig(BaseConfig):
     """LLM provider configuration."""
 
-    name: Optional[str] = None
-    url: Optional[str] = None
-    credentials: Optional[str] = None
-    models: Dict[str, ModelConfig] = {}
-
-    def __init__(self, data: Optional[dict] = None):
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        self.name = data.get("name", None)
-        self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
-        if "models" not in data or len(data["models"]) == 0:
-            raise InvalidConfigurationError(
-                f"no models configured for provider {data['name']}"
-            )
-        for m in data["models"]:
-            if "name" not in m:
-                raise InvalidConfigurationError("model name is missing")
-            model = ModelConfig(m)
-            self.models[m["name"]] = model
-
-    def __eq__(self, other):
-        """Compare two objects for equality."""
-        if isinstance(other, ProviderConfig):
-            return (
-                self.name == other.name
-                and self.url == other.url
-                and self.credentials == other.credentials
-                and self.models == other.models
-            )
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate provider config."""
-        if self.name is None:
-            raise InvalidConfigurationError("provider name is missing")
-        if self.url is not None and not _is_valid_http_url(self.url):
-            raise InvalidConfigurationError("provider URL is invalid")
-        for v in self.models.values():
-            v.validate_yaml()
+    models: dict[str, ModelConfig]
 
 
 class LLMProviders(BaseModel):
     """LLM providers configuration."""
 
-    providers: Dict[str, ProviderConfig] = {}
-
-    def __init__(self, data: Optional[dict] = None):
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        for p in data:
-            if "name" not in p:
-                raise InvalidConfigurationError("provider name is missing")
-            provider = ProviderConfig(p)
-            self.providers[p["name"]] = provider
-
-    def __eq__(self, other):
-        """Compare two objects for equality."""
-        if isinstance(other, LLMProviders):
-            return self.providers == other.providers
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate LLM config."""
-        for v in self.providers.values():
-            v.validate_yaml()
+    providers: dict[str, ProviderConfig]
 
 
 class RedisCredentials(BaseModel):
     """Redis credentials."""
 
-    user: Optional[str] = None
-    password: Optional[str] = None
+    data: dict
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize redis credentials."""
@@ -174,8 +104,8 @@ class RedisCredentials(BaseModel):
 class RedisConfig(BaseModel):
     """Redis configuration."""
 
-    host: Optional[str] = None
-    port: Optional[int] = None
+    host: str
+    port: int
     max_memory: Optional[str] = None
     max_memory_policy: Optional[str] = None
     credentials: Optional[RedisCredentials] = None
