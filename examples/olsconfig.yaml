@@ -10,6 +10,7 @@ LLMProviders:
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-4-1106-preview
+      - name: gpt-3.5-turbo
 OLSConfig:
   enable_debug_ui: false
   conversation_cache:
