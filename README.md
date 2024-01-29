@@ -77,7 +77,7 @@ There is a minimal Gradio UI you can use when running the OLS server locally.  T
 
 ```
 OLSConfig:
-  enable_debug_ui: false
+  enable_debug_ui: true
 ```
 
 Then start the OLS server per [Run the server](#run-the-server) and then browse to the built in Gradio interface at http://localhost:8080/ui
