@@ -65,7 +65,7 @@ def test_post_question_on_unexpected_payload() -> None:
                 "loc": ["body"],
                 "msg": "Input should be a valid dictionary or object to extract fields from",
                 "type": "model_attributes_type",
-                "url": "https://errors.pydantic.dev/2.5/v/model_attributes_type",
+                "url": "https://errors.pydantic.dev/2.6/v/model_attributes_type",
             }
         ],
     }
