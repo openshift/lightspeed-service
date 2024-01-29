@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from ols import constants
 from ols.app.endpoints import feedback, ols
 from ols.app.models.models import FeedbackRequest, LLMRequest
+from ols.app.utils import Utils
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -119,7 +120,7 @@ def test_conversation_request(
     mock_generate_yaml.return_value = "content: generated yaml"
     mock_generate_yaml.side_effect = None
     mock_conversation_cache_get.return_value = "previous conversation input"
-    llm_request = LLMRequest(query="Generate a yaml", conversation_id="123")
+    llm_request = LLMRequest(query="Generate a yaml", conversation_id=Utils.get_suid())
     response = ols.conversation_request(llm_request)
     assert response.response == "content: generated yaml"
 

@@ -46,29 +46,35 @@ class RedisCache(Cache):
             "maxmemory-policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
 
-    def get(self, key: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
         """Get the value associated with the given key.
 
         Args:
-            key: The key for the desired value.
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
 
         Returns:
             The value associated with the key, or None if not found.
         """
+        key = super().construct_key(user_id, conversation_id)
+
         return self.redis_client.get(key)
 
-    def insert_or_append(self, key: str, value: str) -> None:
+    def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
         """Set the value associated with the given key.
 
         Args:
-            key: The key for the value.
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
             value: The value to set.
 
         Raises:
             OutOfMemoryError: If item is evicted when Redis allocated
                 memory is higher than maxmemory.
         """
-        old_value = self.get(key)
+        key = super().construct_key(user_id, conversation_id)
+
+        old_value = self.get(user_id, conversation_id)
         with self._lock:
             if old_value:
                 self.redis_client.set(key, old_value + "\n" + value)
