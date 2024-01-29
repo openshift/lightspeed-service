@@ -25,11 +25,12 @@ configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)
 
 
-if config.ols_config.enable_debug_ui:
+if config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)
 else:
     logger.info(
-        "Embedded Gradio UI is disabled. To enable set enable_debug_ui: true in configuration file"
+        "Embedded Gradio UI is disabled. To enable set enable_dev_ui: true "
+        "in the dev section of the configuration file"
     )
 
 

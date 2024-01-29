@@ -157,6 +157,10 @@ class LLMLoader:
             "frequency_penalty": 1.03,
             "verbose": False,
         }
+        # override temperature if defined in developer config
+        if config.dev_config.llm_temperature_override:
+            params["temperature"] = config.dev_config.llm_temperature_override
+
         # TODO: We need to verify if the overridden params are valid for the LLM
         # before updating the default.
         # params.update(self.llm_params)  # override parameters
@@ -199,6 +203,11 @@ class LLMLoader:
             "temperature": 0.05,
         }
         bam_params.update(self.llm_params)  # override parameters
+
+        # override temperature if defined in developer config
+        if config.dev_config.llm_temperature_override:
+            bam_params["temperature"] = config.dev_config.llm_temperature_override
+
         # remove none BAM params from dictionary
         for k in ["model", "api_key", "api_endpoint"]:
             _ = bam_params.pop(k, None)
@@ -315,6 +324,11 @@ class LLMLoader:
                 "repeatition_penallty", 1.03
             ),
         }
+
+        # override temperature if defined in developer config
+        if config.dev_config.llm_temperature_override:
+            params[GenParams.TEMPERATURE] = config.dev_config.llm_temperature_override
+
         # WatsonX uses different parameter names
         llm_model = Model(
             model_id=self.llm_params.get(

@@ -313,7 +313,6 @@ def test_ols_config():
             "validator_model": "test_validator_model",
             "yaml_provider": "test_yaml_provider",
             "yaml_model": "test_yaml_model",
-            "enable_debug_ui": True,
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -335,7 +334,6 @@ def test_ols_config():
     assert ols_config.validator_model == "test_validator_model"
     assert ols_config.yaml_provider == "test_yaml_provider"
     assert ols_config.yaml_model == "test_yaml_model"
-    assert ols_config.enable_debug_ui is True
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
@@ -370,7 +368,6 @@ def test_config():
                 "validator_model": "test_validator_model",
                 "yaml_provider": "test_yaml_provider",
                 "yaml_model": "test_yaml_model",
-                "enable_debug_ui": True,
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -423,7 +420,6 @@ def test_config():
     assert config.ols_config.validator_model == "test_validator_model"
     assert config.ols_config.yaml_provider == "test_yaml_provider"
     assert config.ols_config.yaml_model == "test_yaml_model"
-    assert config.ols_config.enable_debug_ui is True
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR

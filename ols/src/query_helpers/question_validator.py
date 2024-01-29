@@ -8,6 +8,7 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
 from ols.src.query_helpers import QueryHelper
+from ols.utils import config
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,13 @@ class QuestionValidator(QueryHelper):
         Returns:
             A list of one-word responses.
         """
+        if config.dev_config.disable_question_validation:
+            logger.debug(
+                f"{conversation} Question validation is disabled. "
+                f"Treating question as [valid,generic]."
+            )
+            return [constants.SUBJECT_VALID, constants.CATEGORY_GENERIC]
+
         settings_string = (
             f"conversation: {conversation}, "
             f"query: {query}, "

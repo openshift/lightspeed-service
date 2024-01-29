@@ -288,6 +288,73 @@ LLMProviders:
         "No such file or directory: 'no_such_file_model'",
     )
 
+    check_expected_exception(
+        """
+---
+LLMProviders:
+  - name: p1
+    credentails_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentails_path: tests/config/secret.txt
+OLSConfig:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+DevConfig:
+  llm_temperature_override: NaN
+""",
+        InvalidConfigurationError,
+        "llm_temperature_override must be a float",
+    )
+
+    check_expected_exception(
+        """
+---
+LLMProviders:
+  - name: p1
+    credentails_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentails_path: tests/config/secret.txt
+OLSConfig:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+DevConfig:
+  llm_temperature_override: -1
+""",
+        InvalidConfigurationError,
+        "llm_temperature_override must be between 0 and 1",
+    )
+
+    check_expected_exception(
+        """
+---
+LLMProviders:
+  - name: p1
+    credentails_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentails_path: tests/config/secret.txt
+OLSConfig:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+DevConfig:
+  llm_temperature_override: 1.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "llm_temperature_override must be between 0 and 1",
+    )
+
 
 def test_valid_config_stream() -> None:
     """Check if a valid configuration stream is handled correctly."""
@@ -314,7 +381,6 @@ LLMProviders:
       - name: m2
         url: 'https://murl2'
 OLSConfig:
-  enable_debug_ui: false
   conversation_cache:
     type: memory
     memory:
@@ -325,6 +391,11 @@ OLSConfig:
   default_model: m1
   classifier_provider: p2
   classifier_model: m1
+DevConfig:
+  llm_temperature_override: 0
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
 """
             )
         )
@@ -373,7 +444,6 @@ def test_valid_config_file() -> None:
                     },
                 ],
                 "OLSConfig": {
-                    "enable_debug_ui": False,
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
