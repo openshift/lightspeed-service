@@ -8,12 +8,12 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/readiness")
-def readiness_probe():
+def readiness_probe() -> dict[str, str]:
     """Ready status of service."""
     return {"status": "1"}
 
 
 @router.get("/liveness")
-def liveness_probe():
+def liveness_probe() -> dict[str, str]:
     """Live status of service."""
     return {"status": "1"}
