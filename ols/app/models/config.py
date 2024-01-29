@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from ols import constants
 
+
 # Helper functions
 def _is_valid_http_url(url: str) -> bool:
     """Check if a string is a well-formed HTTP or HTTPS URL."""
