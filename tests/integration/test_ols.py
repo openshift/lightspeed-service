@@ -7,6 +7,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import constants
+from ols.app.utils import Utils
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -42,13 +43,15 @@ def test_readiness() -> None:
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_debug_query() -> None:
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
+    conversation_id = Utils.get_suid()
     response = client.post(
-        "/v1/debug/query", json={"conversation_id": "1234", "query": "test query"}
+        "/v1/debug/query",
+        json={"conversation_id": conversation_id, "query": "test query"},
     )
     print(response)
     assert response.status_code == requests.codes.ok
     assert response.json() == {
-        "conversation_id": "1234",
+        "conversation_id": conversation_id,
         "query": "test query",
         "response": "test response",
     }
@@ -78,8 +81,10 @@ def test_post_question_on_invalid_question() -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
+        conversation_id = Utils.get_suid()
         response = client.post(
-            "/v1/query", json={"conversation_id": "1234", "query": "test query"}
+            "/v1/query",
+            json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
         expected_details = str(
@@ -91,7 +96,7 @@ def test_post_question_on_invalid_question() -> None:
             }
         )
         expected_json = {
-            "conversation_id": "1234",
+            "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
         }
@@ -105,8 +110,10 @@ def test_post_question_on_unknown_response_type() -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
+        conversation_id = Utils.get_suid()
         response = client.post(
-            "/v1/query", json={"conversation_id": "1234", "query": "test query"}
+            "/v1/query",
+            json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
         expected_details = str(
@@ -118,7 +125,7 @@ def test_post_question_on_unknown_response_type() -> None:
             }
         )
         expected_json = {
-            "conversation_id": "1234",
+            "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
         }

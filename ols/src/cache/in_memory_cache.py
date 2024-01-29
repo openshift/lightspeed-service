@@ -29,15 +29,18 @@ class InMemoryCache(Cache):
         self.deque: deque[str] = deque()
         self.cache: dict[str, str] = {}
 
-    def get(self, key: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
         """Get the value associated with the given key.
 
         Args:
-          key: The key to look up in the cache.
+          user_id: User identification.
+          conversation_id: Conversation ID unique for given user.
 
         Returns:
           The value associated with the key, or `None` if the key is not present.
         """
+        key = super().construct_key(user_id, conversation_id)
+
         if key not in self.cache:
             return None
 
@@ -45,13 +48,16 @@ class InMemoryCache(Cache):
         self.deque.appendleft(key)
         return self.cache[key]
 
-    def insert_or_append(self, key: str, value: str) -> None:
+    def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
         """Set the value if a key is not present or else simply appends.
 
         Args:
-          key: The key to set in the cache.
+          user_id: User identification.
+          conversation_id: Conversation ID unique for given user.
           value: The value to associate with the key.
         """
+        key = super().construct_key(user_id, conversation_id)
+
         with self._lock:
             if key not in self.cache:
                 if len(self.deque) == self.capacity:

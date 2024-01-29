@@ -34,12 +34,15 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     previous_input = None
     conversation = llm_request.conversation_id
 
+    # TODO: retrieve proper user ID from request
+    user_id = "user1"
+
     # Generate a new conversation ID if not provided
     if not conversation:
         conversation = Utils.get_suid()
         logger.info(f"{conversation} New conversation")
     else:
-        previous_input = config.conversation_cache.get(conversation)
+        previous_input = config.conversation_cache.get(user_id, conversation)
         logger.info(f"{conversation} Previous conversation input: {previous_input}")
 
     llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation)
@@ -126,6 +129,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
     if config.conversation_cache is not None:
         config.conversation_cache.insert_or_append(
+            user_id,
             conversation,
             llm_request.query + "\n\n" + str(llm_response.response or ""),
         )
