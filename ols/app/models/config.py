@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, field_validator
 
-# from ols import constants
+from ols import constants
 
 
 # Helper functions
