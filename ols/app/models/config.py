@@ -1,7 +1,7 @@
 """Config classes for the configuration structure."""
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -71,7 +71,7 @@ class ProviderConfig(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
     credentials: Optional[str] = None
-    models: Dict[str, ModelConfig] = {}
+    models: dict[str, ModelConfig] = {}
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -115,7 +115,7 @@ class ProviderConfig(BaseModel):
 class LLMProviders(BaseModel):
     """LLM providers configuration."""
 
-    providers: Dict[str, ProviderConfig] = {}
+    providers: dict[str, ProviderConfig] = {}
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
