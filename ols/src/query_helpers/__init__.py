@@ -21,7 +21,7 @@ def camel_to_snake(string: str) -> str:
 class QueryHelper:
     """Base class for query helpers."""
 
-    def __init__(self, provider: str | None = None, model: str | None = None):
+    def __init__(self, provider: str | None = None, model: str | None = None) -> None:
         """Initialize query helper."""
         self.provider = provider or config.ols_config.default_provider
         self.model = model or config.ols_config.default_model
