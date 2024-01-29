@@ -265,7 +265,6 @@ class ConversationCacheConfig(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate conversation cache config."""
-        pass
 
 
 class LoggingConfig(BaseModel):
@@ -307,7 +306,6 @@ class LoggingConfig(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate logger config."""
-        pass
 
 
 class OLSConfig(BaseModel):

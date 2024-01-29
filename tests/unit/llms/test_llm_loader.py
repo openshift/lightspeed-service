@@ -124,7 +124,6 @@ def test_constructor_unsatisfied_requirements(provider):
 
     def mock_import(module, *args, **kwargs):
         """Mock the import and from x import statements."""
-        pass
 
     # check what happens if LLM libraries can not be loaded
     with patch("builtins.__import__", side_effect=mock_import):
