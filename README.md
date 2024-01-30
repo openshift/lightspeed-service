@@ -64,6 +64,22 @@ in order to run the API service
 uvicorn ols.app.main:app --reload --port 8080
 ```
 
+### Optionally run with podman
+There is an all-in-one image that has the document store included already.
+
+1. Follow steps above to create your config yaml and your API key file(s). 
+1. Place your config yaml and your API key file(s) in a known location (eg:
+`/path/to/config`)
+1. Make sure your config yaml references the config folder for the path to your
+key file(s) (eg: `credentials_path: config/openai_api_key.txt`)
+1. Run the all-in-one-container. Example invocation:
+
+   ```sh
+    podman run -it --rm -v `/path/to/config:/app-root/config:Z \
+    -e OLS_CONFIG_FILE=/app-root/config/olsconfig.yaml -p 8080:8080 \
+    quay.io/openshift/lightspeed-api-service-rag:latest
+    ```
+
 ### Query the server
 
 To send a request to the server you can use the following curl command:
