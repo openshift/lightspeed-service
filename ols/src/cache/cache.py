@@ -6,7 +6,14 @@ from typing import Union
 
 
 class Cache(ABC):
-    """Abstract class that is parent for all cache implementations."""
+    """Abstract class that is parent for all cache implementations.
+
+    Cache entries are identified by compound key that consists of
+    user ID and conversation ID. Application logic must ensure that
+    user will be able to store and retrieve values that have the
+    correct user ID only. This means that user won't be able to
+    read or modify other users conversations.
+    """
 
     @staticmethod
     def _check_user_id(user_id: str):
