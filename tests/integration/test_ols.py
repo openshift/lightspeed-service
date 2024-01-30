@@ -113,6 +113,20 @@ def test_post_question_on_unexpected_payload() -> None:
     }
 
 
+def test_post_question_without_payload() -> None:
+    """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
+    # perform POST request without any payload
+    response = client.post("/v1/query")
+    assert response.status_code == requests.codes.unprocessable
+
+    # check the response payload
+    json = response.json()
+    assert "detail" in json, "Missing 'detail' node in response payload"
+    detail = json["detail"][0]
+    assert detail["input"] is None
+    assert "Field required" in detail["msg"]
+
+
 def test_post_question_on_invalid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
@@ -173,6 +187,44 @@ def test_post_question_on_unknown_response_type() -> None:
             "model": None,  # default value in request
         }
         assert response.json() == expected_json
+
+
+def test_post_question_with_provider_but_not_model() -> None:
+    """Check how missing model is detected in request."""
+    conversation_id = Utils.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={
+            "conversation_id": conversation_id,
+            "query": "test query",
+            "provider": constants.PROVIDER_BAM,
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable
+    expected_json = {
+        "detail": {"response": "LLM model must be specified when provider is specified"}
+    }
+    assert response.json() == expected_json
+
+
+def test_post_question_with_model_but_not_provider() -> None:
+    """Check how missing provider is detected in request."""
+    conversation_id = Utils.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={
+            "conversation_id": conversation_id,
+            "query": "test query",
+            "model": constants.GRANITE_13B_CHAT_V1,
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable
+    expected_json = {
+        "detail": {
+            "response": "LLM provider must be specified when the model is specified"
+        }
+    }
+    assert response.json() == expected_json
 
 
 class TestQuery:
