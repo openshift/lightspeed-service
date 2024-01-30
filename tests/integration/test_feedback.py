@@ -57,6 +57,14 @@ def test_feedback_wrong_not_filled_in_request() -> None:
     assert response.status_code == requests.codes.unprocessable_entity
 
 
+def test_feedback_no_payload_send() -> None:
+    """Check if feedback without feedback payload."""
+    response = client.post("/v1/feedback")
+    # for the request send w/o payload, the server
+    # should respond with proper error code
+    assert response.status_code == requests.codes.unprocessable_entity
+
+
 def test_feedback_wrong_conversation_id() -> None:
     """Check if feedback with wrong conversation ID is not accepted by the service."""
     response = client.post(
