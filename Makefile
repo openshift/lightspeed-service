@@ -9,10 +9,13 @@ ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 images: ## Build container images
 	scripts/build-container.sh
 
-install-deps: ## Install all required dependencies needed to run the service
+install-tools: ## Install required utilities/tools
+	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+
+install-deps: install-tools ## Install all required dependencies needed to run the service
 	pdm install
 
-install-deps-test: ## Install all required dependencies needed to test the service
+install-deps-test: install-tools ## Install all required dependencies needed to test the service
 	pdm install --dev
 
 run: ## Run the service locally
