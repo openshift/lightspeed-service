@@ -12,9 +12,7 @@ from ols.utils.logging import configure_logging
 
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
-    description="""
-              OpenShift LightSpeed Service API specification.
-                  """,
+    description="""OpenShift LightSpeed Service API specification.""",
 )
 
 
