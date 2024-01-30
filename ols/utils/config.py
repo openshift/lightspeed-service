@@ -10,6 +10,7 @@ from ols.src.cache.cache_factory import CacheFactory
 config = None
 ols_config = None
 llm_config = None
+dev_config = None
 conversation_cache = None
 
 
@@ -18,9 +19,11 @@ def init_empty_config():
     global config
     global ols_config
     global llm_config
+    global dev_config
     config = config_model.Config()
     ols_config = config_model.OLSConfig()
     llm_config = config_model.LLMProviders()
+    dev_config = config_model.DevConfig()
 
 
 def load_config_from_stream(stream) -> config_model.Config:
@@ -36,6 +39,7 @@ def init_config(config_file):
     global config
     global ols_config
     global llm_config
+    global dev_config
     global conversation_cache
 
     try:
@@ -43,6 +47,7 @@ def init_config(config_file):
             config = load_config_from_stream(f)
             ols_config = config.ols_config
             llm_config = config.llm_providers
+            dev_config = config.dev_config
 
             conversation_cache = CacheFactory.conversation_cache(
                 ols_config.conversation_cache

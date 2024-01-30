@@ -314,7 +314,6 @@ class OLSConfig(BaseModel):
     conversation_cache: Optional[ConversationCacheConfig] = None
     logging_config: Optional[LoggingConfig] = None
 
-    enable_debug_ui: Optional[bool] = False
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     classifier_provider: Optional[str] = None
@@ -349,7 +348,6 @@ class OLSConfig(BaseModel):
         self.yaml_provider = data.get("yaml_provider", self.default_provider)
         self.yaml_model = data.get("yaml_model", self.default_model)
 
-        self.enable_debug_ui = data.get("enable_debug_ui", False)
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
@@ -361,7 +359,6 @@ class OLSConfig(BaseModel):
             return (
                 self.conversation_cache == other.conversation_cache
                 and self.logging_config == other.logging_config
-                and self.enable_debug_ui == other.enable_debug_ui
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
                 and self.classifier_provider == other.classifier_provider
@@ -383,11 +380,59 @@ class OLSConfig(BaseModel):
         self.logging_config.validate_yaml()
 
 
+class DevConfig(BaseModel):
+    """Developer-mode-only configuration options."""
+
+    enable_dev_ui: bool = False
+    disable_question_validation: bool = False
+    llm_temperature_override: float | None = None
+
+    # TODO - wire this up once auth is implemented
+    disable_auth: bool = False
+
+    def __init__(self, data: Optional[dict] = None):
+        """Initialize developer configuration settings."""
+        super().__init__()
+        if data is None:
+            return
+        self.enable_dev_ui = str(data.get("enable_dev_ui", "False")).lower() == "true"
+        self.disable_question_validation = (
+            str(data.get("disable_question_validation", "False")).lower() == "true"
+        )
+        self.llm_temperature_override = data.get("llm_temperature_override", None)
+        self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
+
+    def __eq__(self, other):
+        """Compare two objects for equality."""
+        if isinstance(other, DevConfig):
+            return (
+                self.enable_dev_ui == other.enable_dev_ui
+                and self.disable_question_validation
+                == other.disable_question_validation
+                and self.llm_temperature_override == other.llm_temperature_override
+                and self.disable_auth == other.disable_auth
+            )
+        return False
+
+    def validate_yaml(self) -> None:
+        """Validate OLS Dev config."""
+        if self.llm_temperature_override is not None:
+            if not isinstance(self.llm_temperature_override, (float, int)):
+                raise InvalidConfigurationError(
+                    "llm_temperature_override must be a float"
+                )
+            if self.llm_temperature_override < 0 or self.llm_temperature_override > 1:
+                raise InvalidConfigurationError(
+                    "llm_temperature_override must be between 0 and 1"
+                )
+
+
 class Config(BaseModel):
     """Global service configuration."""
 
     llm_providers: Optional[LLMProviders] = None
     ols_config: Optional[OLSConfig] = None
+    dev_config: Optional[DevConfig] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -400,6 +445,9 @@ class Config(BaseModel):
         v = data.get("OLSConfig")
         if v is not None:
             self.ols_config = OLSConfig(v)
+        v = data.get("DevConfig")
+        # Always initialize dev config, even if there's no config for it.
+        self.dev_config = DevConfig(v)
 
     def __eq__(self, other):
         """Compare two objects for equality."""
@@ -418,6 +466,7 @@ class Config(BaseModel):
         if self.ols_config is None:
             raise InvalidConfigurationError("no OLSConfig found")
         self.ols_config.validate_yaml()
+        self.dev_config.validate_yaml()
         for role in constants.PROVIDER_MODEL_ROLES:
             provider_attr_name = f"{role}_provider"
             provider_attr_value = getattr(self.ols_config, provider_attr_name, None)

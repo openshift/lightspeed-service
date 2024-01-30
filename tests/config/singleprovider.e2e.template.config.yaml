@@ -5,7 +5,6 @@ LLMProviders:
     models:
       - name: $MODEL
 OLSConfig:
-  enable_debug_ui: false
   conversation_cache:
     type: memory
     memory:

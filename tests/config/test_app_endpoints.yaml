@@ -6,7 +6,6 @@ LLMProviders:
     models:
       - name: ibm/granite-13b-chat-v2
 OLSConfig:
-  enable_debug_ui: true
   conversation_cache:
     type: memory
     memory:

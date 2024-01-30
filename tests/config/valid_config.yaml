@@ -17,7 +17,6 @@ LLMProviders:
       - name: m2
         url: "https://murl2"
 OLSConfig:
-  enable_debug_ui: false
   conversation_cache:
     type: memory
     memory:

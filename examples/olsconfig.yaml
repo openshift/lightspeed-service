@@ -12,7 +12,6 @@ LLMProviders:
       - name: gpt-4-1106-preview
       - name: gpt-3.5-turbo
 OLSConfig:
-  enable_debug_ui: false
   conversation_cache:
     type: memory
     memory:
@@ -22,3 +21,9 @@ OLSConfig:
     library_log_level: warning
   default_provider: bam
   default_model: ibm/granite-13b-chat-v2
+DevConfig:
+  enable_dev_ui: true
+  # llm_temperature_override: 0
+  # disable_question_validation: false
+  # disable_auth: false
+
