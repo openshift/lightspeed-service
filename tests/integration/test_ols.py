@@ -35,7 +35,7 @@ def test_debug_query() -> None:
         "/v1/debug/query",
         json={"conversation_id": conversation_id, "query": "test query"},
     )
-    print(response)
+
     assert response.status_code == requests.codes.ok
     assert response.json() == {
         "conversation_id": conversation_id,
@@ -44,6 +44,56 @@ def test_debug_query() -> None:
         "provider": None,  # default value in request
         "model": None,  # default value in request
     }
+
+
+# the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
+# during LLM init, exceptins will occur on CI, so let's mock that too
+@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+def test_debug_query_no_conversation_id() -> None:
+    """Check the REST API /v1/debug/query with POST HTTP method conversation ID is not provided."""
+    response = client.post(
+        "/v1/debug/query",
+        json={"query": "test query"},
+    )
+
+    assert response.status_code == requests.codes.ok
+    json = response.json()
+
+    # check that conversation ID is being created
+    assert json["conversation_id"] is not None
+    assert json["query"] == "test query"
+    assert json["response"] == "test response"
+    assert json["provider"] is None  # default value in request
+    assert json["model"] is None  # default value in request
+
+
+# the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
+# during LLM init, exceptins will occur on CI, so let's mock that too
+@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+def test_debug_query_no_query() -> None:
+    """Check the REST API /v1/debug/query with POST HTTP method when query is not specified."""
+    conversation_id = Utils.get_suid()
+    response = client.post(
+        "/v1/debug/query",
+        json={"conversation_id": conversation_id},
+    )
+
+    # request can't be processed correctly
+    assert response.status_code == requests.codes.unprocessable
+
+
+# the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
+@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
+# during LLM init, exceptins will occur on CI, so let's mock that too
+@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+def test_debug_query_no_payload() -> None:
+    """Check the REST API /v1/debug/query with POST HTTP method when payload is empty."""
+    response = client.post("/v1/debug/query")
+
+    # request can't be processed correctly
+    assert response.status_code == requests.codes.unprocessable
 
 
 def test_post_question_on_unexpected_payload() -> None:
