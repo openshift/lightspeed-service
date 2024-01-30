@@ -11,7 +11,6 @@ from ols.app.models.models import LLMRequest
 from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.src.query_helpers.yaml_generator import YamlGenerator
 from ols.utils import config, suid
 
 logger = logging.getLogger(__name__)
@@ -99,11 +98,8 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             detail="Error while validating question",
         )
 
-    validation = validation_result[0]
-    question_type = validation_result[1]
-
-    match (validation, question_type):
-        case (constants.SUBJECT_INVALID, _):
+    match (validation_result):
+        case constants.SUBJECT_INVALID:
             logger.info(
                 f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
@@ -115,9 +111,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     }
                 }
             )
-        case (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC):
+        case constants.SUBJECT_VALID:
             logger.info(
-                f"{conversation_id} - Question is not about yaml, sending for generic info"
+                f"{conversation_id} - Question is relevant to kubernetes or ocp"
             )
             # Summarize documentation
             try:
@@ -141,44 +137,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Error while obtaining answer for user question",
                 )
-        case (constants.SUBJECT_VALID, constants.CATEGORY_YAML):
-            logger.info(
-                f"{conversation_id} - Question is about yaml, sending to the YAML generator"
-            )
-            try:
-                yaml_generator = YamlGenerator(
-                    provider=llm_request.provider, model=llm_request.model
-                )
-                generated_yaml = yaml_generator.generate_yaml(
-                    conversation_id, llm_request.query, previous_input
-                )
-            except LLMConfigurationError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={
-                        "response": f"Unable to process this request because '{e}'"
-                    },
-                )
-            except Exception as yamlgenerator_error:
-                logger.error("Error while obtaining yaml for user question")
-                logger.error(yamlgenerator_error)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error while obtaining answer for user question",
-                )
-            llm_response.response = generated_yaml
-        case (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN):
-            logger.info(
-                f"{conversation_id} - Query is relevant, but cannot identify the intent"
-            )
-            llm_response.response = str(
-                {
-                    "detail": {
-                        "response": "Question does not provide enough context, \
-                Please rephrase your question or provide more detail"
-                    }
-                }
-            )
 
     if config.conversation_cache is not None:
         config.conversation_cache.insert_or_append(

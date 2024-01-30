@@ -68,21 +68,16 @@ class TestVerifyRequestProviderAndModel:
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-@patch("ols.src.query_helpers.yaml_generator.YamlGenerator.generate_yaml")
 @patch("ols.utils.config.conversation_cache.get")
 def test_conversation_request(
     mock_conversation_cache_get,
-    mock_generate_yaml,
     mock_summarize,
     mock_validate_question,
     load_config,
 ):
     """Test conversation request API endpoint."""
     # valid question, no yaml
-    mock_validate_question.return_value = [
-        constants.SUBJECT_VALID,
-        constants.CATEGORY_GENERIC,
-    ]
+    mock_validate_question.return_value = constants.SUBJECT_VALID
     mock_summarize.return_value = (
         "Kubernetes is an open-source container-orchestration system...",  # summary
         "",  # referenced documents
@@ -96,50 +91,24 @@ def test_conversation_request(
     assert len(response.conversation_id) > 0
 
     # valid question, yaml
-    mock_validate_question.return_value = [
-        constants.SUBJECT_VALID,
-        constants.CATEGORY_YAML,
-    ]
-    mock_generate_yaml.return_value = "content: generated yaml"
+    mock_validate_question.return_value = constants.SUBJECT_VALID
+    mock_summarize.return_value = ("content: generated yaml", "")
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request)
     assert response.response == "content: generated yaml"
     assert len(response.conversation_id) > 0
 
     # valid question, yaml, generator failure
-    mock_validate_question.return_value = [
-        constants.SUBJECT_VALID,
-        constants.CATEGORY_YAML,
-    ]
-    mock_generate_yaml.side_effect = Exception
+    mock_validate_question.return_value = constants.SUBJECT_VALID
+    mock_summarize.side_effect = Exception
     with pytest.raises(HTTPException) as excinfo:
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         assert len(response.conversation_id) == 0
 
-    # question of unknown type
-    mock_validate_question.return_value = [
-        constants.SUBJECT_VALID,
-        constants.CATEGORY_UNKNOWN,
-    ]
-    llm_request = LLMRequest(query="ask a question of unknown type")
-    response = ols.conversation_request(llm_request)
-    assert response.response == str(
-        {
-            "detail": {
-                "response": "Question does not provide enough context, \
-                Please rephrase your question or provide more detail"
-            }
-        }
-    )
-    assert len(response.conversation_id) > 0
-
     # invalid question
-    mock_validate_question.return_value = [
-        constants.SUBJECT_INVALID,
-        constants.CATEGORY_YAML,
-    ]
+    mock_validate_question.return_value = constants.SUBJECT_INVALID
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request)
     assert response.response == str(
@@ -153,12 +122,9 @@ def test_conversation_request(
     assert len(response.conversation_id) > 0
 
     # conversation is cached
-    mock_validate_question.return_value = [
-        constants.SUBJECT_VALID,
-        constants.CATEGORY_YAML,
-    ]
-    mock_generate_yaml.return_value = "content: generated yaml"
-    mock_generate_yaml.side_effect = None
+    mock_validate_question.return_value = constants.SUBJECT_VALID
+    mock_summarize.return_value = ("content: generated yaml", "")
+    mock_summarize.side_effect = None
     mock_conversation_cache_get.return_value = "previous conversation input"
     llm_request = LLMRequest(query="Generate a yaml", conversation_id=suid.get_suid())
     response = ols.conversation_request(llm_request)

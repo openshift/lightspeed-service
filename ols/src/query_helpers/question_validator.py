@@ -34,7 +34,7 @@ class QuestionValidator(QueryHelper):
                 f"{conversation} Question validation is disabled. "
                 f"Treating question as [valid,generic]."
             )
-            return [constants.SUBJECT_VALID, constants.CATEGORY_GENERIC]
+            return constants.SUBJECT_VALID
 
         settings_string = (
             f"conversation: {conversation}, "
@@ -66,13 +66,7 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation} response: {clean_response}")
 
-        # If we are not able to indentify the intent, request the user to rephrase the question
-        if response["text"] not in constants.POSSIBLE_QUESTION_VALIDATOR_RESPONSES:
-            return [constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN]
-
         # Will return list with one of the following:
-        # [SUBJECT_VALID, CATEGORY_YAML]
-        # [SUBJECT_VALID, CATEGORY_GENERIC]
-        # [SUBJECT_INVALID,CATEGORY_GENERIC]
-        # [SUBJECT_VALID, CATEGORY_UNKNOWN]
-        return clean_response.split(",")
+        # SUBJECT_VALID
+        # SUBJECT_INVALID
+        return clean_response

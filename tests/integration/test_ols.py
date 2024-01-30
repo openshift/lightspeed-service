@@ -131,7 +131,7 @@ def test_post_question_without_payload():
 def test_post_question_on_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
-    answer = (constants.SUBJECT_INVALID, "anything")
+    answer = constants.SUBJECT_INVALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -162,7 +162,7 @@ def test_post_question_on_invalid_question():
 def test_post_question_on_generic_response_type_summarize_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
+    answer = constants.SUBJECT_VALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -183,7 +183,7 @@ def test_post_question_on_generic_response_type_summarize_error():
 def test_post_question_on_generic_response_llm_configuration_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
+    answer = constants.SUBJECT_VALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -203,37 +203,6 @@ def test_post_question_on_generic_response_llm_configuration_error():
                 }
             }
             assert response.json() == expected_json
-
-
-def test_post_question_on_unknown_response_type():
-    """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
-    # let's pretend the question is valid, but there's an error, without even asking LLM
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN)
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
-    ):
-        conversation_id = suid.get_suid()
-        response = client.post(
-            "/v1/query",
-            json={"conversation_id": conversation_id, "query": "test query"},
-        )
-        assert response.status_code == requests.codes.ok
-        expected_details = str(
-            {
-                "detail": {
-                    "response": "Question does not provide enough context, \
-                Please rephrase your question or provide more detail"
-                }
-            }
-        )
-        expected_json = {
-            "conversation_id": conversation_id,
-            "query": "test query",
-            "response": expected_details,
-            "provider": None,  # default value in request
-            "model": None,  # default value in request
-        }
-        assert response.json() == expected_json
 
 
 def test_post_question_that_is_not_validated():

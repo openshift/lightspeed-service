@@ -26,10 +26,8 @@ def test_is_query_helper_subclass():
 def test_valid_responses(question_validator):
     """Test how valid responses are handled by QuestionValidator."""
     for retval in [
-        "SUBJECT_INVALID,CATEGORY_GENERIC",
-        "SUBJECT_VALID,CATEGORY_GENERIC",
-        "SUBJECT_VALID,CATEGORY_YAML",
-        "SUBJECT_VALID,CATEGORY_UNKNOWN",
+        "SUBJECT_INVALID",
+        "SUBJECT_VALID",
     ]:
         # basically `@patch` and `with patch():` do the same thing, but the latter
         # allow us to change the class/method/function behaviour in runtime
@@ -39,4 +37,4 @@ def test_valid_responses(question_validator):
                 conversation="1234", query="What is the meaning of life?"
             )
 
-            assert response == retval.split(",")
+            assert response == retval
