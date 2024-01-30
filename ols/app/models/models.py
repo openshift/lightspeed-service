@@ -47,13 +47,13 @@ class FeedbackRequest(BaseModel):
     Example:
         ```python
         feedback_request = FeedbackRequest(
-            conversation_id=123,
+            conversation_id="123",
             feedback_object='{"rating": 5, "comment": "Great service!"}'
         )
         ```
     """
 
-    conversation_id: int
+    conversation_id: str
     feedback_object: str
 
     # provides examples for /docs endpoint

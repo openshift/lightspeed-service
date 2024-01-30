@@ -17,15 +17,18 @@ from ols.app.models.config import (
     RedisConfig,
 )
 from ols.app.models.models import FeedbackRequest, LLMRequest
+from ols.app.utils import Utils
 
 
 def test_feedback_request():
     """Test the FeedbackRequest model."""
+    conversation_id = Utils.get_suid()
+
     feedback_request = FeedbackRequest(
-        conversation_id=123,
+        conversation_id=conversation_id,
         feedback_object='{"rating": 5, "comment": "Great service!"}',
     )
-    assert feedback_request.conversation_id == 123
+    assert feedback_request.conversation_id == conversation_id
     assert (
         feedback_request.feedback_object == '{"rating": 5, "comment": "Great service!"}'
     )

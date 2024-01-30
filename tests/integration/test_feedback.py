@@ -6,6 +6,8 @@ from unittest.mock import patch
 import requests
 from fastapi.testclient import TestClient
 
+from ols.app.utils import Utils
+
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
@@ -21,8 +23,13 @@ def setup():
 def test_feedback() -> None:
     """Check if feedback with correct format is accepted by the service."""
     # TODO: should we validate that the correct log messages are written?
+
+    # use proper conversation ID
+    conversation_id = Utils.get_suid()
+
     response = client.post(
-        "/v1/feedback", json={"conversation_id": 1234, "feedback_object": "blah"}
+        "/v1/feedback",
+        json={"conversation_id": conversation_id, "feedback_object": "blah"},
     )
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "feedback received"}
@@ -38,8 +45,23 @@ def test_feedback_wrong_request() -> None:
 
 def test_feedback_wrong_not_filled_in_request() -> None:
     """Check if feedback without feedback object is not accepted by the service."""
+    # use proper conversation ID
+    conversation_id = Utils.get_suid()
+
     response = client.post(
-        "/v1/feedback", json={"conversation_id": 0, "feedback_object": None}
+        "/v1/feedback",
+        json={"conversation_id": conversation_id, "feedback_object": None},
+    )
+    # for the request send w/o proper payload, the server
+    # should respond with proper error code
+    assert response.status_code == requests.codes.unprocessable_entity
+
+
+def test_feedback_wrong_conversation_id() -> None:
+    """Check if feedback with wrong conversation ID is not accepted by the service."""
+    response = client.post(
+        "/v1/feedback",
+        json={"conversation_id": 0, "feedback_object": "blah"},
     )
     # for the request send w/o proper payload, the server
     # should respond with proper error code
