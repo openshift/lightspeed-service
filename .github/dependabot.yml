@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  - package-ecosystem: "pip-tools"
     directory: "/"
     schedule:
       interval: "weekly"

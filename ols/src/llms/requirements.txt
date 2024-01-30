@@ -1,4 +1,0 @@
-openai
-ibm_watson_machine_learning
-ibm-generative-ai
-text_generation

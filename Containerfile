@@ -23,18 +23,19 @@ WORKDIR ${APP_ROOT}
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ols ./ols
-COPY ./requirements.txt ./
+COPY ./pyproject.toml ./pdm.lock ./
 
 RUN python3.11 -m venv ${APP_ROOT}/venv \
     && source ${APP_ROOT}/venv/bin/activate \
-    # Install wheel for optimized dependency installation \
-    # avoid using or leaving cache on final image \
-    && pip install --no-cache-dir --upgrade pip wheel \
-    && pip install --no-cache-dir --upgrade -r requirements.txt \
-    # The following echo adds the unset command for the variables set below to the \
-    # venv activation script. This is inspired from scl_enable script and prevents \
-    # the virtual environment to be activated multiple times and also every time \
-    # the prompt is rendered. \
+    # Install wheel for optimized dependency installation
+    # avoid using or leaving cache on final image
+    && pip install --no-cache-dir --upgrade pip pdm \
+    # Install project dependencies using PDM
+    && pdm install --no-lock \
+    # The following echo adds the unset command for the variables set below to the
+    # venv activation script. This is inspired from scl_enable script and prevents
+    # the virtual environment to be activated multiple times and also every time
+    # the prompt is rendered.
     && echo "unset BASH_ENV PROMPT_COMMAND ENV" >> ${APP_ROOT}/venv/bin/activate
 
 RUN chown -R 1001:0 ${APP_ROOT} && \

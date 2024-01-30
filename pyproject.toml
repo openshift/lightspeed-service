@@ -20,3 +20,46 @@ fail_under = 50
 [tool.mypy]
 disable_error_code = ["union-attr", "return-value", "arg-type", "misc", "call-arg", "import-untyped"]
 ignore_missing_imports = true
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black>=24.1.1",
+    "httpx>=0.26.0",
+    "mypy>=1.8.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.14",
+    # types-requests<2.31.0.7 to avoid upgrading urllib3>1.27 that breaks ibm-cos-sdk-core 2.13.
+    # todo: remove when ibm-cos-sdk-core does not depend on urllib3<1.27.
+    "types-requests<2.31.0.7"
+]
+[project]
+name = "ols"
+version = "0.1.0"
+description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
+authors = []
+dependencies = [
+    "fastapi==0.109.0",
+    "gradio==4.16.0",
+    "kubernetes==29.0.0",  # not used?
+    "langchain==0.1.4",
+    "llama-index==0.9.39",  # dev dep?
+    "torch==2.1.2",  # not used?
+    "transformers==4.37.1",  # not direct dep?
+    "uvicorn==0.27.0.post1",
+    "redis==5.0.1",
+    "faiss-cpu==1.7.4",
+    "sentence-transformers==2.3.0",  # not direct dep?
+    "openai==1.10.0",
+    "ibm-watson-machine-learning==1.0.344",
+    "ibm-generative-ai==2.0.0",
+    "text-generation==0.6.1",  # not direct dep?
+    "pydantic==2.6.0",
+    "setuptools>=69.0.3",
+]
+requires-python = "==3.11.*"
+readme = "README.md"
+license = "LICENSE"

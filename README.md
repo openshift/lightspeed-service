@@ -6,7 +6,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 ## Prerequisites
 
 * Python 3.11
-* Git and pip installed
+* Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
 * An LLM api key, currently BAM (IBM's research environment) and OpenAI are supported as backends.
 
 ## Installation

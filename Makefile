@@ -10,10 +10,10 @@ images: ## Build container images
 	scripts/build-container.sh
 
 install-deps: ## Install all required dependencies needed to run the service
-	pip install -r requirements.txt
+	pdm install
 
 install-deps-test: ## Install all required dependencies needed to test the service
-	pip install -r requirements-test.txt
+	pdm install --dev
 
 run: ## Run the service locally
 	uvicorn ols.app.main:app --reload --port 8080
