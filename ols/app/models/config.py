@@ -271,7 +271,7 @@ class LoggingConfig(BaseModel):
     """Logging configuration."""
 
     app_log_level: Optional[str] = None
-    library_log_level: Optional[str] = None
+    lib_log_level: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -280,16 +280,14 @@ class LoggingConfig(BaseModel):
             data = {}
 
         self.app_log_level = self._get_log_level(data, "app_log_level", "info")
-        self.library_log_level = self._get_log_level(
-            data, "library_log_level", "warning"
-        )
+        self.lib_log_level = self._get_log_level(data, "lib_log_level", "warning")
 
     def __eq__(self, other):
         """Compare two objects for equality."""
         if isinstance(other, LoggingConfig):
             return (
                 self.app_log_level == other.app_log_level
-                and self.library_log_level == other.library_log_level
+                and self.lib_log_level == other.lib_log_level
             )
         return False
 

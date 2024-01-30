@@ -529,4 +529,4 @@ def test_config_file_without_logging_config() -> None:
     # test if default values have been set
     logging_config = config.ols_config.logging_config
     assert logging_config.app_log_level == logging.INFO
-    assert logging_config.library_log_level == logging.WARNING
+    assert logging_config.lib_log_level == logging.WARNING

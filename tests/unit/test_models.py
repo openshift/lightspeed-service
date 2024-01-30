@@ -191,17 +191,17 @@ class TestLoggingConfig:
         # test default values
         logging_config = LoggingConfig({})
         assert logging_config.app_log_level == logging.INFO
-        assert logging_config.library_log_level == logging.WARNING
+        assert logging_config.lib_log_level == logging.WARNING
 
         # test custom values
         logging_config = LoggingConfig(
             {
                 "app_log_level": "debug",
-                "library_log_level": "debug",
+                "lib_log_level": "debug",
             }
         )
         assert logging_config.app_log_level == logging.DEBUG
-        assert logging_config.library_log_level == logging.DEBUG
+        assert logging_config.lib_log_level == logging.DEBUG
 
         logging_config = LoggingConfig()
         assert logging_config.app_log_level == logging.INFO
