@@ -13,3 +13,5 @@ OLSConfig:
     default_level: INFO
   default_provider: $PROVIDER
   default_model: $MODEL
+DevConfig:
+  llm_temperature_override: 0

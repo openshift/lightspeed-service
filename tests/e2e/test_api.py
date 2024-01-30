@@ -57,6 +57,8 @@ def test_invalid_question() -> None:
     )
     expected_json = {
         "conversation_id": conversation_id,
+        "model": None,
+        "provider": None,
         "query": "test query",
         "response": expected_details,
     }
