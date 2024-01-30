@@ -1,5 +1,5 @@
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: "https://url1"
     credentials_path: tests/config/secret.txt
@@ -16,7 +16,7 @@ LLMProviders:
         url: "https://murl1"
       - name: m2
         url: "https://murl2"
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:

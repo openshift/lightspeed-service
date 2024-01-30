@@ -1,10 +1,10 @@
 ---
-LLMProviders:
+llm_providers:
   - name: $PROVIDER
     credentials_path: $PROVIDER_KEY_PATH
     models:
       - name: $MODEL
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:
@@ -13,5 +13,5 @@ OLSConfig:
     default_level: INFO
   default_provider: $PROVIDER
   default_model: $MODEL
-DevConfig:
+dev_config:
   llm_temperature_override: 0

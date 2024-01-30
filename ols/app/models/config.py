@@ -439,13 +439,13 @@ class Config(BaseModel):
         super().__init__()
         if data is None:
             return
-        v = data.get("LLMProviders")
+        v = data.get("llm_providers")
         if v is not None:
             self.llm_providers = LLMProviders(v)
-        v = data.get("OLSConfig")
+        v = data.get("ols_config")
         if v is not None:
             self.ols_config = OLSConfig(v)
-        v = data.get("DevConfig")
+        v = data.get("dev_config")
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
 
@@ -461,10 +461,10 @@ class Config(BaseModel):
     def validate_yaml(self) -> None:
         """Validate all configurations."""
         if self.llm_providers is None:
-            raise InvalidConfigurationError("no LLMProviders found")
+            raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()
         if self.ols_config is None:
-            raise InvalidConfigurationError("no OLSConfig found")
+            raise InvalidConfigurationError("no OLS config section found")
         self.ols_config.validate_yaml()
         self.dev_config.validate_yaml()
         for role in constants.PROVIDER_MODEL_ROLES:

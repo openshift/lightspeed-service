@@ -76,7 +76,7 @@ curl -X 'POST' 'http://127.0.0.1:8080/v1/query' -H 'accept: application/json' -H
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, it is needed to enable UI in `olsconfig.yaml` file:
 
 ```
-DevConfig:
+dev_config:
   enable_dev_ui: true
 ```
 

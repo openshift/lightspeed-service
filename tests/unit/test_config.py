@@ -52,14 +52,18 @@ def test_missing_config_file() -> None:
 
 def test_invalid_config() -> None:
     """Check that invalid configuration is handled gracefully."""
-    check_expected_exception("""""", InvalidConfigurationError, "no LLMProviders found")
     check_expected_exception(
-        """{foo=123}""", InvalidConfigurationError, "no LLMProviders found"
+        """""", InvalidConfigurationError, "no LLM providers config section found"
+    )
+    check_expected_exception(
+        """{foo=123}""",
+        InvalidConfigurationError,
+        "no LLM providers config section found",
     )
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
@@ -76,13 +80,13 @@ LLMProviders:
         url: 'http://murl2'
 """,
         InvalidConfigurationError,
-        "no OLSConfig found",
+        "no OLS config section found",
     )
 
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
@@ -105,7 +109,7 @@ LLMProviders:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'not-valid-url'
     models:
@@ -127,7 +131,7 @@ LLMProviders:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - foo: p1
     url: 'http://url1'
     models:
@@ -141,7 +145,7 @@ LLMProviders:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: foobar
     models:
@@ -156,13 +160,13 @@ LLMProviders:
         check_expected_exception(
             f"""
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'http://murl1'
-OLSConfig:
+ols_config:
   {role}_provider: no_such_provider
   {role}_model: m1
     """,
@@ -173,13 +177,13 @@ OLSConfig:
         check_expected_exception(
             f"""
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'http://murl1'
-OLSConfig:
+ols_config:
   {role}_provider: p1
   {role}_model: no_such_model
     """,
@@ -190,13 +194,13 @@ OLSConfig:
         check_expected_exception(
             f"""
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'http://murl1'
-OLSConfig:
+ols_config:
   {role}_provider: p1
     """,
             InvalidConfigurationError,
@@ -206,13 +210,13 @@ OLSConfig:
         check_expected_exception(
             f"""
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'http://murl1'
-OLSConfig:
+ols_config:
   {role}_model: m1
     """,
             InvalidConfigurationError,
@@ -222,13 +226,13 @@ OLSConfig:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'https://murl1'
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     redis:
@@ -244,13 +248,13 @@ OLSConfig:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     models:
       - name: m1
         url: 'https://murl1'
-OLSConfig:
+ols_config:
   conversation_cache:
     type: redis
     memory:
@@ -263,7 +267,7 @@ OLSConfig:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     credentials_path: no_such_file_provider
@@ -275,7 +279,7 @@ LLMProviders:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     credentials_path: tests/config/secret.txt
@@ -291,18 +295,18 @@ LLMProviders:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     credentails_path: tests/config/secret.txt
     models:
       - name: m1
         credentails_path: tests/config/secret.txt
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:
       max_entries: 1000
-DevConfig:
+dev_config:
   llm_temperature_override: NaN
 """,
         InvalidConfigurationError,
@@ -312,18 +316,18 @@ DevConfig:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     credentails_path: tests/config/secret.txt
     models:
       - name: m1
         credentails_path: tests/config/secret.txt
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:
       max_entries: 1000
-DevConfig:
+dev_config:
   llm_temperature_override: -1
 """,
         InvalidConfigurationError,
@@ -333,18 +337,18 @@ DevConfig:
     check_expected_exception(
         """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     credentails_path: tests/config/secret.txt
     models:
       - name: m1
         credentails_path: tests/config/secret.txt
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:
       max_entries: 1000
-DevConfig:
+dev_config:
   llm_temperature_override: 1.1
   enable_dev_ui: true
   disable_question_validation: false
@@ -363,7 +367,7 @@ def test_valid_config_stream() -> None:
             io.StringIO(
                 """
 ---
-LLMProviders:
+llm_providers:
   - name: p1
     url: 'http://url1'
     credentials_path: tests/config/secret.txt
@@ -380,7 +384,7 @@ LLMProviders:
         url: 'https://murl1'
       - name: m2
         url: 'https://murl2'
-OLSConfig:
+ols_config:
   conversation_cache:
     type: memory
     memory:
@@ -391,7 +395,7 @@ OLSConfig:
   default_model: m1
   classifier_provider: p2
   classifier_model: m1
-DevConfig:
+dev_config:
   llm_temperature_override: 0
   enable_dev_ui: true
   disable_question_validation: false
@@ -411,7 +415,7 @@ def test_valid_config_file() -> None:
 
         expected_config = Config(
             {
-                "LLMProviders": [
+                "llm_providers": [
                     {
                         "name": "p1",
                         "url": "https://url1",
@@ -443,7 +447,7 @@ def test_valid_config_file() -> None:
                         ],
                     },
                 ],
-                "OLSConfig": {
+                "ols_config": {
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -479,7 +483,7 @@ def test_valid_config_file_with_redis() -> None:
 
         expected_config = Config(
             {
-                "LLMProviders": [
+                "llm_providers": [
                     {
                         "name": "p1",
                         "url": "https://url1",
@@ -492,7 +496,7 @@ def test_valid_config_file_with_redis() -> None:
                         ],
                     },
                 ],
-                "OLSConfig": {
+                "ols_config": {
                     "conversation_cache": {
                         "type": "redis",
                         "redis": {
