@@ -61,23 +61,23 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
     # Initialize variables
     previous_input = None
-    conversation = llm_request.conversation_id
+    conversation_id = llm_request.conversation_id
 
     # TODO: retrieve proper user ID from request
     user_id = "user1"
 
     # Generate a new conversation ID if not provided
-    if not conversation:
-        conversation = Utils.get_suid()
-        logger.info(f"{conversation} New conversation")
+    if not conversation_id:
+        conversation_id = Utils.get_suid()
+        logger.info(f"{conversation_id} New conversation")
     else:
-        previous_input = config.conversation_cache.get(user_id, conversation)
-        logger.info(f"{conversation} Previous conversation input: {previous_input}")
+        previous_input = config.conversation_cache.get(user_id, conversation_id)
+        logger.info(f"{conversation_id} Previous conversation input: {previous_input}")
 
-    llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation)
+    llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation_id)
 
     # Log incoming request
-    logger.info(f"{conversation} Incoming request: {llm_request.query}")
+    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     # Validate the query
     try:
@@ -85,7 +85,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             provider=llm_request.provider, model=llm_request.model
         )
         validation_result = question_validator.validate_question(
-            conversation, llm_request.query
+            conversation_id, llm_request.query
         )
     except LLMConfigurationError as e:
         raise HTTPException(
@@ -106,7 +106,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     match (validation, question_type):
         case (constants.SUBJECT_INVALID, _):
             logger.info(
-                f"{conversation} - Query is not relevant to kubernetes or ocp, returning"
+                f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
             llm_response.response = str(
                 {
@@ -118,7 +118,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             )
         case (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC):
             logger.info(
-                f"{conversation} - Question is not about yaml, sending for generic info"
+                f"{conversation_id} - Question is not about yaml, sending for generic info"
             )
             # Summarize documentation
             try:
@@ -126,7 +126,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     provider=llm_request.provider, model=llm_request.model
                 )
                 llm_response.response, _ = docs_summarizer.summarize(
-                    conversation, llm_request.query
+                    conversation_id, llm_request.query
                 )
             except LLMConfigurationError as e:
                 raise HTTPException(
@@ -144,14 +144,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                 )
         case (constants.SUBJECT_VALID, constants.CATEGORY_YAML):
             logger.info(
-                f"{conversation} - Question is about yaml, sending to the YAML generator"
+                f"{conversation_id} - Question is about yaml, sending to the YAML generator"
             )
             try:
                 yaml_generator = YamlGenerator(
                     provider=llm_request.provider, model=llm_request.model
                 )
                 generated_yaml = yaml_generator.generate_yaml(
-                    conversation, llm_request.query, previous_input
+                    conversation_id, llm_request.query, previous_input
                 )
             except LLMConfigurationError as e:
                 raise HTTPException(
@@ -170,7 +170,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             llm_response.response = generated_yaml
         case (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN):
             logger.info(
-                f"{conversation} - Query is relevant, but cannot identify the intent"
+                f"{conversation_id} - Query is relevant, but cannot identify the intent"
             )
             llm_response.response = str(
                 {
@@ -184,7 +184,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     if config.conversation_cache is not None:
         config.conversation_cache.insert_or_append(
             user_id,
-            conversation,
+            conversation_id,
             llm_request.query + "\n\n" + str(llm_response.response or ""),
         )
     return llm_response
