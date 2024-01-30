@@ -343,7 +343,7 @@ def test_config():
     """Test the Config model of the Global service configuration."""
     config = Config(
         {
-            "LLMProviders": [
+            "llm_providers": [
                 {
                     "name": "test_provider_name",
                     "url": "test_provider_url",
@@ -357,7 +357,7 @@ def test_config():
                     ],
                 },
             ],
-            "OLSConfig": {
+            "ols_config": {
                 "default_provider": "test_default_provider",
                 "default_model": "test_default_model",
                 "classifier_provider": "test_classifer_provider",
@@ -426,16 +426,16 @@ def test_config():
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         Config().validate_yaml()
-    assert "no LLMProviders found" in str(excinfo.value)
+    assert "no LLM providers config section found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
-        Config({"LLMProviders": []}).validate_yaml()
-    assert "no OLSConfig found" in str(excinfo.value)
+        Config({"llm_providers": []}).validate_yaml()
+    assert "no OLS config section found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         Config(
             {
-                "LLMProviders": [
+                "llm_providers": [
                     {
                         "name": "test_provider_name",
                         "url": "http://test_provider_url",
@@ -451,12 +451,12 @@ def test_config():
                 ],
             }
         ).validate_yaml()
-    assert "no OLSConfig found" in str(excinfo.value)
+    assert "no OLS config section found" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         Config(
             {
-                "LLMProviders": [
+                "llm_providers": [
                     {
                         "name": "test_provider_name",
                         "url": "http://test_provider_url",
@@ -470,7 +470,7 @@ def test_config():
                         ],
                     }
                 ],
-                "OLSConfig": {"default_provider": "test_default_provider"},
+                "ols_config": {"default_provider": "test_default_provider"},
             }
         ).validate_yaml()
     assert "default_provider is specified, but default_model is missing" in str(
