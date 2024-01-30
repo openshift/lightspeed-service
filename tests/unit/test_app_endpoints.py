@@ -24,7 +24,7 @@ def load_config():
 def test_user_feedback(load_config):
     """Test user feedback API endpoint."""
     feedback_request = FeedbackRequest(
-        conversation_id=123,
+        conversation_id=Utils.get_suid(),
         feedback_object='{"rating": 5, "comment": "Great service!"}',
     )
     response = feedback.user_feedback(feedback_request)

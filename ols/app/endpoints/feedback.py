@@ -20,7 +20,7 @@ def user_feedback(feedback_request: FeedbackRequest) -> dict:
     Returns:
         Response indicating the status of the feedback.
     """
-    conversation = str(feedback_request.conversation_id)
+    conversation = feedback_request.conversation_id
     logger.info(f"{conversation} New feedback received")
     logger.info(f"{conversation} Feedback blob: {feedback_request.feedback_object}")
 
