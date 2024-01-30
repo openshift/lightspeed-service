@@ -7,6 +7,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import constants
+from ols.app.models.config import ProviderConfig
 from ols.app.utils import Utils
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -54,6 +55,8 @@ def test_debug_query() -> None:
         "conversation_id": conversation_id,
         "query": "test query",
         "response": "test response",
+        "provider": None,  # default value in request
+        "model": None,  # default value in request
     }
 
 
@@ -99,6 +102,8 @@ def test_post_question_on_invalid_question() -> None:
             "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
+            "provider": None,  # default value in request
+            "model": None,  # default value in request
         }
         assert response.json() == expected_json
 
@@ -128,5 +133,60 @@ def test_post_question_on_unknown_response_type() -> None:
             "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
+            "provider": None,  # default value in request
+            "model": None,  # default value in request
         }
         assert response.json() == expected_json
+
+
+class TestQuery:
+    """Test the /v1/query endpoint."""
+
+    def test_unsupported_provider_in_post(self):
+        """Check the REST API /v1/query with POST method when unsupported provider is requested."""
+        # empty config - no providers
+        with patch("ols.utils.config.llm_config.providers", new={}):
+            response = client.post(
+                "/v1/query",
+                json={
+                    "query": "hello?",
+                    "provider": "some-provider",
+                    "model": "some-model",
+                },
+            )
+
+            assert response.status_code == requests.codes.unprocessable
+            assert response.json() == {
+                "detail": {
+                    "response": "Unable to process this request because "
+                    "'Unsupported LLM provider some-provider'"
+                }
+            }
+
+    def test_unsupported_model_in_post(self):
+        """Check the REST API /v1/query with POST method when unsupported model is requested."""
+        test_provider = "test-provider"
+        provider_config = ProviderConfig()
+        provider_config.models = {}  # no models configured
+
+        with patch(
+            "ols.utils.config.llm_config.providers",
+            new={test_provider: provider_config},
+        ):
+            response = client.post(
+                "/v1/query",
+                json={
+                    "query": "hello?",
+                    "provider": test_provider,
+                    "model": "some-model",
+                },
+            )
+
+            assert response.status_code == requests.codes.unprocessable
+            assert response.json() == {
+                "detail": {
+                    "response": "Unable to process this request because "
+                    "'No configuration provided for model some-model under "
+                    "LLM provider test-provider'"
+                }
+            }
