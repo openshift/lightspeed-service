@@ -24,9 +24,20 @@ class GradioUI:
 
         # ui specific
         use_history = gr.Checkbox(value=True, label="Use history")
-        self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=[use_history])
+        provider = gr.Textbox(value=None, label="Provider")
+        model = gr.Textbox(value=None, label="Model")
+        self.ui = gr.ChatInterface(
+            self.chat_ui, additional_inputs=[use_history, provider, model]
+        )
 
-    def chat_ui(self, prompt: str, history, use_history: bool | None = None) -> str:
+    def chat_ui(
+        self,
+        prompt: str,
+        history,
+        use_history: bool | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+    ) -> str:
         """Handle requests from web-based user interface."""
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -41,6 +52,13 @@ class GradioUI:
         elif use_history and self.conversation_id is not None:
             data["conversation_id"] = self.conversation_id
             logger.info(f"Using conversation ID: {self.conversation_id}")
+
+        if provider:
+            logger.info(f"Using provider: {provider}")
+            data["provider"] = provider
+        if model:
+            logger.info(f"Using model: {model}")
+            data["model"] = model
 
         # Convert the data dictionary to a JSON string
         json_data = json.dumps(data)

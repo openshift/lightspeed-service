@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app.models.models import LLMRequest
 from ols.app.utils import Utils
-from ols.src.llms.llm_loader import LLMLoader
+from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
@@ -18,6 +18,33 @@ from ols.utils import config
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["query"])
+
+
+# NOTE: As we are using default values for provider and model in "query helpers",
+# we need to catch the case when user provides only provider and not model
+# (and vice-versa). Eventually, we should construct proper config object from
+# user's input and use its verification capabilites.
+def verify_request_provider_and_model(llm_request: LLMRequest) -> None:
+    """Verify that the provider and model are set in the request."""
+    if llm_request.model and not llm_request.provider:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "response": "LLM provider must be specified when the model is specified"
+            },
+        )
+
+    if llm_request.provider and not llm_request.model:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "response": "LLM model must be specified when provider is specified"
+            },
+        )
+
+    if llm_request.model and llm_request.provider:
+        logger.debug(f"provider '{llm_request.provider}' is set in request")
+        logger.debug(f"model '{llm_request.model}' is set in request")
 
 
 @router.post("/query")
@@ -30,6 +57,8 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     Returns:
         Response containing the processed information.
     """
+    verify_request_provider_and_model(llm_request)
+
     # Initialize variables
     previous_input = None
     conversation = llm_request.conversation_id
@@ -51,10 +80,17 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     logger.info(f"{conversation} Incoming request: {llm_request.query}")
 
     # Validate the query
-    question_validator = QuestionValidator()
     try:
+        question_validator = QuestionValidator(
+            provider=llm_request.provider, model=llm_request.model
+        )
         validation_result = question_validator.validate_question(
             conversation, llm_request.query
+        )
+    except LLMConfigurationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"response": f"Unable to process this request because '{e}'"},
         )
     except Exception as validation_error:
         logger.error("Error while validating question")
@@ -85,10 +121,19 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                 f"{conversation} - Question is not about yaml, sending for generic info"
             )
             # Summarize documentation
-            docs_summarizer = DocsSummarizer()
             try:
+                docs_summarizer = DocsSummarizer(
+                    provider=llm_request.provider, model=llm_request.model
+                )
                 llm_response.response, _ = docs_summarizer.summarize(
                     conversation, llm_request.query
+                )
+            except LLMConfigurationError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "response": f"Unable to process this request because '{e}'"
+                    },
                 )
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
@@ -101,10 +146,19 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             logger.info(
                 f"{conversation} - Question is about yaml, sending to the YAML generator"
             )
-            yaml_generator = YamlGenerator()
             try:
+                yaml_generator = YamlGenerator(
+                    provider=llm_request.provider, model=llm_request.model
+                )
                 generated_yaml = yaml_generator.generate_yaml(
                     conversation, llm_request.query, previous_input
+                )
+            except LLMConfigurationError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "response": f"Unable to process this request because '{e}'"
+                    },
                 )
             except Exception as yamlgenerator_error:
                 logger.error("Error while obtaining yaml for user question")

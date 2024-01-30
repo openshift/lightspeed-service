@@ -10,6 +10,8 @@ class LLMRequest(BaseModel):
         query: The query string.
         conversation_id: The optional conversation ID.
         response: The optional response.
+        provider: The optional provider.
+        model: The optional model.
 
     Example:
         llm_request = LLMRequest(query="Tell me about Kubernetes")
@@ -18,6 +20,8 @@ class LLMRequest(BaseModel):
     query: str
     conversation_id: str | None = None
     response: str | None = None
+    provider: str | None = None
+    model: str | None = None
 
     # provides examples for /docs endpoint
     model_config = {
