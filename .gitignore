@@ -7,6 +7,7 @@ __pycache__
 # ignore venv
 venv
 .venv
+.pdm-python
 
 # ignore local configuration
 .env
