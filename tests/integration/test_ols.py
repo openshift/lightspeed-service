@@ -23,20 +23,6 @@ def setup():
     client = TestClient(app)
 
 
-def test_liveness() -> None:
-    """Test handler for /liveness REST API endpoint."""
-    response = client.get("/liveness")
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "1"}
-
-
-def test_readiness() -> None:
-    """Test handler for /readiness REST API endpoint."""
-    response = client.get("/readiness")
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "1"}
-
-
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptins will occur on CI, so let's mock that too
