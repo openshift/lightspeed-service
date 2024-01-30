@@ -102,6 +102,8 @@ def test_post_question_on_invalid_question() -> None:
             "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
+            "provider": None,  # default value in request
+            "model": None,  # default value in request
         }
         assert response.json() == expected_json
 
@@ -131,6 +133,8 @@ def test_post_question_on_unknown_response_type() -> None:
             "conversation_id": conversation_id,
             "query": "test query",
             "response": expected_details,
+            "provider": None,  # default value in request
+            "model": None,  # default value in request
         }
         assert response.json() == expected_json
 
