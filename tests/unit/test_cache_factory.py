@@ -41,7 +41,7 @@ def invalid_cache_type_config():
 
 
 def test_conversation_cache_in_memory(in_memory_cache_config):
-    """Check if InMemoryCache is returned by factory with proper env.var setup."""
+    """Check if InMemoryCache is returned by factory with proper configuration."""
     cache = CacheFactory.conversation_cache(in_memory_cache_config)
     assert cache is not None
     # check if the object has the right type
@@ -50,7 +50,7 @@ def test_conversation_cache_in_memory(in_memory_cache_config):
 
 @patch("redis.StrictRedis", new=MockRedis)
 def test_conversation_cache_in_redis(redis_cache_config):
-    """Check if RedisCache is returned by factory with proper env.var setup."""
+    """Check if RedisCache is returned by factory with proper configuration."""
     cache = CacheFactory.conversation_cache(redis_cache_config)
     assert cache is not None
     # check if the object has the right type
@@ -58,6 +58,6 @@ def test_conversation_cache_in_redis(redis_cache_config):
 
 
 def test_conversation_cache_wrong_cache(invalid_cache_type_config):
-    """Check if wrong cache env.variable is detected properly."""
+    """Check if wrong cache configuration is detected properly."""
     with pytest.raises(ValueError, match="Invalid cache type"):
         CacheFactory.conversation_cache(invalid_cache_type_config)
