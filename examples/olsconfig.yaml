@@ -1,4 +1,3 @@
----
 llm_providers:
   - name: bam
     url: "https://bam-api.res.ibm.com"
@@ -26,4 +25,3 @@ dev_config:
   # llm_temperature_override: 0
   # disable_question_validation: false
   # disable_auth: false
-
