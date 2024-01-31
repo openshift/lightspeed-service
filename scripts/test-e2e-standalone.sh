@@ -28,23 +28,23 @@ if [ ! -e "$PROVIDER_KEY_PATH" ]; then
 fi
 
 export MODEL="${MODEL:-gpt-3.5-turbo-1106}"
-envsubst < $(pwd)/tests/config/singleprovider.e2e.template.config.yaml > $OLS_CONFIG_FILE
+envsubst < $(pwd)/tests/config/singleprovider.e2e.template.config.yaml > "$OLS_CONFIG_FILE"
 
 echo "Installing dependencies"
 make install-deps && make install-deps-test
 
 echo Starting OLS server
-make run >& $OLS_LOGS &
+make run >& "$OLS_LOGS" &
 function finish() {
     echo Exit trap: killing OLS server
     kill %1
-    rm -rf $TMPDIR
+    rm -rf "$TMPDIR"
 }
 trap finish EXIT
 
 STARTED=0
 for i in {1..10}; do
-  echo Checking OLS readiness, attempt $i of 10
+  echo Checking OLS readiness, attempt "$i" of 10
   curl -s localhost:8080/readiness
   if [ $? -eq 0 ]; then
     STARTED=1
@@ -55,9 +55,9 @@ done
 
 if [ $STARTED -ne 1 ]; then
   echo "OLS failed to start, OLS log output:"
-  cat $OLS_LOGS
+  cat "$OLS_LOGS"
   echo "Config file:"
-  cat $OLS_CONFIG_FILE
+  cat "$OLS_CONFIG_FILE"
   exit 1
 fi
 
