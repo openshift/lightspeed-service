@@ -1,4 +1,4 @@
-"""Unit tests for health REST API endpoints handlers."""
+"""Unit tests for health endpoints handlers."""
 
 from ols.app.endpoints.health import liveness_probe, readiness_probe
 
