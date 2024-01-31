@@ -23,7 +23,7 @@ def check_expected_exception(
         config.load_config_from_stream(io.StringIO(yaml_stream))
 
 
-def test_malformed_yaml() -> None:
+def test_malformed_yaml():
     """Check that malformed YAML is handled gracefully."""
     check_expected_exception(
         """[foo=123}""", ParserError, "while parsing a flow sequence"
@@ -42,7 +42,7 @@ def test_malformed_yaml() -> None:
     )
 
 
-def test_missing_config_file() -> None:
+def test_missing_config_file():
     """Check how missing configuration file is handled."""
     with pytest.raises(Exception, match="Not a directory"):
         # /dev/null is special file so it can't be directory
@@ -50,7 +50,7 @@ def test_missing_config_file() -> None:
         config.init_config("/dev/null/non-existent")
 
 
-def test_invalid_config() -> None:
+def test_invalid_config():
     """Check that invalid configuration is handled gracefully."""
     check_expected_exception(
         """""", InvalidConfigurationError, "no LLM providers config section found"
@@ -360,7 +360,7 @@ dev_config:
     )
 
 
-def test_valid_config_stream() -> None:
+def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     try:
         config.load_config_from_stream(
@@ -408,7 +408,7 @@ dev_config:
         pytest.fail()
 
 
-def test_valid_config_file() -> None:
+def test_valid_config_file():
     """Check if a valid configuration file is handled correctly."""
     try:
         config.init_config("tests/config/valid_config.yaml")
@@ -476,7 +476,7 @@ def test_valid_config_file() -> None:
         pytest.fail()
 
 
-def test_valid_config_file_with_redis() -> None:
+def test_valid_config_file_with_redis():
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
         config.init_config("tests/config/valid_config_redis.yaml")
@@ -524,7 +524,7 @@ def test_valid_config_file_with_redis() -> None:
         pytest.fail()
 
 
-def test_config_file_without_logging_config() -> None:
+def test_config_file_without_logging_config():
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail

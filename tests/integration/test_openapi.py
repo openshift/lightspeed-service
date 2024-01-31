@@ -18,7 +18,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_openapi_endpoint() -> None:
+def test_openapi_endpoint():
     """Check if REST API provides endpoint with OpenAPI specification."""
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
