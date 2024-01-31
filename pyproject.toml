@@ -36,6 +36,7 @@ dev = [
     # todo: remove when ibm-cos-sdk-core does not depend on urllib3<1.27.
     "types-requests<2.31.0.7"
 ]
+
 [project]
 name = "ols"
 version = "0.1.0"
@@ -63,3 +64,10 @@ dependencies = [
 requires-python = "==3.11.*"
 readme = "README.md"
 license = "LICENSE"
+
+[tool.pdm.scripts]
+start = "pdm run make run"
+test = "pdm run make test"
+test-unit = "pdm run make test-unit"
+test-integration = "pdm run make test-integration"
+test-e2e = "pdm run make test-e2e"
