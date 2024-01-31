@@ -125,7 +125,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                     provider=llm_request.provider, model=llm_request.model
                 )
                 llm_response.response, _ = docs_summarizer.summarize(
-                    conversation_id, llm_request.query
+                    conversation_id, llm_request.query, previous_input
                 )
             except LLMConfigurationError as e:
                 raise HTTPException(
