@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Optional, Dict
+from typing import Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -43,7 +43,9 @@ class AuthenticationConfig(BaseModel):
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is not None:
-            self.skip_tls_verification = data.get("skip_tls_verification", self.skip_tls_verification)
+            self.skip_tls_verification = data.get(
+                "skip_tls_verification", self.skip_tls_verification
+            )
             self.k8s_cluster_api = data.get("k8s_cluster_api", self.k8s_cluster_api)
             self.k8s_ca_cert_path = data.get("k8s_ca_cert_path", self.k8s_ca_cert_path)
 
@@ -383,7 +385,9 @@ class OLSConfig(BaseModel):
             data.get("conversation_cache", None)
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
-        self.authentication_config = AuthenticationConfig(data.get("authentication_config", None))
+        self.authentication_config = AuthenticationConfig(
+            data.get("authentication_config", None)
+        )
 
     def __eq__(self, other):
         """Compare two objects for equality."""

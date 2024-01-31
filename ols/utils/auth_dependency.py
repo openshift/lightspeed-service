@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def auth_dependency(request: Request):
-    """Authenticates API requests using Kubernetes SSAR.
+    """Authenticate API requests using Kubernetes SSAR.
 
     Validates the authorization header and bearer token in the request. If authentication
     is disabled in the configuration, it's skipped.
@@ -52,7 +52,6 @@ async def auth_dependency(request: Request):
             )
 
 
-
 def _k8s_auth(api_key) -> bool:
     try:
         configuration = kubernetes.client.Configuration()
@@ -62,7 +61,9 @@ def _k8s_auth(api_key) -> bool:
         configuration.verify_ssl = True
 
         if config.ols_config.authentication_config.k8s_ca_cert_path:
-            configuration.ssl_ca_cert = config.ols_config.authentication_config.k8s_ca_cert_path
+            configuration.ssl_ca_cert = (
+                config.ols_config.authentication_config.k8s_ca_cert_path
+            )
         if config.ols_config.authentication_config.skip_tls_verification:
             configuration.verify_ssl = False
 
@@ -88,7 +89,7 @@ def _k8s_auth(api_key) -> bool:
 
 
 def _extract_bearer_token(header: str) -> str:
-    """Extracts the bearer token from the authorization header.
+    """Extract the bearer token from the authorization header.
 
     Returns the token if present, else returns an empty string.
     """
