@@ -5,7 +5,7 @@ from httpx import Client
 
 client = Client(base_url="http://localhost:8080")
 
-conversation_id = "0123456789abcdef0123456789abcdef"
+conversation_id = "12345678-abcd-0000-0123-456789abcdef"
 
 
 def test_readiness():
