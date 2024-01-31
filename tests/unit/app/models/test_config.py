@@ -66,7 +66,7 @@ def test_model_config_validation_empty_model():
     model_config = ModelConfig()
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model name is missing"):
         model_config.validate_yaml()
 
 
@@ -81,7 +81,7 @@ def test_model_config_validation_missing_name():
     )
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model name is missing"):
         model_config.validate_yaml()
 
 
@@ -96,7 +96,7 @@ def test_model_config_validation_improper_url():
     )
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model URL is invalid"):
         model_config.validate_yaml()
 
 
@@ -156,6 +156,77 @@ def test_provider_config():
             }
         )
     assert "model name is missing" in str(excinfo.value)
+
+
+def test_provider_config_equality():
+    """Test the ProviderConfig equality check."""
+    provider_config_1 = ProviderConfig()
+    provider_config_2 = ProviderConfig()
+    assert provider_config_1 == provider_config_2
+
+    other_value = "foo"
+    assert provider_config_1 != other_value
+
+
+def test_provider_config_validation_proper_config():
+    """Test the ProviderConfig model validation."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    provider_config.validate_yaml()
+
+
+def test_provider_config_validation_improper_url():
+    """Test the ProviderConfig model validation for improper URL."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "httpXXX://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(InvalidConfigurationError, match="provider URL is invalid"):
+        provider_config.validate_yaml()
+
+
+def test_provider_config_validation_missing_name():
+    """Test the ProviderConfig model validation for missing name."""
+    provider_config = ProviderConfig(
+        {
+            "url": "httpXXX://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(InvalidConfigurationError, match="provider name is missing"):
+        provider_config.validate_yaml()
 
 
 def test_llm_providers():
