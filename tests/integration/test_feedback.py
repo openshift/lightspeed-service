@@ -20,7 +20,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_feedback() -> None:
+def test_feedback():
     """Check if feedback with correct format is accepted by the service."""
     # TODO: should we validate that the correct log messages are written?
 
@@ -35,7 +35,7 @@ def test_feedback() -> None:
     assert response.json() == {"status": "feedback received"}
 
 
-def test_feedback_wrong_request() -> None:
+def test_feedback_wrong_request():
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
     response = client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
@@ -43,7 +43,7 @@ def test_feedback_wrong_request() -> None:
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_wrong_not_filled_in_request() -> None:
+def test_feedback_wrong_not_filled_in_request():
     """Check if feedback without feedback object is not accepted by the service."""
     # use proper conversation ID
     conversation_id = Utils.get_suid()
@@ -57,7 +57,7 @@ def test_feedback_wrong_not_filled_in_request() -> None:
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_no_payload_send() -> None:
+def test_feedback_no_payload_send():
     """Check if feedback without feedback payload."""
     response = client.post("/v1/feedback")
     # for the request send w/o payload, the server
@@ -65,7 +65,7 @@ def test_feedback_no_payload_send() -> None:
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_wrong_conversation_id() -> None:
+def test_feedback_wrong_conversation_id():
     """Check if feedback with wrong conversation ID is not accepted by the service."""
     response = client.post(
         "/v1/feedback",

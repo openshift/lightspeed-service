@@ -18,14 +18,14 @@ def setup():
     client = TestClient(app)
 
 
-def test_liveness() -> None:
+def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
-def test_readiness() -> None:
+def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok

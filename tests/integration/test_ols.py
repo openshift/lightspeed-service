@@ -29,7 +29,7 @@ def setup():
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
-def test_debug_query() -> None:
+def test_debug_query():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     conversation_id = Utils.get_suid()
     response = client.post(
@@ -51,7 +51,7 @@ def test_debug_query() -> None:
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
-def test_debug_query_no_conversation_id() -> None:
+def test_debug_query_no_conversation_id():
     """Check the REST API /v1/debug/query with POST HTTP method conversation ID is not provided."""
     response = client.post(
         "/v1/debug/query",
@@ -73,7 +73,7 @@ def test_debug_query_no_conversation_id() -> None:
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
-def test_debug_query_no_query() -> None:
+def test_debug_query_no_query():
     """Check the REST API /v1/debug/query with POST HTTP method when query is not specified."""
     conversation_id = Utils.get_suid()
     response = client.post(
@@ -89,7 +89,7 @@ def test_debug_query_no_query() -> None:
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
-def test_debug_query_no_payload() -> None:
+def test_debug_query_no_payload():
     """Check the REST API /v1/debug/query with POST HTTP method when payload is empty."""
     response = client.post("/v1/debug/query")
 
@@ -97,7 +97,7 @@ def test_debug_query_no_payload() -> None:
     assert response.status_code == requests.codes.unprocessable
 
 
-def test_post_question_on_unexpected_payload() -> None:
+def test_post_question_on_unexpected_payload():
     """Check the REST API /v1/query with POST HTTP method when unexpected payload is posted."""
     response = client.post("/v1/query", json="this is really not proper payload")
     assert response.status_code == requests.codes.unprocessable
@@ -114,7 +114,7 @@ def test_post_question_on_unexpected_payload() -> None:
     }
 
 
-def test_post_question_without_payload() -> None:
+def test_post_question_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
     response = client.post("/v1/query")
@@ -128,7 +128,7 @@ def test_post_question_without_payload() -> None:
     assert "Field required" in detail["msg"]
 
 
-def test_post_question_on_invalid_question() -> None:
+def test_post_question_on_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
     answer = (constants.SUBJECT_INVALID, "anything")
@@ -159,7 +159,7 @@ def test_post_question_on_invalid_question() -> None:
         assert response.json() == expected_json
 
 
-def test_post_question_on_generic_response_type_summarize_error() -> None:
+def test_post_question_on_generic_response_type_summarize_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
     answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
@@ -180,7 +180,7 @@ def test_post_question_on_generic_response_type_summarize_error() -> None:
             assert response.json() == expected_json
 
 
-def test_post_question_on_generic_response_llm_configuration_error() -> None:
+def test_post_question_on_generic_response_llm_configuration_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
     answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
@@ -205,7 +205,7 @@ def test_post_question_on_generic_response_llm_configuration_error() -> None:
             assert response.json() == expected_json
 
 
-def test_post_question_on_unknown_response_type() -> None:
+def test_post_question_on_unknown_response_type():
     """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
     # let's pretend the question is valid, but there's an error, without even asking LLM
     answer = (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN)
@@ -236,7 +236,7 @@ def test_post_question_on_unknown_response_type() -> None:
         assert response.json() == expected_json
 
 
-def test_post_question_that_is_not_validated() -> None:
+def test_post_question_that_is_not_validated():
     """Check the REST API /v1/query with POST HTTP method for question that is not validated."""
     # let's pretend the question can not be validated
     with patch(
@@ -255,7 +255,7 @@ def test_post_question_that_is_not_validated() -> None:
         assert response.json() == expected_details
 
 
-def test_post_question_with_provider_but_not_model() -> None:
+def test_post_question_with_provider_but_not_model():
     """Check how missing model is detected in request."""
     conversation_id = Utils.get_suid()
     response = client.post(
@@ -273,7 +273,7 @@ def test_post_question_with_provider_but_not_model() -> None:
     assert response.json() == expected_json
 
 
-def test_post_question_with_model_but_not_provider() -> None:
+def test_post_question_with_model_but_not_provider():
     """Check how missing provider is detected in request."""
     conversation_id = Utils.get_suid()
     response = client.post(

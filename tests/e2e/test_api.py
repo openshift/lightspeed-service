@@ -8,21 +8,21 @@ client = Client(base_url="http://localhost:8080")
 conversation_id = "0123456789abcdef0123456789abcdef"
 
 
-def test_readiness() -> None:
+def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
-def test_liveness() -> None:
+def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": "1"}
 
 
-def test_raw_prompt() -> None:
+def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     r = client.post(
         "/v1/debug/query",
@@ -38,7 +38,7 @@ def test_raw_prompt() -> None:
     assert "hello" in response["response"].lower()
 
 
-def test_invalid_question() -> None:
+def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     response = client.post(
         "/v1/query",
