@@ -33,3 +33,5 @@ ols_config:
   validator_model: m1
   yaml_provider: p2
   yaml_model: m2
+dev_config:
+  disable_auth: true

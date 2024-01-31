@@ -14,3 +14,5 @@ ols_config:
     logging_level: INFO
   default_provider: bam
   default_model: ibm/granite-13b-chat-v2
+dev_config:
+  disable_auth: true

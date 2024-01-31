@@ -19,3 +19,5 @@ ols_config:
         password_path: tests/config/redis_password.txt
   default_provider: p1
   default_model: m1
+dev_config:
+  disable_auth: true

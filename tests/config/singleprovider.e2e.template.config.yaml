@@ -15,3 +15,4 @@ ols_config:
   default_model: $MODEL
 dev_config:
   llm_temperature_override: 0
+  disable_auth: true
