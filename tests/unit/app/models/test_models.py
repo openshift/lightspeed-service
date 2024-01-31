@@ -1,12 +1,12 @@
 """Unit tests for the API models."""
 
 from ols.app.models.models import FeedbackRequest, LLMRequest
-from ols.app.utils import Utils
+from ols.utils import suid
 
 
 def test_feedback_request():
     """Test the FeedbackRequest model."""
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
 
     feedback_request = FeedbackRequest(
         conversation_id=conversation_id,

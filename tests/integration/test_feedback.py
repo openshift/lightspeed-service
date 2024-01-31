@@ -6,7 +6,7 @@ from unittest.mock import patch
 import requests
 from fastapi.testclient import TestClient
 
-from ols.app.utils import Utils
+from ols.utils import suid
 
 
 # we need to patch the config file path to point to the test
@@ -25,7 +25,7 @@ def test_feedback():
     # TODO: should we validate that the correct log messages are written?
 
     # use proper conversation ID
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
 
     response = client.post(
         "/v1/feedback",
@@ -46,7 +46,7 @@ def test_feedback_wrong_request():
 def test_feedback_wrong_not_filled_in_request():
     """Check if feedback without feedback object is not accepted by the service."""
     # use proper conversation ID
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
 
     response = client.post(
         "/v1/feedback",

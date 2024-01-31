@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from ols import constants
 from ols.app.models.config import ProviderConfig
-from ols.app.utils import Utils
 from ols.src.llms.llm_loader import LLMConfigurationError
+from ols.utils import suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -31,7 +31,7 @@ def setup():
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_debug_query():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
     response = client.post(
         "/v1/debug/query",
         json={"conversation_id": conversation_id, "query": "test query"},
@@ -75,7 +75,7 @@ def test_debug_query_no_conversation_id():
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_debug_query_no_query():
     """Check the REST API /v1/debug/query with POST HTTP method when query is not specified."""
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
     response = client.post(
         "/v1/debug/query",
         json={"conversation_id": conversation_id},
@@ -135,7 +135,7 @@ def test_post_question_on_invalid_question():
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        conversation_id = Utils.get_suid()
+        conversation_id = suid.get_suid()
         response = client.post(
             "/v1/query",
             json={"conversation_id": conversation_id, "query": "test query"},
@@ -170,7 +170,7 @@ def test_post_question_on_generic_response_type_summarize_error():
             "ols.app.endpoints.ols.DocsSummarizer.summarize",
             side_effect=Exception("summarizer error"),
         ):
-            conversation_id = Utils.get_suid()
+            conversation_id = suid.get_suid()
             response = client.post(
                 "/v1/query",
                 json={"conversation_id": conversation_id, "query": "test query"},
@@ -191,7 +191,7 @@ def test_post_question_on_generic_response_llm_configuration_error():
             "ols.app.endpoints.ols.DocsSummarizer.summarize",
             side_effect=LLMConfigurationError("LLM configuration error"),
         ):
-            conversation_id = Utils.get_suid()
+            conversation_id = suid.get_suid()
             response = client.post(
                 "/v1/query",
                 json={"conversation_id": conversation_id, "query": "test query"},
@@ -212,7 +212,7 @@ def test_post_question_on_unknown_response_type():
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        conversation_id = Utils.get_suid()
+        conversation_id = suid.get_suid()
         response = client.post(
             "/v1/query",
             json={"conversation_id": conversation_id, "query": "test query"},
@@ -243,7 +243,7 @@ def test_post_question_that_is_not_validated():
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=Exception("can not validate"),
     ):
-        conversation_id = Utils.get_suid()
+        conversation_id = suid.get_suid()
         response = client.post(
             "/v1/query",
             json={"conversation_id": conversation_id, "query": "test query"},
@@ -257,7 +257,7 @@ def test_post_question_that_is_not_validated():
 
 def test_post_question_with_provider_but_not_model():
     """Check how missing model is detected in request."""
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
     response = client.post(
         "/v1/query",
         json={
@@ -275,7 +275,7 @@ def test_post_question_with_provider_but_not_model():
 
 def test_post_question_with_model_but_not_provider():
     """Check how missing provider is detected in request."""
-    conversation_id = Utils.get_suid()
+    conversation_id = suid.get_suid()
     response = client.post(
         "/v1/query",
         json={

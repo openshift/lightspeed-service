@@ -2,10 +2,10 @@
 
 import pytest
 
-from ols.app.utils import Utils
 from ols.src.cache.in_memory_cache import InMemoryCache
+from ols.utils import suid
 
-conversation_id = Utils.get_suid()
+conversation_id = suid.get_suid()
 
 
 @pytest.fixture
