@@ -42,3 +42,10 @@ def test_openapi_endpoint():
     paths = payload["paths"]
     for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
+
+
+def test_openapi_endpoint_head_method():
+    """Check if REST API allows HEAD HTTP method for endpoint with OpenAPI specification."""
+    response = client.head("/openapi.json")
+    assert response.status_code == requests.codes.ok
+    assert response.text == ""
