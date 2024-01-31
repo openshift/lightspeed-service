@@ -21,15 +21,12 @@ ols_config:
     lib_log_level: warning
   default_provider: bam
   default_model: ibm/granite-13b-chat-v2
-dev_config:
-  enable_dev_ui: true
-  # llm_temperature_override: 0
-  # disable_question_validation: false
-  # disable_auth: false
-
-
-Authentication:
-    ols_auth_check: False
+  authentication_config:
     k8s_cluster_api: "https://api.example.com:6443"
     k8s_ca_cert_path: "/Users/home/ca.crt"
-    verify_ssl: False
+    skip_tls_verification: false
+dev_config:
+  enable_dev_ui: true
+  disable_auth: false
+  # llm_temperature_override: 0
+  # disable_question_validation: false

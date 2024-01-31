@@ -35,8 +35,7 @@ class InvalidConfigurationError(Exception):
 class AuthenticationConfig(BaseModel):
     """Authentication configuration."""
 
-    ols_auth_check: Optional[bool] = False
-    verify_ssl: Optional[bool] = False
+    skip_tls_verification: Optional[bool] = False
     k8s_cluster_api: Optional[str] = "http://localhost:6443"
     k8s_ca_cert_path: Optional[str] = None
 
@@ -44,8 +43,7 @@ class AuthenticationConfig(BaseModel):
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is not None:
-            self.ols_auth_check = data.get("ols_auth_check", self.ols_auth_check)
-            self.verify_ssl = data.get("verify_ssl", self.verify_ssl)
+            self.skip_tls_verification = data.get("skip_tls_verification", self.skip_tls_verification)
             self.k8s_cluster_api = data.get("k8s_cluster_api", self.k8s_cluster_api)
             self.k8s_ca_cert_path = data.get("k8s_ca_cert_path", self.k8s_ca_cert_path)
 
@@ -345,6 +343,7 @@ class OLSConfig(BaseModel):
 
     conversation_cache: Optional[ConversationCacheConfig] = None
     logging_config: Optional[LoggingConfig] = None
+    authentication_config: Optional[AuthenticationConfig] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -384,6 +383,7 @@ class OLSConfig(BaseModel):
             data.get("conversation_cache", None)
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
+        self.authentication_config = AuthenticationConfig(data.get("authentication_config", None))
 
     def __eq__(self, other):
         """Compare two objects for equality."""
@@ -408,6 +408,8 @@ class OLSConfig(BaseModel):
         """Validate OLS config."""
         if self.conversation_cache is None:
             raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
+        if self.authentication_config:
+            self.authentication_config.validate_yaml()
         self.conversation_cache.validate_yaml()
         self.logging_config.validate_yaml()
 
@@ -492,8 +494,6 @@ class Config(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""
-        if self.authentication:
-            self.authentication.validate_yaml()
         if self.llm_providers is None:
             raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()

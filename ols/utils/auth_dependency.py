@@ -28,7 +28,10 @@ async def auth_dependency(request: Request):
     Raises:
         HTTPException: If authentication fails or headers are missing.
     """
-    if config.config.authentication.ols_auth_check:
+    if config.dev_config.disable_auth:
+        logger.info("Auth checks disabled, skipping")
+        return
+    else:
         # Validate the presence and format of the authorization header
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
@@ -47,9 +50,7 @@ async def auth_dependency(request: Request):
             raise HTTPException(
                 status_code=403, detail="Forbidden: Authentication failed"
             )
-    else:
-        logger.info("Auth checks disabled, skipping")
-        return
+
 
 
 def _k8s_auth(api_key) -> bool:
@@ -57,11 +58,12 @@ def _k8s_auth(api_key) -> bool:
         configuration = kubernetes.client.Configuration()
         configuration.api_key["authorization"] = api_key
         configuration.api_key_prefix["authorization"] = "Bearer"
-        configuration.host = config.config.authentication.k8s_cluster_api
+        configuration.host = config.ols_config.authentication_config.k8s_cluster_api
+        configuration.verify_ssl = True
 
-        if config.config.authentication.k8s_ca_cert_path:
-            configuration.ssl_ca_cert = config.config.authentication.k8s_ca_cert_path
-        elif not config.config.authentication.verify_ssl:
+        if config.ols_config.authentication_config.k8s_ca_cert_path:
+            configuration.ssl_ca_cert = config.ols_config.authentication_config.k8s_ca_cert_path
+        if config.ols_config.authentication_config.skip_tls_verification:
             configuration.verify_ssl = False
 
         k8s_client = kubernetes.client.ApiClient(configuration)
