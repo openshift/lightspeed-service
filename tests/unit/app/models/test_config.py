@@ -38,6 +38,68 @@ def test_model_config():
     assert model_config.credentials is None
 
 
+def test_model_config_equality():
+    """Test the ModelConfig equality check."""
+    model_config_1 = ModelConfig()
+    model_config_2 = ModelConfig()
+    assert model_config_1 == model_config_2
+
+    other_value = "foo"
+    assert model_config_1 != other_value
+
+
+def test_model_config_validation_proper_config():
+    """Test the ModelConfig model validation."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+        }
+    )
+    # validation should not fail
+    model_config.validate_yaml()
+
+
+def test_model_config_validation_empty_model():
+    """Test the ModelConfig model validation when model is empty."""
+    model_config = ModelConfig()
+
+    # validation should fail
+    with pytest.raises(InvalidConfigurationError):
+        model_config.validate_yaml()
+
+
+def test_model_config_validation_missing_name():
+    """Test the ModelConfig model validation when model name is missing."""
+    model_config = ModelConfig(
+        {
+            "name": None,
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+        }
+    )
+
+    # validation should fail
+    with pytest.raises(InvalidConfigurationError):
+        model_config.validate_yaml()
+
+
+def test_model_config_validation_improper_url():
+    """Test the ModelConfig model validation when URL is incorrect."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "httpXXX://test.url",
+            "credentials_path": "tests/config/secret.txt",
+        }
+    )
+
+    # validation should fail
+    with pytest.raises(InvalidConfigurationError):
+        model_config.validate_yaml()
+
+
 def test_provider_config():
     """Test the ProviderConfig model."""
     provider_config = ProviderConfig(
