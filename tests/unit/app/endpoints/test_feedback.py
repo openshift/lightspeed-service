@@ -4,8 +4,7 @@ import pytest
 
 from ols.app.endpoints import feedback
 from ols.app.models.models import FeedbackRequest
-from ols.app.utils import Utils
-from ols.utils import config
+from ols.utils import config, suid
 
 
 @pytest.fixture(scope="module")
@@ -17,7 +16,7 @@ def load_config():
 def test_user_feedback(load_config):
     """Test user feedback API endpoint."""
     feedback_request = FeedbackRequest(
-        conversation_id=Utils.get_suid(),
+        conversation_id=suid.get_suid(),
         feedback_object='{"rating": 5, "comment": "Great service!"}',
     )
     response = feedback.user_feedback(feedback_request)

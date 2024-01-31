@@ -8,12 +8,11 @@ from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.app.models.models import LLMRequest
-from ols.app.utils import Utils
 from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.query_helpers.yaml_generator import YamlGenerator
-from ols.utils import config
+from ols.utils import config, suid
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
 
     # Generate a new conversation ID if not provided
     if not conversation_id:
-        conversation_id = Utils.get_suid()
+        conversation_id = suid.get_suid()
         logger.info(f"{conversation_id} New conversation")
     else:
         previous_input = config.conversation_cache.get(user_id, conversation_id)
@@ -201,7 +200,7 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
         Response containing the processed information.
     """
     if llm_request.conversation_id is None:
-        conversation = Utils.get_suid()
+        conversation = suid.get_suid()
     else:
         conversation = llm_request.conversation_id
 

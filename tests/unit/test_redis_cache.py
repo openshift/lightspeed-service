@@ -4,11 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.app.utils import Utils
 from ols.src.cache.redis_cache import RedisCache
+from ols.utils import suid
 from tests.mock_classes.redis import MockRedis
 
-conversation_id = Utils.get_suid()
+conversation_id = suid.get_suid()
 
 
 @pytest.fixture
