@@ -19,12 +19,15 @@ logger = logging.getLogger(__name__)
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
-    def summarize(self, conversation: str, query: str, **kwargs) -> tuple[str, str]:
+    def summarize(
+        self, conversation: str, query: str, history: str | None = None, **kwargs
+    ) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             conversation: The unique identifier for the conversation.
             query: The query to be summarized.
+            history: The history of the conversation (if available).
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
@@ -49,6 +52,7 @@ class DocsSummarizer(QueryHelper):
         )
         logger.info(f"{conversation} call settings: {settings_string}")
 
+        # TODO: use history there
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
 
         logger.info(f"{conversation} Getting service context")

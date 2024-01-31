@@ -26,6 +26,7 @@ def test_summarize(storage_context, service_context):
     config.init_empty_config()
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
-    summary, documents = summarizer.summarize("1234", question)
+    history = None
+    summary, documents = summarizer.summarize("1234", question, history)
     assert question in summary
     assert len(documents) == 0
