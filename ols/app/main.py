@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -16,11 +17,12 @@ app = FastAPI(
 )
 
 
-config.init_config(os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml"))
-
+cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+config.init_config(cfg_file)
 
 configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)
+logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
 
 
 if config.dev_config.enable_dev_ui:
