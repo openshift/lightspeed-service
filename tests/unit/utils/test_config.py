@@ -1,4 +1,4 @@
-"""Unit tests for the configuration model."""
+"""Unit tests for the configuration models."""
 
 import io
 import logging
