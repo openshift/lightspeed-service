@@ -642,15 +642,24 @@ def test_config():
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_no_llm_providers():
+    """Check if empty config is rejected as expected."""
+    with pytest.raises(
+        InvalidConfigurationError, match="no LLM providers config section found"
+    ):
         Config().validate_yaml()
-    assert "no LLM providers config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_empty_llm_providers():
+    """Check if empty list of providers is rejected as expected."""
+    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
         Config({"llm_providers": []}).validate_yaml()
-    assert "no OLS config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_without_ols_section():
+    """Test the Config model of the Global service configuration with missing OLS section."""
+    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
         Config(
             {
                 "llm_providers": [
@@ -669,9 +678,14 @@ def test_config():
                 ],
             }
         ).validate_yaml()
-    assert "no OLS config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_improper_missing_model():
+    """Test the Config model of the Global service configuration when model is missing."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_provider is specified, but default_model is missing",
+    ):
         Config(
             {
                 "llm_providers": [
@@ -691,6 +705,84 @@ def test_config():
                 "ols_config": {"default_provider": "test_default_provider"},
             }
         ).validate_yaml()
-    assert "default_provider is specified, but default_model is missing" in str(
-        excinfo.value
-    )
+
+
+def test_config_improper_provider():
+    """Test the Config model of the Global service configuration when improper provider is set."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_provider specifies an unknown provider test_default_provider",
+    ):
+        Config(
+            {
+                "llm_providers": [],
+                "ols_config": {
+                    "default_provider": "test_default_provider",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "yaml_provider": "test_yaml_provider",
+                    "yaml_model": "test_yaml_model",
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()
+
+
+def test_config_improper_model():
+    """Test the Config model of the Global service configuration when improper model is set."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_model specifies an unknown model test_default_model",
+    ):
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "test_provider_name",
+                        "url": "http://test_provider_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "test_model_name",
+                                "url": "http://test_model_url",
+                                "credentials_path": "tests/config/secret.txt",
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "default_provider": "test_provider_name",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "yaml_provider": "test_yaml_provider",
+                    "yaml_model": "test_yaml_model",
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()
