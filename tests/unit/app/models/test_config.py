@@ -409,6 +409,89 @@ def test_redis_config():
     assert redis_config.max_memory_policy is None
 
 
+def test_redis_config_with_credentials():
+    """Test the RedisConfig model."""
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+            "credentials": {
+                "user_path": "tests/config/redis_user.txt",
+                "password_path": "tests/config/redis_password.txt",
+            },
+        }
+    )
+    assert redis_config.credentials.user == "redis_user"
+    assert redis_config.credentials.password == "redis_password"  # noqa S105
+
+
+def test_redis_credentials_validation_empty_setup():
+    """Test the validation of empty RedisCredentials."""
+    redis_credentials = RedisCredentials()
+    redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_correct_setup():
+    """Test the validation of correct RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "user_path": "tests/config/redis_user.txt",
+            "password_path": "tests/config/redis_password.txt",
+        }
+    )
+    redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_missing_password_path():
+    """Test the validation of incorrect RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "user_path": "tests/config/redis_user.txt",
+            "password_path": None,
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="both or neither user and password need to be specified for Redis",
+    ):
+        redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_missing_user_path():
+    """Test the validation of incorrect RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "user_path": None,
+            "password_path": "tests/config/redis_password.txt",
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="both or neither user and password need to be specified for Redis",
+    ):
+        redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_wrong_paths():
+    """Test the validation of incorrect paths to credentials."""
+    with pytest.raises(Exception):
+        RedisCredentials(
+            {
+                "user_path": "tests/config/redis_user.txt",
+                "password_path": "/dev/null/foobar",
+            }
+        )
+    with pytest.raises(Exception):
+        RedisCredentials(
+            {
+                "user_path": "/dev/null/foobar",
+                "password_path": "tests/config/redis_password.txt",
+            }
+        )
+
+
 def test_redis_credentials_equality():
     """Test the RedisCredentials equality check."""
     redis_credentials_1 = RedisCredentials()
