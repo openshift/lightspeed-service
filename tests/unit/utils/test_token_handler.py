@@ -2,7 +2,7 @@
 
 from unittest import TestCase, mock
 
-from ols.src.utils.token_handler import RetrievedNode, TokenHandler
+from ols.utils.token_handler import RetrievedNode, TokenHandler
 
 
 class MockRetrievedNode(RetrievedNode):
@@ -83,7 +83,7 @@ class TestTokenHandler(TestCase):
             == self._mock_retrieved_obj[1].get_text().split()[:2]
         )
 
-    @mock.patch("ols.src.utils.token_handler.MINIMUM_CONTEXT_LIMIT", 3)
+    @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
         context = self._token_handler_obj.truncate_rag_context(
