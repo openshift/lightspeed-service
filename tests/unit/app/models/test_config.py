@@ -61,6 +61,20 @@ def test_model_config_validation_proper_config():
     model_config.validate_yaml()
 
 
+def test_model_config_validation_no_credentials_path():
+    """Test the ModelConfig model validation when path to credentials is not provided."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": None,
+        }
+    )
+    # validation should not fail
+    model_config.validate_yaml()
+    assert model_config.credentials is None
+
+
 def test_model_config_validation_empty_model():
     """Test the ModelConfig model validation when model is empty."""
     model_config = ModelConfig()
@@ -227,6 +241,27 @@ def test_provider_config_validation_missing_name():
 
     with pytest.raises(InvalidConfigurationError, match="provider name is missing"):
         provider_config.validate_yaml()
+
+
+def test_provider_config_validation_no_credentials_path():
+    """Test the ProviderConfig model validation when path to credentials is not provided."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": None,
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    provider_config.validate_yaml()
+    assert provider_config.credentials is None
 
 
 def test_llm_providers():
