@@ -1,6 +1,7 @@
 """Class responsible for generating YAML responses to user requests."""
 
 import logging
+from typing import Optional
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -16,7 +17,7 @@ class YamlGenerator(QueryHelper):
     """This class is responsible for generating YAML responses to user requests."""
 
     def generate_yaml(
-        self, conversation_id: str, query: str, history: str | None = None, **kwargs
+        self, conversation_id: str, query: str, history: Optional[str] = None, **kwargs
     ) -> str:
         """Generate YAML response to a user request.
 

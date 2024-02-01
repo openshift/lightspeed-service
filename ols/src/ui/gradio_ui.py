@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Optional
 
 import gradio as gr
 import requests
@@ -15,7 +16,7 @@ class GradioUI:
     def __init__(
         self,
         ols_url: str = "http://127.0.0.1:8080/v1/query",
-        conversation_id: str | None = None,
+        conversation_id: Optional[str] = None,
     ) -> None:
         """Initialize UI API handlers."""
         # class variable
@@ -34,9 +35,9 @@ class GradioUI:
         self,
         prompt: str,
         history,
-        use_history: bool | None = None,
-        provider: str | None = None,
-        model: str | None = None,
+        use_history: Optional[bool] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> str:
         """Handle requests from web-based user interface."""
         # Headers for the HTTP request
