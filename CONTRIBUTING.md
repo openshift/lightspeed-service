@@ -123,6 +123,8 @@ test-e2e                  Run end to end tests
 
 All tests are based on [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
 
+Currently code coverage threshold for integration tests is set to 60%. This value is specified directly in Makefile, because the coverage threshold is different from threshold required for unit tests.
+
 As specified in Definition of Done, new changes needs to be covered by tests.
 
 
