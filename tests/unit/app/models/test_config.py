@@ -15,6 +15,7 @@ from ols.app.models.config import (
     OLSConfig,
     ProviderConfig,
     RedisConfig,
+    RedisCredentials,
 )
 
 
@@ -42,8 +43,15 @@ def test_model_config_equality():
     """Test the ModelConfig equality check."""
     model_config_1 = ModelConfig()
     model_config_2 = ModelConfig()
+
+    # compare the same model configs
     assert model_config_1 == model_config_2
 
+    # compare different model configs
+    model_config_2.name = "some non-default name"
+    assert model_config_1 != model_config_2
+
+    # compare with value of different type
     other_value = "foo"
     assert model_config_1 != other_value
 
@@ -162,8 +170,15 @@ def test_provider_config_equality():
     """Test the ProviderConfig equality check."""
     provider_config_1 = ProviderConfig()
     provider_config_2 = ProviderConfig()
+
+    # compare the same provider configs
     assert provider_config_1 == provider_config_2
 
+    # compare different model configs
+    provider_config_2.name = "some non-default name"
+    assert provider_config_1 != provider_config_2
+
+    # compare with value of different type
     other_value = "foo"
     assert provider_config_1 != other_value
 
@@ -283,6 +298,23 @@ def test_llm_providers():
     assert "provider name is missing" in str(excinfo.value)
 
 
+def test_llm_providers_equality():
+    """Test the LLMProviders equality check."""
+    provider_config_1 = LLMProviders()
+    provider_config_2 = LLMProviders()
+
+    # compare same providers
+    assert provider_config_1 == provider_config_2
+
+    # compare different providers
+    provider_config_2.providers = [ProviderConfig()]
+    assert provider_config_1 != provider_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert provider_config_1 != other_value
+
+
 class TestLoggingConfig:
     """Test the LoggingConfig model."""
 
@@ -342,6 +374,40 @@ def test_redis_config():
     assert redis_config.max_memory_policy is None
 
 
+def test_redis_credentials_equality():
+    """Test the RedisCredentials equality check."""
+    redis_credentials_1 = RedisCredentials()
+    redis_credentials_2 = RedisCredentials()
+
+    # compare the same Redis credentialss
+    assert redis_credentials_1 == redis_credentials_2
+
+    # compare different Redis credentialss
+    redis_credentials_2.user = "this is me"
+    assert redis_credentials_1 != redis_credentials_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert redis_credentials_1 != other_value
+
+
+def test_redis_config_equality():
+    """Test the RedisConfig equality check."""
+    redis_config_1 = RedisConfig()
+    redis_config_2 = RedisConfig()
+
+    # compare the same Redis configs
+    assert redis_config_1 == redis_config_2
+
+    # compare different Redis configs
+    redis_config_2.host = "12.34.56.78"
+    assert redis_config_1 != redis_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert redis_config_1 != other_value
+
+
 def test_memory_cache_config():
     """Test the MemoryCacheConfig model."""
     memory_cache_config = MemoryConfig(
@@ -353,6 +419,23 @@ def test_memory_cache_config():
 
     memory_cache_config = MemoryConfig()
     assert memory_cache_config.max_entries is None
+
+
+def test_memory_config_equality():
+    """Test the MemoryConfig equality check."""
+    memory_config_1 = MemoryConfig()
+    memory_config_2 = MemoryConfig()
+
+    # compare the same memory configs
+    assert memory_config_1 == memory_config_2
+
+    # compare different memory configs
+    memory_config_2.max_entries = 123456
+    assert memory_config_1 != memory_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert memory_config_1 != other_value
 
 
 def test_conversation_cache_config():
