@@ -465,8 +465,6 @@ def test_valid_config_file():
                     "summarizer_model": "m1",
                     "validator_provider": "p1",
                     "validator_model": "m1",
-                    "yaml_provider": "p2",
-                    "yaml_model": "m2",
                 },
             }
         )
