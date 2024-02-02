@@ -116,9 +116,9 @@ make tests
 It is also possible to run just one selected group of tests:
 
 ```
-test-unit                 Run the unit tests
-test-integration          Run integration tests tests
-test-e2e                  Run end to end tests
+make test-unit                 Run the unit tests
+make test-integration          Run integration tests tests
+make test-e2e                  Run end to end tests
 ```
 
 All tests are based on [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
