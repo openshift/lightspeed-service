@@ -297,10 +297,10 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -318,10 +318,10 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -339,10 +339,10 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -357,6 +357,115 @@ dev_config:
 """,
         InvalidConfigurationError,
         "llm_temperature_override must be between 0 and 1",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "./invalid_dir"
+    product_docs_index_id: product
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Reference content path './invalid_dir' does not exist",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "/tmp"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "product_docs_index_path is specified but product_docs_index_id is missing",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_id: "product"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "product_docs_index_id is specified but product_docs_index_path is missing",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "tests/config/secret.txt"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Reference content path 'tests/config/secret.txt' is not a directory",
     )
 
 
@@ -448,6 +557,10 @@ def test_valid_config_file():
                     },
                 ],
                 "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -495,6 +608,10 @@ def test_valid_config_file_with_redis():
                     },
                 ],
                 "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
                     "conversation_cache": {
                         "type": "redis",
                         "redis": {

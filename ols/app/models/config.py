@@ -1,6 +1,7 @@
 """Config classes for the configuration structure."""
 
 import logging
+import os
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -306,11 +307,61 @@ class LoggingConfig(BaseModel):
         """Validate logger config."""
 
 
+class ReferenceContent(BaseModel):
+    """Reference content configuration."""
+
+    product_docs_index_path: Optional[str] = None
+    product_docs_index_id: Optional[str] = None
+
+    def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is None:
+            return
+
+        self.product_docs_index_path = data.get("product_docs_index_path", None)
+        self.product_docs_index_id = data.get("product_docs_index_id", None)
+
+    def __eq__(self, other):
+        """Compare two objects for equality."""
+        if isinstance(other, ReferenceContent):
+            return (
+                self.product_docs_index_path == other.product_docs_index_path
+                and self.product_docs_index_id == other.product_docs_index_id
+            )
+        return False
+
+    def validate_yaml(self) -> None:
+        """Validate reference content config."""
+        if self.product_docs_index_path is not None:
+            if os.path.exists(self.product_docs_index_path) is False:
+                raise InvalidConfigurationError(
+                    f"Reference content path '{self.product_docs_index_path}' does not exist"
+                )
+            if os.path.isfile(self.product_docs_index_path):
+                raise InvalidConfigurationError(
+                    f"Reference content path '{self.product_docs_index_path}' is not a directory"
+                )
+            if self.product_docs_index_id is None:
+                raise InvalidConfigurationError(
+                    "product_docs_index_path is specified but product_docs_index_id is missing"
+                )
+
+        if (
+            self.product_docs_index_id is not None
+            and self.product_docs_index_path is None
+        ):
+            raise InvalidConfigurationError(
+                "product_docs_index_id is specified but product_docs_index_path is missing"
+            )
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
     conversation_cache: Optional[ConversationCacheConfig] = None
     logging_config: Optional[LoggingConfig] = None
+    reference_content: Optional[ReferenceContent] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -346,6 +397,7 @@ class OLSConfig(BaseModel):
             data.get("conversation_cache", None)
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
+        self.reference_content = ReferenceContent(data.get("reference_content", None))
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
@@ -361,6 +413,7 @@ class OLSConfig(BaseModel):
                 and self.summarizer_model == other.summarizer_model
                 and self.validator_provider == other.validator_provider
                 and self.validator_model == other.validator_model
+                and self.reference_content == other.reference_content
             )
         return False
 
@@ -370,6 +423,8 @@ class OLSConfig(BaseModel):
             raise InvalidConfigurationError("OSLConfig: conversation cache is not set")
         self.conversation_cache.validate_yaml()
         self.logging_config.validate_yaml()
+        if self.reference_content is not None:
+            self.reference_content.validate_yaml()
 
 
 class DevConfig(BaseModel):

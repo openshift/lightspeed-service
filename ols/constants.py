@@ -154,8 +154,6 @@ GPT35_TURBO = "gpt-3.5-turbo"
 # indexing constants
 PRODUCT_INDEX = "product"
 PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
-SUMMARY_INDEX = "summary"
-SUMMARY_DOCS_PERSIST_DIR = "./vector-db/summary-docs"
 
 # cache constants
 IN_MEMORY_CACHE = "memory"
