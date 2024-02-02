@@ -19,33 +19,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["query"])
 
 
-# NOTE: As we are using default values for provider and model in "query helpers",
-# we need to catch the case when user provides only provider and not model
-# (and vice-versa). Eventually, we should construct proper config object from
-# user's input and use its verification capabilites.
-def verify_request_provider_and_model(llm_request: LLMRequest) -> None:
-    """Verify that the provider and model are set in the request."""
-    if llm_request.model and not llm_request.provider:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "response": "LLM provider must be specified when the model is specified"
-            },
-        )
-
-    if llm_request.provider and not llm_request.model:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "response": "LLM model must be specified when provider is specified"
-            },
-        )
-
-    if llm_request.model and llm_request.provider:
-        logger.debug(f"provider '{llm_request.provider}' is set in request")
-        logger.debug(f"model '{llm_request.model}' is set in request")
-
-
 @router.post("/query")
 def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     """Handle conversation requests for the OLS endpoint.
@@ -56,8 +29,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     Returns:
         Response containing the processed information.
     """
-    verify_request_provider_and_model(llm_request)
-
     # Initialize variables
     previous_input = None
     conversation_id = llm_request.conversation_id
