@@ -5,10 +5,15 @@ from abc import ABC
 
 import tiktoken
 
-from ols.src.utils.constants import (
-    MINIMUM_CONTEXT_LIMIT,
-    TOKENIZER_MODEL,
-)
+# TODO: distribute these constants if needed
+TOKENIZER_MODEL = "cl100k_base"
+
+CONTEXT_WINDOW_LIMIT = 2000
+RESPONSE_WINDOW_LIMIT = 500
+MINIMUM_CONTEXT_LIMIT = 1
+
+SIMILARITY_SCORE_THRESHOLD = 0.5
+
 
 logger = logging.getLogger(__name__)
 
