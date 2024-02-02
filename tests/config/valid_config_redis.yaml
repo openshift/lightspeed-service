@@ -18,7 +18,7 @@ ols_config:
       max_memory: 100MB
       max_memory_policy: "allkeys-lru"
       credentials:
-        user_path: tests/config/redis_user.txt
+        username_path: tests/config/redis_username.txt
         password_path: tests/config/redis_password.txt
   logging_config:
     logging_level: INFO

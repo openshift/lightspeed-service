@@ -418,12 +418,12 @@ def test_redis_config_with_credentials():
             "max_memory": "200mb",
             "max_memory_policy": "allkeys-lru",
             "credentials": {
-                "user_path": "tests/config/redis_user.txt",
+                "username_path": "tests/config/redis_username.txt",
                 "password_path": "tests/config/redis_password.txt",
             },
         }
     )
-    assert redis_config.credentials.user == "redis_user"
+    assert redis_config.credentials.username == "redis_username"
     assert redis_config.credentials.password == "redis_password"  # noqa S105
 
 
@@ -437,7 +437,7 @@ def test_redis_credentials_validation_correct_setup():
     """Test the validation of correct RedisCredentials."""
     redis_credentials = RedisCredentials(
         {
-            "user_path": "tests/config/redis_user.txt",
+            "username_path": "tests/config/redis_username.txt",
             "password_path": "tests/config/redis_password.txt",
         }
     )
@@ -448,30 +448,26 @@ def test_redis_credentials_validation_missing_password_path():
     """Test the validation of incorrect RedisCredentials."""
     redis_credentials = RedisCredentials(
         {
-            "user_path": "tests/config/redis_user.txt",
+            "username_path": "tests/config/redis_username.txt",
             "password_path": None,
         }
     )
     with pytest.raises(
         InvalidConfigurationError,
-        match="both or neither user and password need to be specified for Redis",
+        match="for Redis, if a username is specified, a password also needs to be specified",
     ):
         redis_credentials.validate_yaml()
 
 
 def test_redis_credentials_validation_missing_user_path():
-    """Test the validation of incorrect RedisCredentials."""
+    """Test the validation of missing username in RedisCredentials."""
     redis_credentials = RedisCredentials(
         {
-            "user_path": None,
+            "username_path": None,
             "password_path": "tests/config/redis_password.txt",
         }
     )
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="both or neither user and password need to be specified for Redis",
-    ):
-        redis_credentials.validate_yaml()
+    redis_credentials.validate_yaml()
 
 
 def test_redis_credentials_validation_wrong_paths():
@@ -479,14 +475,14 @@ def test_redis_credentials_validation_wrong_paths():
     with pytest.raises(Exception):
         RedisCredentials(
             {
-                "user_path": "tests/config/redis_user.txt",
+                "username_path": "tests/config/redis_username.txt",
                 "password_path": "/dev/null/foobar",
             }
         )
     with pytest.raises(Exception):
         RedisCredentials(
             {
-                "user_path": "/dev/null/foobar",
+                "username_path": "/dev/null/foobar",
                 "password_path": "tests/config/redis_password.txt",
             }
         )
@@ -501,7 +497,7 @@ def test_redis_credentials_equality():
     assert redis_credentials_1 == redis_credentials_2
 
     # compare different Redis credentialss
-    redis_credentials_2.user = "this is me"
+    redis_credentials_2.username = "this is me"
     assert redis_credentials_1 != redis_credentials_2
 
     # compare with value of different type
@@ -606,12 +602,6 @@ def test_ols_config():
         {
             "default_provider": "test_default_provider",
             "default_model": "test_default_model",
-            "classifier_provider": "test_classifer_provider",
-            "classifier_model": "test_classifier_model",
-            "summarizer_provider": "test_summarizer_provider",
-            "summarizer_model": "test_summarizer_model",
-            "validator_provider": "test_validator_provider",
-            "validator_model": "test_validator_model",
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -625,12 +615,6 @@ def test_ols_config():
     )
     assert ols_config.default_provider == "test_default_provider"
     assert ols_config.default_model == "test_default_model"
-    assert ols_config.classifier_provider == "test_classifer_provider"
-    assert ols_config.classifier_model == "test_classifier_model"
-    assert ols_config.summarizer_provider == "test_summarizer_provider"
-    assert ols_config.summarizer_model == "test_summarizer_model"
-    assert ols_config.validator_provider == "test_validator_provider"
-    assert ols_config.validator_model == "test_validator_model"
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
@@ -657,12 +641,6 @@ def test_config():
             "ols_config": {
                 "default_provider": "test_default_provider",
                 "default_model": "test_default_model",
-                "classifier_provider": "test_classifer_provider",
-                "classifier_model": "test_classifier_model",
-                "summarizer_provider": "test_summarizer_provider",
-                "summarizer_model": "test_summarizer_model",
-                "validator_provider": "test_validator_provider",
-                "validator_model": "test_validator_model",
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -707,12 +685,6 @@ def test_config():
     )
     assert config.ols_config.default_provider == "test_default_provider"
     assert config.ols_config.default_model == "test_default_model"
-    assert config.ols_config.classifier_provider == "test_classifer_provider"
-    assert config.ols_config.classifier_model == "test_classifier_model"
-    assert config.ols_config.summarizer_provider == "test_summarizer_provider"
-    assert config.ols_config.summarizer_model == "test_summarizer_model"
-    assert config.ols_config.validator_provider == "test_validator_provider"
-    assert config.ols_config.validator_model == "test_validator_model"
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
@@ -777,7 +749,15 @@ def test_config_improper_missing_model():
                         ],
                     }
                 ],
-                "ols_config": {"default_provider": "test_default_provider"},
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 1000,
+                        },
+                    },
+                    "default_provider": "test_default_provider",
+                },
             }
         ).validate_yaml()
 

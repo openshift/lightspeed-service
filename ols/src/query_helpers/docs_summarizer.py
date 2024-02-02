@@ -1,12 +1,10 @@
 """A class for summarizing documentation context."""
 
 import logging
-import os
 from typing import Optional
 
 import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index.embeddings import TextEmbeddingsInference
 from llama_index.prompts import PromptTemplate
 from llama_index.response.schema import Response
 
@@ -59,17 +57,7 @@ class DocsSummarizer(QueryHelper):
 
         logger.info(f"{conversation} Getting service context")
 
-        embed_model: str | TextEmbeddingsInference = "local:BAAI/bge-base-en"
-        # TODO get this from global config instead of env
-        # Not a priority because embedding model probably won't be configurable in the final product
-        tei_embedding_url = os.getenv("TEI_SERVER_URL", None)
-        if tei_embedding_url:
-            logger.info(f"{conversation} using TEI embedding server")
-
-            embed_model = TextEmbeddingsInference(
-                model_name=constants.TEI_EMBEDDING_MODEL,
-                base_url=tei_embedding_url,
-            )
+        embed_model = "local:BAAI/bge-base-en"
 
         service_context = ServiceContext.from_defaults(
             chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs

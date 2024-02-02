@@ -1,6 +1,5 @@
 """Unit tests for LLMLoader class."""
 
-import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -131,28 +130,16 @@ def test_constructor_unsatisfied_requirements(provider):
             LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)
 
 
-def _prepare_openapi_config():
-    provider_config = ProviderConfig()
-    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
-    config.llm_config.providers = {constants.PROVIDER_OPENAI: provider_config}
-
-
-@patch.dict(os.environ, {"OPENAI_API_KEY": ""})
 def test_constructor_openai_llm_instance_no_api_key():
     """Test the construction fo LLM instance for OpenAI when API key is not provided."""
-    _prepare_openapi_config()
-
     # no API key is provided so validation should fail
+    config.init_config("tests/config/without_openai_api_key.yaml")
     with pytest.raises(Exception, match="Did not find openai_api_key"):
-        LLMLoader(
-            provider=constants.PROVIDER_OPENAI, model=constants.GRANITE_13B_CHAT_V1
-        )
+        LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GPT35_TURBO)
 
 
-@patch.dict(os.environ, {"OPENAI_API_KEY": "key"})
 def test_constructor_openai_llm_instance_provided_api_key():
     """Test the construction fo LLM instance for OpenAI when API key is provided."""
-    _prepare_openapi_config()
-
+    config.init_config("tests/config/with_openai_api_key.yaml")
     # API key is provided so validation must not fail
-    LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GRANITE_13B_CHAT_V1)
+    LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GPT35_TURBO)
