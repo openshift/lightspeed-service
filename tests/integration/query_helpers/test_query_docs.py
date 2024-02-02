@@ -1,7 +1,5 @@
 """Integration tests using light weight FAISS index."""
 
-import os
-
 import pytest
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
@@ -25,14 +23,8 @@ def setup_faiss():
     ]
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    file_path = "./index/faiss_index"
-
-    if os.path.exists(file_path):
-        db = FAISS.load_local(file_path, embeddings)
-    else:
-        db = FAISS.from_documents(list_of_documents, embeddings)
+    db = FAISS.from_documents(list_of_documents, embeddings)
     yield db
-    db.save_local(file_path)
 
 
 def test_retrieve_top_k_similarity_search(setup_faiss):
