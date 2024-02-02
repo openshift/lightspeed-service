@@ -612,8 +612,6 @@ def test_ols_config():
             "summarizer_model": "test_summarizer_model",
             "validator_provider": "test_validator_provider",
             "validator_model": "test_validator_model",
-            "yaml_provider": "test_yaml_provider",
-            "yaml_model": "test_yaml_model",
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -633,8 +631,6 @@ def test_ols_config():
     assert ols_config.summarizer_model == "test_summarizer_model"
     assert ols_config.validator_provider == "test_validator_provider"
     assert ols_config.validator_model == "test_validator_model"
-    assert ols_config.yaml_provider == "test_yaml_provider"
-    assert ols_config.yaml_model == "test_yaml_model"
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
@@ -667,8 +663,6 @@ def test_config():
                 "summarizer_model": "test_summarizer_model",
                 "validator_provider": "test_validator_provider",
                 "validator_model": "test_validator_model",
-                "yaml_provider": "test_yaml_provider",
-                "yaml_model": "test_yaml_model",
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -719,8 +713,6 @@ def test_config():
     assert config.ols_config.summarizer_model == "test_summarizer_model"
     assert config.ols_config.validator_provider == "test_validator_provider"
     assert config.ols_config.validator_model == "test_validator_model"
-    assert config.ols_config.yaml_provider == "test_yaml_provider"
-    assert config.ols_config.yaml_model == "test_yaml_model"
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
@@ -808,8 +800,6 @@ def test_config_improper_provider():
                     "summarizer_model": "test_summarizer_model",
                     "validator_provider": "test_validator_provider",
                     "validator_model": "test_validator_model",
-                    "yaml_provider": "test_yaml_provider",
-                    "yaml_model": "test_yaml_model",
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -855,8 +845,6 @@ def test_config_improper_model():
                     "summarizer_model": "test_summarizer_model",
                     "validator_provider": "test_validator_provider",
                     "validator_model": "test_validator_model",
-                    "yaml_provider": "test_yaml_provider",
-                    "yaml_model": "test_yaml_model",
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {

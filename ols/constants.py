@@ -130,27 +130,6 @@ Question:
 Response:
 """
 
-YAML_GENERATOR_PROMPT_TEMPLATE = """
-Instructions:
-- Produce only a yaml response to the user request
-- Do not augment the response with markdown or other formatting beyond standard yaml formatting
-- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
-
-User Request: {query}
-"""
-
-YAML_GENERATOR_WITH_HISTORY_PROMPT_TEMPLATE = """
-Instructions:
-- Produce only a yaml response to the user request
-- Do not augment the response with markdown or other formatting beyond standard yaml formatting
-- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
-
-Here is the history of the conversation so far, you may find this relevant to the user request below:
-
-{history}
-
-User Request: {query}
-"""
 
 # providers
 PROVIDER_BAM = "bam"
@@ -188,4 +167,4 @@ REDIS_CACHE_MAX_MEMORY = "500mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
 
 # provider and model roles
-PROVIDER_MODEL_ROLES = ("default", "classifier", "summarizer", "validator", "yaml")
+PROVIDER_MODEL_ROLES = ("default", "classifier", "summarizer", "validator")

@@ -320,8 +320,6 @@ class OLSConfig(BaseModel):
     summarizer_model: Optional[str] = None
     validator_provider: Optional[str] = None
     validator_model: Optional[str] = None
-    yaml_provider: Optional[str] = None
-    yaml_model: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -343,8 +341,6 @@ class OLSConfig(BaseModel):
         self.summarizer_model = data.get("summarizer_model", self.default_model)
         self.validator_provider = data.get("validator_provider", self.default_provider)
         self.validator_model = data.get("validator_model", self.default_model)
-        self.yaml_provider = data.get("yaml_provider", self.default_provider)
-        self.yaml_model = data.get("yaml_model", self.default_model)
 
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
@@ -365,8 +361,6 @@ class OLSConfig(BaseModel):
                 and self.summarizer_model == other.summarizer_model
                 and self.validator_provider == other.validator_provider
                 and self.validator_model == other.validator_model
-                and self.yaml_provider == other.yaml_provider
-                and self.yaml_model == other.yaml_model
             )
         return False
 
