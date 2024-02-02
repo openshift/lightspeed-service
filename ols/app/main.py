@@ -14,6 +14,10 @@ from ols.utils.logging import configure_logging
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
     description="""OpenShift LightSpeed Service API specification.""",
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    },
 )
 
 
