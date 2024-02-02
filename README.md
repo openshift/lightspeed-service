@@ -71,6 +71,18 @@ To send a request to the server you can use the following curl command:
 curl -X 'POST' 'http://127.0.0.1:8080/v1/query' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"query": "write a deployment yaml for the mongodb image"}'
 ```
 
+### Swagger UI
+
+Web page with Swagger UI has the standard `/docs` endpoint. If the service is running on localhost on port 8080, Swagger UI can be accessed on address `http://localhost:8080/docs`.
+
+### OpenAPI
+
+OpenAPI schema is available on `/openapi.json` endpoint. For example, for service running on localhost on port 8080, it can be accessed and pretty printed by using following command:
+
+```sh
+curl 'http://127.0.0.1:8080/openapi.json' | jq .
+```
+
 ### Gradio UI
 
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, it is needed to enable UI in `olsconfig.yaml` file:
