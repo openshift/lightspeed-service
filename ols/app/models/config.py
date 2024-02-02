@@ -18,7 +18,7 @@ def _is_valid_http_url(url: str) -> bool:
     ]
 
 
-def _get_attribute_from_file(data: dict, file_name_key: str) -> str | None:
+def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
     """Retrieve value of an attribute from a file."""
     file_path = data.get(file_name_key)
     if file_path is not None:
@@ -383,7 +383,7 @@ class DevConfig(BaseModel):
 
     enable_dev_ui: bool = False
     disable_question_validation: bool = False
-    llm_temperature_override: float | None = None
+    llm_temperature_override: Optional[float] = None
 
     # TODO - wire this up once auth is implemented
     disable_auth: bool = False

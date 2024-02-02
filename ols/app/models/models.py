@@ -1,5 +1,7 @@
 """Data models representing payloads for REST API calls."""
 
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -18,10 +20,10 @@ class LLMRequest(BaseModel):
     """
 
     query: str
-    conversation_id: str | None = None
-    response: str | None = None
-    provider: str | None = None
-    model: str | None = None
+    conversation_id: Optional[str] = None
+    response: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
 
     # provides examples for /docs endpoint
     model_config = {

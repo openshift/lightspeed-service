@@ -1,7 +1,7 @@
 """This module has the components to retrieve docs from vector store."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from langchain_core.documents.base import Document
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
@@ -22,7 +22,7 @@ class QueryDocs:
         vectordb: VectorStore,
         search_type: str = "similarity",
         **search_kwargs: Any,
-    ) -> list[Document] | None:
+    ) -> Optional[list[Document]]:
         """Return list of documents from the vectorstore.
 
         Args:

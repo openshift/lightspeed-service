@@ -2,6 +2,7 @@
 
 import logging
 import os
+from typing import Optional
 
 import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
@@ -20,7 +21,7 @@ class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
     def summarize(
-        self, conversation: str, query: str, history: str | None = None, **kwargs
+        self, conversation: str, query: str, history: Optional[str] = None, **kwargs
     ) -> tuple[str, str]:
         """Summarize the given query based on the provided conversation context.
 
