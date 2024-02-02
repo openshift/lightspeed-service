@@ -35,7 +35,7 @@ def setup_faiss():
     db.save_local(file_path)
 
 
-def test_retrieve_top_k_similarity_search(setup_faiss: FAISS):
+def test_retrieve_top_k_similarity_search(setup_faiss):
     """Fetch top k similarity search."""
     docs = QueryDocs().get_relevant_docs(
         vectordb=setup_faiss, query="foo", search_kwargs={"k": 1}
@@ -47,7 +47,7 @@ def test_retrieve_top_k_similarity_search(setup_faiss: FAISS):
     assert docs[0].metadata["source"] == "adhoc"
 
 
-def test_retrieve_mmr(setup_faiss: FAISS):
+def test_retrieve_mmr(setup_faiss):
     """Fetch more documents for the MMR algorithm to consider. But only return the top 1."""
     docs = QueryDocs().get_relevant_docs(
         vectordb=setup_faiss,
@@ -62,7 +62,7 @@ def test_retrieve_mmr(setup_faiss: FAISS):
     assert docs[0].metadata["source"] == "adhoc"
 
 
-def test_similarity_score(setup_faiss: FAISS):
+def test_similarity_score(setup_faiss):
     """Fetch only the docs that has scores above similarity score threshold."""
     docs = QueryDocs().get_relevant_docs(
         vectordb=setup_faiss,
@@ -83,7 +83,7 @@ def test_similarity_score(setup_faiss: FAISS):
     assert docs[0].metadata["source"] == "adhoc"
 
 
-def test_for_filtering(setup_faiss: FAISS):
+def test_for_filtering(setup_faiss):
     """Fetch only the filtered docs."""
     docs = QueryDocs().get_relevant_docs(
         vectordb=setup_faiss,
@@ -98,7 +98,7 @@ def test_for_filtering(setup_faiss: FAISS):
     assert docs[0].metadata["source"] == "adhoc"
 
 
-def test_invalid_search_type(setup_faiss: FAISS):
+def test_invalid_search_type(setup_faiss):
     """Test for invalid search type."""
     with pytest.raises(
         RetrieveDocsExceptionError, match="search type is invalid: stuff"
