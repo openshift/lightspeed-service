@@ -38,7 +38,7 @@ class ModelConfig(BaseModel):
     url: Optional[str] = None
     credentials: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -47,7 +47,7 @@ class ModelConfig(BaseModel):
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ModelConfig):
             return (
@@ -73,7 +73,7 @@ class ProviderConfig(BaseModel):
     credentials: Optional[str] = None
     models: dict[str, ModelConfig] = {}
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -91,7 +91,7 @@ class ProviderConfig(BaseModel):
             model = ModelConfig(m)
             self.models[m["name"]] = model
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ProviderConfig):
             return (
@@ -117,7 +117,7 @@ class LLMProviders(BaseModel):
 
     providers: dict[str, ProviderConfig] = {}
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -128,7 +128,7 @@ class LLMProviders(BaseModel):
             provider = ProviderConfig(p)
             self.providers[p["name"]] = provider
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LLMProviders):
             return self.providers == other.providers
@@ -146,7 +146,7 @@ class RedisCredentials(BaseModel):
     user: Optional[str] = None
     password: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize redis credentials."""
         super().__init__()
         if not isinstance(data, dict):
@@ -154,7 +154,7 @@ class RedisCredentials(BaseModel):
         self.user = _get_attribute_from_file(data, "user_path")
         self.password = _get_attribute_from_file(data, "password_path")
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, RedisCredentials):
             return self.user == other.user and self.password == other.password
@@ -179,7 +179,7 @@ class RedisConfig(BaseModel):
     max_memory_policy: Optional[str] = None
     credentials: Optional[RedisCredentials] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -194,7 +194,7 @@ class RedisConfig(BaseModel):
         if credentials is not None:
             self.credentials = RedisCredentials(credentials)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, RedisConfig):
             return (
@@ -212,7 +212,7 @@ class MemoryConfig(BaseModel):
 
     max_entries: Optional[int] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -221,7 +221,7 @@ class MemoryConfig(BaseModel):
             "max_entries", constants.IN_MEMORY_CACHE_MAX_ENTRIES
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, MemoryConfig):
             return self.max_entries == other.max_entries
@@ -235,7 +235,7 @@ class ConversationCacheConfig(BaseModel):
     redis: Optional[RedisConfig] = None
     memory: Optional[MemoryConfig] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -253,7 +253,7 @@ class ConversationCacheConfig(BaseModel):
             else:
                 raise InvalidConfigurationError("unknown conversation cache store")
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ConversationCacheConfig):
             return (
@@ -273,7 +273,7 @@ class LoggingConfig(BaseModel):
     app_log_level: Optional[str] = None
     lib_log_level: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -282,7 +282,7 @@ class LoggingConfig(BaseModel):
         self.app_log_level = self._get_log_level(data, "app_log_level", "info")
         self.lib_log_level = self._get_log_level(data, "lib_log_level", "warning")
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LoggingConfig):
             return (
@@ -323,7 +323,7 @@ class OLSConfig(BaseModel):
     yaml_provider: Optional[str] = None
     yaml_model: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -351,7 +351,7 @@ class OLSConfig(BaseModel):
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, OLSConfig):
             return (
@@ -388,7 +388,7 @@ class DevConfig(BaseModel):
     # TODO - wire this up once auth is implemented
     disable_auth: bool = False
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize developer configuration settings."""
         super().__init__()
         if data is None:
@@ -432,7 +432,7 @@ class Config(BaseModel):
     ols_config: Optional[OLSConfig] = None
     dev_config: Optional[DevConfig] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -447,7 +447,7 @@ class Config(BaseModel):
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, Config):
             return (
