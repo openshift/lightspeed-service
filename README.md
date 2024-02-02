@@ -83,6 +83,14 @@ OpenAPI schema is available on `/openapi.json` endpoint. For example, for servic
 curl 'http://127.0.0.1:8080/openapi.json' | jq .
 ```
 
+### Metrics
+
+Service exposes metrics in Prometheus format on `/metrics` endpoint. Scraping them is straightforward:
+
+```sh
+curl 'http://127.0.0.1:8080/metrics/'
+```
+
 ### Gradio UI
 
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, it is needed to enable UI in `olsconfig.yaml` file:
