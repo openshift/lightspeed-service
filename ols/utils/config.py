@@ -1,6 +1,7 @@
 """Configuration loader."""
 
 import traceback
+from io import TextIOBase
 
 import yaml
 
@@ -14,7 +15,7 @@ dev_config = None
 conversation_cache = None
 
 
-def init_empty_config():
+def init_empty_config() -> None:
     """Initialize empty configuration."""
     global config
     global ols_config
@@ -26,7 +27,7 @@ def init_empty_config():
     dev_config = config_model.DevConfig()
 
 
-def load_config_from_stream(stream) -> config_model.Config:
+def load_config_from_stream(stream: TextIOBase) -> config_model.Config:
     """Load configuration from a YAML stream."""
     data = yaml.safe_load(stream)
     c = config_model.Config(data)
@@ -34,7 +35,7 @@ def load_config_from_stream(stream) -> config_model.Config:
     return c
 
 
-def init_config(config_file):
+def init_config(config_file: str) -> None:
     """Load configuration from a YAML file."""
     global config
     global ols_config
