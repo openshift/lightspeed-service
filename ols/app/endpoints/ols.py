@@ -7,6 +7,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols import constants
+from ols.app import metrics
 from ols.app.models.models import LLMRequest
 from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -53,15 +54,18 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
         question_validator = QuestionValidator(
             provider=llm_request.provider, model=llm_request.model
         )
+        metrics.llm_calls_total.inc()
         validation_result = question_validator.validate_question(
             conversation_id, llm_request.query
         )
     except LLMConfigurationError as e:
+        metrics.llm_calls_validation_errors_total.inc()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"response": f"Unable to process this request because '{e}'"},
         )
     except Exception as validation_error:
+        metrics.llm_calls_failures_total.inc()
         logger.error("Error while validating question")
         logger.error(validation_error)
         raise HTTPException(
