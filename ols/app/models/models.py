@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class LLMRequest(BaseModel):
@@ -37,6 +37,19 @@ class LLMRequest(BaseModel):
             ]
         }
     }
+
+    @model_validator(mode="after")
+    def validate_provider_and_model(self):
+        """Perform validation on the provider and model."""
+        if self.model and not self.provider:
+            raise ValueError(
+                "LLM provider must be specified when the model is specified!"
+            )
+        if self.provider and not self.model:
+            raise ValueError(
+                "LLM model must be specified when the provider is specified!"
+            )
+        return self
 
 
 class FeedbackRequest(BaseModel):

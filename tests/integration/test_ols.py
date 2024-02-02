@@ -236,10 +236,12 @@ def test_post_question_with_provider_but_not_model():
         },
     )
     assert response.status_code == requests.codes.unprocessable
-    expected_json = {
-        "detail": {"response": "LLM model must be specified when provider is specified"}
-    }
-    assert response.json() == expected_json
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM model must be specified when the provider is specified!"
+    )
 
 
 def test_post_question_with_model_but_not_provider():
@@ -254,12 +256,12 @@ def test_post_question_with_model_but_not_provider():
         },
     )
     assert response.status_code == requests.codes.unprocessable
-    expected_json = {
-        "detail": {
-            "response": "LLM provider must be specified when the model is specified"
-        }
-    }
-    assert response.json() == expected_json
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM provider must be specified when the model is specified!"
+    )
 
 
 class TestQuery:
