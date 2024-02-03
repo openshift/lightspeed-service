@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ols import constants
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import Config
 from ols.src.llms.llm_loader import (
     LLMConfigurationError,
     LLMLoader,
@@ -14,6 +14,7 @@ from ols.src.llms.llm_loader import (
     MissingProviderError,
     ModelConfigInvalidError,
     ModelConfigMissingError,
+    UnknownProviderError,
     UnsupportedProviderError,
 )
 from ols.utils import config
@@ -45,6 +46,7 @@ def test_errors_relationship():
     """Test the relationship between LLMConfigurationError and its subclasses."""
     assert issubclass(MissingProviderError, LLMConfigurationError)
     assert issubclass(MissingModelError, LLMConfigurationError)
+    assert issubclass(UnknownProviderError, LLMConfigurationError)
     assert issubclass(UnsupportedProviderError, LLMConfigurationError)
     assert issubclass(ModelConfigMissingError, LLMConfigurationError)
     assert issubclass(ModelConfigInvalidError, LLMConfigurationError)
@@ -62,43 +64,44 @@ def test_constructor_no_model():
         LLMLoader(provider=constants.PROVIDER_BAM, model=None)
 
 
-def test_constructor_wrong_provider():
-    """Test how wrong provider is checked."""
-    with pytest.raises(UnsupportedProviderError):
-        LLMLoader(provider="invalid-provider", model=constants.GRANITE_13B_CHAT_V1)
+def test_constructor_unknown_provider():
+    """Test how a provider missing from configuration is checked for."""
+    with pytest.raises(UnknownProviderError):
+        LLMLoader(provider="unknown-provider", model=constants.GRANITE_13B_CHAT_V1)
 
 
 def test_constructor_unsupported_provider():
-    """Test how wrong provider is checked."""
-    provider_config = ProviderConfig()
-    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock-model"}
-    config.llm_config.providers = {"unsupported-provider": provider_config}
+    """Test how a configured but an unsupported provider (not openai, bam, etc) is checked for."""
+    test_provider = "unsupported-provider"
+    config.config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": test_provider,
+                    "models": [
+                        {
+                            "name": constants.GRANITE_13B_CHAT_V1,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+    config.llm_config = config.config.llm_providers
+
     with pytest.raises(UnsupportedProviderError):
-        LLMLoader(provider="unsupported-provider", model=constants.GRANITE_13B_CHAT_V1)
-
-
-def test_constructor_when_missing_model():
-    """Test raise when no model is provided."""
-    test_provider = "test-provider"
-    test_model = "test-model"
-    provider_config = ProviderConfig()
-    provider_config.models = {}  # no models configured
-    config.llm_config.providers = {test_provider: provider_config}
-    message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
-    # ModelConfigMissingException instead of KeyError is raised
-    with pytest.raises(ModelConfigMissingError, match=message):
-        LLMLoader(provider=test_provider, model=test_model)
+        LLMLoader(provider=test_provider, model=constants.GRANITE_13B_CHAT_V1)
 
 
 def test_constructor_when_missing_model_config():
     """Test raise when model configuration is missing."""
     test_provider = "test-provider"
     test_model = "test-model"
-    provider_config = ProviderConfig()
-    provider_config.models = {
-        test_model: None
-    }  # model configured but no config provided
-    config.llm_config.providers = {test_provider: provider_config}
+    config.config = Config(
+        {"llm_providers": [{"name": test_provider, "models": [{"name": "foobar"}]}]}
+    )
+    config.llm_config = config.config.llm_providers
+
     message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
     with pytest.raises(ModelConfigMissingError, match=message):
         LLMLoader(provider=test_provider, model=test_model)
@@ -117,9 +120,21 @@ llm_providers = [
 @pytest.mark.parametrize("provider", llm_providers)
 def test_constructor_unsatisfied_requirements(provider):
     """Test how unsatisfied requirements are handled by LLM loader."""
-    provider_config = ProviderConfig()
-    provider_config.models = {constants.GRANITE_13B_CHAT_V1: "mock model"}
-    config.llm_config.providers = {provider: provider_config}
+    config.config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": provider,
+                    "models": [
+                        {
+                            "name": constants.GRANITE_13B_CHAT_V1,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+    config.llm_config = config.config.llm_providers
 
     def mock_import(module, *args, **kwargs):
         """Mock the import and from x import statements."""
@@ -130,10 +145,10 @@ def test_constructor_unsatisfied_requirements(provider):
             LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)
 
 
-def test_constructor_openai_llm_instance_no_api_key():
-    """Test the construction fo LLM instance for OpenAI when API key is not provided."""
-    # no API key is provided so validation should fail
-    config.init_config("tests/config/without_openai_api_key.yaml")
+def test_constructor_openai_llm_instance_empty_api_key():
+    """Test the construction fo LLM instance for OpenAI when an empty API key is provided."""
+    # an empty API key is provided so validation should fail
+    config.init_config("tests/config/empty_openai_api_key.yaml")
     with pytest.raises(Exception, match="Did not find openai_api_key"):
         LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GPT35_TURBO)
 
