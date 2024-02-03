@@ -1,5 +1,6 @@
 """Mocked (llama) index."""
 
+from .mock_chat_engine import MockChatEngine
 from .mock_query_engine import MockQueryEngine
 
 
@@ -24,3 +25,7 @@ class MockLlamaIndex:
     def as_query_engine(self, **kwargs):
         """Return mocked query engine."""
         return MockQueryEngine(kwargs)
+
+    def as_chat_engine(self, **kwargs):
+        """Return mocked chat engine."""
+        return MockChatEngine(kwargs)

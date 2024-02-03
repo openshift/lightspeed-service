@@ -1,7 +1,7 @@
 """Unit tests for OLS endpoint."""
 
 from http import HTTPStatus
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +12,7 @@ from ols.app.models.models import LLMRequest
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
+from tests.mock_classes.mock_response import MockResponse
 
 
 @pytest.fixture(scope="module")
@@ -33,10 +34,10 @@ def test_conversation_request(
     """Test conversation request API endpoint."""
     # valid question
     mock_validate_question.return_value = constants.SUBJECT_VALID
-    mock_response = Mock()
-    mock_response.response = (
-        "Kubernetes is an open-source container-orchestration system..."  # summary
-    )
+    mock_response = MockResponse(
+        response="Kubernetes is an open-source container-orchestration system..."
+    )  # summary)
+
     mock_summarize.return_value = (
         mock_response,
         "",  # referenced documents

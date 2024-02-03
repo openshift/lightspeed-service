@@ -1,12 +1,20 @@
 """Cache that uses Redis to store cached values."""
 
+import logging
 import threading
-from typing import Optional
 
 import redis
 
+from ols import constants
 from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
+from ols.src.cache.conversation import Conversation
+
+logger = logging.getLogger(__name__)
+
+
+class RedisMaxRetryError(Exception):
+    """RedisMaxRetryError."""
 
 
 # TODO
@@ -47,7 +55,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
+    def get(self, user_id: str, conversation_id: str) -> list[Conversation] | None:
         """Get the value associated with the given key.
 
         Args:
@@ -58,10 +66,13 @@ class RedisCache(Cache):
             The value associated with the key, or None if not found.
         """
         key = super().construct_key(user_id, conversation_id)
+        value = self.redis_client.get(key)
+        # GET operation might return Awaitable value .
+        return value if value else None
 
-        return self.redis_client.get(key)
-
-    def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
+    def insert_or_append(
+        self, user_id: str, conversation_id: str, value: Conversation
+    ) -> None:
         """Set the value associated with the given key.
 
         Args:
@@ -70,14 +81,33 @@ class RedisCache(Cache):
             value: The value to set.
 
         Raises:
-            OutOfMemoryError: If item is evicted when Redis allocated
-                memory is higher than maxmemory.
+            RedisConnectionError: If item is unable to update after REDIS_MAX_RETRY.
         """
         key = super().construct_key(user_id, conversation_id)
-
         old_value = self.get(user_id, conversation_id)
-        with self._lock:
-            if old_value:
-                self.redis_client.set(key, old_value + "\n" + value)
-            else:
-                self.redis_client.set(key, value)
+        retry_count = 0
+        while retry_count < constants.REDIS_MAX_RETRY:
+            logger.debug("Updating redis cache ")
+            with self._lock:
+                if old_value:
+                    old_value.append(value)
+                    try:
+                        self.redis_client.set(key, old_value)
+                        break
+                    except Exception as redis_err:
+                        logger.error(
+                            f"Exception during updating the cache: {redis_err}"
+                        )
+                        retry_count += 1
+                else:
+                    values = [value]
+                    try:
+                        self.redis_client.set(key, values)
+                        break
+                    except Exception as redis_err:
+                        logger.error(
+                            f"Exception during creating the cache: {redis_err}"
+                        )
+                        retry_count += 1
+
+        raise RedisMaxRetryError("Updating cache failed after max retries")

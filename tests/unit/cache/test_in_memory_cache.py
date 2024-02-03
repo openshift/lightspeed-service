@@ -3,6 +3,7 @@
 import pytest
 
 from ols.app.models.config import MemoryConfig
+from ols.src.cache.conversation import Conversation
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
 
@@ -20,15 +21,22 @@ def cache():
 
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
-    cache.insert_or_append("user1", conversation_id, "value1")
-    assert cache.get("user1", conversation_id) == "value1"
+    cache.insert_or_append("user1", conversation_id, Conversation("User", "Assistant"))
+    assert cache.get("user1", conversation_id) == [Conversation("User", "Assistant")]
 
 
 def test_insert_or_append_existing_key(cache):
     """Test the behavior of insert_or_append method for existing item."""
-    cache.insert_or_append("user1", conversation_id, "value1")
-    cache.insert_or_append("user1", conversation_id, "value2")
-    assert cache.get("user1", conversation_id) == "value1\nvalue2"
+    cache.insert_or_append(
+        "user1", conversation_id, Conversation("User Message1", "Assistant Message1")
+    )
+    cache.insert_or_append(
+        "user1", conversation_id, Conversation("User Message2", "Assistant Message2")
+    )
+    expected_messages = []
+    expected_messages.append(Conversation("User Message1", "Assistant Message1"))
+    expected_messages.append(Conversation("User Message2", "Assistant Message2"))
+    assert cache.get("user1", conversation_id) == expected_messages
 
 
 def test_insert_or_append_overflow(cache):
@@ -38,12 +46,14 @@ def test_insert_or_append_overflow(cache):
     for i in range(capacity + 1):
         user = f"user{i}"
         value = f"value{i}"
-        cache.insert_or_append(user, conversation_id, value)
+        cache.insert_or_append(user, conversation_id, Conversation(user, value))
 
     # Ensure the oldest entry is evicted
     assert cache.get("user0", conversation_id) is None
     # Ensure the newest entry is still present
-    assert cache.get(f"user{capacity}", conversation_id) == f"value{capacity}"
+    assert cache.get(f"user{capacity}", conversation_id) == [
+        Conversation(f"user{capacity}", f"value{capacity}")
+    ]
 
 
 def test_get_nonexistent_user(cache):

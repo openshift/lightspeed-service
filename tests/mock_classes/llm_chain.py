@@ -27,4 +27,9 @@ def mock_llm_chain(retval):
         def __call__(self, *args, **kwargs):
             return retval
 
+        def invoke(self, question, **kwargs):
+            """Return query result with the chat history to verify llm inputs."""
+            result = {"text": question, "history": kwargs.get("chat_history")}
+            return result
+
     return MockLLMChain

@@ -9,6 +9,7 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app import metrics
 from ols.app.models.models import LLMRequest, LLMResponse
+from ols.src.cache.conversation import Conversation
 from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
@@ -96,7 +97,13 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 # See the comment in `summarize` method in `docs_summarizer.py`
                 # Because of that, we are ignoring some type checks when we
                 # are creating response model.
-                response = llm_response.response
+                if isinstance(llm_response, str):
+                    response = llm_response
+                else:
+                    if llm_response.response:
+                        response = llm_response.response
+                    else:
+                        """"""
             except LLMConfigurationError as e:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -113,10 +120,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 )
 
     if config.conversation_cache is not None:
+        conversation = Conversation(llm_request.query, str(response or ""))  # type: ignore
         config.conversation_cache.insert_or_append(
-            user_id,
-            conversation_id,
-            llm_request.query + "\n\n" + str(response or ""),  # type: ignore
+            user_id, conversation_id, conversation
         )
     llm_response = LLMResponse(conversation_id=conversation_id, response=response)  # type: ignore
     return llm_response

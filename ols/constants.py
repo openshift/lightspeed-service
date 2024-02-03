@@ -13,9 +13,11 @@ POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
 
 # templates
 SUMMARIZATION_TEMPLATE = """
-The following context contains several pieces of documentation. Please answer the user's question based on this context.
-Documentation context:
-{context_str}
+Instructions:
+- You are an expert in Kubernetes and OpenShift.
+- Respond to questions about topics other than Kubernetes and OpenShift with: "I can only answer questions about Kubernetes and OpenShift"
+- Refuse to participate in anything that could harm a human.
+- Use the previous chat history, and the context, to interact and help the user."
 
 User query:
 {query_str}
@@ -23,6 +25,7 @@ User query:
 Summary:
 
 """
+
 
 SUMMARY_TASK_BREAKDOWN_TEMPLATE = (
     """
@@ -167,6 +170,7 @@ REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "500mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
 REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
+REDIS_MAX_RETRY = 5
 
 # provider and model roles
 PROVIDER_MODEL_ROLES = frozenset({"default"})

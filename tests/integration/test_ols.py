@@ -304,8 +304,8 @@ class TestQuery:
             }
 
 
-def test_post_question_on_noyaml_response_type() -> None:
-    """Check the REST API /ols/ with POST HTTP method when unknown response type is returned."""
+def test_post_question_on_generic_response_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method."""
     config.init_empty_config()
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
@@ -327,17 +327,69 @@ def test_post_question_on_noyaml_response_type() -> None:
                     "ols.utils.config.ols_config.reference_content.product_docs_index_path",
                     "./invalid_dir",
                 ):
-                    conversation_id = suid.get_suid()
-                    response = client.post(
-                        "/v1/query",
-                        json={
-                            "conversation_id": conversation_id,
-                            "query": "test query",
-                        },
-                    )
-                    print(response)
-                    assert response.status_code == requests.codes.ok
-                    assert (
-                        "The following response was generated without access to reference content:"
-                        in response.json()["response"]
-                    )
+                    with patch(
+                        "ols.src.query_helpers.docs_summarizer.LLMChain",
+                        new=mock_llm_chain(ml),
+                    ):
+                        conversation_id = suid.get_suid()
+                        response = client.post(
+                            "/v1/query",
+                            json={
+                                "conversation_id": conversation_id,
+                                "query": "test query",
+                            },
+                        )
+                        print(response)
+                        assert response.status_code == requests.codes.ok
+                        assert (
+                            "The following response was generated without access "
+                            "to reference content:" in response.json()["response"]
+                        )
+
+
+def test_post_question_on_generic_history() -> None:
+    """Check the REST API /v1/query with POST HTTP method to verify conversation history."""
+    config.init_empty_config()
+    config.ols_config.reference_content = ReferenceContent(None)
+    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
+    config.ols_config.reference_content.product_docs_index_id = "product"
+    answer = constants.SUBJECT_VALID
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        from tests.mock_classes.langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.LLMLoader", new=mock_llm_loader(ml())
+        ):
+            with patch(
+                "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
+            ):
+                with patch(
+                    "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                    "./invalid_dir",
+                ):
+                    with patch(
+                        "ols.src.query_helpers.docs_summarizer.LLMChain",
+                        new=mock_llm_chain(ml),
+                    ):
+                        conversation_id = suid.get_suid()
+                        response = client.post(
+                            "/v1/query",
+                            json={
+                                "conversation_id": conversation_id,
+                                "query": "First query",
+                            },
+                        )
+                        response = client.post(
+                            "/v1/query",
+                            json={
+                                "conversation_id": conversation_id,
+                                "query": "Second query",
+                            },
+                        )
+                        print(response)
+                        assert response.status_code == requests.codes.ok
+                        assert "First query" in response.json()["response"]
+                        assert "Second query" in response.json()["response"]
