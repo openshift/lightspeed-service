@@ -16,11 +16,14 @@ class Cache(ABC):
     read or modify other users conversations.
     """
 
+    # separator between parts of compond key
+    COMPOUND_KEY_SEPARATOR = ":"
+
     @staticmethod
     def _check_user_id(user_id: str) -> None:
         """Check if given user ID is valid."""
         # TODO: needs to be updated when we know the format
-        if "/" in user_id:
+        if Cache.COMPOUND_KEY_SEPARATOR in user_id:
             raise ValueError("Incorrect user ID {user_id}")
 
     @staticmethod
@@ -34,7 +37,7 @@ class Cache(ABC):
         """Construct key to cache."""
         Cache._check_user_id(user_id)
         Cache._check_conversation_id(conversation_id)
-        return f"{user_id}/{conversation_id}"
+        return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
     def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
