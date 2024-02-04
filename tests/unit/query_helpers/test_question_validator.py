@@ -29,12 +29,11 @@ def test_valid_responses(question_validator):
         "SUBJECT_INVALID",
         "SUBJECT_VALID",
     ]:
-        # basically `@patch` and `with patch():` do the same thing, but the latter
-        # allow us to change the class/method/function behaviour in runtime
         ml = mock_llm_chain({"text": retval})
+        conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
         with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
             response = question_validator.validate_question(
-                conversation="1234", query="What is the meaning of life?"
+                conversation=conversation_id, query="What is the meaning of life?"
             )
 
             assert response == retval
