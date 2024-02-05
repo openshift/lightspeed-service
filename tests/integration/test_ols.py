@@ -254,8 +254,8 @@ def test_post_question_with_model_but_not_provider():
 class TestQuery:
     """Test the /v1/query endpoint."""
 
-    def test_unsupported_provider_in_post(self):
-        """Check the REST API /v1/query with POST method when unsupported provider is requested."""
+    def test_unknown_provider_in_post(self):
+        """Check the REST API /v1/query with POST method when unknown provider is requested."""
         # empty config - no providers
         with patch("ols.utils.config.llm_config.providers", new={}):
             response = client.post(
@@ -271,7 +271,7 @@ class TestQuery:
             assert response.json() == {
                 "detail": {
                     "response": "Unable to process this request because "
-                    "'Unsupported LLM provider some-provider'"
+                    "'No configuration for LLM provider some-provider'"
                 }
             }
 

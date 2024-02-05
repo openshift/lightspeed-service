@@ -29,8 +29,12 @@ class MissingModelError(LLMConfigurationError):
     """Model is not specified."""
 
 
+class UnknownProviderError(LLMConfigurationError):
+    """No configuration for provider."""
+
+
 class UnsupportedProviderError(LLMConfigurationError):
-    """Provider is not supported or is unknown."""
+    """Provider is not supported."""
 
 
 class ModelConfigMissingError(LLMConfigurationError):
@@ -111,9 +115,9 @@ class LLMLoader:
     def _get_provider_config(self) -> ProviderConfig:
         cfg = config.llm_config.providers.get(self.provider)
         if not cfg:
-            msg = f"Unsupported LLM provider {self.provider}"
+            msg = f"No configuration for LLM provider {self.provider}"
             logger.error(msg)
-            raise UnsupportedProviderError(msg)
+            raise UnknownProviderError(msg)
 
         model = cfg.models.get(self.model)
         if not model:
@@ -132,21 +136,30 @@ class LLMLoader:
         # convert to string to handle None or False definitions
         match str(self.provider).lower():
             case constants.PROVIDER_OPENAI:
-                return self._openai_llm_instance()
+                return self._openai_llm_instance(
+                    self._get_llm_url("https://api.openai.com/v1"),
+                    self._get_llm_credentials(),
+                )
             # case constants.PROVIDER_OLLAMA:
             #     return self._ollama_llm_instance()
             # case constants.PROVIDER_TGI:
             #     return self._tgi_llm_instance()
             case constants.PROVIDER_WATSONX:
-                return self._watson_llm_instance()
+                return self._watson_llm_instance(
+                    self._get_llm_url("https://us-south.ml.cloud.ibm.com"),
+                    self._get_llm_credentials(),
+                )
             case constants.PROVIDER_BAM:
-                return self._bam_llm_instance()
+                return self._bam_llm_instance(
+                    self._get_llm_url("https://bam-api.res.ibm.com"),
+                    self._get_llm_credentials(),
+                )
             case _:
                 msg = f"Unsupported LLM provider {self.provider}"
                 logger.error(msg)
                 raise UnsupportedProviderError(msg)
 
-    def _openai_llm_instance(self) -> LLM:
+    def _openai_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
             from langchain_community.chat_models import ChatOpenAI
@@ -156,8 +169,8 @@ class LLMLoader:
             )
             raise e
         params: dict = {
-            "base_url": self._get_llm_url("https://api.openai.com/v1"),
-            "openai_api_key": self._get_llm_credentials(),
+            "base_url": api_url,
+            "openai_api_key": api_key,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
             "organization": None,
@@ -181,7 +194,7 @@ class LLMLoader:
         logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
         return llm
 
-    def _bam_llm_instance(self) -> LLM:
+    def _bam_llm_instance(self, api_url: str, api_key: str) -> LLM:
         """BAM Research Lab."""
         logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
@@ -197,8 +210,8 @@ class LLMLoader:
             raise e
         # BAM Research lab
         creds = Credentials(
-            api_key=self._get_llm_credentials(),
-            api_endpoint=self._get_llm_url("https://bam-api.res.ibm.com"),
+            api_key=api_key,
+            api_endpoint=api_url,
         )
 
         bam_params = {
@@ -289,7 +302,7 @@ class LLMLoader:
     #     return llm
 
     # TODO: update this to use config not direct env vars
-    def _watson_llm_instance(self) -> LLM:
+    def _watson_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)
         try:
@@ -308,8 +321,8 @@ class LLMLoader:
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": self._get_llm_url("https://us-south.ml.cloud.ibm.com"),
-            "apikey": self._get_llm_credentials(),
+            "url": api_url,
+            "apikey": api_key,
         }
         # WatsonX uses different mechanism for defining parameters
         params = {
