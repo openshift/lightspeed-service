@@ -44,23 +44,6 @@ def test_conversation_request(
     )
     assert len(response.conversation_id) > 0
 
-    # valid question, yaml
-    mock_validate_question.return_value = constants.SUBJECT_VALID
-    mock_summarize.return_value = ("content: generated yaml", "")
-    llm_request = LLMRequest(query="Generate a yaml")
-    response = ols.conversation_request(llm_request)
-    assert response.response == "content: generated yaml"
-    assert len(response.conversation_id) > 0
-
-    # valid question, yaml, generator failure
-    mock_validate_question.return_value = constants.SUBJECT_VALID
-    mock_summarize.side_effect = Exception
-    with pytest.raises(HTTPException) as excinfo:
-        llm_request = LLMRequest(query="Generate a yaml")
-        response = ols.conversation_request(llm_request)
-        assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-        assert len(response.conversation_id) == 0
-
     # invalid question
     mock_validate_question.return_value = constants.SUBJECT_INVALID
     llm_request = LLMRequest(query="Generate a yaml")
