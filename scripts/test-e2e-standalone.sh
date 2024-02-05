@@ -16,6 +16,17 @@ TMPDIR=$(mktemp -d)
 # ARTIFACT_DIR is defined when running in a prow job
 ARTIFACT_DIR=${ARTIFACT_DIR:-$TMPDIR}
 
+# temp directory for index store
+RAG_TMP_DIR=$(mktemp -d)
+# Download index store
+RAG_INDEX="https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip"
+export RAG_INDEX_DIR="$RAG_TMP_DIR/vector-db/ocp-product-docs"
+# Configure index store
+mkdir -p $RAG_INDEX_DIR \
+  && wget $RAG_INDEX \
+	&& unzip -j local.zip -d $RAG_INDEX_DIR \
+	&& rm -f local.zip
+
 export OLS_CONFIG_FILE="$ARTIFACT_DIR/olsconfig.yaml"
 OLS_LOGS=$ARTIFACT_DIR/ols.log
 
