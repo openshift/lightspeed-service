@@ -62,7 +62,7 @@ class FeedbackRequest(BaseModel):
     Example:
         ```python
         feedback_request = FeedbackRequest(
-            conversation_id="123",
+            conversation_id="12345678-abcd-0000-0123-456789abcdef",
             feedback_object='{"rating": 5, "comment": "Great service!"}'
         )
         ```
@@ -77,7 +77,7 @@ class FeedbackRequest(BaseModel):
             "examples": [
                 {
                     "feedback_object": '{"rating": 5, "comment": "Great service!"}',
-                    "conversation_id": "1234",
+                    "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
                 }
             ]
         }
