@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-set -o errexit
 set -o nounset
 set -o pipefail
 set -x
 
-REPO_ROOT=$(git rev-parse --show-toplevel)
 CI_SERVER_URL=https://prow.svc.ci.openshift.org/view/gcs/origin-ci-test
 COVER_PROFILE=${COVER_PROFILE:-"$1"}
 JOB_TYPE=${JOB_TYPE:-"local"}
@@ -15,7 +13,7 @@ if [[ "${JOB_TYPE}" == "presubmit" ]]; then
        echo "detected PR code coverage job for #${PULL_NUMBER}"
        REF_FLAGS="-P ${PULL_NUMBER} -C ${PULL_PULL_SHA}"
        JOB_LINK="${CI_SERVER_URL}/pr-logs/pull/${REPO_OWNER}_${REPO_NAME}/${PULL_NUMBER}/${JOB_NAME}/${BUILD_ID}"
-elif [[ "${JOB_TYPE}" == "postsubmit" ]]; then
+elif [[ "${JOB_TYPE}" == "batch" ]] || [[ "${JOB_TYPE}" == "postsubmit" ]]; then
        echo "detected branch code coverage job for ${PULL_BASE_REF}"
        REF_FLAGS="-B ${PULL_BASE_REF} -C ${PULL_BASE_SHA}"
        JOB_LINK="${CI_SERVER_URL}/logs/${JOB_NAME}/${BUILD_ID}"
@@ -39,7 +37,14 @@ if [[ "${JOB_TYPE}" != "local" ]]; then
        fi
        curl -sS https://codecov.io/bash -o "${ARTIFACT_DIR}/codecov.sh"
        bash <(cat "${ARTIFACT_DIR}/codecov.sh") -Z -K -f "${COVER_PROFILE}" -r "${REPO_OWNER}/${REPO_NAME}" ${REF_FLAGS}
+       if [ $? -ne 0 ]; then
+              echo "Failed uploading coverage report from a non local environment. Exiting gracefully with status code 0."
+              exit 0
+       fi
 else
        bash <(curl -s https://codecov.io/bash) -Z -K -f "${COVER_PROFILE}" -r "${REPO_OWNER}/${REPO_NAME}" ${REF_FLAGS}
+       if [ $? -ne 0 ]; then
+              echo "Failed uploading coverage report from local environment. Exiting gracefully with status code 0."
+              exit 0
+       fi
 fi
-
