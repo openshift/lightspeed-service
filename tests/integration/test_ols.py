@@ -135,13 +135,9 @@ def test_post_question_on_invalid_question():
             json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
-        expected_details = str(
-            {
-                "detail": {
-                    "response": "I can only answer questions about \
-            OpenShift and Kubernetes. Please rephrase your question"
-                }
-            }
+        expected_details = (
+            "I can only answer questions about OpenShift and Kubernetes. "
+            "Please rephrase your question"
         )
         expected_json = {
             "conversation_id": conversation_id,

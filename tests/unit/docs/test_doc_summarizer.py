@@ -31,7 +31,7 @@ def test_summarize(storage_context, service_context):
     question = "What's the ultimate question with answer 42?"
     history = None
     summary, documents = summarizer.summarize("1234", question, history)
-    assert question in summary
+    assert question in str(summary)
     assert len(documents) == 0
 
 
@@ -51,7 +51,7 @@ def test_summarize_no_reference_content(storage_context, service_context):
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
     summary, documents = summarizer.summarize("1234", question)
-    assert "success" in summary
+    assert "success" in str(summary)
     assert len(documents) == 0
 
 
@@ -74,6 +74,6 @@ def test_summarize_incorrect_directory(service_context):
     summary, documents = summarizer.summarize("1234", question)
     assert (
         "The following response was generated without access to reference content"
-        in summary
+        in str(summary)
     )
     assert len(documents) == 0

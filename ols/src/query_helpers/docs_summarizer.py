@@ -21,7 +21,7 @@ class DocsSummarizer(QueryHelper):
 
     def summarize(
         self, conversation: str, query: str, history: Optional[str] = None, **kwargs
-    ) -> tuple[str, str]:
+    ) -> tuple[Response, str]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -112,14 +112,14 @@ class DocsSummarizer(QueryHelper):
             logger.info("Using llm to answer the query without reference content")
             response = bare_llm.invoke(query)
             summary = Response(
-                f""" The following response was generated without access to reference content:
-
-                        {response}
-                    """
+                "The following response was generated without access to reference content:"
+                "\n\n"
+                # NOTE: The LLM returns AIMessage, but typing sees it as a plain str
+                f"{response.content}"  # type: ignore
             )
             referenced_documents = ""
 
         logger.info(f"{conversation} Summary response: {summary!s}")
         logger.info(f"{conversation} Referenced documents: {referenced_documents}")
 
-        return str(summary), referenced_documents
+        return summary, referenced_documents

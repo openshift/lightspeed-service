@@ -76,13 +76,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
             logger.info(
                 f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
-            response = str(
-                {
-                    "detail": {
-                        "response": "I can only answer questions about \
-            OpenShift and Kubernetes. Please rephrase your question"
-                    }
-                }
+            response = (
+                "I can only answer questions about OpenShift and Kubernetes. "
+                "Please rephrase your question"
             )
         case constants.SUBJECT_VALID:
             logger.info(
@@ -93,9 +89,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 docs_summarizer = DocsSummarizer(
                     provider=llm_request.provider, model=llm_request.model
                 )
-                response, _ = docs_summarizer.summarize(
+                llm_response, _ = docs_summarizer.summarize(
                     conversation_id, llm_request.query, previous_input
                 )
+                # TODO: There are some inconsitencies in the types to be solved.
+                # See the comment in `summarize` method in `docs_summarizer.py`
+                # Because of that, we are ignoring some type checks when we
+                # are creating response model.
+                response = llm_response.response
             except LLMConfigurationError as e:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -115,9 +116,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
         config.conversation_cache.insert_or_append(
             user_id,
             conversation_id,
-            llm_request.query + "\n\n" + str(response or ""),
+            llm_request.query + "\n\n" + str(response or ""),  # type: ignore
         )
-    llm_response = LLMResponse(conversation_id=conversation_id, response=response)
+    llm_response = LLMResponse(conversation_id=conversation_id, response=response)  # type: ignore
     return llm_response
 
 
