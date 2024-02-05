@@ -184,7 +184,7 @@ def test_constructor_no_provider():
 
 ### Checking what was printed and logged to stdout or stderr by the tested code
 
-It is possible to capture stdour and stderr by using standard fixture `capsys`:
+It is possible to capture stdout and stderr by using standard fixture `capsys`:
 
 ```python
 def test_foobar(capsys):
@@ -225,9 +225,9 @@ We are using the [PDM tool](https://github.com/pdm-project/pdm) to manage our de
 
 To add a new dependency do:
 1. `pdm add mystery-package` - PDM will add it to `pyproject.toml` automatically
-2. re-lock with `pdm lock` - this will update a `pdm.lock` with a new dep
+2. re-lock with `pdm lock` - this will update a `pdm.lock` with a new dependency
 
-As we need to be Konflux-ready, we need to have pinned versions in the `pyproject.toml`. If you added a new dep without an explicit version pin, the PDM tool resolves its version in the lock. You need to search for the dep you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
+As we need to be Konflux-ready (https://redhat-appstudio.github.io/appstudio.docs.ui.io/), we need to have pinned versions in the `pyproject.toml`. If you added a new dependency without an explicit version pin, the PDM tool resolves its version in the lock. You need to search for the dependency you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
 
 
 ## Code style
