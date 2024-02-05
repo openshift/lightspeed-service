@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import constants
 from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
@@ -37,3 +38,23 @@ def test_valid_responses(question_validator):
             )
 
             assert response == retval
+
+
+@patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
+def test_disabled_question_validator(question_validator):
+    """Test disabled QuestionValidator behaviour."""
+    for retval in [
+        "SUBJECT_INVALID",
+        "SUBJECT_VALID",
+    ]:
+        ml = mock_llm_chain({"text": retval})
+        conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
+        # disable question validator
+        config.dev_config.disable_question_validation = True
+
+        with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
+            response = question_validator.validate_question(
+                conversation=conversation_id, query="What is the meaning of life?"
+            )
+
+            assert response == constants.SUBJECT_VALID
