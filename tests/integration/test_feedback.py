@@ -29,10 +29,10 @@ def test_feedback():
 
     response = client.post(
         "/v1/feedback",
-        json={"conversation_id": conversation_id, "feedback_object": "blah"},
+        json={"conversation_id": conversation_id, "feedback_object": {"blah": "bloh"}},
     )
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "feedback received"}
+    assert response.json() == {"response": "feedback received"}
 
 
 def test_feedback_wrong_request():
