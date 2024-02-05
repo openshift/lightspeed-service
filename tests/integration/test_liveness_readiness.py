@@ -22,14 +22,14 @@ def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "1"}
+    assert response.json() == {"status": {"status": "healthy"}}
 
 
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": "1"}
+    assert response.json() == {"status": {"status": "healthy"}}
 
 
 def test_liveness_head_http_method() -> None:

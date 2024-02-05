@@ -8,7 +8,7 @@ from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.app import metrics
-from ols.app.models.models import LLMRequest
+from ols.app.models.models import LLMRequest, LLMResponse
 from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
@@ -20,7 +20,7 @@ router = APIRouter(tags=["query"])
 
 
 @router.post("/query")
-def conversation_request(llm_request: LLMRequest) -> LLMRequest:
+def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     """Handle conversation requests for the OLS endpoint.
 
     Args:
@@ -43,8 +43,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
     else:
         previous_input = config.conversation_cache.get(user_id, conversation_id)
         logger.info(f"{conversation_id} Previous conversation input: {previous_input}")
-
-    llm_response = LLMRequest(query=llm_request.query, conversation_id=conversation_id)
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
@@ -78,13 +76,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
             logger.info(
                 f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
-            llm_response.response = str(
-                {
-                    "detail": {
-                        "response": "I can only answer questions about \
-            OpenShift and Kubernetes. Please rephrase your question"
-                    }
-                }
+            response = (
+                "I can only answer questions about OpenShift and Kubernetes. "
+                "Please rephrase your question"
             )
         case constants.SUBJECT_VALID:
             logger.info(
@@ -95,9 +89,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
                 docs_summarizer = DocsSummarizer(
                     provider=llm_request.provider, model=llm_request.model
                 )
-                llm_response.response, _ = docs_summarizer.summarize(
+                llm_response, _ = docs_summarizer.summarize(
                     conversation_id, llm_request.query, previous_input
                 )
+                # TODO: There are some inconsitencies in the types to be solved.
+                # See the comment in `summarize` method in `docs_summarizer.py`
+                # Because of that, we are ignoring some type checks when we
+                # are creating response model.
+                response = llm_response.response
             except LLMConfigurationError as e:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -117,13 +116,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMRequest:
         config.conversation_cache.insert_or_append(
             user_id,
             conversation_id,
-            llm_request.query + "\n\n" + str(llm_response.response or ""),
+            llm_request.query + "\n\n" + str(response or ""),  # type: ignore
         )
+    llm_response = LLMResponse(conversation_id=conversation_id, response=response)  # type: ignore
     return llm_response
 
 
 @router.post("/debug/query")
-def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
+def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     """Handle requests for the base LLM completion endpoint.
 
     Args:
@@ -133,15 +133,12 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
         Response containing the processed information.
     """
     if llm_request.conversation_id is None:
-        conversation = suid.get_suid()
+        conversation_id = suid.get_suid()
     else:
-        conversation = llm_request.conversation_id
+        conversation_id = llm_request.conversation_id
 
-    llm_response = LLMRequest(query=llm_request.query)
-    llm_response.conversation_id = conversation
-
-    logger.info(f"{conversation} New conversation")
-    logger.info(f"{conversation} Incoming request: {llm_request.query}")
+    logger.info(f"{conversation_id} New conversation")
+    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     bare_llm = LLMLoader(
         config.ols_config.default_provider,
@@ -152,8 +149,10 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMRequest:
     llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
     response = llm_chain(inputs={"query": llm_request.query})
 
-    logger.info(f"{conversation} Model returned: {response}")
+    logger.info(f"{conversation_id} Model returned: {response}")
 
-    llm_response.response = response["text"]
+    llm_response = LLMResponse(
+        conversation_id=conversation_id, response=response["text"]
+    )
 
     return llm_response

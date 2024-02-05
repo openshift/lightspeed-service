@@ -4,14 +4,14 @@ import logging
 
 from fastapi import APIRouter
 
-from ols.app.models.models import FeedbackRequest
+from ols.app.models.models import FeedbackRequest, FeedbackResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
 @router.post("")
-def user_feedback(feedback_request: FeedbackRequest) -> dict:
+def user_feedback(feedback_request: FeedbackRequest) -> FeedbackResponse:
     """Handle feedback requests.
 
     Args:
@@ -20,8 +20,9 @@ def user_feedback(feedback_request: FeedbackRequest) -> dict:
     Returns:
         Response indicating the status of the feedback.
     """
-    conversation = feedback_request.conversation_id
-    logger.info(f"{conversation} New feedback received")
-    logger.info(f"{conversation} Feedback blob: {feedback_request.feedback_object}")
+    logger.info(
+        f"feed back received for conversation '{feedback_request.conversation_id}', "
+        f"feedback blob: {feedback_request.feedback_object}"
+    )
 
-    return {"status": "feedback received"}
+    return FeedbackResponse(response="feedback received")

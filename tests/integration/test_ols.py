@@ -40,10 +40,7 @@ def test_debug_query():
     assert response.status_code == requests.codes.ok
     assert response.json() == {
         "conversation_id": conversation_id,
-        "query": "test query",
         "response": "test response",
-        "provider": None,  # default value in request
-        "model": None,  # default value in request
     }
 
 
@@ -63,10 +60,7 @@ def test_debug_query_no_conversation_id():
 
     # check that conversation ID is being created
     assert len(json["conversation_id"]) > 0
-    assert json["query"] == "test query"
     assert json["response"] == "test response"
-    assert json["provider"] is None  # default value in request
-    assert json["model"] is None  # default value in request
 
 
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
@@ -141,20 +135,13 @@ def test_post_question_on_invalid_question():
             json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
-        expected_details = str(
-            {
-                "detail": {
-                    "response": "I can only answer questions about \
-            OpenShift and Kubernetes. Please rephrase your question"
-                }
-            }
+        expected_details = (
+            "I can only answer questions about OpenShift and Kubernetes. "
+            "Please rephrase your question"
         )
         expected_json = {
             "conversation_id": conversation_id,
-            "query": "test query",
             "response": expected_details,
-            "provider": None,  # default value in request
-            "model": None,  # default value in request
         }
         assert response.json() == expected_json
 

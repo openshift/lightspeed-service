@@ -7,21 +7,33 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 
 from fastapi import APIRouter
 
+from ols.app.models.models import HealthResponse
+
 router = APIRouter(tags=["health"])
 
-# Still to be decided on their functionality
+
+# TODO: Still to be decided on their functionality.
+# Example status response:
+# {
+#     "status": "unhealthy",
+#     "version": "1.0.0",
+#     "dependencies": {
+#         "database": "healthy",
+#         "externalApi": "unhealthy"
+#     }
+# }
 
 
 @router.get("/readiness")
-def readiness_probe_get_method() -> dict[str, str]:
+def readiness_probe_get_method() -> HealthResponse:
     """Ready status of service."""
-    return {"status": "1"}
+    return HealthResponse(status={"status": "healthy"})
 
 
 @router.get("/liveness")
-def liveness_probe_get_method() -> dict[str, str]:
+def liveness_probe_get_method() -> HealthResponse:
     """Live status of service."""
-    return {"status": "1"}
+    return HealthResponse(status={"status": "healthy"})
 
 
 @router.head("/readiness")
