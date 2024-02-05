@@ -67,7 +67,6 @@ def test_valid_question() -> None:
     print(vars(response))
     assert response.status_code == requests.codes.ok
     json_response = response.json()
-    json_response["query"] == "what is kubernetes?"
     json_response["conversation_id"] == conversation_id
     # assuming the response will be consistent
     assert (
