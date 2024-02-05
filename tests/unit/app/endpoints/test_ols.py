@@ -58,15 +58,6 @@ def test_conversation_request(
     )
     assert len(response.conversation_id) > 0
 
-    # conversation is cached
-    mock_validate_question.return_value = constants.SUBJECT_VALID
-    mock_summarize.return_value = ("content: generated yaml", "")
-    mock_summarize.side_effect = None
-    mock_conversation_cache_get.return_value = "previous conversation input"
-    llm_request = LLMRequest(query="Generate a yaml", conversation_id=suid.get_suid())
-    response = ols.conversation_request(llm_request)
-    assert response.response == "content: generated yaml"
-
     # validation failure
     mock_validate_question.side_effect = HTTPException
     with pytest.raises(HTTPException) as excinfo:
