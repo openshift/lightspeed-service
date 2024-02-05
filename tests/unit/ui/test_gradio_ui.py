@@ -22,7 +22,7 @@ def setup_logging(caplog):
 def test_gradio_ui_constructor():
     """Test if all attributes are setup correctly by constructor."""
     url = "locahost:8080"
-    conversation_id = "1234"
+    conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
 
     ui = GradioUI(ols_url=url, conversation_id=conversation_id)
     assert ui is not None

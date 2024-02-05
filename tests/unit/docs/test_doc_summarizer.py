@@ -71,7 +71,8 @@ def test_summarize_incorrect_directory(service_context):
     config.ols_config.reference_content.product_docs_index_id = "product"
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
-    summary, documents = summarizer.summarize("1234", question)
+    conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
+    summary, documents = summarizer.summarize(conversation_id, question)
     assert (
         "The following response was generated without access to reference content"
         in summary
