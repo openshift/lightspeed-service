@@ -535,6 +535,19 @@ def test_memory_cache_config():
     assert memory_cache_config.max_entries is None
 
 
+def test_memory_cache_config_improper_entries():
+    """Test the MemoryCacheConfig model if improper max_entries is used."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid max_entries for memory conversation cache",
+    ):
+        MemoryConfig(
+            {
+                "max_entries": -100,
+            }
+        )
+
+
 def test_memory_config_equality():
     """Test the MemoryConfig equality check."""
     memory_config_1 = MemoryConfig()
@@ -594,6 +607,25 @@ def test_conversation_cache_config():
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ConversationCacheConfig({"type": "memory"})
     assert "memory configuration is missing" in str(excinfo.value)
+
+
+def test_conversation_cache_config_validation():
+    """Test the ConversationCacheConfig validation."""
+    conversation_cache_config = ConversationCacheConfig()
+
+    # not specified cache type case
+    conversation_cache_config.type = None
+    with pytest.raises(
+        InvalidConfigurationError, match="missing conversation cache type"
+    ):
+        conversation_cache_config.validate_yaml()
+
+    # unknown cache type case
+    conversation_cache_config.type = "unknown"
+    with pytest.raises(
+        InvalidConfigurationError, match="unknown conversation cache type: unknown"
+    ):
+        conversation_cache_config.validate_yaml()
 
 
 def test_ols_config():
