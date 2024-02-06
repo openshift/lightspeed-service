@@ -59,7 +59,9 @@ class RedisCache(Cache):
         """
         key = super().construct_key(user_id, conversation_id)
 
-        return self.redis_client.get(key)
+        value = self.redis_client.get(key)
+        # GET operation might return Awaitable value, so it is time to "realize" it
+        return str(value) if value else None
 
     def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
         """Set the value associated with the given key.
