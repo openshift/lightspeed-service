@@ -18,7 +18,7 @@ class QuestionValidator(QueryHelper):
 
     def validate_question(
         self, conversation: str, query: str, verbose: bool = False
-    ) -> list[str]:
+    ) -> str:
         """Validate a question and provides a one-word response.
 
         Args:
@@ -27,7 +27,7 @@ class QuestionValidator(QueryHelper):
           verbose: If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
-            A list of one-word responses.
+            One-word response.
         """
         if config.dev_config.disable_question_validation:
             logger.debug(
