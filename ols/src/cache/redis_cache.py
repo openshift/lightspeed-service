@@ -1,7 +1,7 @@
 """Cache that uses Redis to store cached values."""
 
 import threading
-from typing import Union
+from typing import Optional
 
 import redis
 
@@ -47,7 +47,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
         """Get the value associated with the given key.
 
         Args:

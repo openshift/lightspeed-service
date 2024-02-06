@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ols.app.models.config import MemoryConfig
@@ -31,7 +31,7 @@ class InMemoryCache(Cache):
         self.deque: deque[str] = deque()
         self.cache: dict[str, str] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
         """Get the value associated with the given key.
 
         Args:
