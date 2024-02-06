@@ -6,6 +6,7 @@ from typing import Optional
 
 import gradio as gr
 import requests
+from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class GradioUI:
             # Handle any exceptions that may occur during the request
             return f"An error occurred: {e}"
 
-    def mount_ui(self, fast_api_instance, mount_path="/ui"):
+    def mount_ui(self, fast_api_instance: FastAPI, mount_path: str = "/ui"):
         """Register REST API endpoint to handle UI-related requests."""
         return gr.mount_gradio_app(fast_api_instance, self.ui, path=mount_path)
 
