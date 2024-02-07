@@ -42,7 +42,7 @@ class RedisCache(Cache):
         """
         kwargs: dict[str, Any] = {}
         if config.password is not None:
-            kwargs["password"] = config.password
+            kwargs["password"] = config.credentials.password
         if config.ca_cert_path is not None:
             kwargs["ssl"] = True
             kwargs["ssl_cert_reqs"] = "required"

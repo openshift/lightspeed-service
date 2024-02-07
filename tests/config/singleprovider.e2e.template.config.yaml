@@ -1,6 +1,7 @@
 ---
 llm_providers:
-  - name: $PROVIDER
+  $PROVIDER:
+    type: bam
     project_id: $PROVIDER_PROJECT_ID
     url: $PROVIDER_URL
     credentials_path: $PROVIDER_KEY_PATH

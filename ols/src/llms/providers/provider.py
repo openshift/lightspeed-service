@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from langchain.llms.base import LLM
 
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import LLMProviderConfig
 from ols.utils import config
 
 logger = logging.getLogger(__name__)
@@ -32,8 +32,8 @@ class LLMProvider(AbstractLLMProvider):
     """LLM provider base class."""
 
     def __init__(
-        self, model: str, provider_config: ProviderConfig, params: Optional[dict] = None
-    ) -> None:
+        self, model: str, provider_config: LLMProviderConfig, params: Optional[dict] = None
+    ):
         """Initialize LLM provider.
 
         Args:
