@@ -17,6 +17,9 @@ The following context contains several pieces of documentation. Please answer th
 Documentation context:
 {context_str}
 
+User query:
+{query_str}
+
 Summary:
 
 """
@@ -167,3 +170,7 @@ REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 
 # provider and model roles
 PROVIDER_MODEL_ROLES = frozenset({"default"})
+
+EMBEDDINGS_ROOT_DIR = "/workspace/source/ocp-product-docs-plaintext"
+OCP_DOCS_ROOT_URL = "https://docs.openshift.com/container-platform/"
+OCP_DOCS_VERSION = "4.14"
