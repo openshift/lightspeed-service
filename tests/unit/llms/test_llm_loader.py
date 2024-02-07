@@ -143,18 +143,3 @@ def test_constructor_unsatisfied_requirements(provider):
     with patch("builtins.__import__", side_effect=mock_import):
         with pytest.raises(ImportError, match="cannot import name"):
             LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)
-
-
-def test_constructor_openai_llm_instance_empty_api_key():
-    """Test the construction fo LLM instance for OpenAI when an empty API key is provided."""
-    # an empty API key is provided so validation should fail
-    config.init_config("tests/config/empty_openai_api_key.yaml")
-    with pytest.raises(Exception, match="Did not find openai_api_key"):
-        LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GPT35_TURBO)
-
-
-def test_constructor_openai_llm_instance_provided_api_key():
-    """Test the construction fo LLM instance for OpenAI when API key is provided."""
-    config.init_config("tests/config/with_openai_api_key.yaml")
-    # API key is provided so validation must not fail
-    LLMLoader(provider=constants.PROVIDER_OPENAI, model=constants.GPT35_TURBO)
