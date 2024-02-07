@@ -1,6 +1,7 @@
 """Class responsible for classifying a statement as yes, no, or undetermined."""
 
 import logging
+from typing import Any
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class YesNoClassifier(QueryHelper):
     """This class is responsible for classifying a statement as yes, no, or undetermined."""
 
-    def classify(self, conversation_id: str, statement: str, **kwargs) -> int:
+    def classify(self, conversation_id: str, statement: str, **kwargs: Any) -> int:
         """Classifies a statement as yes, no, or undetermined.
 
         Args:
