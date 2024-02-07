@@ -29,7 +29,6 @@ def test_raw_prompt():
         json={"conversation_id": conversation_id, "query": "say hello"},
         timeout=20,
     )
-    print(vars(r))
     response = r.json()
 
     assert r.status_code == requests.codes.ok
@@ -44,7 +43,6 @@ def test_invalid_question():
         json={"conversation_id": conversation_id, "query": "test query"},
         timeout=20,
     )
-    print(vars(response))
     assert response.status_code == requests.codes.ok
     expected_details = (
         "I can only answer questions about OpenShift and Kubernetes. "
@@ -64,7 +62,6 @@ def test_valid_question() -> None:
         json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
         timeout=90,
     )
-    print(vars(response))
     assert response.status_code == requests.codes.ok
     json_response = response.json()
     json_response["conversation_id"] == conversation_id
