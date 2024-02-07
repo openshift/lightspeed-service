@@ -34,7 +34,7 @@ def test_valid_responses(question_validator):
         conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
         with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
             response = question_validator.validate_question(
-                conversation=conversation_id, query="What is the meaning of life?"
+                conversation_id=conversation_id, query="What is the meaning of life?"
             )
 
             assert response == retval
@@ -54,7 +54,7 @@ def test_disabled_question_validator(question_validator):
 
         with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
             response = question_validator.validate_question(
-                conversation=conversation_id, query="What is the meaning of life?"
+                conversation_id=conversation_id, query="What is the meaning of life?"
             )
 
             assert response == constants.SUBJECT_VALID

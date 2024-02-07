@@ -20,12 +20,12 @@ class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
     def summarize(
-        self, conversation: str, query: str, history: Optional[str] = None, **kwargs
+        self, conversation_id: str, query: str, history: Optional[str] = None, **kwargs
     ) -> tuple[Response, str]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
-            conversation: The unique identifier for the conversation.
+            conversation_id: The unique identifier for the conversation.
             query: The query to be summarized.
             history: The history of the conversation (if available).
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
@@ -44,18 +44,18 @@ class DocsSummarizer(QueryHelper):
             llama_index.set_global_handler("simple")
 
         settings_string = (
-            f"conversation: {conversation}, "
+            f"conversation_id: {conversation_id}, "
             f"query: {query}, "
             f"provider: {self.provider}, "
             f"model: {self.model}, "
             f"verbose: {verbose}"
         )
-        logger.info(f"{conversation} call settings: {settings_string}")
+        logger.info(f"{conversation_id} call settings: {settings_string}")
 
         # TODO: use history there
         summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
 
-        logger.info(f"{conversation} Getting service context")
+        logger.info(f"{conversation_id} Getting service context")
 
         embed_model = "local:BAAI/bge-base-en"
 
@@ -64,7 +64,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         logger.info(
-            f"{conversation} using embed model: {service_context.embed_model!s}"
+            f"{conversation_id} using embed model: {service_context.embed_model!s}"
         )
 
         # TODO get this from global config
@@ -77,14 +77,14 @@ class DocsSummarizer(QueryHelper):
                 storage_context = StorageContext.from_defaults(
                     persist_dir=config.ols_config.reference_content.product_docs_index_path
                 )
-                logger.info(f"{conversation} Setting up index")
+                logger.info(f"{conversation_id} Setting up index")
                 index = load_index_from_storage(
                     storage_context=storage_context,
                     index_id=config.ols_config.reference_content.product_docs_index_id,
                     service_context=service_context,
                     verbose=verbose,
                 )
-                logger.info(f"{conversation} Setting up query engine")
+                logger.info(f"{conversation_id} Setting up query engine")
                 query_engine = index.as_query_engine(
                     text_qa_template=summarization_template,
                     verbose=verbose,
@@ -92,7 +92,7 @@ class DocsSummarizer(QueryHelper):
                     similarity_top_k=1,
                 )
 
-                logger.info(f"{conversation} Submitting summarization query")
+                logger.info(f"{conversation_id} Submitting summarization query")
                 summary = query_engine.query(query)
 
                 referenced_documents = "\n".join(
@@ -119,7 +119,7 @@ class DocsSummarizer(QueryHelper):
             )
             referenced_documents = ""
 
-        logger.info(f"{conversation} Summary response: {summary!s}")
-        logger.info(f"{conversation} Referenced documents: {referenced_documents}")
+        logger.info(f"{conversation_id} Summary response: {summary!s}")
+        logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
 
         return summary, referenced_documents
