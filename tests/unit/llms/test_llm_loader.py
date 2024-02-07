@@ -1,7 +1,7 @@
 """Unit tests for LLMLoader class."""
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -105,41 +105,3 @@ def test_constructor_when_missing_model_config():
     message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
     with pytest.raises(ModelConfigMissingError, match=message):
         LLMLoader(provider=test_provider, model=test_model)
-
-
-# all LLM providers that can be initialized
-llm_providers = [
-    constants.PROVIDER_OPENAI,
-    # constants.PROVIDER_OLLAMA,
-    constants.PROVIDER_WATSONX,
-    # constants.PROVIDER_TGI,
-    constants.PROVIDER_BAM,
-]
-
-
-@pytest.mark.parametrize("provider", llm_providers)
-def test_constructor_unsatisfied_requirements(provider):
-    """Test how unsatisfied requirements are handled by LLM loader."""
-    config.config = Config(
-        {
-            "llm_providers": [
-                {
-                    "name": provider,
-                    "models": [
-                        {
-                            "name": constants.GRANITE_13B_CHAT_V1,
-                        }
-                    ],
-                }
-            ]
-        }
-    )
-    config.llm_config = config.config.llm_providers
-
-    def mock_import(module, *args, **kwargs):
-        """Mock the import and from x import statements."""
-
-    # check what happens if LLM libraries can not be loaded
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError, match="cannot import name"):
-            LLMLoader(provider=provider, model=constants.GRANITE_13B_CHAT_V1)

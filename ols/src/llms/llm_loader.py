@@ -5,7 +5,18 @@ import logging
 import warnings
 from typing import Optional
 
+from genai import Client, Credentials
+from genai.extensions.langchain import LangChainInterface
+from genai.text.generation import TextGenerationParameters
+from ibm_watson_machine_learning.foundation_models import Model
+from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
+    WatsonxLLM,
+)
+from ibm_watson_machine_learning.metanames import (
+    GenTextParamsMetaNames as GenParams,
+)
 from langchain.llms.base import LLM
+from langchain_community.chat_models import ChatOpenAI
 
 from ols import constants
 from ols.app.models.config import ProviderConfig
@@ -161,13 +172,6 @@ class LLMLoader:
 
     def _openai_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
-        try:
-            from langchain_community.chat_models import ChatOpenAI
-        except Exception as e:
-            logger.error(
-                "Missing openai libraries. Openai provider will be unavailable."
-            )
-            raise e
         params: dict = {
             "base_url": api_url,
             "openai_api_key": api_key,
@@ -197,17 +201,6 @@ class LLMLoader:
     def _bam_llm_instance(self, api_url: str, api_key: str) -> LLM:
         """BAM Research Lab."""
         logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
-        try:
-            # BAM Research lab
-            from genai import Client, Credentials
-            from genai.extensions.langchain import LangChainInterface
-            from genai.text.generation import TextGenerationParameters
-        except Exception as e:
-            logger.error(
-                "Missing ibm-generative-ai libraries. ibm-generative-ai "
-                "provider will be unavailable."
-            )
-            raise e
         # BAM Research lab
         creds = Credentials(
             api_key=api_key,
@@ -304,20 +297,6 @@ class LLMLoader:
     # TODO: update this to use config not direct env vars
     def _watson_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
-        # WatsonX (requires WansonX libraries)
-        try:
-            from ibm_watson_machine_learning.foundation_models import Model
-            from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
-                WatsonxLLM,
-            )
-            from ibm_watson_machine_learning.metanames import (
-                GenTextParamsMetaNames as GenParams,
-            )
-        except Exception as e:
-            logger.error(
-                "Missing ibm_watson_machine_learning libraries. Skipping loading backend LLM."
-            )
-            raise e
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
