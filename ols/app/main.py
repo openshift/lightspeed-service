@@ -6,8 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from ols.app import metrics
-from ols.app.endpoints import feedback, health, ols
+from ols.app import routers
 from ols.src.ui.gradio_ui import GradioUI
 from ols.utils import config
 from ols.utils.logging import configure_logging
@@ -39,16 +38,4 @@ else:
     )
 
 
-def include_routers(app: FastAPI):
-    """Include FastAPI routers for different endpoints.
-
-    Args:
-        app: The `FastAPI` app instance.
-    """
-    app.include_router(ols.router, prefix="/v1")
-    app.include_router(feedback.router, prefix="/v1")
-    app.include_router(health.router)
-    app.mount("/metrics", metrics.metrics_app)
-
-
-include_routers(app)
+routers.include_routers(app)
