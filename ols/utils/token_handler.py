@@ -1,7 +1,8 @@
 """Utility to handle tokens."""
 
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod, abstractproperty
+from typing import Any
 
 import tiktoken
 
@@ -21,15 +22,16 @@ logger = logging.getLogger(__name__)
 class RetrievedNode(ABC):
     """Representation of retrieved node to be processed and truncated."""
 
-    def get_text(self):
+    @abstractmethod
+    def get_text(self) -> str:
         """Get text."""
 
-    @property
-    def score(self):
+    @abstractproperty
+    def score(self) -> float:
         """Score property."""
 
-    @property
-    def metadata(self):
+    @abstractproperty
+    def metadata(self) -> dict[str, Any]:
         """Node metadata."""
 
 
