@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import LLMProviderConfig
 from ols.src.llms.providers.watsonx import WatsonX
 from ols.utils import config
 from tests.mock_classes.mock_watsonxllm import WatsonxLLM
@@ -12,8 +12,8 @@ from tests.mock_classes.mock_watsonxllm import WatsonxLLM
 def test_basic_interface():
     """Test basic interface."""
     config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-    provider_cfg = ProviderConfig(
-        {
+    provider_cfg = LLMProviderConfig(
+        **{
             "name": "some_provider",
             "type": "watsonx",
             "url": "https://us-south.ml.cloud.ibm.com",
@@ -22,7 +22,7 @@ def test_basic_interface():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_url.com",
                     "credentials_path": "tests/config/secret.txt",
                 }
             ],

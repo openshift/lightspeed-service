@@ -24,7 +24,7 @@ class AzureOpenAI(LLMProvider):
         """Default LLM params."""
         # TODO: OLS-496 API version for Azure OpenAI needs to be parametrized
         return {
-            "azure_endpoint": self.provider_config.url or self.url,
+            "azure_endpoint": str(self.provider_config.url) or self.url,
             "api_key": self.provider_config.credentials,
             "api_version": "2024-02-01",
             "deployment_name": self.provider_config.deployment_name,

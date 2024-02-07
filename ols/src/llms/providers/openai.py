@@ -23,7 +23,7 @@ class OpenAI(LLMProvider):
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
         return {
-            "base_url": self.provider_config.url or self.url,
+            "base_url": str(self.provider_config.url) or self.url,
             "openai_api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {

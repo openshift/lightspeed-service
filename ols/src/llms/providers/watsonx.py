@@ -41,7 +41,7 @@ class WatsonX(LLMProvider):
         """Load LLM."""
         return WatsonxLLM(
             model_id=self.model,
-            url=self.provider_config.url or self.url,
+            url=str(self.provider_config.url) or self.url,
             apikey=self.provider_config.credentials,
             project_id=self.provider_config.project_id,
             params=self.params,

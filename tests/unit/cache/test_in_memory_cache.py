@@ -15,7 +15,7 @@ conversation_id = suid.get_suid()
 @pytest.fixture
 def cache():
     """Fixture with constucted and initialized in memory cache object."""
-    mc = MemoryConfig({"max_entries": "10"})
+    mc = MemoryConfig(**{"max_entries": "10"})
     c = InMemoryCache(mc)
     c.initialize_cache(mc)
     return c
@@ -119,7 +119,7 @@ def test_get_improper_conversation_id(cache):
 
 def test_singleton_pattern():
     """Test if in memory cache exists as one instance in memory."""
-    mc = MemoryConfig({"max_entries": "10"})
+    mc = MemoryConfig(**{"max_entries": "10"})
     cache1 = InMemoryCache(mc)
     cache2 = InMemoryCache(mc)
     assert cache1 is cache2

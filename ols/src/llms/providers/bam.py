@@ -39,7 +39,7 @@ class BAM(LLMProvider):
         """Load LLM."""
         creds = Credentials(
             api_key=self.provider_config.credentials,
-            api_endpoint=self.provider_config.url or self.url,
+            api_endpoint=str(self.provider_config.url) or self.url,
         )
 
         client = Client(credentials=creds)

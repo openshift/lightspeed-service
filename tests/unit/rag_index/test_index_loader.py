@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-from ols.app.models.config import ReferenceContent
 from ols.src.rag_index.index_loader import IndexLoader
 from ols.utils import config
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
@@ -22,9 +21,9 @@ def test_index_loader_empty_config(caplog):
 @patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
 def test_index_loader_no_id(storage_context, service_context):
     """Test index loader without index id."""
-    config.init_empty_config()
-    config.ols_config.reference_content = ReferenceContent(None)
+    config.init_config("tests/config/valid_config.yaml")
     config.ols_config.reference_content.product_docs_index_path = "./some_dir"
+    config.ols_config.reference_content.embeddings_model_path = None
 
     index_loader_obj = IndexLoader(config.ols_config.reference_content)
     index = index_loader_obj.vector_index
@@ -41,9 +40,10 @@ def test_index_loader_no_id(storage_context, service_context):
 @patch("ols.src.rag_index.index_loader.load_index_from_storage", new=MockLlamaIndex)
 def test_index_loader(storage_context, service_context, from_persist_dir):
     """Test index loader."""
-    config.ols_config.reference_content = ReferenceContent(None)
+    config.init_config("tests/config/valid_config.yaml")
     config.ols_config.reference_content.product_docs_index_path = "./some_dir"
     config.ols_config.reference_content.product_docs_index_id = "./some_id"
+    config.ols_config.reference_content.embeddings_model_path = None
 
     from_persist_dir.return_value = None
 

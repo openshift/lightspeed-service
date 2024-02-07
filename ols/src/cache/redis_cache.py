@@ -38,17 +38,17 @@ class RedisCache(Cache):
         This method sets up the Redis client with custom configuration parameters.
         """
         kwargs: dict[str, Any] = {}
-        if config.password is not None:
-            kwargs["password"] = config.password
+        if config.credentials.password is not None:
+            kwargs["password"] = config.credentials.password
         if config.ca_cert_path is not None:
             kwargs["ssl"] = True
             kwargs["ssl_cert_reqs"] = "required"
-            kwargs["ssl_ca_certs"] = config.ca_cert_path
+            kwargs["ssl_ca_certs"] = str(config.ca_cert_path)
 
         # setup Redis retry logic
         retry: Optional[Retry] = None
         if config.number_of_retries is not None and config.number_of_retries > 0:
-            retry = Retry(ExponentialBackoff(), config.number_of_retries)
+            retry = Retry(ExponentialBackoff(), config.number_of_retries)  # type: ignore
 
         retry_on_error: Optional[list[type[RedisError]]] = None
         if config.retry_on_error:

@@ -1,6 +1,7 @@
 ---
 llm_providers:
-  - name: bam
+  bam:
+    type: bam
     url: "https://bam-api.res.ibm.com"
     credentials_path: tests/config/secret.txt
     models:
@@ -9,6 +10,7 @@ ols_config:
   reference_content:
     product_docs_index_path: "tests/config"
     product_docs_index_id: product
+    embeddings_model_path: "tests/config"
   conversation_cache:
     type: memory
     memory:

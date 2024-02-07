@@ -8,7 +8,11 @@ from fastapi import HTTPException, Request
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 
 from ols.utils import config
-from ols.utils.auth_dependency import AuthDependency, K8sClientSingleton
+from ols.utils.auth_dependency import (
+    AuthDependency,
+    K8sClientSingleton,
+    get_user_info,
+)
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -96,3 +100,12 @@ def test_auth_dependency_config(_setup):
     assert isinstance(
         authz_client, AuthorizationV1Api
     ), "authz_client is not an instance of AuthorizationV1Api"
+
+
+def test_user_info(_setup):
+    """Test user info function."""
+    try:
+        result = get_user_info("1234")
+        assert result is None
+    except HTTPException as e:
+        assert "Unable to Review Token" in str(e)

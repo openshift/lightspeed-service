@@ -19,7 +19,7 @@ from ols.utils.auth_dependency import AuthDependency
 router = APIRouter(tags=["metrics"])
 auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
 
-disable_created_metrics()
+disable_created_metrics()  # type: ignore
 
 rest_api_calls_total = Counter(
     "ols_rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
@@ -68,12 +68,12 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
 
 def setup_model_metrics(config: config_model.Config) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
-    for _, provider in config.llm_providers.providers.items():
-        for model_name, _ in provider.models.items():
+    for provider_name, provider in config.llm_providers.items():  # type: ignore
+        for model in provider.models:
             if (
-                provider.name == config.ols_config.default_provider
-                and model_name == config.ols_config.default_model
+                provider_name == config.ols_config.default_provider
+                and model.name == config.ols_config.default_model
             ):
-                provider_model_configuration.labels(provider.type, model_name).set(1)
+                provider_model_configuration.labels(provider.type, model.name).set(1)
             else:
-                provider_model_configuration.labels(provider.type, model_name).set(0)
+                provider_model_configuration.labels(provider.type, model.name).set(0)

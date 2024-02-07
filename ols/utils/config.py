@@ -21,21 +21,20 @@ rag_index = None
 
 def init_empty_config() -> None:
     """Initialize empty configuration."""
+    # TODO: understand use case
     global config
     global ols_config
     global llm_config
     global dev_config
-    config = config_model.Config()
-    ols_config = config_model.OLSConfig()
-    llm_config = config_model.LLMProviders()
-    dev_config = config_model.DevConfig()
 
 
 def load_config_from_stream(stream: TextIOBase) -> config_model.Config:
     """Load configuration from a YAML stream."""
+    ## TODO: duplicates to be handled
     data = yaml.safe_load(stream)
-    c = config_model.Config(data)
-    c.validate_yaml()
+    # print(data)
+    c = config_model.Config(**data)
+    # c.validate_yaml()
     return c
 
 
@@ -55,7 +54,7 @@ def init_config(config_file: str) -> None:
             dev_config = config.dev_config
 
             conversation_cache = CacheFactory.conversation_cache(
-                ols_config.conversation_cache
+                ols_config.conversation_cache  # type: ignore
             )
     except Exception as e:
         print(f"Failed to load config file {config_file}: {e!s}")

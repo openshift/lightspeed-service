@@ -1,5 +1,5 @@
 llm_providers:
-  - name: my_bam
+  bam:
     type: bam
     url: "https://bam-api.res.ibm.com"
     credentials_path: bam_api_key.txt

@@ -5,7 +5,7 @@ from typing import Optional
 
 from langchain.llms.base import LLM
 
-from ols.app.models.config import LLMProviders, ProviderConfig
+from ols.app.models.config import LLMProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
 from ols.utils import config
 
@@ -29,19 +29,19 @@ class ModelConfigMissingError(LLMConfigurationError):
 
 
 def _resolve_provider_config(
-    provider: str, model: str, providers_config: LLMProviders
-) -> ProviderConfig:
+    provider: str, model: str, providers_config: dict[str, LLMProviderConfig]
+) -> LLMProviderConfig:
     """Ensure the provided inputs (provider/model) are valid in config.
 
     Return respective provider configuration.
     """
-    if provider not in providers_config.providers:
+    if provider not in providers_config:
         raise UnknownProviderError(
             f"Provider '{provider}' is not a valid provider. "
-            f"Valid providers are: {list(providers_config.providers.keys())}"
+            f"Valid providers are: {list(providers_config.keys())}"
         )
 
-    provider_config = providers_config.providers.get(provider)
+    provider_config = providers_config.get(provider)
 
     if model not in provider_config.models:
         raise ModelConfigMissingError(

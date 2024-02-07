@@ -9,7 +9,7 @@ from langchain_core.messages.base import BaseMessage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import LLMProviderConfig
 from ols.app.models.models import ReferencedDocument
 from ols.constants import NO_RAG_CONTENT_RESP, RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
@@ -24,11 +24,13 @@ class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
     def _get_model_options(
-        self, provider_config: ProviderConfig
+        self, provider_config: LLMProviderConfig
     ) -> Optional[dict[str, Any]]:
         if provider_config is not None:
-            model_config = provider_config.models.get(self.model)
-            return model_config.options
+            for model in provider_config.models:
+                if model.name == self.model:
+                    return model.options
+            return "Name not found"
 
     def summarize(
         self,
@@ -67,8 +69,10 @@ class DocsSummarizer(QueryHelper):
         token_handler = TokenHandler()
         bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
 
-        provider_config = config.llm_config.providers.get(self.provider)
-        model_config = provider_config.models.get(self.model)
+        provider_config = config.llm_config[self.provider]  # type: ignore
+        model_config = next(
+            (obj for obj in provider_config.models if obj.name == self.model), None
+        )
         model_options = self._get_model_options(provider_config)
 
         # Use dummy text for context/history to get complete prompt instruction.

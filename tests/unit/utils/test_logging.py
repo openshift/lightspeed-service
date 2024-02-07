@@ -8,7 +8,7 @@ from ols.utils.logging import LoggingConfig, configure_logging
 def test_configure_app_logging(caplog):
     """Test configure_logging function."""
     logging_config = LoggingConfig(
-        {"app_log_level": "info"},
+        **{"app_log_level": "info"},
     )
 
     configure_logging(logging_config)
@@ -25,7 +25,7 @@ def test_configure_app_logging(caplog):
 def test_configure_libs_logging(caplog):
     """Test configure_logging function for root/libs logger."""
     logging_config = LoggingConfig(
-        {"lib_log_level": "info"},
+        **{"lib_log_level": "info"},
     )
 
     configure_logging(logging_config)

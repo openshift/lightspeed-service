@@ -37,11 +37,15 @@ class K8sClientSingleton:
             configuration = kubernetes.client.Configuration()
 
             try:
-                if config.ols_config.authentication_config.k8s_cluster_api not in {
+                if config.ols_config.authentication_config.k8s_cluster_api not in {  # type: ignore
                     None,
                     "None",
                     "",
-                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
+                } and config.dev_config.k8s_auth_token not in {
+                    None,
+                    "None",
+                    "",
+                }:
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
@@ -72,7 +76,7 @@ class K8sClientSingleton:
 
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api
+                    if config.ols_config.authentication_config.k8s_cluster_api  # type: ignore
                     not in {None, "None", ""}
                     else configuration.host
                 )
@@ -81,7 +85,7 @@ class K8sClientSingleton:
                 )
                 configuration.ssl_ca_cert = (
                     config.ols_config.authentication_config.k8s_ca_cert_path
-                    if config.ols_config.authentication_config.k8s_ca_cert_path
+                    if config.ols_config.authentication_config.k8s_ca_cert_path  # type: ignore
                     not in {None, "None", ""}
                     else configuration.ssl_ca_cert
                 )
@@ -153,11 +157,8 @@ def _extract_bearer_token(header: str) -> str:
     Returns:
         The extracted token if present, else an empty string.
     """
-    try:
-        scheme, token = header.split(" ", 1)
-        return token if scheme.lower() == "bearer" else ""
-    except ValueError:
-        return ""
+    scheme, token = header.split(" ", 1)
+    return token if scheme.lower() == "bearer" else ""
 
 
 class AuthDependency:

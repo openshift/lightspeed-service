@@ -176,7 +176,8 @@ apiVersion: v1
 data:
   olsconfig.yaml: |
     llm_providers:
-      - name: openai
+      openai:
+        type: openai
         url: "https://api.openai.com/v1"
         credentials_path: config/openai/openai_api_key.txt
         models:

@@ -3,7 +3,7 @@
 import pytest
 from langchain_openai.chat_models.base import ChatOpenAI
 
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import LLMProviderConfig
 from ols.src.llms.providers.openai import OpenAI
 from ols.utils import config
 
@@ -11,16 +11,16 @@ from ols.utils import config
 @pytest.fixture
 def provider_config():
     """Fixture with provider configuration for OpenAI."""
-    return ProviderConfig(
-        {
+    return LLMProviderConfig(
+        **{
             "name": "some_provider",
             "type": "openai",
-            "url": "test_url",
+            "url": "http://test_url.com",
             "credentials_path": "tests/config/secret.txt",
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_url.com",
                     "credentials_path": "tests/config/secret.txt",
                 }
             ],

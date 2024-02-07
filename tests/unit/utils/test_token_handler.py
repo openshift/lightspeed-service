@@ -67,7 +67,7 @@ class TestTokenHandler(TestCase):
     def test_available_tokens_for_empty_prompt(self):
         """Test the get_available_tokens method for default model config."""
         # use default model config
-        model_config = ModelConfig({})
+        model_config = ModelConfig(name="test")
 
         prompt = ""
 
@@ -82,7 +82,7 @@ class TestTokenHandler(TestCase):
     def test_available_tokens_for_regular_prompt(self):
         """Test the get_available_tokens method for default model config."""
         # use default model config
-        model_config = ModelConfig({})
+        model_config = ModelConfig(name="test")
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
@@ -100,7 +100,7 @@ class TestTokenHandler(TestCase):
     def test_available_tokens_for_large_prompt(self):
         """Test the get_available_tokens method for default model config."""
         # use default model config
-        model_config = ModelConfig({})
+        model_config = ModelConfig(name="test")
 
         # this prompt will surely exceeds context window size
         prompt = "What is Kubernetes?" * 10000
@@ -114,9 +114,9 @@ class TestTokenHandler(TestCase):
         """Test the get_available_tokens method for specific model config."""
         # use specific model config
         model_config = ModelConfig(
-            {
+            **{
                 "name": "test_name",
-                "url": "test_url",
+                "url": "http://test_url.com",
                 "context_window_size": 100,
                 "response_token_limit": 50,
             },
