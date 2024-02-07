@@ -2,9 +2,11 @@
 
 import json
 import logging
+from typing import Optional
 
 import gradio as gr
 import requests
+from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ class GradioUI:
     def __init__(
         self,
         ols_url: str = "http://127.0.0.1:8080/v1/query",
-        conversation_id: str | None = None,
+        conversation_id: Optional[str] = None,
     ) -> None:
         """Initialize UI API handlers."""
         # class variable
@@ -34,9 +36,9 @@ class GradioUI:
         self,
         prompt: str,
         history,
-        use_history: bool | None = None,
-        provider: str | None = None,
-        model: str | None = None,
+        use_history: Optional[bool] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> str:
         """Handle requests from web-based user interface."""
         # Headers for the HTTP request
@@ -83,7 +85,7 @@ class GradioUI:
             # Handle any exceptions that may occur during the request
             return f"An error occurred: {e}"
 
-    def mount_ui(self, fast_api_instance, mount_path="/ui"):
+    def mount_ui(self, fast_api_instance: FastAPI, mount_path: str = "/ui"):
         """Register REST API endpoint to handle UI-related requests."""
         return gr.mount_gradio_app(fast_api_instance, self.ui, path=mount_path)
 

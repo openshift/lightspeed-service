@@ -5,19 +5,15 @@
 
 SUBJECT_VALID = "SUBJECT_VALID"
 SUBJECT_INVALID = "SUBJECT_INVALID"
-CATEGORY_YAML = "CATEGORY_YAML"
-CATEGORY_GENERIC = "CATEGORY_GENERIC"
-CATEGORY_UNKNOWN = "CATEGORY_UNKNOWN"
 POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
-    SUBJECT_VALID + "," + CATEGORY_YAML,
-    SUBJECT_VALID + "," + CATEGORY_GENERIC,
-    SUBJECT_INVALID + "," + CATEGORY_GENERIC,
+    SUBJECT_VALID,
+    SUBJECT_INVALID,
 )
 
 
 # templates
 SUMMARIZATION_TEMPLATE = """
-The following context contains several pieces of documentation. Please summarize the context for the user.
+The following context contains several pieces of documentation. Please answer the user's question based on this context.
 Documentation context:
 {context_str}
 
@@ -106,57 +102,34 @@ Instructions:
 - Your job is to determine if a question is about kubernetes or openshift and to provide a one-word response
 - If a question is not about kubernetes or openshift, answer with only the word {SUBJECT_INVALID}
 - If a question is about kubernetes or openshift, answer with the word {SUBJECT_VALID}
-- If a question is not about creating kubernetes or openshift yaml, answer with the word {CATEGORY_GENERIC}
-- If a question is about creating kubernetes or openshift yaml, add the word {CATEGORY_YAML}
 - Use a comma to separate the words
 - Do not provide explanation, only respond with the chosen words
 
 Example Question:
 Can you make me lunch with ham and cheese?
 Example Response:
-{SUBJECT_INVALID},{CATEGORY_GENERIC}
+{SUBJECT_INVALID}
 
 Example Question:
 Why is the sky blue?
 Example Response:
-{SUBJECT_INVALID},{CATEGORY_GENERIC}
+{SUBJECT_INVALID}
 
 Example Question:
 Can you help configure my cluster to automatically scale?
 Example Response:
-{SUBJECT_VALID},{CATEGORY_GENERIC}
+{SUBJECT_VALID}
 
 Example Question:
 please give me a vertical pod autoscaler configuration to manage my frontend deployment automatically.  Don't update the workload if there are less than 2 pods running.
 Example Response:
-{SUBJECT_VALID},{CATEGORY_YAML}
+{SUBJECT_VALID}
 
 Question:
 {{query}}
 Response:
 """
 
-YAML_GENERATOR_PROMPT_TEMPLATE = """
-Instructions:
-- Produce only a yaml response to the user request
-- Do not augment the response with markdown or other formatting beyond standard yaml formatting
-- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
-
-User Request: {query}
-"""
-
-YAML_GENERATOR_WITH_HISTORY_PROMPT_TEMPLATE = """
-Instructions:
-- Produce only a yaml response to the user request
-- Do not augment the response with markdown or other formatting beyond standard yaml formatting
-- Only provide a single yaml object containg a single resource type in your response, do not provide multiple yaml objects
-
-Here is the history of the conversation so far, you may find this relevant to the user request below:
-
-{history}
-
-User Request: {query}
-"""
 
 # providers
 PROVIDER_BAM = "bam"
@@ -181,8 +154,6 @@ GPT35_TURBO = "gpt-3.5-turbo"
 # indexing constants
 PRODUCT_INDEX = "product"
 PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
-SUMMARY_INDEX = "summary"
-SUMMARY_DOCS_PERSIST_DIR = "./vector-db/summary-docs"
 
 # cache constants
 IN_MEMORY_CACHE = "memory"
@@ -192,6 +163,7 @@ REDIS_CACHE_HOST = "redis-stack.ols.svc"
 REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "500mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
+REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 
 # provider and model roles
-PROVIDER_MODEL_ROLES = ("default", "classifier", "summarizer", "validator", "yaml")
+PROVIDER_MODEL_ROLES = frozenset({"default"})

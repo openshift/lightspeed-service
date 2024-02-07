@@ -15,7 +15,7 @@ flake8-pytest-style.fixture-parentheses = false
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
-fail_under = 60
+fail_under = 90
 
 [tool.mypy]
 disable_error_code = ["union-attr", "return-value", "arg-type", "misc", "call-arg", "import-untyped"]
@@ -36,30 +36,35 @@ dev = [
     # todo: remove when ibm-cos-sdk-core does not depend on urllib3<1.27.
     "types-requests<2.31.0.7"
 ]
+
 [project]
 name = "ols"
 version = "0.1.0"
 description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
-    "fastapi==0.109.0",
+    "fastapi==0.109.1",
     "gradio==4.16.0",
-    "kubernetes==29.0.0",  # not used?
     "langchain==0.1.4",
     "llama-index==0.9.39",  # dev dep?
-    "torch==2.1.2",  # not used?
-    "transformers==4.37.1",  # not direct dep?
     "uvicorn==0.27.0.post1",
     "redis==5.0.1",
     "faiss-cpu==1.7.4",
-    "sentence-transformers==2.3.0",  # not direct dep?
+    "sentence-transformers==2.3.0",
     "openai==1.10.0",
     "ibm-watson-machine-learning==1.0.344",
     "ibm-generative-ai==2.0.0",
-    "text-generation==0.6.1",  # not direct dep?
     "pydantic==2.6.0",
     "setuptools>=69.0.3",
+    "prometheus-client>=0.19.0",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
 license = "LICENSE"
+
+[tool.pdm.scripts]
+start = "pdm run make run"
+test = "pdm run make test"
+test-unit = "pdm run make test-unit"
+test-integration = "pdm run make test-integration"
+test-e2e = "pdm run make test-e2e"

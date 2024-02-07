@@ -26,19 +26,21 @@ test: test-unit test-integration test-e2e ## Run all tests
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_unit.json --junit-xml=${ARTIFACT_DIR}/junit_unit.xml
-	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_unit.json ${ARTIFACT_DIR}/coverage_unit.out
+	python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
+	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
+	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report json:${ARTIFACT_DIR}/coverage_integration.json --junit-xml=${ARTIFACT_DIR}/junit_integration.xml
-	python scripts/transform_coverage_report.py ${ARTIFACT_DIR}/coverage_integration.json ${ARTIFACT_DIR}/coverage_integration.out
+	python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
+	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
+	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/e2e --junit-xml=${ARTIFACT_DIR}/junit_e2e.xml
+	python -m pytest tests/e2e --junit-xml="${ARTIFACT_DIR}/junit_e2e.xml"
 		
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
@@ -60,7 +62,7 @@ help: ## Show this help screen
 	@echo ''
 	@echo 'Available targets are:'
 	@echo ''
-	@grep -E '^[ a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 	@echo ''
 

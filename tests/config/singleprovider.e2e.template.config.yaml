@@ -5,6 +5,9 @@ llm_providers:
     models:
       - name: $MODEL
 ols_config:
+  reference_content:
+    product_docs_index_path: $RAG_INDEX_DIR
+    product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:

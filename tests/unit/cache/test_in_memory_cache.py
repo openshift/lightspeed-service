@@ -2,6 +2,7 @@
 
 import pytest
 
+from ols.app.models.config import MemoryConfig
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
 
@@ -11,9 +12,9 @@ conversation_id = suid.get_suid()
 @pytest.fixture
 def cache():
     """Fixture with constucted and initialized in memory cache object."""
-    cache_size = 10
-    c = InMemoryCache(cache_size)
-    c.initialize_cache(cache_size)
+    mc = MemoryConfig({"max_entries": "10"})
+    c = InMemoryCache(mc)
+    c.initialize_cache(mc)
     return c
 
 
@@ -52,18 +53,21 @@ def test_get_nonexistent_user(cache):
 
 def test_get_improper_user_id(cache):
     """Test how improper user ID is handled."""
-    with pytest.raises(ValueError):
-        assert cache.get("foo/bar", conversation_id) is None
+    with pytest.raises(ValueError, match="Incorrect user ID"):
+        cache.get(":", conversation_id)
+    with pytest.raises(ValueError, match="Incorrect user ID"):
+        cache.get("foo:bar", conversation_id)
 
 
 def test_get_improper_conversation_id(cache):
     """Test how improper conversation ID is handled."""
-    with pytest.raises(ValueError):
-        assert cache.get("user1", "this-is-not-valid-uuid") is None
+    with pytest.raises(ValueError, match="Incorrect conversation ID"):
+        cache.get("user1", "this-is-not-valid-uuid")
 
 
 def test_singleton_pattern():
     """Test if in memory cache exists as one instance in memory."""
-    cache1 = InMemoryCache(10)
-    cache2 = InMemoryCache(10)
+    mc = MemoryConfig({"max_entries": "10"})
+    cache1 = InMemoryCache(mc)
+    cache2 = InMemoryCache(mc)
     assert cache1 is cache2

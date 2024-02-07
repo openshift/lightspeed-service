@@ -17,6 +17,9 @@ llm_providers:
       - name: m2
         url: "https://murl2"
 ols_config:
+  reference_content:
+    product_docs_index_path: "tests/config"
+    product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
@@ -31,7 +34,5 @@ ols_config:
   summarizer_model: m1
   validator_provider: p1
   validator_model: m1
-  yaml_provider: p2
-  yaml_model: m2
 dev_config:
   disable_auth: true

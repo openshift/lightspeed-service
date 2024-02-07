@@ -1,16 +1,12 @@
 """Cache that uses Redis to store cached values."""
 
-import os
 import threading
-from typing import Union
+from typing import Optional
 
 import redis
-from dotenv import load_dotenv
 
-from ols import constants
+from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
-
-load_dotenv()
 
 
 # TODO
@@ -22,31 +18,36 @@ class RedisCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls):
+    def __new__(cls: type["RedisCache"], config: RedisConfig) -> "RedisCache":
         """Create a new instance of the `RedisCache` class."""
         with cls._lock:
             if not cls._instance:
                 cls._instance = super(RedisCache, cls).__new__(cls)
-                cls._instance.initialize_redis()
+                cls._instance.initialize_redis(config)
         return cls._instance
 
-    def initialize_redis(self) -> None:
+    def initialize_redis(self, config: RedisConfig) -> None:
         """Initialize the Redis client and logger.
 
         This method sets up the Redis client with custom configuration parameters.
         """
+        kwargs = {}
+        if config.credentials is not None:
+            if config.credentials.username is not None:
+                kwargs["username"] = config.credentials.username
+            if config.credentials.password is not None:
+                kwargs["password"] = config.credentials.password
         self.redis_client = redis.StrictRedis(
-            host=os.environ.get("REDIS_CACHE_HOST", constants.REDIS_CACHE_HOST),
-            port=os.environ.get("REDIS_CACHE_PORT", constants.REDIS_CACHE_PORT),
+            host=config.host,
+            port=config.port,
             decode_responses=True,
+            **kwargs,
         )
         # Set custom configuration parameters
-        self.redis_client.config_set("maxmemory", constants.REDIS_CACHE_MAX_MEMORY)
-        self.redis_client.config_set(
-            "maxmemory-policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
-        )
+        self.redis_client.config_set("maxmemory", config.max_memory)
+        self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
         """Get the value associated with the given key.
 
         Args:

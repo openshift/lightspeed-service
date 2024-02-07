@@ -12,16 +12,16 @@ class CacheFactory:
 
     @staticmethod
     def conversation_cache(config: ConversationCacheConfig) -> Cache:
-        """Create an instance of Cache based on environment variable.
+        """Create an instance of Cache based on loaded configuration.
 
         Returns:
             An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
         """
         match config.type:
             case constants.REDIS_CACHE:
-                return RedisCache()
+                return RedisCache(config.redis)
             case constants.IN_MEMORY_CACHE:
-                return InMemoryCache(config.memory.max_entries)
+                return InMemoryCache(config.memory)
             case _:
                 raise ValueError(
                     f"Invalid cache type: {config.type}. "

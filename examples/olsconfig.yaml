@@ -1,4 +1,3 @@
----
 llm_providers:
   - name: bam
     url: "https://bam-api.res.ibm.com"
@@ -12,6 +11,9 @@ llm_providers:
       - name: gpt-4-1106-preview
       - name: gpt-3.5-turbo
 ols_config:
+  reference_content:
+#    product_docs_index_path: "./vector-db/ocp-product-docs"
+#    product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
@@ -30,3 +32,4 @@ dev_config:
   disable_auth: false
   # llm_temperature_override: 0
   # disable_question_validation: false
+  # disable_auth: false

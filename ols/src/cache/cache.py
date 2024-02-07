@@ -1,8 +1,9 @@
 """Abstract class that is parent for all cache implementations."""
 
-import re
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Optional
+
+from ols.utils.suid import check_suid
 
 
 class Cache(ABC):
@@ -15,17 +16,20 @@ class Cache(ABC):
     read or modify other users conversations.
     """
 
+    # separator between parts of compond key
+    COMPOUND_KEY_SEPARATOR = ":"
+
     @staticmethod
-    def _check_user_id(user_id: str):
+    def _check_user_id(user_id: str) -> None:
         """Check if given user ID is valid."""
         # TODO: needs to be updated when we know the format
-        if "/" in user_id:
+        if Cache.COMPOUND_KEY_SEPARATOR in user_id:
             raise ValueError("Incorrect user ID {user_id}")
 
     @staticmethod
-    def _check_conversation_id(conversation_id: str):
+    def _check_conversation_id(conversation_id: str) -> None:
         """Check if given conversation ID is a valid UUID (including optional dashes)."""
-        if re.compile("^[a-f0-9]{32}$").match(conversation_id) is None:
+        if not check_suid(conversation_id):
             raise ValueError(f"Incorrect conversation ID {conversation_id}")
 
     @staticmethod
@@ -33,10 +37,10 @@ class Cache(ABC):
         """Construct key to cache."""
         Cache._check_user_id(user_id)
         Cache._check_conversation_id(conversation_id)
-        return f"{user_id}/{conversation_id}"
+        return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
-    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
         """Abstract method to retrieve a value from the cache.
 
         Args:

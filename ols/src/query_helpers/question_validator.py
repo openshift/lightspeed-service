@@ -18,7 +18,7 @@ class QuestionValidator(QueryHelper):
 
     def validate_question(
         self, conversation: str, query: str, verbose: bool = False
-    ) -> list[str]:
+    ) -> str:
         """Validate a question and provides a one-word response.
 
         Args:
@@ -27,14 +27,14 @@ class QuestionValidator(QueryHelper):
           verbose: If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
-            A list of one-word responses.
+            One-word response.
         """
         if config.dev_config.disable_question_validation:
             logger.debug(
                 f"{conversation} Question validation is disabled. "
                 f"Treating question as [valid,generic]."
             )
-            return [constants.SUBJECT_VALID, constants.CATEGORY_GENERIC]
+            return constants.SUBJECT_VALID
 
         settings_string = (
             f"conversation: {conversation}, "
@@ -66,13 +66,7 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation} response: {clean_response}")
 
-        # If we are not able to indentify the intent, request the user to rephrase the question
-        if response["text"] not in constants.POSSIBLE_QUESTION_VALIDATOR_RESPONSES:
-            return [constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN]
-
         # Will return list with one of the following:
-        # [SUBJECT_VALID, CATEGORY_YAML]
-        # [SUBJECT_VALID, CATEGORY_GENERIC]
-        # [SUBJECT_INVALID,CATEGORY_GENERIC]
-        # [SUBJECT_VALID, CATEGORY_UNKNOWN]
-        return clean_response.split(",")
+        # SUBJECT_VALID
+        # SUBJECT_INVALID
+        return clean_response

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import Union
+from typing import TYPE_CHECKING, Optional
 
+if TYPE_CHECKING:
+    from ols.app.models.config import MemoryConfig
 from ols.src.cache.cache import Cache
 
 
@@ -15,21 +17,21 @@ class InMemoryCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls: type[InMemoryCache], size: int) -> InMemoryCache:
+    def __new__(cls: type[InMemoryCache], config: MemoryConfig) -> InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
                 cls._instance = super(InMemoryCache, cls).__new__(cls)
-                cls._instance.initialize_cache(size)
+                cls._instance.initialize_cache(config)
         return cls._instance
 
-    def initialize_cache(self, size: int) -> None:
+    def initialize_cache(self, config: MemoryConfig) -> None:
         """Initialize the InMemoryCache."""
-        self.capacity = size
+        self.capacity = config.max_entries
         self.deque: deque[str] = deque()
         self.cache: dict[str, str] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> Union[str, None]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
         """Get the value associated with the given key.
 
         Args:

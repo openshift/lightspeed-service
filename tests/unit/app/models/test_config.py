@@ -15,6 +15,7 @@ from ols.app.models.config import (
     OLSConfig,
     ProviderConfig,
     RedisConfig,
+    RedisCredentials,
 )
 
 
@@ -42,8 +43,15 @@ def test_model_config_equality():
     """Test the ModelConfig equality check."""
     model_config_1 = ModelConfig()
     model_config_2 = ModelConfig()
+
+    # compare the same model configs
     assert model_config_1 == model_config_2
 
+    # compare different model configs
+    model_config_2.name = "some non-default name"
+    assert model_config_1 != model_config_2
+
+    # compare with value of different type
     other_value = "foo"
     assert model_config_1 != other_value
 
@@ -61,12 +69,26 @@ def test_model_config_validation_proper_config():
     model_config.validate_yaml()
 
 
+def test_model_config_validation_no_credentials_path():
+    """Test the ModelConfig model validation when path to credentials is not provided."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": None,
+        }
+    )
+    # validation should not fail
+    model_config.validate_yaml()
+    assert model_config.credentials is None
+
+
 def test_model_config_validation_empty_model():
     """Test the ModelConfig model validation when model is empty."""
     model_config = ModelConfig()
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model name is missing"):
         model_config.validate_yaml()
 
 
@@ -81,7 +103,7 @@ def test_model_config_validation_missing_name():
     )
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model name is missing"):
         model_config.validate_yaml()
 
 
@@ -96,7 +118,7 @@ def test_model_config_validation_improper_url():
     )
 
     # validation should fail
-    with pytest.raises(InvalidConfigurationError):
+    with pytest.raises(InvalidConfigurationError, match="model URL is invalid"):
         model_config.validate_yaml()
 
 
@@ -158,6 +180,105 @@ def test_provider_config():
     assert "model name is missing" in str(excinfo.value)
 
 
+def test_provider_config_equality():
+    """Test the ProviderConfig equality check."""
+    provider_config_1 = ProviderConfig()
+    provider_config_2 = ProviderConfig()
+
+    # compare the same provider configs
+    assert provider_config_1 == provider_config_2
+
+    # compare different model configs
+    provider_config_2.name = "some non-default name"
+    assert provider_config_1 != provider_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert provider_config_1 != other_value
+
+
+def test_provider_config_validation_proper_config():
+    """Test the ProviderConfig model validation."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    provider_config.validate_yaml()
+
+
+def test_provider_config_validation_improper_url():
+    """Test the ProviderConfig model validation for improper URL."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "httpXXX://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(InvalidConfigurationError, match="provider URL is invalid"):
+        provider_config.validate_yaml()
+
+
+def test_provider_config_validation_missing_name():
+    """Test the ProviderConfig model validation for missing name."""
+    provider_config = ProviderConfig(
+        {
+            "url": "httpXXX://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(InvalidConfigurationError, match="provider name is missing"):
+        provider_config.validate_yaml()
+
+
+def test_provider_config_validation_no_credentials_path():
+    """Test the ProviderConfig model validation when path to credentials is not provided."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": None,
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.model.url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+    provider_config.validate_yaml()
+    assert provider_config.credentials is None
+
+
 def test_llm_providers():
     """Test the LLMProviders model."""
     llm_providers = LLMProviders(
@@ -210,6 +331,23 @@ def test_llm_providers():
             ]
         )
     assert "provider name is missing" in str(excinfo.value)
+
+
+def test_llm_providers_equality():
+    """Test the LLMProviders equality check."""
+    provider_config_1 = LLMProviders()
+    provider_config_2 = LLMProviders()
+
+    # compare same providers
+    assert provider_config_1 == provider_config_2
+
+    # compare different providers
+    provider_config_2.providers = [ProviderConfig()]
+    assert provider_config_1 != provider_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert provider_config_1 != other_value
 
 
 class TestLoggingConfig:
@@ -271,6 +409,119 @@ def test_redis_config():
     assert redis_config.max_memory_policy is None
 
 
+def test_redis_config_with_credentials():
+    """Test the RedisConfig model."""
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+            "credentials": {
+                "username_path": "tests/config/redis_username.txt",
+                "password_path": "tests/config/redis_password.txt",
+            },
+        }
+    )
+    assert redis_config.credentials.username == "redis_username"
+    assert redis_config.credentials.password == "redis_password"  # noqa S105
+
+
+def test_redis_credentials_validation_empty_setup():
+    """Test the validation of empty RedisCredentials."""
+    redis_credentials = RedisCredentials()
+    redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_correct_setup():
+    """Test the validation of correct RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "username_path": "tests/config/redis_username.txt",
+            "password_path": "tests/config/redis_password.txt",
+        }
+    )
+    redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_missing_password_path():
+    """Test the validation of incorrect RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "username_path": "tests/config/redis_username.txt",
+            "password_path": None,
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="for Redis, if a username is specified, a password also needs to be specified",
+    ):
+        redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_missing_user_path():
+    """Test the validation of missing username in RedisCredentials."""
+    redis_credentials = RedisCredentials(
+        {
+            "username_path": None,
+            "password_path": "tests/config/redis_password.txt",
+        }
+    )
+    redis_credentials.validate_yaml()
+
+
+def test_redis_credentials_validation_wrong_paths():
+    """Test the validation of incorrect paths to credentials."""
+    with pytest.raises(Exception):
+        RedisCredentials(
+            {
+                "username_path": "tests/config/redis_username.txt",
+                "password_path": "/dev/null/foobar",
+            }
+        )
+    with pytest.raises(Exception):
+        RedisCredentials(
+            {
+                "username_path": "/dev/null/foobar",
+                "password_path": "tests/config/redis_password.txt",
+            }
+        )
+
+
+def test_redis_credentials_equality():
+    """Test the RedisCredentials equality check."""
+    redis_credentials_1 = RedisCredentials()
+    redis_credentials_2 = RedisCredentials()
+
+    # compare the same Redis credentialss
+    assert redis_credentials_1 == redis_credentials_2
+
+    # compare different Redis credentialss
+    redis_credentials_2.username = "this is me"
+    assert redis_credentials_1 != redis_credentials_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert redis_credentials_1 != other_value
+
+
+def test_redis_config_equality():
+    """Test the RedisConfig equality check."""
+    redis_config_1 = RedisConfig()
+    redis_config_2 = RedisConfig()
+
+    # compare the same Redis configs
+    assert redis_config_1 == redis_config_2
+
+    # compare different Redis configs
+    redis_config_2.host = "12.34.56.78"
+    assert redis_config_1 != redis_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert redis_config_1 != other_value
+
+
 def test_memory_cache_config():
     """Test the MemoryCacheConfig model."""
     memory_cache_config = MemoryConfig(
@@ -282,6 +533,36 @@ def test_memory_cache_config():
 
     memory_cache_config = MemoryConfig()
     assert memory_cache_config.max_entries is None
+
+
+def test_memory_cache_config_improper_entries():
+    """Test the MemoryCacheConfig model if improper max_entries is used."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid max_entries for memory conversation cache",
+    ):
+        MemoryConfig(
+            {
+                "max_entries": -100,
+            }
+        )
+
+
+def test_memory_config_equality():
+    """Test the MemoryConfig equality check."""
+    memory_config_1 = MemoryConfig()
+    memory_config_2 = MemoryConfig()
+
+    # compare the same memory configs
+    assert memory_config_1 == memory_config_2
+
+    # compare different memory configs
+    memory_config_2.max_entries = 123456
+    assert memory_config_1 != memory_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert memory_config_1 != other_value
 
 
 def test_conversation_cache_config():
@@ -328,20 +609,31 @@ def test_conversation_cache_config():
     assert "memory configuration is missing" in str(excinfo.value)
 
 
+def test_conversation_cache_config_validation():
+    """Test the ConversationCacheConfig validation."""
+    conversation_cache_config = ConversationCacheConfig()
+
+    # not specified cache type case
+    conversation_cache_config.type = None
+    with pytest.raises(
+        InvalidConfigurationError, match="missing conversation cache type"
+    ):
+        conversation_cache_config.validate_yaml()
+
+    # unknown cache type case
+    conversation_cache_config.type = "unknown"
+    with pytest.raises(
+        InvalidConfigurationError, match="unknown conversation cache type: unknown"
+    ):
+        conversation_cache_config.validate_yaml()
+
+
 def test_ols_config():
     """Test the OLSConfig model."""
     ols_config = OLSConfig(
         {
             "default_provider": "test_default_provider",
             "default_model": "test_default_model",
-            "classifier_provider": "test_classifer_provider",
-            "classifier_model": "test_classifier_model",
-            "summarizer_provider": "test_summarizer_provider",
-            "summarizer_model": "test_summarizer_model",
-            "validator_provider": "test_validator_provider",
-            "validator_model": "test_validator_model",
-            "yaml_provider": "test_yaml_provider",
-            "yaml_model": "test_yaml_model",
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -355,14 +647,6 @@ def test_ols_config():
     )
     assert ols_config.default_provider == "test_default_provider"
     assert ols_config.default_model == "test_default_model"
-    assert ols_config.classifier_provider == "test_classifer_provider"
-    assert ols_config.classifier_model == "test_classifier_model"
-    assert ols_config.summarizer_provider == "test_summarizer_provider"
-    assert ols_config.summarizer_model == "test_summarizer_model"
-    assert ols_config.validator_provider == "test_validator_provider"
-    assert ols_config.validator_model == "test_validator_model"
-    assert ols_config.yaml_provider == "test_yaml_provider"
-    assert ols_config.yaml_model == "test_yaml_model"
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
@@ -389,14 +673,6 @@ def test_config():
             "ols_config": {
                 "default_provider": "test_default_provider",
                 "default_model": "test_default_model",
-                "classifier_provider": "test_classifer_provider",
-                "classifier_model": "test_classifier_model",
-                "summarizer_provider": "test_summarizer_provider",
-                "summarizer_model": "test_summarizer_model",
-                "validator_provider": "test_validator_provider",
-                "validator_model": "test_validator_model",
-                "yaml_provider": "test_yaml_provider",
-                "yaml_model": "test_yaml_model",
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -441,27 +717,28 @@ def test_config():
     )
     assert config.ols_config.default_provider == "test_default_provider"
     assert config.ols_config.default_model == "test_default_model"
-    assert config.ols_config.classifier_provider == "test_classifer_provider"
-    assert config.ols_config.classifier_model == "test_classifier_model"
-    assert config.ols_config.summarizer_provider == "test_summarizer_provider"
-    assert config.ols_config.summarizer_model == "test_summarizer_model"
-    assert config.ols_config.validator_provider == "test_validator_provider"
-    assert config.ols_config.validator_model == "test_validator_model"
-    assert config.ols_config.yaml_provider == "test_yaml_provider"
-    assert config.ols_config.yaml_model == "test_yaml_model"
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_no_llm_providers():
+    """Check if empty config is rejected as expected."""
+    with pytest.raises(
+        InvalidConfigurationError, match="no LLM providers config section found"
+    ):
         Config().validate_yaml()
-    assert "no LLM providers config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_empty_llm_providers():
+    """Check if empty list of providers is rejected as expected."""
+    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
         Config({"llm_providers": []}).validate_yaml()
-    assert "no OLS config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_without_ols_section():
+    """Test the Config model of the Global service configuration with missing OLS section."""
+    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
         Config(
             {
                 "llm_providers": [
@@ -480,9 +757,14 @@ def test_config():
                 ],
             }
         ).validate_yaml()
-    assert "no OLS config section found" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+
+def test_config_improper_missing_model():
+    """Test the Config model of the Global service configuration when model is missing."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_provider is specified, but default_model is missing",
+    ):
         Config(
             {
                 "llm_providers": [
@@ -499,9 +781,91 @@ def test_config():
                         ],
                     }
                 ],
-                "ols_config": {"default_provider": "test_default_provider"},
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 1000,
+                        },
+                    },
+                    "default_provider": "test_default_provider",
+                },
             }
         ).validate_yaml()
-    assert "default_provider is specified, but default_model is missing" in str(
-        excinfo.value
-    )
+
+
+def test_config_improper_provider():
+    """Test the Config model of the Global service configuration when improper provider is set."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_provider specifies an unknown provider test_default_provider",
+    ):
+        Config(
+            {
+                "llm_providers": [],
+                "ols_config": {
+                    "default_provider": "test_default_provider",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()
+
+
+def test_config_improper_model():
+    """Test the Config model of the Global service configuration when improper model is set."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="default_model specifies an unknown model test_default_model",
+    ):
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "test_provider_name",
+                        "url": "http://test_provider_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "test_model_name",
+                                "url": "http://test_model_url",
+                                "credentials_path": "tests/config/secret.txt",
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "default_provider": "test_provider_name",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()

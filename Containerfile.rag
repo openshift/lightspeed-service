@@ -1,0 +1,24 @@
+# vim: set filetype=dockerfile
+
+# port, commands, and other details inherited from the base image
+ARG OLS_VERSION=latest
+FROM quay.io/openshift/lightspeed-service-api:${OLS_VERSION}
+
+ARG RAG_INDEX="https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip"
+ARG APP_ROOT=/app-root
+USER 0
+
+RUN microdnf install -y unzip wget \
+  && mkdir -p vector-db \
+	&& cd vector-db \
+  && wget $RAG_INDEX \
+	&& unzip local.zip \
+	&& mv local ocp-product-docs \
+	&& rm -f local.zip \
+	&& microdnf remove -y unzip wget
+
+RUN chown -R 1001:0 ${APP_ROOT} && \
+    chmod -R g+rx ${APP_ROOT}
+
+# default user for Python app
+USER 1001

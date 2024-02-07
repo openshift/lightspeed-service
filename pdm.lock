@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:603c95fa7d299eb49953b90b3fecfad22afae24773c6f1157ea9a38424356e75"
+content_hash = "sha256:43cda5eeeda80225e74f8daa63d62b4e8c19470c502eeecbb3b38c83dd63e86f"
 
 [[package]]
 name = "aiofiles"
@@ -163,17 +163,6 @@ files = [
     {file = "black-24.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:5d7b06ea8816cbd4becfe5f70accae953c53c0e53aa98730ceccb0395520ee5d"},
     {file = "black-24.1.1-py3-none-any.whl", hash = "sha256:5cdc2e2195212208fbcae579b931407c1fa9997584f0a415421748aeafff1168"},
     {file = "black-24.1.1.tar.gz", hash = "sha256:48b5760dcbfe5cf97fd4fba23946681f3a81514c6ab8a45b50da67ac8fbc6c7b"},
-]
-
-[[package]]
-name = "cachetools"
-version = "5.3.2"
-requires_python = ">=3.7"
-summary = "Extensible memoizing collections and decorators"
-groups = ["default"]
-files = [
-    {file = "cachetools-5.3.2-py3-none-any.whl", hash = "sha256:861f35a13a451f94e301ce2bec7cac63e881232ccce7ed67fab9b5df4d3beaa1"},
-    {file = "cachetools-5.3.2.tar.gz", hash = "sha256:086ee420196f7b2ab9ca2db2520aca326318b68fe5ba8bc4d49cca91add450f2"},
 ]
 
 [[package]]
@@ -377,7 +366,7 @@ files = [
 
 [[package]]
 name = "fastapi"
-version = "0.109.0"
+version = "0.109.1"
 requires_python = ">=3.8"
 summary = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 groups = ["default"]
@@ -387,8 +376,8 @@ dependencies = [
     "typing-extensions>=4.8.0",
 ]
 files = [
-    {file = "fastapi-0.109.0-py3-none-any.whl", hash = "sha256:8c77515984cd8e8cfeb58364f8cc7a28f0692088475e2614f7bf03275eba9093"},
-    {file = "fastapi-0.109.0.tar.gz", hash = "sha256:b978095b9ee01a5cf49b19f4bc1ac9b8ca83aa076e770ef8fd9af09a2b88d191"},
+    {file = "fastapi-0.109.1-py3-none-any.whl", hash = "sha256:510042044906b17b6d9149135d90886ade170bf615efcfb5533f568ae6d88534"},
+    {file = "fastapi-0.109.1.tar.gz", hash = "sha256:5402389843a3561918634eb327e86b9ae98645a9e7696bede9074449c48d610a"},
 ]
 
 [[package]]
@@ -465,22 +454,6 @@ groups = ["default"]
 files = [
     {file = "fsspec-2023.12.2-py3-none-any.whl", hash = "sha256:d800d87f72189a745fa3d6b033b9dc4a34ad069f60ca60b943a63599f5501960"},
     {file = "fsspec-2023.12.2.tar.gz", hash = "sha256:8548d39e8810b59c38014934f6b31e57f40c1b20f911f4cc2b85389c7e9bf0cb"},
-]
-
-[[package]]
-name = "google-auth"
-version = "2.27.0"
-requires_python = ">=3.7"
-summary = "Google Authentication Library"
-groups = ["default"]
-dependencies = [
-    "cachetools<6.0,>=2.0.0",
-    "pyasn1-modules>=0.2.1",
-    "rsa<5,>=3.1.4",
-]
-files = [
-    {file = "google-auth-2.27.0.tar.gz", hash = "sha256:e863a56ccc2d8efa83df7a80272601e43487fa9a728a376205c86c26aaefa821"},
-    {file = "google_auth-2.27.0-py2.py3-none-any.whl", hash = "sha256:8e4bad367015430ff253fe49d500fdc3396c1a434db5740828c728e45bcce245"},
 ]
 
 [[package]]
@@ -901,29 +874,6 @@ files = [
     {file = "kiwisolver-1.4.5-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:210ef2c3a1f03272649aff1ef992df2e724748918c4bc2d5a90352849eb40bea"},
     {file = "kiwisolver-1.4.5-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:11d011a7574eb3b82bcc9c1a1d35c1d7075677fdd15de527d91b46bd35e935ee"},
     {file = "kiwisolver-1.4.5.tar.gz", hash = "sha256:e57e563a57fb22a142da34f38acc2fc1a5c864bc29ca1517a88abc963e60d6ec"},
-]
-
-[[package]]
-name = "kubernetes"
-version = "29.0.0"
-requires_python = ">=3.6"
-summary = "Kubernetes python client"
-groups = ["default"]
-dependencies = [
-    "certifi>=14.05.14",
-    "google-auth>=1.0.1",
-    "oauthlib>=3.2.2",
-    "python-dateutil>=2.5.3",
-    "pyyaml>=5.4.1",
-    "requests",
-    "requests-oauthlib",
-    "six>=1.9.0",
-    "urllib3>=1.24.2",
-    "websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0",
-]
-files = [
-    {file = "kubernetes-29.0.0-py2.py3-none-any.whl", hash = "sha256:ab8cb0e0576ccdfb71886366efb102c6a20f268d817be065ce7f9909c631e43e"},
-    {file = "kubernetes-29.0.0.tar.gz", hash = "sha256:c4812e227ae74d07d53c88293e564e54b850452715a59a927e7e1bc6b9a60459"},
 ]
 
 [[package]]
@@ -1387,13 +1337,13 @@ files = [
 
 [[package]]
 name = "nvidia-nccl-cu12"
-version = "2.18.1"
+version = "2.19.3"
 requires_python = ">=3"
 summary = "NVIDIA Collective Communication Library (NCCL) Runtime"
 groups = ["default"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
-    {file = "nvidia_nccl_cu12-2.18.1-py3-none-manylinux1_x86_64.whl", hash = "sha256:1a6c4acefcbebfa6de320f412bf7866de856e786e0462326ba1bac40de0b5e71"},
+    {file = "nvidia_nccl_cu12-2.19.3-py3-none-manylinux1_x86_64.whl", hash = "sha256:a9734707a2c96443331c1e48c717024aa6678a0e2a4cb66b2c364d18cee6b48d"},
 ]
 
 [[package]]
@@ -1418,17 +1368,6 @@ marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
     {file = "nvidia_nvtx_cu12-12.1.105-py3-none-manylinux1_x86_64.whl", hash = "sha256:dc21cf308ca5691e7c04d962e213f8a4aa9bbfa23d95412f452254c2caeb09e5"},
     {file = "nvidia_nvtx_cu12-12.1.105-py3-none-win_amd64.whl", hash = "sha256:65f4d98982b31b60026e0e6de73fbdfc09d08a96f4656dd3665ca616a11e1e82"},
-]
-
-[[package]]
-name = "oauthlib"
-version = "3.2.2"
-requires_python = ">=3.6"
-summary = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
-groups = ["default"]
-files = [
-    {file = "oauthlib-3.2.2-py3-none-any.whl", hash = "sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca"},
-    {file = "oauthlib-3.2.2.tar.gz", hash = "sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918"},
 ]
 
 [[package]]
@@ -1572,28 +1511,14 @@ files = [
 ]
 
 [[package]]
-name = "pyasn1"
-version = "0.5.1"
-requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
-summary = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
+name = "prometheus-client"
+version = "0.19.0"
+requires_python = ">=3.8"
+summary = "Python client for the Prometheus monitoring system."
 groups = ["default"]
 files = [
-    {file = "pyasn1-0.5.1-py2.py3-none-any.whl", hash = "sha256:4439847c58d40b1d0a573d07e3856e95333f1976294494c325775aeca506eb58"},
-    {file = "pyasn1-0.5.1.tar.gz", hash = "sha256:6d391a96e59b23130a5cfa74d6fd7f388dbbe26cc8f1edf39fdddf08d9d6676c"},
-]
-
-[[package]]
-name = "pyasn1-modules"
-version = "0.3.0"
-requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
-summary = "A collection of ASN.1-based protocols modules"
-groups = ["default"]
-dependencies = [
-    "pyasn1<0.6.0,>=0.4.6",
-]
-files = [
-    {file = "pyasn1_modules-0.3.0-py2.py3-none-any.whl", hash = "sha256:d3ccd6ed470d9ffbc716be08bd90efbd44d0734bc9303818f7336070984a162d"},
-    {file = "pyasn1_modules-0.3.0.tar.gz", hash = "sha256:5bd01446b736eb9d31512a30d46c1ac3395d676c6f3cafa4c03eb54b9925631c"},
+    {file = "prometheus_client-0.19.0-py3-none-any.whl", hash = "sha256:c88b1e6ecf6b41cd8fb5731c7ae919bf66df6ec6fafa555cd6c0e16ca169ae92"},
+    {file = "prometheus_client-0.19.0.tar.gz", hash = "sha256:4585b0d1223148c27a225b10dbec5ae9bc4c81a99a3fa80774fa6209935324e1"},
 ]
 
 [[package]]
@@ -1854,21 +1779,6 @@ files = [
 ]
 
 [[package]]
-name = "requests-oauthlib"
-version = "1.3.1"
-requires_python = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-summary = "OAuthlib authentication support for Requests."
-groups = ["default"]
-dependencies = [
-    "oauthlib>=3.0.0",
-    "requests>=2.0.0",
-]
-files = [
-    {file = "requests-oauthlib-1.3.1.tar.gz", hash = "sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a"},
-    {file = "requests_oauthlib-1.3.1-py2.py3-none-any.whl", hash = "sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5"},
-]
-
-[[package]]
 name = "rich"
 version = "13.7.0"
 requires_python = ">=3.7.0"
@@ -1937,20 +1847,6 @@ files = [
     {file = "rpds_py-0.17.1-pp39-pypy39_pp73-musllinux_1_2_i686.whl", hash = "sha256:7b7d9ca34542099b4e185b3c2a2b2eda2e318a7dbde0b0d83357a6d4421b5296"},
     {file = "rpds_py-0.17.1-pp39-pypy39_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:0387ce69ba06e43df54e43968090f3626e231e4bc9150e4c3246947567695f68"},
     {file = "rpds_py-0.17.1.tar.gz", hash = "sha256:0210b2668f24c078307260bf88bdac9d6f1093635df5123789bfee4d8d7fc8e7"},
-]
-
-[[package]]
-name = "rsa"
-version = "4.9"
-requires_python = ">=3.6,<4"
-summary = "Pure-Python RSA implementation"
-groups = ["default"]
-dependencies = [
-    "pyasn1>=0.1.3",
-]
-files = [
-    {file = "rsa-4.9-py3-none-any.whl", hash = "sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7"},
-    {file = "rsa-4.9.tar.gz", hash = "sha256:e38464a49c6c85d7f1351b0126661487a7e0a14a50f1675ec50eb34d4f20ef21"},
 ]
 
 [[package]]
@@ -2266,22 +2162,6 @@ files = [
 ]
 
 [[package]]
-name = "text-generation"
-version = "0.6.1"
-requires_python = ">=3.7,<4.0"
-summary = "Hugging Face Text Generation Python Client"
-groups = ["default"]
-dependencies = [
-    "aiohttp<4.0,>=3.8",
-    "huggingface-hub<1.0,>=0.12",
-    "pydantic<3,>1.10",
-]
-files = [
-    {file = "text_generation-0.6.1-py3-none-any.whl", hash = "sha256:ebca00587eeabc0f5118f66ee1048bf690bd7735a9a10361c533c31c8c0bf994"},
-    {file = "text_generation-0.6.1.tar.gz", hash = "sha256:730e662aa7812f73c08ab953e008e90455f3d046f81efa0ef3de462bd4cf63d9"},
-]
-
-[[package]]
 name = "threadpoolctl"
 version = "3.2.0"
 requires_python = ">=3.8"
@@ -2389,7 +2269,7 @@ files = [
 
 [[package]]
 name = "torch"
-version = "2.1.2"
+version = "2.2.0"
 requires_python = ">=3.8.0"
 summary = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 groups = ["default"]
@@ -2407,18 +2287,18 @@ dependencies = [
     "nvidia-curand-cu12==10.3.2.106; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "nvidia-cusolver-cu12==11.4.5.107; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "nvidia-cusparse-cu12==12.1.0.106; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
-    "nvidia-nccl-cu12==2.18.1; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+    "nvidia-nccl-cu12==2.19.3; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "nvidia-nvtx-cu12==12.1.105; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
     "sympy",
-    "triton==2.1.0; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
-    "typing-extensions",
+    "triton==2.2.0; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+    "typing-extensions>=4.8.0",
 ]
 files = [
-    {file = "torch-2.1.2-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:a6ebbe517097ef289cc7952783588c72de071d4b15ce0f8b285093f0916b1162"},
-    {file = "torch-2.1.2-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:8f32ce591616a30304f37a7d5ea80b69ca9e1b94bba7f308184bf616fdaea155"},
-    {file = "torch-2.1.2-cp311-cp311-win_amd64.whl", hash = "sha256:e0ee6cf90c8970e05760f898d58f9ac65821c37ffe8b04269ec787aa70962b69"},
-    {file = "torch-2.1.2-cp311-none-macosx_10_9_x86_64.whl", hash = "sha256:76d37967c31c99548ad2c4d3f2cf191db48476f2e69b35a0937137116da356a1"},
-    {file = "torch-2.1.2-cp311-none-macosx_11_0_arm64.whl", hash = "sha256:e2d83f07b4aac983453ea5bf8f9aa9dacf2278a8d31247f5d9037f37befc60e4"},
+    {file = "torch-2.2.0-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:0d1c580e379c0d48f0f0a08ea28d8e373295aa254de4f9ad0631f9ed8bc04c24"},
+    {file = "torch-2.2.0-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:9328e3c1ce628a281d2707526b4d1080eae7c4afab4f81cea75bde1f9441dc78"},
+    {file = "torch-2.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:03c8e660907ac1b8ee07f6d929c4e15cd95be2fb764368799cca02c725a212b8"},
+    {file = "torch-2.2.0-cp311-none-macosx_10_9_x86_64.whl", hash = "sha256:da0cefe7f84ece3e3b56c11c773b59d1cb2c0fd83ddf6b5f7f1fd1a987b15c3e"},
+    {file = "torch-2.2.0-cp311-none-macosx_11_0_arm64.whl", hash = "sha256:f81d23227034221a4a4ff8ef24cc6cec7901edd98d9e64e32822778ff01be85e"},
 ]
 
 [[package]]
@@ -2437,7 +2317,7 @@ files = [
 
 [[package]]
 name = "transformers"
-version = "4.37.1"
+version = "4.37.2"
 requires_python = ">=3.8.0"
 summary = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 groups = ["default"]
@@ -2449,18 +2329,18 @@ dependencies = [
     "pyyaml>=5.1",
     "regex!=2019.12.17",
     "requests",
-    "safetensors>=0.3.1",
+    "safetensors>=0.4.1",
     "tokenizers<0.19,>=0.14",
     "tqdm>=4.27",
 ]
 files = [
-    {file = "transformers-4.37.1-py3-none-any.whl", hash = "sha256:05e4c4bf94f74addeb716bc83517f49d55df1e9022db3d5b027c801e9a410ebf"},
-    {file = "transformers-4.37.1.tar.gz", hash = "sha256:9843368d97fd7ac30126664743adc65e8e5be930da7d66342172e97bd1243e2d"},
+    {file = "transformers-4.37.2-py3-none-any.whl", hash = "sha256:595a8b12a1fcc4ad0ced49ce206c58e17be68c85d7aee3d7546d04a32c910d2e"},
+    {file = "transformers-4.37.2.tar.gz", hash = "sha256:f307082ae5d528b8480611a4879a4a11651012d0e9aaea3f6cf17219ffd95542"},
 ]
 
 [[package]]
 name = "triton"
-version = "2.1.0"
+version = "2.2.0"
 summary = "A language and compiler for custom Deep Learning operations"
 groups = ["default"]
 marker = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
@@ -2468,10 +2348,7 @@ dependencies = [
     "filelock",
 ]
 files = [
-    {file = "triton-2.1.0-0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:919b06453f0033ea52c13eaf7833de0e57db3178d23d4e04f9fc71c4f2c32bf8"},
-    {file = "triton-2.1.0-0-pp37-pypy37_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:143582ca31dd89cd982bd3bf53666bab1c7527d41e185f9e3d8a3051ce1b663b"},
-    {file = "triton-2.1.0-0-pp38-pypy38_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:82fc5aeeedf6e36be4e4530cbdcba81a09d65c18e02f52dc298696d45721f3bd"},
-    {file = "triton-2.1.0-0-pp39-pypy39_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:81a96d110a738ff63339fc892ded095b31bd0d205e3aace262af8400d40b6fa8"},
+    {file = "triton-2.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:da58a152bddb62cafa9a857dd2bc1f886dbf9f9c90a2b5da82157cd2b34392b0"},
 ]
 
 [[package]]
@@ -2580,17 +2457,6 @@ dependencies = [
 files = [
     {file = "uvicorn-0.27.0.post1-py3-none-any.whl", hash = "sha256:4b85ba02b8a20429b9b205d015cbeb788a12da527f731811b643fd739ef90d5f"},
     {file = "uvicorn-0.27.0.post1.tar.gz", hash = "sha256:54898fcd80c13ff1cd28bf77b04ec9dbd8ff60c5259b499b4b12bb0917f22907"},
-]
-
-[[package]]
-name = "websocket-client"
-version = "1.7.0"
-requires_python = ">=3.8"
-summary = "WebSocket client for Python with low level API options"
-groups = ["default"]
-files = [
-    {file = "websocket-client-1.7.0.tar.gz", hash = "sha256:10e511ea3a8c744631d3bd77e61eb17ed09304c413ad42cf6ddfa4c7787e8fe6"},
-    {file = "websocket_client-1.7.0-py3-none-any.whl", hash = "sha256:f4c3d22fec12a2461427a29957ff07d35098ee2d976d3ba244e688b8b4057588"},
 ]
 
 [[package]]

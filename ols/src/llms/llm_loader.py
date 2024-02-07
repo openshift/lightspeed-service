@@ -2,7 +2,6 @@
 
 import inspect
 import logging
-import os
 import warnings
 from typing import Optional
 
@@ -30,8 +29,12 @@ class MissingModelError(LLMConfigurationError):
     """Model is not specified."""
 
 
+class UnknownProviderError(LLMConfigurationError):
+    """No configuration for provider."""
+
+
 class UnsupportedProviderError(LLMConfigurationError):
-    """Provider is not supported or is unknown."""
+    """Provider is not supported."""
 
 
 class ModelConfigMissingError(LLMConfigurationError):
@@ -90,13 +93,31 @@ class LLMLoader:
         self.llm_params = params or {}
         self.llm: LLM = self._llm_instance()
 
+    def _get_llm_url(self, default: str) -> str:
+        return (
+            self.provider_config.models[self.model].url
+            if self.provider_config.models[self.model].url is not None
+            else (
+                self.provider_config.url
+                if self.provider_config.url is not None
+                else default
+            )
+        )
+
+    def _get_llm_credentials(self) -> str:
+        return (
+            self.provider_config.models[self.model].credentials
+            if self.provider_config.models[self.model].credentials is not None
+            else self.provider_config.credentials
+        )
+
     # TODO: refactor after config implementation OLS-89
     def _get_provider_config(self) -> ProviderConfig:
         cfg = config.llm_config.providers.get(self.provider)
         if not cfg:
-            msg = f"Unsupported LLM provider {self.provider}"
+            msg = f"No configuration for LLM provider {self.provider}"
             logger.error(msg)
-            raise UnsupportedProviderError(msg)
+            raise UnknownProviderError(msg)
 
         model = cfg.models.get(self.model)
         if not model:
@@ -115,21 +136,30 @@ class LLMLoader:
         # convert to string to handle None or False definitions
         match str(self.provider).lower():
             case constants.PROVIDER_OPENAI:
-                return self._openai_llm_instance()
+                return self._openai_llm_instance(
+                    self._get_llm_url("https://api.openai.com/v1"),
+                    self._get_llm_credentials(),
+                )
             # case constants.PROVIDER_OLLAMA:
             #     return self._ollama_llm_instance()
             # case constants.PROVIDER_TGI:
             #     return self._tgi_llm_instance()
             case constants.PROVIDER_WATSONX:
-                return self._watson_llm_instance()
+                return self._watson_llm_instance(
+                    self._get_llm_url("https://us-south.ml.cloud.ibm.com"),
+                    self._get_llm_credentials(),
+                )
             case constants.PROVIDER_BAM:
-                return self._bam_llm_instance()
+                return self._bam_llm_instance(
+                    self._get_llm_url("https://bam-api.res.ibm.com"),
+                    self._get_llm_credentials(),
+                )
             case _:
                 msg = f"Unsupported LLM provider {self.provider}"
                 logger.error(msg)
                 raise UnsupportedProviderError(msg)
 
-    def _openai_llm_instance(self) -> LLM:
+    def _openai_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Creating OpenAI LLM instance")
         try:
             from langchain_community.chat_models import ChatOpenAI
@@ -139,16 +169,12 @@ class LLMLoader:
             )
             raise e
         params: dict = {
-            "base_url": (
-                self.provider_config.url
-                if self.provider_config.url is not None
-                else "https://api.openai.com/v1"
-            ),
-            "openai_api_key": self.provider_config.credentials,
+            "base_url": api_url,
+            "openai_api_key": api_key,
             "model": self.model,
             "model_kwargs": {},  # TODO: add model args
-            "organization": os.environ.get("OPENAI_ORGANIZATION", None),
-            "timeout": os.environ.get("OPENAI_TIMEOUT", None),
+            "organization": None,
+            "timeout": None,
             "cache": None,
             "streaming": True,
             "temperature": 0.01,
@@ -168,7 +194,7 @@ class LLMLoader:
         logger.debug(f"[{inspect.stack()[0][3]}] OpenAI LLM instance {llm}")
         return llm
 
-    def _bam_llm_instance(self) -> LLM:
+    def _bam_llm_instance(self, api_url: str, api_key: str) -> LLM:
         """BAM Research Lab."""
         logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance")
         try:
@@ -184,12 +210,8 @@ class LLMLoader:
             raise e
         # BAM Research lab
         creds = Credentials(
-            api_key=self.provider_config.credentials,
-            api_endpoint=(
-                self.provider_config.url
-                if self.provider_config.url is not None
-                else "https://bam-api.res.ibm.com"
-            ),
+            api_key=api_key,
+            api_endpoint=api_url,
         )
 
         bam_params = {
@@ -280,7 +302,7 @@ class LLMLoader:
     #     return llm
 
     # TODO: update this to use config not direct env vars
-    def _watson_llm_instance(self) -> LLM:
+    def _watson_llm_instance(self, api_url: str, api_key: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX (requires WansonX libraries)
         try:
@@ -299,16 +321,8 @@ class LLMLoader:
         # WatsonX uses different keys
         creds = {
             # example from https://heidloff.net/article/watsonx-langchain/
-            "url": (
-                self.llm_params.get("url")
-                if self.llm_params.get("url") is not None
-                else os.environ.get("WATSON_API_URL", None)
-            ),
-            "apikey": (
-                self.llm_params.get("apikey")
-                if self.llm_params.get("apikey") is not None
-                else os.environ.get("WATSON_API_KEY", None)
-            ),
+            "url": api_url,
+            "apikey": api_key,
         }
         # WatsonX uses different mechanism for defining parameters
         params = {
@@ -331,14 +345,11 @@ class LLMLoader:
 
         # WatsonX uses different parameter names
         llm_model = Model(
-            model_id=self.llm_params.get(
-                "model_id", os.environ.get("WATSON_MODEL", None)
-            ),
+            model_id=self.model,
             credentials=creds,
             params=params,
-            project_id=self.llm_params.get(
-                "project_id", os.environ.get("WATSON_PROJECT_ID", None)
-            ),
+            # TODO syedriko: get project_id from config once we find a place for it
+            project_id=self.llm_params.get("project_id", None),
         )
         llm = WatsonxLLM(model=llm_model)
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")

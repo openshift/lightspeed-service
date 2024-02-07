@@ -2,6 +2,7 @@
 
 import io
 import logging
+import re
 import traceback
 from typing import TypeVar
 
@@ -167,6 +168,10 @@ llm_providers:
       - name: m1
         url: 'http://murl1'
 ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
   {role}_provider: no_such_provider
   {role}_model: m1
     """,
@@ -184,6 +189,10 @@ llm_providers:
       - name: m1
         url: 'http://murl1'
 ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
   {role}_provider: p1
   {role}_model: no_such_model
     """,
@@ -201,6 +210,10 @@ llm_providers:
       - name: m1
         url: 'http://murl1'
 ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
   {role}_provider: p1
     """,
             InvalidConfigurationError,
@@ -217,6 +230,10 @@ llm_providers:
       - name: m1
         url: 'http://murl1'
 ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
   {role}_model: m1
     """,
             InvalidConfigurationError,
@@ -234,15 +251,54 @@ llm_providers:
         url: 'https://murl1'
 ols_config:
   conversation_cache:
+    foo: bar
+""",
+        InvalidConfigurationError,
+        "missing conversation cache type",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
+    type: foobar
+    redis:
+      host: 127.0.0.1
+      port: 1234
+""",
+        InvalidConfigurationError,
+        "unknown conversation cache type: foobar",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
     type: memory
     redis:
-      url: 127.0.0.1:1234
+      host: 127.0.0.1
+      port: 1234
       credentials:
-          user: root
+          username: root
           password: pwd123
 """,
         InvalidConfigurationError,
-        "memory configuration is missing",
+        "memory conversation cache type is specified,"
+        " but memory configuration is missing",
     )
 
     check_expected_exception(
@@ -261,8 +317,90 @@ ols_config:
       max_entries: 1000
 """,
         InvalidConfigurationError,
-        "redis configuration is missing",
+        "redis conversation cache type is specified,"
+        " but redis configuration is missing",
     )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: foo
+""",
+        InvalidConfigurationError,
+        "invalid max_entries for memory conversation cache,"
+        " max_entries needs to be a non-negative integer",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
+    type: redis
+    redis:
+      max_memory_policy: foobar
+""",
+        InvalidConfigurationError,
+        "invalid Redis max_memory_policy foobar, valid policies are",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
+    type: redis
+    redis:
+      credentials:
+        username_path: tests/config/redis_username.txt
+""",
+        InvalidConfigurationError,
+        "for Redis, if a username is specified, a password also needs to be specified",
+    )
+
+    for port in ("foobar", "-123", "0", "123.3", "88888"):
+        check_expected_exception(
+            f"""
+---
+llm_providers:
+  - name: p1
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+ols_config:
+  conversation_cache:
+    type: redis
+    redis:
+      port: "{port}"
+""",
+            InvalidConfigurationError,
+            re.escape(
+                f"invalid Redis port {port}, valid ports are integers in the (0, 65536) range"
+            ),
+        )
 
     check_expected_exception(
         """
@@ -297,10 +435,10 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -318,10 +456,10 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -339,10 +477,10 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    credentails_path: tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     models:
       - name: m1
-        credentails_path: tests/config/secret.txt
+        credentials_path: tests/config/secret.txt
 ols_config:
   conversation_cache:
     type: memory
@@ -357,6 +495,115 @@ dev_config:
 """,
         InvalidConfigurationError,
         "llm_temperature_override must be between 0 and 1",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "./invalid_dir"
+    product_docs_index_id: product
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Reference content path './invalid_dir' does not exist",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "/tmp"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "product_docs_index_path is specified but product_docs_index_id is missing",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_id: "product"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "product_docs_index_id is specified but product_docs_index_path is missing",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    product_docs_index_path: "tests/config/secret.txt"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Reference content path 'tests/config/secret.txt' is not a directory",
     )
 
 
@@ -393,8 +640,6 @@ ols_config:
     level: info
   default_provider: p1
   default_model: m1
-  classifier_provider: p2
-  classifier_model: m1
 dev_config:
   llm_temperature_override: 0
   enable_dev_ui: true
@@ -448,6 +693,10 @@ def test_valid_config_file():
                     },
                 ],
                 "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -459,14 +708,6 @@ def test_valid_config_file():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
-                    "classifier_provider": "p1",
-                    "classifier_model": "m2",
-                    "summarizer_provider": "p1",
-                    "summarizer_model": "m1",
-                    "validator_provider": "p1",
-                    "validator_model": "m1",
-                    "yaml_provider": "p2",
-                    "yaml_model": "m2",
                 },
             }
         )
@@ -497,6 +738,10 @@ def test_valid_config_file_with_redis():
                     },
                 ],
                 "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
                     "conversation_cache": {
                         "type": "redis",
                         "redis": {
@@ -505,7 +750,7 @@ def test_valid_config_file_with_redis():
                             "max_memory": "100MB",
                             "max_memory_policy": "allkeys-lru",
                             "credentials": {
-                                "user_path": "tests/config/redis_user.txt",
+                                "username_path": "tests/config/redis_username.txt",
                                 "password_path": "tests/config/redis_password.txt",
                             },
                         },

@@ -7,9 +7,9 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import constants
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import ProviderConfig, ReferenceContent
 from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import suid
+from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -40,10 +40,7 @@ def test_debug_query():
     assert response.status_code == requests.codes.ok
     assert response.json() == {
         "conversation_id": conversation_id,
-        "query": "test query",
         "response": "test response",
-        "provider": None,  # default value in request
-        "model": None,  # default value in request
     }
 
 
@@ -63,10 +60,7 @@ def test_debug_query_no_conversation_id():
 
     # check that conversation ID is being created
     assert len(json["conversation_id"]) > 0
-    assert json["query"] == "test query"
     assert json["response"] == "test response"
-    assert json["provider"] is None  # default value in request
-    assert json["model"] is None  # default value in request
 
 
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
@@ -131,7 +125,7 @@ def test_post_question_without_payload():
 def test_post_question_on_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
-    answer = (constants.SUBJECT_INVALID, "anything")
+    answer = constants.SUBJECT_INVALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -141,20 +135,13 @@ def test_post_question_on_invalid_question():
             json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
-        expected_details = str(
-            {
-                "detail": {
-                    "response": "I can only answer questions about \
-            OpenShift and Kubernetes. Please rephrase your question"
-                }
-            }
+        expected_details = (
+            "I can only answer questions about OpenShift and Kubernetes. "
+            "Please rephrase your question"
         )
         expected_json = {
             "conversation_id": conversation_id,
-            "query": "test query",
             "response": expected_details,
-            "provider": None,  # default value in request
-            "model": None,  # default value in request
         }
         assert response.json() == expected_json
 
@@ -162,7 +149,7 @@ def test_post_question_on_invalid_question():
 def test_post_question_on_generic_response_type_summarize_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
+    answer = constants.SUBJECT_VALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -183,7 +170,7 @@ def test_post_question_on_generic_response_type_summarize_error():
 def test_post_question_on_generic_response_llm_configuration_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_GENERIC)
+    answer = constants.SUBJECT_VALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -203,37 +190,6 @@ def test_post_question_on_generic_response_llm_configuration_error():
                 }
             }
             assert response.json() == expected_json
-
-
-def test_post_question_on_unknown_response_type():
-    """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
-    # let's pretend the question is valid, but there's an error, without even asking LLM
-    answer = (constants.SUBJECT_VALID, constants.CATEGORY_UNKNOWN)
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
-    ):
-        conversation_id = suid.get_suid()
-        response = client.post(
-            "/v1/query",
-            json={"conversation_id": conversation_id, "query": "test query"},
-        )
-        assert response.status_code == requests.codes.ok
-        expected_details = str(
-            {
-                "detail": {
-                    "response": "Question does not provide enough context, \
-                Please rephrase your question or provide more detail"
-                }
-            }
-        )
-        expected_json = {
-            "conversation_id": conversation_id,
-            "query": "test query",
-            "response": expected_details,
-            "provider": None,  # default value in request
-            "model": None,  # default value in request
-        }
-        assert response.json() == expected_json
 
 
 def test_post_question_that_is_not_validated():
@@ -267,10 +223,12 @@ def test_post_question_with_provider_but_not_model():
         },
     )
     assert response.status_code == requests.codes.unprocessable
-    expected_json = {
-        "detail": {"response": "LLM model must be specified when provider is specified"}
-    }
-    assert response.json() == expected_json
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM model must be specified when the provider is specified!"
+    )
 
 
 def test_post_question_with_model_but_not_provider():
@@ -285,19 +243,19 @@ def test_post_question_with_model_but_not_provider():
         },
     )
     assert response.status_code == requests.codes.unprocessable
-    expected_json = {
-        "detail": {
-            "response": "LLM provider must be specified when the model is specified"
-        }
-    }
-    assert response.json() == expected_json
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM provider must be specified when the model is specified!"
+    )
 
 
 class TestQuery:
     """Test the /v1/query endpoint."""
 
-    def test_unsupported_provider_in_post(self):
-        """Check the REST API /v1/query with POST method when unsupported provider is requested."""
+    def test_unknown_provider_in_post(self):
+        """Check the REST API /v1/query with POST method when unknown provider is requested."""
         # empty config - no providers
         with patch("ols.utils.config.llm_config.providers", new={}):
             response = client.post(
@@ -313,7 +271,7 @@ class TestQuery:
             assert response.json() == {
                 "detail": {
                     "response": "Unable to process this request because "
-                    "'Unsupported LLM provider some-provider'"
+                    "'No configuration for LLM provider some-provider'"
                 }
             }
 
@@ -344,3 +302,43 @@ class TestQuery:
                     "LLM provider test-provider'"
                 }
             }
+
+
+def test_post_question_on_noyaml_response_type() -> None:
+    """Check the REST API /ols/ with POST HTTP method when unknown response type is returned."""
+    config.init_empty_config()
+    config.ols_config.reference_content = ReferenceContent(None)
+    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
+    config.ols_config.reference_content.product_docs_index_id = "product"
+    config.dev_config.disable_auth = True
+    answer = constants.SUBJECT_VALID
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        from tests.mock_classes.langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.LLMLoader", new=mock_llm_loader(ml())
+        ):
+            with patch(
+                "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
+            ):
+                with patch(
+                    "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                    "./invalid_dir",
+                ):
+                    conversation_id = suid.get_suid()
+                    response = client.post(
+                        "/v1/query",
+                        json={
+                            "conversation_id": conversation_id,
+                            "query": "test query",
+                        },
+                    )
+                    print(response)
+                    assert response.status_code == requests.codes.ok
+                    assert (
+                        "The following response was generated without access to reference content:"
+                        in response.json()["response"]
+                    )

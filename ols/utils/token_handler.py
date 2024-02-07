@@ -1,14 +1,20 @@
 """Utility to handle tokens."""
 
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod, abstractproperty
+from typing import Any
 
 import tiktoken
 
-from ols.src.utils.constants import (
-    MINIMUM_CONTEXT_LIMIT,
-    TOKENIZER_MODEL,
-)
+# TODO: distribute these constants if needed
+TOKENIZER_MODEL = "cl100k_base"
+
+CONTEXT_WINDOW_LIMIT = 2000
+RESPONSE_WINDOW_LIMIT = 500
+MINIMUM_CONTEXT_LIMIT = 1
+
+SIMILARITY_SCORE_THRESHOLD = 0.5
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +22,16 @@ logger = logging.getLogger(__name__)
 class RetrievedNode(ABC):
     """Representation of retrieved node to be processed and truncated."""
 
-    def get_text(self):
+    @abstractmethod
+    def get_text(self) -> str:
         """Get text."""
 
-    @property
-    def score(self):
+    @abstractproperty
+    def score(self) -> float:
         """Score property."""
 
-    @property
-    def metadata(self):
+    @abstractproperty
+    def metadata(self) -> dict[str, Any]:
         """Node metadata."""
 
 

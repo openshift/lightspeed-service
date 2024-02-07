@@ -10,7 +10,7 @@
 
 ## Setting up your development environment
 
-The development requires [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous proccessing capabilities.
+The development requires [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous processing capabilities.
 
 ```bash
 # clone your fork
@@ -26,8 +26,8 @@ pdm install
 `pdm venv activate`
 # which will active the venv where you can further work, or prefix the rest of commands with `pdm run`, eg. `pdm run make test`
 
-# run all tests
-make test
+# run unit+integration tests (e2e test requires a running OLS instance)
+make test-unit && make test-integration
 
 # code formatting
 # (this is also run automatically as part of pre-commit hook if configured)
@@ -116,12 +116,14 @@ make tests
 It is also possible to run just one selected group of tests:
 
 ```
-test-unit                 Run the unit tests
-test-integration          Run integration tests tests
-test-e2e                  Run end to end tests
+make test-unit                 Run the unit tests
+make test-integration          Run integration tests tests
+make test-e2e                  Run end to end tests
 ```
 
 All tests are based on [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
+
+Currently code coverage threshold for integration tests is set to 60%. This value is specified directly in Makefile, because the coverage threshold is different from threshold required for unit tests.
 
 As specified in Definition of Done, new changes needs to be covered by tests.
 
@@ -182,7 +184,7 @@ def test_constructor_no_provider():
 
 ### Checking what was printed and logged to stdout or stderr by the tested code
 
-It is possible to capture stdour and stderr by using standard fixture `capsys`:
+It is possible to capture stdout and stderr by using standard fixture `capsys`:
 
 ```python
 def test_foobar(capsys):
@@ -223,9 +225,9 @@ We are using the [PDM tool](https://github.com/pdm-project/pdm) to manage our de
 
 To add a new dependency do:
 1. `pdm add mystery-package` - PDM will add it to `pyproject.toml` automatically
-2. re-lock with `pdm lock` - this will update a `pdm.lock` with a new dep
+2. re-lock with `pdm lock` - this will update a `pdm.lock` with a new dependency
 
-As we need to be Konflux-ready, we need to have pinned versions in the `pyproject.toml`. If you added a new dep without an explicit version pin, the PDM tool resolves its version in the lock. You need to search for the dep you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
+As we need to be Konflux-ready (https://redhat-appstudio.github.io/appstudio.docs.ui.io/), we need to have pinned versions in the `pyproject.toml`. If you added a new dependency without an explicit version pin, the PDM tool resolves its version in the lock. You need to search for the dependency you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
 
 
 ## Code style
