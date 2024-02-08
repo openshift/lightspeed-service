@@ -31,19 +31,32 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
    b. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
 
+4. Store local copies of API keys securely
 
-4. Configure OpenShift LightSpeed (OLS)
-   
-   OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory. 
-   You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.  
+   Here is a proposed scheme for storing API keys on your development workstation. It is similar to how private keys are stored for OpenSSH.
+   It keeps copies of files containing API keys from getting scattered around and forgotten.
+   $ cd <lightspeed-service local git repo root>
+   $ find ~/.openai -ls
+   72906922      0 drwx------   1 username username        6 Feb  6 16:45 /home/username/.openai
+   72906953      4 -rw-------   1 username username       52 Feb  6 16:45 /home/username/.openai/key
+   $ ls -l openai_api_key.txt
+   lrwxrwxrwx. 1 username username 26 Feb  6 17:41 openai_api_key.txt -> /home/username/.openai/key
+   $ grep openai_api_key.txt olsconfig.yaml
+    credentials_path: openai_api_key.txt
+   $
 
-   API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative, 
+5. Configure OpenShift LightSpeed (OLS)
+
+   OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
+   You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.
+
+   API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative,
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
    The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
    points to file containing a valid OpenAI api key, and change the `default_model` and `default_provider` values to reference the openai provider and model.
-   
-5. (Optional) Configure the document store
+
+6. (Optional) Configure the document store
    1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
    2. Create vector index directory
       ```sh
