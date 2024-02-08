@@ -6,7 +6,7 @@ from ols.app import metrics
 from ols.app.endpoints import feedback, health, ols
 
 
-def include_routers(app: FastAPI):
+def include_routers(app: FastAPI) -> None:
     """Include FastAPI routers for different endpoints.
 
     Args:
