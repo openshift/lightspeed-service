@@ -93,6 +93,28 @@ key file(s) (eg: `credentials_path: config/openai_api_key.txt`)
     quay.io/openshift/lightspeed-api-service-rag:latest
     ```
 
+### Optionally run inside an OpenShift environment
+In the `examples` folder is a set of YAML manifests,
+`openshift-lightspeed.yaml`. This includes all the resources necessary to get
+OpenShift Lightspeed running in a cluster. It is configured expecting to only
+use OpenAI as the inference endpoint, but you can easily modify these manifests,
+looking at the `olsconfig.yaml` to see how to alter it to work with BAM as the
+provider.
+
+There is a commented-out OpenShift Route with TLS Edge termination available if
+you wish to use it.
+
+To deploy, assuming you already have an OpenShift environment to target and that
+you are logged in with sufficient permissions:
+
+1. Make the change to your API keys and/or provider configuration in the
+manifest file
+2. Create a namespace/project to hold OLS
+3. `oc apply -f examples/openshift-lightspeed.yaml -n created-namespace`
+
+Once deployed, it is probably easiest to `oc port-forward` into the pod where
+OLS is running so that you can access it from your local machine.
+
 ### Query the server
 
 To send a request to the server you can use the following curl command:
