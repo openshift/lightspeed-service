@@ -7,9 +7,8 @@ import llama_index
 from langchain.chains import LLMChain
 from langchain.schema import ChatMessage
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index.postprocessor import BaseNodePostprocessor
-from llama_index.prompts import PromptTemplate
 from llama_index.chat_engine.types import BaseChatEngine
+from llama_index.postprocessor import BaseNodePostprocessor
 from llama_index.prompts import PromptTemplate as LlamaTemplate
 from llama_index.response.schema import Response
 from llama_index.schema import NodeWithScore, QueryBundle

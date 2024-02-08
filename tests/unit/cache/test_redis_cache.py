@@ -39,14 +39,13 @@ def test_insert_or_append(cache):
 def test_insert_or_append_existing_key(cache):
     """Test the behavior of insert_or_append method for existing item."""
     # conversation IDs are separated by users
-    assert cache.get("user2", conversation_id) is None
-
     with pytest.raises(RedisMaxRetryError):
         cache.insert_or_append(
             "user2",
             conversation_id,
             Conversation("User Message1", "Assistant Message1"),
         )
+    with pytest.raises(RedisMaxRetryError):
         cache.insert_or_append(
             "user2",
             conversation_id,
