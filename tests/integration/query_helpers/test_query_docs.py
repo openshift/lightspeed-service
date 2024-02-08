@@ -94,11 +94,10 @@ def test_invalid_search_type(setup_faiss):
     """Test for invalid search type."""
     with pytest.raises(
         RetrieveDocsExceptionError, match="search type is invalid: stuff"
-    ) as e:
+    ):
         QueryDocs().get_relevant_docs(
             vectordb=setup_faiss,
             query="foo",
             search_kwargs={"k": 1},
             search_type="stuff",
         )
-    e.value
