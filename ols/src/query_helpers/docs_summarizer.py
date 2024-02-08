@@ -5,8 +5,10 @@ from typing import Any, Optional
 
 import llama_index
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
+from llama_index.postprocessor import BaseNodePostprocessor
 from llama_index.prompts import PromptTemplate
 from llama_index.response.schema import Response
+from llama_index.schema import NodeWithScore, QueryBundle
 
 from ols import constants
 from ols.src.llms.llm_loader import LLMLoader
@@ -16,8 +18,35 @@ from ols.utils import config
 logger = logging.getLogger(__name__)
 
 
+class _NoLLMMetadataPostprocessor(BaseNodePostprocessor):
+    """A LlamaIndex PostProcessor that prevents node metadata from reaching the LLM."""
+
+    def _postprocess_nodes(
+        self, nodes: list[NodeWithScore], query_bundle: Optional[QueryBundle] = None
+    ) -> list[NodeWithScore]:
+        for n in nodes:
+            n.node.excluded_llm_metadata_keys = list(n.node.metadata.keys())
+        return nodes
+
+
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
+
+    @staticmethod
+    def _file_path_to_doc_url(file_path: str) -> str:
+        """Convert file_path metadata to the corresponding URL on the OCP docs website.
+
+        Embedding node metadata 'file_path' in the form
+        file_path: /workspace/source/ocp-product-docs-plaintext/hardware_enablement/
+                    psap-node-feature-discovery-operator.txt
+        is mapped into a doc URL such as
+        https://docs.openshift.com/container-platform/4.14/hardware_enablement/psap-node-feature-discovery-operator.html.
+        """
+        return (
+            constants.OCP_DOCS_ROOT_URL
+            + constants.OCP_DOCS_VERSION
+            + file_path.removeprefix(constants.EMBEDDINGS_ROOT_DIR)
+        ).removesuffix("txt") + "html"
 
     def summarize(
         self,
@@ -94,16 +123,19 @@ class DocsSummarizer(QueryHelper):
                     verbose=verbose,
                     streaming=False,
                     similarity_top_k=1,
+                    node_postprocessors=[_NoLLMMetadataPostprocessor()],
                 )
 
                 logger.info(f"{conversation_id} Submitting summarization query")
                 summary = query_engine.query(query)
 
                 referenced_documents = "\n".join(
-                    [
-                        source_node.node.metadata["file_name"]
+                    {
+                        self._file_path_to_doc_url(
+                            source_node.node.metadata["file_path"]
+                        )
                         for source_node in summary.source_nodes
-                    ]
+                    }
                 )
             except Exception as err:
                 logger.error(f"Error loading vector index: {err}")
