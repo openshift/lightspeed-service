@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 # Input env variables:
 # - PROVIDER - the LLM provider to be used during the test
 # - PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
@@ -22,10 +22,10 @@ RAG_TMP_DIR=$(mktemp -d)
 RAG_INDEX="https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip"
 export RAG_INDEX_DIR="$RAG_TMP_DIR/vector-db/ocp-product-docs"
 # Configure index store
-mkdir -p $RAG_INDEX_DIR \
-  && wget $RAG_INDEX \
-	&& unzip -j local.zip -d $RAG_INDEX_DIR \
-	&& rm -f local.zip
+mkdir -p $RAG_INDEX_DIR
+wget $RAG_INDEX
+unzip -j local.zip -d $RAG_INDEX_DIR
+rm -f local.zip
 
 export OLS_CONFIG_FILE="$ARTIFACT_DIR/olsconfig.yaml"
 OLS_LOGS=$ARTIFACT_DIR/ols.log
@@ -50,9 +50,13 @@ function finish() {
     echo Exit trap: killing OLS server
     kill %1
     rm -rf "$TMPDIR"
+    rm -rf "$RAG_TMP_DIR"
 }
 trap finish EXIT
 
+# Don't exit on error while polling the OLS server
+# Curl will return error exit codes until OLS is available
+set +e
 STARTED=0
 for i in {1..10}; do
   echo Checking OLS readiness, attempt "$i" of 10
@@ -63,6 +67,7 @@ for i in {1..10}; do
   fi  
   sleep 6
 done
+set -e
 
 if [ $STARTED -ne 1 ]; then
   echo "OLS failed to start, OLS log output:"
