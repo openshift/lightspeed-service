@@ -85,7 +85,7 @@ class GradioUI:
             # Handle any exceptions that may occur during the request
             return f"An error occurred: {e}"
 
-    def mount_ui(self, fast_api_instance: FastAPI, mount_path: str = "/ui"):
+    def mount_ui(self, fast_api_instance: FastAPI, mount_path: str = "/ui") -> FastAPI:
         """Register REST API endpoint to handle UI-related requests."""
         return gr.mount_gradio_app(fast_api_instance, self.ui, path=mount_path)
 

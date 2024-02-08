@@ -3,6 +3,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, model_validator
+from typing_extensions import Self
 
 
 class LLMRequest(BaseModel):
@@ -40,7 +41,7 @@ class LLMRequest(BaseModel):
     }
 
     @model_validator(mode="after")
-    def validate_provider_and_model(self):
+    def validate_provider_and_model(self) -> Self:
         """Perform validation on the provider and model."""
         if self.model and not self.provider:
             raise ValueError(
