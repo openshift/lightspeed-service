@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 
 from ols import constants
 from ols.app.models.config import ProviderConfig, ReferenceContent
-from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -164,31 +163,6 @@ def test_post_question_on_generic_response_type_summarize_error():
             )
             assert response.status_code == requests.codes.internal_server_error
             expected_json = {"detail": "Error while obtaining answer for user question"}
-            assert response.json() == expected_json
-
-
-def test_post_question_on_generic_response_llm_configuration_error():
-    """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
-    # let's pretend the question is valid and generic one
-    answer = constants.SUBJECT_VALID
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
-    ):
-        with patch(
-            "ols.app.endpoints.ols.DocsSummarizer.summarize",
-            side_effect=LLMConfigurationError("LLM configuration error"),
-        ):
-            conversation_id = suid.get_suid()
-            response = client.post(
-                "/v1/query",
-                json={"conversation_id": conversation_id, "query": "test query"},
-            )
-            assert response.status_code == requests.codes.unprocessable
-            expected_json = {
-                "detail": {
-                    "response": "Unable to process this request because 'LLM configuration error'"
-                }
-            }
             assert response.json() == expected_json
 
 

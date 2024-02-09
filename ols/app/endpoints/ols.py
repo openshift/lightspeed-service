@@ -97,13 +97,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 # Because of that, we are ignoring some type checks when we
                 # are creating response model.
                 response = llm_response.response
-            except LLMConfigurationError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={
-                        "response": f"Unable to process this request because '{e}'"
-                    },
-                )
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
                 logger.error(summarizer_error)
