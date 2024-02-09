@@ -62,3 +62,56 @@ def test_singleton_pattern():
     cache1 = RedisCache(RedisConfig({}))
     cache2 = RedisCache(RedisConfig({}))
     assert cache1 is cache2
+
+
+def test_initialize_redis_no_credentials():
+    """Test Redis initialization code when no credentials are specified."""
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig({})
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert "username" not in cache.redis_client.kwargs
+        assert "password" not in cache.redis_client.kwargs
+
+
+def test_initialize_redis_with_credentials():
+    """Test Redis initialization code when credentials are specified."""
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "credentials": {
+                    "username_path": "tests/config/redis_username.txt",
+                    "password_path": "tests/config/redis_password.txt",
+                }
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["username"] == "redis_username"
+        assert cache.redis_client.kwargs["password"] == "redis_password"  # noqa: S105
+
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "credentials": {
+                    "username_path": "tests/config/redis_username.txt",
+                }
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["username"] == "redis_username"
+        assert "password" not in cache.redis_client.kwargs
+
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "credentials": {
+                    "password_path": "tests/config/redis_password.txt",
+                }
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert "username" not in cache.redis_client.kwargs
+        assert cache.redis_client.kwargs["password"] == "redis_password"  # noqa: S105
