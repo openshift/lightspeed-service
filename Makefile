@@ -26,16 +26,21 @@ test: test-unit test-integration test-e2e ## Run all tests
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
 	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" python -m pytest tests/integration --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
 	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
+
+check-coverage: test-unit test-integration  ## Unit tests and integration tests overall code coverage check
+	coverage combine --keep "${ARTIFACT_DIR}/.coverage.unit" "${ARTIFACT_DIR}/.coverage.integration"
+	# the threshold should be very high there, in theory it should reach 100%
+	coverage report -m --fail-under=94
 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
@@ -44,7 +49,7 @@ test-e2e: ## Run e2e tests - requires running OLS server
 		
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
-	coverage html
+	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
 
 check-types: ## Checks type hints in sources
 	mypy ols/
