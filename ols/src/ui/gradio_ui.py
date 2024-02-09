@@ -39,7 +39,7 @@ class GradioUI:
     def chat_ui(
         self,
         prompt: str,
-        history,
+        history: list[list[Optional[str]]],
         use_history: Optional[bool] = None,
         provider: Optional[str] = None,
         model: Optional[str] = None,
