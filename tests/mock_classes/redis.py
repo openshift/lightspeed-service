@@ -16,6 +16,8 @@ class MockRedis:
 
     def __init__(self, **kwargs):
         """Initialize simple dict used instead of Redis storage."""
+        self.kwargs = kwargs
+        print(kwargs)
         self.cache = {}
 
     def config_set(self, parameter, value):
