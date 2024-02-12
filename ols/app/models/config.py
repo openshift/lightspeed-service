@@ -28,6 +28,16 @@ def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
     return None
 
 
+def _dir_check(path: str, desc: str):
+    """Check that path is a readable directory."""
+    if not os.path.exists(path):
+        raise InvalidConfigurationError(f"{desc} '{path}' does not exist")
+    if not os.path.isdir(path):
+        raise InvalidConfigurationError(f"{desc} '{path}' is not a directory")
+    if not os.access(path, os.R_OK):
+        raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
+
+
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
 
@@ -404,6 +414,7 @@ class ReferenceContent(BaseModel):
 
     product_docs_index_path: Optional[str] = None
     product_docs_index_id: Optional[str] = None
+    embeddings_model_path: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None):
         """Initialize configuration and perform basic validation."""
@@ -413,6 +424,7 @@ class ReferenceContent(BaseModel):
 
         self.product_docs_index_path = data.get("product_docs_index_path", None)
         self.product_docs_index_id = data.get("product_docs_index_id", None)
+        self.embeddings_model_path = data.get("embeddings_model_path", None)
 
     def __eq__(self, other):
         """Compare two objects for equality."""
@@ -420,20 +432,15 @@ class ReferenceContent(BaseModel):
             return (
                 self.product_docs_index_path == other.product_docs_index_path
                 and self.product_docs_index_id == other.product_docs_index_id
+                and self.embeddings_model_path == other.embeddings_model_path
             )
         return False
 
     def validate_yaml(self) -> None:
         """Validate reference content config."""
         if self.product_docs_index_path is not None:
-            if os.path.exists(self.product_docs_index_path) is False:
-                raise InvalidConfigurationError(
-                    f"Reference content path '{self.product_docs_index_path}' does not exist"
-                )
-            if os.path.isfile(self.product_docs_index_path):
-                raise InvalidConfigurationError(
-                    f"Reference content path '{self.product_docs_index_path}' is not a directory"
-                )
+            _dir_check(self.product_docs_index_path, "Reference content path")
+
             if self.product_docs_index_id is None:
                 raise InvalidConfigurationError(
                     "product_docs_index_path is specified but product_docs_index_id is missing"
@@ -446,6 +453,9 @@ class ReferenceContent(BaseModel):
             raise InvalidConfigurationError(
                 "product_docs_index_id is specified but product_docs_index_path is missing"
             )
+
+        if self.embeddings_model_path is not None:
+            _dir_check(self.embeddings_model_path, "Embeddings model path")
 
 
 class OLSConfig(BaseModel):

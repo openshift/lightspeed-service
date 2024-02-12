@@ -11,7 +11,7 @@ RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stadout and stderr streams to be unbufferred
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip lgeacy locales and use UTF-8 mode
-ENV PYTHONDONTWRITEBYTECODE=1 \ 
+ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONCOERCECLOCALE=0 \
     PYTHONUTF8=1 \
@@ -31,7 +31,7 @@ RUN python3.11 -m venv ${APP_ROOT}/venv \
     # avoid using or leaving cache on final image
     && pip install --no-cache-dir --upgrade pip pdm \
     # Install project dependencies using PDM
-    && pdm install --no-lock \
+    && pdm install --frozen-lockfile \
     # The following echo adds the unset command for the variables set below to the
     # venv activation script. This is inspired from scl_enable script and prevents
     # the virtual environment to be activated multiple times and also every time

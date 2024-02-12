@@ -5,6 +5,7 @@ import logging
 import re
 import traceback
 from typing import TypeVar
+from unittest.mock import patch
 
 import pytest
 from yaml.parser import ParserError
@@ -563,6 +564,34 @@ llm_providers:
         credentials_path: tests/config/secret.txt
 ols_config:
   reference_content:
+    embeddings_model_path: ./invalid_dir
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Embeddings model path './invalid_dir' does not exist",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    type: bam
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
     product_docs_index_path: "/tmp"
   conversation_cache:
     type: memory
@@ -633,6 +662,38 @@ dev_config:
 """,
         InvalidConfigurationError,
         "Reference content path 'tests/config/secret.txt' is not a directory",
+    )
+
+
+@patch("os.access", return_value=False)
+def test_unreadable_directory(mock_access):
+    """Check if an unredable directory is reported correctly."""
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    type: bam
+    credentials_path: tests/config/secret.txt
+    models:
+      - name: m1
+        credentials_path: tests/config/secret.txt
+ols_config:
+  reference_content:
+    embeddings_model_path: tests/config
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_temperature_override: 0.1
+  enable_dev_ui: true
+  disable_question_validation: false
+  disable_auth: false
+
+""",
+        InvalidConfigurationError,
+        "Embeddings model path 'tests/config' is not readable",
     )
 
 
