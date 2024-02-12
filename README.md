@@ -48,9 +48,9 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 5. Configure OpenShift LightSpeed (OLS)
 
    OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
-   You can find a example configuration in the `examples/olsconfig.yaml` file in this repository.
+   You can find a example configuration in the [examples/olsconfig.yaml](examples/olsconfig.yaml) file in this repository.
 
-   API credentials are in turn loaded from files specified in the config yaml by the `credentials_path` attributes. If these paths are relative,
+   API credentials are in turn loaded from files specified in the config YAML by the `credentials_path` attributes. If these paths are relative,
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
    The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
