@@ -75,6 +75,15 @@ During testing, code coverage is measured. If the coverage is below defined thre
 
 Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
+Overall code coverage measured for both unit tests and integration tests can be checked by following command:
+
+```
+make check-coverage
+```
+
+The threshold set for combined coverage is larger than threshold for unit tests and integration tests because it is preferred to have most statements covered by at least one type of tests.
+
+
 
 ### Type hints checks
 
