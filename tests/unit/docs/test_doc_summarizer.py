@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from ols import constants
 from ols.app.models.config import ReferenceContent
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import config
@@ -32,7 +33,19 @@ def test_summarize(storage_context, service_context):
     history = None
     summary, documents = summarizer.summarize("1234", question, history)
     assert question in str(summary)
-    assert len(documents) == 0
+    assert len(documents) > 0
+    assert (
+        f"{constants.OCP_DOCS_ROOT_URL}{constants.OCP_DOCS_VERSION}/docs/test.html"
+        in documents
+    )
+    assert (
+        f"{constants.OCP_DOCS_ROOT_URL}{constants.OCP_DOCS_VERSION}/errata.html"
+        in documents
+    )
+    assert (
+        f"{constants.OCP_DOCS_ROOT_URL}{constants.OCP_DOCS_VERSION}/known-bugs.html"
+        in documents
+    )
 
 
 @patch(
