@@ -105,3 +105,22 @@ def test_constructor_when_missing_model_config():
     message = f"No configuration provided for model {test_model} under LLM provider {test_provider}"
     with pytest.raises(ModelConfigMissingError, match=message):
         LLMLoader(provider=test_provider, model=test_model)
+
+
+providers = [
+    constants.PROVIDER_OPENAI,
+    constants.PROVIDER_BAM,
+]
+
+
+@pytest.mark.parametrize("provider", providers)
+def test_constructor_no_keys(provider):
+    """Test raise when keys are missing."""
+    test_model = constants.TEI_EMBEDDING_MODEL
+    config.config = Config(
+        {"llm_providers": [{"name": provider, "models": [{"name": test_model}]}]}
+    )
+    config.llm_config = config.config.llm_providers
+
+    with pytest.raises(ValueError, match="api_key"):
+        LLMLoader(provider=provider, model=test_model)
