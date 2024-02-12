@@ -154,7 +154,7 @@ curl 'http://127.0.0.1:8080/metrics/'
 
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, it is needed to enable UI in `olsconfig.yaml` file:
 
-```
+```yaml
 dev_config:
   enable_dev_ui: true
 ```
