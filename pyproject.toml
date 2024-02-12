@@ -54,6 +54,7 @@ dependencies = [
     "openai==1.10.0",
     "ibm-watson-machine-learning==1.0.344",
     "ibm-generative-ai==2.0.0",
+    "langchain-openai==0.0.5",
     "pydantic==2.6.0",
     "setuptools>=69.0.3",
     "prometheus-client>=0.19.0",
