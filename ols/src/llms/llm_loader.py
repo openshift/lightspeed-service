@@ -16,7 +16,7 @@ from ibm_watson_machine_learning.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 
 from ols import constants
 from ols.app.models.config import ProviderConfig

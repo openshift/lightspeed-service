@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:43cda5eeeda80225e74f8daa63d62b4e8c19470c502eeecbb3b38c83dd63e86f"
+content_hash = "sha256:4622aa027ba7597d393389825e6f56bf4e493a30fc6904efddf1c13ba2789ebc"
 
 [[package]]
 name = "aiofiles"
@@ -942,6 +942,23 @@ dependencies = [
 files = [
     {file = "langchain_core-0.1.17-py3-none-any.whl", hash = "sha256:026155cf97867bde410ab1834799ab4c5ba64c39380f2a4328bcf9c78623ca64"},
     {file = "langchain_core-0.1.17.tar.gz", hash = "sha256:59016e457cd6a1708d83a3a454acc97cf02c2a2c3af95626d13f83894fd4e777"},
+]
+
+[[package]]
+name = "langchain-openai"
+version = "0.0.5"
+requires_python = ">=3.8.1,<4.0"
+summary = "An integration package connecting OpenAI and LangChain"
+groups = ["default"]
+dependencies = [
+    "langchain-core<0.2,>=0.1.16",
+    "numpy<2,>=1",
+    "openai<2.0.0,>=1.10.0",
+    "tiktoken<0.6.0,>=0.5.2",
+]
+files = [
+    {file = "langchain_openai-0.0.5-py3-none-any.whl", hash = "sha256:93b37dfac274adad65e46d5d6e71411e00c6984bcc5e10f1d6bb58e7944dc01b"},
+    {file = "langchain_openai-0.0.5.tar.gz", hash = "sha256:f317fee5b652949ad96ad7edf8ef7a044a6a3f0cc71d1e12f9d5261789fd68c4"},
 ]
 
 [[package]]
