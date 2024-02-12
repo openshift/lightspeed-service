@@ -145,7 +145,7 @@ class LLMLoader:
             f"[{inspect.stack()[0][3]}] Loading LLM {self.model} from {self.provider}"
         )
         # convert to string to handle None or False definitions
-        match str(self.provider).lower():
+        match str(self.provider_config.type):
             case constants.PROVIDER_OPENAI:
                 return self._openai_llm_instance(
                     self._get_llm_url("https://api.openai.com/v1"),
@@ -159,6 +159,7 @@ class LLMLoader:
                 return self._watson_llm_instance(
                     self._get_llm_url("https://us-south.ml.cloud.ibm.com"),
                     self._get_llm_credentials(),
+                    self.provider_config.project_id,
                 )
             case constants.PROVIDER_BAM:
                 return self._bam_llm_instance(
@@ -166,7 +167,10 @@ class LLMLoader:
                     self._get_llm_credentials(),
                 )
             case _:
-                msg = f"Unsupported LLM provider {self.provider}"
+                msg = (
+                    f"Unsupported LLM provider type {self.provider_config.type} "
+                    f"in provider {self.provider}"
+                )
                 logger.error(msg)
                 raise UnsupportedProviderError(msg)
 
@@ -294,8 +298,7 @@ class LLMLoader:
     #     )
     #     return llm
 
-    # TODO: update this to use config not direct env vars
-    def _watson_llm_instance(self, api_url: str, api_key: str) -> LLM:
+    def _watson_llm_instance(self, api_url: str, api_key: str, project_id: str) -> LLM:
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance")
         # WatsonX uses different keys
         creds = {
@@ -327,8 +330,7 @@ class LLMLoader:
             model_id=self.model,
             credentials=creds,
             params=params,
-            # TODO syedriko: get project_id from config once we find a place for it
-            project_id=self.llm_params.get("project_id", None),
+            project_id=project_id,
         )
         llm = WatsonxLLM(model=llm_model)
         logger.debug(f"[{inspect.stack()[0][3]}] Watson LLM instance {llm}")
