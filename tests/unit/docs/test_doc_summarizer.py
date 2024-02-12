@@ -5,10 +5,12 @@ from unittest.mock import patch
 from ols import constants
 from ols.app.models.config import ReferenceContent
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
-from ols.utils import config
+from ols.utils import config, suid
 from tests.mock_classes.langchain_interface import mock_langchain_interface
 from tests.mock_classes.llm_loader import mock_llm_loader
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
+
+conversation_id = suid.get_suid()
 
 
 def test_is_query_helper_subclass():
@@ -31,7 +33,7 @@ def test_summarize(storage_context, service_context):
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
     history = None
-    summary, documents = summarizer.summarize("1234", question, history)
+    summary, documents = summarizer.summarize(conversation_id, question, history)
     assert question in str(summary)
     assert len(documents) > 0
     assert (
@@ -63,7 +65,7 @@ def test_summarize_no_reference_content(storage_context, service_context):
     config.ols_config.reference_content = ReferenceContent(None)
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
-    summary, documents = summarizer.summarize("1234", question)
+    summary, documents = summarizer.summarize(conversation_id, question)
     assert "success" in str(summary)
     assert len(documents) == 0
 
