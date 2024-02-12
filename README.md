@@ -34,7 +34,9 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 4. Store local copies of API keys securely
 
    Here is a proposed scheme for storing API keys on your development workstation. It is similar to how private keys are stored for OpenSSH.
-   It keeps copies of files containing API keys from getting scattered around and forgotten.
+   It keeps copies of files containing API keys from getting scattered around and forgotten:
+
+   ```
    $ cd <lightspeed-service local git repo root>
    $ find ~/.openai -ls
    72906922      0 drwx------   1 username username        6 Feb  6 16:45 /home/username/.openai
@@ -43,7 +45,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    lrwxrwxrwx. 1 username username 26 Feb  6 17:41 openai_api_key.txt -> /home/username/.openai/key
    $ grep openai_api_key.txt olsconfig.yaml
     credentials_path: openai_api_key.txt
-   $
+   ```
 
 5. Configure OpenShift LightSpeed (OLS)
 
