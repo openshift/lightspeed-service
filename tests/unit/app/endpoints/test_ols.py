@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from ols import constants
 from ols.app.endpoints import ols
 from ols.app.models.models import LLMRequest
+from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -66,6 +67,28 @@ def test_conversation_request(
         response = ols.conversation_request(llm_request)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         assert len(response.conversation_id) == 0
+
+
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+@patch("ols.utils.config.conversation_cache.get")
+def test_conversation_request_on_wrong_configuration(
+    mock_conversation_cache_get,
+    mock_validate_question,
+    load_config,
+):
+    """Test conversation request API endpoint."""
+    # mock invalid configuration
+    message = "wrong model is configured"
+    mock_validate_question.side_effect = Mock(
+        side_effect=LLMConfigurationError(message)
+    )
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+
+    # call must fail because we mocked invalid configuration state
+    with pytest.raises(
+        HTTPException, match=f"Unable to process this request because '{message}'"
+    ):
+        ols.conversation_request(llm_request)
 
 
 def fake_llm_chain_call(self, **kwargs):
