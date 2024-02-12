@@ -163,6 +163,25 @@ helm delete ols-release --namespace openshift-lightspeed
 Chart customization is available using the [Values](helm/values.yaml) file.
 
 
+## Project structure
+
+1. REST API handlers
+1. Configuration loader
+1. LLM loader
+1. Doc retriever from vector storage
+1. Question validator
+1. Docs summarizer
+1. Conversation cache
+1. (Local) Web-based user interface
+
+
+### Sequence diagram
+
+Sequence of operations performed when user asks a question:
+
+![Sequence diagram](docs/sequence_diagram.png)
+
+
 ## Contributing
 
 * See [contributors](CONTRIBUTING.md) guide.

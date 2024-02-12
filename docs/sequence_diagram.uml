@@ -1,0 +1,59 @@
+//
+// vim:syntax=plantuml
+//
+
+// Generate PNG image with sequence diagram by using the following command:
+// java -jar plantuml.jar sequence_diagram.uml
+//
+// Generate SVG drawing with sequence diagram by using the following command:
+// java -jar plantuml.jar -tsvg sequence_diagram.uml
+
+@startuml
+
+header Sequence diagram for Lightspeed Service
+footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
+
+actor "User" as user
+participant "Lightspeed\nService" as ols
+control "Question\nValidator" as question_validator
+control "Document\nSummarizer" as document_summarizer
+database "Conversation\ncache" as cache
+database "Vector\ndatabase" as vector_db
+collections "LLM" as llm
+
+== Question ==
+
+user -> ols: Question
+
+== Conversation history ==
+
+ols -> cache: Retrieve conversation history
+cache -> ols: Conversation history
+
+== Validation ==
+
+ols -> question_validator: Validate question
+question_validator -> llm: Query
+llm -> question_validator: Valid or invalid
+
+== Answer generation ==
+
+alt "Invalid question case"
+question_validator -> ols: Invalid question
+ols -> user: Your question\nis not valid
+end
+
+alt "Valid question case"
+question_validator -> ols: Valid question
+ols -> document_summarizer: Summarize document
+document_summarizer -> vector_db: Read vector DB
+vector_db -> document_summarizer: Actual vector DB
+document_summarizer -> llm: Query
+llm -> document_summarizer: Answer
+document_summarizer -> ols: Summary
+ols -> user: Answer to\nyour question
+end
+
+
+
+@enduml
