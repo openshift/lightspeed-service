@@ -147,11 +147,22 @@ class DocsSummarizer(QueryHelper):
         if use_llm_without_reference_content:
             logger.info("Using llm to answer the query without reference content")
             response = bare_llm.invoke(query)
+            # TODO: we use "ChatOpenAI" for openai providers which is derived from "BaseChatModel",
+            # the invocation of which returns a "BaseMessage" object, and the actual llm response
+            # text is contained within the "content" attribute of BaseMessage.
+            # But for watsonx/bam providers we use implementations which are derived from the
+            # "LLM" class, the invocation of which returns a raw string containing the llm response
+            # text.
+            # We need to find a better way to abstract that difference so that every caller
+            # doesn't need to deal with this, but for now this hack makes OLS work with
+            # both kinds of providers.
+            if hasattr(response, "content"):
+                response = response.content
             summary = Response(
                 "The following response was generated without access to reference content:"
                 "\n\n"
                 # NOTE: The LLM returns AIMessage, but typing sees it as a plain str
-                f"{response.content}"  # type: ignore
+                f"{response}"  # type: ignore
             )
             referenced_documents = ""
 
