@@ -1,6 +1,7 @@
 """Handlers for all OLS-related REST API endpoints."""
 
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from langchain.chains import LLMChain
@@ -69,6 +70,8 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
             detail="Error while validating question",
         )
 
+    response: Optional[str] = None
+
     match (validation_result):
         case constants.SUBJECT_INVALID:
             logger.info(
@@ -107,7 +110,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
         config.conversation_cache.insert_or_append(
             user_id,
             conversation_id,
-            llm_request.query + "\n\n" + str(response or ""),  # type: ignore
+            llm_request.query + "\n\n" + str(response or ""),
         )
     return LLMResponse(conversation_id=conversation_id, response=response)
 
