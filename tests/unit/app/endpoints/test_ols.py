@@ -36,6 +36,50 @@ def test_retrieve_conversation_id_existing_id(load_config):
     assert new_id == old_id, "Old (existing) ID should be retrieved." ""
 
 
+@patch("ols.utils.config.conversation_cache.insert_or_append")
+def test_store_conversation_history(insert_or_append, load_config):
+    """Test if operation to store conversation history to cache is called."""
+    user_id = "1234"
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query)
+    response = ""
+    ols.store_conversation_history(user_id, conversation_id, llm_request, response)
+    insert_or_append.assert_called_with(user_id, conversation_id, f"{query}\n\n")
+
+
+@patch("ols.utils.config.conversation_cache.insert_or_append")
+def test_store_conversation_history_some_response(insert_or_append, load_config):
+    """Test if operation to store conversation history to cache is called."""
+    user_id = "1234"
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query)
+    response = "*response*"
+    ols.store_conversation_history(user_id, conversation_id, llm_request, response)
+    insert_or_append.assert_called_with(
+        user_id, conversation_id, f"{query}\n\n{response}"
+    )
+
+
+def test_store_conversation_history_improper_user_id(load_config):
+    """Test if basic input verification is done during history store operation."""
+    user_id = "::::"
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    with pytest.raises(ValueError, match="Invalid user ID"):
+        ols.store_conversation_history(user_id, conversation_id, llm_request, "")
+
+
+def test_store_conversation_history_improper_conversation_id(load_config):
+    """Test if basic input verification is done during history store operation."""
+    user_id = "1234"
+    conversation_id = "::::"
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    with pytest.raises(ValueError, match="Invalid conversation ID"):
+        ols.store_conversation_history(user_id, conversation_id, llm_request, "")
+
+
 # TODO: distribute individual test cases to separate test functions
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")

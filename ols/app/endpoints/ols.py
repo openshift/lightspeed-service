@@ -106,12 +106,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                     detail="Error while obtaining answer for user question",
                 )
 
-    if config.conversation_cache is not None:
-        config.conversation_cache.insert_or_append(
-            user_id,
-            conversation_id,
-            llm_request.query + "\n\n" + str(response or ""),
-        )
+    store_conversation_history(user_id, conversation_id, llm_request, response)
     return LLMResponse(conversation_id=conversation_id, response=response)
 
 
@@ -125,6 +120,19 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
         logger.info(f"{conversation_id} New conversation")
 
     return conversation_id
+
+
+def store_conversation_history(
+    user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
+) -> None:
+    """Store conversation history into selected cache."""
+    if config.conversation_cache is not None:
+        logger.info(f"{conversation_id} Storing conversation history.")
+        config.conversation_cache.insert_or_append(
+            user_id,
+            conversation_id,
+            llm_request.query + "\n\n" + str(response or ""),
+        )
 
 
 @router.post("/debug/query")
