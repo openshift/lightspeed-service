@@ -66,6 +66,7 @@ def test_invalid_config():
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -73,6 +74,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
+    type: bam
     url: 'https://url2'
     models:
       - name: m1
@@ -89,6 +91,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -96,6 +99,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
+    type: bam
     url: 'https://url2'
     models:
       - name: m1
@@ -112,6 +116,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'not-valid-url'
     models:
       - name: m1
@@ -119,6 +124,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
+    type: bam
     url: 'https://url2'
     models:
       - name: m1
@@ -134,6 +140,7 @@ llm_providers:
 ---
 llm_providers:
   - foo: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -148,6 +155,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: foobar
     models:
       - name: m1
@@ -163,6 +171,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -184,6 +193,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -205,6 +215,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -225,6 +236,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -245,6 +257,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -262,6 +275,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -282,6 +296,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -306,6 +321,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -326,6 +342,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -346,6 +363,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -365,6 +383,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -386,6 +405,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     models:
       - name: m1
@@ -407,6 +427,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     credentials_path: no_such_file_provider
 """,
@@ -419,6 +440,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     credentials_path: tests/config/secret.txt
     models:
@@ -435,6 +457,7 @@ llm_providers:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -456,6 +479,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -477,6 +501,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -502,6 +527,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -530,6 +556,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -557,6 +584,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -584,6 +612,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
+    type: bam
     credentials_path: tests/config/secret.txt
     models:
       - name: m1
@@ -616,6 +645,7 @@ def test_valid_config_stream():
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: 'http://url1'
     credentials_path: tests/config/secret.txt
     models:
@@ -625,6 +655,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
+    type: bam
     url: 'https://url2'
     models:
       - name: m1
@@ -663,6 +694,7 @@ def test_valid_config_file():
                 "llm_providers": [
                     {
                         "name": "p1",
+                        "type": "bam",
                         "url": "https://url1",
                         "credentials_path": "tests/config/secret.txt",
                         "models": [
@@ -679,6 +711,7 @@ def test_valid_config_file():
                     },
                     {
                         "name": "p2",
+                        "type": "bam",
                         "url": "https://url2",
                         "models": [
                             {
@@ -727,6 +760,7 @@ def test_valid_config_file_with_redis():
                 "llm_providers": [
                     {
                         "name": "p1",
+                        "type": "bam",
                         "url": "https://url1",
                         "credentials_path": "tests/config/secret.txt",
                         "models": [

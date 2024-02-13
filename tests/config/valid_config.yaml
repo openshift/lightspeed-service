@@ -1,6 +1,7 @@
 ---
 llm_providers:
   - name: p1
+    type: bam
     url: "https://url1"
     credentials_path: tests/config/secret.txt
     models:
@@ -10,6 +11,7 @@ llm_providers:
       - name: m2
         url: "https://murl2"
   - name: p2
+    type: bam
     url: "https://url2"
     models:
       - name: m1

@@ -1,15 +1,24 @@
 llm_providers:
-  - name: bam
+  - name: my_bam
+    type: bam
     url: "https://bam-api.res.ibm.com"
     credentials_path: bam_api_key.txt
     models:
       - name: ibm/granite-13b-chat-v2
-  - name: openai
+  - name: my_openai
+    type: openai
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-4-1106-preview
       - name: gpt-3.5-turbo
+  - name: my_watsonx
+    type: watsonx
+    url: "https://us-south.ml.cloud.ibm.com"
+    credentials_path: watsonx_api_key.txt
+    project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    models:
+      - name: ibm/granite-13b-chat-v2
 ols_config:
   reference_content:
 #    product_docs_index_path: "./vector-db/ocp-product-docs"
@@ -21,7 +30,7 @@ ols_config:
   logging_config:
     app_log_level: info
     lib_log_level: warning
-  default_provider: bam
+  default_provider: my_bam
   default_model: ibm/granite-13b-chat-v2
 dev_config:
   enable_dev_ui: true

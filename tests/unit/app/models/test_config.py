@@ -127,8 +127,10 @@ def test_provider_config():
     provider_config = ProviderConfig(
         {
             "name": "test_name",
+            "type": "bam",
             "url": "test_url",
             "credentials_path": "tests/config/secret.txt",
+            "project_id": "test_project_id",
             "models": [
                 {
                     "name": "test_model_name",
@@ -139,8 +141,10 @@ def test_provider_config():
         }
     )
     assert provider_config.name == "test_name"
+    assert provider_config.type == "bam"
     assert provider_config.url == "test_url"
     assert provider_config.credentials == "secret_key"
+    assert provider_config.project_id == "test_project_id"
     assert len(provider_config.models) == 1
     assert provider_config.models["test_model_name"].name == "test_model_name"
     assert provider_config.models["test_model_name"].url == "test_model_url"
@@ -150,12 +154,13 @@ def test_provider_config():
     assert provider_config.name is None
     assert provider_config.url is None
     assert provider_config.credentials is None
+    assert provider_config.project_id is None
     assert len(provider_config.models) == 0
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
             {
-                "name": "test_name",
+                "name": "bam",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret.txt",
                 "models": [],
@@ -166,7 +171,7 @@ def test_provider_config():
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
             {
-                "name": "test_name",
+                "name": "bam",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret.txt",
                 "models": [
@@ -201,7 +206,7 @@ def test_provider_config_validation_proper_config():
     """Test the ProviderConfig model validation."""
     provider_config = ProviderConfig(
         {
-            "name": "test_name",
+            "name": "bam",
             "url": "http://test.url",
             "credentials_path": "tests/config/secret.txt",
             "models": [
@@ -221,7 +226,7 @@ def test_provider_config_validation_improper_url():
     """Test the ProviderConfig model validation for improper URL."""
     provider_config = ProviderConfig(
         {
-            "name": "test_name",
+            "name": "bam",
             "url": "httpXXX://test.url",
             "credentials_path": "tests/config/secret.txt",
             "models": [
@@ -242,6 +247,7 @@ def test_provider_config_validation_missing_name():
     """Test the ProviderConfig model validation for missing name."""
     provider_config = ProviderConfig(
         {
+            "type": "bam",
             "url": "httpXXX://test.url",
             "credentials_path": "tests/config/secret.txt",
             "models": [
@@ -262,7 +268,7 @@ def test_provider_config_validation_no_credentials_path():
     """Test the ProviderConfig model validation when path to credentials is not provided."""
     provider_config = ProviderConfig(
         {
-            "name": "test_name",
+            "name": "bam",
             "url": "http://test.url",
             "credentials_path": None,
             "models": [
@@ -285,6 +291,7 @@ def test_llm_providers():
         [
             {
                 "name": "test_provider_name",
+                "type": "bam",
                 "url": "test_provider_url",
                 "credentials_path": "tests/config/secret.txt",
                 "models": [
@@ -299,6 +306,7 @@ def test_llm_providers():
     )
     assert len(llm_providers.providers) == 1
     assert llm_providers.providers["test_provider_name"].name == "test_provider_name"
+    assert llm_providers.providers["test_provider_name"].type == "bam"
     assert llm_providers.providers["test_provider_name"].url == "test_provider_url"
     assert llm_providers.providers["test_provider_name"].credentials == "secret_key"
     assert len(llm_providers.providers["test_provider_name"].models) == 1
@@ -331,6 +339,129 @@ def test_llm_providers():
             ]
         )
     assert "provider name is missing" in str(excinfo.value)
+
+
+def test_llm_providers_type_defaulting():
+    """Test that provider type is defaulted from provider name."""
+    llm_providers = LLMProviders(
+        [
+            {
+                "name": "bam",
+                "models": [
+                    {
+                        "name": "m1",
+                        "url": "https://test_model_url",
+                    }
+                ],
+            },
+        ]
+    )
+    assert len(llm_providers.providers) == 1
+    assert llm_providers.providers["bam"].name == "bam"
+    assert llm_providers.providers["bam"].type == "bam"
+
+    llm_providers = LLMProviders(
+        [
+            {
+                "name": "test_provider",
+                "type": "bam",
+                "models": [
+                    {
+                        "name": "m1",
+                        "url": "https://test_model_url",
+                    }
+                ],
+            },
+        ]
+    )
+    assert len(llm_providers.providers) == 1
+    assert llm_providers.providers["test_provider"].name == "test_provider"
+    assert llm_providers.providers["test_provider"].type == "bam"
+
+
+def test_llm_providers_type_validation():
+    """Test that only known provider types are allowed."""
+    with pytest.raises(InvalidConfigurationError) as excinfo:
+        LLMProviders(
+            [
+                {
+                    "name": "invalid_provider",
+                },
+            ]
+        )
+    assert "invalid provider type: invalid_provider" in str(excinfo.value)
+
+    with pytest.raises(InvalidConfigurationError) as excinfo:
+        LLMProviders(
+            [
+                {"name": "bam", "type": "invalid_type"},
+            ]
+        )
+    assert "invalid provider type: invalid_type" in str(excinfo.value)
+
+
+def test_llm_providers_watsonx_required_projectid():
+    """Test that project_id is required for watsonx provider."""
+    with pytest.raises(InvalidConfigurationError) as excinfo:
+        LLMProviders(
+            [
+                {
+                    "name": "watsonx",
+                },
+            ]
+        )
+    assert "project_id is required for WatsonX provider" in str(excinfo.value)
+
+    with pytest.raises(InvalidConfigurationError) as excinfo:
+        LLMProviders(
+            [
+                {
+                    "name": "test_watsonx",
+                    "type": "watsonx",
+                },
+            ]
+        )
+    assert "project_id is required for WatsonX provider" in str(excinfo.value)
+
+    llm_providers = LLMProviders(
+        [
+            {
+                "name": "watsonx",
+                "project_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+                "models": [
+                    {
+                        "name": "m1",
+                        "url": "https://test_model_url",
+                    }
+                ],
+            },
+        ]
+    )
+    assert len(llm_providers.providers) == 1
+    assert llm_providers.providers["watsonx"].name == "watsonx"
+    assert llm_providers.providers["watsonx"].type == "watsonx"
+    assert (
+        llm_providers.providers["watsonx"].project_id
+        == "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    )
+
+    llm_providers = LLMProviders(
+        [
+            {
+                "name": "test_provider",
+                "type": "watsonx",
+                "project_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+                "models": [{"name": "test_model_name", "url": "test_model_url"}],
+            },
+        ]
+    )
+    assert len(llm_providers.providers) == 1
+    assert llm_providers.providers["test_provider"].name == "test_provider"
+    assert llm_providers.providers["test_provider"].type == "watsonx"
+    assert (
+        llm_providers.providers["test_provider"].project_id
+        == "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    )
 
 
 def test_llm_providers_equality():
@@ -659,6 +790,7 @@ def test_config():
             "llm_providers": [
                 {
                     "name": "test_provider_name",
+                    "type": "bam",
                     "url": "test_provider_url",
                     "credentials_path": "tests/config/secret.txt",
                     "models": [
@@ -744,6 +876,7 @@ def test_config_without_ols_section():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
+                        "type": "bam",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret.txt",
                         "models": [
@@ -770,6 +903,7 @@ def test_config_improper_missing_model():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
+                        "type": "bam",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret.txt",
                         "models": [
@@ -837,6 +971,7 @@ def test_config_improper_model():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
+                        "type": "bam",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret.txt",
                         "models": [

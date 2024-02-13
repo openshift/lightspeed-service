@@ -1,6 +1,7 @@
 ---
 llm_providers:
   - name: $PROVIDER
+    project_id: $PROVIDER_PROJECT_ID
     credentials_path: $PROVIDER_KEY_PATH
     models:
       - name: $MODEL

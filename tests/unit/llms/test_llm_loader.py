@@ -72,12 +72,14 @@ def test_constructor_unknown_provider():
 
 def test_constructor_unsupported_provider():
     """Test how a configured but an unsupported provider (not openai, bam, etc) is checked for."""
-    test_provider = "unsupported-provider"
+    test_provider = "test-provider"
+    test_provider_type = "unsupported-provider-type"
     config.config = Config(
         {
             "llm_providers": [
                 {
                     "name": test_provider,
+                    "type": "bam",
                     "models": [
                         {
                             "name": constants.GRANITE_13B_CHAT_V1,
@@ -87,6 +89,7 @@ def test_constructor_unsupported_provider():
             ]
         }
     )
+    config.config.llm_providers.providers[test_provider].type = test_provider_type
     config.llm_config = config.config.llm_providers
 
     with pytest.raises(UnsupportedProviderError):
@@ -98,7 +101,11 @@ def test_constructor_when_missing_model_config():
     test_provider = "test-provider"
     test_model = "test-model"
     config.config = Config(
-        {"llm_providers": [{"name": test_provider, "models": [{"name": "foobar"}]}]}
+        {
+            "llm_providers": [
+                {"name": test_provider, "type": "bam", "models": [{"name": "foobar"}]}
+            ]
+        }
     )
     config.llm_config = config.config.llm_providers
 

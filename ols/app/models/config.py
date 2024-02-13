@@ -72,8 +72,10 @@ class ProviderConfig(BaseModel):
     """LLM provider configuration."""
 
     name: Optional[str] = None
+    type: Optional[str] = None
     url: Optional[str] = None
     credentials: Optional[str] = None
+    project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -82,8 +84,22 @@ class ProviderConfig(BaseModel):
         if data is None:
             return
         self.name = data.get("name", None)
+        # Default provider type to be the provider name, unless
+        # specified explicitly.
+        self.type = str(data.get("type", self.name)).lower()
+        if self.type not in constants.SUPPORTED_PROVIDER_TYPES:
+            raise InvalidConfigurationError(
+                f"invalid provider type: {self.type}, supported types are"
+                f" {set(constants.SUPPORTED_PROVIDER_TYPES)}"
+            )
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
+        self.project_id = data.get("project_id", None)
+        if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
+            raise InvalidConfigurationError(
+                f"project_id is required for WatsonX provider {self.name}"
+            )
+
         if "models" not in data or len(data["models"]) == 0:
             raise InvalidConfigurationError(
                 f"no models configured for provider {data['name']}"
@@ -99,8 +115,10 @@ class ProviderConfig(BaseModel):
         if isinstance(other, ProviderConfig):
             return (
                 self.name == other.name
+                and self.type == other.type
                 and self.url == other.url
                 and self.credentials == other.credentials
+                and self.project_id == other.project_id
                 and self.models == other.models
             )
         return False
