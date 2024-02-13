@@ -93,10 +93,6 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 llm_response, _ = docs_summarizer.summarize(
                     conversation_id, llm_request.query, previous_input
                 )
-                # TODO: There are some inconsistencies in the types to be solved.
-                # See the comment in `summarize` method in `docs_summarizer.py`
-                # Because of that, we are ignoring some type checks when we
-                # are creating response model.
                 response = llm_response.response
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
