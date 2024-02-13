@@ -46,29 +46,8 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
-    # Validate the query
-    try:
-        question_validator = QuestionValidator(
-            provider=llm_request.provider, model=llm_request.model
-        )
-        metrics.llm_calls_total.inc()
-        validation_result = question_validator.validate_question(
-            conversation_id, llm_request.query
-        )
-    except LLMConfigurationError as e:
-        metrics.llm_calls_validation_errors_total.inc()
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"response": f"Unable to process this request because '{e}'"},
-        )
-    except Exception as validation_error:
-        metrics.llm_calls_failures_total.inc()
-        logger.error("Error while validating question")
-        logger.error(validation_error)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error while validating question",
-        )
+    metrics.llm_calls_total.inc()
+    validation_result = validate_question(conversation_id, llm_request)
 
     response: Optional[str] = None
 
@@ -128,6 +107,29 @@ def store_conversation_history(
             user_id,
             conversation_id,
             llm_request.query + "\n\n" + str(response or ""),
+        )
+
+
+def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
+    """Validate user question, raise HTTPException in case of any problem."""
+    try:
+        question_validator = QuestionValidator(
+            provider=llm_request.provider, model=llm_request.model
+        )
+        return question_validator.validate_question(conversation_id, llm_request.query)
+    except LLMConfigurationError as e:
+        metrics.llm_calls_validation_errors_total.inc()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"response": f"Unable to process this request because '{e}'"},
+        )
+    except Exception as validation_error:
+        metrics.llm_calls_failures_total.inc()
+        logger.error("Error while validating question")
+        logger.error(validation_error)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while validating question",
         )
 
 

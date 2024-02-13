@@ -80,6 +80,44 @@ def test_store_conversation_history_improper_conversation_id(load_config):
         ols.store_conversation_history(user_id, conversation_id, llm_request, "")
 
 
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+def test_validate_question(validate_question_mock, load_config):
+    """Check the behaviour of validate_question function."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    ols.validate_question(conversation_id, llm_request)
+    validate_question_mock.assert_called_with(conversation_id, query)
+
+
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+def test_validate_question_on_configuration_error(validate_question_mock, load_config):
+    """Check the behaviour of validate_question function when wrong configuration is detected."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    validate_question_mock.side_effect = LLMConfigurationError
+
+    # HTTP exception should be raises
+    with pytest.raises(HTTPException, match="Unable to process this request"):
+        ols.validate_question(conversation_id, llm_request)
+
+
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+def test_validate_question_on_validation_error(validate_question_mock, load_config):
+    """Check the behaviour of validate_question function when query is not validated properly."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    validate_question_mock.side_effect = (
+        ValueError  # any exception except HTTPException can be used there
+    )
+
+    # HTTP exception should be raises
+    with pytest.raises(HTTPException, match="Error while validating question"):
+        ols.validate_question(conversation_id, llm_request)
+
+
 # TODO: distribute individual test cases to separate test functions
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
