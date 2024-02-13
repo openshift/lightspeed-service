@@ -60,10 +60,12 @@ class LLMResponse(BaseModel):
     Attributes:
         conversation_id: The optional conversation ID (UUID).
         response: The optional response.
+        referenced_documents: The optional URLs for the documents used to generate the response.
     """
 
     conversation_id: str
     response: str
+    referenced_documents: list[str]
 
     # provides examples for /docs endpoint
     model_config = {
@@ -71,7 +73,11 @@ class LLMResponse(BaseModel):
             "examples": [
                 {
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                    "response": "sure, here is deployment yaml for the mongodb image...",
+                    "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                    "referenced_documents": [
+                        "https://docs.openshift.com/container-platform/4.14/operators/"
+                        "understanding/olm/olm-understanding-olm.html"
+                    ],
                 }
             ]
         }

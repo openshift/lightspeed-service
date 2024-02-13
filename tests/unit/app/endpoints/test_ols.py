@@ -137,7 +137,7 @@ def test_conversation_request(
     )
     mock_summarize.return_value = (
         mock_response,
-        "",  # referenced documents
+        [],  # referenced_documents
     )
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request)

@@ -64,14 +64,17 @@ class TestLLM:
         """Test the LLMResponse model."""
         conversation_id = "id"
         response = "response"
+        referenced_documents = ["https://foo.bar.com/index.html"]
 
         llm_response = LLMResponse(
             conversation_id=conversation_id,
             response=response,
+            referenced_documents=referenced_documents,
         )
 
         assert llm_response.conversation_id == conversation_id
         assert llm_response.response == response
+        assert llm_response.referenced_documents == referenced_documents
 
 
 class TestFeedback:

@@ -53,6 +53,7 @@ def test_invalid_question():
     expected_json = {
         "conversation_id": conversation_id,
         "response": expected_details,
+        "referenced_documents": [],
     }
     assert response.json() == expected_json
 
