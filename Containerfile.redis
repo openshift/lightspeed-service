@@ -1,0 +1,33 @@
+# Use Red Hat Universal Base Image (UBI) 9 as the base image
+FROM registry.access.redhat.com/ubi9/ubi-minimal
+
+# Install necessary dependencies (gcc, make, etc.) for building Redis from source
+RUN microdnf install -y gcc make wget tar gzip && \
+    microdnf clean all
+
+# Set the Redis version
+ARG REDIS_VERSION=7.2.4
+
+# Download and extract Redis source code
+RUN mkdir -p /etc/redis && \
+    wget https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz && \
+    tar xzf redis-${REDIS_VERSION}.tar.gz -C /etc/redis --strip-components=1 && \
+    rm redis-${REDIS_VERSION}.tar.gz && \
+    chmod 777 /var/run
+
+# Change working directory to the extracted Redis source code directory
+WORKDIR /etc/redis
+
+# Build Redis from source
+RUN make && \
+    make install
+
+# Set protected-mode to no and bind to all interfaces (0.0.0.0) in redis.conf
+RUN sed -i 's/^protected-mode yes/protected-mode no/' redis.conf
+RUN sed -i 's/^bind 127.0.0.1 -::1/bind 0.0.0.0/' redis.conf
+
+# Expose the default Redis port
+EXPOSE 6379
+
+# Start Redis server as the default command
+CMD ["redis-server", "/etc/redis/redis.conf"]
