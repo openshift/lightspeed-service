@@ -53,15 +53,15 @@ def test_get_nonexistent_user(cache):
 
 def test_get_improper_user_id(cache):
     """Test how improper user ID is handled."""
-    with pytest.raises(ValueError, match="Incorrect user ID"):
+    with pytest.raises(ValueError, match="Invalid user ID :"):
         cache.get(":", conversation_id)
-    with pytest.raises(ValueError, match="Incorrect user ID"):
+    with pytest.raises(ValueError, match="Invalid user ID foo:bar"):
         cache.get("foo:bar", conversation_id)
 
 
 def test_get_improper_conversation_id(cache):
     """Test how improper conversation ID is handled."""
-    with pytest.raises(ValueError, match="Incorrect conversation ID"):
+    with pytest.raises(ValueError, match="Invalid conversation ID"):
         cache.get("user1", "this-is-not-valid-uuid")
 
 
