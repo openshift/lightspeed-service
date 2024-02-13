@@ -32,6 +32,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     """
     # Initialize variables
     previous_input = None
+    referenced_documents: list[str] = []
 
     # TODO: retrieve proper user ID from request
     user_id = "user1"
@@ -69,7 +70,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 docs_summarizer = DocsSummarizer(
                     provider=llm_request.provider, model=llm_request.model
                 )
-                llm_response, _ = docs_summarizer.summarize(
+                llm_response, referenced_documents = docs_summarizer.summarize(
                     conversation_id, llm_request.query, previous_input
                 )
                 response = llm_response.response
@@ -82,7 +83,11 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
                 )
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
-    return LLMResponse(conversation_id=conversation_id, response=response)
+    return LLMResponse(
+        conversation_id=conversation_id,
+        response=response,
+        referenced_documents=referenced_documents,
+    )
 
 
 def retrieve_conversation_id(llm_request: LLMRequest) -> str:
@@ -158,7 +163,9 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     logger.info(f"{conversation_id} Model returned: {response}")
 
     llm_response = LLMResponse(
-        conversation_id=conversation_id, response=response["text"]
+        conversation_id=conversation_id,
+        response=response["text"],
+        referenced_documents=[],
     )
 
     return llm_response

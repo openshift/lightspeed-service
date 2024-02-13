@@ -40,6 +40,7 @@ def test_debug_query():
     assert response.json() == {
         "conversation_id": conversation_id,
         "response": "test response",
+        "referenced_documents": [],
     }
 
 
@@ -144,6 +145,7 @@ def test_post_question_on_invalid_question():
         expected_json = {
             "conversation_id": conversation_id,
             "response": expected_details,
+            "referenced_documents": [],
         }
         assert response.json() == expected_json
 

@@ -40,7 +40,8 @@ class DocsSummarizer(QueryHelper):
         file_path: /workspace/source/ocp-product-docs-plaintext/hardware_enablement/
                     psap-node-feature-discovery-operator.txt
         is mapped into a doc URL such as
-        https://docs.openshift.com/container-platform/4.14/hardware_enablement/psap-node-feature-discovery-operator.html.
+        https://docs.openshift.com/container-platform/4.14/hardware_enablement/
+        psap-node-feature-discovery-operator.html.
         """
         return (
             constants.OCP_DOCS_ROOT_URL
@@ -54,7 +55,7 @@ class DocsSummarizer(QueryHelper):
         query: str,
         history: Optional[str] = None,
         **kwargs: Any,
-    ) -> tuple[Response, str]:
+    ) -> tuple[Response, list[str]]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -64,7 +65,8 @@ class DocsSummarizer(QueryHelper):
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-            A tuple containing the summary as a string and referenced documents as a string.
+            A tuple containing the summary as a string and referenced documents
+            as a list of strings.
         """
         bare_llm = LLMLoader(self.provider, self.model).llm
 
@@ -100,6 +102,8 @@ class DocsSummarizer(QueryHelper):
             f"{conversation_id} using embed model: {service_context.embed_model!s}"
         )
 
+        referenced_documents: list[str] = []
+
         # TODO get this from global config
         if (
             config.ols_config.reference_content is not None
@@ -129,14 +133,12 @@ class DocsSummarizer(QueryHelper):
                 logger.info(f"{conversation_id} Submitting summarization query")
                 summary = query_engine.query(query)
 
-                referenced_documents = "\n".join(
-                    {
+                for source_node in summary.source_nodes:
+                    referenced_documents.append(
                         self._file_path_to_doc_url(
                             source_node.node.metadata["file_path"]
                         )
-                        for source_node in summary.source_nodes
-                    }
-                )
+                    )
             except Exception as err:
                 logger.error(f"Error loading vector index: {err}")
                 use_llm_without_reference_content = True
@@ -164,7 +166,6 @@ class DocsSummarizer(QueryHelper):
                 # NOTE: The LLM returns AIMessage, but typing sees it as a plain str
                 f"{response}"  # type: ignore
             )
-            referenced_documents = ""
 
         logger.info(f"{conversation_id} Summary response: {summary!s}")
         logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
