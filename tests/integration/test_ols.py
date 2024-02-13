@@ -58,7 +58,10 @@ def test_debug_query_no_conversation_id():
     json = response.json()
 
     # check that conversation ID is being created
-    assert len(json["conversation_id"]) > 0
+    assert (
+        "conversation_id" in json
+    ), "Conversation ID is not part of response as should be"
+    assert suid.check_suid(json["conversation_id"])
     assert json["response"] == "test response"
 
 
