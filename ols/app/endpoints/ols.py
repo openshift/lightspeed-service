@@ -31,16 +31,14 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     """
     # Initialize variables
     previous_input = None
-    conversation_id = llm_request.conversation_id
 
     # TODO: retrieve proper user ID from request
     user_id = "user1"
 
-    # Generate a new conversation ID if not provided
-    if not conversation_id:
-        conversation_id = suid.get_suid()
-        logger.info(f"{conversation_id} New conversation")
-    else:
+    conversation_id = retrieve_conversation_id(llm_request)
+
+    # TODO: will be refactored in following PR
+    if llm_request.conversation_id:
         previous_input = config.conversation_cache.get(user_id, conversation_id)
         logger.info(f"{conversation_id} Previous conversation input: {previous_input}")
 
@@ -115,6 +113,18 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     return llm_response
 
 
+def retrieve_conversation_id(llm_request: LLMRequest) -> str:
+    """Retrieve conversation ID based on existing ID or on newly generated one."""
+    conversation_id = llm_request.conversation_id
+
+    # Generate a new conversation ID if not provided
+    if not conversation_id:
+        conversation_id = suid.get_suid()
+        logger.info(f"{conversation_id} New conversation")
+
+    return conversation_id
+
+
 @router.post("/debug/query")
 def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     """Handle requests for the base LLM completion endpoint.
@@ -125,12 +135,7 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     Returns:
         Response containing the processed information.
     """
-    if llm_request.conversation_id is None:
-        conversation_id = suid.get_suid()
-    else:
-        conversation_id = llm_request.conversation_id
-
-    logger.info(f"{conversation_id} New conversation")
+    conversation_id = retrieve_conversation_id(llm_request)
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     bare_llm = LLMLoader(
