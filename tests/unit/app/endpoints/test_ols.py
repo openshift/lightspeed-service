@@ -63,7 +63,9 @@ def test_conversation_request(
         response.response
         == "Kubernetes is an open-source container-orchestration system..."
     )
-    assert len(response.conversation_id) > 0
+    assert suid.check_suid(
+        response.conversation_id
+    ), "Improper conversation ID returned"
 
     # invalid question
     mock_validate_question.return_value = constants.SUBJECT_INVALID
@@ -73,7 +75,9 @@ def test_conversation_request(
         "I can only answer questions about OpenShift and Kubernetes. "
         "Please rephrase your question"
     )
-    assert len(response.conversation_id) > 0
+    assert suid.check_suid(
+        response.conversation_id
+    ), "Improper conversation ID returned"
 
     # validation failure
     mock_validate_question.side_effect = HTTPException
