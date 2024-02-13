@@ -10,7 +10,7 @@ from ols import constants
 from ols.app.endpoints import ols
 from ols.app.models.models import LLMRequest
 from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import config
+from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -19,6 +19,21 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 def load_config():
     """Load config before unit tests."""
     config.init_config("tests/config/test_app_endpoints.yaml")
+
+
+def test_retrieve_conversation_new_id(load_config):
+    """Check the function to retrieve conversation ID."""
+    llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
+    new_id = ols.retrieve_conversation_id(llm_request)
+    assert suid.check_suid(new_id), "Improper conversation ID generated"
+
+
+def test_retrieve_conversation_id_existing_id(load_config):
+    """Check the function to retrieve conversation ID when one already exists."""
+    old_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=old_id)
+    new_id = ols.retrieve_conversation_id(llm_request)
+    assert new_id == old_id, "Old (existing) ID should be retrieved." ""
 
 
 # TODO: distribute individual test cases to separate test functions
