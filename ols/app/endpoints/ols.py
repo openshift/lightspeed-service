@@ -111,8 +111,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
             conversation_id,
             llm_request.query + "\n\n" + str(response or ""),  # type: ignore
         )
-    llm_response = LLMResponse(conversation_id=conversation_id, response=response)  # type: ignore
-    return llm_response
+    return LLMResponse(conversation_id=conversation_id, response=response)
 
 
 @router.post("/debug/query")
