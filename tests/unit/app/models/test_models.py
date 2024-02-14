@@ -15,7 +15,8 @@ from ols.app.models.models import (
 class TestLLM:
     """Unit tests for the LLMRequest/LLMResponse models."""
 
-    def test_llm_request_required_inputs(self):
+    @staticmethod
+    def test_llm_request_required_inputs():
         """Test required inputs of the LLMRequest model."""
         query = "Tell me about Kubernetes"
 
@@ -26,7 +27,8 @@ class TestLLM:
         assert llm_request.provider is None
         assert llm_request.model is None
 
-    def test_llm_request_optional_inputs(self):
+    @staticmethod
+    def test_llm_request_optional_inputs():
         """Test optional inputs of the LLMRequest model."""
         query = "Tell me about Kubernetes"
         conversation_id = "id"
@@ -44,7 +46,8 @@ class TestLLM:
         assert llm_request.provider == provider
         assert llm_request.model == model
 
-    def test_llm_request_provider_and_model(self):
+    @staticmethod
+    def test_llm_request_provider_and_model():
         """Test the LLMRequest model with provider and model."""
         # model set and provider not
         with pytest.raises(
@@ -60,7 +63,8 @@ class TestLLM:
         ):
             LLMRequest(query="bla", provider="openai", model=None)
 
-    def test_llm_response(self):
+    @staticmethod
+    def test_llm_response():
         """Test the LLMResponse model."""
         conversation_id = "id"
         response = "response"
@@ -80,7 +84,8 @@ class TestLLM:
 class TestFeedback:
     """Unit tests for the FeedbackRequest/FeedbackResponse models."""
 
-    def test_feedback_request(self):
+    @staticmethod
+    def test_feedback_request():
         """Test the FeedbackRequest model."""
         conversation_id = "id"
         feedback_obj = {"rating": 5, "comment": "Great service!"}
@@ -93,7 +98,8 @@ class TestFeedback:
         assert feedback_request.conversation_id == conversation_id
         assert feedback_request.feedback_object == feedback_obj
 
-    def test_feedback_response(self):
+    @staticmethod
+    def test_feedback_response():
         """Test the FeedbackResponse model."""
         feedback_response = "feedback received"
 
@@ -105,7 +111,8 @@ class TestFeedback:
 class TestHealth:
     """Unit test for the HealthResponse model."""
 
-    def test_health_response(self):
+    @staticmethod
+    def test_health_response():
         """Test the HealthResponse model."""
         health_response = {"status": "healthy"}
 
