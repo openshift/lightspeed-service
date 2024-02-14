@@ -830,6 +830,7 @@ def test_config_file_without_logging_config():
 
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
+    config.query_redactor = None
     config.init_empty_config()
     config.init_config("tests/config/valid_config_without_query_filter.yaml")
     assert config.query_redactor is None

@@ -222,6 +222,7 @@ def test_post_question_on_noyaml_response_type() -> None:
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
     config.ols_config.reference_content.product_docs_index_id = "product"
+    config.dev_config.disable_auth = True
     answer = constants.SUBJECT_VALID
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
@@ -263,6 +264,7 @@ def test_post_question_on_noyaml_response_type() -> None:
 def test_post_query_with_query_filters_response_type() -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
     config.init_empty_config()
+    config.dev_config.disable_auth = True
     answer = constants.SUBJECT_VALID
 
     query_filters = [

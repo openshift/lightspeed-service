@@ -36,3 +36,5 @@ ols_config:
   summarizer_model: m1
   validator_provider: p1
   validator_model: m1
+dev_config:
+  disable_auth: true
