@@ -32,19 +32,21 @@ def test_query_docs_success():
 
 def test_query_docs_failure():
     """Exception is raised when there is an issue with fetching the docs."""
-    with mock.patch(
-        target="tests.mock_classes.mock_retrievers.MockVectorStore.as_retriever",
-        return_value=mock_null_value_retriever(),
-    ):
-        with pytest.raises(
+    with (
+        mock.patch(
+            target="tests.mock_classes.mock_retrievers.MockVectorStore.as_retriever",
+            return_value=mock_null_value_retriever(),
+        ),
+        pytest.raises(
             RetrieveDocsExceptionError,
             match="error in getting the docs from vectorstore",
-        ):
-            QueryDocs().get_relevant_docs(
-                vectordb=MockVectorStore(),
-                query="foo",
-                search_kwargs={"k": 1},
-            )
+        ),
+    ):
+        QueryDocs().get_relevant_docs(
+            vectordb=MockVectorStore(),
+            query="foo",
+            search_kwargs={"k": 1},
+        )
 
 
 def test_query_docs_correct_search_type():
