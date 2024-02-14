@@ -78,3 +78,23 @@ def test_valid_question() -> None:
         "The following response was generated without access to reference content:"
         not in json_response["response"]
     )
+
+
+def test_rag_question() -> None:
+    """Ensure responses include rag references."""
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is the first step to install an openshift cluster?"},
+        timeout=90,
+    )
+    print(vars(response))
+    assert response.status_code == requests.codes.ok
+    json_response = response.json()
+    assert len(json_response["referenced_documents"]) > 0
+    assert "install" in json_response["referenced_documents"][0]
+    assert "https://" in json_response["referenced_documents"][0]
+
+    assert (
+        "The following response was generated without access to reference content:"
+        not in json_response["response"]
+    )
