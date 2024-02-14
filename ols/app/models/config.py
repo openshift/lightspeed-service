@@ -38,6 +38,7 @@ class ModelConfig(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
     credentials: Optional[str] = None
+    context_window_size: int = constants.DEFAULT_CONTEXT_WINDOW_SIZE
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -47,6 +48,16 @@ class ModelConfig(BaseModel):
         self.name = data.get("name", None)
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
+        try:
+            if "context_window_size" in data:
+                self.context_window_size = int(data.get("context_window_size"))
+            if self.context_window_size < 0:
+                raise ValueError
+        except ValueError:
+            raise InvalidConfigurationError(
+                f"invalid context window size {data['context_window_size']}, "
+                "positive value expected"
+            )
 
     def __eq__(self, other) -> bool:
         """Compare two objects for equality."""
@@ -55,6 +66,7 @@ class ModelConfig(BaseModel):
                 self.name == other.name
                 and self.url == other.url
                 and self.credentials == other.credentials
+                and self.context_window_size == other.context_window_size
             )
         return False
 
