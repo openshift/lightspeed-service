@@ -46,37 +46,9 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     metrics.llm_calls_total.inc()
     validation_result = validate_question(conversation_id, llm_request)
 
-    response: Optional[str] = None
-
-    match (validation_result):
-        case constants.SUBJECT_INVALID:
-            logger.info(
-                f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
-            )
-            response = (
-                "I can only answer questions about OpenShift and Kubernetes. "
-                "Please rephrase your question"
-            )
-        case constants.SUBJECT_VALID:
-            logger.info(
-                f"{conversation_id} - Question is relevant to kubernetes or ocp"
-            )
-            # Summarize documentation
-            try:
-                docs_summarizer = DocsSummarizer(
-                    provider=llm_request.provider, model=llm_request.model
-                )
-                llm_response, referenced_documents = docs_summarizer.summarize(
-                    conversation_id, llm_request.query, previous_input
-                )
-                response = llm_response.response
-            except Exception as summarizer_error:
-                logger.error("Error while obtaining answer for user question")
-                logger.error(summarizer_error)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error while obtaining answer for user question",
-                )
+    response, referenced_documents = generate_response(
+        conversation_id, llm_request, validation_result, previous_input
+    )
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
     return LLMResponse(
@@ -109,6 +81,50 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> Optional[s
             f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
         )
     return previous_input
+
+
+def generate_response(
+    conversation_id: str,
+    llm_request: LLMRequest,
+    validation_result: str,
+    previous_input: Optional[str],
+) -> tuple[Optional[str], list[str]]:
+    """Generate response based on validation result, previous input, and model output."""
+    match (validation_result):
+        case constants.SUBJECT_INVALID:
+            logger.info(
+                f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
+            )
+            return (
+                "I can only answer questions about OpenShift and Kubernetes. "
+                "Please rephrase your question"
+            ), []
+        case constants.SUBJECT_VALID:
+            logger.info(
+                f"{conversation_id} - Question is relevant to kubernetes or ocp"
+            )
+            # Summarize documentation
+            try:
+                docs_summarizer = DocsSummarizer(
+                    provider=llm_request.provider, model=llm_request.model
+                )
+                llm_response, referenced_documents = docs_summarizer.summarize(
+                    conversation_id, llm_request.query, previous_input
+                )
+                return llm_response.response, referenced_documents
+            except Exception as summarizer_error:
+                logger.error("Error while obtaining answer for user question")
+                logger.error(summarizer_error)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error while obtaining answer for user question",
+                )
+        case _:
+            logger.error("Invalid validation result (internal error)")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error while obtaining answer for user question",
+            )
 
 
 def store_conversation_history(

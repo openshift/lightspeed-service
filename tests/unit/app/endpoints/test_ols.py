@@ -233,3 +233,92 @@ def test_conversation_request_debug_api(load_config):
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id="123")
     response = ols.conversation_request_debug_api(llm_request)
     assert response.response == "llm response"
+
+
+def test_generate_response_invalid_subject(load_config):
+    """Test how generate_response function checks validation results."""
+    # prepare arguments for DocsSummarizer
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    validation_result = constants.SUBJECT_INVALID
+    previous_input = None
+
+    # try to get response
+    response, documents = ols.generate_response(
+        conversation_id, llm_request, validation_result, previous_input
+    )
+
+    # check the response
+    assert "I can only answer questions about OpenShift and Kubernetes" in response
+    assert len(documents) == 0
+
+
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+def test_generate_response_valid_subject(mock_summarize, load_config):
+    """Test how generate_response function checks validation results."""
+    # mock the DocsSummarizer
+    mock_response = Mock()
+    mock_response.response = (
+        "Kubernetes is an open-source container-orchestration system..."  # summary
+    )
+    mock_summarize.return_value = (
+        mock_response,
+        [],  # referenced_documents
+    )
+
+    # prepare arguments for DocsSummarizer
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    validation_result = constants.SUBJECT_VALID
+    previous_input = None
+
+    # try to get response
+    response, documents = ols.generate_response(
+        conversation_id, llm_request, validation_result, previous_input
+    )
+
+    # check the response
+    assert "Kubernetes" in response
+    assert len(documents) == 0
+
+
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+def test_generate_response_on_summarizer_error(mock_summarize, load_config):
+    """Test how generate_response function checks validation results."""
+    # mock the DocsSummarizer
+    mock_response = Mock()
+    mock_response.response = (
+        "Kubernetes is an open-source container-orchestration system..."  # summary
+    )
+    mock_summarize.side_effect = Exception  # any exception migth occurs
+
+    # prepare arguments for DocsSummarizer
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    validation_result = constants.SUBJECT_VALID
+    previous_input = None
+
+    # try to get response
+    with pytest.raises(
+        HTTPException, match="Error while obtaining answer for user question"
+    ):
+        ols.generate_response(
+            conversation_id, llm_request, validation_result, previous_input
+        )
+
+
+def test_generate_response_unknown_validation_result(load_config):
+    """Test how generate_response function checks validation results."""
+    # prepare arguments for DocsSummarizer
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    validation_result = "Unknown"
+    previous_input = None
+
+    # try to get response
+    with pytest.raises(
+        HTTPException, match="Error while obtaining answer for user question"
+    ):
+        ols.generate_response(
+            conversation_id, llm_request, validation_result, previous_input
+        )
