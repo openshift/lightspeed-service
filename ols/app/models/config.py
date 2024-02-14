@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -311,6 +312,53 @@ class MemoryConfig(BaseModel):
         """Validate memory cache config."""
 
 
+class QueryFilter(BaseModel):
+    """QueryFilter configuration."""
+
+    name: Optional[str] = None
+    pattern: Optional[str] = None
+    replace_with: Optional[str] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is None:
+            return
+        try:
+            self.name = data.get("name")
+            self.pattern = data.get("pattern")
+            self.replace_with = data.get("replace_with")
+            if self.name is None or self.pattern is None or self.replace_with is None:
+                raise ValueError
+        except ValueError:
+            raise InvalidConfigurationError(
+                "name, pattern and replace_with need to be specified"
+            )
+
+    def __eq__(self, other) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, QueryFilter):
+            return (
+                self.name == other.name
+                and self.pattern == other.pattern
+                and self.replace_with == other.replace_with
+            )
+        return False
+
+    def validate_yaml(self) -> None:
+        """Validate memory cache config."""
+        if self.name is None:
+            raise InvalidConfigurationError("name is missing")
+        if self.pattern is None:
+            raise InvalidConfigurationError("pattern is missing")
+        try:
+            re.compile(self.pattern)
+        except re.error:
+            raise InvalidConfigurationError("pattern is invalid")
+        if self.replace_with is None:
+            raise InvalidConfigurationError("replace_with is missing")
+
+
 class ConversationCacheConfig(BaseModel):
     """Conversation cache configuration."""
 
@@ -467,6 +515,7 @@ class OLSConfig(BaseModel):
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
+    query_filters: Optional[list[QueryFilter]] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -481,6 +530,10 @@ class OLSConfig(BaseModel):
         self.reference_content = ReferenceContent(data.get("reference_content", None))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
+        if data.get("query_filters", None) is not None:
+            self.query_filters = []
+            for item in data.get("query_filters", None):
+                self.query_filters.append(QueryFilter(item))
 
     def __eq__(self, other: Any) -> bool:
         """Compare two objects for equality."""
@@ -491,6 +544,7 @@ class OLSConfig(BaseModel):
                 and self.reference_content == other.reference_content
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
+                and self.query_filters == other.query_filters
             )
         return False
 
@@ -500,6 +554,9 @@ class OLSConfig(BaseModel):
         self.logging_config.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
+        if self.query_filters is not None:
+            for filter in self.query_filters:
+                filter.validate_yaml()
 
 
 class DevConfig(BaseModel):

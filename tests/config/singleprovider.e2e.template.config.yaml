@@ -17,6 +17,13 @@ ols_config:
     default_level: INFO
   default_provider: $PROVIDER
   default_model: $MODEL
+  query_filters:
+    - name: foo_filter
+      pattern: '\b(?:foo)\b'
+      replace_with: "deployment"
+    - name: bar_filter
+      pattern: '\b(?:bar)\b'
+      replace_with: "openshift"
 dev_config:
   llm_params:
     temperature: 0

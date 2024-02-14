@@ -1136,3 +1136,165 @@ def test_reference_content_equality():
     # compare with value of different type
     other_value = "foo"
     assert reference_content_1 != other_value
+
+
+def test_config_improper_query_filter():
+    """Test the Config model with improper query filter (no name) is set."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="name, pattern and replace_with need to be specified",
+    ):
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "openai",
+                        "url": "http://test_provider_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "test_model_name",
+                                "url": "http://test_model_url",
+                                "credentials_path": "tests/config/secret.txt",
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "default_provider": "openai",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "query_filters": [
+                        {
+                            "pattern": "test_regular_expression",
+                            "replace_with": "test_replace_with",
+                        }
+                    ],
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()
+
+
+def test_config_with_multiple_query_filter():
+    """Test the Config model with multiple query filter is set."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "openai",
+                    "url": "http://test_provider_url",
+                    "credentials_path": "tests/config/secret.txt",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test.io",
+                            "credentials_path": "tests/config/secret.txt",
+                        }
+                    ],
+                },
+            ],
+            "ols_config": {
+                "default_provider": "openai",
+                "default_model": "test_model_name",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+                "query_filters": [
+                    {
+                        "name": "filter1",
+                        "pattern": r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})",
+                        "replace_with": "redacted",
+                    },
+                    {
+                        "name": "filter2",
+                        "pattern": r"(?:https?://)?(?:www\.)?[\w\.-]+\.\w+",
+                        "replace_with": "",
+                    },
+                ],
+            },
+        }
+    )
+    assert config.ols_config.query_filters[0].name == "filter1"
+    assert (
+        config.ols_config.query_filters[0].pattern
+        == r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+    )
+    assert config.ols_config.query_filters[0].replace_with == "redacted"
+    assert config.ols_config.query_filters[1].name == "filter2"
+    assert (
+        config.ols_config.query_filters[1].pattern
+        == r"(?:https?://)?(?:www\.)?[\w\.-]+\.\w+"
+    )
+    assert config.ols_config.query_filters[1].replace_with == ""
+
+
+def test_config_invalid_regex_query_filter():
+    """Test the Config model with invalid query filter pattern."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="pattern is invalid",
+    ):
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "openai",
+                        "url": "http://test_provider_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "test_model_name",
+                                "url": "http://test_model_url",
+                                "credentials_path": "tests/config/secret.txt",
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "default_provider": "openai",
+                    "default_model": "test_default_model",
+                    "classifier_provider": "test_classifer_provider",
+                    "classifier_model": "test_classifier_model",
+                    "summarizer_provider": "test_summarizer_provider",
+                    "summarizer_model": "test_summarizer_model",
+                    "validator_provider": "test_validator_provider",
+                    "validator_model": "test_validator_model",
+                    "query_filters": [
+                        {
+                            "name": "test_name",
+                            "pattern": "[",
+                            "replace_with": "test_replace_with",
+                        }
+                    ],
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 100,
+                        },
+                    },
+                    "logging_config": {
+                        "app_log_level": "error",
+                    },
+                },
+            }
+        ).validate_yaml()

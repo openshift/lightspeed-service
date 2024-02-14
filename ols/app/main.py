@@ -24,6 +24,7 @@ app = FastAPI(
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 config.init_config(cfg_file)
+config.init_query_filter()
 
 configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)

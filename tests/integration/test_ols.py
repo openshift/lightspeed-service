@@ -7,7 +7,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import constants
-from ols.app.models.config import ProviderConfig, ReferenceContent
+from ols.app.models.config import ProviderConfig, QueryFilter, ReferenceContent
 from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -219,7 +219,7 @@ class TestQuery:
 
 
 def test_post_question_on_noyaml_response_type() -> None:
-    """Check the REST API /ols/ with POST HTTP method when unknown response type is returned."""
+    """Check the REST API /v1/query with POST HTTP method when unknown response type is returned."""
     config.init_empty_config()
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
@@ -259,5 +259,59 @@ def test_post_question_on_noyaml_response_type() -> None:
                 assert response.status_code == requests.codes.ok
                 assert (
                     "The following response was generated without access to reference content:"
+                    in response.json()["response"]
+                )
+
+
+def test_post_query_with_query_filters_response_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method with query filters."""
+    config.init_empty_config()
+    answer = constants.SUBJECT_VALID
+
+    query_filters = [
+        QueryFilter(
+            {
+                "name": "test",
+                "pattern": r"(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})",
+                "replace_with": "redacted_ip",
+            }
+        )
+    ]
+    config.ols_config.query_filters = query_filters
+    config.init_query_filter()
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        from tests.mock_classes.langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None)
+        ):
+            with (
+                patch(
+                    "ols.src.query_helpers.LLMLoader",
+                    new=mock_llm_loader(ml()),
+                ),
+                patch(
+                    "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
+                ),
+            ):
+                conversation_id = suid.get_suid()
+                response = client.post(
+                    "/v1/query",
+                    json={
+                        "conversation_id": conversation_id,
+                        "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+                    },
+                )
+                print(response.json())
+                assert response.status_code == requests.codes.ok
+                assert (
+                    "The following response was generated without access to reference content:"
+                    in response.json()["response"]
+                )
+                assert (
+                    "test query with redacted_ip will be replaced with redacted_ip"
                     in response.json()["response"]
                 )

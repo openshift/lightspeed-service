@@ -104,3 +104,22 @@ def test_rag_question() -> None:
         "The following response was generated without access to reference content:"
         not in json_response["response"]
     )
+
+
+def test_query_filter() -> None:
+    """Ensure responses does not include filtered words."""
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is foo in bar?"},
+        timeout=90,
+    )
+    print(vars(response))
+    assert response.status_code == requests.codes.ok
+    json_response = response.json()
+    assert len(json_response["referenced_documents"]) > 0
+    assert "openshift" in json_response["referenced_documents"][0]
+    assert "https://" in json_response["referenced_documents"][0]
+    assert "openshift" in json_response["response"].lower()
+    assert "deployment" in json_response["response"].lower()
+    assert "foo" not in json_response["response"]
+    assert "bar" not in json_response["response"]
