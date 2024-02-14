@@ -176,6 +176,17 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     conversation_id = retrieve_conversation_id(llm_request)
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
+    response = generate_bare_response(conversation_id, llm_request)
+
+    return LLMResponse(
+        conversation_id=conversation_id,
+        response=response,
+        referenced_documents=[],
+    )
+
+
+def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str:
+    """Generate bare response without validation not using conversation history."""
     bare_llm = LLMLoader(
         config.ols_config.default_provider,
         config.ols_config.default_model,
@@ -186,11 +197,4 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
     response = llm_chain(inputs={"query": llm_request.query})
 
     logger.info(f"{conversation_id} Model returned: {response}")
-
-    llm_response = LLMResponse(
-        conversation_id=conversation_id,
-        response=response["text"],
-        referenced_documents=[],
-    )
-
-    return llm_response
+    return response["text"]
