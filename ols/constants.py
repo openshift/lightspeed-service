@@ -175,3 +175,6 @@ PROVIDER_MODEL_ROLES = frozenset({"default"})
 EMBEDDINGS_ROOT_DIR = "/workspace/source/ocp-product-docs-plaintext"
 OCP_DOCS_ROOT_URL = "https://docs.openshift.com/container-platform/"
 OCP_DOCS_VERSION = "4.14"
+
+# model configs
+DEFAULT_CONTEXT_WINDOW_SIZE = 2000

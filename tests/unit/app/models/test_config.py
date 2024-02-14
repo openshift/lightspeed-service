@@ -4,6 +4,7 @@ import logging
 
 import pytest
 
+from ols import constants
 from ols.app.models.config import (
     Config,
     ConversationCacheConfig,
@@ -149,6 +150,10 @@ def test_provider_config():
     assert provider_config.models["test_model_name"].name == "test_model_name"
     assert provider_config.models["test_model_name"].url == "test_model_url"
     assert provider_config.models["test_model_name"].credentials == "secret_key"
+    assert (
+        provider_config.models["test_model_name"].context_window_size
+        == constants.DEFAULT_CONTEXT_WINDOW_SIZE
+    )
 
     provider_config = ProviderConfig()
     assert provider_config.name is None
@@ -183,6 +188,83 @@ def test_provider_config():
             }
         )
     assert "model name is missing" in str(excinfo.value)
+
+
+def test_provider_config_explicit_context_window_size():
+    """Test the ProviderConfig model when explicit context window size is specified."""
+    context_window_size = 500
+
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "project_id": "test_project_id",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                    "context_window_size": context_window_size,
+                }
+            ],
+        }
+    )
+    assert (
+        provider_config.models["test_model_name"].context_window_size
+        == context_window_size
+    )
+
+
+def test_provider_config_improper_context_window_size_value():
+    """Test the ProviderConfig model when improper context window size is specified."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid context window size -1, positive value expected",
+    ):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "context_window_size": -1,
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_improper_context_window_size_type():
+    """Test the ProviderConfig model when improper context window size is specified."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid context window size not-a-number, positive value expected",
+    ):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "context_window_size": "not-a-number",
+                    }
+                ],
+            }
+        )
 
 
 def test_provider_config_equality():
