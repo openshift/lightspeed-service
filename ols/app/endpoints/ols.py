@@ -38,11 +38,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     user_id = "user1"
 
     conversation_id = retrieve_conversation_id(llm_request)
-
-    # TODO: will be refactored in following PR
-    if llm_request.conversation_id:
-        previous_input = config.conversation_cache.get(user_id, conversation_id)
-        logger.info(f"{conversation_id} Previous conversation input: {previous_input}")
+    previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
@@ -100,6 +96,19 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
         logger.info(f"{conversation_id} New conversation")
 
     return conversation_id
+
+
+def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> Optional[str]:
+    """Retrieve previous user input, if exists."""
+    previous_input = None
+    if llm_request.conversation_id:
+        previous_input = config.conversation_cache.get(
+            user_id, llm_request.conversation_id
+        )
+        logger.info(
+            f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
+        )
+    return previous_input
 
 
 def store_conversation_history(
