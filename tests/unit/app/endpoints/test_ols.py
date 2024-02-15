@@ -159,6 +159,7 @@ def test_conversation_request(
     mock_summarize.return_value = (
         mock_response,
         [],  # referenced_documents
+        False,
     )
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request)
@@ -250,13 +251,14 @@ def test_generate_response_invalid_subject(load_config):
     previous_input = None
 
     # try to get response
-    response, documents = ols.generate_response(
+    response, documents, truncated = ols.generate_response(
         conversation_id, llm_request, validation_result, previous_input
     )
 
     # check the response
     assert "I can only answer questions about OpenShift and Kubernetes" in response
     assert len(documents) == 0
+    assert not truncated
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
@@ -270,6 +272,7 @@ def test_generate_response_valid_subject(mock_summarize, load_config):
     mock_summarize.return_value = (
         mock_response,
         [],  # referenced_documents
+        False,
     )
 
     # prepare arguments for DocsSummarizer
@@ -279,13 +282,14 @@ def test_generate_response_valid_subject(mock_summarize, load_config):
     previous_input = None
 
     # try to get response
-    response, documents = ols.generate_response(
+    response, documents, truncated = ols.generate_response(
         conversation_id, llm_request, validation_result, previous_input
     )
 
     # check the response
     assert "Kubernetes" in response
     assert len(documents) == 0
+    assert not truncated
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")

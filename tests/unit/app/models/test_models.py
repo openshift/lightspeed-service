@@ -74,11 +74,13 @@ class TestLLM:
             conversation_id=conversation_id,
             response=response,
             referenced_documents=referenced_documents,
+            truncated=False,
         )
 
         assert llm_response.conversation_id == conversation_id
         assert llm_response.response == response
         assert llm_response.referenced_documents == referenced_documents
+        assert not llm_response.truncated
 
 
 class TestFeedback:

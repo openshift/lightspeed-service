@@ -39,6 +39,7 @@ def test_debug_query():
         "conversation_id": conversation_id,
         "response": "test response",
         "referenced_documents": [],
+        "truncated": False,
     }
 
 

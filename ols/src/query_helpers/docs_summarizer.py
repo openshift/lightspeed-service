@@ -55,7 +55,7 @@ class DocsSummarizer(QueryHelper):
         query: str,
         history: Optional[str] = None,
         **kwargs: Any,
-    ) -> tuple[Response, list[str]]:
+    ) -> tuple[Response, list[str], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -65,8 +65,9 @@ class DocsSummarizer(QueryHelper):
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-            A tuple containing the summary as a string and referenced documents
-            as a list of strings.
+            A tuple containing the summary as a string, referenced documents as a list
+            of strings, and flag indicating that conversation history has been truncated
+            to fit within context window.
         """
         bare_llm = LLMLoader(self.provider, self.model).llm
 
@@ -103,6 +104,10 @@ class DocsSummarizer(QueryHelper):
         )
 
         referenced_documents: list[str] = []
+
+        truncated = (
+            False  # TODO tisnik: need to be implemented based on provided inputs
+        )
 
         # TODO get this from global config
         if (
@@ -170,4 +175,4 @@ class DocsSummarizer(QueryHelper):
         logger.info(f"{conversation_id} Summary response: {summary!s}")
         logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
 
-        return summary, referenced_documents
+        return summary, referenced_documents, truncated

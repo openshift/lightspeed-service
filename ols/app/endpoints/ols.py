@@ -46,7 +46,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     metrics.llm_calls_total.inc()
     validation_result = validate_question(conversation_id, llm_request)
 
-    response, referenced_documents = generate_response(
+    response, referenced_documents, truncated = generate_response(
         conversation_id, llm_request, validation_result, previous_input
     )
 
@@ -55,6 +55,7 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
         conversation_id=conversation_id,
         response=response,
         referenced_documents=referenced_documents,
+        truncated=truncated,
     )
 
 
@@ -77,6 +78,7 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
         conversation_id=conversation_id,
         response=response,
         referenced_documents=[],
+        truncated=False,
     )
 
 
@@ -118,9 +120,13 @@ def generate_response(
                 f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
             return (
-                "I can only answer questions about OpenShift and Kubernetes. "
-                "Please rephrase your question"
-            ), []
+                (
+                    "I can only answer questions about OpenShift and Kubernetes. "
+                    "Please rephrase your question"
+                ),
+                [],
+                False,
+            )
         case constants.SUBJECT_VALID:
             logger.info(
                 f"{conversation_id} - Question is relevant to kubernetes or ocp"
@@ -130,10 +136,12 @@ def generate_response(
                 docs_summarizer = DocsSummarizer(
                     provider=llm_request.provider, model=llm_request.model
                 )
-                llm_response, referenced_documents = docs_summarizer.summarize(
-                    conversation_id, llm_request.query, previous_input
+                llm_response, referenced_documents, truncated = (
+                    docs_summarizer.summarize(
+                        conversation_id, llm_request.query, previous_input
+                    )
                 )
-                return llm_response.response, referenced_documents
+                return llm_response.response, referenced_documents, truncated
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
                 logger.error(summarizer_error)

@@ -61,11 +61,13 @@ class LLMResponse(BaseModel):
         conversation_id: The optional conversation ID (UUID).
         response: The optional response.
         referenced_documents: The optional URLs for the documents used to generate the response.
+        truncated: Set to True if conversation history was truncated to be within context window.
     """
 
     conversation_id: str
     response: str
     referenced_documents: list[str]
+    truncated: bool
 
     # provides examples for /docs endpoint
     model_config = {
