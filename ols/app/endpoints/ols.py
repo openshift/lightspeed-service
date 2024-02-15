@@ -59,6 +59,29 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     )
 
 
+@router.post("/debug/query")
+def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
+    """Handle requests for the base LLM completion endpoint.
+
+    Args:
+        llm_request: The request containing a query.
+
+    Returns:
+        Response containing the processed information.
+    """
+    conversation_id = retrieve_conversation_id(llm_request)
+    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
+
+    response = generate_bare_response(conversation_id, llm_request)
+
+    return LLMResponse(
+        conversation_id=conversation_id,
+        response=response,
+        referenced_documents=[],
+        truncated=False,
+    )
+
+
 def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     """Retrieve conversation ID based on existing ID or on newly generated one."""
     conversation_id = llm_request.conversation_id
@@ -168,29 +191,6 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error while validating question",
         )
-
-
-@router.post("/debug/query")
-def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
-    """Handle requests for the base LLM completion endpoint.
-
-    Args:
-        llm_request: The request containing a query.
-
-    Returns:
-        Response containing the processed information.
-    """
-    conversation_id = retrieve_conversation_id(llm_request)
-    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
-
-    response = generate_bare_response(conversation_id, llm_request)
-
-    return LLMResponse(
-        conversation_id=conversation_id,
-        response=response,
-        referenced_documents=[],
-        truncated=False,
-    )
 
 
 def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str:
