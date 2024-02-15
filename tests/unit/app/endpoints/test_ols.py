@@ -213,13 +213,6 @@ def test_conversation_request_on_wrong_configuration(
         ols.conversation_request(llm_request)
 
 
-def fake_llm_chain_call(self, **kwargs):
-    """Fake llm chain call."""
-    inputs = kwargs.get("inputs", {})
-    query = inputs.get("query", "")
-    return f"response to: {query}"
-
-
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
 @patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
 def test_conversation_request_debug_api_no_conversation_id(load_config):
