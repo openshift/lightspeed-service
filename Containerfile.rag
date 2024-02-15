@@ -11,11 +11,14 @@ USER 0
 RUN microdnf install -y unzip wget \
   && mkdir -p vector-db \
 	&& cd vector-db \
-  && wget $RAG_INDEX \
-	&& unzip local.zip \
+  && wget -q $RAG_INDEX \
+	&& unzip -qq local.zip \
 	&& mv local ocp-product-docs \
 	&& rm -f local.zip \
 	&& microdnf remove -y unzip wget
+
+COPY scripts/download_embeddings_model.py .
+RUN python download_embeddings_model.py embeddings_model && rm download_embeddings_model.py
 
 RUN chown -R 1001:0 ${APP_ROOT} && \
     chmod -R g+rx ${APP_ROOT}

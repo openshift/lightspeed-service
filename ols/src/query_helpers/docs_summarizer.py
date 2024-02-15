@@ -1,6 +1,7 @@
 """A class for summarizing documentation context."""
 
 import logging
+import os
 from typing import Any, Optional
 
 import llama_index
@@ -93,7 +94,23 @@ class DocsSummarizer(QueryHelper):
 
         logger.info(f"{conversation_id} Getting service context")
 
-        embed_model = "local:BAAI/bge-base-en"
+        embed_model: Optional[Any]  # need this to make mypy happy
+        if (
+            config.ols_config.reference_content is not None
+            and config.ols_config.reference_content.embeddings_model_path is not None
+        ):
+            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
+            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
+            os.environ["TRANSFORMERS_CACHE"] = (
+                config.ols_config.reference_content.embeddings_model_path
+            )
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+            embed_model = HuggingFaceBgeEmbeddings(
+                model_name=config.ols_config.reference_content.embeddings_model_path
+            )
+        else:
+            embed_model = "local:BAAI/bge-base-en"
 
         service_context = ServiceContext.from_defaults(
             chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs

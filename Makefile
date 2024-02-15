@@ -5,7 +5,6 @@
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 
-
 images: ## Build container images
 	scripts/build-container.sh
 
@@ -46,7 +45,7 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/e2e --junit-xml="${ARTIFACT_DIR}/junit_e2e.xml"
-		
+
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
@@ -61,6 +60,16 @@ format: ## Format the code into unified format
 verify: ## Verify the code using various linters
 	black . --check
 	ruff . --per-file-ignores=tests/*:S101
+
+get-rag: ## Download RAG embeddings model and index
+	@echo "Downloading embeddings model from HF..."
+	python scripts/download_embeddings_model.py embeddings_model
+	@echo "Downloading embeddings..."
+	mkdir -p vector-db/ocp-product-docs && \
+	pushd vector-db/ocp-product-docs && \
+	wget -q https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip && \
+	unzip -qq -o local.zip && \
+	rm local.zip && popd
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

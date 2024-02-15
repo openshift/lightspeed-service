@@ -18,6 +18,7 @@ tmp
 data
 vector-db
 vendor
+embeddings_model
 
 # ignore credential files
 *_api_key.txt

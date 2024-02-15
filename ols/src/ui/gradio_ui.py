@@ -21,6 +21,7 @@ class GradioUI:
         conversation_id: Optional[str] = None,
     ) -> None:
         """Initialize UI API handlers."""
+        # TODO syedriko consolidate this env var into a central location as per OLS-345.
         # disable Gradio analytics, which calls home to https://api.gradio.app
         os.environ["GRADIO_ANALYTICS_ENABLED"] = "false"
 
