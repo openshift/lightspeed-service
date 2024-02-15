@@ -75,6 +75,7 @@ def test_post_question_on_invalid_question():
             "conversation_id": conversation_id,
             "response": expected_details,
             "referenced_documents": [],
+            "truncated": False,
         }
         assert response.json() == expected_json
 

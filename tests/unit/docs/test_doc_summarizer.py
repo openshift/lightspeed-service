@@ -33,7 +33,9 @@ def test_summarize(storage_context, service_context):
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
     history = None
-    summary, documents = summarizer.summarize(conversation_id, question, history)
+    summary, documents, truncated = summarizer.summarize(
+        conversation_id, question, history
+    )
     assert question in str(summary)
     assert len(documents) > 0
     assert (
@@ -48,6 +50,7 @@ def test_summarize(storage_context, service_context):
         f"{constants.OCP_DOCS_ROOT_URL}{constants.OCP_DOCS_VERSION}/known-bugs.html"
         in documents
     )
+    assert not truncated
 
 
 @patch(
@@ -65,9 +68,10 @@ def test_summarize_no_reference_content(storage_context, service_context):
     config.ols_config.reference_content = ReferenceContent(None)
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
-    summary, documents = summarizer.summarize(conversation_id, question)
+    summary, documents, truncated = summarizer.summarize(conversation_id, question)
     assert "success" in str(summary)
     assert len(documents) == 0
+    assert not truncated
 
 
 @patch(
@@ -87,9 +91,10 @@ def test_summarize_incorrect_directory(service_context):
     summarizer = DocsSummarizer()
     question = "What's the ultimate question with answer 42?"
     conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
-    summary, documents = summarizer.summarize(conversation_id, question)
+    summary, documents, truncated = summarizer.summarize(conversation_id, question)
     assert (
         "The following response was generated without access to reference content"
         in str(summary)
     )
     assert len(documents) == 0
+    assert not truncated
