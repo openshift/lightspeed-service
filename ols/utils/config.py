@@ -56,4 +56,4 @@ def init_config(config_file: str) -> None:
     except Exception as e:
         print(f"Failed to load config file {config_file}: {e!s}")
         print(traceback.format_exc())
-        raise e
+        raise
