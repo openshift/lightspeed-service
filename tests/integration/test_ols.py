@@ -84,21 +84,24 @@ def test_post_question_on_generic_response_type_summarize_error():
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
     answer = constants.SUBJECT_VALID
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
-    ):
-        with patch(
+    with (
+        patch(
+            "ols.app.endpoints.ols.QuestionValidator.validate_question",
+            return_value=answer,
+        ),
+        patch(
             "ols.app.endpoints.ols.DocsSummarizer.summarize",
             side_effect=Exception("summarizer error"),
-        ):
-            conversation_id = suid.get_suid()
-            response = client.post(
-                "/v1/query",
-                json={"conversation_id": conversation_id, "query": "test query"},
-            )
-            assert response.status_code == requests.codes.internal_server_error
-            expected_json = {"detail": "Error while obtaining answer for user question"}
-            assert response.json() == expected_json
+        ),
+    ):
+        conversation_id = suid.get_suid()
+        response = client.post(
+            "/v1/query",
+            json={"conversation_id": conversation_id, "query": "test query"},
+        )
+        assert response.status_code == requests.codes.internal_server_error
+        expected_json = {"detail": "Error while obtaining answer for user question"}
+        assert response.json() == expected_json
 
 
 def test_post_question_that_is_not_validated():
@@ -226,27 +229,28 @@ def test_post_question_on_noyaml_response_type() -> None:
         from tests.mock_classes.langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
-        with patch(
-            "ols.src.query_helpers.docs_summarizer.LLMLoader", new=mock_llm_loader(ml())
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMLoader",
+                new=mock_llm_loader(ml()),
+            ),
+            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
+            patch(
+                "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                "./invalid_dir",
+            ),
         ):
-            with patch(
-                "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
-            ):
-                with patch(
-                    "ols.utils.config.ols_config.reference_content.product_docs_index_path",
-                    "./invalid_dir",
-                ):
-                    conversation_id = suid.get_suid()
-                    response = client.post(
-                        "/v1/query",
-                        json={
-                            "conversation_id": conversation_id,
-                            "query": "test query",
-                        },
-                    )
-                    print(response)
-                    assert response.status_code == requests.codes.ok
-                    assert (
-                        "The following response was generated without access to reference content:"
-                        in response.json()["response"]
-                    )
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                },
+            )
+            print(response)
+            assert response.status_code == requests.codes.ok
+            assert (
+                "The following response was generated without access to reference content:"
+                in response.json()["response"]
+            )
