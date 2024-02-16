@@ -152,15 +152,14 @@ def test_conversation_request(
     """Test conversation request API endpoint."""
     # valid question
     mock_validate_question.return_value = constants.SUBJECT_VALID
-    mock_response = Mock()
-    mock_response.response = (
+    mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = (
-        mock_response,
-        [],  # referenced_documents
-        False,
-    )
+    mock_summarize.return_value = {
+        "response": mock_response,
+        "referenced_documents": [],
+        "history_truncated": False,
+    }
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request)
     assert (
@@ -258,15 +257,14 @@ def test_generate_response_invalid_subject(load_config):
 def test_generate_response_valid_subject(mock_summarize, load_config):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
-    mock_response = Mock()
-    mock_response.response = (
+    mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = (
-        mock_response,
-        [],  # referenced_documents
-        False,
-    )
+    mock_summarize.return_value = {
+        "response": mock_response,
+        "referenced_documents": [],
+        "history_truncated": False,
+    }
 
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()

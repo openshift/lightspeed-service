@@ -2,6 +2,31 @@
 
 from langchain_core.documents import Document
 
+from tests.unit.utils.test_token_handler import MockRetrievedNode
+
+
+class MockRetriever:
+    """Mocked retriever."""
+
+    def __init__(self, *args, **kwargs):
+        """Store all provided arguments for later usage."""
+        self.args = args
+        self.kwargs = kwargs
+
+    @staticmethod
+    def retrieve(*args):
+        """Return summary for given query."""
+        # fill-in some documents for more realistic tests
+        return [
+            MockRetrievedNode(
+                {
+                    "text": "a text text text text",
+                    "score": 0.6,
+                    "metadata": {"file_path": "/docs/test.txt"},
+                }
+            )
+        ]
+
 
 class MockVectorStore:
     """Mock for VectorStore."""
