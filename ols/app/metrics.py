@@ -1,9 +1,13 @@
 """Prometheus metrics that are exposed by REST API."""
 
-from prometheus_client import Counter, make_asgi_app
+from prometheus_client import Counter, Histogram, make_asgi_app
 
 rest_api_calls_total = Counter(
     "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
+)
+
+response_duration_seconds = Histogram(
+    "response_duration_seconds", "Response durations", ["path"]
 )
 
 llm_calls_total = Counter("llm_calls_total", "LLM calls counter")
