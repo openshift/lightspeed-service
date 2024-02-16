@@ -6,7 +6,6 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols import constants
-from ols.src.llms.llm_loader import LLMLoader
 from ols.src.query_helpers import QueryHelper
 from ols.utils import config
 
@@ -15,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 class QuestionValidator(QueryHelper):
     """This class is responsible for validating questions and providing one-word responses."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the QuestionValidator."""
+        llm_params = {
+            "min_new_tokens": 1,
+            "max_new_tokens": 4,
+        }
+        super().__init__(*args, **kwargs, llm_params=llm_params)
 
     def validate_question(
         self, conversation_id: str, query: str, verbose: bool = False
@@ -51,10 +58,9 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation_id} Validating query")
 
-        bare_llm = LLMLoader(
-            self.provider, self.model, params={"min_new_tokens": 1, "max_new_tokens": 4}
-        ).llm
-
+        bare_llm = self.llm_loader(
+            self.provider, self.model, llm_params=self.llm_params
+        ).llm  # type: ignore
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         task_query = prompt_instructions.format(query=query)

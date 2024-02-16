@@ -12,7 +12,6 @@ from llama_index.response.schema import Response
 from llama_index.schema import NodeWithScore, QueryBundle
 
 from ols import constants
-from ols.src.llms.llm_loader import LLMLoader
 from ols.src.query_helpers import QueryHelper
 from ols.utils import config
 
@@ -70,8 +69,6 @@ class DocsSummarizer(QueryHelper):
             of strings, and flag indicating that conversation history has been truncated
             to fit within context window.
         """
-        bare_llm = LLMLoader(self.provider, self.model).llm
-
         verbose = kwargs.get("verbose", "").lower() == "true"
 
         # Set up llama index to show prompting if verbose is True
@@ -112,6 +109,9 @@ class DocsSummarizer(QueryHelper):
         else:
             embed_model = "local:BAAI/bge-base-en"
 
+        bare_llm = self.llm_loader(
+            self.provider, self.model, llm_params=self.llm_params
+        ).llm  # type: ignore
         service_context = ServiceContext.from_defaults(
             chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs
         )

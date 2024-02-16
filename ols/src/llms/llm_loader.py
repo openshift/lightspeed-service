@@ -24,20 +24,13 @@ from ols.utils import config
 
 logger = logging.getLogger(__name__)
 
+
 # workaround to disable UserWarning
 warnings.simplefilter("ignore", UserWarning)
 
 
 class LLMConfigurationError(Exception):
     """LLM configuration is wrong."""
-
-
-class MissingProviderError(LLMConfigurationError):
-    """Provider is not specified."""
-
-
-class MissingModelError(LLMConfigurationError):
-    """Model is not specified."""
 
 
 class UnknownProviderError(LLMConfigurationError):
@@ -62,47 +55,56 @@ class LLMLoader:
     Example:
         ```python
         # using the class and overriding specific parameters
-        params = {'temperature': 0.02, 'top_p': 0.95}
+        llm_params = {'temperature': 0.02, 'top_p': 0.95}
 
-        bare_llm = LLMLoader(provider="openai", model="gpt-3.5-turbo", params=params)
+        bare_llm = LLMLoader(provider="openai", model="gpt-3.5-turbo", llm_params=llm_params).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
         ```
     """
 
     def __init__(
         self,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
-        params: Optional[dict] = None,
+        provider: str,
+        model: str,
+        llm_params: Optional[dict] = None,
     ) -> None:
         """Initialize LLM loader.
 
         Args:
             provider: The LLM provider name.
             model: The LLM model name.
-            params: The parameters to override and pass to the LLM backend.
+            llm_params: The parameters to override and pass to the LLM backend.
 
         Raises:
-            MissingProviderError: When provider is not specified.
-            MissingModelError: When model is not specified.
-            UnsupportedProviderError: When provider is not supported or is unknown.
+            UnknownProviderError: When no configuration exists for the requested provider.
+            UnsupportedProviderError: When provider is unsupported.
             ModelConfigMissingError: When no configuration exists for the requested model name.
         """
-        if provider is None:
-            msg = "Missing provider"
-            logger.error(msg)
-            raise MissingProviderError(msg)
         self.provider = provider
-        if model is None:
-            msg = "Missing model"
-            logger.error(msg)
-            raise MissingModelError(msg)
         self.model = model
-        self.provider_config = self._get_provider_config()
+        self.llm_params = llm_params or {}
+        self.llm_providers = config.config.llm_providers
+        self.provider_config = self._resolve_provider_config()
 
-        # return empty dictionary if not defined
-        self.llm_params = params or {}
-        self.llm: LLM = self._llm_instance()
+        self.llm = self._llm_instance()
+
+    def _resolve_provider_config(self) -> ProviderConfig:
+        """Ensure the provided inputs (provider/model) are valid in config."""
+        if self.provider not in self.llm_providers.providers:
+            raise UnknownProviderError(
+                f"Provider '{self.provider}' is not a valid provider. "
+                f"Valid providers are: {list(self.llm_providers.providers.keys())}"
+            )
+
+        provider_conf = self.llm_providers.providers.get(self.provider)
+
+        if self.model not in provider_conf.models:
+            raise ModelConfigMissingError(
+                f"Model '{self.model}' is not a valid model for provider '{self.provider}'. "
+                f"Valid models are: {list(provider_conf.models.keys())}"
+            )
+
+        return provider_conf
 
     def _get_llm_url(self, default: str) -> str:
         return (
@@ -121,24 +123,6 @@ class LLMLoader:
             if self.provider_config.models[self.model].credentials is not None
             else self.provider_config.credentials
         )
-
-    # TODO: refactor after config implementation OLS-89
-    def _get_provider_config(self) -> ProviderConfig:
-        cfg = config.llm_config.providers.get(self.provider)
-        if not cfg:
-            msg = f"No configuration for LLM provider {self.provider}"
-            logger.error(msg)
-            raise UnknownProviderError(msg)
-
-        model = cfg.models.get(self.model)
-        if not model:
-            msg = (
-                f"No configuration provided for model {self.model} under "
-                f"LLM provider {self.provider}"
-            )
-            logger.error(msg)
-            raise ModelConfigMissingError(msg)
-        return cfg
 
     def _llm_instance(self) -> LLM:
         logger.debug(

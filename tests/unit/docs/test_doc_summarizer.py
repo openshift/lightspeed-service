@@ -18,7 +18,6 @@ def test_is_query_helper_subclass():
     assert issubclass(DocsSummarizer, QueryHelper)
 
 
-@patch("ols.src.query_helpers.docs_summarizer.LLMLoader", new=mock_llm_loader(None))
 @patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
 @patch("ols.src.query_helpers.docs_summarizer.StorageContext.from_defaults")
 @patch(
@@ -30,7 +29,7 @@ def test_summarize(storage_context, service_context):
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
     config.ols_config.reference_content.product_docs_index_id = "product"
-    summarizer = DocsSummarizer()
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     history = None
     summary, documents, truncated = summarizer.summarize(
@@ -53,10 +52,6 @@ def test_summarize(storage_context, service_context):
     assert not truncated
 
 
-@patch(
-    "ols.src.query_helpers.docs_summarizer.LLMLoader",
-    new=mock_llm_loader(mock_langchain_interface("test response")()),
-)
 @patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
 @patch("ols.src.query_helpers.docs_summarizer.StorageContext.from_defaults")
 @patch(
@@ -66,7 +61,9 @@ def test_summarize_no_reference_content(storage_context, service_context):
     """Basic test for DocsSummarizer using mocked index and query engine."""
     config.init_empty_config()
     config.ols_config.reference_content = ReferenceContent(None)
-    summarizer = DocsSummarizer()
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
+    )
     question = "What's the ultimate question with answer 42?"
     summary, documents, truncated = summarizer.summarize(conversation_id, question)
     assert "success" in str(summary)
@@ -74,10 +71,6 @@ def test_summarize_no_reference_content(storage_context, service_context):
     assert not truncated
 
 
-@patch(
-    "ols.src.query_helpers.docs_summarizer.LLMLoader",
-    new=mock_llm_loader(mock_langchain_interface("test response")()),
-)
 @patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
 @patch(
     "ols.src.query_helpers.docs_summarizer.load_index_from_storage", new=MockLlamaIndex
@@ -88,7 +81,9 @@ def test_summarize_incorrect_directory(service_context):
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
     config.ols_config.reference_content.product_docs_index_id = "product"
-    summarizer = DocsSummarizer()
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
+    )
     question = "What's the ultimate question with answer 42?"
     conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
     summary, documents, truncated = summarizer.summarize(conversation_id, question)

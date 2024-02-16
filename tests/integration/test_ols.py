@@ -183,7 +183,8 @@ class TestQuery:
             assert response.json() == {
                 "detail": {
                     "response": "Unable to process this request because "
-                    "'No configuration for LLM provider some-provider'"
+                    "'Provider 'some-provider' is not a valid provider. "
+                    "Valid providers are: []'"
                 }
             }
 
@@ -210,8 +211,8 @@ class TestQuery:
             assert response.json() == {
                 "detail": {
                     "response": "Unable to process this request because "
-                    "'No configuration provided for model some-model under "
-                    "LLM provider test-provider'"
+                    "'Model 'some-model' is not a valid model for provider "
+                    "'test-provider'. Valid models are: []'"
                 }
             }
 
@@ -231,7 +232,7 @@ def test_post_question_on_noyaml_response_type() -> None:
         ml = mock_langchain_interface("test response")
         with (
             patch(
-                "ols.src.query_helpers.docs_summarizer.LLMLoader",
+                "ols.src.query_helpers.LLMLoader",
                 new=mock_llm_loader(ml()),
             ),
             patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),

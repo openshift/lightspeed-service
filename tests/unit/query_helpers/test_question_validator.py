@@ -15,7 +15,7 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
     config.init_empty_config()
-    return QuestionValidator()
+    return QuestionValidator(llm_loader=mock_llm_loader(None))
 
 
 def test_is_query_helper_subclass():
@@ -23,7 +23,6 @@ def test_is_query_helper_subclass():
     assert issubclass(QuestionValidator, QueryHelper)
 
 
-@patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
 def test_valid_responses(question_validator):
     """Test how valid responses are handled by QuestionValidator."""
     for retval in [
@@ -40,7 +39,6 @@ def test_valid_responses(question_validator):
             assert response == retval
 
 
-@patch("ols.src.query_helpers.question_validator.LLMLoader", new=mock_llm_loader(None))
 def test_disabled_question_validator(question_validator):
     """Test disabled QuestionValidator behaviour."""
     for retval in [
