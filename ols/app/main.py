@@ -41,12 +41,13 @@ else:
 @app.middleware("")
 async def rest_api_counter(request: Request, call_next):
     """Middleware with REST API counter update logic."""
+    response = await call_next(request)
     # ignore /metrics endpoint that will be called periodically
     path = request.url.path
     if not path.endswith("/metrics/"):
         # just update metrics
-        metrics.rest_api_calls.inc()
-    return await call_next(request)
+        metrics.rest_api_calls_total.labels(response.status_code).inc()
+    return response
 
 
 routers.include_routers(app)
