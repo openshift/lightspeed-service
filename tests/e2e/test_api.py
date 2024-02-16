@@ -26,7 +26,10 @@ def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     r = client.post(
         "/v1/debug/query",
-        json={"conversation_id": conversation_id, "query": "say hello"},
+        json={
+            "conversation_id": conversation_id,
+            "query": "respond to this message with the word hello",
+        },
         timeout=20,
     )
     print(vars(r))
