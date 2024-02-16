@@ -46,7 +46,7 @@ async def rest_api_counter(request: Request, call_next):
     path = request.url.path
     if not path.endswith("/metrics/"):
         # just update metrics
-        metrics.rest_api_calls_total.labels(response.status_code).inc()
+        metrics.rest_api_calls_total.labels(path, response.status_code).inc()
     return response
 
 

@@ -3,7 +3,7 @@
 from prometheus_client import Counter, make_asgi_app
 
 rest_api_calls_total = Counter(
-    "rest_api_calls_total", "REST API calls counter", ["status_code"]
+    "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
 )
 
 llm_calls_total = Counter("llm_calls_total", "LLM calls counter")
