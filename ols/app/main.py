@@ -4,9 +4,9 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
-from ols.app import routers
+from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
 from ols.utils import config
 from ols.utils.logging import configure_logging
@@ -36,6 +36,17 @@ else:
         "Embedded Gradio UI is disabled. To enable set enable_dev_ui: true "
         "in the dev section of the configuration file"
     )
+
+
+@app.middleware("")
+async def rest_api_counter(request: Request, call_next):
+    """Middleware with REST API counter update logic."""
+    # ignore /metrics endpoint that will be called periodically
+    path = request.url.path
+    if not path.endswith("/metrics/"):
+        # just update metrics
+        metrics.rest_api_calls.inc()
+    return await call_next(request)
 
 
 routers.include_routers(app)
