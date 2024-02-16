@@ -18,4 +18,5 @@ ols_config:
   default_provider: $PROVIDER
   default_model: $MODEL
 dev_config:
-  llm_temperature_override: 0
+  llm_params:
+    temperature: 0

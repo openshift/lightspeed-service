@@ -35,6 +35,7 @@ ols_config:
   default_model: ibm/granite-13b-chat-v2
 dev_config:
   enable_dev_ui: true
-  # llm_temperature_override: 0
+  # llm_params:
+  #   temperature_override: 0
   # disable_question_validation: false
   # disable_auth: false
