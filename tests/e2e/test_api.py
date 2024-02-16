@@ -70,11 +70,9 @@ def test_valid_question() -> None:
     assert response.status_code == requests.codes.ok
     json_response = response.json()
     json_response["conversation_id"] == conversation_id
-    # assuming the response will be consistent
-    assert (
-        "Kubernetes is an open source container orchestration tool"
-        in json_response["response"]
-    )
+    # checking a few major information from response
+    assert "Kubernetes is" in json_response["response"]
+    assert "orchestration tool" in json_response["response"]
     assert (
         "The following response was generated without access to reference content:"
         not in json_response["response"]

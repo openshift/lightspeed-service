@@ -175,9 +175,12 @@ class LLMLoader:
             "frequency_penalty": 1.03,
             "verbose": False,
         }
-        # override temperature if defined in developer config
-        if config.dev_config.llm_temperature_override:
-            params["temperature"] = config.dev_config.llm_temperature_override
+        # override params if defined in developer config
+        if config.dev_config.llm_params:
+            logger.debug(
+                f"overriding LLM params with debug options {config.dev_config.llm_params}"
+            )
+            params = {**params, **config.dev_config.llm_params}
 
         # TODO: We need to verify if the overridden params are valid for the LLM
         # before updating the default.
@@ -195,7 +198,7 @@ class LLMLoader:
             api_endpoint=api_url,
         )
 
-        bam_params = {
+        params = {
             "decoding_method": "sample",
             "max_new_tokens": 512,
             "min_new_tokens": 1,
@@ -205,18 +208,21 @@ class LLMLoader:
             "repetition_penalty": 1.03,
             "temperature": 0.05,
         }
-        bam_params.update(self.llm_params)  # override parameters
+        params.update(self.llm_params)  # override parameters
 
-        # override temperature if defined in developer config
-        if config.dev_config.llm_temperature_override:
-            bam_params["temperature"] = config.dev_config.llm_temperature_override
+        # override params if defined in developer config
+        if config.dev_config.llm_params:
+            logger.debug(
+                f"overriding LLM params with debug options {config.dev_config.llm_params}"
+            )
+            params = {**params, **config.dev_config.llm_params}
 
         # remove none BAM params from dictionary
         for k in ["model", "api_key", "api_endpoint"]:
-            _ = bam_params.pop(k, None)
+            _ = params.pop(k, None)
 
         client = Client(credentials=creds)
-        params = TextGenerationParameters(**bam_params)
+        params = TextGenerationParameters(**params)
 
         llm = LangChainInterface(client=client, model_id=self.model, parameters=params)
         logger.debug(f"[{inspect.stack()[0][3]}] BAM LLM instance {llm}")
@@ -305,9 +311,12 @@ class LLMLoader:
             ),
         }
 
-        # override temperature if defined in developer config
-        if config.dev_config.llm_temperature_override:
-            params[GenParams.TEMPERATURE] = config.dev_config.llm_temperature_override
+        # override params if defined in developer config
+        if config.dev_config.llm_params:
+            logger.debug(
+                f"overriding LLM params with debug options {config.dev_config.llm_params}"
+            )
+            params = {**params, **config.dev_config.llm_params}
 
         # WatsonX uses different parameter names
         llm_model = Model(

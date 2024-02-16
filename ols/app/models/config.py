@@ -507,7 +507,7 @@ class DevConfig(BaseModel):
 
     enable_dev_ui: bool = False
     disable_question_validation: bool = False
-    llm_temperature_override: Optional[float] = None
+    llm_params: Optional[dict] = None
 
     # TODO - wire this up once auth is implemented
     disable_auth: bool = False
@@ -521,7 +521,7 @@ class DevConfig(BaseModel):
         self.disable_question_validation = (
             str(data.get("disable_question_validation", "False")).lower() == "true"
         )
-        self.llm_temperature_override = data.get("llm_temperature_override", None)
+        self.llm_params = data.get("llm_params", {})
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
 
     def __eq__(self, other):
@@ -531,21 +531,17 @@ class DevConfig(BaseModel):
                 self.enable_dev_ui == other.enable_dev_ui
                 and self.disable_question_validation
                 == other.disable_question_validation
-                and self.llm_temperature_override == other.llm_temperature_override
+                and self.llm_params == other.llm_params
                 and self.disable_auth == other.disable_auth
             )
         return False
 
     def validate_yaml(self) -> None:
         """Validate OLS Dev config."""
-        if self.llm_temperature_override is not None:
-            if not isinstance(self.llm_temperature_override, (float, int)):
+        if self.llm_params is not None:
+            if not isinstance(self.llm_params, dict):
                 raise InvalidConfigurationError(
-                    "llm_temperature_override must be a float"
-                )
-            if self.llm_temperature_override < 0 or self.llm_temperature_override > 1:
-                raise InvalidConfigurationError(
-                    "llm_temperature_override must be between 0 and 1"
+                    "llm_params needs to be defined as a dict"
                 )
 
 

@@ -469,58 +469,11 @@ ols_config:
     memory:
       max_entries: 1000
 dev_config:
-  llm_temperature_override: NaN
+  llm_params:
+     - something: 0
 """,
         InvalidConfigurationError,
-        "llm_temperature_override must be a float",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    credentials_path: tests/config/secret.txt
-    models:
-      - name: m1
-        credentials_path: tests/config/secret.txt
-ols_config:
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_temperature_override: -1
-""",
-        InvalidConfigurationError,
-        "llm_temperature_override must be between 0 and 1",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    credentials_path: tests/config/secret.txt
-    models:
-      - name: m1
-        credentials_path: tests/config/secret.txt
-ols_config:
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_temperature_override: 1.1
-  enable_dev_ui: true
-  disable_question_validation: false
-  disable_auth: false
-
-""",
-        InvalidConfigurationError,
-        "llm_temperature_override must be between 0 and 1",
+        "llm_params needs to be defined as a dict",
     )
 
     check_expected_exception(
@@ -542,7 +495,6 @@ ols_config:
     memory:
       max_entries: 1000
 dev_config:
-  llm_temperature_override: 0.1
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
@@ -598,7 +550,7 @@ ols_config:
     memory:
       max_entries: 1000
 dev_config:
-  llm_temperature_override: 0.1
+  temperature_override: 0.1
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
@@ -626,7 +578,6 @@ ols_config:
     memory:
       max_entries: 1000
 dev_config:
-  llm_temperature_override: 0.1
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
@@ -654,7 +605,6 @@ ols_config:
     memory:
       max_entries: 1000
 dev_config:
-  llm_temperature_override: 0.1
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
@@ -733,10 +683,11 @@ ols_config:
   default_provider: p1
   default_model: m1
 dev_config:
-  llm_temperature_override: 0
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
+  llm_params:
+    something: 5
 """
             )
         )
