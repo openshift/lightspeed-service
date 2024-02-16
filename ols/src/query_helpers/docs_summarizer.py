@@ -91,23 +91,7 @@ class DocsSummarizer(QueryHelper):
 
         logger.info(f"{conversation_id} Getting service context")
 
-        embed_model: Optional[Any]  # need this to make mypy happy
-        if (
-            config.ols_config.reference_content is not None
-            and config.ols_config.reference_content.embeddings_model_path is not None
-        ):
-            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-
-            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
-            os.environ["TRANSFORMERS_CACHE"] = (
-                config.ols_config.reference_content.embeddings_model_path
-            )
-            os.environ["TRANSFORMERS_OFFLINE"] = "1"
-            embed_model = HuggingFaceBgeEmbeddings(
-                model_name=config.ols_config.reference_content.embeddings_model_path
-            )
-        else:
-            embed_model = "local:BAAI/bge-base-en"
+        embed_model = DocsSummarizer.get_embed_model()
 
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
@@ -193,3 +177,23 @@ class DocsSummarizer(QueryHelper):
         logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
 
         return summary, referenced_documents, truncated
+
+    @staticmethod
+    def get_embed_model() -> Optional[Any]:
+        """Get embed model according to configuration."""
+        if (
+            config.ols_config.reference_content is not None
+            and config.ols_config.reference_content.embeddings_model_path is not None
+        ):
+            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
+            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
+            os.environ["TRANSFORMERS_CACHE"] = (
+                config.ols_config.reference_content.embeddings_model_path
+            )
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+            return HuggingFaceBgeEmbeddings(
+                model_name=config.ols_config.reference_content.embeddings_model_path
+            )
+        else:
+            return "local:BAAI/bge-base-en"
