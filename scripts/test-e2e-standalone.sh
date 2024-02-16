@@ -59,7 +59,7 @@ trap finish EXIT
 set +e
 STARTED=0
 for i in {1..10}; do
-  echo Checking OLS readiness, attempt "$i" of 10
+  echo Checking OLS readiness, attempt "$i" of 20
   curl -s localhost:8080/readiness
   if [ $? -eq 0 ]; then
     STARTED=1
