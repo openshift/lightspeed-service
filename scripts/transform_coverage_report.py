@@ -14,7 +14,7 @@ def write_go_coverage_format(file_path, file_data, output_file):
     """
     executed_lines = file_data.get("executed_lines", [])
     missing_lines = file_data.get("missing_lines", [])
-    with open(output_file, "a") as f:
+    with open(output_file, "a", encoding="utf-8") as f:
         for line in executed_lines:
             f.write(f"{file_path}:{line}.0,{line + 1}.0 1 1\n")
 
@@ -58,10 +58,10 @@ if __name__ == "__main__":
     output_file_path = sys.argv[2]
 
     try:
-        with open(output_file_path, "w") as output_file:
+        with open(output_file_path, "w", encoding="utf-8") as output_file:
             output_file.write("mode: set\n")
 
-        with open(json_file_path, "r") as json_file:
+        with open(json_file_path, "r", encoding="utf-8") as json_file:
             json_content = json_file.read()
             parse_coverage_json(json_content, output_file_path)
 

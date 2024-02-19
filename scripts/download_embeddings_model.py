@@ -23,5 +23,5 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(local_dir, "2_Normalize"), exist_ok=True)
 
     # pretend local_dir is HF cache
-    with open(os.path.join(local_dir, "version.txt"), "w") as f:
+    with open(os.path.join(local_dir, "version.txt"), "w", encoding="utf-8") as f:
         f.write("1")
