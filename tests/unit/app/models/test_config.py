@@ -563,41 +563,39 @@ def test_llm_providers_equality():
     assert provider_config_1 != other_value
 
 
-class TestLoggingConfig:
-    """Test the LoggingConfig model."""
+def test_valid_values():
+    """Test valid values."""
+    # test default values
+    logging_config = LoggingConfig({})
+    assert logging_config.app_log_level == logging.INFO
+    assert logging_config.lib_log_level == logging.WARNING
 
-    def test_valid_values(self):
-        """Test valid values."""
-        # test default values
-        logging_config = LoggingConfig({})
-        assert logging_config.app_log_level == logging.INFO
-        assert logging_config.lib_log_level == logging.WARNING
+    # test custom values
+    logging_config = LoggingConfig(
+        {
+            "app_log_level": "debug",
+            "lib_log_level": "debug",
+        }
+    )
+    assert logging_config.app_log_level == logging.DEBUG
+    assert logging_config.lib_log_level == logging.DEBUG
 
-        # test custom values
-        logging_config = LoggingConfig(
-            {
-                "app_log_level": "debug",
-                "lib_log_level": "debug",
-            }
-        )
-        assert logging_config.app_log_level == logging.DEBUG
-        assert logging_config.lib_log_level == logging.DEBUG
+    logging_config = LoggingConfig()
+    assert logging_config.app_log_level == logging.INFO
 
-        logging_config = LoggingConfig()
-        assert logging_config.app_log_level == logging.INFO
 
-    def test_invalid_values(self):
-        """Test invalid values."""
-        # value is not string
-        with pytest.raises(InvalidConfigurationError, match="invalid log level for 5"):
-            LoggingConfig({"app_log_level": 5})
+def test_invalid_values():
+    """Test invalid values."""
+    # value is not string
+    with pytest.raises(InvalidConfigurationError, match="invalid log level for 5"):
+        LoggingConfig({"app_log_level": 5})
 
-        # value is not valid log level
-        with pytest.raises(
-            InvalidConfigurationError,
-            match="invalid log level for app_log_level: dingdong",
-        ):
-            LoggingConfig({"app_log_level": "dingdong"})
+    # value is not valid log level
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid log level for app_log_level: dingdong",
+    ):
+        LoggingConfig({"app_log_level": "dingdong"})
 
 
 def test_redis_config():
