@@ -39,10 +39,10 @@ def liveness_probe_get_method() -> HealthResponse:
 @router.head("/readiness")
 def readiness_probe_head_method() -> None:
     """Ready status of service."""
-    return None
+    return
 
 
 @router.head("/liveness")
 def liveness_probe_head_method() -> None:
     """Live status of service."""
-    return None
+    return
