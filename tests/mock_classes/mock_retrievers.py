@@ -29,4 +29,4 @@ def mock_retriever(*args, **kwargs):
 
 def mock_null_value_retriever(*args, **kwargs):
     """Return no VectorStoreRetriever."""
-    return None
+    return
