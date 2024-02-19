@@ -46,7 +46,7 @@ spec:
           - '--host'
           - 0.0.0.0
           - '--port'
-          - '443'
+          - '8443'
           - '--ssl-keyfile'
           - /app-root/certs/tls.key
           - '--ssl-certfile'
@@ -57,7 +57,7 @@ spec:
           - name: OLS_CONFIG_FILE
             value: /app-root/config/olsconfig.yaml
         ports:
-        - containerPort: 443
+        - containerPort: 8443
           protocol: TCP
         resources: {}
         terminationMessagePath: /dev/termination-log
@@ -94,10 +94,10 @@ spec:
   - IPv4
   ipFamilyPolicy: SingleStack
   ports:
-  - name: 443-tcp
-    port: 443
+  - name: 8443-tcp
+    port: 8443
     protocol: TCP
-    targetPort: 443
+    targetPort: 8443
   selector:
     app: openshift-lightspeed
     deployment: lightspeed-w-rag
@@ -117,7 +117,7 @@ spec:
 #  name: lightspeed-w-rag
 #spec:
 #  port:
-#    targetPort: 443-tcp
+#    targetPort: 8443-tcp
 #  tls:
 #    insecureEdgeTerminationPolicy: Redirect
 #    termination: edge
@@ -152,7 +152,7 @@ data:
       enable_dev_ui: true
       # llm_temperature_override: 0
       # disable_question_validation: false
-      # disable_auth: false
+      disable_auth: true
 immutable: false
 kind: ConfigMap
 metadata:
