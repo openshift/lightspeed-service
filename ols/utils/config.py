@@ -44,7 +44,7 @@ def init_config(config_file: str) -> None:
     global conversation_cache
 
     try:
-        with open(config_file, "r") as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config = load_config_from_stream(f)
             ols_config = config.ols_config
             llm_config = config.llm_providers
