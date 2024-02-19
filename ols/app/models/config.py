@@ -13,10 +13,10 @@ from ols import constants
 def _is_valid_http_url(url: str) -> bool:
     """Check is a string is a well-formed http or https URL."""
     result = urlparse(url)
-    return all([result.scheme, result.netloc]) and result.scheme in [
+    return all([result.scheme, result.netloc]) and result.scheme in {
         "http",
         "https",
-    ]
+    }
 
 
 def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
