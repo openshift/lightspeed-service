@@ -1,6 +1,7 @@
 """Integration tests for metrics exposed by the service."""
 
 import os
+import re
 from unittest.mock import patch
 
 import requests
@@ -90,3 +91,25 @@ def test_rest_api_call_counter_not_found_status():
     # compare counters
     # just the NotFound value should change
     assert new == old + 1, "Counter for 404 NotFound  has not been updated properly"
+
+
+def test_metrics_duration():
+    """Check if service provides metrics for durations."""
+    response_text = retrieve_metrics(client)
+
+    # duration histograms are expected to be part of metrics
+
+    # first: check summary and statistic
+    assert 'response_duration_seconds_count{path="/metrics/"}' in response_text
+    assert 'response_duration_seconds_sum{path="/metrics/"}' in response_text
+
+    # second: check the histogram itself
+    pattern = re.compile(
+        r"response_duration_seconds_bucket{le=\"0\.[0-9]+\",path=\"\/metrics\/\"}"
+    )
+    # re.findall() returns empty list if not found, and this empty list is treated as False
+    assert re.findall(pattern, response_text)
+    pattern = re.compile(
+        r"response_duration_seconds_bucket{le=\"\+Inf\",path=\"\/metrics\/\"}"
+    )
+    assert re.findall(pattern, response_text)
