@@ -538,11 +538,8 @@ class DevConfig(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate OLS Dev config."""
-        if self.llm_params is not None:
-            if not isinstance(self.llm_params, dict):
-                raise InvalidConfigurationError(
-                    "llm_params needs to be defined as a dict"
-                )
+        if self.llm_params is not None and not isinstance(self.llm_params, dict):
+            raise InvalidConfigurationError("llm_params needs to be defined as a dict")
 
 
 class Config(BaseModel):
