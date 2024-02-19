@@ -3,8 +3,9 @@
 import logging
 import os
 from pathlib import Path
+from typing import Callable
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
@@ -39,7 +40,9 @@ else:
 
 
 @app.middleware("")
-async def rest_api_counter(request: Request, call_next):
+async def rest_api_counter(
+    request: Request, call_next: Callable[[Request], Response]
+) -> Response:
     """Middleware with REST API counter update logic."""
     path = request.url.path
 
