@@ -36,8 +36,16 @@ def test_metrics():
     response_text = retrieve_metrics(client)
 
     # counters that are expected to be part of metrics
-    assert "rest_api_calls_total " in response_text
-    assert "llm_calls_total " in response_text
+    expected_counters = (
+        "rest_api_calls_total",
+        "llm_calls_total",
+        "llm_calls_failures_total",
+        "llm_validation_errors_total",
+    )
+
+    # check if all counters are present
+    for expected_counter in expected_counters:
+        assert f"{expected_counter} " in response_text
 
 
 def get_counter_value(client, counter_name, path, status_code):
