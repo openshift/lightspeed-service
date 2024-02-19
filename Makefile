@@ -18,7 +18,7 @@ install-deps-test: install-tools ## Install all required dependencies needed to 
 	pdm install --dev
 
 run: ## Run the service locally
-	uvicorn ols.app.main:app --reload --port 8080
+	python runner.py
 
 test: test-unit test-integration test-e2e ## Run all tests
 

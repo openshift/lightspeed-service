@@ -104,7 +104,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 ### Run the server
 in order to run the API service
 ```sh
-uvicorn ols.app.main:app --reload --port 8080
+make run
 ```
 
 ### Optionally run with podman
