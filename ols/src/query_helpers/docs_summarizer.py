@@ -5,28 +5,22 @@ import os
 from typing import Any, Optional
 
 import llama_index
+from langchain.chains import LLMChain
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index.postprocessor import BaseNodePostprocessor
-from llama_index.prompts import PromptTemplate
-from llama_index.response.schema import Response
-from llama_index.schema import NodeWithScore, QueryBundle
+from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
+from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers import QueryHelper
 from ols.utils import config
+from ols.utils.token_handler import (
+    # TODO: Use constants from config
+    CONTEXT_WINDOW_LIMIT,
+    RESPONSE_WINDOW_LIMIT,
+    TokenHandler,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class _NoLLMMetadataPostprocessor(BaseNodePostprocessor):
-    """A LlamaIndex PostProcessor that prevents node metadata from reaching the LLM."""
-
-    def _postprocess_nodes(
-        self, nodes: list[NodeWithScore], query_bundle: Optional[QueryBundle] = None
-    ) -> list[NodeWithScore]:
-        for n in nodes:
-            n.node.excluded_llm_metadata_keys = list(n.node.metadata.keys())
-        return nodes
 
 
 class DocsSummarizer(QueryHelper):
@@ -49,13 +43,52 @@ class DocsSummarizer(QueryHelper):
             + file_path.removeprefix(constants.EMBEDDINGS_ROOT_DIR)
         ).removesuffix("txt") + "html"
 
+    def _format_rag_data(self, rag_data: list[dict]) -> tuple[str, list[str]]:
+        """Format rag text & metadata.
+
+        Join multiple rag text with new line.
+        Create list of metadata from rag data dictionary.
+        """
+        rag_text = []
+        file_path = []
+        for data in rag_data:
+            rag_text.append(data["text"])
+            file_path.append(self._file_path_to_doc_url(data["file_path"]))
+
+        return "\n\n".join(rag_text), file_path
+
+    @staticmethod
+    def _get_rag_data(rag_index: VectorStoreIndex, query: str) -> list[dict]:
+        """Get rag index data.
+
+        Get relevant rag content based on query.
+        Calculate available tokens.
+        Returns rag content text & metadata as dictionary.
+        """
+        # TODO: Implement a different module for retrieval
+        # with different options, currently it is top_k.
+        # We do have a module with langchain, but not compatible
+        # with llamaindex object.
+        retriever = rag_index.as_retriever(similarity_top_k=1)
+        retrieved_nodes = retriever.retrieve(query)
+
+        # Truncate rag context, if required.
+        token_handler_obj = TokenHandler()
+        interim_prompt = CHAT_PROMPT.format(context="", query=query)
+        prompt_token_count = len(token_handler_obj.text_to_tokens(interim_prompt))
+        available_tokens = (
+            CONTEXT_WINDOW_LIMIT - RESPONSE_WINDOW_LIMIT - prompt_token_count
+        )
+
+        return token_handler_obj.truncate_rag_context(retrieved_nodes, available_tokens)
+
     def summarize(
         self,
         conversation_id: str,
         query: str,
         history: Optional[str] = None,
         **kwargs: Any,
-    ) -> tuple[Response, list[str], bool]:
+    ) -> dict[str, Any]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -65,9 +98,11 @@ class DocsSummarizer(QueryHelper):
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-            A tuple containing the summary as a string, referenced documents as a list
-            of strings, and flag indicating that conversation history has been truncated
-            to fit within context window.
+            A dictionary containing below property
+            - the summary as a string
+            - referenced documents as a list of strings
+            - flag indicating that conversation history has been truncated
+              to fit within context window.
         """
         verbose = kwargs.get("verbose", "").lower() == "true"
 
@@ -86,9 +121,6 @@ class DocsSummarizer(QueryHelper):
         )
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
-        # TODO: use history there
-        summarization_template = PromptTemplate(constants.SUMMARIZATION_TEMPLATE)
-
         logger.info(f"{conversation_id} Getting service context")
 
         embed_model = DocsSummarizer.get_embed_model()
@@ -97,13 +129,13 @@ class DocsSummarizer(QueryHelper):
             self.provider, self.model, llm_params=self.llm_params
         ).llm  # type: ignore
         service_context = ServiceContext.from_defaults(
-            chunk_size=1024, llm=bare_llm, embed_model=embed_model, **kwargs
+            llm=None, embed_model=embed_model, **kwargs
         )
-
         logger.info(
             f"{conversation_id} using embed model: {service_context.embed_model!s}"
         )
 
+        rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
 
         truncated = (
@@ -115,7 +147,6 @@ class DocsSummarizer(QueryHelper):
             config.ols_config.reference_content is not None
             and config.ols_config.reference_content.product_docs_index_path is not None
         ):
-            use_llm_without_reference_content = False
             try:
                 storage_context = StorageContext.from_defaults(
                     persist_dir=config.ols_config.reference_content.product_docs_index_path
@@ -127,56 +158,41 @@ class DocsSummarizer(QueryHelper):
                     service_context=service_context,
                     verbose=verbose,
                 )
-                logger.info(f"{conversation_id} Setting up query engine")
-                query_engine = index.as_query_engine(
-                    text_qa_template=summarization_template,
-                    verbose=verbose,
-                    streaming=False,
-                    similarity_top_k=1,
-                    node_postprocessors=[_NoLLMMetadataPostprocessor()],
-                )
 
-                logger.info(f"{conversation_id} Submitting summarization query")
-                summary = query_engine.query(query)
+                logger.info(f"{conversation_id}: Getting index data.")
+                rag_context_data = self._get_rag_data(index, query)
 
-                for source_node in summary.source_nodes:
-                    referenced_documents.append(
-                        self._file_path_to_doc_url(
-                            source_node.node.metadata["file_path"]
-                        )
-                    )
             except Exception as err:
                 logger.error(f"Error loading vector index: {err}")
-                use_llm_without_reference_content = True
         else:
             logger.info("Reference content is not configured")
-            use_llm_without_reference_content = True
 
-        if use_llm_without_reference_content:
+        rag_context, referenced_documents = self._format_rag_data(rag_context_data)
+
+        chat_engine = LLMChain(
+            llm=bare_llm,
+            prompt=CHAT_PROMPT,
+            verbose=verbose,
+        )
+        summary = chat_engine.invoke({"context": rag_context, "query": query})
+        response = summary["text"]
+
+        if len(rag_context) == 0:
             logger.info("Using llm to answer the query without reference content")
-            response = bare_llm.invoke(query)
-            # TODO: we use "ChatOpenAI" for openai providers which is derived from "BaseChatModel",
-            # the invocation of which returns a "BaseMessage" object, and the actual llm response
-            # text is contained within the "content" attribute of BaseMessage.
-            # But for watsonx/bam providers we use implementations which are derived from the
-            # "LLM" class, the invocation of which returns a raw string containing the llm response
-            # text.
-            # We need to find a better way to abstract that difference so that every caller
-            # doesn't need to deal with this, but for now this hack makes OLS work with
-            # both kinds of providers.
-            if hasattr(response, "content"):
-                response = response.content
-            summary = Response(
+            response = (
                 "The following response was generated without access to reference content:"
                 "\n\n"
-                # NOTE: The LLM returns AIMessage, but typing sees it as a plain str
-                f"{response}"  # type: ignore
+                f"{response}"
             )
 
-        logger.info(f"{conversation_id} Summary response: {summary!s}")
+        logger.info(f"{conversation_id} Summary response: {response}")
         logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
 
-        return summary, referenced_documents, truncated
+        return {
+            "response": response,
+            "referenced_documents": referenced_documents,
+            "history_truncated": truncated,
+        }
 
     @staticmethod
     def get_embed_model() -> Optional[Any]:

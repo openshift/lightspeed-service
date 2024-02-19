@@ -1,10 +1,9 @@
 """Utility to handle tokens."""
 
 import logging
-from abc import ABC, abstractmethod, abstractproperty
-from typing import Any
 
-import tiktoken
+from llama_index.schema import NodeWithScore
+from tiktoken import get_encoding
 
 # TODO: distribute these constants if needed
 TOKENIZER_MODEL = "cl100k_base"
@@ -19,22 +18,6 @@ SIMILARITY_SCORE_THRESHOLD = 0.5
 logger = logging.getLogger(__name__)
 
 
-class RetrievedNode(ABC):
-    """Representation of retrieved node to be processed and truncated."""
-
-    @abstractmethod
-    def get_text(self) -> str:
-        """Get text."""
-
-    @abstractproperty
-    def score(self) -> float:
-        """Score property."""
-
-    @abstractproperty
-    def metadata(self) -> dict[str, Any]:
-        """Node metadata."""
-
-
 class TokenHandler:
     """This class handles tokens.
 
@@ -45,7 +28,7 @@ class TokenHandler:
 
     def __init__(self) -> None:
         """Initialize the class instance."""
-        self._encoder = tiktoken.get_encoding(TOKENIZER_MODEL)
+        self._encoder = get_encoding(TOKENIZER_MODEL)
 
     def text_to_tokens(self, text: str) -> list[int]:
         """Convert text to tokens.
@@ -72,7 +55,7 @@ class TokenHandler:
         return self._encoder.decode(tokens)
 
     def truncate_rag_context(
-        self, retrieved_nodes: list[RetrievedNode], max_tokens: int = 500
+        self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
     ) -> list[dict]:
         """Process retrieved node text and truncate if required.
 
@@ -107,9 +90,7 @@ class TokenHandler:
 
             context_dict["text"] = self.tokens_to_text(tokens[:available_tokens])
             # Add Metadata
-            context_dict["file_name"] = node.metadata.get("file_name", None)
-            # TODO: Below metadata yet to be added.
-            context_dict["doc_link"] = node.metadata.get("doc_link", None)
+            context_dict["file_path"] = node.metadata.get("file_path", None)
 
             context.append(context_dict)
             max_tokens -= available_tokens

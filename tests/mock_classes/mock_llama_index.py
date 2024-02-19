@@ -1,6 +1,7 @@
 """Mocked (llama) index."""
 
 from .mock_query_engine import MockQueryEngine
+from .mock_retrievers import MockRetriever
 
 
 class MockLlamaIndex:
@@ -24,3 +25,7 @@ class MockLlamaIndex:
     def as_query_engine(self, **kwargs):
         """Return mocked query engine."""
         return MockQueryEngine(kwargs)
+
+    def as_retriever(self, **kwargs):
+        """Return mocked query engine."""
+        return MockRetriever(kwargs)

@@ -1,11 +1,12 @@
 """Unit test for the token handler."""
 
+from typing import Any
 from unittest import TestCase, mock
 
-from ols.utils.token_handler import RetrievedNode, TokenHandler
+from ols.utils.token_handler import TokenHandler
 
 
-class MockRetrievedNode(RetrievedNode):
+class MockRetrievedNode:
     """Class to create mock data for retrieved node."""
 
     def __init__(self, node_detail: dict):
@@ -14,17 +15,17 @@ class MockRetrievedNode(RetrievedNode):
         self._score = node_detail["score"]
         self._metadata = node_detail["metadata"]
 
-    def get_text(self):
+    def get_text(self) -> str:
         """Mock get_text."""
         return self._text
 
     @property
-    def score(self):
+    def score(self) -> float:
         """Mock score."""
         return self._score
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict[str, Any]:
         """Mock metadata."""
         return self._metadata
 
@@ -38,22 +39,22 @@ class TestTokenHandler(TestCase):
             {
                 "text": "a text text text text",
                 "score": 0.6,
-                "metadata": {"file_name": "doc1.pdf", "doc_link": "link1"},
+                "metadata": {"file_path": "data/doc1.pdf"},
             },
             {
                 "text": "b text text text text",
                 "score": 0.55,
-                "metadata": {"file_name": "doc2.pdf", "doc_link": "link2"},
+                "metadata": {"file_path": "data/doc2.pdf"},
             },
             {
                 "text": "c text text text text",
                 "score": 0.55,
-                "metadata": {"file_name": "doc3.pdf", "doc_link": "link3"},
+                "metadata": {"file_path": "data/doc3.pdf"},
             },
             {
                 "text": "d text text text text",
                 "score": 0.4,
-                "metadata": {"file_name": "doc4.pdf", "doc_link": "link4"},
+                "metadata": {"file_path": "data/doc4.pdf"},
             },
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
@@ -68,7 +69,7 @@ class TestTokenHandler(TestCase):
         for idx, data in enumerate(context):
             assert data["text"][0] == self._mock_retrieved_obj[idx].get_text()[0]
             assert (
-                data["file_name"] == self._mock_retrieved_obj[idx].metadata["file_name"]
+                data["file_path"] == self._mock_retrieved_obj[idx].metadata["file_path"]
             )
 
     def test_token_handler_token_limit(self):

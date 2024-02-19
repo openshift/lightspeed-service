@@ -112,7 +112,7 @@ def generate_response(
     llm_request: LLMRequest,
     validation_result: str,
     previous_input: Optional[str],
-) -> tuple[Optional[str], list[str]]:
+) -> tuple[Optional[str], list[str], bool]:
     """Generate response based on validation result, previous input, and model output."""
     match (validation_result):
         case constants.SUBJECT_INVALID:
@@ -136,12 +136,14 @@ def generate_response(
                 docs_summarizer = DocsSummarizer(
                     provider=llm_request.provider, model=llm_request.model
                 )
-                llm_response, referenced_documents, truncated = (
-                    docs_summarizer.summarize(
-                        conversation_id, llm_request.query, previous_input
-                    )
+                llm_response = docs_summarizer.summarize(
+                    conversation_id, llm_request.query, previous_input
                 )
-                return llm_response.response, referenced_documents, truncated
+                return (
+                    llm_response["response"],
+                    llm_response["referenced_documents"],
+                    llm_response["history_truncated"],
+                )
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
                 logger.error(summarizer_error)

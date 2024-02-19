@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from ols import constants
 from ols.app.models.config import ProviderConfig, ReferenceContent
 from ols.utils import config, suid
+from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
 
@@ -230,28 +231,33 @@ def test_post_question_on_noyaml_response_type() -> None:
         from tests.mock_classes.langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.LLMLoader",
-                new=mock_llm_loader(ml()),
-            ),
-            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
-            patch(
-                "ols.utils.config.ols_config.reference_content.product_docs_index_path",
-                "./invalid_dir",
-            ),
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None)
         ):
-            conversation_id = suid.get_suid()
-            response = client.post(
-                "/v1/query",
-                json={
-                    "conversation_id": conversation_id,
-                    "query": "test query",
-                },
-            )
-            print(response)
-            assert response.status_code == requests.codes.ok
-            assert (
-                "The following response was generated without access to reference content:"
-                in response.json()["response"]
-            )
+            with (
+                patch(
+                    "ols.src.query_helpers.LLMLoader",
+                    new=mock_llm_loader(ml()),
+                ),
+                patch(
+                    "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
+                ),
+                patch(
+                    "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                    "./invalid_dir",
+                ),
+            ):
+                conversation_id = suid.get_suid()
+                response = client.post(
+                    "/v1/query",
+                    json={
+                        "conversation_id": conversation_id,
+                        "query": "test query",
+                    },
+                )
+                print(response)
+                assert response.status_code == requests.codes.ok
+                assert (
+                    "The following response was generated without access to reference content:"
+                    in response.json()["response"]
+                )
