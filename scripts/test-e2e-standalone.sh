@@ -58,7 +58,7 @@ trap finish EXIT
 # Curl will return error exit codes until OLS is available
 set +e
 STARTED=0
-for i in {1..10}; do
+for i in {1..20}; do
   echo Checking OLS readiness, attempt "$i" of 20
   curl -s localhost:8080/readiness
   if [ $? -eq 0 ]; then
