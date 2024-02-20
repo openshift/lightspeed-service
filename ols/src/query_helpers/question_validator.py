@@ -1,6 +1,7 @@
 """Class responsible for validating questions and providing one-word responses."""
 
 import logging
+from typing import Any
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class QuestionValidator(QueryHelper):
     """This class is responsible for validating questions and providing one-word responses."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
         llm_params = {
             "min_new_tokens": 1,
