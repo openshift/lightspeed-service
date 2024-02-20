@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import llama_index
 from langchain.chains import LLMChain
@@ -19,6 +19,14 @@ from ols.utils.token_handler import (
     RESPONSE_WINDOW_LIMIT,
     TokenHandler,
 )
+
+# this is to avoid importing HuggingFaceBgeEmbeddings in all cases, because in
+# runtime it is used only under some conditions. OTOH we need to make Python
+# interpreter happy in all circumstances, hence the definiton of Any symbol.
+if TYPE_CHECKING:
+    from langchain_community.embeddings import HuggingFaceBgeEmbeddings  # TCH004
+else:
+    HuggingFaceBgeEmbeddings = Any
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +203,7 @@ class DocsSummarizer(QueryHelper):
         }
 
     @staticmethod
-    def get_embed_model() -> Optional[Any]:
+    def get_embed_model() -> Optional[str | HuggingFaceBgeEmbeddings]:
         """Get embed model according to configuration."""
         if (
             config.ols_config.reference_content is not None
