@@ -236,7 +236,7 @@ def test_post_question_on_noyaml_response_type() -> None:
         ):
             with (
                 patch(
-                    "ols.src.query_helpers.LLMLoader",
+                    "ols.src.query_helpers.query_helper.LLMLoader",
                     new=mock_llm_loader(ml()),
                 ),
                 patch(
@@ -290,7 +290,7 @@ def test_post_query_with_query_filters_response_type() -> None:
         ):
             with (
                 patch(
-                    "ols.src.query_helpers.LLMLoader",
+                    "ols.src.query_helpers.query_helper.LLMLoader",
                     new=mock_llm_loader(ml()),
                 ),
                 patch(

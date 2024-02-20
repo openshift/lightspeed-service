@@ -11,7 +11,7 @@ from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
 from ols.src.prompts.prompts import CHAT_PROMPT
-from ols.src.query_helpers import QueryHelper
+from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 from ols.utils.token_handler import (
     # TODO: Use constants from config

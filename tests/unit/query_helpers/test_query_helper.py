@@ -1,7 +1,7 @@
 """Unit tests for query helper class."""
 
 from ols.src.llms.llm_loader import LLMLoader
-from ols.src.query_helpers import QueryHelper
+from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 
 

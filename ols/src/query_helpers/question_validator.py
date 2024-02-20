@@ -7,7 +7,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols import constants
-from ols.src.query_helpers import QueryHelper
+from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 
 logger = logging.getLogger(__name__)
