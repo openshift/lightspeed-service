@@ -373,8 +373,8 @@ class ConversationCacheConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
-    app_log_level: Optional[str] = None
-    lib_log_level: Optional[str] = None
+    app_log_level: Optional[int] = None
+    lib_log_level: Optional[int] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -394,7 +394,7 @@ class LoggingConfig(BaseModel):
             )
         return False
 
-    def _get_log_level(self, data, key, default):
+    def _get_log_level(self, data: dict, key: str, default: str) -> int:
         log_level = data.get(key, default)
         if not isinstance(log_level, str):
             raise InvalidConfigurationError(f"invalid log level for {log_level}")
