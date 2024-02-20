@@ -146,7 +146,7 @@ def generate_response(
                 )
             except Exception as summarizer_error:
                 logger.error("Error while obtaining answer for user question")
-                logger.error(summarizer_error)
+                logger.exception(summarizer_error)
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Error while obtaining answer for user question",
@@ -188,7 +188,7 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
     except Exception as validation_error:
         metrics.llm_calls_failures_total.inc()
         logger.error("Error while validating question")
-        logger.error(validation_error)
+        logger.exception(validation_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error while validating question",
