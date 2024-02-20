@@ -7,12 +7,14 @@ import yaml
 
 import ols.app.models.config as config_model
 from ols.src.cache.cache_factory import CacheFactory
+from ols.utils.query_filter import QueryFilter
 
 config = None
 ols_config = None
 llm_config = None
 dev_config = None
 conversation_cache = None
+query_redactor = None
 
 
 def init_empty_config() -> None:
@@ -57,3 +59,9 @@ def init_config(config_file: str) -> None:
         print(f"Failed to load config file {config_file}: {e!s}")
         print(traceback.format_exc())
         raise
+
+
+def init_query_filter() -> None:
+    """Initialize question filter."""
+    global query_redactor
+    query_redactor = QueryFilter()

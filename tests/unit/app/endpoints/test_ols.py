@@ -139,6 +139,17 @@ def test_validate_question_on_validation_error(validate_question_mock, load_conf
         ols.validate_question(conversation_id, llm_request)
 
 
+@patch("ols.utils.config.query_redactor")
+def test_query_filter_on_redact_error(mock_redact_query, load_config):
+    """Test conversation request API endpoint."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    mock_redact_query.redact_query.side_effect = Exception
+    with pytest.raises(HTTPException, match="Error while redacting query"):
+        ols.redact_query(conversation_id, llm_request)
+
+
 # TODO: distribute individual test cases to separate test functions
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")

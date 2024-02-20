@@ -13,6 +13,7 @@ from yaml.parser import ParserError
 from ols import constants
 from ols.app.models.config import Config, InvalidConfigurationError
 from ols.utils import config
+from ols.utils.query_filter import RegexFilter
 
 E = TypeVar("E", bound=Exception)
 
@@ -825,3 +826,32 @@ def test_config_file_without_logging_config():
     logging_config = config.ols_config.logging_config
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
+
+
+def test_valid_config_without_query_filter():
+    """Check if a valid configuration file without query filter creates empty regex filters."""
+    config.init_empty_config()
+    config.init_config("tests/config/valid_config_without_query_filter.yaml")
+    assert config.query_redactor is None
+    print(config.query_redactor)
+    config.init_query_filter()
+    assert config.query_redactor.regex_filters == []
+
+
+def test_valid_config_with_query_filter():
+    """Check if a valid configuration file with query filter is handled correctly."""
+    config.query_redactor = None
+    config.init_config("tests/config/valid_config_with_query_filter.yaml")
+    config.init_query_filter()
+    assert config.query_redactor.regex_filters == [
+        RegexFilter(
+            pattern=re.compile(r"\b(?:foo)\b"),
+            name="foo_filter",
+            replace_with="openshift",
+        ),
+        RegexFilter(
+            pattern=re.compile(r"\b(?:bar)\b"),
+            name="bar_filter",
+            replace_with="kubernetes",
+        ),
+    ]

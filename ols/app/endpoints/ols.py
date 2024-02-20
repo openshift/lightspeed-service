@@ -44,6 +44,10 @@ def conversation_request(llm_request: LLMRequest) -> LLMResponse:
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     metrics.llm_calls_total.inc()
+
+    # Redact the query
+    llm_request = redact_query(conversation_id, llm_request)
+    # Validate the query
     validation_result = validate_question(conversation_id, llm_request)
 
     response, referenced_documents, truncated = generate_response(
@@ -172,8 +176,30 @@ def store_conversation_history(
         )
 
 
+def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
+    """Redact query using query_redactor, raise HTTPException in case of any problem."""
+    try:
+        logger.debug(f"Redacting query for conversation {conversation_id}")
+        if not config.query_redactor:
+            logger.debug("query_redactor not found")
+            return llm_request
+        llm_request.query = config.query_redactor.redact_query(
+            conversation_id, llm_request.query
+        )
+        return llm_request
+    except Exception as redactor_error:
+        logger.error(
+            f"Error while redacting query {redactor_error} for conversation {conversation_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"response": f"Error while redacting query '{redactor_error}'"},
+        )
+
+
 def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
     """Validate user question, raise HTTPException in case of any problem."""
+    # Validate the query
     try:
         question_validator = QuestionValidator(
             provider=llm_request.provider, model=llm_request.model
