@@ -171,7 +171,7 @@ class DocsSummarizer(QueryHelper):
                 rag_context_data = self._get_rag_data(index, query)
 
             except Exception as err:
-                logger.error(f"Error loading vector index: {err}")
+                logger.exception(f"Error loading vector index: {err}")
         else:
             logger.info("Reference content is not configured")
 

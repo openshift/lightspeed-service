@@ -90,7 +90,7 @@ class QueryDocs:
         )
 
         if search_type not in {"mmr", "similarity", "similarity_score_threshold"}:
-            logger.error(f"incorrect search type {search_type}")
+            logger.exception(f"incorrect search type {search_type}")
             raise RetrieveDocsExceptionError(f"search type is invalid: {search_type}")
 
         db_retriever: VectorStoreRetriever = vectordb.as_retriever(
