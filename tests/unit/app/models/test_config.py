@@ -17,6 +17,7 @@ from ols.app.models.config import (
     ProviderConfig,
     RedisConfig,
     RedisCredentials,
+    ReferenceContent,
 )
 
 
@@ -839,6 +840,23 @@ def test_conversation_cache_config_validation():
         conversation_cache_config.validate_yaml()
 
 
+def test_conversation_cache_config_equality():
+    """Test the ConversationCacheConfig equality check."""
+    conversation_cache_config_1 = ConversationCacheConfig()
+    conversation_cache_config_2 = ConversationCacheConfig()
+
+    # compare the same conversation_cache configs
+    assert conversation_cache_config_1 == conversation_cache_config_2
+
+    # compare different conversation_cache configs
+    conversation_cache_config_2.type = "some non-default type"
+    assert conversation_cache_config_1 != conversation_cache_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert conversation_cache_config_1 != other_value
+
+
 def test_ols_config():
     """Test the OLSConfig model."""
     ols_config = OLSConfig(
@@ -1084,3 +1102,37 @@ def test_config_improper_model():
                 },
             }
         ).validate_yaml()
+
+
+def test_logging_config_equality():
+    """Test the LoggingConfig equality check."""
+    logging_config_1 = LoggingConfig()
+    logging_config_2 = LoggingConfig()
+
+    # compare the same logging configs
+    assert logging_config_1 == logging_config_2
+
+    # compare different logging configs
+    logging_config_2.app_log_level = 42
+    assert logging_config_1 != logging_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert logging_config_1 != other_value
+
+
+def test_reference_content_equality():
+    """Test the ReferenceContent equality check."""
+    reference_content_1 = ReferenceContent()
+    reference_content_2 = ReferenceContent()
+
+    # compare the same logging configs
+    assert reference_content_1 == reference_content_2
+
+    # compare different logging configs
+    reference_content_2.product_docs_index_path = "foo"
+    assert reference_content_1 != reference_content_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert reference_content_1 != other_value
