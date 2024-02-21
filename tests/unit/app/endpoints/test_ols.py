@@ -140,8 +140,20 @@ def test_validate_question_on_validation_error(validate_question_mock, load_conf
 
 
 @patch("ols.utils.config.query_redactor")
+def test_query_filter_on_correct_reduct(mock_redact_query, load_config):
+    """Test the function to redact query."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    mock_redact_query.redact_query.return_value = "Mocked query"
+    result = ols.redact_query(conversation_id, llm_request)
+    assert result is not None
+    assert result.query == "Mocked query"
+
+
+@patch("ols.utils.config.query_redactor")
 def test_query_filter_on_redact_error(mock_redact_query, load_config):
-    """Test conversation request API endpoint."""
+    """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
