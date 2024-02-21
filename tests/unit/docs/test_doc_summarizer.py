@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from ols import constants
-from ols.app.models.config import ReferenceContent
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import config, suid
 from tests.mock_classes.langchain_interface import mock_langchain_interface
@@ -20,21 +19,14 @@ def test_is_query_helper_subclass():
 
 
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
-@patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
-@patch("ols.src.query_helpers.docs_summarizer.StorageContext.from_defaults")
-@patch(
-    "ols.src.query_helpers.docs_summarizer.load_index_from_storage", new=MockLlamaIndex
-)
-def test_summarize(storage_context, service_context):
+def test_summarize():
     """Basic test for DocsSummarizer using mocked index and query engine."""
     config.init_empty_config()
-    config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
-    config.ols_config.reference_content.product_docs_index_id = "product"
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
+    rag_index = MockLlamaIndex()
     history = None
-    summary = summarizer.summarize(conversation_id, question, history)
+    summary = summarizer.summarize(conversation_id, question, rag_index, history)
     assert question in summary["response"]
     documents = summary["referenced_documents"]
     assert len(documents) > 0
@@ -46,47 +38,14 @@ def test_summarize(storage_context, service_context):
 
 
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
-@patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
-@patch("ols.src.query_helpers.docs_summarizer.StorageContext.from_defaults")
-@patch(
-    "ols.src.query_helpers.docs_summarizer.load_index_from_storage", new=MockLlamaIndex
-)
-def test_summarize_no_reference_content(storage_context, service_context):
+def test_summarize_no_reference_content():
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.init_empty_config()
-    config.ols_config.reference_content = ReferenceContent(None)
     summarizer = DocsSummarizer(
         llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
     )
     question = "What's the ultimate question with answer 42?"
     summary = summarizer.summarize(conversation_id, question)
     assert question in summary["response"]
-    documents = summary["referenced_documents"]
-    assert len(documents) == 0
-    assert not summary["history_truncated"]
-
-
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
-@patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults")
-@patch(
-    "ols.src.query_helpers.docs_summarizer.load_index_from_storage", new=MockLlamaIndex
-)
-def test_summarize_incorrect_directory(service_context):
-    """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.init_empty_config()
-    config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
-    config.ols_config.reference_content.product_docs_index_id = "product"
-    summarizer = DocsSummarizer(
-        llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
-    )
-    question = "What's the ultimate question with answer 42?"
-    conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
-    summary = summarizer.summarize(conversation_id, question)
-    assert (
-        "The following response was generated without access to reference content"
-        in summary["response"]
-    )
     documents = summary["referenced_documents"]
     assert len(documents) == 0
     assert not summary["history_truncated"]

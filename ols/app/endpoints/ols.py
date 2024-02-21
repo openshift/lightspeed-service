@@ -145,7 +145,7 @@ def generate_response(
                     provider=llm_request.provider, model=llm_request.model
                 )
                 llm_response = docs_summarizer.summarize(
-                    conversation_id, llm_request.query, previous_input
+                    conversation_id, llm_request.query, config.rag_index, previous_input
                 )
                 return (
                     llm_response["response"],
