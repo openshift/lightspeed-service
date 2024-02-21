@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 class BAM(LLMProvider):
     """BAM provider."""
 
+    url: str = "https://bam-api.res.ibm.com"
+
     @property
     def default_params(self):
         """Default LLM params."""
@@ -37,7 +39,7 @@ class BAM(LLMProvider):
         """Load LLM."""
         creds = Credentials(
             api_key=self.provider_config.credentials,
-            api_endpoint=self.provider_config.url,
+            api_endpoint=self.provider_config.url or self.url,
         )
 
         client = Client(credentials=creds)

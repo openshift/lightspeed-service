@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 class WatsonX(LLMProvider):
     """WatsonX provider."""
 
+    url: str = "https://us-south.ml.cloud.ibm.com"
+
     @property
     def default_params(self):
         """Default LLM params."""
@@ -41,7 +43,7 @@ class WatsonX(LLMProvider):
     def load(self) -> LLM:
         """Load LLM."""
         creds = {
-            "url": self.provider_config.url,
+            "url": self.provider_config.url or self.url,
             "apikey": self.provider_config.credentials,
         }
 

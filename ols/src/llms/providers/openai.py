@@ -16,11 +16,13 @@ logger = logging.getLogger(__name__)
 class OpenAI(LLMProvider):
     """OpenAI provider."""
 
+    url: str = "https://api.openai.com/v1"
+
     @property
     def default_params(self):
         """Default LLM params."""
         params = {
-            "base_url": self.provider_config.url,
+            "base_url": self.provider_config.url or self.url,
             "openai_api_key": self.provider_config.credentials,
             "model": self.model,
             "model_kwargs": {},
