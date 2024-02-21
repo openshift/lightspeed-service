@@ -164,58 +164,56 @@ def test_post_question_with_model_but_not_provider():
     )
 
 
-class TestQuery:
-    """Test the /v1/query endpoint."""
+def test_unknown_provider_in_post():
+    """Check the REST API /v1/query with POST method when unknown provider is requested."""
+    # empty config - no providers
+    with patch("ols.utils.config.llm_config.providers", new={}):
+        response = client.post(
+            "/v1/query",
+            json={
+                "query": "hello?",
+                "provider": "some-provider",
+                "model": "some-model",
+            },
+        )
 
-    def test_unknown_provider_in_post(self):
-        """Check the REST API /v1/query with POST method when unknown provider is requested."""
-        # empty config - no providers
-        with patch("ols.utils.config.llm_config.providers", new={}):
-            response = client.post(
-                "/v1/query",
-                json={
-                    "query": "hello?",
-                    "provider": "some-provider",
-                    "model": "some-model",
-                },
-            )
-
-            assert response.status_code == requests.codes.unprocessable
-            assert response.json() == {
-                "detail": {
-                    "response": "Unable to process this request because "
-                    "'Provider 'some-provider' is not a valid provider. "
-                    "Valid providers are: []'"
-                }
+        assert response.status_code == requests.codes.unprocessable
+        assert response.json() == {
+            "detail": {
+                "response": "Unable to process this request because "
+                "'Provider 'some-provider' is not a valid provider. "
+                "Valid providers are: []'"
             }
+        }
 
-    def test_unsupported_model_in_post(self):
-        """Check the REST API /v1/query with POST method when unsupported model is requested."""
-        test_provider = "test-provider"
-        provider_config = ProviderConfig()
-        provider_config.models = {}  # no models configured
 
-        with patch(
-            "ols.utils.config.llm_config.providers",
-            new={test_provider: provider_config},
-        ):
-            response = client.post(
-                "/v1/query",
-                json={
-                    "query": "hello?",
-                    "provider": test_provider,
-                    "model": "some-model",
-                },
-            )
+def test_unsupported_model_in_post():
+    """Check the REST API /v1/query with POST method when unsupported model is requested."""
+    test_provider = "test-provider"
+    provider_config = ProviderConfig()
+    provider_config.models = {}  # no models configured
 
-            assert response.status_code == requests.codes.unprocessable
-            assert response.json() == {
-                "detail": {
-                    "response": "Unable to process this request because "
-                    "'Model 'some-model' is not a valid model for provider "
-                    "'test-provider'. Valid models are: []'"
-                }
+    with patch(
+        "ols.utils.config.llm_config.providers",
+        new={test_provider: provider_config},
+    ):
+        response = client.post(
+            "/v1/query",
+            json={
+                "query": "hello?",
+                "provider": test_provider,
+                "model": "some-model",
+            },
+        )
+
+        assert response.status_code == requests.codes.unprocessable
+        assert response.json() == {
+            "detail": {
+                "response": "Unable to process this request because "
+                "'Model 'some-model' is not a valid model for provider "
+                "'test-provider'. Valid models are: []'"
             }
+        }
 
 
 def test_post_question_on_noyaml_response_type() -> None:
