@@ -17,7 +17,7 @@ class QueryHelper:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         llm_params: Optional[dict] = None,
-        llm_loader: Optional[LLMLoader] = None,
+        llm_loader: Optional[type[LLMLoader]] = None,
     ) -> None:
         """Initialize query helper."""
         # NOTE: As signature of this method is evaluated before the config,

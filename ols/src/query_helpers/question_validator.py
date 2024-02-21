@@ -61,7 +61,7 @@ class QuestionValidator(QueryHelper):
 
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
-        ).llm  # type: ignore
+        ).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
 
         task_query = prompt_instructions.format(query=query)
