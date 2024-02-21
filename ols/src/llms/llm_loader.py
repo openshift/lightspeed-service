@@ -35,7 +35,7 @@ def _resolve_provider_config(provider, model, providers_config) -> ProviderConfi
     """
     if provider not in providers_config.providers:
         raise UnknownProviderError(
-            f"Provider '{provider}' is not a valid provider! "
+            f"Provider '{provider}' is not a valid provider. "
             f"Valid providers are: {list(providers_config.providers.keys())}"
         )
 
@@ -43,7 +43,7 @@ def _resolve_provider_config(provider, model, providers_config) -> ProviderConfi
 
     if model not in provider_config.models:
         raise ModelConfigMissingError(
-            f"Model '{model}' is not a valid model for provider '{provider}'! "
+            f"Model '{model}' is not a valid model for provider '{provider}'. "
             f"Valid models are: {list(provider_config.models.keys())}"
         )
 
@@ -78,7 +78,7 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
     provider_config = _resolve_provider_config(provider, model, providers_config)
     if provider_config.type not in llm_providers_reg.llm_providers:
         raise UnsupportedProviderError(
-            f"Unsupported LLM provider type '{provider_config.type}'!"
+            f"Unsupported LLM provider type '{provider_config.type}'."
         )
 
     logger.debug(f"loading LLM '{model}' from '{provider}'")

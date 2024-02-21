@@ -140,7 +140,7 @@ def test_post_question_with_provider_but_not_model():
     assert response.json()["detail"][0]["type"] == "value_error"
     assert (
         response.json()["detail"][0]["msg"]
-        == "Value error, LLM model must be specified when the provider is specified!"
+        == "Value error, LLM model must be specified when the provider is specified."
     )
 
 
@@ -160,7 +160,7 @@ def test_post_question_with_model_but_not_provider():
     assert response.json()["detail"][0]["type"] == "value_error"
     assert (
         response.json()["detail"][0]["msg"]
-        == "Value error, LLM provider must be specified when the model is specified!"
+        == "Value error, LLM provider must be specified when the model is specified."
     )
 
 
@@ -181,7 +181,7 @@ def test_unknown_provider_in_post():
         assert response.json() == {
             "detail": {
                 "response": "Unable to process this request because "
-                "'Provider 'some-provider' is not a valid provider! "
+                "'Provider 'some-provider' is not a valid provider. "
                 "Valid providers are: []'"
             }
         }
@@ -211,7 +211,7 @@ def test_unsupported_model_in_post():
             "detail": {
                 "response": "Unable to process this request because "
                 "'Model 'some-model' is not a valid model for provider "
-                "'test-provider'! Valid models are: []'"
+                "'test-provider'. Valid models are: []'"
             }
         }
 

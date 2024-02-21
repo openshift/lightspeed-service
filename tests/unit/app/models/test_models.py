@@ -52,14 +52,14 @@ class TestLLM:
         # model set and provider not
         with pytest.raises(
             ValidationError,
-            match="LLM provider must be specified when the model is specified!",
+            match="LLM provider must be specified when the model is specified.",
         ):
             LLMRequest(query="bla", provider=None, model="davinci")
 
         # provider set and model not
         with pytest.raises(
             ValidationError,
-            match="LLM model must be specified when the provider is specified!",
+            match="LLM model must be specified when the provider is specified.",
         ):
             LLMRequest(query="bla", provider="openai", model=None)
 
