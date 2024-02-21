@@ -231,36 +231,35 @@ def test_post_question_on_noyaml_response_type() -> None:
         from tests.mock_classes.langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
-        with patch(
-            "ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None)
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.LLMLoader",
+                new=mock_llm_loader(ml()),
+            ),
+            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
+            patch(
+                "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                "./invalid_dir",
+            ),
         ):
-            with (
-                patch(
-                    "ols.src.query_helpers.query_helper.LLMLoader",
-                    new=mock_llm_loader(ml()),
-                ),
-                patch(
-                    "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
-                ),
-                patch(
-                    "ols.utils.config.ols_config.reference_content.product_docs_index_path",
-                    "./invalid_dir",
-                ),
-            ):
-                conversation_id = suid.get_suid()
-                response = client.post(
-                    "/v1/query",
-                    json={
-                        "conversation_id": conversation_id,
-                        "query": "test query",
-                    },
-                )
-                print(response)
-                assert response.status_code == requests.codes.ok
-                assert (
-                    "The following response was generated without access to reference content:"
-                    in response.json()["response"]
-                )
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                },
+            )
+            print(response)
+            assert response.status_code == requests.codes.ok
+            assert (
+                "The following response was generated without access to reference content:"
+                in response.json()["response"]
+            )
 
 
 def test_post_query_with_query_filters_response_type() -> None:
@@ -285,33 +284,32 @@ def test_post_query_with_query_filters_response_type() -> None:
         from tests.mock_classes.langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
-        with patch(
-            "ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None)
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.LLMLoader",
+                new=mock_llm_loader(ml()),
+            ),
+            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
         ):
-            with (
-                patch(
-                    "ols.src.query_helpers.query_helper.LLMLoader",
-                    new=mock_llm_loader(ml()),
-                ),
-                patch(
-                    "ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"
-                ),
-            ):
-                conversation_id = suid.get_suid()
-                response = client.post(
-                    "/v1/query",
-                    json={
-                        "conversation_id": conversation_id,
-                        "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
-                    },
-                )
-                print(response.json())
-                assert response.status_code == requests.codes.ok
-                assert (
-                    "The following response was generated without access to reference content:"
-                    in response.json()["response"]
-                )
-                assert (
-                    "test query with redacted_ip will be replaced with redacted_ip"
-                    in response.json()["response"]
-                )
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+                },
+            )
+            print(response.json())
+            assert response.status_code == requests.codes.ok
+            assert (
+                "The following response was generated without access to reference content:"
+                in response.json()["response"]
+            )
+            assert (
+                "test query with redacted_ip will be replaced with redacted_ip"
+                in response.json()["response"]
+            )
