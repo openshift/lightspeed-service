@@ -15,6 +15,7 @@ from ols.app.models.config import (
     ModelConfig,
     OLSConfig,
     ProviderConfig,
+    QueryFilter,
     RedisConfig,
     RedisCredentials,
     ReferenceContent,
@@ -1138,6 +1139,91 @@ def test_reference_content_equality():
     assert reference_content_1 != other_value
 
 
+def test_config_no_query_filter_node():
+    """Test the Config model when query filter is not set at all."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "openai",
+                    "url": "http://test_provider_url",
+                    "credentials_path": "tests/config/secret.txt",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url",
+                            "credentials_path": "tests/config/secret.txt",
+                        }
+                    ],
+                }
+            ],
+            "ols_config": {
+                "default_provider": "openai",
+                "default_model": "test_default_model",
+                "classifier_provider": "test_classifer_provider",
+                "classifier_model": "test_classifier_model",
+                "summarizer_provider": "test_summarizer_provider",
+                "summarizer_model": "test_summarizer_model",
+                "validator_provider": "test_validator_provider",
+                "validator_model": "test_validator_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+            },
+        }
+    )
+    assert config.ols_config.query_filters is None
+
+
+def test_config_no_query_filter():
+    """Test the Config model when query filter list is empty."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "openai",
+                    "url": "http://test_provider_url",
+                    "credentials_path": "tests/config/secret.txt",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url",
+                            "credentials_path": "tests/config/secret.txt",
+                        }
+                    ],
+                }
+            ],
+            "ols_config": {
+                "default_provider": "openai",
+                "default_model": "test_default_model",
+                "classifier_provider": "test_classifer_provider",
+                "classifier_model": "test_classifier_model",
+                "summarizer_provider": "test_summarizer_provider",
+                "summarizer_model": "test_summarizer_model",
+                "validator_provider": "test_validator_provider",
+                "validator_model": "test_validator_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "query_filters": [],
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+            },
+        }
+    )
+    assert len(config.ols_config.query_filters) == 0
+
+
 def test_config_improper_query_filter():
     """Test the Config model with improper query filter (no name) is set."""
     with pytest.raises(
@@ -1298,3 +1384,62 @@ def test_config_invalid_regex_query_filter():
                 },
             }
         ).validate_yaml()
+
+
+def test_query_filter_constructor():
+    """Test checks made by QueryFilter constructor."""
+    # no input
+    query_filter = QueryFilter(None)
+    assert query_filter.name is None
+    assert query_filter.pattern is None
+    assert query_filter.replace_with is None
+
+    # proper input
+    query_filter = QueryFilter(
+        {"name": "NAME", "pattern": "PATTERN", "replace_with": "REPLACE_WITH"}
+    )
+    assert query_filter.name == "NAME"
+    assert query_filter.pattern == "PATTERN"
+    assert query_filter.replace_with == "REPLACE_WITH"
+
+    # missing inputs
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="name, pattern and replace_with need to be specified",
+    ):
+        QueryFilter({"pattern": "PATTERN", "replace_with": "REPLACE_WITH"})
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="name, pattern and replace_with need to be specified",
+    ):
+        QueryFilter({"name": "NAME", "replace_with": "REPLACE_WITH"})
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="name, pattern and replace_with need to be specified",
+    ):
+        QueryFilter({"name": "NAME", "pattern": "PATTERN"})
+
+
+def test_query_filter_validation():
+    """Test method to validate query filter settings."""
+
+    def get_query_filter():
+        """Construct new fully-configured filter from scratch."""
+        return QueryFilter(
+            {"name": "NAME", "pattern": "PATTERN", "replace_with": "REPLACE_WITH"}
+        )
+
+    query_filter = get_query_filter()
+    query_filter.name = None
+    with pytest.raises(InvalidConfigurationError, match="name is missing"):
+        query_filter.validate_yaml()
+
+    query_filter = get_query_filter()
+    query_filter.pattern = None
+    with pytest.raises(InvalidConfigurationError, match="pattern is missing"):
+        query_filter.validate_yaml()
+
+    query_filter = get_query_filter()
+    query_filter.replace_with = None
+    with pytest.raises(InvalidConfigurationError, match="replace_with is missing"):
+        query_filter.validate_yaml()
