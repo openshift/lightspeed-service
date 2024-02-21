@@ -10,7 +10,7 @@ class MockLLMLoader:
 
 
 def mock_llm_loader(llm=None):
-    """Construct mock for LLMLoader."""
+    """Construct mock for load_llm."""
 
     def loader(*args, **kwargs):
         return MockLLMLoader(llm)

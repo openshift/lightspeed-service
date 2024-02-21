@@ -225,7 +225,7 @@ def test_conversation_request_on_wrong_configuration(
 
 
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_conversation_request_debug_api_no_conversation_id(load_config):
     """Test conversation request debug API endpoint."""
     llm_request = LLMRequest(query="Tell me about Kubernetes")
@@ -234,7 +234,7 @@ def test_conversation_request_debug_api_no_conversation_id(load_config):
 
 
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_conversation_request_debug_api_with_conversation_id(load_config):
     """Test conversation request debug API endpoint."""
     conversation_id = suid.get_suid()
@@ -337,7 +337,7 @@ def test_generate_response_unknown_validation_result(load_config):
 
 
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_generate_bare_response(load_config):
     """Test the generation of bare response for debug endpoint."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)

@@ -45,11 +45,11 @@ class LLMRequest(BaseModel):
         """Perform validation on the provider and model."""
         if self.model and not self.provider:
             raise ValueError(
-                "LLM provider must be specified when the model is specified!"
+                "LLM provider must be specified when the model is specified."
             )
         if self.provider and not self.model:
             raise ValueError(
-                "LLM model must be specified when the provider is specified!"
+                "LLM model must be specified when the provider is specified."
             )
         return self
 

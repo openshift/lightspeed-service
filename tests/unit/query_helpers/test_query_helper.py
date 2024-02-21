@@ -1,6 +1,6 @@
 """Unit tests for query helper class."""
 
-from ols.src.llms.llm_loader import LLMLoader
+from ols.src.llms.llm_loader import load_llm
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 
@@ -13,7 +13,7 @@ def test_defaults_used():
 
     assert qh.provider == config.ols_config.default_provider
     assert qh.model == config.ols_config.default_model
-    assert qh.llm_loader == LLMLoader
+    assert qh.llm_loader is load_llm
     assert qh.llm_params == {}
 
 

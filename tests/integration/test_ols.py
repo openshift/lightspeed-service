@@ -140,7 +140,7 @@ def test_post_question_with_provider_but_not_model():
     assert response.json()["detail"][0]["type"] == "value_error"
     assert (
         response.json()["detail"][0]["msg"]
-        == "Value error, LLM model must be specified when the provider is specified!"
+        == "Value error, LLM model must be specified when the provider is specified."
     )
 
 
@@ -160,7 +160,7 @@ def test_post_question_with_model_but_not_provider():
     assert response.json()["detail"][0]["type"] == "value_error"
     assert (
         response.json()["detail"][0]["msg"]
-        == "Value error, LLM provider must be specified when the model is specified!"
+        == "Value error, LLM provider must be specified when the model is specified."
     )
 
 
@@ -236,7 +236,7 @@ def test_post_question_on_noyaml_response_type() -> None:
                 new=mock_llm_chain(None),
             ),
             patch(
-                "ols.src.query_helpers.query_helper.LLMLoader",
+                "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
             patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
@@ -290,7 +290,7 @@ def test_post_query_with_query_filters_response_type() -> None:
                 new=mock_llm_chain(None),
             ),
             patch(
-                "ols.src.query_helpers.query_helper.LLMLoader",
+                "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
             patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
