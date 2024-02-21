@@ -16,6 +16,7 @@ def check_suid(suid: str) -> bool:
     """Check if given string is a proper session ID."""
     try:
         uuid.UUID(suid)
-        return True
     except ValueError:
         return False
+    else:
+        return True

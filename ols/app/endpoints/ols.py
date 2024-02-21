@@ -186,7 +186,6 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         llm_request.query = config.query_redactor.redact_query(
             conversation_id, llm_request.query
         )
-        return llm_request
     except Exception as redactor_error:
         logger.error(
             f"Error while redacting query {redactor_error} for conversation {conversation_id}"
@@ -195,6 +194,8 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"response": f"Error while redacting query '{redactor_error}'"},
         )
+    else:
+        return llm_request
 
 
 def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
