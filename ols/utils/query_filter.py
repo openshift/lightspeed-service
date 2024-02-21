@@ -32,7 +32,7 @@ class QueryFilter:
             )
         self.regex_filters = regex_filters
 
-    def redact_query(self, conversation_id, query: str) -> str:
+    def redact_query(self, conversation_id: str, query: str) -> str:
         """Redact the query using regex built."""
         logger.debug(f"Redacting conversation {conversation_id} query: {query}")
         for filter in self.regex_filters:
