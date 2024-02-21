@@ -219,5 +219,4 @@ class DocsSummarizer(QueryHelper):
             return HuggingFaceBgeEmbeddings(
                 model_name=config.ols_config.reference_content.embeddings_model_path
             )
-        else:
-            return "local:BAAI/bge-base-en"
+        return "local:BAAI/bge-base-en"
