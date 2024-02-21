@@ -335,7 +335,7 @@ class QueryFilter(BaseModel):
                 "name, pattern and replace_with need to be specified"
             )
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, QueryFilter):
             return (
