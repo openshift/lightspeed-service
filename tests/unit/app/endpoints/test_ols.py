@@ -1,5 +1,6 @@
 """Unit tests for OLS endpoint."""
 
+import re
 from http import HTTPStatus
 from unittest.mock import Mock, patch
 
@@ -11,6 +12,7 @@ from ols.app.endpoints import ols
 from ols.app.models.models import LLMRequest
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config, suid
+from ols.utils.query_filter import QueryFilter, RegexFilter
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -139,9 +141,68 @@ def test_validate_question_on_validation_error(validate_question_mock, load_conf
         ols.validate_question(conversation_id, llm_request)
 
 
+def test_query_filter_no_redact_filters(load_config):
+    """Test the function to redact query when no filters are setup."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    result = ols.redact_query(conversation_id, llm_request)
+    assert result is not None
+    assert result.query == query
+
+
+def test_query_filter_with_one_redact_filter(load_config):
+    """Test the function to redact query when filter is setup."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+
+    # use one custom filter
+    q = QueryFilter()
+    q.regex_filters = [
+        RegexFilter(
+            pattern=re.compile(r"Kubernetes"),
+            name="kubernetes-filter",
+            replace_with="FooBar",
+        )
+    ]
+    config.query_redactor = q
+
+    result = ols.redact_query(conversation_id, llm_request)
+    assert result is not None
+    assert result.query == "Tell me about FooBar"
+
+
+def test_query_filter_with_two_redact_filters(load_config):
+    """Test the function to redact query when multiple filters are setup."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+
+    # use two custom filters
+    q = QueryFilter()
+    q.regex_filters = [
+        RegexFilter(
+            pattern=re.compile(r"Kubernetes"),
+            name="kubernetes-filter",
+            replace_with="FooBar",
+        ),
+        RegexFilter(
+            pattern=re.compile(r"FooBar"),
+            name="FooBar-filter",
+            replace_with="Baz",
+        ),
+    ]
+    config.query_redactor = q
+
+    result = ols.redact_query(conversation_id, llm_request)
+    assert result is not None
+    assert result.query == "Tell me about Baz"
+
+
 @patch("ols.utils.config.query_redactor")
 def test_query_filter_on_redact_error(mock_redact_query, load_config):
-    """Test conversation request API endpoint."""
+    """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
