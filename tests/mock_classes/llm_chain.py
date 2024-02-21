@@ -27,7 +27,9 @@ def mock_llm_chain(retval):
         def __call__(self, *args, **kwargs):
             return retval
 
-        def invoke(self, input):
+        def invoke(self, input, config=None, **kwargs):
+            if retval is not None:
+                return retval
             input["text"] = input["query"]
             return input
 

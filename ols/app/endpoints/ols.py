@@ -9,6 +9,7 @@ from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.app import metrics
+from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import LLMRequest, LLMResponse
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -46,8 +47,6 @@ def conversation_request(
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
-
-    metrics.llm_calls_total.inc()
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
@@ -240,7 +239,15 @@ def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str
 
     prompt = PromptTemplate.from_template("{query}")
     llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
-    response = llm_chain(inputs={"query": llm_request.query})
+
+    with TokenMetricUpdater(
+        llm=bare_llm,
+        provider=config.ols_config.default_provider,
+        model=config.ols_config.default_model,
+    ) as token_counter:
+        response = llm_chain.invoke(
+            input={"query": llm_request.query}, config={"callbacks": [token_counter]}
+        )
 
     logger.info(f"{conversation_id} Model returned: {response}")
     return response["text"]

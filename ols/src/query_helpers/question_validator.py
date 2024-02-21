@@ -7,6 +7,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols import constants
+from ols.app.metrics import TokenMetricUpdater
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 
@@ -62,13 +63,23 @@ class QuestionValidator(QueryHelper):
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
         )
-        llm_chain = LLMChain(llm=bare_llm, prompt=prompt_instructions, verbose=verbose)
+        llm_chain = LLMChain(
+            llm=bare_llm,
+            prompt=prompt_instructions,
+            verbose=verbose,
+        )
 
         task_query = prompt_instructions.format(query=query)
-
         logger.info(f"{conversation_id} task query: {task_query}")
 
-        response = llm_chain(inputs={"query": query})
+        with TokenMetricUpdater(
+            llm=bare_llm,
+            provider=self.provider,
+            model=self.model,
+        ) as token_counter:
+            response = llm_chain.invoke(
+                input={"query": query}, config={"callbacks": [token_counter]}
+            )
         clean_response = str(response["text"]).strip()
 
         logger.info(f"{conversation_id} response: {clean_response}")
