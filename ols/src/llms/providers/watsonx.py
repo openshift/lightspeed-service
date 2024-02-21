@@ -49,7 +49,7 @@ class WatsonX(LLMProvider):
             model_id=self.model,
             credentials=creds,
             params=self.params,
-            project_id=self.params.get("project_id", None),
+            project_id=self.provider_config.project_id,
         )
         llm = WatsonxLLM(model=llm_model)
 
