@@ -10,7 +10,7 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app import metrics
 from ols.app.models.models import LLMRequest, LLMResponse
-from ols.src.llms.llm_loader import LLMConfigurationError, LLMLoader
+from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
@@ -207,6 +207,7 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
         return question_validator.validate_question(conversation_id, llm_request.query)
     except LLMConfigurationError as e:
         metrics.llm_calls_validation_errors_total.inc()
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"response": f"Unable to process this request because '{e}'"},
@@ -223,10 +224,10 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
 
 def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str:
     """Generate bare response without validation not using conversation history."""
-    bare_llm = LLMLoader(
+    bare_llm = load_llm(
         config.ols_config.default_provider,
         config.ols_config.default_model,
-    ).llm
+    )
 
     prompt = PromptTemplate.from_template("{query}")
     llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)

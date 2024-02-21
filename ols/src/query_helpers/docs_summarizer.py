@@ -135,7 +135,7 @@ class DocsSummarizer(QueryHelper):
 
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
-        ).llm  # type: ignore
+        )
         service_context = ServiceContext.from_defaults(
             llm=None, embed_model=embed_model, **kwargs
         )

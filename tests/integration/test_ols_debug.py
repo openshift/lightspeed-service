@@ -25,7 +25,7 @@ def setup():
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_debug_query():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     conversation_id = suid.get_suid()
@@ -46,7 +46,7 @@ def test_debug_query():
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_debug_query_no_conversation_id():
     """Check the REST API /v1/debug/query with POST HTTP method conversation ID is not provided."""
     response = client.post(
@@ -68,7 +68,7 @@ def test_debug_query_no_conversation_id():
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_debug_query_no_query():
     """Check the REST API /v1/debug/query with POST HTTP method when query is not specified."""
     conversation_id = suid.get_suid()
@@ -84,7 +84,7 @@ def test_debug_query_no_query():
 # the raw prompt should just return stuff from LLMChain, so mock that base method in ols.py
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "test response"}))
 # during LLM init, exceptions will occur on CI, so let's mock that too
-@patch("ols.app.endpoints.ols.LLMLoader", new=mock_llm_loader(None))
+@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_debug_query_no_payload():
     """Check the REST API /v1/debug/query with POST HTTP method when payload is empty."""
     response = client.post("/v1/debug/query")

@@ -188,7 +188,7 @@ def test_constructor_no_provider():
     # we use bare Exception in the code, so need to check
     # message, at least
     with pytest.raises(Exception, match="ERROR: Missing provider"):
-        LLMLoader(provider=None)
+        load_llm(provider=None)
 ```
 
 ### Checking what was printed and logged to stdout or stderr by the tested code
@@ -262,3 +262,17 @@ def function_with_pep484_type_annotations(param1: int, param2: str) -> bool:
 ```
 
 For further guidance, see the rest of our codebase, or check sources online. There are many, eg. [this one](https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e).
+
+
+## Adding a new provider/model
+To add a new provider, follow these steps:
+
+1. Create a new file in the `ols/src/llm/providers/` directory.
+2. In this file, define a class that inherits from `LLMProvider`.
+3. Register this class for use by decorating it with `@register_llm_provider_as("your_provider")`. You can refer to existing providers for examples.
+
+Please note that your custom provider must adhere to the interface defined by `AbstractLLMProvider` to ensure proper integration. Specifically, you must define a `default_params` property and a `load` method in your custom provider class.
+
+You'll also need to modify your `olsconfig.yaml` file to include an appropriate entry for your new provider.
+
+Once you've created and registered your new provider as described above, no further code modifications are necessary. Our discovery mechanism will automatically locate your provider. After that, you'll be able to use it as needed.

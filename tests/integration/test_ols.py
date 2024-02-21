@@ -181,7 +181,7 @@ def test_unknown_provider_in_post():
         assert response.json() == {
             "detail": {
                 "response": "Unable to process this request because "
-                "'Provider 'some-provider' is not a valid provider. "
+                "'Provider 'some-provider' is not a valid provider! "
                 "Valid providers are: []'"
             }
         }
@@ -211,7 +211,7 @@ def test_unsupported_model_in_post():
             "detail": {
                 "response": "Unable to process this request because "
                 "'Model 'some-model' is not a valid model for provider "
-                "'test-provider'. Valid models are: []'"
+                "'test-provider'! Valid models are: []'"
             }
         }
 
@@ -235,7 +235,7 @@ def test_post_question_on_noyaml_response_type() -> None:
                 new=mock_llm_chain(None),
             ),
             patch(
-                "ols.src.query_helpers.query_helper.LLMLoader",
+                "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
             patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
@@ -288,7 +288,7 @@ def test_post_query_with_query_filters_response_type() -> None:
                 new=mock_llm_chain(None),
             ),
             patch(
-                "ols.src.query_helpers.query_helper.LLMLoader",
+                "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
             patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
