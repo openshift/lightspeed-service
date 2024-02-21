@@ -4,7 +4,7 @@ ARG VERSION
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip jq shadow-utils \
+    python3.11 python3.11-devel python3.11-pip jq shadow-utils git \
     && microdnf clean all --enablerepo='*' \
     && useradd -r -u 1001 -g 0 -m -c "Default Application User" -d ${APP_ROOT} -s /bin/bash default
 
@@ -46,6 +46,16 @@ ENV BASH_ENV="${APP_ROOT}/venv/bin/activate" \
     ENV="${APP_ROOT}/venv/bin/activate" \
     PROMPT_COMMAND=". ${APP_ROOT}/venv/bin/activate" \
     PATH="${APP_ROOT}/venv/bin:${PATH}"
+
+COPY scripts/download_embeddings_model.py .
+RUN source ${APP_ROOT}/venv/bin/activate && python download_embeddings_model.py embeddings_model \
+    &&  rm download_embeddings_model.py
+
+COPY scripts/generate_embeddings.py .
+RUN source ${APP_ROOT}/venv/bin/activate \
+    && git clone https://github.com/ilan-pinto/lightspeed-rag-documents.git \
+    && python generate_embeddings.py -f lightspeed-rag-documents/ocp-product-docs-4_14 -m embeddings_model -o faiss_db \
+    && rm -rf generate_embeddings.py lightspeed-rag-documents
 
 # default user for Python app
 USER 1001
