@@ -34,9 +34,9 @@ class WatsonX(LLMProvider):
             GenParams.MAX_NEW_TOKENS: 512,
             GenParams.RANDOM_SEED: 42,
             GenParams.TEMPERATURE: 0.05,
-            GenParams.TOP_K: 10,
-            GenParams.TOP_P: 0.95,
-            GenParams.REPETITION_PENALTY: 1.03,
+            GenParams.TOP_K: 50,
+            GenParams.TOP_P: 0.85,
+            GenParams.REPETITION_PENALTY: 1.05,
         }
         return params
 
