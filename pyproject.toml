@@ -58,6 +58,8 @@ dependencies = [
     "pydantic==2.6.0",
     "setuptools>=69.0.3",
     "prometheus-client>=0.19.0",
+    "kubernetes>=29.0.0",
+    "pytest-asyncio>=0.23.5",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"

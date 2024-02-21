@@ -91,6 +91,39 @@ class ModelConfig(BaseModel):
             )
 
 
+class AuthenticationConfig(BaseModel):
+    """Authentication configuration."""
+
+    skip_tls_verification: Optional[bool] = False
+    k8s_cluster_api: Optional[str] = None
+    k8s_ca_cert_path: Optional[str] = None
+
+    def __init__(self, data: Optional[dict] = None):
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is not None:
+            self.skip_tls_verification = data.get(
+                "skip_tls_verification", self.skip_tls_verification
+            )
+            self.k8s_cluster_api = data.get("k8s_cluster_api", self.k8s_cluster_api)
+            self.k8s_ca_cert_path = data.get("k8s_ca_cert_path", self.k8s_ca_cert_path)
+
+    def validate_yaml(self) -> None:
+        """Validate authentication config."""
+        if self.k8s_cluster_api and not _is_valid_http_url(self.k8s_cluster_api):
+            raise InvalidConfigurationError("k8s_cluster_api URL is invalid")
+        # Validate k8s_ca_cert_path
+        if self.k8s_ca_cert_path:
+            if not os.path.exists(self.k8s_ca_cert_path):
+                raise InvalidConfigurationError(
+                    f"k8s_ca_cert_path does not exist: {self.k8s_ca_cert_path}"
+                )
+            if not os.path.isfile(self.k8s_ca_cert_path):
+                raise InvalidConfigurationError(
+                    f"k8s_ca_cert_path is not a file: {self.k8s_ca_cert_path}"
+                )
+
+
 class ProviderConfig(BaseModel):
     """LLM provider configuration."""
 
@@ -512,6 +545,7 @@ class OLSConfig(BaseModel):
     conversation_cache: Optional[ConversationCacheConfig] = None
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
+    authentication_config: Optional[AuthenticationConfig] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -530,6 +564,9 @@ class OLSConfig(BaseModel):
         self.reference_content = ReferenceContent(data.get("reference_content", None))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
+        self.authentication_config = AuthenticationConfig(
+            data.get("authentication_config", None)
+        )
         if data.get("query_filters", None) is not None:
             self.query_filters = []
             for item in data.get("query_filters", None):
@@ -554,6 +591,8 @@ class OLSConfig(BaseModel):
         self.logging_config.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
+        if self.authentication_config:
+            self.authentication_config.validate_yaml()
         if self.query_filters is not None:
             for filter in self.query_filters:
                 filter.validate_yaml()
@@ -565,9 +604,8 @@ class DevConfig(BaseModel):
     enable_dev_ui: bool = False
     disable_question_validation: bool = False
     llm_params: Optional[dict] = None
-
-    # TODO - wire this up once auth is implemented
     disable_auth: bool = False
+    k8s_auth_token: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize developer configuration settings."""
@@ -579,6 +617,7 @@ class DevConfig(BaseModel):
             str(data.get("disable_question_validation", "False")).lower() == "true"
         )
         self.llm_params = data.get("llm_params", {})
+        self.k8s_auth_token = str(data.get("k8s_auth_token", None))
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
 
     def __eq__(self, other: Any) -> bool:
@@ -590,6 +629,7 @@ class DevConfig(BaseModel):
                 == other.disable_question_validation
                 and self.llm_params == other.llm_params
                 and self.disable_auth == other.disable_auth
+                and self.k8s_auth_token == other.k8s_auth_token
             )
         return False
 

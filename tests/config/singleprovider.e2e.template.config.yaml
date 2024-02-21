@@ -27,3 +27,4 @@ ols_config:
 dev_config:
   llm_params:
     temperature: 0
+  disable_auth: true

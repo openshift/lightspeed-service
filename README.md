@@ -58,7 +58,52 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
    points to file containing a valid OpenAI api key, and change the `default_model` and `default_provider` values to reference the openai provider and model.
 
-6. (Optional) Configure the document store
+6. Configure OLS Authentication
+
+   This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
+
+   1. Enabling and Disabling Authentication
+   
+      Authentication is enabled by default in OLS. To disable authentication, modify the `dev_config` in your configuration file as shown below:
+
+      ```yaml
+         dev_config:
+            disable_auth: true
+      ```
+
+   2. Configuring Authentication with OCP RBAC
+
+      OLS utilizes OCP RBAC for authentication, necessitating connectivity to an OCP cluster. It automatically selects the configuration from the first available source, either an in-cluster configuration or a KubeConfig file.
+
+   3. Overriding Authentication Configuration
+
+      You can customize the authentication configuration by overriding the default settings. The configurable options include:
+
+      - **Kubernetes Cluster API URL (`k8s_cluster_api`):** The URL of the K8S/OCP API server where tokens are validated.
+      - **CA Certificate Path (`k8s_ca_cert_path`):** Path to a CA certificate for clusters with self-signed certificates.
+      - **Skip TLS Verification (`skip_tls_verification`):** If true, the Kubernetes client skips TLS certificate validation for the OCP cluster.
+
+      To apply any of these overrides, update your configuration file as follows:
+
+      ```yaml
+         ols_config:
+            authentication_config:
+               k8s_cluster_api: "https://api.example.com:6443"
+               k8s_ca_cert_path: "/Users/home/ca.crt"
+               skip_tls_verification: false
+      ```
+
+   4. Providing a Static Authentication Token in Development Environments
+
+      For development environments, you may wish to use a static token for authentication purposes. This can be configured in the `dev_config` section of your configuration file:
+
+      ```yaml
+         dev_config:
+            k8s_auth_token: your-user-token
+      ```
+      **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
+
+7. (Optional) Configure the document store
    1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
    2. Create vector index directory
       ```sh
@@ -69,7 +114,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
       unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
       ```
 
-7. (Optional) Configure conversation cache
+8. (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in Redis storage. It is possible to specify storage type in `olsconfig.yaml` configuration file.
    1. Cache stored in memory:
       ```yaml

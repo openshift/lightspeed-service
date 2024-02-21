@@ -25,3 +25,5 @@ ols_config:
     logging_level: INFO
   default_provider: p1
   default_model: m1
+dev_config:
+  disable_auth: true

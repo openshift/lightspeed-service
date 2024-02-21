@@ -2,20 +2,24 @@
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ols.app.models.models import FeedbackRequest, FeedbackResponse
+from ols.utils.auth_dependency import auth_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
 @router.post("")
-def user_feedback(feedback_request: FeedbackRequest) -> FeedbackResponse:
+def user_feedback(
+    feedback_request: FeedbackRequest, auth=Depends(auth_dependency)
+) -> FeedbackResponse:
     """Handle feedback requests.
 
     Args:
         feedback_request: The request containing feedback information.
+        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
         Response indicating the status of the feedback.
