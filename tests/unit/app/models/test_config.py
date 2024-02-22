@@ -6,6 +6,7 @@ import pytest
 
 from ols import constants
 from ols.app.models.config import (
+    AuthenticationConfig,
     Config,
     ConversationCacheConfig,
     InvalidConfigurationError,
@@ -1443,3 +1444,58 @@ def test_query_filter_validation():
     query_filter.replace_with = None
     with pytest.raises(InvalidConfigurationError, match="replace_with is missing"):
         query_filter.validate_yaml()
+
+
+def test_authentication_config_validation_proper_config():
+    """Test method to validate authentication config."""
+    auth_config = AuthenticationConfig(
+        {
+            "skip_tls_verification": True,
+            "k8s_cluster_api": "http://cluster.org/foo",
+            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
+        }
+    )
+    auth_config.validate_yaml()
+
+
+def test_authentication_config_validation_invalid_cluster_api():
+    """Test method to validate authentication config."""
+    auth_config = AuthenticationConfig(
+        {
+            "skip_tls_verification": True,
+            "k8s_cluster_api": "this-is-not-valid-url",
+            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError, match="k8s_cluster_api URL is invalid"
+    ):
+        auth_config.validate_yaml()
+
+
+def test_authentication_config_validation_invalid_cert_path():
+    """Test method to validate authentication config."""
+    auth_config = AuthenticationConfig(
+        {
+            "skip_tls_verification": True,
+            "k8s_cluster_api": "http://cluster.org/foo",
+            "k8s_ca_cert_path": "/dev/null/foo",  # that file can not exists
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="k8s_ca_cert_path does not exist: /dev/null/foo",
+    ):
+        auth_config.validate_yaml()
+
+    auth_config = AuthenticationConfig(
+        {
+            "skip_tls_verification": True,
+            "k8s_cluster_api": "http://cluster.org/foo",
+            "k8s_ca_cert_path": "/dev/null",
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError, match="k8s_ca_cert_path is not a file: /dev/null"
+    ):
+        auth_config.validate_yaml()
