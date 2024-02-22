@@ -285,6 +285,50 @@ def test_conversation_request_on_wrong_configuration(
         ols.conversation_request(llm_request)
 
 
+@patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=None))
+@patch(
+    "ols.app.endpoints.ols.validate_question",
+    new=Mock(return_value=constants.SUBJECT_INVALID),
+)
+def test_question_validation_in_conversation_start(load_config):
+    """Test if question validation is skipped in follow-up conversation."""
+    # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
+    # this should resolve in rejection in summarization
+    conversation_id = suid.get_suid()
+    query = "some elaborate question"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+
+    response = ols.conversation_request(llm_request)
+
+    assert response.response.startswith("I can only answer questions about OpenShift")
+
+
+@patch(
+    "ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value="something")
+)
+@patch(
+    "ols.app.endpoints.ols.validate_question",
+    new=Mock(return_value=constants.SUBJECT_INVALID),
+)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+def test_no_question_validation_in_follow_up_conversation(mock_summarize, load_config):
+    """Test if question validation is skipped in follow-up conversation."""
+    # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
+    # but as it is not the first question, it should proceed to summarization
+    mock_summarize.return_value = {
+        "response": "some elaborate answer",
+        "referenced_documents": [],
+        "history_truncated": False,
+    }
+    conversation_id = suid.get_suid()
+    query = "some elaborate question"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+
+    response = ols.conversation_request(llm_request)
+
+    assert response.response == "some elaborate answer"
+
+
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
 @patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
 def test_conversation_request_debug_api_no_conversation_id(load_config):
