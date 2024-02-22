@@ -173,7 +173,7 @@ async def auth_dependency(request: Request):
     """
     if config.dev_config.disable_auth:
         logger.warn("Auth checks disabled, skipping")
-        # TO-DO: replace with constants for default identity
+        # TODO: replace with constants for default identity
         return "c1143120-551e-4a47-ad47-2748d6f3c81c", "OLS"
     authorization_header = request.headers.get("Authorization")
     if not authorization_header:
@@ -192,7 +192,7 @@ async def auth_dependency(request: Request):
             status_code=403, detail="Forbidden: Invalid or expired token"
         )
     authorization_api = K8sClientSingleton.get_authz_api()
-    # TO-DO: we can support Groups here also admins, developers etc..
+    # TODO: we can support Groups here also admins, developers etc..
     sar = kubernetes.client.V1SubjectAccessReview(
         spec=kubernetes.client.V1SubjectAccessReviewSpec(
             user=user_info.user.username,
