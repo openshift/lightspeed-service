@@ -84,6 +84,4 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
     logger.debug(f"loading LLM '{model}' from '{provider}'")
 
     llm_provider = llm_providers_reg.llm_providers[provider_config.type]
-    llm = llm_provider(model, provider_config, llm_params or {}).load()
-
-    return llm
+    return llm_provider(model, provider_config, llm_params or {}).load()
