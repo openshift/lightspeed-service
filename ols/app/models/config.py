@@ -442,9 +442,9 @@ class ConversationCacheConfig(BaseModel):
         else:
             match self.type:
                 case constants.REDIS_CACHE:
-                    return self.redis.validate_yaml()
+                    self.redis.validate_yaml()
                 case constants.IN_MEMORY_CACHE:
-                    return self.memory.validate_yaml()
+                    self.memory.validate_yaml()
                 case _:
                     raise InvalidConfigurationError(
                         f"unknown conversation cache type: {self.type}"
