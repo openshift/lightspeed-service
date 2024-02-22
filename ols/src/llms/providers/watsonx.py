@@ -1,6 +1,7 @@
 """WatsonX provider implementation."""
 
 import logging
+from typing import Any
 
 from ibm_watson_machine_learning.foundation_models import Model
 from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
@@ -25,7 +26,7 @@ class WatsonX(LLMProvider):
     url: str = "https://us-south.ml.cloud.ibm.com"
 
     @property
-    def default_params(self):
+    def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
         # https://www.ibm.com/docs/en/watsonx-as-a-service?topic=models-parameters
         return {

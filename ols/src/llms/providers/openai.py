@@ -1,6 +1,7 @@
 """OpenAI provider implementation."""
 
 import logging
+from typing import Any
 
 from langchain.llms.base import LLM
 from langchain_openai import ChatOpenAI
@@ -19,7 +20,7 @@ class OpenAI(LLMProvider):
     url: str = "https://api.openai.com/v1"
 
     @property
-    def default_params(self):
+    def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
         return {
             "base_url": self.provider_config.url or self.url,
