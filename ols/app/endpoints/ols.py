@@ -1,7 +1,7 @@
 """Handlers for all OLS-related REST API endpoints."""
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from langchain.chains import LLMChain
@@ -23,7 +23,7 @@ router = APIRouter(tags=["query"])
 
 @router.post("/query")
 def conversation_request(
-    llm_request: LLMRequest, auth=Depends(auth_dependency)
+    llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
 ) -> LLMResponse:
     """Handle conversation requests for the OLS endpoint.
 

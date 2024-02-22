@@ -1,6 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
 import logging
+from typing import Self
 
 import kubernetes.client
 from fastapi import HTTPException, Request
@@ -21,10 +22,10 @@ class K8sClientSingleton:
 
     _instance = None
     _api_client = None
-    _authn_api = None
-    _authz_api = None
+    _authn_api: kubernetes.client.AuthenticationV1Api = None
+    _authz_api: kubernetes.client.AuthorizationV1Api = None
 
-    def __new__(cls):
+    def __new__(cls: type[Self]) -> Self:
         """Create a new instance of the singleton, or returns the existing instance.
 
         This method initializes the Kubernetes API clients the first time it is called.
@@ -93,7 +94,7 @@ class K8sClientSingleton:
         return cls._instance
 
     @classmethod
-    def get_authn_api(cls):
+    def get_authn_api(cls) -> kubernetes.client.AuthenticationV1Api:
         """Return the Authentication API client instance.
 
         Ensures the singleton is initialized before returning the Authentication API client.
@@ -103,7 +104,7 @@ class K8sClientSingleton:
         return cls._authn_api
 
     @classmethod
-    def get_authz_api(cls):
+    def get_authz_api(cls) -> kubernetes.client.AuthorizationV1Api:
         """Return the Authorization API client instance.
 
         Ensures the singleton is initialized before returning the Authorization API client.

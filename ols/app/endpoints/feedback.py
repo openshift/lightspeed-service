@@ -1,6 +1,7 @@
 """Handler for REST API call to provide user feedback."""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 @router.post("")
 def user_feedback(
-    feedback_request: FeedbackRequest, auth=Depends(auth_dependency)
+    feedback_request: FeedbackRequest, auth: Any = Depends(auth_dependency)
 ) -> FeedbackResponse:
     """Handle feedback requests.
 
