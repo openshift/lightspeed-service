@@ -1,6 +1,7 @@
 """BAM provider implementation."""
 
 import logging
+from typing import Any
 
 from genai import Client, Credentials
 from genai.extensions.langchain import LangChainInterface
@@ -21,7 +22,7 @@ class BAM(LLMProvider):
     url: str = "https://bam-api.res.ibm.com"
 
     @property
-    def default_params(self):
+    def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
         return {
             "decoding_method": "sample",
