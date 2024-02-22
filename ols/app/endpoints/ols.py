@@ -51,8 +51,13 @@ def conversation_request(
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
+
     # Validate the query
-    validation_result = validate_question(conversation_id, llm_request)
+    if not previous_input:
+        validation_result = validate_question(conversation_id, llm_request)
+    else:
+        logger.debug("follow-up conversation - skipping question validation")
+        validation_result = constants.SUBJECT_VALID
 
     response, referenced_documents, truncated = generate_response(
         conversation_id, llm_request, validation_result, previous_input
