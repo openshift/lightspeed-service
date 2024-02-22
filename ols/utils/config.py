@@ -7,6 +7,7 @@ import yaml
 
 import ols.app.models.config as config_model
 from ols.src.cache.cache_factory import CacheFactory
+from ols.src.rag_index.index_loader import IndexLoader
 from ols.utils.query_filter import QueryFilter
 
 config = None
@@ -15,6 +16,7 @@ llm_config = None
 dev_config = None
 conversation_cache = None
 query_redactor = None
+rag_index = None
 
 
 def init_empty_config() -> None:
@@ -65,3 +67,9 @@ def init_query_filter() -> None:
     """Initialize question filter."""
     global query_redactor
     query_redactor = QueryFilter()
+
+
+def init_vector_index() -> None:
+    """Initialize vector index."""
+    global rag_index
+    rag_index = IndexLoader(ols_config.reference_content).vector_index

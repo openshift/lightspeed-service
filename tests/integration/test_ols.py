@@ -239,7 +239,6 @@ def test_post_question_on_noyaml_response_type() -> None:
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
-            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
             patch(
                 "ols.utils.config.ols_config.reference_content.product_docs_index_path",
                 "./invalid_dir",
@@ -293,7 +292,6 @@ def test_post_query_with_query_filters_response_type() -> None:
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
-            patch("ols.src.query_helpers.docs_summarizer.ServiceContext.from_defaults"),
         ):
             conversation_id = suid.get_suid()
             response = client.post(

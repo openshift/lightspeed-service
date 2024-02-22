@@ -1,32 +1,20 @@
 """A class for summarizing documentation context."""
 
 import logging
-import os
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
-import llama_index
 from langchain.chains import LLMChain
-from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
 from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 from ols.utils.token_handler import (
     # TODO: Use constants from config
     CONTEXT_WINDOW_LIMIT,
     RESPONSE_WINDOW_LIMIT,
     TokenHandler,
 )
-
-# this is to avoid importing HuggingFaceBgeEmbeddings in all cases, because in
-# runtime it is used only under some conditions. OTOH we need to make Python
-# interpreter happy in all circumstances, hence the definiton of Any symbol.
-if TYPE_CHECKING:
-    from langchain_community.embeddings import HuggingFaceBgeEmbeddings  # TCH004
-else:
-    HuggingFaceBgeEmbeddings = Any
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +82,7 @@ class DocsSummarizer(QueryHelper):
         self,
         conversation_id: str,
         query: str,
+        vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -102,6 +91,7 @@ class DocsSummarizer(QueryHelper):
         Args:
             conversation_id: The unique identifier for the conversation.
             query: The query to be summarized.
+            vector_index: Vector index to get rag data/context.
             history: The history of the conversation (if available).
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
@@ -113,13 +103,6 @@ class DocsSummarizer(QueryHelper):
               to fit within context window.
         """
         verbose = kwargs.get("verbose", "").lower() == "true"
-
-        # Set up llama index to show prompting if verbose is True
-        # TODO: remove this, we can't be setting global handlers, it will
-        # affect other calls
-        if verbose:
-            llama_index.set_global_handler("simple")
-
         settings_string = (
             f"conversation_id: {conversation_id}, "
             f"query: {query}, "
@@ -129,51 +112,20 @@ class DocsSummarizer(QueryHelper):
         )
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
-        logger.info(f"{conversation_id} Getting service context")
-
-        embed_model = DocsSummarizer.get_embed_model()
-
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
-        )
-        service_context = ServiceContext.from_defaults(
-            llm=None, embed_model=embed_model, **kwargs
-        )
-        logger.info(
-            f"{conversation_id} using embed model: {service_context.embed_model!s}"
         )
 
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
-
         truncated = (
             False  # TODO tisnik: need to be implemented based on provided inputs
         )
 
-        # TODO get this from global config
-        if (
-            config.ols_config.reference_content is not None
-            and config.ols_config.reference_content.product_docs_index_path is not None
-        ):
-            try:
-                storage_context = StorageContext.from_defaults(
-                    persist_dir=config.ols_config.reference_content.product_docs_index_path
-                )
-                logger.info(f"{conversation_id} Setting up index")
-                index = load_index_from_storage(
-                    storage_context=storage_context,
-                    index_id=config.ols_config.reference_content.product_docs_index_id,
-                    service_context=service_context,
-                    verbose=verbose,
-                )
-
-                logger.info(f"{conversation_id}: Getting index data.")
-                rag_context_data = self._get_rag_data(index, query)
-
-            except Exception as err:
-                logger.exception(f"Error loading vector index: {err}")
+        if vector_index is not None:
+            rag_context_data = self._get_rag_data(vector_index, query)
         else:
-            logger.info("Reference content is not configured")
+            logger.warning("Proceeding without RAG content. Check start up messages.")
 
         rag_context, referenced_documents = self._format_rag_data(rag_context_data)
 
@@ -201,22 +153,3 @@ class DocsSummarizer(QueryHelper):
             "referenced_documents": referenced_documents,
             "history_truncated": truncated,
         }
-
-    @staticmethod
-    def get_embed_model() -> Optional[str | HuggingFaceBgeEmbeddings]:
-        """Get embed model according to configuration."""
-        if (
-            config.ols_config.reference_content is not None
-            and config.ols_config.reference_content.embeddings_model_path is not None
-        ):
-            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-
-            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
-            os.environ["TRANSFORMERS_CACHE"] = (
-                config.ols_config.reference_content.embeddings_model_path
-            )
-            os.environ["TRANSFORMERS_OFFLINE"] = "1"
-            return HuggingFaceBgeEmbeddings(
-                model_name=config.ols_config.reference_content.embeddings_model_path
-            )
-        return "local:BAAI/bge-base-en"

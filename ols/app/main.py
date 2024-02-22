@@ -30,6 +30,8 @@ configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)
 logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
 
+config.init_vector_index()
+
 
 if config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)
