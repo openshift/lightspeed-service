@@ -28,7 +28,7 @@ class WatsonX(LLMProvider):
     def default_params(self):
         """Default LLM params."""
         # https://www.ibm.com/docs/en/watsonx-as-a-service?topic=models-parameters
-        params = {
+        return {
             GenParams.DECODING_METHOD: "sample",
             GenParams.MIN_NEW_TOKENS: 1,
             GenParams.MAX_NEW_TOKENS: 512,
@@ -38,7 +38,6 @@ class WatsonX(LLMProvider):
             GenParams.TOP_P: 0.95,
             GenParams.REPETITION_PENALTY: 1.03,
         }
-        return params
 
     def load(self) -> LLM:
         """Load LLM."""
@@ -53,6 +52,4 @@ class WatsonX(LLMProvider):
             params=self.params,
             project_id=self.provider_config.project_id,
         )
-        llm = WatsonxLLM(model=llm_model)
-
-        return llm
+        return WatsonxLLM(model=llm_model)

@@ -23,7 +23,7 @@ class BAM(LLMProvider):
     @property
     def default_params(self):
         """Default LLM params."""
-        params = {
+        return {
             "decoding_method": "sample",
             "max_new_tokens": 512,
             "min_new_tokens": 1,
@@ -33,7 +33,6 @@ class BAM(LLMProvider):
             "repetition_penalty": 1.03,
             "temperature": 0.05,
         }
-        return params
 
     def load(self) -> LLM:
         """Load LLM."""
@@ -45,5 +44,4 @@ class BAM(LLMProvider):
         client = Client(credentials=creds)
         params = TextGenerationParameters(**self.params)
 
-        llm = LangChainInterface(client=client, model_id=self.model, parameters=params)
-        return llm
+        return LangChainInterface(client=client, model_id=self.model, parameters=params)

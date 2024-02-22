@@ -21,7 +21,7 @@ class OpenAI(LLMProvider):
     @property
     def default_params(self):
         """Default LLM params."""
-        params = {
+        return {
             "base_url": self.provider_config.url or self.url,
             "openai_api_key": self.provider_config.credentials,
             "model": self.model,
@@ -35,7 +35,6 @@ class OpenAI(LLMProvider):
             "frequency_penalty": 1.03,
             "verbose": False,
         }
-        return params
 
     def load(self) -> LLM:
         """Load LLM."""
@@ -46,5 +45,4 @@ class OpenAI(LLMProvider):
         if "max_new_tokens" in self.params:
             self.params.pop("max_new_tokens")
 
-        llm = ChatOpenAI(**self.params)
-        return llm
+        return ChatOpenAI(**self.params)
