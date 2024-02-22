@@ -137,8 +137,11 @@ Response:
 # providers
 PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
+PROVIDER_AZURE_OPENAI = "azure_openai"
 PROVIDER_WATSONX = "watsonx"
-SUPPORTED_PROVIDER_TYPES = frozenset({PROVIDER_BAM, PROVIDER_OPENAI, PROVIDER_WATSONX})
+SUPPORTED_PROVIDER_TYPES = frozenset(
+    {PROVIDER_BAM, PROVIDER_OPENAI, PROVIDER_AZURE_OPENAI, PROVIDER_WATSONX}
+)
 
 # models
 # embedding
@@ -149,7 +152,7 @@ GRANITE_13B_CHAT_V1 = "ibm/granite-13b-chat-v1"
 GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
 GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 
-# OpenAI
+# OpenAI & Azure OpenAI
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
