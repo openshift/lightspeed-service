@@ -29,9 +29,9 @@ class BAM(LLMProvider):
             "max_new_tokens": 512,
             "min_new_tokens": 1,
             "random_seed": 42,
-            "top_k": 10,
-            "top_p": 0.95,
-            "repetition_penalty": 1.03,
+            "top_k": 50,
+            "top_p": 0.85,
+            "repetition_penalty": 1.05,
             "temperature": 0.05,
         }
 
