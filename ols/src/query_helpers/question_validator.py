@@ -5,12 +5,29 @@ from typing import Any
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from multiprocess.context import TimeoutError
+from pathos.multiprocessing import ProcessingPool as Pool
 
 from ols import constants
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 
 logger = logging.getLogger(__name__)
+
+
+def run_with_timeout(timeout_after, func, *args, **kwargs):
+    pool = Pool(nodes=1)
+
+    def func_wrapper(params):
+        args, kwargs = params
+        return func(*args, **kwargs)
+
+    result = pool.amap(func_wrapper, [(args, kwargs)])
+    try:
+        return result.get(timeout=timeout_after)[0]
+    except TimeoutError as e:
+        pool.terminate()
+        raise e
 
 
 class QuestionValidator(QueryHelper):
@@ -68,7 +85,13 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation_id} task query: {task_query}")
 
-        response = llm_chain(inputs={"query": query})
+        try:
+            response = run_with_timeout(
+                timeout_after=1, func=llm_chain, inputs={"query": query}
+            )
+        except TimeoutError:
+            # do something
+            pass
         clean_response = str(response["text"]).strip()
 
         logger.info(f"{conversation_id} response: {clean_response}")
