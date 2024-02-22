@@ -98,7 +98,7 @@ class AuthenticationConfig(BaseModel):
     k8s_cluster_api: Optional[str] = None
     k8s_ca_cert_path: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is not None:
@@ -497,7 +497,7 @@ class ReferenceContent(BaseModel):
     product_docs_index_id: Optional[str] = None
     embeddings_model_path: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
