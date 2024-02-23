@@ -24,12 +24,12 @@ app = FastAPI(
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 config.init_config(cfg_file)
-config.init_query_filter()
 
 configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)
 logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
 
+config.init_query_filter()
 config.init_vector_index()
 
 
