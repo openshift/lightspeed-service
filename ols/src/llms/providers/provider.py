@@ -2,7 +2,7 @@
 
 import abc
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from langchain.llms.base import LLM
 
@@ -33,7 +33,7 @@ class LLMProvider(AbstractLLMProvider):
 
     def __init__(
         self, model: str, provider_config: ProviderConfig, params: Optional[dict] = None
-    ):
+    ) -> None:
         """Initialize LLM provider.
 
         Args:
@@ -45,7 +45,7 @@ class LLMProvider(AbstractLLMProvider):
         self.provider_config = provider_config
         self.params = self._override_params(params or {})
 
-    def _override_params(self, params):
+    def _override_params(self, params: dict[Any, Any]) -> dict[Any, Any]:
         """Override LLM parameters if defined in developer config."""
         # input params overrides default params
         updated_params = {**self.default_params, **params}
