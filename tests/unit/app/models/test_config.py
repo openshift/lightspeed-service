@@ -126,6 +126,30 @@ def test_model_config_validation_improper_url():
         model_config.validate_yaml()
 
 
+def test_model_config_invalid_response_token():
+    """Test the model config with invalid response token limit."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid response_token_limit = 0, positive value expected",
+    ):
+        ModelConfig({"name": "test_model_name", "response_token_limit": 0})
+
+
+def test_model_config_higher_response_token():
+    """Test the model config with response token >= context window."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Context window size 2, should be greater than response token limit 2",
+    ):
+        ModelConfig(
+            {
+                "name": "test_model_name",
+                "context_window_size": 2,
+                "response_token_limit": 2,
+            }
+        )
+
+
 def test_provider_config():
     """Test the ProviderConfig model."""
     provider_config = ProviderConfig(
@@ -156,6 +180,10 @@ def test_provider_config():
     assert (
         provider_config.models["test_model_name"].context_window_size
         == constants.DEFAULT_CONTEXT_WINDOW_SIZE
+    )
+    assert (
+        provider_config.models["test_model_name"].response_token_limit
+        == constants.DEFAULT_RESPONSE_TOKEN_LIMIT
     )
 
     provider_config = ProviderConfig()
@@ -193,9 +221,10 @@ def test_provider_config():
     assert "model name is missing" in str(excinfo.value)
 
 
-def test_provider_config_explicit_context_window_size():
-    """Test the ProviderConfig model when explicit context window size is specified."""
+def test_provider_config_explicit_tokens():
+    """Test the ProviderConfig model when explicit tokens are specified."""
     context_window_size = 500
+    response_token_limit = 100
 
     provider_config = ProviderConfig(
         {
@@ -210,6 +239,7 @@ def test_provider_config_explicit_context_window_size():
                     "url": "test_model_url",
                     "credentials_path": "tests/config/secret.txt",
                     "context_window_size": context_window_size,
+                    "response_token_limit": response_token_limit,
                 }
             ],
         }
@@ -218,13 +248,17 @@ def test_provider_config_explicit_context_window_size():
         provider_config.models["test_model_name"].context_window_size
         == context_window_size
     )
+    assert (
+        provider_config.models["test_model_name"].response_token_limit
+        == response_token_limit
+    )
 
 
 def test_provider_config_improper_context_window_size_value():
     """Test the ProviderConfig model when improper context window size is specified."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="invalid context window size -1, positive value expected",
+        match="invalid context_window_size = -1, positive value expected",
     ):
         ProviderConfig(
             {
@@ -249,7 +283,7 @@ def test_provider_config_improper_context_window_size_type():
     """Test the ProviderConfig model when improper context window size is specified."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="invalid context window size not-a-number, positive value expected",
+        match="invalid context_window_size = not-a-number, positive value expected",
     ):
         ProviderConfig(
             {

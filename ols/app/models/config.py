@@ -50,6 +50,7 @@ class ModelConfig(BaseModel):
     url: Optional[str] = None
     credentials: Optional[str] = None
     context_window_size: int = constants.DEFAULT_CONTEXT_WINDOW_SIZE
+    response_token_limit: int = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -59,15 +60,16 @@ class ModelConfig(BaseModel):
         self.name = data.get("name", None)
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
-        try:
-            if "context_window_size" in data:
-                self.context_window_size = int(data.get("context_window_size"))
-            if self.context_window_size < 0:
-                raise ValueError
-        except ValueError:
+        self.context_window_size = self._validate_token_limit(
+            data, "context_window_size", self.context_window_size
+        )
+        self.response_token_limit = self._validate_token_limit(
+            data, "response_token_limit", self.response_token_limit
+        )
+        if self.context_window_size <= self.response_token_limit:
             raise InvalidConfigurationError(
-                f"invalid context window size {data['context_window_size']}, "
-                "positive value expected"
+                f"Context window size {self.context_window_size}, "
+                f"should be greater than response token limit {self.response_token_limit}"
             )
 
     def __eq__(self, other: Any) -> bool:
@@ -78,8 +80,24 @@ class ModelConfig(BaseModel):
                 and self.url == other.url
                 and self.credentials == other.credentials
                 and self.context_window_size == other.context_window_size
+                and self.response_token_limit == other.response_token_limit
             )
         return False
+
+    @staticmethod
+    def _validate_token_limit(data: dict, token_type: str, value: int) -> int:
+        """Validate token limit."""
+        if token_type in data:
+            value = data[token_type]
+            try:
+                value = int(value)
+                if value <= 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise InvalidConfigurationError(
+                    f"invalid {token_type} = {value}, positive value expected"
+                )
+        return value
 
     def validate_yaml(self) -> None:
         """Validate model config."""
