@@ -161,9 +161,9 @@ PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
 IN_MEMORY_CACHE = "memory"
 IN_MEMORY_CACHE_MAX_ENTRIES = 1000
 REDIS_CACHE = "redis"
-REDIS_CACHE_HOST = "redis-stack.ols.svc"
+REDIS_CACHE_HOST = "lightspeed-redis-server.openshift-lightspeed.svc"
 REDIS_CACHE_PORT = 6379
-REDIS_CACHE_MAX_MEMORY = "500mb"
+REDIS_CACHE_MAX_MEMORY = "1024mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
 REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 

@@ -18,9 +18,8 @@ ols_config:
       port: "1234"
       max_memory: 100MB
       max_memory_policy: "allkeys-lru"
-      credentials:
-        username_path: tests/config/redis_username.txt
-        password_path: tests/config/redis_password.txt
+      password_path: tests/config/redis_password.txt
+      ca_cert_path: tests/config/redis_ca_cert.crt
   logging_config:
     logging_level: INFO
   default_provider: p1

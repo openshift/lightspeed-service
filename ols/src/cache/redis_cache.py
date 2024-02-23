@@ -32,11 +32,13 @@ class RedisCache(Cache):
         This method sets up the Redis client with custom configuration parameters.
         """
         kwargs = {}
-        if config.credentials is not None:
-            if config.credentials.username is not None:
-                kwargs["username"] = config.credentials.username
-            if config.credentials.password is not None:
-                kwargs["password"] = config.credentials.password
+        if config.password is not None:
+            kwargs["password"] = config.password
+        if config.ca_cert_path is not None:
+            kwargs["ssl"] = True
+            kwargs["ssl_cert_reqs"] = "required"
+            kwargs["ssl_ca_certs"] = config.ca_cert_path
+
         self.redis_client = redis.StrictRedis(
             host=config.host,
             port=config.port,

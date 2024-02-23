@@ -309,9 +309,7 @@ ols_config:
     redis:
       host: 127.0.0.1
       port: 1234
-      credentials:
-          username: root
-          password: pwd123
+      password_path: pwd123
 """,
         InvalidConfigurationError,
         "memory conversation cache type is specified,"
@@ -378,27 +376,6 @@ ols_config:
 """,
         InvalidConfigurationError,
         "invalid Redis max_memory_policy foobar, valid policies are",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'https://murl1'
-ols_config:
-  conversation_cache:
-    type: redis
-    redis:
-      credentials:
-        username_path: tests/config/redis_username.txt
-""",
-        InvalidConfigurationError,
-        "for Redis, if a username is specified, a password also needs to be specified",
     )
 
     for port in ("foobar", "-123", "0", "123.3", "88888"):
@@ -796,10 +773,8 @@ def test_valid_config_file_with_redis():
                             "port": "1234",
                             "max_memory": "100MB",
                             "max_memory_policy": "allkeys-lru",
-                            "credentials": {
-                                "username_path": "tests/config/redis_username.txt",
-                                "password_path": "tests/config/redis_password.txt",
-                            },
+                            "password_path": "tests/config/redis_password.txt",
+                            "ca_cert_path": "tests/config/redis_ca_cert.crt",
                         },
                     },
                     "logging_config": {

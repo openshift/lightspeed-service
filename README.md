@@ -134,11 +134,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
             port: "6379"
             max_memory: 100MB
             max_memory_policy: "allkeys-lru"
-            credentials:
-              username_path: redis_username.txt
-              password_path: redis_password.txt
+            password_path: redis_password.txt
+            ca_cert_path: redis_ca_cert.crt
       ```
-      In this case, files `redis_username.txt` and `redis_password.txt` containing username and password required to connect to Redis, needs to be accessible.
+      In this case, file `redis_password.txt` contains password required to connect with Redis. Also CA certificate can be specified using `redis_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
 
 
