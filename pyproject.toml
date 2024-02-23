@@ -38,12 +38,18 @@ dev = [
     "types-requests<2.31.0.7"
 ]
 
+[[tool.pdm.source]]
+type = "find_links"
+url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
+name = "torch"
+
 [project]
 name = "ols"
 version = "0.1.0"
 description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
+    "torch==2.2.0+cpu",
     "fastapi==0.109.1",
     "gradio==4.19.2",
     "langchain==0.1.4",
