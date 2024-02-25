@@ -25,3 +25,6 @@ if __name__ == "__main__":
     # pretend local_dir is HF cache
     with open(os.path.join(local_dir, "version.txt"), "w", encoding="utf-8") as f:
         f.write("1")
+
+    # remove pytorch_model.bin, load the model from model.safetensors
+    os.remove(os.path.join(local_dir, "pytorch_model.bin"))
