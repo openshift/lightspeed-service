@@ -26,7 +26,7 @@ distribution = false
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "black>=24.1.1",
+    "black>=24.2.0",
     "httpx>=0.26.0",
     "mypy>=1.8.0",
     "pytest>=8.0.0",
