@@ -9,12 +9,8 @@ from llama_index.indices.vector_store.base import VectorStoreIndex
 from ols import constants
 from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils.token_handler import (
-    # TODO: Use constants from config
-    CONTEXT_WINDOW_LIMIT,
-    RESPONSE_WINDOW_LIMIT,
-    TokenHandler,
-)
+from ols.utils import config
+from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +49,7 @@ class DocsSummarizer(QueryHelper):
 
         return "\n\n".join(rag_text), file_path
 
-    @staticmethod
-    def _get_rag_data(rag_index: VectorStoreIndex, query: str) -> list[dict]:
+    def _get_rag_data(self, rag_index: VectorStoreIndex, query: str) -> list[dict]:
         """Get rag index data.
 
         Get relevant rag content based on query.
@@ -68,13 +63,25 @@ class DocsSummarizer(QueryHelper):
         retriever = rag_index.as_retriever(similarity_top_k=1)
         retrieved_nodes = retriever.retrieve(query)
 
+        token_config = config.llm_config.providers.get(self.provider)
+        token_config = token_config.models.get(self.model)
+        context_window_size = token_config.context_window_size
+        response_token_limit = token_config.response_token_limit
+        logger.info(
+            f"context_window_size: {context_window_size}, "
+            f"response_token_limit: {response_token_limit}"
+        )
         # Truncate rag context, if required.
         token_handler_obj = TokenHandler()
         interim_prompt = CHAT_PROMPT.format(context="", query=query)
         prompt_token_count = len(token_handler_obj.text_to_tokens(interim_prompt))
         available_tokens = (
-            CONTEXT_WINDOW_LIMIT - RESPONSE_WINDOW_LIMIT - prompt_token_count
+            context_window_size - response_token_limit - prompt_token_count
         )
+        # TODO: Now we have option to set context window & response limit set
+        # from the config. With this we need to change default max token parameter
+        # for the model dynamically. Also a check for
+        # (response limit + prompt + any additional user context) < context window
 
         return token_handler_obj.truncate_rag_context(retrieved_nodes, available_tokens)
 

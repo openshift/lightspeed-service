@@ -21,7 +21,7 @@ def test_is_query_helper_subclass():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize():
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.init_empty_config()
+    config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
