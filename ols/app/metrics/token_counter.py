@@ -1,9 +1,10 @@
 """Helper classes to count tokens sent and received by the LLM."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from langchain.callbacks.base import BaseCallbackHandler
+from langchain.llms.base import LLM
 from langchain_core.outputs.llm_result import LLMResult
 
 from .metrics import llm_calls_total, llm_token_received_total, llm_token_sent_total
@@ -42,7 +43,7 @@ class GenericTokenCounter(BaseCallbackHandler):
 
     """
 
-    def __init__(self, llm):
+    def __init__(self, llm: LLM) -> None:
         """Initialize the token counter callback handler.
 
         Parameters:
@@ -55,20 +56,20 @@ class GenericTokenCounter(BaseCallbackHandler):
         self.llm_calls = 0  # number of LLM calls
 
     def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ):
+        self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
+    ) -> None:
         """Run when LLM starts running."""
         self.llm_calls += 1
         self.input_tokens_counted = 0
         for p in prompts:
             self.input_tokens_counted += self.llm.get_num_tokens(p)
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any):
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Run when LLM completes running."""
         results = response.flatten()
         input_tokens_llm_reported = 0
         for r in results:
-            if "token_usage" in r.llm_output:
+            if r.llm_output is not None and "token_usage" in r.llm_output:
                 token_usage = r.llm_output["token_usage"]
                 # typical token_usage: {'prompt_tokens': 252, 'completion_tokens': 4, 'total': 256}
                 if "prompt_tokens" in token_usage:
@@ -120,7 +121,7 @@ class TokenMetricUpdater:
             )
     """
 
-    def __init__(self, llm, provider: str, model: str):
+    def __init__(self, llm: LLM, provider: str, model: str) -> None:
         """Initialize the token counter context manager.
 
         Parameters:
@@ -132,11 +133,11 @@ class TokenMetricUpdater:
         self.provider = provider
         self.model = model
 
-    def __enter__(self):
+    def __enter__(self) -> GenericTokenCounter:
         """Initialize the token counter when entering the context."""
         return self.token_counter
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """Update the metrics when exiting the context."""
         llm_calls_total.labels(provider=self.provider, model=self.model).inc(
             self.token_counter.llm_calls
