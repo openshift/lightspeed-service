@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:6024e78ddb8ae259bb44397d44e4f5f91342310db5c81c3b604ee08d0d1ade7c"
+content_hash = "sha256:92e6bbdcde20559b9a43c3a8f35eae05a56c82c714924addca4e036478049882"
 
 [[package]]
 name = "aiofiles"
@@ -1736,7 +1736,7 @@ name = "pytest-asyncio"
 version = "0.23.5"
 requires_python = ">=3.8"
 summary = "Pytest support for asyncio"
-groups = ["default"]
+groups = ["default", "dev"]
 dependencies = [
     "pytest<9,>=7.0.0",
 ]
