@@ -7,6 +7,7 @@ from langchain.chains import LLMChain
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
+from ols.app.metrics import TokenMetricUpdater
 from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
@@ -141,7 +142,17 @@ class DocsSummarizer(QueryHelper):
             prompt=CHAT_PROMPT,
             verbose=verbose,
         )
-        summary = chat_engine.invoke({"context": rag_context, "query": query})
+
+        with TokenMetricUpdater(
+            llm=bare_llm,
+            provider=self.provider,
+            model=self.model,
+        ) as token_counter:
+            summary = chat_engine.invoke(
+                input={"context": rag_context, "query": query},
+                config={"callbacks": [token_counter]},
+            )
+
         response = summary["text"]
 
         if len(rag_context) == 0:

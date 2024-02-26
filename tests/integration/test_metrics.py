@@ -42,6 +42,8 @@ def test_metrics():
         "llm_calls_total",
         "llm_calls_failures_total",
         "llm_validation_errors_total",
+        "llm_token_sent_total",
+        "llm_token_received_total",
     )
 
     # check if all counters are present
