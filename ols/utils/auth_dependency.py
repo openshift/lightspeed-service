@@ -1,7 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
 import logging
-from typing import Self
+from typing import Optional, Self
 
 import kubernetes.client
 from fastapi import HTTPException, Request
@@ -114,7 +114,7 @@ class K8sClientSingleton:
         return cls._authz_api
 
 
-def get_user_info(token):
+def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
     """Perform a Kubernetes TokenReview to validate a given token.
 
     Parameters:
@@ -157,7 +157,7 @@ def _extract_bearer_token(header: str) -> str:
         return ""
 
 
-async def auth_dependency(request: Request):
+async def auth_dependency(request: Request) -> tuple[str, str]:
     """Validate FastAPI Requests for authentication and authorization.
 
     Validates the bearer token from the request,
