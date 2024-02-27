@@ -5,7 +5,7 @@ from typing import Optional
 
 from langchain.llms.base import LLM
 
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import LLMProviders, ProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
 from ols.utils import config
 
@@ -28,7 +28,9 @@ class ModelConfigMissingError(LLMConfigurationError):
     """No configuration exists for the requested model name."""
 
 
-def _resolve_provider_config(provider, model, providers_config) -> ProviderConfig:
+def _resolve_provider_config(
+    provider: str, model: str, providers_config: LLMProviders
+) -> ProviderConfig:
     """Ensure the provided inputs (provider/model) are valid in config.
 
     Return respective provider configuration.

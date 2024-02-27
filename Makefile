@@ -51,7 +51,7 @@ coverage-report:	test-unit ## Export unit test coverage report into interactive 
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
 
 check-types: ## Checks type hints in sources
-	mypy ols/
+	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 format: ## Format the code into unified format
 	black .
