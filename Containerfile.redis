@@ -33,6 +33,7 @@ RUN sed -i 's/^# tls-port 6379/tls-port 6379/' redis.conf
 RUN sed -i 's/^# tls-cert-file redis.crt/tls-cert-file \/etc\/certs\/tls.crt/' redis.conf
 RUN sed -i 's/^# tls-key-file redis.key/tls-key-file \/etc\/certs\/tls.key/' redis.conf
 RUN sed -i 's/^# tls-ca-cert-file ca.crt/tls-ca-cert-file \/etc\/certs\/cm-olsredisca\/service-ca.crt/' redis.conf
+RUN sed -i 's/^# tls-auth-clients optional/tls-auth-clients optional/' redis.conf
 
 # Expose the default Redis port
 EXPOSE 6379

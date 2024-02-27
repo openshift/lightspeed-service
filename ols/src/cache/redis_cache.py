@@ -1,7 +1,7 @@
 """Cache that uses Redis to store cached values."""
 
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 import redis
 
@@ -31,11 +31,11 @@ class RedisCache(Cache):
 
         This method sets up the Redis client with custom configuration parameters.
         """
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         if config.password is not None:
             kwargs["password"] = config.password
         if config.ca_cert_path is not None:
-            kwargs["ssl"] = True
+            kwargs["ssl"] = True  # type: ignore
             kwargs["ssl_cert_reqs"] = "required"
             kwargs["ssl_ca_certs"] = config.ca_cert_path
 
