@@ -1,9 +1,15 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+import os
 import requests
 from httpx import Client
 
-client = Client(base_url="http://localhost:8080")
+url=os.getenv('OLS_URL', 'http://localhost:8080')
+token=os.getenv('OLS_TOKEN')
+client = Client(base_url=url,verify=False)
+if token:
+    client.headers.update({"Authorization": f"Bearer {token}"})
+
 
 conversation_id = "12345678-abcd-0000-0123-456789abcdef"
 

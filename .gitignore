@@ -12,6 +12,7 @@ venv
 # ignore local configuration
 .env
 /olsconfig.yaml
+scratch
 
 # ignore locally significant directories
 tmp
