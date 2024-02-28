@@ -15,7 +15,7 @@ lint.flake8-pytest-style.fixture-parentheses = false
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
-fail_under = 90
+fail_under = 95
 
 [tool.mypy]
 disable_error_code = ["union-attr", "return-value", "arg-type", "misc", "call-arg", "import-untyped"]
