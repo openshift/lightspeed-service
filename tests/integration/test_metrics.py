@@ -54,7 +54,6 @@ def test_metrics():
 def get_counter_value(client, counter_name, path, status_code):
     """Retrieve counter value from metrics."""
     # counters with labels have the following format:
-    # rest_api_calls_total{status_code="200"} 1.0
     # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
     prefix = f'{counter_name}{{path="{path}",status_code="{status_code}"}} '
 
