@@ -123,3 +123,28 @@ def test_query_filter() -> None:
     assert "deployment" in json_response["response"].lower()
     assert "foo" not in json_response["response"]
     assert "bar" not in json_response["response"]
+
+
+def test_metrics() -> None:
+    """Check if service provides metrics endpoint with expected metrics."""
+    response = client.get("/metrics/")
+    assert response.status_code == requests.codes.ok
+    assert response.text is not None
+
+    # counters that are expected to be part of metrics
+    expected_counters = (
+        "rest_api_calls_total",
+        "llm_calls_total",
+        "llm_calls_failures_total",
+        "llm_validation_errors_total",
+        "llm_token_sent_total",
+        "llm_token_received_total",
+    )
+
+    # check if all counters are present
+    for expected_counter in expected_counters:
+        assert f"{expected_counter} " in response.text
+
+    # check the duration histogram presence
+    assert 'response_duration_seconds_count{path="/metrics/"}' in response.text
+    assert 'response_duration_seconds_sum{path="/metrics/"}' in response.text
