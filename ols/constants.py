@@ -177,3 +177,7 @@ OCP_DOCS_VERSION = "4.14"
 # model configs
 DEFAULT_CONTEXT_WINDOW_SIZE = 2000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500
+
+# default indentity for local testing and deployment
+DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"
+DEFAULT_USER_NAME = "OLS"
