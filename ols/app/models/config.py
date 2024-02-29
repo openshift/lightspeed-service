@@ -237,34 +237,6 @@ class LLMProviders(BaseModel):
             v.validate_yaml()
 
 
-class RedisCredentials(BaseModel):
-    """Redis credentials."""
-
-    username: Optional[str] = None
-    password: Optional[str] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize redis credentials."""
-        super().__init__()
-        if not isinstance(data, dict):
-            return
-        self.username = _get_attribute_from_file(data, "username_path")
-        self.password = _get_attribute_from_file(data, "password_path")
-
-    def __eq__(self, other: Any) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, RedisCredentials):
-            return self.username == other.username and self.password == other.password
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate redis credentials."""
-        if self.username is not None and self.password is None:
-            raise InvalidConfigurationError(
-                "for Redis, if a username is specified, a password also needs to be specified"
-            )
-
-
 class RedisConfig(BaseModel):
     """Redis configuration."""
 
@@ -272,7 +244,8 @@ class RedisConfig(BaseModel):
     port: Optional[int] = None
     max_memory: Optional[str] = None
     max_memory_policy: Optional[str] = None
-    credentials: Optional[RedisCredentials] = None
+    password: Optional[str] = None
+    ca_cert_path: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -296,10 +269,8 @@ class RedisConfig(BaseModel):
         self.max_memory_policy = data.get(
             "max_memory_policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
-
-        credentials = data.get("credentials")
-        if credentials is not None:
-            self.credentials = RedisCredentials(credentials)
+        self.ca_cert_path = data.get("ca_cert_path", None)
+        self.password = _get_attribute_from_file(data, "password_path")
 
     def __eq__(self, other: Any) -> bool:
         """Compare two objects for equality."""
@@ -309,7 +280,8 @@ class RedisConfig(BaseModel):
                 and self.port == other.port
                 and self.max_memory == other.max_memory
                 and self.max_memory_policy == other.max_memory_policy
-                and self.credentials == other.credentials
+                and self.password == other.password
+                and self.ca_cert_path == other.ca_cert_path
             )
         return False
 
@@ -326,8 +298,6 @@ class RedisConfig(BaseModel):
                 f"invalid Redis max_memory_policy {self.max_memory_policy},"
                 f" valid policies are ({valid_polices})"
             )
-        if self.credentials is not None:
-            self.credentials.validate_yaml()
 
 
 class MemoryConfig(BaseModel):

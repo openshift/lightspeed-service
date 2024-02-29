@@ -2,7 +2,7 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 # Install necessary dependencies (gcc, make, etc.) for building Redis from source
-RUN microdnf install -y gcc make wget tar gzip && \
+RUN microdnf install -y gcc make wget tar gzip vim openssl openssl-devel tcl && \
     microdnf clean all
 
 # Set the Redis version
@@ -19,15 +19,21 @@ RUN mkdir -p /etc/redis && \
 WORKDIR /etc/redis
 
 # Build Redis from source
-RUN make && \
+RUN make BUILD_TLS=yes && \
     make install
+
+# Grant full permissions
+RUN chown -R 777 /etc/redis
 
 # Set protected-mode to no and bind to all interfaces (0.0.0.0) in redis.conf
 RUN sed -i 's/^protected-mode yes/protected-mode no/' redis.conf
 RUN sed -i 's/^bind 127.0.0.1 -::1/bind 0.0.0.0/' redis.conf
+RUN sed -i 's/^port 6379/port 0/' redis.conf
+RUN sed -i 's/^# tls-port 6379/tls-port 6379/' redis.conf
+RUN sed -i 's/^# tls-cert-file redis.crt/tls-cert-file \/etc\/certs\/tls.crt/' redis.conf
+RUN sed -i 's/^# tls-key-file redis.key/tls-key-file \/etc\/certs\/tls.key/' redis.conf
+RUN sed -i 's/^# tls-ca-cert-file ca.crt/tls-ca-cert-file \/etc\/certs\/cm-olsredisca\/service-ca.crt/' redis.conf
+RUN sed -i 's/^# tls-auth-clients optional/tls-auth-clients optional/' redis.conf
 
 # Expose the default Redis port
 EXPOSE 6379
-
-# Start Redis server as the default command
-CMD ["redis-server", "/etc/redis/redis.conf"]

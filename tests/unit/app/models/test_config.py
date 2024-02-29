@@ -18,7 +18,6 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
     RedisConfig,
-    RedisCredentials,
     ReferenceContent,
 )
 
@@ -657,7 +656,34 @@ def test_redis_config():
     assert redis_config.max_memory_policy is None
 
 
-def test_redis_config_with_credentials():
+def test_redis_config_with_ca_cert_path():
+    """Test the RedisConfig model with CA certificate path."""
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+            "ca_cert_path": "tests/config/redis_ca_cert.crt",
+        }
+    )
+    assert redis_config.ca_cert_path == "tests/config/redis_ca_cert.crt"
+
+
+def test_redis_config_with_no_ca_cert_path():
+    """Test the RedisConfig model with no CA certificate path."""
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+        }
+    )
+    assert redis_config.ca_cert_path is None
+
+
+def test_redis_config_with_password():
     """Test the RedisConfig model."""
     redis_config = RedisConfig(
         {
@@ -665,92 +691,37 @@ def test_redis_config_with_credentials():
             "port": 6379,
             "max_memory": "200mb",
             "max_memory_policy": "allkeys-lru",
-            "credentials": {
-                "username_path": "tests/config/redis_username.txt",
-                "password_path": "tests/config/redis_password.txt",
-            },
-        }
-    )
-    assert redis_config.credentials.username == "redis_username"
-    assert redis_config.credentials.password == "redis_password"  # noqa S105
-
-
-def test_redis_credentials_validation_empty_setup():
-    """Test the validation of empty RedisCredentials."""
-    redis_credentials = RedisCredentials()
-    redis_credentials.validate_yaml()
-
-
-def test_redis_credentials_validation_correct_setup():
-    """Test the validation of correct RedisCredentials."""
-    redis_credentials = RedisCredentials(
-        {
-            "username_path": "tests/config/redis_username.txt",
             "password_path": "tests/config/redis_password.txt",
         }
     )
-    redis_credentials.validate_yaml()
+    assert redis_config.password == "redis_password"  # noqa S105
 
 
-def test_redis_credentials_validation_missing_password_path():
-    """Test the validation of incorrect RedisCredentials."""
-    redis_credentials = RedisCredentials(
+def test_redis_config_with_no_password():
+    """Test the RedisConfig model with no password."""
+    redis_config = RedisConfig(
         {
-            "username_path": "tests/config/redis_username.txt",
-            "password_path": None,
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
         }
     )
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="for Redis, if a username is specified, a password also needs to be specified",
-    ):
-        redis_credentials.validate_yaml()
+    assert redis_config.password is None
 
 
-def test_redis_credentials_validation_missing_user_path():
-    """Test the validation of missing username in RedisCredentials."""
-    redis_credentials = RedisCredentials(
-        {
-            "username_path": None,
-            "password_path": "tests/config/redis_password.txt",
-        }
-    )
-    redis_credentials.validate_yaml()
-
-
-def test_redis_credentials_validation_wrong_paths():
-    """Test the validation of incorrect paths to credentials."""
+def test_redis_config_with_invalid_password_path():
+    """Test the RedisConfig model with invalid password path."""
     with pytest.raises(Exception):
-        RedisCredentials(
+        RedisConfig(
             {
-                "username_path": "tests/config/redis_username.txt",
+                "host": "localhost",
+                "port": 6379,
+                "max_memory": "200mb",
+                "max_memory_policy": "allkeys-lru",
                 "password_path": "/dev/null/foobar",
             }
         )
-    with pytest.raises(Exception):
-        RedisCredentials(
-            {
-                "username_path": "/dev/null/foobar",
-                "password_path": "tests/config/redis_password.txt",
-            }
-        )
-
-
-def test_redis_credentials_equality():
-    """Test the RedisCredentials equality check."""
-    redis_credentials_1 = RedisCredentials()
-    redis_credentials_2 = RedisCredentials()
-
-    # compare the same Redis credentialss
-    assert redis_credentials_1 == redis_credentials_2
-
-    # compare different Redis credentialss
-    redis_credentials_2.username = "this is me"
-    assert redis_credentials_1 != redis_credentials_2
-
-    # compare with value of different type
-    other_value = "foo"
-    assert redis_credentials_1 != other_value
 
 
 def test_redis_config_equality():
