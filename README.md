@@ -184,7 +184,7 @@ you are logged in with sufficient permissions:
 1. Make the change to your API keys and/or provider configuration in the
 manifest file
 2. Create a namespace/project to hold OLS
-3. `oc apply -f examples/openshift-lightspeed.yaml -n created-namespace`
+3. `oc apply -f examples/openshift-lightspeed-tls.yaml -n created-namespace`
 
 Once deployed, it is probably easiest to `oc port-forward` into the pod where
 OLS is running so that you can access it from your local machine.
