@@ -62,6 +62,33 @@ def test_invalid_question():
     assert response.json() == expected_json
 
 
+def test_query_call_without_payload():
+    """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
+    response = client.post(
+        "/v1/query",
+        timeout=20,
+    )
+    print(vars(response))
+    assert response.status_code == requests.codes.unprocessable_entity
+    # the actual response might differ when new Pydantic version will be used
+    # so let's do just primitive check
+    assert "missing" in response.text
+
+
+def test_query_call_with_improper_payload():
+    """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
+    response = client.post(
+        "/v1/query",
+        json={"parameter": "this-is-not-proper-question-my-friend"},
+        timeout=20,
+    )
+    print(vars(response))
+    assert response.status_code == requests.codes.unprocessable_entity
+    # the actual response might differ when new Pydantic version will be used
+    # so let's do just primitive check
+    assert "missing" in response.text
+
+
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     response = client.post(
