@@ -35,12 +35,15 @@ def test_index_loader_no_id(storage_context, service_context):
 
 @patch("ols.src.rag_index.index_loader.ServiceContext.from_defaults")
 @patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
+@patch("llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir")
 @patch("ols.src.rag_index.index_loader.load_index_from_storage", new=MockLlamaIndex)
-def test_index_loader(storage_context, service_context):
+def test_index_loader(storage_context, service_context, from_persist_dir):
     """Test index loader."""
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./some_dir"
     config.ols_config.reference_content.product_docs_index_id = "./some_id"
+
+    from_persist_dir.return_value = None
 
     index_loader_obj = IndexLoader(config.ols_config.reference_content)
     index = index_loader_obj.vector_index

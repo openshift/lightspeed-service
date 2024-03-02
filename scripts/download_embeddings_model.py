@@ -5,18 +5,19 @@ import sys
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
-        print("Usage: python download_embeddings_model.py <local_dir>")
+    if len(sys.argv) != 3:
+        print("Usage: python download_embeddings_model.py <local_dir> <hf_repo_id>")
         sys.exit(1)
 
     local_dir = sys.argv[1]
+    hf_repo_id = sys.argv[2]
 
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
     from huggingface_hub import snapshot_download
 
     snapshot_download(
-        repo_id="BAAI/bge-base-en", local_dir=local_dir, local_dir_use_symlinks=False
+        repo_id=hf_repo_id, local_dir=local_dir, local_dir_use_symlinks=False
     )
 
     # workaround for https://github.com/UKPLab/sentence-transformers/pull/2460

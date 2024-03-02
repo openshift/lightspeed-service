@@ -156,9 +156,14 @@ GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
+# embeddings metadata
+EMBEDDINGS_ROOT_DIR = "/workdir/ocp-product-docs-plaintext"
+OCP_DOCS_ROOT_URL = "https://docs.openshift.com/container-platform/"
+OCP_DOCS_VERSION = "4.15"
+
 # indexing constants
 PRODUCT_INDEX = "product"
-PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
+PRODUCT_DOCS_PERSIST_DIR = "./vector_db/ocp_product_docs/" + OCP_DOCS_VERSION
 
 # cache constants
 IN_MEMORY_CACHE = "memory"
@@ -172,10 +177,6 @@ REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 
 # provider and model roles
 PROVIDER_MODEL_ROLES = frozenset({"default"})
-
-EMBEDDINGS_ROOT_DIR = "/workspace/source/ocp-product-docs-plaintext"
-OCP_DOCS_ROOT_URL = "https://docs.openshift.com/container-platform/"
-OCP_DOCS_VERSION = "4.14"
 
 # model configs
 DEFAULT_CONTEXT_WINDOW_SIZE = 2000

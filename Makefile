@@ -68,16 +68,6 @@ verify: ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101
 
-get-rag: ## Download RAG embeddings model and index
-	@echo "Downloading embeddings model from HF..."
-	python scripts/download_embeddings_model.py embeddings_model
-	@echo "Downloading embeddings..."
-	mkdir -p vector-db/ocp-product-docs && \
-	pushd vector-db/ocp-product-docs && \
-	wget -q https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip && \
-	unzip -qq -o local.zip && \
-	rm local.zip && popd
-
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''

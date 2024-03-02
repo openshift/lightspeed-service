@@ -1,21 +1,17 @@
 # vim: set filetype=dockerfile
-
-# port, commands, and other details inherited from the base image
 ARG OLS_VERSION=latest
-FROM quay.io/openshift/lightspeed-service-api:${OLS_VERSION}
+ARG OCP_VERSION=4.15
 
-ARG RAG_INDEX="https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip"
+FROM quay.io/openshift/lightspeed-rag-content:${OLS_VERSION} as lightspeed-rag-content
+ARG OLS_VERSION
+
+FROM quay.io/openshift/lightspeed-service-api:${OLS_VERSION}
+ARG OLS_VERSION
+ARG OCP_VERSION
+
 ARG APP_ROOT=/app-root
+WORKDIR ${APP_ROOT}
 USER 0
 
-RUN microdnf install -y unzip wget \
-    && mkdir -p vector-db \
-    && cd vector-db \
-    && wget -q $RAG_INDEX \
-    && unzip -qq local.zip \
-    && mv local ocp-product-docs \
-    && rm -f local.zip \
-    && microdnf remove -y unzip wget
-
-COPY scripts/download_embeddings_model.py .
-RUN python3.11 download_embeddings_model.py embeddings_model && rm download_embeddings_model.py
+COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs/${OCP_VERSION} ./vector_db/ocp_product_docs/${OCP_VERSION}
+COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model

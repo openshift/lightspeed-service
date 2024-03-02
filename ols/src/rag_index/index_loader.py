@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index.indices.base import BaseIndex
+from llama_index.vector_stores.faiss import FaissVectorStore
 
 from ols.app.models.config import ReferenceContent
 
@@ -62,7 +63,8 @@ class IndexLoader:
         )
         logger.info("Setting up storage context for index load...")
         self._storage_context = StorageContext.from_defaults(
-            persist_dir=self._index_path
+            vector_store=FaissVectorStore.from_persist_dir(self._index_path),
+            persist_dir=self._index_path,
         )
 
     def _load_index(self) -> None:
