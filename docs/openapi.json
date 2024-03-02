@@ -231,10 +231,57 @@
                     }
                 }
             }
+        },
+        "/authorized": {
+            "post": {
+                "tags": [
+                    "authorized"
+                ],
+                "summary": "Is User Authorized",
+                "description": "Validate if the logged-in user is authorized to access OLS.\n\nParameters:\n    request (Request): The FastAPI request object.\n\nReturns:\n    The user's UID and username if authentication and authorization succeed.\n\nRaises:\n    HTTPException: If authentication fails or the user does not have access.",
+                "operationId": "is_user_authorized_authorized_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthorizationResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
+            "AuthorizationResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "username": {
+                        "type": "string",
+                        "title": "Username"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "username"
+                ],
+                "title": "AuthorizationResponse",
+                "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.",
+                "examples": [
+                    {
+                        "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "username": "user1"
+                    }
+                ]
+            },
             "FeedbackRequest": {
                 "properties": {
                     "conversation_id": {
