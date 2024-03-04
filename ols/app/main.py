@@ -37,8 +37,8 @@ if config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)
 else:
     logger.info(
-        "Embedded Gradio UI is disabled. To enable set enable_dev_ui: true "
-        "in the dev section of the configuration file"
+        "Embedded Gradio UI is disabled. To enable set `enable_dev_ui: true` "
+        "in the `dev_config` section of the configuration file."
     )
 
 
