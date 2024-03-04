@@ -146,6 +146,9 @@ def test_query_filter() -> None:
     assert len(json_response["referenced_documents"]) > 0
     assert "openshift" in json_response["referenced_documents"][0]
     assert "https://" in json_response["referenced_documents"][0]
+
+    # values to be filtered and replaced are defined in:
+    # tests/config/singleprovider.e2e.template.config.yaml
     assert "openshift" in json_response["response"].lower()
     assert "deployment" in json_response["response"].lower()
     assert "foo" not in json_response["response"]
