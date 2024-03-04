@@ -1,0 +1,43 @@
+# Env vars for use w/ envsubst:
+# $PROVIDER - the llm provider to use (e.g. openai)
+# $PROVIDER_PROJECT_ID - for use with watsonx, can leave empty otherwise
+# $MODEL - the llm model to use from the provider (e.g. gpt-3.5.-turbo)
+
+---
+kind: ConfigMap
+apiVersion: v1
+immutable: false
+metadata:
+  name: olsconfig
+data:
+  olsconfig.yaml: |
+    llm_providers:
+      - name: "$PROVIDER"
+        project_id: "$PROVIDER_PROJECT_ID"
+        credentials_path: /app-root/config/llmcreds/llmkey
+        models:
+          - name: "$MODEL"
+    ols_config:
+      reference_content:
+        product_docs_index_path: "./vector-db/ocp-product-docs"
+        product_docs_index_id: product
+        embeddings_model_path: "./embeddings_model"
+      conversation_cache:
+        type: memory
+        memory:
+          max_entries: 1000
+      logging_config:
+        app_log_level: debug
+        lib_log_level: debug
+      default_provider: "$PROVIDER"
+      default_model: "$MODEL"
+      query_filters:
+        - name: foo_filter
+          pattern: '\b(?:foo)\b'
+          replace_with: "deployment"
+        - name: bar_filter
+          pattern: '\b(?:bar)\b'
+          replace_with: "openshift"
+    dev_config:
+      enable_dev_ui: true
+      disable_auth: false
