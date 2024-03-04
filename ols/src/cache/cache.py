@@ -22,8 +22,7 @@ class Cache(ABC):
     @staticmethod
     def _check_user_id(user_id: str) -> None:
         """Check if given user ID is valid."""
-        # TODO: needs to be updated when we know the format
-        if Cache.COMPOUND_KEY_SEPARATOR in user_id:
+        if not check_suid(user_id):
             raise ValueError(f"Invalid user ID {user_id}")
 
     @staticmethod
