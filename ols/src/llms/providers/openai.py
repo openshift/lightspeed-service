@@ -47,4 +47,4 @@ class OpenAI(LLMProvider):
         if "max_new_tokens" in self.params:
             self.params.pop("max_new_tokens")
 
-        return ChatOpenAI(**self.params)
+        return ChatOpenAI(**self.params)  # type: ignore [return-value]
