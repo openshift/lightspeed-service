@@ -40,7 +40,7 @@ def conversation_request(
     referenced_documents: list[str] = []
 
     # TODO: retrieve proper user ID from request
-    user_id = "user1"
+    user_id = constants.DEFAULT_USER_UID
 
     conversation_id = retrieve_conversation_id(llm_request)
     previous_input = retrieve_previous_input(user_id, llm_request)

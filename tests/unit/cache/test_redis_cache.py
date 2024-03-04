@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import constants
 from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
 from ols.utils import suid
@@ -23,24 +24,27 @@ def cache():
 
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
-    assert cache.get("user1", conversation_id) is None
-    cache.insert_or_append("user1", conversation_id, "value1")
-    assert cache.get("user1", conversation_id) == "value1"
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) is None
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id, "value1")
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == "value1"
 
 
 def test_insert_or_append_existing_key(cache):
     """Test the behavior of insert_or_append method for existing item."""
     # conversation IDs are separated by users
-    assert cache.get("user2", conversation_id) is None
+    # this UUID is different from DEFAULT_USER_UID
+    user_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    assert cache.get(user_uuid, conversation_id) is None
 
-    cache.insert_or_append("user2", conversation_id, "value1")
-    cache.insert_or_append("user2", conversation_id, "value2")
-    assert cache.get("user2", conversation_id) == "value1\nvalue2"
+    cache.insert_or_append(user_uuid, conversation_id, "value1")
+    cache.insert_or_append(user_uuid, conversation_id, "value2")
+    assert cache.get(user_uuid, conversation_id) == "value1\nvalue2"
 
 
 def test_get_nonexistent_key(cache):
     """Test how non-existent items are handled by the cache."""
-    assert cache.get("nonexistent_key", conversation_id) is None
+    # this UUID is different from DEFAULT_USER_UID
+    assert cache.get("ffffffff-ffff-ffff-ffff-ffffffffffff", conversation_id) is None
 
 
 def test_get_improper_user_id(cache):
@@ -54,7 +58,7 @@ def test_get_improper_user_id(cache):
 def test_get_improper_conversation_id(cache):
     """Test how improper conversation ID is handled."""
     with pytest.raises(ValueError, match="Invalid conversation ID"):
-        cache.get("user1", "this-is-not-valid-uuid")
+        cache.get(constants.DEFAULT_USER_UID, "this-is-not-valid-uuid")
 
 
 def test_singleton_pattern():

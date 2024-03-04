@@ -40,35 +40,38 @@ def test_retrieve_conversation_id_existing_id(load_config):
 
 def test_retrieve_previous_input_no_previous_history(load_config):
     """Check how function to retrieve previous input handle empty history."""
-    user_id = "1234"
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
-    input = ols.retrieve_previous_input(user_id, llm_request)
+    input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
     assert input is None
 
 
 @patch("ols.utils.config.conversation_cache.get")
 def test_retrieve_previous_input_for_previous_history(get, load_config):
     """Check how function to retrieve previous input handle existing history."""
-    user_id = "1234"
     conversation_id = suid.get_suid()
     get.return_value = "input"
     llm_request = LLMRequest(
         query="Tell me about Kubernetes", conversation_id=conversation_id
     )
-    previous_input = ols.retrieve_previous_input(user_id, llm_request)
+    previous_input = ols.retrieve_previous_input(
+        constants.DEFAULT_USER_UID, llm_request
+    )
     assert previous_input == "input"
 
 
 @patch("ols.utils.config.conversation_cache.insert_or_append")
 def test_store_conversation_history(insert_or_append, load_config):
     """Test if operation to store conversation history to cache is called."""
-    user_id = "1234"
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query)
     response = ""
-    ols.store_conversation_history(user_id, conversation_id, llm_request, response)
-    insert_or_append.assert_called_with(user_id, conversation_id, f"{query}\n\n")
+    ols.store_conversation_history(
+        constants.DEFAULT_USER_UID, conversation_id, llm_request, response
+    )
+    insert_or_append.assert_called_with(
+        constants.DEFAULT_USER_UID, conversation_id, f"{query}\n\n"
+    )
 
 
 @patch("ols.utils.config.conversation_cache.insert_or_append")
@@ -96,11 +99,12 @@ def test_store_conversation_history_improper_user_id(load_config):
 
 def test_store_conversation_history_improper_conversation_id(load_config):
     """Test if basic input verification is done during history store operation."""
-    user_id = "1234"
     conversation_id = "::::"
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     with pytest.raises(ValueError, match="Invalid conversation ID"):
-        ols.store_conversation_history(user_id, conversation_id, llm_request, "")
+        ols.store_conversation_history(
+            constants.DEFAULT_USER_UID, conversation_id, llm_request, ""
+        )
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
