@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -72,7 +72,7 @@ class ModelConfig(BaseModel):
                 f"should be greater than response token limit {self.response_token_limit}"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ModelConfig):
             return (
@@ -184,7 +184,7 @@ class ProviderConfig(BaseModel):
             model = ModelConfig(m)
             self.models[m["name"]] = model
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ProviderConfig):
             return (
@@ -225,7 +225,7 @@ class LLMProviders(BaseModel):
             provider = ProviderConfig(p)
             self.providers[p["name"]] = provider
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LLMProviders):
             return self.providers == other.providers
@@ -272,7 +272,7 @@ class RedisConfig(BaseModel):
         self.ca_cert_path = data.get("ca_cert_path", None)
         self.password = _get_attribute_from_file(data, "password_path")
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, RedisConfig):
             return (
@@ -323,7 +323,7 @@ class MemoryConfig(BaseModel):
                 " max_entries needs to be a non-negative integer"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, MemoryConfig):
             return self.max_entries == other.max_entries
@@ -356,7 +356,7 @@ class QueryFilter(BaseModel):
                 "name, pattern and replace_with need to be specified"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, QueryFilter):
             return (
@@ -413,7 +413,7 @@ class ConversationCacheConfig(BaseModel):
                     f"unknown conversation cache type: {self.type}"
                 )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ConversationCacheConfig):
             return (
@@ -454,7 +454,7 @@ class LoggingConfig(BaseModel):
         self.app_log_level = self._get_log_level(data, "app_log_level", "info")
         self.lib_log_level = self._get_log_level(data, "lib_log_level", "warning")
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LoggingConfig):
             return (
@@ -495,7 +495,7 @@ class ReferenceContent(BaseModel):
         self.product_docs_index_id = data.get("product_docs_index_id", None)
         self.embeddings_model_path = data.get("embeddings_model_path", None)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ReferenceContent):
             return (
@@ -560,7 +560,7 @@ class OLSConfig(BaseModel):
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, OLSConfig):
             return (
@@ -608,7 +608,7 @@ class DevConfig(BaseModel):
         self.k8s_auth_token = str(data.get("k8s_auth_token", None))
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, DevConfig):
             return (
@@ -649,7 +649,7 @@ class Config(BaseModel):
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, Config):
             return (
