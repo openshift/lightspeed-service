@@ -18,7 +18,7 @@ lint.flake8-pytest-style.fixture-parentheses = false
 fail_under = 90
 
 [tool.mypy]
-disable_error_code = ["union-attr", "return-value", "arg-type", "call-arg", "import-untyped"]
+disable_error_code = ["union-attr", "return-value", "arg-type", "import-untyped"]
 ignore_missing_imports = true
 
 [tool.pdm]
