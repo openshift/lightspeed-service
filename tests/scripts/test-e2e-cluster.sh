@@ -4,7 +4,10 @@ set -eou pipefail
 # Input env variables:
 # - PROVIDER - the LLM provider to be used during the test
 # - PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
+# - PROVIDER_PROJECT_ID - for use with watsonx, can leave empty otherwise
 # - MODEL - name of the model to use during e2e testing
+# - OLS_IMAGE - pullspec for the ols image to deploy on the cluster
+
 
 # Script flow:
 # 1) Install OLS into a namespace on the cluster with valid config/api tokens and exposed via a route
