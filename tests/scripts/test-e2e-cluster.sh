@@ -15,19 +15,35 @@ set -eou pipefail
 # 3) Wait for the ols api server to be available
 # 4) Invoke the test-e2e Makefile target
 
+make install-deps && make install-deps-test
 
 DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/utils.sh"
 
+function finish() {
+    if [ "${LOCAL_MODE:-0}" -eq 1 ]; then
+      # When running locally, just cleanup the tmp files
+      rm -rf "$ARTIFACT_DIR"
+    else
+      # when running as a ci job, gather more info from the cluster
+      # to be included in the job artifacts and don't cleanup
+      # the artifact dir so it can be archived w/ the job
+      must_gather
+    fi
+}
+trap finish EXIT
+
 # ARTIFACT_DIR is defined when running in a prow job, content
 # in this location is automatically collected at the end of the test job
+# If ARTIFACT_DIR is not defined, we are running locally on a developer machine
 if [ -z "${ARTIFACT_DIR:-}" ]; then
     # temp directory for generated resource yamls
     readonly ARTIFACT_DIR=$(mktemp -d)
     # Clean up the tmpdir on exit
-    trap 'rm -rf $ARTIFACT_DIR' EXIT
+    readonly LOCAL_MODE=1
 fi
+
 
 # Deletes may fail if this is the first time running against
 # the cluster, so ignore failures

@@ -21,3 +21,14 @@ function wait_for_ols() {
         exit 1
     fi
 }
+
+# collect logs + state from openshift-lightspeed namespace
+function must_gather() {
+  mkdir $ARTIFACT_DIR/cluster
+  oc get all -n openshift-lightspeed -o yaml > $ARTIFACT_DIR/cluster/resources.yaml
+  mkdir $ARTIFACT_DIR/cluster/podlogs
+  for podname in `oc get pods -o jsonpath="{.items[].metadata.name}"`; do
+    echo "dumping pod $podname"
+    oc logs pod/${podname} > $ARTIFACT_DIR/cluster/podlogs/${podname}.log
+  done
+}
