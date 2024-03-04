@@ -120,9 +120,7 @@ class DocsSummarizer(QueryHelper):
         )
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
-        bare_llm = self.llm_loader(
-            self.provider, self.model, llm_params=self.llm_params
-        )
+        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
 
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
