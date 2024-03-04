@@ -30,3 +30,4 @@ dev_config:
   llm_params:
     temperature: 0
   disable_auth: true
+  disable_tls: true

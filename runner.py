@@ -1,9 +1,14 @@
 """Main app entrypoint. Starts Uvicorn-based REST API service."""
 
+import logging
 import os
 import tempfile
+from pathlib import Path
 
 import uvicorn
+
+from ols.utils import config
+from ols.utils.logging import configure_logging
 
 
 def configure_hugging_face_envs(ols_config) -> None:
@@ -34,15 +39,38 @@ def configure_gradio_ui_envs() -> None:
 
 
 if __name__ == "__main__":
+
+    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+
+    config.init_config(cfg_file)
+
+    configure_logging(config.ols_config.logging_config)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
+
     configure_gradio_ui_envs()
 
     # NOTE: We import config here to avoid triggering import of anything
     # else via our code before other envs are set (mainly the gradio).
     from ols.utils import config
 
-    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-    config.init_config(cfg_file)
-
     configure_hugging_face_envs(config.ols_config)
+    config.init_query_filter()
+    config.init_vector_index()
 
-    uvicorn.run("ols.app.main:app", host="127.0.0.1", port=8080, reload=True)
+    host = "localhost" if config.dev_config.run_on_localhost else None
+
+    # use workers=1 so config loaded can be accessed from other modules
+    if config.dev_config.disable_tls:
+        # TLS is disabled, run without SSL configuration
+        uvicorn.run("ols.app.main:app", host=host, port=8080, workers=1)
+    else:
+        uvicorn.run(
+            "ols.app.main:app",
+            host=host,
+            port=8443,
+            workers=1,
+            ssl_keyfile=config.ols_config.tls_config.tls_key_path,
+            ssl_certfile=config.ols_config.tls_config.tls_certificate_path,
+            ssl_keyfile_password=config.ols_config.tls_config.tls_key_password,
+        )

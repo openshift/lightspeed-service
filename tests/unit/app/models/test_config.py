@@ -1048,6 +1048,7 @@ def test_config():
                     "app_log_level": "error",
                 },
             },
+            "dev_config": {"disable_tls": "true"},
         }
     )
     assert len(config.llm_providers.providers) == 1
@@ -1157,6 +1158,7 @@ def test_config_improper_missing_model():
                     },
                     "default_provider": "test_default_provider",
                 },
+                "dev_config": {"disable_tls": "true"},
             }
         ).validate_yaml()
 
@@ -1189,6 +1191,7 @@ def test_config_improper_provider():
                         "app_log_level": "error",
                     },
                 },
+                "dev_config": {"disable_tls": "true"},
             }
         ).validate_yaml()
 
@@ -1235,6 +1238,7 @@ def test_config_improper_model():
                         "app_log_level": "error",
                     },
                 },
+                "dev_config": {"disable_tls": "true"},
             }
         ).validate_yaml()
 
@@ -1310,6 +1314,9 @@ def test_config_no_query_filter_node():
                     "app_log_level": "error",
                 },
             },
+            "dev_config": {
+                "disable_tls": "true",
+            },
         }
     )
     assert config.ols_config.query_filters is None
@@ -1352,6 +1359,9 @@ def test_config_no_query_filter():
                 "logging_config": {
                     "app_log_level": "error",
                 },
+            },
+            "dev_config": {
+                "disable_tls": "true",
             },
         }
     )
@@ -1405,6 +1415,9 @@ def test_config_improper_query_filter():
                         "app_log_level": "error",
                     },
                 },
+                "dev_config": {
+                    "disable_tls": "true",
+                },
             }
         ).validate_yaml()
 
@@ -1451,6 +1464,9 @@ def test_config_with_multiple_query_filter():
                         "replace_with": "",
                     },
                 ],
+            },
+            "dev_config": {
+                "disable_tls": "true",
             },
         }
     )
@@ -1515,6 +1531,9 @@ def test_config_invalid_regex_query_filter():
                     "logging_config": {
                         "app_log_level": "error",
                     },
+                },
+                "dev_config": {
+                    "disable_tls": "true",
                 },
             }
         ).validate_yaml()

@@ -6,7 +6,7 @@ from unittest.mock import patch
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import suid
+from ols.utils import config, suid
 
 
 # we need to patch the config file path to point to the test
@@ -15,6 +15,7 @@ from ols.utils import suid
 def setup():
     """Setups the test client."""
     global client
+    config.init_config("tests/config/valid_config.yaml")
     from ols.app.main import app
 
     client = TestClient(app)

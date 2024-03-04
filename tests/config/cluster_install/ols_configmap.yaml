@@ -42,6 +42,10 @@ data:
         - name: bar_filter
           pattern: '\b(?:bar)\b'
           replace_with: "openshift"
+      tls_config:
+        tls_certificate_path: /app-root/certs/tls.crt
+        tls_key_path: /app-root/certs/tls.key
     dev_config:
       enable_dev_ui: true
       disable_auth: false
+      disable_tls: false

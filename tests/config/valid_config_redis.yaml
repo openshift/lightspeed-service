@@ -26,3 +26,4 @@ ols_config:
   default_model: m1
 dev_config:
   disable_auth: true
+  disable_tls: true

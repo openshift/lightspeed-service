@@ -23,3 +23,4 @@ ols_config:
     skip_tls_verification: true
 dev_config:
   disable_auth: false
+  disable_tls: true

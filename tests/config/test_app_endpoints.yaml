@@ -19,3 +19,4 @@ ols_config:
   default_model: ibm/granite-13b-chat-v2
 dev_config:
   disable_auth: true
+  disable_tls: true
