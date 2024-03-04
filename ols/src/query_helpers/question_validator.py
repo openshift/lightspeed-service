@@ -60,9 +60,7 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation_id} Validating query")
 
-        bare_llm = self.llm_loader(
-            self.provider, self.model, llm_params=self.llm_params
-        )
+        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
         llm_chain = LLMChain(
             llm=bare_llm,
             prompt=prompt_instructions,
