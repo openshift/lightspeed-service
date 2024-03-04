@@ -35,7 +35,7 @@ def register_llm_provider_as(provider_type: str) -> Callable:
     ```
     """
 
-    def decorator(cls: LLMProvider) -> Callable:
+    def decorator(cls: LLMProvider) -> LLMProvider:
         LLMProvidersRegistry.register(provider_type, cls)
         return cls
 

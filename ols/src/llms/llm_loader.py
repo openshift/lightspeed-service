@@ -49,7 +49,7 @@ def _resolve_provider_config(
             f"Valid models are: {list(provider_config.models.keys())}"
         )
 
-    return provider_config
+    return provider_config  # type: ignore [return-value]
 
 
 def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LLM:
