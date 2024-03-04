@@ -68,13 +68,13 @@ oc create -f "$ARTIFACT_DIR/ols_manifests.yaml"
 
 # create a new service account with no special permissions and get an auth token for it
 oc create sa olsuser
-OLS_TOKEN=$(oc create token olsuser)
+export OLS_TOKEN=$(oc create token olsuser)
 
 # grant the service account permission to query ols
 oc adm policy add-cluster-role-to-user ols-user -z olsuser
 
 # determine the hostname for the ols route
-OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
+export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
 
 # wait for the ols api server to come up
 wait_for_ols "$OLS_URL"
