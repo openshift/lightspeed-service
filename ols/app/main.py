@@ -3,7 +3,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 
@@ -44,7 +44,7 @@ else:
 
 @app.middleware("")
 async def rest_api_counter(
-    request: Request, call_next: Callable[[Request], Response]
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """Middleware with REST API counter update logic."""
     path = request.url.path
