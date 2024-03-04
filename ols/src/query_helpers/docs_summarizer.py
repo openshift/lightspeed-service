@@ -127,7 +127,8 @@ class DocsSummarizer(QueryHelper):
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
         truncated = (
-            False  # TODO tisnik: need to be implemented based on provided inputs
+            False  # TODO tisnik: https://issues.redhat.com/browse/OLS-58
+            # need to be implemented based on provided inputs
         )
 
         if vector_index is not None:
