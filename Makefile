@@ -55,11 +55,11 @@ check-types: ## Checks type hints in sources
 
 format: ## Format the code into unified format
 	black .
-	ruff . --fix --per-file-ignores=tests/*:S101
+	ruff check . --fix --per-file-ignores=tests/*:S101
 
 verify: ## Verify the code using various linters
 	black . --check
-	ruff . --per-file-ignores=tests/*:S101
+	ruff check . --per-file-ignores=tests/*:S101
 
 get-rag: ## Download RAG embeddings model and index
 	@echo "Downloading embeddings model from HF..."
