@@ -11,10 +11,17 @@ images: ## Build container images
 install-tools: ## Install required utilities/tools
 	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
 
-install-deps: install-tools ## Install all required dependencies needed to run the service
-	pdm install
+pdm-lock-check: ## Check that the pdm.lock file is in a good shape
+	pdm lock --check
 
-install-deps-test: install-tools ## Install all required dependencies needed to test the service
+install-deps: install-tools pdm-lock-check ## Install all required dependencies needed to run the service, according to pdm.lock
+	pdm sync
+
+install-deps-test: install-tools pdm-lock-check ## Install all required dev dependencies needed to test the service, according to pdm.lock
+	pdm sync --dev
+
+update-deps: ## Check pyproject.toml for changes, update the lock file if needed, then sync.
+	pdm install
 	pdm install --dev
 
 run: ## Run the service locally
