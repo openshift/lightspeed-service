@@ -694,7 +694,7 @@ def test_redis_config_with_password():
             "password_path": "tests/config/redis_password.txt",
         }
     )
-    assert redis_config.password == "redis_password"  # noqa S105
+    assert redis_config.password == "redis_password"  # noqa: S105
 
 
 def test_redis_config_with_no_password():
