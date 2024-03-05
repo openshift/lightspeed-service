@@ -2,6 +2,7 @@
 llm_providers:
   - name: $PROVIDER
     project_id: $PROVIDER_PROJECT_ID
+    url: $PROVIDER_URL
     credentials_path: $PROVIDER_KEY_PATH
     deployment_name: $PROVIDER_DEPLOYMENT_NAME
     models:
