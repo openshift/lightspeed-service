@@ -35,7 +35,7 @@ class RedisCache(Cache):
         if config.password is not None:
             kwargs["password"] = config.password
         if config.ca_cert_path is not None:
-            kwargs["ssl"] = True  # type: ignore
+            kwargs["ssl"] = True
             kwargs["ssl_cert_reqs"] = "required"
             kwargs["ssl_ca_certs"] = config.ca_cert_path
 
