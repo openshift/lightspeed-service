@@ -1,7 +1,6 @@
 """Module for loading index."""
 
 import logging
-from os import environ
 from typing import TYPE_CHECKING, Any, Optional
 
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
@@ -45,9 +44,6 @@ class IndexLoader:
         if self._embed_model_path is not None:
             from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
-            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
-            environ["TRANSFORMERS_CACHE"] = self._embed_model_path
-            environ["TRANSFORMERS_OFFLINE"] = "1"
             logger.debug(
                 f"Loading embedding model info from path {self._embed_model_path}"
             )
