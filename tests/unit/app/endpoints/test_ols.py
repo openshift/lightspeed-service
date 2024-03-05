@@ -23,6 +23,13 @@ def load_config():
     config.init_config("tests/config/test_app_endpoints.yaml")
 
 
+@pytest.fixture
+def auth():
+    """Tuple containing user ID and user name, mocking auth. output."""
+    # we can use any UUID, so let's use randomly generated one
+    return ("2a3dfd17-1f42-4831-aaa6-e28e7cb8e26b", "name")
+
+
 def test_retrieve_conversation_new_id(load_config):
     """Check the function to retrieve conversation ID."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
@@ -224,6 +231,7 @@ def test_conversation_request(
     mock_summarize,
     mock_validate_question,
     load_config,
+    auth,
 ):
     """Test conversation request API endpoint."""
     # valid question
@@ -237,7 +245,7 @@ def test_conversation_request(
         "history_truncated": False,
     }
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    response = ols.conversation_request(llm_request)
+    response = ols.conversation_request(llm_request, auth)
     assert (
         response.response
         == "Kubernetes is an open-source container-orchestration system..."
@@ -249,7 +257,7 @@ def test_conversation_request(
     # invalid question
     mock_validate_question.return_value = constants.SUBJECT_INVALID
     llm_request = LLMRequest(query="Generate a yaml")
-    response = ols.conversation_request(llm_request)
+    response = ols.conversation_request(llm_request, auth)
     assert response.response == (
         "I can only answer questions about OpenShift and Kubernetes. "
         "Please rephrase your question"
@@ -262,7 +270,7 @@ def test_conversation_request(
     mock_validate_question.side_effect = HTTPException
     with pytest.raises(HTTPException) as excinfo:
         llm_request = LLMRequest(query="Generate a yaml")
-        response = ols.conversation_request(llm_request)
+        response = ols.conversation_request(llm_request, auth)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         assert len(response.conversation_id) == 0
 
@@ -273,6 +281,7 @@ def test_conversation_request_on_wrong_configuration(
     mock_conversation_cache_get,
     mock_validate_question,
     load_config,
+    auth,
 ):
     """Test conversation request API endpoint."""
     # mock invalid configuration
@@ -286,7 +295,7 @@ def test_conversation_request_on_wrong_configuration(
     with pytest.raises(
         HTTPException, match=f"Unable to process this request because '{message}'"
     ):
-        ols.conversation_request(llm_request)
+        ols.conversation_request(llm_request, auth)
 
 
 @patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=None))
@@ -294,7 +303,7 @@ def test_conversation_request_on_wrong_configuration(
     "ols.app.endpoints.ols.validate_question",
     new=Mock(return_value=constants.SUBJECT_INVALID),
 )
-def test_question_validation_in_conversation_start(load_config):
+def test_question_validation_in_conversation_start(load_config, auth):
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
     # this should resolve in rejection in summarization
@@ -302,7 +311,7 @@ def test_question_validation_in_conversation_start(load_config):
     query = "some elaborate question"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
-    response = ols.conversation_request(llm_request)
+    response = ols.conversation_request(llm_request, auth)
 
     assert response.response.startswith("I can only answer questions about OpenShift")
 
@@ -315,7 +324,9 @@ def test_question_validation_in_conversation_start(load_config):
     new=Mock(return_value=constants.SUBJECT_INVALID),
 )
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-def test_no_question_validation_in_follow_up_conversation(mock_summarize, load_config):
+def test_no_question_validation_in_follow_up_conversation(
+    mock_summarize, load_config, auth
+):
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
     # but as it is not the first question, it should proceed to summarization
@@ -328,7 +339,7 @@ def test_no_question_validation_in_follow_up_conversation(mock_summarize, load_c
     query = "some elaborate question"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
-    response = ols.conversation_request(llm_request)
+    response = ols.conversation_request(llm_request, auth)
 
     assert response.response == "some elaborate answer"
 
