@@ -63,9 +63,9 @@ def get_counter_value(client, counter_name, path, status_code):
     # try to find the given counter
     for line in lines:
         if line.startswith(prefix):
-            line = line[len(prefix) :]
+            without_prefix = line[len(prefix) :]
             # parse as float, convert that float to integer
-            return int(float(line))
+            return int(float(without_prefix))
     raise Exception(f"Counter {counter_name} was not found in metrics")
 
 
