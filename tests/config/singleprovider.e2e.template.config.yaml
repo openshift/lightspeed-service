@@ -3,6 +3,7 @@ llm_providers:
   - name: $PROVIDER
     project_id: $PROVIDER_PROJECT_ID
     credentials_path: $PROVIDER_KEY_PATH
+    deployment_name: $PROVIDER_DEPLOYMENT_NAME
     models:
       - name: $MODEL
 ols_config:

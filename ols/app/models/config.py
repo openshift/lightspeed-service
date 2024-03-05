@@ -151,6 +151,7 @@ class ProviderConfig(BaseModel):
     credentials: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
+    deployment_name: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -183,6 +184,13 @@ class ProviderConfig(BaseModel):
                 raise InvalidConfigurationError("model name is missing")
             model = ModelConfig(m)
             self.models[m["name"]] = model
+        if self.type == constants.PROVIDER_AZURE_OPENAI:
+            # deployment_name only required when using Azure OpenAI
+            self.deployment_name = data.get("deployment_name", None)
+            if self.deployment_name is None:
+                raise InvalidConfigurationError(
+                    f"deployment_name is required for Azure OpenAI provider {self.name}"
+                )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
