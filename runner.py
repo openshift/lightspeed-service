@@ -1,6 +1,7 @@
 """Main app entrypoint. Starts Uvicorn-based REST API service."""
 
 import os
+import tempfile
 
 import uvicorn
 
@@ -25,10 +26,21 @@ def configure_hugging_face_envs() -> None:
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 
-if __name__ == "__main__":
+def configure_gradio_ui_envs() -> None:
+    """Configure GradioUI framework environment variables."""
     # disable Gradio analytics, which calls home to https://api.gradio.app
     os.environ["GRADIO_ANALYTICS_ENABLED"] = "false"
 
+    # Setup config directory for Matplotlib. It will be used to store info
+    # about fonts (usually one JSON file) and it really is just temporary
+    # storage that can be deleted at any time and recreated later.
+    # Fixes: https://issues.redhat.com/browse/OLS-301
+    tempdir = os.path.join(tempfile.gettempdir(), "matplotlib")
+    os.environ["MPLCONFIGDIR"] = tempdir
+
+
+if __name__ == "__main__":
+    configure_gradio_ui_envs()
     configure_hugging_face_envs()
 
     uvicorn.run("ols.app.main:app", host="127.0.0.1", port=8080, reload=True)
