@@ -73,7 +73,7 @@ class GradioUI:
 
             # Check if the request was successful (status code 200)
             if response.status_code == requests.codes.ok:
-                logger.info("Response JSON:", response.json())
+                logger.info(f"Response JSON: {response.json()}")
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
             else:
