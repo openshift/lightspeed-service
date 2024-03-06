@@ -47,7 +47,7 @@ def test_raw_prompt():
     assert "hello" in response["response"].lower()
 
 
-def _test_invalid_question():
+def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     response = client.post(
         "/v1/query",
@@ -69,7 +69,7 @@ def _test_invalid_question():
     assert response.json() == expected_json
 
 
-def _test_query_call_without_payload():
+def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
     response = client.post(
         "/v1/query",
@@ -82,7 +82,7 @@ def _test_query_call_without_payload():
     assert "missing" in response.text
 
 
-def _test_query_call_with_improper_payload():
+def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
     response = client.post(
         "/v1/query",
@@ -96,7 +96,7 @@ def _test_query_call_with_improper_payload():
     assert "missing" in response.text
 
 
-def _test_valid_question() -> None:
+def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     response = client.post(
         "/v1/query",
@@ -120,7 +120,7 @@ def _test_valid_question() -> None:
     )
 
 
-def _test_rag_question() -> None:
+def test_rag_question() -> None:
     """Ensure responses include rag references."""
     response = client.post(
         "/v1/query",
@@ -140,7 +140,7 @@ def _test_rag_question() -> None:
     )
 
 
-def _test_query_filter() -> None:
+def test_query_filter() -> None:
     """Ensure responses does not include filtered words."""
     response = client.post(
         "/v1/query",
@@ -197,4 +197,4 @@ def test_improper_token():
             timeout=90,
             headers={"Authorization": "Bearer wrong-token"},
         )
-        assert response.status_code == requests.codes.unauthorized
+        assert response.status_code == requests.codes.forbidden
