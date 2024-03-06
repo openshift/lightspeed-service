@@ -185,3 +185,16 @@ def test_metrics() -> None:
     # check the duration histogram presence
     assert 'response_duration_seconds_count{path="/metrics/"}' in response.text
     assert 'response_duration_seconds_sum{path="/metrics/"}' in response.text
+
+
+def test_improper_token():
+    """Test accessing /v1/query endpoint using improper auth. token."""
+    # let's assume that auth. is enabled when token is specified
+    if token:
+        response = client.post(
+            "/v1/query",
+            json={"query": "what is foo in bar?"},
+            timeout=90,
+            headers={"Authorization": "Bearer wrong-token"},
+        )
+        assert response.status_code == requests.codes.forbidden
