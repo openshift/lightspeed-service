@@ -47,12 +47,23 @@ def test_get_nonexistent_key(cache):
     assert cache.get("ffffffff-ffff-ffff-ffff-ffffffffffff", conversation_id) is None
 
 
-def test_get_improper_user_id(cache):
+improper_user_uuids = [
+    "",
+    " ",
+    "\t",
+    ":",
+    "foo:bar",
+    "ffffffff-ffff-ffff-ffff-fffffffffff",  # UUID-like string with missing chararacter
+    "ffffffff-ffff-ffff-ffff-fffffffffffZ",  # UUID-like string, but with wrong character
+    "ffffffff:ffff:ffff:ffff:ffffffffffff",
+]
+
+
+@pytest.mark.parametrize("uuid", improper_user_uuids)
+def test_get_improper_user_id(cache, uuid):
     """Test how improper user ID is handled."""
-    with pytest.raises(ValueError, match="Invalid user ID :"):
-        cache.get(":", conversation_id)
-    with pytest.raises(ValueError, match="Invalid user ID foo:bar"):
-        cache.get("foo:bar", conversation_id)
+    with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
+        cache.get(uuid, conversation_id)
 
 
 def test_get_improper_conversation_id(cache):
