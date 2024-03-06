@@ -132,8 +132,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         response = auth_api.create_token_review(token_review)
         if response.status.authenticated:
             return response.status
-        else:
-            return None
+        return None
     except ApiException as e:
         logger.error(f"API exception during TokenReview: {e}")
         return None
