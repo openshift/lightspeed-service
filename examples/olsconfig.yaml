@@ -31,7 +31,7 @@ llm_providers:
 ols_config:
   reference_content:
 #    product_docs_index_path: "./vector-db/ocp-product-docs"
-#    product_docs_index_id: product
+#    product_docs_index_id: ocp-product-docs-4_15
 #    embeddings_model_path: "./embeddings_model"
   conversation_cache:
     type: memory
