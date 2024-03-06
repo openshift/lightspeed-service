@@ -29,14 +29,15 @@ class AzureOpenAI(LLMProvider):
             "api_version": "2023-05-15",
             "deployment_name": self.provider_config.deployment_name,
             "model": self.model,
-            "model_kwargs": {},
+            "model_kwargs": {
+                "top_p": 0.95,
+                "frequency_penalty": 1.03,
+            },
             "organization": None,
             "cache": None,
             "streaming": True,
             "temperature": 0.01,
             "max_tokens": 512,
-            "top_p": 0.95,
-            "frequency_penalty": 1.03,
             "verbose": False,
         }
 
