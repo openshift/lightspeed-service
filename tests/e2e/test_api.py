@@ -15,24 +15,105 @@ if token:
 conversation_id = "12345678-abcd-0000-0123-456789abcdef"
 
 
+def read_metrics(client):
+    """Read all metrics using REST API call."""
+    response = client.get("/metrics/")
+
+    # check that the /metrics/ endpoint is correct and we got
+    # some response
+    assert response.status_code == requests.codes.ok
+    assert response.text is not None
+
+    return response.text
+
+
+def get_rest_api_counter_value(
+    client, counter_name, path, status_code=200, default=None
+):
+    """Retrieve counter value from metrics."""
+    response = read_metrics(client)
+
+    # counters with labels have the following format:
+    # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
+    prefix = f'{counter_name}{{path="{path}",status_code="{status_code}"}} '
+
+    return get_counter_value(counter_name, prefix, response, default)
+
+
+def get_model_provider_counter_value(
+    client, counter_name, model, provider, default=None
+):
+    """Retrieve counter value from metrics."""
+    response = read_metrics(client)
+
+    # counters with model and provider have the following format:
+    # llm_token_sent_total{model="ibm/granite-13b-chat-v2",provider="bam"} 8.0
+    prefix = f'{counter_name}{{model="{model}",provider="{provider}"}} '
+
+    return get_counter_value(counter_name, prefix, response, default)
+
+
+def get_counter_value(counter_name, prefix, response, default=None):
+    """Try to retrieve counter value from response with all metrics."""
+    lines = [line.strip() for line in response.split("\n")]
+
+    # try to find the given counter
+    for line in lines:
+        if line.startswith(prefix):
+            without_prefix = line[len(prefix) :]
+            # parse as float, convert that float to integer
+            return int(float(without_prefix))
+
+    # counter was not found, which might be ok for first API call
+    if default is not None:
+        return default
+
+    raise Exception(f"Counter {counter_name} was not found in metrics")
+
+
+def check_counter_increases(endpoint, old_counter, new_counter, delta=1):
+    """Check if the counter value increases as expected."""
+    assert (
+        new_counter >= old_counter + delta
+    ), f"REST API counter for {endpoint} has not been updated properly"
+
+
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
-    response = client.get("/readiness")
+    endpoint = "/readiness"
+    old_counter = get_rest_api_counter_value(
+        client, "rest_api_calls_total", endpoint, default=0
+    )
+
+    response = client.get(endpoint)
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": {"status": "healthy"}}
+
+    new_counter = get_rest_api_counter_value(client, "rest_api_calls_total", endpoint)
+    check_counter_increases(endpoint, old_counter, new_counter)
 
 
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
-    response = client.get("/liveness")
+    endpoint = "/liveness"
+    old_counter = get_rest_api_counter_value(
+        client, "rest_api_calls_total", endpoint, default=0
+    )
+
+    response = client.get(endpoint)
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": {"status": "healthy"}}
+
+    new_counter = get_rest_api_counter_value(client, "rest_api_calls_total", endpoint)
+    check_counter_increases(endpoint, old_counter, new_counter)
 
 
 def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
+    endpoint = "/v1/debug/query"
+
     r = client.post(
-        "/v1/debug/query",
+        endpoint,
         json={
             "conversation_id": conversation_id,
             "query": "respond to this message with the word hello",
@@ -49,8 +130,10 @@ def test_raw_prompt():
 
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
+    endpoint = "/v1/query"
+
     response = client.post(
-        "/v1/query",
+        endpoint,
         json={"conversation_id": conversation_id, "query": "test query"},
         timeout=20,
     )
@@ -71,8 +154,10 @@ def test_invalid_question():
 
 def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
+    endpoint = "/v1/query"
+
     response = client.post(
-        "/v1/query",
+        endpoint,
         timeout=20,
     )
     print(vars(response))
@@ -81,11 +166,27 @@ def test_query_call_without_payload():
     # so let's do just primitive check
     assert "missing" in response.text
 
+    counter = get_rest_api_counter_value(
+        client,
+        "rest_api_calls_total",
+        endpoint,
+        status_code=requests.codes.unprocessable_entity,
+    )
+    assert counter >= 1, "REST API counter has not been updated properly"
+
 
 def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
+    endpoint = "/v1/query"
+    old_counter = get_rest_api_counter_value(
+        client,
+        "rest_api_calls_total",
+        endpoint,
+        status_code=requests.codes.unprocessable_entity,
+    )
+
     response = client.post(
-        "/v1/query",
+        endpoint,
         json={"parameter": "this-is-not-proper-question-my-friend"},
         timeout=20,
     )
@@ -94,6 +195,11 @@ def test_query_call_with_improper_payload():
     # the actual response might differ when new Pydantic version will be used
     # so let's do just primitive check
     assert "missing" in response.text
+
+    new_counter = get_rest_api_counter_value(
+        client, "rest_api_calls_total", endpoint, requests.codes.unprocessable_entity
+    )
+    check_counter_increases(endpoint, old_counter, new_counter)
 
 
 def test_valid_question() -> None:
