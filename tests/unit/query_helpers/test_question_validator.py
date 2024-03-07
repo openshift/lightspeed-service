@@ -23,6 +23,20 @@ def test_is_query_helper_subclass():
     assert issubclass(QuestionValidator, QueryHelper)
 
 
+def test_passing_parameters():
+    """Test that llm_params is handled correctly and without runtime error."""
+    question_validator = QuestionValidator()
+    assert question_validator.llm_params is not None
+    assert "max_new_tokens" in question_validator.llm_params is not None
+    assert "min_new_tokens" in question_validator.llm_params is not None
+
+    question_validator = QuestionValidator(llm_params={})
+    # the llm_params should be rewritten in constructor
+    assert question_validator.llm_params is not None
+    assert "max_new_tokens" in question_validator.llm_params is not None
+    assert "min_new_tokens" in question_validator.llm_params is not None
+
+
 def test_valid_responses(question_validator):
     """Test how valid responses are handled by QuestionValidator."""
     for retval in [

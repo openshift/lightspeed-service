@@ -8,6 +8,7 @@ from fastapi import HTTPException, Request
 from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
+from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
 from ols.utils import config
 
 logger = logging.getLogger(__name__)
@@ -131,8 +132,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         response = auth_api.create_token_review(token_review)
         if response.status.authenticated:
             return response.status
-        else:
-            return None
+        return None
     except ApiException as e:
         logger.error(f"API exception during TokenReview: {e}")
         return None
@@ -175,7 +175,7 @@ async def auth_dependency(request: Request) -> tuple[str, str]:
     if config.dev_config.disable_auth:
         logger.warn("Auth checks disabled, skipping")
         # TODO: replace with constants for default identity
-        return "c1143120-551e-4a47-ad47-2748d6f3c81c", "OLS"
+        return DEFAULT_USER_UID, DEFAULT_USER_NAME
     authorization_header = request.headers.get("Authorization")
     if not authorization_header:
         raise HTTPException(

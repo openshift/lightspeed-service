@@ -1,8 +1,13 @@
-#!/bin/bash -e
+#!/bin/bash
+set -eou pipefail
+
 # Input env variables:
 # - PROVIDER - the LLM provider to be used during the test
 # - PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
 # - MODEL - name of the model to use during e2e testing
+# - PROVIDER_URL - url of the provider api endpoint (required for azure-openai)
+# - PROVIDER_DEPLOYMENT_NAME - required for azure-openai
+# - PROVIDER_PROJECT_ID - required for watsonx
 
 # Script flow:
 # 1) Generate an OLS config file from env variables
@@ -39,7 +44,16 @@ if [ ! -e "$PROVIDER_KEY_PATH" ]; then
 fi
 
 export MODEL="${MODEL:-gpt-3.5-turbo-1106}"
-envsubst < $(pwd)/tests/config/singleprovider.e2e.template.config.yaml > "$OLS_CONFIG_FILE"
+envsubst < $(pwd)/tests/config/singleprovider.e2e.template.config.yaml > "${OLS_CONFIG_FILE}.tmp"
+
+# If no provider url is being specified, remove the url field from the config yaml
+# so we use the default provider url values.
+if [ -z ${PROVIDER_URL:-} ]; then
+  grep -v url: "${OLS_CONFIG_FILE}.tmp" > "$OLS_CONFIG_FILE"
+  rm "${OLS_CONFIG_FILE}.tmp"
+else
+  mv "${OLS_CONFIG_FILE}.tmp" "${OLS_CONFIG_FILE}"
+fi
 
 echo "Installing dependencies"
 make install-deps && make install-deps-test

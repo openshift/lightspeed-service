@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -72,7 +72,7 @@ class ModelConfig(BaseModel):
                 f"should be greater than response token limit {self.response_token_limit}"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ModelConfig):
             return (
@@ -151,6 +151,7 @@ class ProviderConfig(BaseModel):
     credentials: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
+    deployment_name: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -183,8 +184,15 @@ class ProviderConfig(BaseModel):
                 raise InvalidConfigurationError("model name is missing")
             model = ModelConfig(m)
             self.models[m["name"]] = model
+        if self.type == constants.PROVIDER_AZURE_OPENAI:
+            # deployment_name only required when using Azure OpenAI
+            self.deployment_name = data.get("deployment_name", None)
+            if self.deployment_name is None:
+                raise InvalidConfigurationError(
+                    f"deployment_name is required for Azure OpenAI provider {self.name}"
+                )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ProviderConfig):
             return (
@@ -225,7 +233,7 @@ class LLMProviders(BaseModel):
             provider = ProviderConfig(p)
             self.providers[p["name"]] = provider
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LLMProviders):
             return self.providers == other.providers
@@ -237,34 +245,6 @@ class LLMProviders(BaseModel):
             v.validate_yaml()
 
 
-class RedisCredentials(BaseModel):
-    """Redis credentials."""
-
-    username: Optional[str] = None
-    password: Optional[str] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize redis credentials."""
-        super().__init__()
-        if not isinstance(data, dict):
-            return
-        self.username = _get_attribute_from_file(data, "username_path")
-        self.password = _get_attribute_from_file(data, "password_path")
-
-    def __eq__(self, other: Any) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, RedisCredentials):
-            return self.username == other.username and self.password == other.password
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate redis credentials."""
-        if self.username is not None and self.password is None:
-            raise InvalidConfigurationError(
-                "for Redis, if a username is specified, a password also needs to be specified"
-            )
-
-
 class RedisConfig(BaseModel):
     """Redis configuration."""
 
@@ -272,7 +252,8 @@ class RedisConfig(BaseModel):
     port: Optional[int] = None
     max_memory: Optional[str] = None
     max_memory_policy: Optional[str] = None
-    credentials: Optional[RedisCredentials] = None
+    password: Optional[str] = None
+    ca_cert_path: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -296,12 +277,10 @@ class RedisConfig(BaseModel):
         self.max_memory_policy = data.get(
             "max_memory_policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
+        self.ca_cert_path = data.get("ca_cert_path", None)
+        self.password = _get_attribute_from_file(data, "password_path")
 
-        credentials = data.get("credentials")
-        if credentials is not None:
-            self.credentials = RedisCredentials(credentials)
-
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, RedisConfig):
             return (
@@ -309,7 +288,8 @@ class RedisConfig(BaseModel):
                 and self.port == other.port
                 and self.max_memory == other.max_memory
                 and self.max_memory_policy == other.max_memory_policy
-                and self.credentials == other.credentials
+                and self.password == other.password
+                and self.ca_cert_path == other.ca_cert_path
             )
         return False
 
@@ -326,8 +306,6 @@ class RedisConfig(BaseModel):
                 f"invalid Redis max_memory_policy {self.max_memory_policy},"
                 f" valid policies are ({valid_polices})"
             )
-        if self.credentials is not None:
-            self.credentials.validate_yaml()
 
 
 class MemoryConfig(BaseModel):
@@ -353,7 +331,7 @@ class MemoryConfig(BaseModel):
                 " max_entries needs to be a non-negative integer"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, MemoryConfig):
             return self.max_entries == other.max_entries
@@ -386,7 +364,7 @@ class QueryFilter(BaseModel):
                 "name, pattern and replace_with need to be specified"
             )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, QueryFilter):
             return (
@@ -443,7 +421,7 @@ class ConversationCacheConfig(BaseModel):
                     f"unknown conversation cache type: {self.type}"
                 )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ConversationCacheConfig):
             return (
@@ -484,7 +462,7 @@ class LoggingConfig(BaseModel):
         self.app_log_level = self._get_log_level(data, "app_log_level", "info")
         self.lib_log_level = self._get_log_level(data, "lib_log_level", "warning")
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, LoggingConfig):
             return (
@@ -525,7 +503,7 @@ class ReferenceContent(BaseModel):
         self.product_docs_index_id = data.get("product_docs_index_id", None)
         self.embeddings_model_path = data.get("embeddings_model_path", None)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ReferenceContent):
             return (
@@ -590,7 +568,7 @@ class OLSConfig(BaseModel):
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, OLSConfig):
             return (
@@ -638,7 +616,7 @@ class DevConfig(BaseModel):
         self.k8s_auth_token = str(data.get("k8s_auth_token", None))
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, DevConfig):
             return (
@@ -679,7 +657,7 @@ class Config(BaseModel):
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, Config):
             return (

@@ -120,14 +120,13 @@ class DocsSummarizer(QueryHelper):
         )
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
-        bare_llm = self.llm_loader(
-            self.provider, self.model, llm_params=self.llm_params
-        )
+        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
 
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
         truncated = (
-            False  # TODO tisnik: need to be implemented based on provided inputs
+            False  # TODO tisnik: https://issues.redhat.com/browse/OLS-58
+            # need to be implemented based on provided inputs
         )
 
         if vector_index is not None:

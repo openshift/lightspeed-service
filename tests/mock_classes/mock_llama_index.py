@@ -15,7 +15,7 @@ class MockLlamaIndex:
         or within test function or test method:
         with patch("ols.src.query_helpers.docs_summarizer.load_index_from_storage", new=MockLlamaIndex):
             some test steps
-    """  # noqa E501
+    """  # noqa: E501
 
     def __init__(self, *args, **kwargs):
         """Store all provided arguments for later usage."""

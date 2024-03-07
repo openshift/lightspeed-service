@@ -39,8 +39,9 @@ def conversation_request(
     previous_input = None
     referenced_documents: list[str] = []
 
-    # TODO: retrieve proper user ID from request
-    user_id = "user1"
+    # auth contains tuple with user ID (in UUID format) and user name
+    user_id = auth[0]
+    logger.info(f"User ID {user_id}")
 
     conversation_id = retrieve_conversation_id(llm_request)
     previous_input = retrieve_previous_input(user_id, llm_request)

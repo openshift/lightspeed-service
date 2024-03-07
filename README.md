@@ -134,11 +134,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
             port: "6379"
             max_memory: 100MB
             max_memory_policy: "allkeys-lru"
-            credentials:
-              username_path: redis_username.txt
-              password_path: redis_password.txt
+            password_path: redis_password.txt
+            ca_cert_path: redis_ca_cert.crt
       ```
-      In this case, files `redis_username.txt` and `redis_password.txt` containing username and password required to connect to Redis, needs to be accessible.
+      In this case, file `redis_password.txt` contains password required to connect with Redis. Also CA certificate can be specified using `redis_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
 
 
@@ -185,7 +184,7 @@ you are logged in with sufficient permissions:
 1. Make the change to your API keys and/or provider configuration in the
 manifest file
 2. Create a namespace/project to hold OLS
-3. `oc apply -f examples/openshift-lightspeed.yaml -n created-namespace`
+3. `oc apply -f examples/openshift-lightspeed-tls.yaml -n created-namespace`
 
 Once deployed, it is probably easiest to `oc port-forward` into the pod where
 OLS is running so that you can access it from your local machine.

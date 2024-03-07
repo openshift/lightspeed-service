@@ -2,13 +2,15 @@
 llm_providers:
   - name: $PROVIDER
     project_id: $PROVIDER_PROJECT_ID
+    url: $PROVIDER_URL
     credentials_path: $PROVIDER_KEY_PATH
+    deployment_name: $PROVIDER_DEPLOYMENT_NAME
     models:
       - name: $MODEL
 ols_config:
   reference_content:
     product_docs_index_path: $RAG_INDEX_DIR
-    product_docs_index_id: product
+    product_docs_index_id: ocp-product-docs-4_15
   conversation_cache:
     type: memory
     memory:

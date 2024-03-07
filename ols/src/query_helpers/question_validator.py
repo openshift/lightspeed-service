@@ -23,7 +23,7 @@ class QuestionValidator(QueryHelper):
             "min_new_tokens": 1,
             "max_new_tokens": 4,
         }
-        super().__init__(*args, **kwargs, llm_params=llm_params)
+        super().__init__(*args, **dict(kwargs, llm_params=llm_params))
 
     def validate_question(
         self, conversation_id: str, query: str, verbose: bool = False
@@ -60,9 +60,7 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation_id} Validating query")
 
-        bare_llm = self.llm_loader(
-            self.provider, self.model, llm_params=self.llm_params
-        )
+        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
         llm_chain = LLMChain(
             llm=bare_llm,
             prompt=prompt_instructions,

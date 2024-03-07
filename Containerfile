@@ -26,10 +26,11 @@ COPY pyproject.toml pdm.lock runner.py ./
 
 RUN pip3.11 install --no-cache-dir --upgrade pip pdm \
     && pdm config python.use_venv false \
-    && pdm install --global --prod --frozen-lockfile -p ${APP_ROOT}
+    && pdm sync --global --prod -p ${APP_ROOT}
 
 # Run the application
 EXPOSE 8080
+EXPOSE 8443
 CMD ["python3.11", "runner.py"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \

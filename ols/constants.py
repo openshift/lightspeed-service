@@ -137,8 +137,11 @@ Response:
 # providers
 PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
+PROVIDER_AZURE_OPENAI = "azure_openai"
 PROVIDER_WATSONX = "watsonx"
-SUPPORTED_PROVIDER_TYPES = frozenset({PROVIDER_BAM, PROVIDER_OPENAI, PROVIDER_WATSONX})
+SUPPORTED_PROVIDER_TYPES = frozenset(
+    {PROVIDER_BAM, PROVIDER_OPENAI, PROVIDER_AZURE_OPENAI, PROVIDER_WATSONX}
+)
 
 # models
 # embedding
@@ -149,7 +152,7 @@ GRANITE_13B_CHAT_V1 = "ibm/granite-13b-chat-v1"
 GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
 GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 
-# OpenAI
+# OpenAI & Azure OpenAI
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
@@ -161,9 +164,9 @@ PRODUCT_DOCS_PERSIST_DIR = "./vector-db/ocp-product-docs"
 IN_MEMORY_CACHE = "memory"
 IN_MEMORY_CACHE_MAX_ENTRIES = 1000
 REDIS_CACHE = "redis"
-REDIS_CACHE_HOST = "redis-stack.ols.svc"
+REDIS_CACHE_HOST = "lightspeed-redis-server.openshift-lightspeed.svc"
 REDIS_CACHE_PORT = 6379
-REDIS_CACHE_MAX_MEMORY = "500mb"
+REDIS_CACHE_MAX_MEMORY = "1024mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
 REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 
@@ -177,3 +180,7 @@ OCP_DOCS_VERSION = "4.14"
 # model configs
 DEFAULT_CONTEXT_WINDOW_SIZE = 2000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500
+
+# default indentity for local testing and deployment
+DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"
+DEFAULT_USER_NAME = "OLS"

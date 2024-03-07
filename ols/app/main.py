@@ -3,7 +3,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Callable
+from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 
@@ -37,14 +37,14 @@ if config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)
 else:
     logger.info(
-        "Embedded Gradio UI is disabled. To enable set enable_dev_ui: true "
-        "in the dev section of the configuration file"
+        "Embedded Gradio UI is disabled. To enable set `enable_dev_ui: true` "
+        "in the `dev_config` section of the configuration file."
     )
 
 
 @app.middleware("")
 async def rest_api_counter(
-    request: Request, call_next: Callable[[Request], Response]
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """Middleware with REST API counter update logic."""
     path = request.url.path
