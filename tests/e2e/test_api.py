@@ -28,10 +28,11 @@ def read_metrics(client):
 
 
 def get_rest_api_counter_value(
-    client, counter_name, path, status_code=200, default=None
+    client, path, status_code=requests.codes.ok, default=None
 ):
     """Retrieve counter value from metrics."""
     response = read_metrics(client)
+    counter_name = "rest_api_calls_total"
 
     # counters with labels have the following format:
     # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
@@ -78,194 +79,196 @@ def check_counter_increases(endpoint, old_counter, new_counter, delta=1):
     ), f"REST API counter for {endpoint} has not been updated properly"
 
 
+class RestAPICallCounterChecker:
+    """Context manager to check if REST API counter is increased for given endpoint."""
+
+    def __init__(self, client, endpoint, status_code=requests.codes.ok):
+        """Register client and endpoint."""
+        self.client = client
+        self.endpoint = endpoint
+        self.status_code = status_code
+
+    def __enter__(self):
+        """Retrieve old counter value before calling REST API."""
+        self.old_counter = get_rest_api_counter_value(
+            self.client, self.endpoint, status_code=self.status_code, default=0
+        )
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """Retrieve new counter value after calling REST API, and check if it increased."""
+        new_counter = get_rest_api_counter_value(
+            self.client, self.endpoint, status_code=self.status_code
+        )
+        check_counter_increases(self.endpoint, self.old_counter, new_counter)
+
+
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
-    old_counter = get_rest_api_counter_value(
-        client, "rest_api_calls_total", endpoint, default=0
-    )
-
-    response = client.get(endpoint)
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": {"status": "healthy"}}
-
-    new_counter = get_rest_api_counter_value(client, "rest_api_calls_total", endpoint)
-    check_counter_increases(endpoint, old_counter, new_counter)
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.get(endpoint)
+        assert response.status_code == requests.codes.ok
+        assert response.json() == {"status": {"status": "healthy"}}
 
 
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
-    old_counter = get_rest_api_counter_value(
-        client, "rest_api_calls_total", endpoint, default=0
-    )
-
-    response = client.get(endpoint)
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": {"status": "healthy"}}
-
-    new_counter = get_rest_api_counter_value(client, "rest_api_calls_total", endpoint)
-    check_counter_increases(endpoint, old_counter, new_counter)
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.get(endpoint)
+        assert response.status_code == requests.codes.ok
+        assert response.json() == {"status": {"status": "healthy"}}
 
 
 def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     endpoint = "/v1/debug/query"
+    with RestAPICallCounterChecker(client, endpoint):
+        r = client.post(
+            endpoint,
+            json={
+                "conversation_id": conversation_id,
+                "query": "respond to this message with the word hello",
+            },
+            timeout=20,
+        )
+        print(vars(r))
+        response = r.json()
 
-    r = client.post(
-        endpoint,
-        json={
-            "conversation_id": conversation_id,
-            "query": "respond to this message with the word hello",
-        },
-        timeout=20,
-    )
-    print(vars(r))
-    response = r.json()
-
-    assert r.status_code == requests.codes.ok
-    assert response["conversation_id"] == conversation_id
-    assert "hello" in response["response"].lower()
+        assert r.status_code == requests.codes.ok
+        assert response["conversation_id"] == conversation_id
+        assert "hello" in response["response"].lower()
 
 
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     endpoint = "/v1/query"
-
-    response = client.post(
-        endpoint,
-        json={"conversation_id": conversation_id, "query": "test query"},
-        timeout=20,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    expected_details = (
-        "I can only answer questions about OpenShift and Kubernetes. "
-        "Please rephrase your question"
-    )
-    expected_json = {
-        "conversation_id": conversation_id,
-        "response": expected_details,
-        "referenced_documents": [],
-        "truncated": False,
-    }
-    assert response.json() == expected_json
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": "test query"},
+            timeout=20,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        expected_details = (
+            "I can only answer questions about OpenShift and Kubernetes. "
+            "Please rephrase your question"
+        )
+        expected_json = {
+            "conversation_id": conversation_id,
+            "response": expected_details,
+            "referenced_documents": [],
+            "truncated": False,
+        }
+        assert response.json() == expected_json
 
 
 def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
     endpoint = "/v1/query"
-
-    response = client.post(
-        endpoint,
-        timeout=20,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.unprocessable_entity
-    # the actual response might differ when new Pydantic version will be used
-    # so let's do just primitive check
-    assert "missing" in response.text
-
-    counter = get_rest_api_counter_value(
-        client,
-        "rest_api_calls_total",
-        endpoint,
-        status_code=requests.codes.unprocessable_entity,
-    )
-    assert counter >= 1, "REST API counter has not been updated properly"
+    with RestAPICallCounterChecker(
+        client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            timeout=20,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.unprocessable_entity
+        # the actual response might differ when new Pydantic version will be used
+        # so let's do just primitive check
+        assert "missing" in response.text
 
 
 def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
     endpoint = "/v1/query"
-    old_counter = get_rest_api_counter_value(
-        client,
-        "rest_api_calls_total",
-        endpoint,
-        status_code=requests.codes.unprocessable_entity,
-    )
-
-    response = client.post(
-        endpoint,
-        json={"parameter": "this-is-not-proper-question-my-friend"},
-        timeout=20,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.unprocessable_entity
-    # the actual response might differ when new Pydantic version will be used
-    # so let's do just primitive check
-    assert "missing" in response.text
-
-    new_counter = get_rest_api_counter_value(
-        client, "rest_api_calls_total", endpoint, requests.codes.unprocessable_entity
-    )
-    check_counter_increases(endpoint, old_counter, new_counter)
+    with RestAPICallCounterChecker(
+        client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={"parameter": "this-is-not-proper-question-my-friend"},
+            timeout=20,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.unprocessable_entity
+        # the actual response might differ when new Pydantic version will be used
+        # so let's do just primitive check
+        assert "missing" in response.text
 
 
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
-    response = client.post(
-        "/v1/query",
-        json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
-        timeout=90,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    json_response = response.json()
-    json_response["conversation_id"] == conversation_id
-    # checking a few major information from response
-    assert "Kubernetes is" in json_response["response"]
-    assert (
-        "orchestration tool" in json_response["response"]
-        or "orchestration system" in json_response["response"]
-        or "orchestration platform" in json_response["response"]
-    )
-    assert (
-        "The following response was generated without access to reference content:"
-        not in json_response["response"]
-    )
+    endpoint = "/v1/query"
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+            timeout=90,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+        json_response["conversation_id"] == conversation_id
+        # checking a few major information from response
+        assert "Kubernetes is" in json_response["response"]
+        assert (
+            "orchestration tool" in json_response["response"]
+            or "orchestration system" in json_response["response"]
+            or "orchestration platform" in json_response["response"]
+        )
+        assert (
+            "The following response was generated without access to reference content:"
+            not in json_response["response"]
+        )
 
 
 def test_rag_question() -> None:
     """Ensure responses include rag references."""
-    response = client.post(
-        "/v1/query",
-        json={"query": "what is the first step to install an openshift cluster?"},
-        timeout=90,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    json_response = response.json()
-    assert len(json_response["referenced_documents"]) > 0
-    assert "install" in json_response["referenced_documents"][0]
-    assert "https://" in json_response["referenced_documents"][0]
+    endpoint = "/v1/query"
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.post(
+            endpoint,
+            json={"query": "what is the first step to install an openshift cluster?"},
+            timeout=90,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+        assert len(json_response["referenced_documents"]) > 0
+        assert "install" in json_response["referenced_documents"][0]
+        assert "https://" in json_response["referenced_documents"][0]
 
-    assert (
-        "The following response was generated without access to reference content:"
-        not in json_response["response"]
-    )
+        assert (
+            "The following response was generated without access to reference content:"
+            not in json_response["response"]
+        )
 
 
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words."""
-    response = client.post(
-        "/v1/query",
-        json={"query": "what is foo in bar?"},
-        timeout=90,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    json_response = response.json()
-    assert len(json_response["referenced_documents"]) > 0
-    assert "openshift" in json_response["referenced_documents"][0]
-    assert "https://" in json_response["referenced_documents"][0]
+    endpoint = "/v1/query"
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.post(
+            endpoint,
+            json={"query": "what is foo in bar?"},
+            timeout=90,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+        assert len(json_response["referenced_documents"]) > 0
+        assert "openshift" in json_response["referenced_documents"][0]
+        assert "https://" in json_response["referenced_documents"][0]
 
-    # values to be filtered and replaced are defined in:
-    # tests/config/singleprovider.e2e.template.config.yaml
-    assert "openshift" in json_response["response"].lower()
-    assert "deployment" in json_response["response"].lower()
-    assert "foo" not in json_response["response"]
-    assert "bar" not in json_response["response"]
+        # values to be filtered and replaced are defined in:
+        # tests/config/singleprovider.e2e.template.config.yaml
+        assert "openshift" in json_response["response"].lower()
+        assert "deployment" in json_response["response"].lower()
+        assert "foo" not in json_response["response"]
+        assert "bar" not in json_response["response"]
 
 
 def test_metrics() -> None:
