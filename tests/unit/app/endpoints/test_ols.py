@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException
+from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
 from ols.app.endpoints import ols
@@ -49,7 +50,7 @@ def test_retrieve_previous_input_no_previous_history(load_config):
     """Check how function to retrieve previous input handle empty history."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
     input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
-    assert input is None
+    assert input == []
 
 
 def test_retrieve_previous_input_empty_user_id(load_config):
@@ -100,8 +101,12 @@ def test_store_conversation_history(insert_or_append, load_config):
     ols.store_conversation_history(
         constants.DEFAULT_USER_UID, conversation_id, llm_request, response
     )
+    expected_history = [
+        HumanMessage(content="Tell me about Kubernetes"),
+        AIMessage(content=""),
+    ]
     insert_or_append.assert_called_with(
-        constants.DEFAULT_USER_UID, conversation_id, f"{query}\n\n"
+        constants.DEFAULT_USER_UID, conversation_id, expected_history
     )
 
 
@@ -114,9 +119,11 @@ def test_store_conversation_history_some_response(insert_or_append, load_config)
     llm_request = LLMRequest(query=query)
     response = "*response*"
     ols.store_conversation_history(user_id, conversation_id, llm_request, response)
-    insert_or_append.assert_called_with(
-        user_id, conversation_id, f"{query}\n\n{response}"
-    )
+    expected_history = [
+        HumanMessage(content="Tell me about Kubernetes"),
+        AIMessage(content="*response*"),
+    ]
+    insert_or_append.assert_called_with(user_id, conversation_id, expected_history)
 
 
 def test_store_conversation_history_empty_user_id(load_config):

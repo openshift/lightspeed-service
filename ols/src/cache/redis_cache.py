@@ -4,6 +4,7 @@ import threading
 from typing import Any, Optional
 
 import redis
+from langchain_core.messages.base import BaseMessage
 
 from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
@@ -49,7 +50,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
         """Get the value associated with the given key.
 
         Args:
@@ -63,7 +64,9 @@ class RedisCache(Cache):
 
         return self.redis_client.get(key)
 
-    def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
+    def insert_or_append(
+        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+    ) -> None:
         """Set the value associated with the given key.
 
         Args:
@@ -80,6 +83,7 @@ class RedisCache(Cache):
         old_value = self.get(user_id, conversation_id)
         with self._lock:
             if old_value:
-                self.redis_client.set(key, old_value + "\n" + value)
+                old_value.extend(value)
+                self.redis_client.set(key, old_value)
             else:
                 self.redis_client.set(key, value)

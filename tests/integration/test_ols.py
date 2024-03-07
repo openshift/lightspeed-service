@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import requests
 from fastapi.testclient import TestClient
+from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
 from ols.app.models.config import ProviderConfig, QueryFilter, ReferenceContent
@@ -310,4 +311,71 @@ def test_post_query_with_query_filters_response_type() -> None:
             assert (
                 "test query with redacted_ip will be replaced with redacted_ip"
                 in response.json()["response"]
+            )
+
+
+def test_post_query_for_conversation_history() -> None:
+    """Check the REST API /v1/query with same conversation_id for conversation history."""
+    config.init_empty_config()
+    config.dev_config.disable_auth = True
+    answer = constants.SUBJECT_VALID
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        from tests.mock_classes.langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain.invoke",
+            ) as invoke,
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+            patch(
+                "ols.app.metrics.token_counter.TokenMetricUpdater.__enter__",
+            ) as token_counter,
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "Query1",
+                },
+            )
+            assert response.status_code == requests.codes.ok
+            invoke.assert_called_once_with(
+                input={
+                    "context": "",
+                    "query": "Query1",
+                    "chat_history": [],
+                },
+                config={"callbacks": [token_counter.return_value]},
+            )
+            invoke.reset_mock()
+
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "Query2",
+                },
+            )
+            chat_history_expected = [
+                HumanMessage(content="Query1"),
+                AIMessage(content=response.json()["response"]),
+            ]
+            invoke.assert_called_once_with(
+                input={
+                    "context": "",
+                    "query": "Query2",
+                    "chat_history": chat_history_expected,
+                },
+                config={"callbacks": [token_counter.return_value]},
             )

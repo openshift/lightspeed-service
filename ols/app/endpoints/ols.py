@@ -6,12 +6,14 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from langchain_core.messages.base import BaseMessage
 
 from ols import constants
 from ols.app import metrics
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import LLMRequest, LLMResponse
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
+from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
@@ -107,9 +109,9 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> Optional[str]:
+def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseMessage]:
     """Retrieve previous user input, if exists."""
-    previous_input = None
+    previous_input: list[BaseMessage] | None = []
     if llm_request.conversation_id:
         previous_input = config.conversation_cache.get(
             user_id, llm_request.conversation_id
@@ -117,6 +119,8 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> Optional[s
         logger.info(
             f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
         )
+        if not previous_input:
+            previous_input = []
     return previous_input
 
 
@@ -124,7 +128,7 @@ def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
     validation_result: str,
-    previous_input: Optional[str],
+    previous_input: list[BaseMessage],
 ) -> tuple[Optional[str], list[str], bool]:
     """Generate response based on validation result, previous input, and model output."""
     match (validation_result):
@@ -178,10 +182,13 @@ def store_conversation_history(
     """Store conversation history into selected cache."""
     if config.conversation_cache is not None:
         logger.info(f"{conversation_id} Storing conversation history.")
+        chat_message_history = ChatHistory.get_chat_message_history(
+            llm_request.query, response or ""
+        )
         config.conversation_cache.insert_or_append(
             user_id,
             conversation_id,
-            llm_request.query + "\n\n" + str(response or ""),
+            chat_message_history,
         )
 
 
