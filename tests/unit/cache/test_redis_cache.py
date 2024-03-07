@@ -48,6 +48,7 @@ def test_get_nonexistent_key(cache):
 
 
 improper_user_uuids = [
+    None,
     "",
     " ",
     "\t",
