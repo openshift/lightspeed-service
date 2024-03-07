@@ -15,9 +15,15 @@ if token:
 conversation_id = "12345678-abcd-0000-0123-456789abcdef"
 
 
+# timeout settings
+BASIC_ENDPOINTS_TIMEOUT = 5
+NON_LLM_REST_API_TIMEOUT = 20
+LLM_REST_API_TIMEOUT = 90
+
+
 def read_metrics(client):
     """Read all metrics using REST API call."""
-    response = client.get("/metrics/")
+    response = client.get("/metrics/", timeout=BASIC_ENDPOINTS_TIMEOUT)
 
     # check that the /metrics/ endpoint is correct and we got
     # some response
@@ -106,7 +112,7 @@ def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with RestAPICallCounterChecker(client, endpoint):
-        response = client.get(endpoint)
+        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
 
@@ -115,7 +121,7 @@ def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
     with RestAPICallCounterChecker(client, endpoint):
-        response = client.get(endpoint)
+        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
 
@@ -130,7 +136,7 @@ def test_raw_prompt():
                 "conversation_id": conversation_id,
                 "query": "respond to this message with the word hello",
             },
-            timeout=20,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(r))
         response = r.json()
@@ -147,7 +153,7 @@ def test_invalid_question():
         response = client.post(
             endpoint,
             json={"conversation_id": conversation_id, "query": "test query"},
-            timeout=20,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
@@ -172,7 +178,7 @@ def test_query_call_without_payload():
     ):
         response = client.post(
             endpoint,
-            timeout=20,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.unprocessable_entity
@@ -190,7 +196,7 @@ def test_query_call_with_improper_payload():
         response = client.post(
             endpoint,
             json={"parameter": "this-is-not-proper-question-my-friend"},
-            timeout=20,
+            timeout=NON_LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.unprocessable_entity
@@ -206,7 +212,7 @@ def test_valid_question() -> None:
         response = client.post(
             endpoint,
             json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
-            timeout=90,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
@@ -232,7 +238,7 @@ def test_rag_question() -> None:
         response = client.post(
             endpoint,
             json={"query": "what is the first step to install an openshift cluster?"},
-            timeout=90,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
@@ -254,7 +260,7 @@ def test_query_filter() -> None:
         response = client.post(
             endpoint,
             json={"query": "what is foo in bar?"},
-            timeout=90,
+            timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
@@ -273,7 +279,7 @@ def test_query_filter() -> None:
 
 def test_metrics() -> None:
     """Check if service provides metrics endpoint with expected metrics."""
-    response = client.get("/metrics/")
+    response = client.get("/metrics/", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     assert response.text is not None
 
@@ -303,7 +309,7 @@ def test_improper_token():
         response = client.post(
             "/v1/query",
             json={"query": "what is foo in bar?"},
-            timeout=90,
+            timeout=NON_LLM_REST_API_TIMEOUT,
             headers={"Authorization": "Bearer wrong-token"},
         )
         assert response.status_code == requests.codes.forbidden
