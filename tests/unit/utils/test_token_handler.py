@@ -3,6 +3,8 @@
 from typing import Any
 from unittest import TestCase, mock
 
+from langchain_core.messages import AIMessage, HumanMessage
+
 from ols.utils.token_handler import TokenHandler
 
 
@@ -98,3 +100,31 @@ class TestTokenHandler(TestCase):
         context = self._token_handler_obj.truncate_rag_context([], 5)
 
         assert len(context) == 0
+
+    def test_message_length_string_content(self):
+        """Test the message_length method when message content is a string."""
+        message = HumanMessage(content="")
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert context == []
+
+        message = HumanMessage(content="message from human")
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert len(context) == 3
+
+        message = AIMessage(content="message from AI system")
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert len(context) == 4
+
+    def test_message_length_list_content(self):
+        """Test the message_length method when message content is list of strings."""
+        message = HumanMessage(content=[""])
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert context == []
+
+        message = HumanMessage(content=["message from", "human"])
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert len(context) == 3
+
+        message = AIMessage(content=["message from", "AI system"])
+        context = self._token_handler_obj.message_to_tokens(message)
+        assert len(context) == 4
