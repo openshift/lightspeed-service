@@ -6,22 +6,16 @@ import tempfile
 import uvicorn
 
 
-def configure_hugging_face_envs() -> None:
+def configure_hugging_face_envs(ols_config) -> None:
     """Configure HuggingFace library environment variables."""
-    # NOTE: We import config here to avoid triggering import of anything
-    # else via our code before other envs are set (mainly the gradio).
-    from ols.utils import config
-
-    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-    config.init_config(cfg_file)
     if (
-        config.ols_config
-        and hasattr(config.ols_config, "reference_content")
-        and hasattr(config.ols_config.reference_content, "embeddings_model_path")
-        and config.ols_config.reference_content.embeddings_model_path
+        ols_config
+        and hasattr(ols_config, "reference_content")
+        and hasattr(ols_config.reference_content, "embeddings_model_path")
+        and ols_config.reference_content.embeddings_model_path
     ):
         os.environ["TRANSFORMERS_CACHE"] = (
-            config.ols_config.reference_content.embeddings_model_path
+            ols_config.reference_content.embeddings_model_path
         )
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
@@ -41,6 +35,14 @@ def configure_gradio_ui_envs() -> None:
 
 if __name__ == "__main__":
     configure_gradio_ui_envs()
-    configure_hugging_face_envs()
+
+    # NOTE: We import config here to avoid triggering import of anything
+    # else via our code before other envs are set (mainly the gradio).
+    from ols.utils import config
+
+    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+    config.init_config(cfg_file)
+
+    configure_hugging_face_envs(config.ols_config)
 
     uvicorn.run("ols.app.main:app", host="127.0.0.1", port=8080, reload=True)
