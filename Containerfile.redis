@@ -2,7 +2,7 @@
 FROM quay.io/centos/centos:stream9
 
 # Install necessary dependencies (gcc, make, etc.) for building Redis from source
-RUN yum install -y gcc make wget tar gzip vim openssl openssl-devel tcl && \
+RUN yum install -y gcc make wget tar gzip openssl openssl-devel tcl && \
     yum clean all && mkdir -p /etc/redis && \
     wget https://download.redis.io/releases/redis-7.2.4.tar.gz && \
     tar xzf redis-7.2.4.tar.gz -C /etc/redis --strip-components=1 && \
