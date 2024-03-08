@@ -279,29 +279,30 @@ def test_query_filter() -> None:
 
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
+    endpoint = "/v1/query"
     conversation_id = "12345678-abcd-0000-0123-356789abcdef"
-    response = client.post(
-        "/v1/query",
-        json={
-            "query": "what is ingress in kubernetes?",
-            "conversation_id": conversation_id,
-        },
-        timeout=90,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    json_response = response.json()
-    assert "ingress" in json_response["response"].lower()
-    conversation_id = json_response["conversation_id"]
-    response = client.post(
-        "/v1/query",
-        json={"query": "what?", "conversation_id": conversation_id},
-        timeout=90,
-    )
-    print(vars(response))
-    assert response.status_code == requests.codes.ok
-    json_response = response.json()
-    assert "ingress" in json_response["response"].lower()
+    with RestAPICallCounterChecker(client, endpoint):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": conversation_id,
+                "query": "what is ingress in kubernetes?",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+        assert "ingress" in json_response["response"].lower()
+        response = client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": "what?"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+        assert "ingress" in json_response["response"].lower()
 
 
 def test_metrics() -> None:
