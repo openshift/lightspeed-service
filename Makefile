@@ -4,6 +4,8 @@
 .PHONY: test test-unit test-e2e images run format verify
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
+TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
+SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 
 images: ## Build container images
 	scripts/build-container.sh
@@ -51,8 +53,7 @@ check-coverage: test-unit test-integration  ## Unit tests and integration tests 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/e2e --junit-xml="${ARTIFACT_DIR}/junit_e2e.xml"
-
+	python -m pytest tests/e2e -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml"
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"

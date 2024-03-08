@@ -2,10 +2,7 @@
 set -eou pipefail
 
 # Input env variables:
-# - PROVIDER - the LLM provider to be used during the test
-# - PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
-# - PROVIDER_PROJECT_ID - for use with watsonx, can leave empty otherwise
-# - MODEL - name of the model to use during e2e testing
+# - [PROVIDERNAME]_PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
 # - OLS_IMAGE - pullspec for the ols image to deploy on the cluster
 
 
@@ -23,13 +20,8 @@ if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 
 function finish() {
     if [ "${LOCAL_MODE:-0}" -eq 1 ]; then
-      # When running locally, just cleanup the tmp files
+      # When running locally, cleanup the tmp files
       rm -rf "$ARTIFACT_DIR"
-    else
-      # when running as a ci job, gather more info from the cluster
-      # to be included in the job artifacts and don't cleanup
-      # the artifact dir so it can be archived w/ the job
-      must_gather
     fi
 }
 trap finish EXIT
@@ -39,44 +31,28 @@ trap finish EXIT
 # If ARTIFACT_DIR is not defined, we are running locally on a developer machine
 if [ -z "${ARTIFACT_DIR:-}" ]; then
     # temp directory for generated resource yamls
-    readonly ARTIFACT_DIR=$(mktemp -d)
+    export ARTIFACT_DIR=$(mktemp -d)
     # Clean up the tmpdir on exit
     readonly LOCAL_MODE=1
 fi
 
 
-# Deletes may fail if this is the first time running against
-# the cluster, so ignore failures
-oc delete --wait --ignore-not-found ns openshift-lightspeed
-oc delete --wait --ignore-not-found clusterrole ols-sar-check
-oc delete --wait --ignore-not-found clusterrolebinding ols-sar-check
-oc delete --wait --ignore-not-found clusterrole ols-user
+rc=0
 
-oc create ns openshift-lightspeed
-oc project openshift-lightspeed
+set +e
+# runsuite arguments:
+# suiteid test_tags provider provider_keypath provider_url provider_project_id provider provider_deployment_name llm_model ols_image
+run_suite "azure_openai" "not standalone" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "https://ols-test.openai.azure.com/" "" "0301-dep" "gpt-3.5-turbo" "quay.io/openshift/lightspeed-service-api-rag:latest"
+(( rc = rc || $? ))
 
-# create the llm api key secret ols will mount
-oc create secret generic llmcreds --from-file=llmkey="$PROVIDER_KEY_PATH"
+run_suite "bam" "not standalone" "bam" "$BAM_PROVIDER_KEY_PATH" "" "" "" "ibm/granite-13b-chat-v2" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+(( rc = rc || $? ))
 
-# create the configmap containing the ols config yaml
-envsubst < tests/config/cluster_install/ols_configmap.yaml > "$ARTIFACT_DIR/ols_configmap.yaml"
-oc create -f "$ARTIFACT_DIR/ols_configmap.yaml"
+run_suite "openai" "not standalone" "openai" "$OPENAI_PROVIDER_KEY_PATH" "" "" "" "gpt-3.5-turbo" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+(( rc = rc || $? ))
 
-# create the ols deployment and related resources (service, route, rbac roles)
-envsubst < tests/config/cluster_install/ols_manifests.yaml > "$ARTIFACT_DIR/ols_manifests.yaml"
-oc create -f "$ARTIFACT_DIR/ols_manifests.yaml"
+run_suite "watsonx" "not standalone" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "" "ad629765-c373-4731-9d69-dc701724c081" "" "ibm/granite-13b-chat-v2" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+(( rc = rc || $? ))
+set -e
 
-# create a new service account with no special permissions and get an auth token for it
-oc create sa olsuser
-export OLS_TOKEN=$(oc create token olsuser)
-
-# grant the service account permission to query ols
-oc adm policy add-cluster-role-to-user ols-user -z olsuser
-
-# determine the hostname for the ols route
-export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
-
-# wait for the ols api server to come up
-wait_for_ols "$OLS_URL"
-
-make test-e2e
+exit $rc

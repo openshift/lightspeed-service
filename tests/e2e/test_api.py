@@ -2,6 +2,7 @@
 
 import os
 
+import pytest
 import requests
 from httpx import Client
 
@@ -231,6 +232,7 @@ def test_valid_question() -> None:
         )
 
 
+@pytest.mark.rag
 def test_rag_question() -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
@@ -330,14 +332,16 @@ def test_metrics() -> None:
     assert 'response_duration_seconds_sum{path="/metrics/"}' in response.text
 
 
+@pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
     # let's assume that auth. is enabled when token is specified
-    if token:
-        response = client.post(
-            "/v1/query",
-            json={"query": "what is foo in bar?"},
-            timeout=NON_LLM_REST_API_TIMEOUT,
-            headers={"Authorization": "Bearer wrong-token"},
-        )
-        assert response.status_code == requests.codes.forbidden
+    if not token:
+        pytest.skip("skipping authentication tests because OLS_TOKEN is not set")
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is foo in bar?"},
+        timeout=NON_LLM_REST_API_TIMEOUT,
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    assert response.status_code == requests.codes.forbidden

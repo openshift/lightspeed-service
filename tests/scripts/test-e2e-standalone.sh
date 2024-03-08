@@ -15,6 +15,18 @@ set -eou pipefail
 # 3) Invoke the test-e2e Makefile target
 # 4) Terminate the OLS server
 
+function wait_for_ols() {
+  for i in {1..30}; do
+    echo Checking OLS readiness, attempt "$i" of 30
+    curl -sk --fail "$1/readiness"
+    if [ $? -eq 0 ]; then
+      return 0
+    fi  
+    sleep 6
+  done
+  return 1
+}
+
 # temp directory for config file, output logs
 TMPDIR=$(mktemp -d)
 
@@ -68,28 +80,16 @@ function finish() {
 }
 trap finish EXIT
 
-# Don't exit on error while polling the OLS server
-# Curl will return error exit codes until OLS is available
 set +e
-STARTED=0
-for i in {1..20}; do
-  echo Checking OLS readiness, attempt "$i" of 20
-  curl -s localhost:8080/readiness
-  if [ $? -eq 0 ]; then
-    STARTED=1
-    break
-  fi  
-  sleep 6
-done
-set -e
-
-if [ $STARTED -ne 1 ]; then
-  echo "OLS failed to start, OLS log output:"
+wait_for_ols "localhost:8080"
+if [ $? -ne 0 ]; then
+  echo "Timed out waiting for OLS to start, OLS log output:"
   cat "$OLS_LOGS"
   echo "Config file:"
   cat "$OLS_CONFIG_FILE"
   exit 1
 fi
+set -e
 
 echo Done waiting for OLS server start, running e2e
-make test-e2e
+SUITE_ID=standalone TEST_TAGS="not cluster" make test-e2e
