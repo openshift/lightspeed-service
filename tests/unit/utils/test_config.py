@@ -669,9 +669,9 @@ dev_config:
 """
             )
         )
-    except Exception:
+    except Exception as e:
         print(traceback.format_exc())
-        pytest.fail()
+        pytest.fail(f"loading valid configuration failed: {e}")
 
 
 def test_valid_config_file():
@@ -737,9 +737,9 @@ def test_valid_config_file():
             }
         )
         assert config.config == expected_config
-    except Exception:
+    except Exception as e:
         print(traceback.format_exc())
-        pytest.fail()
+        pytest.fail(f"loading valid configuration failed: {e}")
 
 
 def test_valid_config_file_with_redis():
@@ -788,9 +788,9 @@ def test_valid_config_file_with_redis():
             }
         )
         assert config.config == expected_config
-    except Exception:
+    except Exception as e:
         print(traceback.format_exc())
-        pytest.fail()
+        pytest.fail(f"loading valid configuration failed: {e}")
 
 
 def test_config_file_without_logging_config():
