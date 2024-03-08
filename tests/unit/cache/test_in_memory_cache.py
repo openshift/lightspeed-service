@@ -1,10 +1,12 @@
 """Unit tests for InMemoryCache class."""
 
 import pytest
+from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
 from ols.app.models.config import MemoryConfig
 from ols.src.cache.in_memory_cache import InMemoryCache
+from ols.src.query_helpers.chat_history import ChatHistory
 from ols.utils import suid
 
 conversation_id = suid.get_suid()
@@ -21,15 +23,38 @@ def cache():
 
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id, "value1")
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == "value1"
+    cache.insert_or_append(
+        constants.DEFAULT_USER_UID,
+        conversation_id,
+        ChatHistory.get_chat_message_history("user_message", "ai_response"),
+    )
+    expected_cache = [
+        HumanMessage(content="user_message"),
+        AIMessage(content="ai_response"),
+    ]
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
 
 
 def test_insert_or_append_existing_key(cache):
     """Test the behavior of insert_or_append method for existing item."""
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id, "value1")
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id, "value2")
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == "value1\nvalue2"
+    cache.insert_or_append(
+        constants.DEFAULT_USER_UID,
+        conversation_id,
+        ChatHistory.get_chat_message_history("user_message1", "ai_response1"),
+    )
+    cache.insert_or_append(
+        constants.DEFAULT_USER_UID,
+        conversation_id,
+        ChatHistory.get_chat_message_history("user_message2", "ai_response2"),
+    )
+    expected_cache = [
+        HumanMessage(content="user_message1"),
+        AIMessage(content="ai_response1"),
+    ]
+    expected_cache.extend(
+        [HumanMessage(content="user_message2"), AIMessage(content="ai_response2")]
+    )
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
 
 
 def test_insert_or_append_overflow(cache):
@@ -42,14 +67,21 @@ def test_insert_or_append_overflow(cache):
     for i in range(capacity + 1):
         user = f"{user_name_prefix}{i}"
         value = f"value{i}"
-        cache.insert_or_append(user, conversation_id, value)
+        cache.insert_or_append(
+            user,
+            conversation_id,
+            ChatHistory.get_chat_message_history(value, "ai_response"),
+        )
 
     # Ensure the oldest entry is evicted
     assert cache.get(f"{user_name_prefix}0", conversation_id) is None
     # Ensure the newest entry is still present
+    expected_result = [
+        HumanMessage(content=f"value{capacity}"),
+        AIMessage(content="ai_response"),
+    ]
     assert (
-        cache.get(f"{user_name_prefix}{capacity}", conversation_id)
-        == f"value{capacity}"
+        cache.get(f"{user_name_prefix}{capacity}", conversation_id) == expected_result
     )
 
 

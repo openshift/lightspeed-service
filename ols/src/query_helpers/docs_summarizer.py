@@ -4,6 +4,7 @@ import logging
 from typing import Any, Optional
 
 from langchain.chains import LLMChain
+from langchain_core.messages.base import BaseMessage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
@@ -74,7 +75,7 @@ class DocsSummarizer(QueryHelper):
         )
         # Truncate rag context, if required.
         token_handler_obj = TokenHandler()
-        interim_prompt = CHAT_PROMPT.format(context="", query=query)
+        interim_prompt = CHAT_PROMPT.format(context="", query=query, chat_history=[])
         prompt_token_count = len(token_handler_obj.text_to_tokens(interim_prompt))
         available_tokens = (
             context_window_size - response_token_limit - prompt_token_count
@@ -91,7 +92,7 @@ class DocsSummarizer(QueryHelper):
         conversation_id: str,
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
-        history: Optional[str] = None,
+        history: list[BaseMessage] = [],
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Summarize the given query based on the provided conversation context.
@@ -141,14 +142,13 @@ class DocsSummarizer(QueryHelper):
             prompt=CHAT_PROMPT,
             verbose=verbose,
         )
-
         with TokenMetricUpdater(
             llm=bare_llm,
             provider=self.provider,
             model=self.model,
         ) as token_counter:
             summary = chat_engine.invoke(
-                input={"context": rag_context, "query": query},
+                input={"context": rag_context, "query": query, "chat_history": history},
                 config={"callbacks": [token_counter]},
             )
 

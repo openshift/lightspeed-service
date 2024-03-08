@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from langchain_core.messages.base import BaseMessage
+
 from ols.utils.suid import check_suid
 
 
@@ -39,7 +41,7 @@ class Cache(ABC):
         return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
-    def get(self, user_id: str, conversation_id: str) -> Optional[str]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
         """Abstract method to retrieve a value from the cache.
 
         Args:
@@ -51,7 +53,9 @@ class Cache(ABC):
         """
 
     @abstractmethod
-    def insert_or_append(self, user_id: str, conversation_id: str, value: str) -> None:
+    def insert_or_append(
+        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+    ) -> None:
         """Abstract method to store a value in the cache.
 
         Args:
