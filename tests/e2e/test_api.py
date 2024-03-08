@@ -47,6 +47,18 @@ def get_rest_api_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
+def get_response_duration_seconds_value(client, path, default=None):
+    """Retrieve counter value from metrics."""
+    response = read_metrics(client)
+    counter_name = "response_duration_seconds_sum"
+
+    # counters with response durations have the following format:
+    # response_duration_seconds_sum{path="/v1/debug/query"} 0.123
+    prefix = f'{counter_name}{{path="{path}"}} '
+
+    return get_counter_value(counter_name, prefix, response, default, to_int=False)
+
+
 def get_model_provider_counter_value(
     client, counter_name, model, provider, default=None
 ):
@@ -60,7 +72,7 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
-def get_counter_value(counter_name, prefix, response, default=None):
+def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
     """Try to retrieve counter value from response with all metrics."""
     lines = [line.strip() for line in response.split("\n")]
 
@@ -68,8 +80,12 @@ def get_counter_value(counter_name, prefix, response, default=None):
     for line in lines:
         if line.startswith(prefix):
             without_prefix = line[len(prefix) :]
-            # parse as float, convert that float to integer
-            return int(float(without_prefix))
+            # parse counter value as float
+            value = float(without_prefix)
+            # convert that float to integer if needed
+            if to_int:
+                return int(value)
+            return value
 
     # counter was not found, which might be ok for first API call
     if default is not None:
@@ -83,6 +99,13 @@ def check_counter_increases(endpoint, old_counter, new_counter, delta=1):
     assert (
         new_counter >= old_counter + delta
     ), f"REST API counter for {endpoint} has not been updated properly"
+
+
+def check_duration_sum_increases(endpoint, old_counter, new_counter):
+    """Check if the counter value with total duration increases as expected."""
+    assert (
+        new_counter > old_counter
+    ), f"Duration sum for {endpoint} has not been updated properly"
 
 
 class RestAPICallCounterChecker:
@@ -99,13 +122,24 @@ class RestAPICallCounterChecker:
         self.old_counter = get_rest_api_counter_value(
             self.client, self.endpoint, status_code=self.status_code, default=0
         )
+        self.old_duration = get_response_duration_seconds_value(
+            self.client, self.endpoint, default=0
+        )
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         """Retrieve new counter value after calling REST API, and check if it increased."""
+        # test if REST API endpoint counter has been updated
         new_counter = get_rest_api_counter_value(
             self.client, self.endpoint, status_code=self.status_code
         )
         check_counter_increases(self.endpoint, self.old_counter, new_counter)
+
+        # test if duration counter has been updated
+        new_duration = get_response_duration_seconds_value(
+            self.client,
+            self.endpoint,
+        )
+        check_duration_sum_increases(self.endpoint, self.old_duration, new_duration)
 
 
 def test_readiness():
