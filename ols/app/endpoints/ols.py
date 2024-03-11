@@ -136,14 +136,7 @@ def generate_response(
             logger.info(
                 f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
             )
-            return (
-                (
-                    "I can only answer questions about OpenShift and Kubernetes. "
-                    "Please rephrase your question"
-                ),
-                [],
-                False,
-            )
+            return constants.INVALID_QUERY_RESP, [], False
         case constants.SUBJECT_VALID:
             logger.info(
                 f"{conversation_id} - Question is relevant to kubernetes or ocp"

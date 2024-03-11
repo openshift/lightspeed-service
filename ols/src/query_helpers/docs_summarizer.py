@@ -173,11 +173,7 @@ class DocsSummarizer(QueryHelper):
 
         if len(rag_context) == 0:
             logger.info("Using llm to answer the query without reference content")
-            response = (
-                "The following response was generated without access to reference content:"
-                "\n\n"
-                f"{response}"
-            )
+            response = constants.NO_RAG_CONTENT_RESP + str(response)
 
         logger.info(f"{conversation_id} Summary response: {response}")
         logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
