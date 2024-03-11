@@ -435,16 +435,16 @@ class ConversationCacheConfig(BaseModel):
         """Validate conversation cache config."""
         if self.type is None:
             raise InvalidConfigurationError("missing conversation cache type")
-        else:
-            match self.type:
-                case constants.REDIS_CACHE:
-                    self.redis.validate_yaml()
-                case constants.IN_MEMORY_CACHE:
-                    self.memory.validate_yaml()
-                case _:
-                    raise InvalidConfigurationError(
-                        f"unknown conversation cache type: {self.type}"
-                    )
+        # cache type is specified, we can decide which cache configuration to validate
+        match self.type:
+            case constants.REDIS_CACHE:
+                self.redis.validate_yaml()
+            case constants.IN_MEMORY_CACHE:
+                self.memory.validate_yaml()
+            case _:
+                raise InvalidConfigurationError(
+                    f"unknown conversation cache type: {self.type}"
+                )
 
 
 class LoggingConfig(BaseModel):
