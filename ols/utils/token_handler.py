@@ -2,6 +2,7 @@
 
 import logging
 
+from langchain_core.messages.base import BaseMessage
 from llama_index.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -50,6 +51,23 @@ class TokenHandler:
             text: ex "This is my doc"
         """
         return self._encoder.decode(tokens)
+
+    def message_to_tokens(self, message: BaseMessage) -> list[int]:
+        """Convert message (ie. HumanMessage etc.) to tokens.
+
+        Args:
+            message: instance of any class derived from BaseMessage
+
+        Returns:
+            List of tokens, ex: [1, 2, 3, 4]
+        """
+        content = message.content
+
+        # content is either string or list of strings
+        if isinstance(content, str):
+            return self.text_to_tokens(content)
+        content = " ".join(content)
+        return self.text_to_tokens(content)
 
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
