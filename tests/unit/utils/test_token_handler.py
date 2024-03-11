@@ -128,3 +128,81 @@ class TestTokenHandler(TestCase):
         message = AIMessage(content=["message from", "AI system"])
         context = self._token_handler_obj.message_to_tokens(message)
         assert len(context) == 4
+
+    def test_limit_conversation_history_when_no_history_exists(self):
+        """Check the behaviour of limiting conversation history if it does not exists."""
+        history, truncated = self._token_handler_obj.limit_conversation_history(
+            [], 1000
+        )
+        # history must be empty
+        assert history == []
+        assert not truncated
+
+    def test_limit_short_conversation_history(self):
+        """Check the behaviour of limiting short conversation history."""
+        history = [
+            HumanMessage(content="first message from human"),
+            AIMessage(content="first answer from AI"),
+            HumanMessage(content="second message from human"),
+            AIMessage(content="second answer from AI"),
+        ]
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 1000)
+        )
+        # history must remain the same and truncate flag should be False
+        assert truncated_history == history
+        assert not truncated
+
+    def test_limit_long_conversation_history(self):
+        """Check the behaviour of limiting long conversation history."""
+        history = [
+            HumanMessage(content="first message from human"),
+            AIMessage(content="first answer from AI"),
+            HumanMessage(content="second message from human"),
+            AIMessage(content="second answer from AI"),
+            HumanMessage(content="third message from human"),
+            AIMessage(content="third answer from AI"),
+        ]
+
+        # try to truncate to 16 tokens
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 16)
+        )
+        # history should truncate to 4 newest messages only and flag should be True
+        assert len(truncated_history) == 4
+        assert truncated_history == history[2:]
+        assert truncated
+
+        # try to truncate to 8 tokens
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 8)
+        )
+        # history should truncate to 2 messages only and flag should be True
+        assert len(truncated_history) == 2
+        assert truncated_history == history[4:]
+        assert truncated
+
+        # try to truncate to 4 tokens - this means just one message
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 4)
+        )
+        # history should truncate to one message only and flag should be True
+        assert len(truncated_history) == 1
+        assert truncated_history == history[5:]
+        assert truncated
+
+        # try to truncate to zero tokens
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 0)
+        )
+        # history should truncate to empty list and flag should be True
+        assert truncated_history == []
+        assert truncated
+
+        # try to truncate to one token, but the 1st message is already longer than 1 token
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 1)
+        )
+        # history should truncate to empty list and flag should be True
+        assert truncated_history == []
+        assert truncated

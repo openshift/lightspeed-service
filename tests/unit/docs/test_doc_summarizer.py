@@ -25,7 +25,7 @@ def test_summarize():
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
-    history = None
+    history = []  # empty history
     summary = summarizer.summarize(conversation_id, question, rag_index, history)
     assert question in summary["response"]
     documents = summary["referenced_documents"]

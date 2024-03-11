@@ -125,17 +125,34 @@ class DocsSummarizer(QueryHelper):
 
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
-        truncated = (
-            False  # TODO tisnik: https://issues.redhat.com/browse/OLS-58
-            # need to be implemented based on provided inputs
-        )
 
         if vector_index is not None:
             rag_context_data = self._get_rag_data(vector_index, query)
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
 
+        token_handler = TokenHandler()
+
         rag_context, referenced_documents = self._format_rag_data(rag_context_data)
+
+        interim_prompt = CHAT_PROMPT.format(
+            context=rag_context, query=query, chat_history=[]
+        )
+        prompt_token_count = len(token_handler.text_to_tokens(interim_prompt))
+        token_config = config.llm_config.providers.get(self.provider)
+        if token_config is not None:
+            token_config = token_config.models.get(self.model)
+            response_token_limit = token_config.response_token_limit
+            context_window_size = token_config.context_window_size
+            available_tokens = (
+                context_window_size - response_token_limit - prompt_token_count
+            )
+
+            history, truncated = token_handler.limit_conversation_history(
+                history, available_tokens
+            )
+        else:
+            truncated = False
 
         chat_engine = LLMChain(
             llm=bare_llm,
