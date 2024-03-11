@@ -78,6 +78,9 @@ get-rag: ## Download RAG embeddings model and index
 	unzip -qq -o local.zip && \
 	rm local.zip && popd
 
+schema:	## Generate OpenAPI schema file
+	python scripts/generate_openapi_schema.py docs/openapi.json
+
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''
