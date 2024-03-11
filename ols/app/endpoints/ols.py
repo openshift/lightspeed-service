@@ -109,7 +109,9 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseMessage]:
+def retrieve_previous_input(
+    user_id: str, llm_request: LLMRequest
+) -> Optional[list[BaseMessage]]:
     """Retrieve previous user input, if exists."""
     previous_input: list[BaseMessage] | None = []
     if llm_request.conversation_id:
