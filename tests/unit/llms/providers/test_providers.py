@@ -44,7 +44,7 @@ def test_valid_provider_is_registered():
 
 def test_invalid_provider_is_not_registered():
     """Test raise when invalid (not `LLMProvider` subclass) is registered."""
-    with pytest.raises(ValueError, match="LLMProvider subclass required"):
+    with pytest.raises(TypeError, match="LLMProvider subclass required"):
 
         @register_llm_provider_as("spam")
         class Spam:
