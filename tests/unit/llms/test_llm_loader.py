@@ -71,22 +71,3 @@ def test_unsupported_provider_error():
 
     with pytest.raises(UnsupportedProviderError):
         load_llm(provider="some-provider", model="model")
-
-
-@patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"])
-def test_load_llm(registered_fake_provider):
-    """Test load_llm function."""
-    providers = LLMProviders(
-        [
-            {
-                "name": "fake-provider",
-                "type": "fake-provider",
-                "models": [{"name": "model"}],
-            }
-        ]
-    )
-    config.init_empty_config()
-    config.config.llm_providers = providers
-
-    llm = load_llm(provider="fake-provider", model="model")
-    assert llm == "fake_llm"

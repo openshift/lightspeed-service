@@ -162,11 +162,6 @@ class ProviderConfig(BaseModel):
         # Default provider type to be the provider name, unless
         # specified explicitly.
         self.type = str(data.get("type", self.name)).lower()
-        if self.type not in constants.SUPPORTED_PROVIDER_TYPES:
-            raise InvalidConfigurationError(
-                f"invalid provider type: {self.type}, supported types are"
-                f" {set(constants.SUPPORTED_PROVIDER_TYPES)}"
-            )
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
         self.project_id = data.get("project_id", None)

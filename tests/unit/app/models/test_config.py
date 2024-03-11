@@ -513,27 +513,6 @@ def test_llm_providers_type_defaulting():
     assert llm_providers.providers["test_provider"].type == "bam"
 
 
-def test_llm_providers_type_validation():
-    """Test that only known provider types are allowed."""
-    with pytest.raises(InvalidConfigurationError) as excinfo:
-        LLMProviders(
-            [
-                {
-                    "name": "invalid_provider",
-                },
-            ]
-        )
-    assert "invalid provider type: invalid_provider" in str(excinfo.value)
-
-    with pytest.raises(InvalidConfigurationError) as excinfo:
-        LLMProviders(
-            [
-                {"name": "bam", "type": "invalid_type"},
-            ]
-        )
-    assert "invalid provider type: invalid_type" in str(excinfo.value)
-
-
 def test_llm_providers_watsonx_required_projectid():
     """Test that project_id is required for watsonx provider."""
     with pytest.raises(InvalidConfigurationError) as excinfo:
