@@ -6,7 +6,7 @@ from llama_index.schema import NodeWithScore
 from tiktoken import get_encoding
 
 # TODO: distribute these constants if needed
-TOKENIZER_MODEL = "cl100k_base"
+DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 
 MINIMUM_CONTEXT_LIMIT = 1
 SIMILARITY_SCORE_THRESHOLD = 0.5
@@ -23,9 +23,9 @@ class TokenHandler:
     Truncate text based on token limit.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, encoding_name: str = DEFAULT_TOKENIZER_MODEL) -> None:
         """Initialize the class instance."""
-        self._encoder = get_encoding(TOKENIZER_MODEL)
+        self._encoder = get_encoding(encoding_name)
 
     def text_to_tokens(self, text: str) -> list[int]:
         """Convert text to tokens.
