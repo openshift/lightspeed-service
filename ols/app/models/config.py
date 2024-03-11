@@ -671,7 +671,11 @@ class Config(BaseModel):
     ) -> None:
         provider_attr_value = getattr(self.ols_config, provider_attr_name, None)
         model_attr_value = getattr(self.ols_config, model_attr_name, None)
-        if isinstance(provider_attr_value, str) and isinstance(model_attr_value, str):
+
+        provider_specified = isinstance(provider_attr_value, str)
+        model_specified = isinstance(model_attr_value, str)
+
+        if provider_specified and model_specified:
             provider_config = self.llm_providers.providers.get(provider_attr_value)
             if provider_config is None:
                 raise InvalidConfigurationError(
@@ -682,15 +686,11 @@ class Config(BaseModel):
                 raise InvalidConfigurationError(
                     f"{model_attr_name} specifies an unknown model {model_attr_value}"
                 )
-        elif isinstance(provider_attr_value, str) and not isinstance(
-            model_attr_value, str
-        ):
+        elif provider_specified and not model_specified:
             raise InvalidConfigurationError(
                 f"{provider_attr_name} is specified, but {model_attr_name} is missing"
             )
-        elif not isinstance(provider_attr_value, str) and isinstance(
-            model_attr_value, str
-        ):
+        elif not provider_specified and model_specified:
             raise InvalidConfigurationError(
                 f"{model_attr_name} is specified, but {provider_attr_name} is missing"
             )
