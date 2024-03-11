@@ -38,7 +38,7 @@ def conversation_request(
         Response containing the processed information.
     """
     # Initialize variables
-    previous_input = None
+    previous_input = []
     referenced_documents: list[str] = []
 
     # auth contains tuple with user ID (in UUID format) and user name
@@ -109,20 +109,18 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(
-    user_id: str, llm_request: LLMRequest
-) -> Optional[list[BaseMessage]]:
+def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseMessage]:
     """Retrieve previous user input, if exists."""
-    previous_input: list[BaseMessage] | None = []
+    previous_input: list[BaseMessage] = []
     if llm_request.conversation_id:
-        previous_input = config.conversation_cache.get(
+        cache_content = config.conversation_cache.get(
             user_id, llm_request.conversation_id
         )
+        if cache_content is not None:
+            previous_input = cache_content
         logger.info(
             f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
         )
-        if not previous_input:
-            previous_input = []
     return previous_input
 
 
