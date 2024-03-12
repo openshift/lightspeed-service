@@ -18,4 +18,4 @@ RUN microdnf install -y unzip wget \
     && microdnf remove -y unzip wget
 
 COPY scripts/download_embeddings_model.py .
-RUN python3.11 download_embeddings_model.py embeddings_model && rm download_embeddings_model.py
+RUN python3.11 download_embeddings_model.py -l embeddings_model -r BAAI/bge-base-en && rm download_embeddings_model.py
