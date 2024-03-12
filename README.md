@@ -202,11 +202,18 @@ Web page with Swagger UI has the standard `/docs` endpoint. If the service is ru
 
 ### OpenAPI
 
-OpenAPI schema is available on `/openapi.json` endpoint. For example, for service running on localhost on port 8080, it can be accessed and pretty printed by using following command:
+OpenAPI schema is available [docs/openapi.json](docs/openapi.json). It is possible to re-generate the document with schema by using:
+
+```
+make schema
+```
+
+When the OLS service is started OpenAPI schema is available on `/openapi.json` endpoint. For example, for service running on localhost on port 8080, it can be accessed and pretty printed by using following command:
 
 ```sh
 curl 'http://127.0.0.1:8080/openapi.json' | jq .
 ```
+
 
 ### Metrics
 

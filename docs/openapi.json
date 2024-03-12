@@ -1,0 +1,433 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Swagger OpenShift LightSpeed Service - OpenAPI",
+        "description": "OpenShift LightSpeed Service API specification.",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/v1/query": {
+            "post": {
+                "tags": [
+                    "query"
+                ],
+                "summary": "Conversation Request",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query and conversation ID.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the processed information.",
+                "operationId": "conversation_request_v1_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LLMRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/debug/query": {
+            "post": {
+                "tags": [
+                    "query"
+                ],
+                "summary": "Conversation Request Debug Api",
+                "description": "Handle requests for the base LLM completion endpoint.\n\nArgs:\n    llm_request: The request containing a query.\n\nReturns:\n    Response containing the processed information.",
+                "operationId": "conversation_request_debug_api_v1_debug_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LLMRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/feedback": {
+            "post": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "User Feedback",
+                "description": "Handle feedback requests.\n\nArgs:\n    feedback_request: The request containing feedback information.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback.",
+                "operationId": "user_feedback_v1_feedback_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FeedbackRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeedbackResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/readiness": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Readiness Probe Get Method",
+                "description": "Ready status of service.",
+                "operationId": "readiness_probe_get_method_readiness_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "head": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Readiness Probe Head Method",
+                "description": "Ready status of service.",
+                "operationId": "readiness_probe_head_method_readiness_head",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/liveness": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Liveness Probe Get Method",
+                "description": "Live status of service.",
+                "operationId": "liveness_probe_get_method_liveness_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "head": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Liveness Probe Head Method",
+                "description": "Live status of service.",
+                "operationId": "liveness_probe_head_method_liveness_head",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "FeedbackRequest": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "feedback_object": {
+                        "type": "object",
+                        "title": "Feedback Object"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "feedback_object"
+                ],
+                "title": "FeedbackRequest",
+                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    feedback_object: The JSON blob representing feedback.\n\nExample:\n    ```python\n    feedback_request = FeedbackRequest(\n        conversation_id=\"12345678-abcd-0000-0123-456789abcdef\",\n        feedback_object={\"rating\": 5, \"comment\": \"Great service!\"}\n    )\n    ```",
+                "examples": [
+                    {
+                        "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                        "feedback_object": {
+                            "comment": "Great service!",
+                            "rating": 5
+                        }
+                    }
+                ]
+            },
+            "FeedbackResponse": {
+                "properties": {
+                    "response": {
+                        "type": "string",
+                        "title": "Response"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "response"
+                ],
+                "title": "FeedbackResponse",
+                "description": "Model representing a response to a feedback request.\n\nAttributes:\n    response: The response of the feedback request.\n\nExample:\n    ```python\n    feedback_response = FeedbackResponse(response=\"feedback received\")\n    ```",
+                "examples": [
+                    {
+                        "response": "feedback received"
+                    }
+                ]
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "title": "HealthResponse",
+                "description": "Model representing a response to a health request.\n\nAttributes:\n    status: The status of the app.\n\nExample:\n    ```python\n    health_response = HealthResponse(status={\"status\": \"healthy\"})\n    ```",
+                "examples": [
+                    {
+                        "status": {
+                            "status": "healthy"
+                        }
+                    }
+                ]
+            },
+            "LLMRequest": {
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "title": "Query"
+                    },
+                    "conversation_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversation Id"
+                    },
+                    "provider": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Provider"
+                    },
+                    "model": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "query"
+                ],
+                "title": "LLMRequest",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "examples": [
+                    {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "model": "gpt-3.5-turbo",
+                        "provider": "openai",
+                        "query": "write a deployment yaml for the mongodb image"
+                    }
+                ]
+            },
+            "LLMResponse": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "response": {
+                        "type": "string",
+                        "title": "Response"
+                    },
+                    "referenced_documents": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Referenced Documents"
+                    },
+                    "truncated": {
+                        "type": "boolean",
+                        "title": "Truncated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "response",
+                    "referenced_documents",
+                    "truncated"
+                ],
+                "title": "LLMResponse",
+                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs for the documents used to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.",
+                "examples": [
+                    {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "referenced_documents": [
+                            "https://docs.openshift.com/container-platform/4.14/operators/understanding/olm/olm-understanding-olm.html"
+                        ],
+                        "response": "Operator Lifecycle Manager (OLM) helps users install..."
+                    }
+                ]
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
