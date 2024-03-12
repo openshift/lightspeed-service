@@ -1,5 +1,6 @@
 """Integration tests for REST API endpoint that provides OpenAPI specification."""
 
+import json
 import os
 from unittest.mock import patch
 
@@ -49,3 +50,23 @@ def test_openapi_endpoint_head_method():
     response = client.head("/openapi.json")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
+
+
+def test_openapi_content():
+    """Check if the pre-generated OpenAPI schema is up-to date."""
+    # retrieve pre-generated OpenAPI schema
+    with open("docs/openapi.json", "r") as fin:
+        pre_generated_schema = json.load(fin)
+
+    # retrieve current OpenAPI schema
+    response = client.get("/openapi.json")
+    assert response.status_code == requests.codes.ok
+    current_schema = response.json()
+
+    # remove node that is not included in pre-generated OpenAPI schema
+    del current_schema["info"]["license"]
+
+    # compare schemas (as dicts)
+    assert (
+        current_schema == pre_generated_schema
+    ), "Pre-generated schema is not up to date. Fix it with `make schema`."
