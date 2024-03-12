@@ -74,6 +74,33 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
+def read_info_attribute_value(lines, info_node_name):
+    """Read value of attribute stored in some Info node."""
+    prefix = f'{info_node_name}{{name="'
+
+    for line in lines:
+        if line.startswith(prefix):
+            # strip prefix
+            value = line[len(prefix) :]
+
+            # strip suffix
+            return value[: value.find('"')]
+
+    # info node was not found
+    return None
+
+
+def get_model_and_provider(client):
+    """Read configured model and provider from metrics."""
+    response = read_metrics(client)
+    lines = [line.strip() for line in response.split("\n")]
+
+    model = read_info_attribute_value(lines, "selected_model_info")
+    provider = read_info_attribute_value(lines, "selected_provider_info")
+
+    return model, provider
+
+
 def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
     """Try to retrieve counter value from response with all metrics."""
     lines = [line.strip() for line in response.split("\n")]
@@ -167,9 +194,13 @@ class TokenCounterChecker:
         self.model = model
         self.provider = provider
         self.client = client
+        # when model nor provider are specified (OLS cluster), don't run checks
+        self.skip_check = model is None or provider is None
 
     def __enter__(self):
         """Retrieve old counter values before calling LLM."""
+        if self.skip_check:
+            return
         self.old_counter_token_sent_total = get_model_provider_counter_value(
             self.client, "llm_token_sent_total", self.model, self.provider, default=0
         )
@@ -183,6 +214,8 @@ class TokenCounterChecker:
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         """Retrieve new counter value after calling REST API, and check if it increased."""
+        if self.skip_check:
+            return
         # check if counter for sent tokens has been updated
         new_counter_token_sent_total = get_model_provider_counter_value(
             self.client, "llm_token_sent_total", self.model, self.provider
@@ -327,6 +360,42 @@ def test_valid_question() -> None:
             "The following response was generated without access to reference content:"
             not in json_response["response"]
         )
+
+
+@pytest.mark.standalone
+def test_valid_question_tokens_counter() -> None:
+    """Check how the tokens counter are updated accordingly."""
+    model, provider = get_model_and_provider(client)
+
+    endpoint = "/v1/query"
+    with (
+        RestAPICallCounterChecker(client, endpoint),
+        TokenCounterChecker(client, model, provider),
+    ):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+
+@pytest.mark.standalone
+def test_invalid_question_tokens_counter() -> None:
+    """Check how the tokens counter are updated accordingly."""
+    model, provider = get_model_and_provider(client)
+
+    endpoint = "/v1/query"
+    with (
+        RestAPICallCounterChecker(client, endpoint),
+        TokenCounterChecker(client, model, provider),
+    ):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": "test query"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
 
 
 @pytest.mark.rag
