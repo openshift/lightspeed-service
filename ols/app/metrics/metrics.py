@@ -1,6 +1,6 @@
 """Prometheus metrics that are exposed by REST API."""
 
-from prometheus_client import Counter, Histogram, make_asgi_app
+from prometheus_client import Counter, Histogram, Info, make_asgi_app
 
 rest_api_calls_total = Counter(
     "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
@@ -22,6 +22,11 @@ llm_token_sent_total = Counter(
 llm_token_received_total = Counter(
     "llm_token_received_total", "LLM tokens received", ["provider", "model"]
 )
+
+# expose selected provider and model
+# (these are represented by counters, but the only meaning is presence of label)
+selected_provider = Info("selected_provider", "Selected provider")
+selected_model = Info("selected_model", "Selected model")
 
 # register metric
 metrics_app = make_asgi_app()

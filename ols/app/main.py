@@ -41,6 +41,11 @@ else:
         "in the `dev_config` section of the configuration file."
     )
 
+# update provider and model as soon as possible so the metrics will be visible
+# even for first scraping
+metrics.selected_provider.info({"name": config.ols_config.default_provider})
+metrics.selected_model.info({"name": config.ols_config.default_model})
+
 
 @app.middleware("")
 async def rest_api_counter(
