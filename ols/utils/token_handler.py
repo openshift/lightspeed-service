@@ -111,3 +111,22 @@ class TokenHandler:
             max_tokens -= available_tokens
 
         return context
+
+    def limit_conversation_history(
+        self, history: list[BaseMessage], limit: int = 0
+    ) -> tuple[list[BaseMessage], bool]:
+        """Limit conversation history to specified number of tokens."""
+        total_length = 0
+        index = 0
+
+        token_handler_obj = TokenHandler()
+
+        for message in reversed(history):
+            message_length = len(token_handler_obj.message_to_tokens(message))
+            total_length += message_length
+            # if total length of already checked messages is higher than limit
+            # then skip all remaining messages (we need to skip from top)
+            if total_length > limit:
+                return history[len(history) - index :], True
+            index += 1
+        return history, False
