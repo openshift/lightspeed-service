@@ -19,3 +19,6 @@ RUN make BUILD_TLS=yes && \
 
 # Expose the default Redis port
 EXPOSE 6379
+
+# Start redis server
+ENTRYPOINT [ "redis-server", "/etc/redis/redis.conf" ]
