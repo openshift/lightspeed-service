@@ -44,11 +44,15 @@ def test_metrics():
         "llm_validation_errors_total",
         "llm_token_sent_total",
         "llm_token_received_total",
+        "selected_provider_info",
+        "selected_model_info",
     )
 
     # check if all counters are present
     for expected_counter in expected_counters:
-        assert f"{expected_counter} " in response_text
+        assert (
+            f"{expected_counter} " in response_text
+        ), f"Counter {expected_counter} not found in {response_text}"
 
 
 def get_counter_value(client, counter_name, path, status_code):
