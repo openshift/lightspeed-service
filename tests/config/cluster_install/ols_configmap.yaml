@@ -1,6 +1,8 @@
 # Env vars for use w/ envsubst:
 # $PROVIDER - the llm provider to use (e.g. openai)
 # $PROVIDER_PROJECT_ID - for use with watsonx, can leave empty otherwise
+# $PROVIDER_URL - set the provider api url/override the default, primarily for use with azure openai
+# $PROVIDER_DEPLOYMENT_NAME - for use with azure openai, can leave empty otherwise
 # $MODEL - the llm model to use from the provider (e.g. gpt-3.5.-turbo)
 
 ---
@@ -13,7 +15,9 @@ data:
   olsconfig.yaml: |
     llm_providers:
       - name: "$PROVIDER"
+        url: $PROVIDER_URL
         project_id: "$PROVIDER_PROJECT_ID"
+        deployment_name: "$PROVIDER_DEPLOYMENT_NAME"
         credentials_path: /app-root/config/llmcreds/llmkey
         models:
           - name: "$MODEL"
