@@ -68,6 +68,7 @@ def get_model_provider_counter_value(
 
     # counters with model and provider have the following format:
     # llm_token_sent_total{model="ibm/granite-13b-chat-v2",provider="bam"} 8.0
+    # llm_token_received_total{model="ibm/granite-13b-chat-v2",provider="bam"} 2465.0
     prefix = f'{counter_name}{{model="{model}",provider="{provider}"}} '
 
     return get_counter_value(counter_name, prefix, response, default)
@@ -109,6 +110,13 @@ def check_duration_sum_increases(endpoint, old_counter, new_counter):
     ), f"Duration sum for {endpoint} has not been updated properly"
 
 
+def check_token_counter_increases(counter, old_counter, new_counter):
+    """Check if the counter value increases as expected."""
+    assert (
+        new_counter > old_counter
+    ), f"Counter for {counter} tokens has not been updated properly"
+
+
 class RestAPICallCounterChecker:
     """Context manager to check if REST API counter is increased for given endpoint."""
 
@@ -141,6 +149,61 @@ class RestAPICallCounterChecker:
             self.endpoint,
         )
         check_duration_sum_increases(self.endpoint, self.old_duration, new_duration)
+
+
+class TokenCounterChecker:
+    """Context manager to check if token counters are increased before and after LLL calls.
+
+    Example:
+    ```python
+    with TokenCounterChecker(client, "ibm/granite-13b-chat-v2", "bam"):
+        ...
+        ...
+        ...
+    """
+
+    def __init__(self, client, model, provider):
+        """Register model and provider which tokens will be checked."""
+        self.model = model
+        self.provider = provider
+        self.client = client
+
+    def __enter__(self):
+        """Retrieve old counter values before calling LLM."""
+        self.old_counter_token_sent_total = get_model_provider_counter_value(
+            self.client, "llm_token_sent_total", self.model, self.provider, default=0
+        )
+        self.old_counter_token_received_total = get_model_provider_counter_value(
+            self.client,
+            "llm_token_received_total",
+            self.model,
+            self.provider,
+            default=0,
+        )
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        """Retrieve new counter value after calling REST API, and check if it increased."""
+        # check if counter for sent tokens has been updated
+        new_counter_token_sent_total = get_model_provider_counter_value(
+            self.client, "llm_token_sent_total", self.model, self.provider
+        )
+        check_token_counter_increases(
+            "sent", self.old_counter_token_sent_total, new_counter_token_sent_total
+        )
+
+        # check if counter for received tokens has been updated
+        new_counter_token_received_total = get_model_provider_counter_value(
+            self.client,
+            "llm_token_received_total",
+            self.model,
+            self.provider,
+            default=0,
+        )
+        check_token_counter_increases(
+            "received",
+            self.old_counter_token_received_total,
+            new_counter_token_received_total,
+        )
 
 
 def test_readiness():
