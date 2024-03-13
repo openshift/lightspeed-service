@@ -80,7 +80,7 @@ if __name__ == "__main__":
             "--quiet",
             input_file,
         ]
-        result = subprocess.run(command)  # noqa: S603
+        result = subprocess.run(command, check=False)  # noqa: S603
         if result.returncode != 0:
             print(result)
             print(result.stdout)
