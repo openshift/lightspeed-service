@@ -5,6 +5,12 @@ from typing import Any, Optional
 
 import redis
 from langchain_core.messages.base import BaseMessage
+from redis.backoff import ExponentialBackoff
+from redis.exceptions import (
+    BusyLoadingError,
+    ConnectionError,
+)
+from redis.retry import Retry
 
 from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
@@ -40,10 +46,23 @@ class RedisCache(Cache):
             kwargs["ssl_cert_reqs"] = "required"
             kwargs["ssl_ca_certs"] = config.ca_cert_path
 
+        # setup Redis retry logic
+        retry = None
+        if config.number_of_retries is not None and config.number_of_retries > 0:
+            retry = Retry(ExponentialBackoff(), config.number_of_retries)
+
+        retry_on_error = None
+        if config.retry_on_error:
+            retry_on_error = [BusyLoadingError, ConnectionError]
+
+        # initialize Redis client
         self.redis_client = redis.StrictRedis(
             host=config.host,
             port=config.port,
             decode_responses=True,
+            retry=retry,
+            retry_on_timeout=bool(config.retry_on_timeout),
+            retry_on_error=retry_on_error,
             **kwargs,
         )
         # Set custom configuration parameters
