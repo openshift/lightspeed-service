@@ -139,11 +139,16 @@ def check_duration_sum_increases(endpoint, old_counter, new_counter):
     ), f"Duration sum for {endpoint} has not been updated properly"
 
 
-def check_token_counter_increases(counter, old_counter, new_counter):
+def check_token_counter_increases(counter, old_counter, new_counter, expect_change):
     """Check if the counter value increases as expected."""
-    assert (
-        new_counter > old_counter
-    ), f"Counter for {counter} tokens has not been updated properly"
+    if expect_change:
+        assert (
+            new_counter > old_counter
+        ), f"Counter for {counter} tokens has not been updated properly"
+    else:
+        assert (
+            new_counter == old_counter
+        ), f"Counter for {counter} tokens has changed, which is unexpected"
 
 
 class RestAPICallCounterChecker:
@@ -191,13 +196,26 @@ class TokenCounterChecker:
         ...
     """
 
-    def __init__(self, client, model, provider):
+    def __init__(
+        self,
+        client,
+        model,
+        provider,
+        expect_sent_change=True,
+        expect_received_change=True,
+    ):
         """Register model and provider which tokens will be checked."""
         self.model = model
         self.provider = provider
         self.client = client
         # when model nor provider are specified (OLS cluster), don't run checks
         self.skip_check = model is None or provider is None
+
+        # expect change in number of sent tokens
+        self.expect_sent_change = expect_sent_change
+
+        # expect change in number of received tokens
+        self.expect_received_change = expect_received_change
 
     def __enter__(self):
         """Retrieve old counter values before calling LLM."""
@@ -223,7 +241,10 @@ class TokenCounterChecker:
             self.client, "llm_token_sent_total", self.model, self.provider
         )
         check_token_counter_increases(
-            "sent", self.old_counter_token_sent_total, new_counter_token_sent_total
+            "sent",
+            self.old_counter_token_sent_total,
+            new_counter_token_sent_total,
+            self.expect_sent_change,
         )
 
         # check if counter for received tokens has been updated
@@ -238,6 +259,7 @@ class TokenCounterChecker:
             "received",
             self.old_counter_token_received_total,
             new_counter_token_received_total,
+            self.expect_received_change,
         )
 
 
@@ -392,6 +414,57 @@ def test_invalid_question_tokens_counter() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
+
+
+@pytest.mark.standalone
+def test_token_counters_for_query_call_without_payload() -> None:
+    """Check how the tokens counter are updated accordingly."""
+    model, provider = get_model_and_provider(client)
+
+    endpoint = "/v1/query"
+    with (
+        RestAPICallCounterChecker(
+            client, endpoint, status_code=requests.codes.unprocessable_entity
+        ),
+        TokenCounterChecker(
+            client,
+            model,
+            provider,
+            expect_sent_change=False,
+            expect_received_change=False,
+        ),
+    ):
+        response = client.post(
+            endpoint,
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
+
+
+@pytest.mark.standalone
+def test_token_counters_for_query_call_with_improper_payload() -> None:
+    """Check how the tokens counter are updated accordingly."""
+    model, provider = get_model_and_provider(client)
+
+    endpoint = "/v1/query"
+    with (
+        RestAPICallCounterChecker(
+            client, endpoint, status_code=requests.codes.unprocessable_entity
+        ),
+        TokenCounterChecker(
+            client,
+            model,
+            provider,
+            expect_sent_change=False,
+            expect_received_change=False,
+        ),
+    ):
+        response = client.post(
+            endpoint,
+            json={"parameter": "this-is-not-proper-question-my-friend"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
 
 
 @pytest.mark.rag
