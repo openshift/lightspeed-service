@@ -652,24 +652,62 @@ def test_invalid_values():
 
 def test_redis_config():
     """Test the RedisConfig model."""
+    redis_config = RedisConfig({})
+    # default values
+    assert redis_config.retry_on_error == constants.REDIS_RETRY_ON_ERROR
+    assert redis_config.retry_on_timeout == constants.REDIS_RETRY_ON_TIMEOUT
+    assert redis_config.number_of_retries == constants.REDIS_NUMBER_OF_RETRIES
+
     redis_config = RedisConfig(
         {
             "host": "localhost",
             "port": 6379,
             "max_memory": "200mb",
             "max_memory_policy": "allkeys-lru",
+            "retry_on_error": "false",
+            "retry_on_timeout": "false",
+            "number_of_retries": 42,
+        }
+    )
+
+    # explicitly set values
+    assert redis_config.host == "localhost"
+    assert redis_config.port == 6379
+    assert redis_config.max_memory == "200mb"
+    assert redis_config.max_memory_policy == "allkeys-lru"
+    assert redis_config.retry_on_error is False
+    assert redis_config.retry_on_timeout is False
+    assert redis_config.number_of_retries == 42
+
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+            "retry_on_error": "true",
+            "retry_on_timeout": "true",
+            "number_of_retries": 100,
         }
     )
     assert redis_config.host == "localhost"
     assert redis_config.port == 6379
     assert redis_config.max_memory == "200mb"
     assert redis_config.max_memory_policy == "allkeys-lru"
+    assert redis_config.retry_on_error is True
+    assert redis_config.retry_on_timeout is True
+    assert redis_config.number_of_retries == 100
 
     redis_config = RedisConfig()
+
+    # initial values
     assert redis_config.host is None
     assert redis_config.port is None
     assert redis_config.max_memory is None
     assert redis_config.max_memory_policy is None
+    assert redis_config.retry_on_error is None
+    assert redis_config.retry_on_timeout is None
+    assert redis_config.number_of_retries is None
 
 
 def test_redis_config_with_ca_cert_path():

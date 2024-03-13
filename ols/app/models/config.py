@@ -254,6 +254,9 @@ class RedisConfig(BaseModel):
     max_memory_policy: Optional[str] = None
     password: Optional[str] = None
     ca_cert_path: Optional[str] = None
+    retry_on_error: Optional[bool] = None
+    retry_on_timeout: Optional[bool] = None
+    number_of_retries: Optional[int] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -279,6 +282,17 @@ class RedisConfig(BaseModel):
         )
         self.ca_cert_path = data.get("ca_cert_path", None)
         self.password = _get_attribute_from_file(data, "password_path")
+        self.retry_on_error = (
+            str(data.get("retry_on_error", constants.REDIS_RETRY_ON_ERROR)).lower()
+            == "true"
+        )
+        self.retry_on_timeout = (
+            str(data.get("retry_on_timeout", constants.REDIS_RETRY_ON_TIMEOUT)).lower()
+            == "true"
+        )
+        self.number_of_retries = int(
+            data.get("number_of_retries", constants.REDIS_NUMBER_OF_RETRIES)
+        )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -290,6 +304,9 @@ class RedisConfig(BaseModel):
                 and self.max_memory_policy == other.max_memory_policy
                 and self.password == other.password
                 and self.ca_cert_path == other.ca_cert_path
+                and self.retry_on_error == other.retry_on_error
+                and self.retry_on_timeout == other.retry_on_timeout
+                and self.number_of_retries == other.number_of_retries
             )
         return False
 

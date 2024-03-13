@@ -177,6 +177,10 @@ REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "1024mb"
 REDIS_CACHE_MAX_MEMORY_POLICY = "allkeys-lru"
 REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
+REDIS_RETRY_ON_ERROR = True
+REDIS_RETRY_ON_TIMEOUT = True
+REDIS_NUMBER_OF_RETRIES = 3
+
 
 # provider and model roles
 PROVIDER_MODEL_ROLES = frozenset({"default"})
