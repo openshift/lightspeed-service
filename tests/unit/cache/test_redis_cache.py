@@ -144,3 +144,73 @@ def test_initialize_redis_with_tls_certs():
         assert (
             cache.redis_client.kwargs["ssl_ca_certs"] == "test/config/redis_ca_cert.crt"
         )
+
+
+def test_initialize_redis_default_retry_settings():
+    """Test Redis initialization code, default retry settings."""
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig({})
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["retry_on_timeout"] is True
+        assert cache.redis_client.kwargs["retry_on_error"] is not None
+        assert cache.redis_client.kwargs["retry"]._retries == 3
+
+
+def test_initialize_redis_retry_settings():
+    """Test Redis initialization code when retry settings is specified."""
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "retry_on_error": "false",
+                "retry_on_timeout": "false",
+                "number_of_retries": 100,
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["retry_on_timeout"] is False
+        assert cache.redis_client.kwargs["retry_on_error"] is None
+        assert cache.redis_client.kwargs["retry"]._retries == 100
+
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "retry_on_error": "False",
+                "retry_on_timeout": "False",
+                "number_of_retries": 100,
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["retry_on_timeout"] is False
+        assert cache.redis_client.kwargs["retry_on_error"] is None
+        assert cache.redis_client.kwargs["retry"]._retries == 100
+
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "retry_on_error": "true",
+                "retry_on_timeout": "true",
+                "number_of_retries": 10,
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["retry_on_timeout"] is True
+        assert cache.redis_client.kwargs["retry_on_error"] is not None
+        assert cache.redis_client.kwargs["retry"]._retries == 10
+
+    with patch("redis.StrictRedis", new=MockRedis):
+        config = RedisConfig(
+            {
+                "retry_on_error": "True",
+                "retry_on_timeout": "True",
+                "number_of_retries": 10,
+            }
+        )
+        cache = RedisCache(config)
+        cache.initialize_redis(config)
+        assert cache.redis_client.kwargs["retry_on_timeout"] is True
+        assert cache.redis_client.kwargs["retry_on_error"] is not None
+        assert cache.redis_client.kwargs["retry"]._retries == 10
