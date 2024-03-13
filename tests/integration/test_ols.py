@@ -69,13 +69,10 @@ def test_post_question_on_invalid_question():
             json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.ok
-        expected_details = (
-            "I can only answer questions about OpenShift and Kubernetes. "
-            "Please rephrase your question"
-        )
+
         expected_json = {
             "conversation_id": conversation_id,
-            "response": expected_details,
+            "response": constants.INVALID_QUERY_RESP,
             "referenced_documents": [],
             "truncated": False,
         }
@@ -255,10 +252,7 @@ def test_post_question_on_noyaml_response_type() -> None:
             )
             print(response)
             assert response.status_code == requests.codes.ok
-            assert (
-                "The following response was generated without access to reference content:"
-                in response.json()["response"]
-            )
+            assert constants.NO_RAG_CONTENT_RESP in response.json()["response"]
 
 
 def test_post_query_with_query_filters_response_type() -> None:
@@ -304,10 +298,7 @@ def test_post_query_with_query_filters_response_type() -> None:
             )
             print(response.json())
             assert response.status_code == requests.codes.ok
-            assert (
-                "The following response was generated without access to reference content:"
-                in response.json()["response"]
-            )
+            assert constants.NO_RAG_CONTENT_RESP in response.json()["response"]
             assert (
                 "test query with redacted_ip will be replaced with redacted_ip"
                 in response.json()["response"]

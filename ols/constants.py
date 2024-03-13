@@ -10,6 +10,14 @@ POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
     SUBJECT_INVALID,
 )
 
+# Default responses
+INVALID_QUERY_RESP = (
+    "I can only answer questions about OpenShift and Kubernetes. "
+    "Please rephrase your question"
+)
+NO_RAG_CONTENT_RESP = (
+    "The following response was generated without access to reference content:\n\n"
+)
 
 # templates
 SUMMARIZATION_TEMPLATE = """

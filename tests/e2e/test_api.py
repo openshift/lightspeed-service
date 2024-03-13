@@ -6,6 +6,8 @@ import pytest
 import requests
 from httpx import Client
 
+from ols.constants import INVALID_QUERY_RESP, NO_RAG_CONTENT_RESP
+
 url = os.getenv("OLS_URL", "http://localhost:8080")
 token = os.getenv("OLS_TOKEN")
 client = Client(base_url=url, verify=False)  # noqa: S501
@@ -288,13 +290,10 @@ def test_invalid_question():
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
-        expected_details = (
-            "I can only answer questions about OpenShift and Kubernetes. "
-            "Please rephrase your question"
-        )
+
         expected_json = {
             "conversation_id": conversation_id,
-            "response": expected_details,
+            "response": INVALID_QUERY_RESP,
             "referenced_documents": [],
             "truncated": False,
         }
@@ -356,10 +355,7 @@ def test_valid_question() -> None:
             or "orchestration system" in json_response["response"]
             or "orchestration platform" in json_response["response"]
         )
-        assert (
-            "The following response was generated without access to reference content:"
-            not in json_response["response"]
-        )
+        assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
 
 @pytest.mark.standalone
@@ -415,10 +411,7 @@ def test_rag_question() -> None:
         assert "install" in json_response["referenced_documents"][0]
         assert "https://" in json_response["referenced_documents"][0]
 
-        assert (
-            "The following response was generated without access to reference content:"
-            not in json_response["response"]
-        )
+        assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
 
 def test_query_filter() -> None:

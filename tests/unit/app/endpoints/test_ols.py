@@ -300,10 +300,7 @@ def test_conversation_request(
     mock_validate_question.return_value = constants.SUBJECT_INVALID
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request, auth)
-    assert response.response == (
-        "I can only answer questions about OpenShift and Kubernetes. "
-        "Please rephrase your question"
-    )
+    assert response.response == constants.INVALID_QUERY_RESP
     assert suid.check_suid(
         response.conversation_id
     ), "Improper conversation ID returned"
