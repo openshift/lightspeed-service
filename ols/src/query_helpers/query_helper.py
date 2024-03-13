@@ -25,7 +25,7 @@ class QueryHelper:
         # NOTE: As signature of this method is evaluated before the config,
         # is loaded, we cannot use the config directly as defaults and we
         # need to use those values in the init evaluation.
-        self.provider = provider or config.ols_config.default_provider
-        self.model = model or config.ols_config.default_model
-        self.llm_params = llm_params or {}
+        self.provider: str = provider or config.ols_config.default_provider
+        self.model: str = model or config.ols_config.default_model
+        self.llm_params: dict = llm_params or {}
         self.llm_loader = llm_loader or load_llm
