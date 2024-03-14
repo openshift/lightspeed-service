@@ -90,19 +90,27 @@ class FeedbackRequest(BaseModel):
 
     Attributes:
         conversation_id: The required conversation ID (UUID).
-        feedback_object: The JSON blob representing feedback.
+        user_question: The required user question.
+        llm_response: The required LLM response.
+        sentiment: The optional sentiment.
+        user_feedback: The optional user feedback.
 
     Example:
         ```python
         feedback_request = FeedbackRequest(
             conversation_id="12345678-abcd-0000-0123-456789abcdef",
-            feedback_object={"rating": 5, "comment": "Great service!"}
+            user_question="what are you doing?",
+            llm_response="I don't know",
+            sentiment=-1,
         )
         ```
     """
 
     conversation_id: str
-    feedback_object: dict  # TODO: proper object (OLS-77)
+    user_question: str
+    llm_response: str
+    sentiment: Optional[int] = None
+    user_feedback: Optional[str] = None
 
     # provides examples for /docs endpoint
     model_config = {
@@ -111,6 +119,41 @@ class FeedbackRequest(BaseModel):
                 {
                     "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
                     "feedback_object": {"rating": 5, "comment": "Great service!"},
+                }
+            ]
+        }
+    }
+
+    @model_validator(mode="after")
+    def check_sentiment_or_user_feedback_set(self) -> "FeedbackRequest":
+        """Ensure that either 'sentiment' or 'user_feedback' is set."""
+        if self.sentiment is None and self.user_feedback is None:
+            raise ValueError("Either 'sentiment' or 'user_feedback' must be set")
+        return self
+
+
+class FeedbacksListResponse(BaseModel):
+    """Model representing a response to a feedback list request.
+
+    Attributes:
+        feedbacks: The list of feedback IDs.
+
+    Example:
+        ```python
+        feedbacks_list_response = FeedbacksListResponse(
+            feedbacks=["12345678-abcd-0000-0123-456789abcdef"]
+        )
+        ```
+    """
+
+    feedbacks: list[str]
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "feedbacks": ["12345678-abcd-0000-0123-456789abcdef"],
                 }
             ]
         }

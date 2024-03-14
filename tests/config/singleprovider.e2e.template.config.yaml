@@ -8,6 +8,7 @@ llm_providers:
     models:
       - name: $MODEL
 ols_config:
+  feedback_storage_location: $FEEDBACK_STORAGE_LOCATION
   reference_content:
     product_docs_index_path: $RAG_INDEX_DIR
     product_docs_index_id: ocp-product-docs-4_15
