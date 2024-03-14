@@ -104,8 +104,8 @@ class RedisCache(Cache):
         """
         key = super().construct_key(user_id, conversation_id)
 
-        old_value = self.get(user_id, conversation_id)
         with self._lock:
+            old_value = self.get(user_id, conversation_id)
             if old_value:
                 old_value.extend(value)
                 self.redis_client.set(
