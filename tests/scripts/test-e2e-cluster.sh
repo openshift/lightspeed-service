@@ -42,16 +42,16 @@ rc=0
 set +e
 # runsuite arguments:
 # suiteid test_tags provider provider_keypath provider_url provider_project_id provider provider_deployment_name llm_model ols_image
-run_suite "azure_openai" "not standalone" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "https://ols-test.openai.azure.com/" "" "0301-dep" "gpt-3.5-turbo" "quay.io/openshift/lightspeed-service-api-rag:latest"
+run_suite "azure_openai" "not standalone" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "https://ols-test.openai.azure.com/" "" "0301-dep" "gpt-3.5-turbo" "$OLS_IMAGE"
 (( rc = rc || $? ))
 
-run_suite "bam" "not standalone" "bam" "$BAM_PROVIDER_KEY_PATH" "" "" "" "ibm/granite-13b-chat-v2" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+run_suite "bam" "not standalone" "bam" "$BAM_PROVIDER_KEY_PATH" "" "" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE" 
 (( rc = rc || $? ))
 
-run_suite "openai" "not standalone" "openai" "$OPENAI_PROVIDER_KEY_PATH" "" "" "" "gpt-3.5-turbo" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+run_suite "openai" "not standalone" "openai" "$OPENAI_PROVIDER_KEY_PATH" "" "" "" "gpt-3.5-turbo" "$OLS_IMAGE"
 (( rc = rc || $? ))
 
-run_suite "watsonx" "not standalone" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "" "ad629765-c373-4731-9d69-dc701724c081" "" "ibm/granite-13b-chat-v2" "quay.io/openshift/lightspeed-service-api-rag:latest" 
+run_suite "watsonx" "not standalone" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "" "ad629765-c373-4731-9d69-dc701724c081" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
 (( rc = rc || $? ))
 set -e
 
