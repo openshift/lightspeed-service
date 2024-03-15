@@ -1,5 +1,6 @@
 """Cache that uses Redis to store cached values."""
 
+import pickle
 import threading
 from typing import Any, Optional
 
@@ -60,7 +61,7 @@ class RedisCache(Cache):
         self.redis_client = redis.StrictRedis(
             host=str(config.host),
             port=int(config.port),
-            decode_responses=True,
+            decode_responses=False,  # we store serialized messages as bytes, not strings
             retry=retry,
             retry_on_timeout=bool(config.retry_on_timeout),
             retry_on_error=retry_on_error,
@@ -82,7 +83,10 @@ class RedisCache(Cache):
         """
         key = super().construct_key(user_id, conversation_id)
 
-        return self.redis_client.get(key)
+        value = self.redis_client.get(key)
+        if value is None:
+            return None
+        return pickle.loads(value, errors="strict")  # noqa S301
 
     def insert_or_append(
         self, user_id: str, conversation_id: str, value: list[BaseMessage]
@@ -104,6 +108,10 @@ class RedisCache(Cache):
         with self._lock:
             if old_value:
                 old_value.extend(value)
-                self.redis_client.set(key, old_value)
+                self.redis_client.set(
+                    key, pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL)
+                )
             else:
-                self.redis_client.set(key, value)
+                self.redis_client.set(
+                    key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
+                )
