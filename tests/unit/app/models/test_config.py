@@ -1010,6 +1010,7 @@ def test_ols_config(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
+    assert ols_config.query_validation_method == constants.QueryValidationMethod.LLM
     assert ols_config.user_data_collection.feedback_disabled is False
     assert ols_config.user_data_collection.feedback_storage == pathlib.Path(
         tmpdir.strpath
@@ -1047,6 +1048,7 @@ def test_config():
                 "logging_config": {
                     "app_log_level": "error",
                 },
+                "query_validation_method": "disabled",
             },
             "dev_config": {"disable_tls": "true"},
         }
@@ -1086,6 +1088,10 @@ def test_config():
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
+    assert (
+        config.ols_config.query_validation_method
+        == constants.QueryValidationMethod.DISABLED
+    )
 
 
 def test_config_no_llm_providers():
@@ -1243,6 +1249,25 @@ def test_config_improper_model():
         ).validate_yaml()
 
 
+def test_ols_config_with_invalid_validation_method():
+    """Test the Ols config with invalid validation method."""
+    ols_config = {
+        "conversation_cache": {
+            "type": "memory",
+            "memory": {
+                "max_entries": 100,
+            },
+        },
+        "query_validation_method": False,
+    }
+
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Invalid query validation method",
+    ):
+        OLSConfig(ols_config).validate_yaml(True)
+
+
 def test_logging_config_equality():
     """Test the LoggingConfig equality check."""
     logging_config_1 = LoggingConfig()
@@ -1265,10 +1290,10 @@ def test_reference_content_equality():
     reference_content_1 = ReferenceContent()
     reference_content_2 = ReferenceContent()
 
-    # compare the same logging configs
+    # compare the same configs
     assert reference_content_1 == reference_content_2
 
-    # compare different logging configs
+    # compare different configs
     reference_content_2.product_docs_index_path = "foo"
     assert reference_content_1 != reference_content_2
 

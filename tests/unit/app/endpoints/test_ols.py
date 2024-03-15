@@ -156,6 +156,35 @@ def test_store_conversation_history_improper_conversation_id(load_config):
         )
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.KEYWORD,
+)
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+def test_validate_question_valid_kw(llm_validate_question_mock, load_config):
+    """Check the behaviour of validate_question function using valid keyword."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes?"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    resp = ols.validate_question(conversation_id, llm_request)
+
+    assert resp == constants.SUBJECT_VALID
+    assert llm_validate_question_mock.call_count == 0
+
+
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.KEYWORD,
+)
+def test_validate_question_invalid_kw(load_config):
+    """Check the behaviour of validate_question function using invalid keyword."""
+    conversation_id = suid.get_suid()
+    query = "What does 42 signify ?"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    resp = ols.validate_question(conversation_id, llm_request)
+    assert resp == constants.SUBJECT_INVALID
+
+
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 def test_validate_question(validate_question_mock, load_config):
     """Check the behaviour of validate_question function."""
@@ -192,6 +221,26 @@ def test_validate_question_on_validation_error(validate_question_mock, load_conf
     # HTTP exception should be raises
     with pytest.raises(HTTPException, match="Error while validating question"):
         ols.validate_question(conversation_id, llm_request)
+
+
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.DISABLED,
+)
+@patch("ols.app.endpoints.ols._validate_question_keyword")
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+def test_validate_question_disabled(
+    validate_question_llm_mock, validate_question_kw_mock
+):
+    """Check the behaviour of validate_question function when it is disabled."""
+    conversation_id = suid.get_suid()
+    query = "What does 42 signify ?"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    resp = ols.validate_question(conversation_id, llm_request)
+
+    assert validate_question_llm_mock.call_count == 0
+    assert validate_question_kw_mock.call_count == 0
+    assert resp == constants.SUBJECT_VALID
 
 
 def test_query_filter_no_redact_filters(load_config):

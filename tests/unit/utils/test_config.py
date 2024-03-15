@@ -496,7 +496,6 @@ ols_config:
       max_entries: 1000
 dev_config:
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
 
 """,
@@ -524,7 +523,6 @@ ols_config:
 dev_config:
   llm_temperature_override: 0.1
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
 
 """,
@@ -552,7 +550,6 @@ ols_config:
 dev_config:
   temperature_override: 0.1
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
 
 """,
@@ -579,7 +576,6 @@ ols_config:
       max_entries: 1000
 dev_config:
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
 
 """,
@@ -606,7 +602,6 @@ ols_config:
       max_entries: 1000
 dev_config:
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
 
 """,
@@ -638,7 +633,6 @@ ols_config:
 dev_config:
   llm_temperature_override: 0.1
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
   disable_tls: true
 
@@ -685,7 +679,6 @@ ols_config:
   default_model: m1
 dev_config:
   enable_dev_ui: true
-  disable_question_validation: false
   disable_auth: false
   disable_tls: true
   llm_params:

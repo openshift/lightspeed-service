@@ -9,7 +9,6 @@ from langchain.prompts import PromptTemplate
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +37,6 @@ class QuestionValidator(QueryHelper):
         Returns:
             One-word response.
         """
-        if config.dev_config.disable_question_validation:
-            logger.debug(
-                f"{conversation_id} Question validation is disabled. "
-                f"Treating question as [valid,generic]."
-            )
-            return constants.SUBJECT_VALID
-
         settings_string = (
             f"conversation_id: {conversation_id}, "
             f"query: {query}, "
@@ -82,7 +74,7 @@ class QuestionValidator(QueryHelper):
 
         logger.info(f"{conversation_id} response: {clean_response}")
 
-        # Will return list with one of the following:
+        # Will return one of the following string:
         # SUBJECT_VALID
         # SUBJECT_INVALID
         return clean_response

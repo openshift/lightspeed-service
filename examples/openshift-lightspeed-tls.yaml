@@ -146,7 +146,6 @@ data:
     dev_config:
       enable_dev_ui: true
       # llm_temperature_override: 0
-      # disable_question_validation: false
       disable_auth: true
 immutable: false
 kind: ConfigMap

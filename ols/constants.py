@@ -3,12 +3,25 @@
 # ruff: noqa: E501
 """Constants used in business logic."""
 
+from enum import StrEnum
+
+
+class QueryValidationMethod(StrEnum):
+    """Possible options for query validation method."""
+
+    KEYWORD = "keyword"
+    LLM = "llm"
+    DISABLED = "disabled"
+
+
 SUBJECT_VALID = "SUBJECT_VALID"
 SUBJECT_INVALID = "SUBJECT_INVALID"
 POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
     SUBJECT_VALID,
     SUBJECT_INVALID,
 )
+
+KEYWORDS_FILE_PATH = "ols/data_assets/keywords.txt"
 
 # Default responses
 INVALID_QUERY_RESP = (

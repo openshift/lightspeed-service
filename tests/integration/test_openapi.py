@@ -4,12 +4,14 @@ import json
 import os
 from unittest.mock import patch
 
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
+@pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def setup():
     """Setups the test client."""
@@ -19,7 +21,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_openapi_endpoint():
+def test_openapi_endpoint(setup):
     """Check if REST API provides endpoint with OpenAPI specification."""
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
@@ -45,14 +47,14 @@ def test_openapi_endpoint():
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
 
-def test_openapi_endpoint_head_method():
+def test_openapi_endpoint_head_method(setup):
     """Check if REST API allows HEAD HTTP method for endpoint with OpenAPI specification."""
     response = client.head("/openapi.json")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
 
 
-def test_openapi_content():
+def test_openapi_content(setup):
     """Check if the pre-generated OpenAPI schema is up-to date."""
     # retrieve pre-generated OpenAPI schema
     with open("docs/openapi.json", "r") as fin:

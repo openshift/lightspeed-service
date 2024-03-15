@@ -638,6 +638,7 @@ class OLSConfig(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     query_filters: Optional[list[QueryFilter]] = None
+    query_validation_method: Optional[str] = constants.QueryValidationMethod.LLM
 
     user_data_collection: Optional[UserDataCollection] = None
 
@@ -662,6 +663,9 @@ class OLSConfig(BaseModel):
             self.query_filters = []
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
+        self.query_validation_method = data.get(
+            "query_validation_method", constants.QueryValidationMethod.LLM
+        )
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
@@ -676,6 +680,7 @@ class OLSConfig(BaseModel):
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
                 and self.query_filters == other.query_filters
+                and self.query_validation_method == other.query_validation_method
                 and self.tls_config == other.tls_config
             )
         return False
@@ -694,12 +699,18 @@ class OLSConfig(BaseModel):
             for filter in self.query_filters:
                 filter.validate_yaml()
 
+        valid_query_validation_methods = list(constants.QueryValidationMethod)
+        if self.query_validation_method not in valid_query_validation_methods:
+            raise InvalidConfigurationError(
+                f"Invalid query validation method: {self.query_validation_method}\n"
+                f"Available options are {valid_query_validation_methods}"
+            )
+
 
 class DevConfig(BaseModel):
     """Developer-mode-only configuration options."""
 
     enable_dev_ui: bool = False
-    disable_question_validation: bool = False
     llm_params: Optional[dict] = None
     disable_auth: bool = False
     disable_tls: bool = False
@@ -712,9 +723,6 @@ class DevConfig(BaseModel):
         if data is None:
             return
         self.enable_dev_ui = str(data.get("enable_dev_ui", "False")).lower() == "true"
-        self.disable_question_validation = (
-            str(data.get("disable_question_validation", "False")).lower() == "true"
-        )
         self.llm_params = data.get("llm_params", {})
         self.k8s_auth_token = str(data.get("k8s_auth_token", None))
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
@@ -728,8 +736,6 @@ class DevConfig(BaseModel):
         if isinstance(other, DevConfig):
             return (
                 self.enable_dev_ui == other.enable_dev_ui
-                and self.disable_question_validation
-                == other.disable_question_validation
                 and self.llm_params == other.llm_params
                 and self.disable_auth == other.disable_auth
                 and self.k8s_auth_token == other.k8s_auth_token
