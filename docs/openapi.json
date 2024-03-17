@@ -211,6 +211,26 @@
                     }
                 }
             }
+        },
+        "/metrics/": {
+            "get": {
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Get Metrics",
+                "description": "Metrics Endpoint.\n\nArgs:\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the latest metrics.",
+                "operationId": "get_metrics_metrics__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
