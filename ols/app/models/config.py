@@ -3,11 +3,10 @@
 import logging
 import os
 import re
-from typing import Optional
+from typing import Optional, Self
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, DirectoryPath, model_validator
-from typing_extensions import Self
 
 from ols import constants
 

@@ -1,7 +1,8 @@
 """LLM providers registry."""
 
 import logging
-from typing import Callable, ClassVar
+from collections.abc import Callable
+from typing import ClassVar
 
 from ols.src.llms.providers.provider import LLMProvider
 
