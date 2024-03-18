@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ols.app.models.models import (
     FeedbackRequest,
@@ -19,6 +19,27 @@ from ols.utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
+
+
+async def feedback_is_enabled(request: Request) -> bool:
+    """Check if feedback is enabled.
+
+    Args:
+        request (Request): The FastAPI request object.
+
+    Returns:
+        True if feedback is enabled, False otherwise.
+
+    Raises:
+        HTTPException: If feedback is disabled.
+    """
+    feedback_enabled = not config.ols_config.user_data_collection.feedback_disabled
+    if not feedback_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Feedback is currently disabled.",
+        )
+    return feedback_enabled
 
 
 def get_feedback_status() -> bool:
@@ -100,11 +121,17 @@ def feedback_status() -> StatusResponse:
 # of this endpoint
 # If endpoint stays in place, it needs to be properly secured - OLS-404
 @router.get("/list")
-def get_user_feedbacks(auth: Any = Depends(auth_dependency)) -> FeedbacksListResponse:
+def get_user_feedbacks(
+    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    auth: Any = Depends(auth_dependency),
+) -> FeedbacksListResponse:
     """Handle feedback listing requests.
 
     Args:
-        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+            will handle feedback status checks.
+        auth: The Authentication handler (FastAPI Depends) that will
+            handle authentication Logic.
 
     Returns:
         Response containing the list of feedbacks.
@@ -118,13 +145,18 @@ def get_user_feedbacks(auth: Any = Depends(auth_dependency)) -> FeedbacksListRes
 
 @router.post("")
 def store_user_feedback(
-    feedback_request: FeedbackRequest, auth: Any = Depends(auth_dependency)
+    feedback_request: FeedbackRequest,
+    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    auth: Any = Depends(auth_dependency),
 ) -> FeedbackResponse:
     """Handle feedback requests.
 
     Args:
         feedback_request: The request containing feedback information.
-        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+            will handle feedback status checks.
+        auth: The Authentication handler (FastAPI Depends) that will
+            handle authentication Logic.
 
     Returns:
         Response indicating the status of the feedback storage request.
@@ -142,13 +174,18 @@ def store_user_feedback(
 # If endpoint stays in place, it needs to be properly secured - OLS-404
 @router.delete("/{feedback_id}")
 def remove_user_feedback(
-    feedback_id: str, auth: Any = Depends(auth_dependency)
+    feedback_id: str,
+    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    auth: Any = Depends(auth_dependency),
 ) -> FeedbackResponse:
     """Handle feedback removal requests.
 
     Args:
         feedback_id: The feedback ID (UUID) to be removed.
-        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+            will handle feedback status checks.
+        auth: The Authentication handler (FastAPI Depends) that will
+            handle authentication Logic.
 
     Returns:
         Response indicating the status of the feedback removal.

@@ -118,7 +118,7 @@
                     "feedback"
                 ],
                 "summary": "Get User Feedbacks",
-                "description": "Handle feedback listing requests.\n\nArgs:\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the list of feedbacks.",
+                "description": "Handle feedback listing requests.\n\nArgs:\n    feedback_is_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response containing the list of feedbacks.",
                 "operationId": "get_user_feedbacks_v1_feedback_list_get",
                 "responses": {
                     "200": {
@@ -140,7 +140,7 @@
                     "feedback"
                 ],
                 "summary": "Store User Feedback",
-                "description": "Handle feedback requests.\n\nArgs:\n    feedback_request: The request containing feedback information.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback storage request.",
+                "description": "Handle feedback requests.\n\nArgs:\n    feedback_request: The request containing feedback information.\n    feedback_is_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback storage request.",
                 "operationId": "store_user_feedback_v1_feedback_post",
                 "requestBody": {
                     "content": {
@@ -182,7 +182,7 @@
                     "feedback"
                 ],
                 "summary": "Remove User Feedback",
-                "description": "Handle feedback removal requests.\n\nArgs:\n    feedback_id: The feedback ID (UUID) to be removed.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback removal.",
+                "description": "Handle feedback removal requests.\n\nArgs:\n    feedback_id: The feedback ID (UUID) to be removed.\n    feedback_is_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback removal.",
                 "operationId": "remove_user_feedback_v1_feedback__feedback_id__delete",
                 "parameters": [
                     {
