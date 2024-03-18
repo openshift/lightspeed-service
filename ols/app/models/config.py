@@ -6,7 +6,8 @@ import re
 from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, DirectoryPath, model_validator
+from typing_extensions import Self
 
 from ols import constants
 
@@ -552,6 +553,20 @@ class ReferenceContent(BaseModel):
             _dir_check(self.embeddings_model_path, "Embeddings model path")
 
 
+class UserDataCollection(BaseModel):
+    """User data collection configuration."""
+
+    feedback_disabled: bool = True
+    feedback_storage: Optional[DirectoryPath] = None
+
+    @model_validator(mode="after")
+    def check_storage_location_is_set_when_needed(self) -> Self:
+        """Check that storage_location is set when enabled."""
+        if not self.feedback_disabled and self.feedback_storage is None:
+            raise ValueError("feedback_storage is required when feedback is enabled")
+        return self
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
@@ -563,6 +578,8 @@ class OLSConfig(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     query_filters: Optional[list[QueryFilter]] = None
+
+    user_data_collection: Optional[UserDataCollection] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -584,6 +601,9 @@ class OLSConfig(BaseModel):
             self.query_filters = []
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
+        self.user_data_collection = UserDataCollection(
+            **data.get("user_data_collection", {})
+        )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""

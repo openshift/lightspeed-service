@@ -1,6 +1,7 @@
 """Unit tests for data models."""
 
 import logging
+import pathlib
 
 import pytest
 
@@ -19,6 +20,7 @@ from ols.app.models.config import (
     QueryFilter,
     RedisConfig,
     ReferenceContent,
+    UserDataCollection,
 )
 
 
@@ -918,7 +920,7 @@ def test_conversation_cache_config_equality():
     assert conversation_cache_config_1 != other_value
 
 
-def test_ols_config():
+def test_ols_config(tmpdir):
     """Test the OLSConfig model."""
     ols_config = OLSConfig(
         {
@@ -933,6 +935,10 @@ def test_ols_config():
             "logging_config": {
                 "logging_level": "INFO",
             },
+            "user_data_collection": {
+                "feedback_disabled": False,
+                "feedback_storage": tmpdir.strpath,
+            },
         }
     )
     assert ols_config.default_provider == "test_default_provider"
@@ -940,6 +946,10 @@ def test_ols_config():
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
+    assert ols_config.user_data_collection.feedback_disabled is False
+    assert ols_config.user_data_collection.feedback_storage == pathlib.Path(
+        tmpdir.strpath
+    )
 
 
 def test_config():
@@ -1558,3 +1568,32 @@ def test_authentication_config_validation_invalid_cert_path():
         InvalidConfigurationError, match="k8s_ca_cert_path is not a file: /dev/null"
     ):
         auth_config.validate_yaml()
+
+
+def test_user_data_config(tmpdir):
+    """Tests the UserDataCollection model."""
+    # valid configuration
+    user_data = UserDataCollection(
+        feedback_disabled=False, feedback_storage=tmpdir.strpath
+    )
+    assert user_data.feedback_disabled is False
+    assert user_data.feedback_storage == pathlib.Path(tmpdir.strpath)
+
+    # enabled needs feedback_storage
+    with pytest.raises(
+        ValueError,
+        match="feedback_storage is required when feedback is enabled",
+    ):
+        UserDataCollection(feedback_disabled=False)
+
+    # disabled doesn't need feedback_storage
+    user_data = UserDataCollection(feedback_disabled=True)
+    assert user_data.feedback_disabled is True
+    assert user_data.feedback_storage is None
+
+    # storage location is not directory
+    with pytest.raises(
+        ValueError,
+        match="Path does not point to a directory",
+    ):
+        UserDataCollection(feedback_disabled=False, feedback_storage="some/path")

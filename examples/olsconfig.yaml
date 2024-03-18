@@ -53,6 +53,9 @@ ols_config:
     k8s_cluster_api: "https://api.example.com:6443"
     k8s_ca_cert_path: "/Users/home/ca.crt"
     skip_tls_verification: false
+  user_data_collection:
+    feedback_disabled: false
+    feedback_storage: "/app-root/data/feedback"
 dev_config:
   enable_dev_ui: true
   # llm_params:
