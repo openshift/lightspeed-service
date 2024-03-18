@@ -112,8 +112,9 @@ class TokenHandler:
 
         return context
 
+    @staticmethod
     def limit_conversation_history(
-        self, history: list[BaseMessage], limit: int = 0
+        history: list[BaseMessage], limit: int = 0
     ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0

@@ -148,7 +148,7 @@ class DocsSummarizer(QueryHelper):
                 context_window_size - response_token_limit - prompt_token_count
             )
 
-            history, truncated = token_handler.limit_conversation_history(
+            history, truncated = TokenHandler.limit_conversation_history(
                 history, available_tokens
             )
         else:
