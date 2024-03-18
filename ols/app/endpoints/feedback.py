@@ -11,6 +11,7 @@ from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
     FeedbacksListResponse,
+    StatusResponse,
 )
 from ols.utils import config
 from ols.utils.auth_dependency import auth_dependency
@@ -20,13 +21,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
+def get_feedback_status() -> bool:
+    """Check if feedback is enabled.
+
+    Returns:
+        True if feedback is enabled, False otherwise.
+    """
+    return not config.ols_config.user_data_collection.feedback_disabled
+
+
 def list_feedbacks() -> list[str]:
     """List feedbacks in the local filesystem.
 
     Returns:
         List of feedback files (without the ".json" extension).
     """
-    storage_path = Path(config.ols_config.feedback_storage_location)
+    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
     feedback_files = list(storage_path.glob("*.json"))
     # extensions are trimmed, eg. ["12345678-abcd-0000-0123-456789abcdef", ...]
     feedbacks = [f.stem for f in feedback_files]
@@ -42,7 +52,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         feedback: The feedback to store.
     """
     # ensures storage path exists
-    storage_path = Path(config.ols_config.feedback_storage_location)
+    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
     if not storage_path.exists():
         storage_path.mkdir(parents=True)
 
@@ -62,7 +72,7 @@ def remove_feedback(feedback_id: str) -> None:
     Args:
         feedback_id: The feedback ID (UUID).
     """
-    storage_path = Path(config.ols_config.feedback_storage_location)
+    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
     feedback_file = storage_path / f"{feedback_id}.json"
     if feedback_file.exists():
         feedback_file.unlink()
@@ -72,6 +82,18 @@ def remove_feedback(feedback_id: str) -> None:
             logger.error(f"feedback file '{feedback_file}' failed to remove")
     else:
         logger.error(f"feedback file '{feedback_file}' not found")
+
+
+@router.get("/status")
+def feedback_status() -> StatusResponse:
+    """Handle feedback status requests.
+
+    Returns:
+        Response indicating the status of the feedback.
+    """
+    logger.info("feedback status request received")
+    feedback_status = get_feedback_status()
+    return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
 # TODO: OLS-136 implements the collection mechanism - revisit the need

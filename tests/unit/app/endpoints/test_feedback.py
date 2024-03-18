@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from ols.app.endpoints import feedback
+from ols.app.models.config import UserDataCollection
 from ols.utils import config
 
 
@@ -14,7 +15,9 @@ from ols.utils import config
 def feedback_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
     config.init_empty_config()
-    config.ols_config.feedback_storage_location = tmpdir.strpath
+    config.ols_config.user_data_collection = UserDataCollection(
+        feedback_disabled=False, feedback_storage=tmpdir.strpath
+    )
     return tmpdir.strpath
 
 
@@ -26,9 +29,20 @@ def store_fake_feedback(path, filename, data):
 
 def load_fake_feedback(filename):
     """Load feedback data."""
-    feedback_file = f"{config.ols_config.feedback_storage_location}/{filename}.json"
+    feedback_file = (
+        f"{config.ols_config.user_data_collection.feedback_storage}/{filename}.json"
+    )
     stored_data = json.loads(open(feedback_file).read())
     return stored_data
+
+
+def test_get_feedback_status(feedback_location):
+    """Test get_feedback_status function."""
+    config.ols_config.user_data_collection.feedback_disabled = False
+    assert feedback.get_feedback_status()
+
+    config.ols_config.user_data_collection.feedback_disabled = True
+    assert not feedback.get_feedback_status()
 
 
 def test_list_feedbacks(feedback_location):

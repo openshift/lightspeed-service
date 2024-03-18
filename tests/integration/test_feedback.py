@@ -7,6 +7,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from ols.app.models.config import UserDataCollection
 from ols.utils import config, suid
 from ols.utils.suid import check_suid
 
@@ -28,8 +29,17 @@ def setup():
 @pytest.fixture(autouse=True)
 def with_mocked_feedback_storage(tmpdir):
     """Fixture sets feedback location to config."""
-    config.ols_config.feedback_storage_location = tmpdir.strpath
+    config.ols_config.user_data_collection = UserDataCollection(
+        feedback_disabled=False, feedback_storage=tmpdir.strpath
+    )
     yield
+
+
+def test_feedback_status():
+    """Check if feedback status is returned."""
+    response = client.get("/v1/feedback/status")
+    assert response.status_code == requests.codes.ok
+    assert response.json() == {"functionality": "feedback", "status": {"enabled": True}}
 
 
 def test_feedback():

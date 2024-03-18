@@ -85,6 +85,38 @@ class LLMResponse(BaseModel):
     }
 
 
+class StatusResponse(BaseModel):
+    """Model representing a response to a status request.
+
+    Attributes:
+        functionality: The functionality of the service.
+        status: The status of the service.
+
+    Example:
+        ```python
+        status_response = StatusResponse(
+            functionality="feedback",
+            status={"enabled": True},
+        )
+        ```
+    """
+
+    functionality: str
+    status: dict
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "functionality": "feedback",
+                    "status": {"enabled": True},
+                }
+            ]
+        }
+    }
+
+
 class FeedbackRequest(BaseModel):
     """Model representing a feedback request.
 

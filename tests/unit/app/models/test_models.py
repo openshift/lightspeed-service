@@ -10,6 +10,7 @@ from ols.app.models.models import (
     HealthResponse,
     LLMRequest,
     LLMResponse,
+    StatusResponse,
 )
 
 
@@ -82,6 +83,21 @@ class TestLLM:
         assert llm_response.response == response
         assert llm_response.referenced_documents == referenced_documents
         assert not llm_response.truncated
+
+
+class TestStatusResponse:
+    """Unit tests for the StatusResponse model."""
+
+    @staticmethod
+    def test_status_response():
+        """Test the StatusResponse model."""
+        functionality = "feedback"
+        status = {"enabled": True}
+
+        status_response = StatusResponse(functionality=functionality, status=status)
+
+        assert status_response.functionality == functionality
+        assert status_response.status == status
 
 
 class TestFeedback:

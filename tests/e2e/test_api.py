@@ -622,6 +622,11 @@ def test_feedback() -> None:
     This is a full end-to-end scenario where the feedback is stored,
     retrieved and removed at the end (to avoid leftovers).
     """
+    # check if feedback is enabled
+    response = client.get("/v1/feedback/status", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    assert response.json()["status"]["enabled"] is True
+
     # check the feedback store is empty
     empty_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert empty_feedback.status_code == requests.codes.ok

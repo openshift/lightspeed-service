@@ -90,6 +90,28 @@
                 }
             }
         },
+        "/v1/feedback/status": {
+            "get": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Feedback Status",
+                "description": "Handle feedback status requests.\n\nReturns:\n    Response indicating the status of the feedback.",
+                "operationId": "feedback_status_v1_feedback_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback/list": {
             "get": {
                 "tags": [
@@ -575,6 +597,33 @@
                             "https://docs.openshift.com/container-platform/4.14/operators/understanding/olm/olm-understanding-olm.html"
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install..."
+                    }
+                ]
+            },
+            "StatusResponse": {
+                "properties": {
+                    "functionality": {
+                        "type": "string",
+                        "title": "Functionality"
+                    },
+                    "status": {
+                        "type": "object",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "functionality",
+                    "status"
+                ],
+                "title": "StatusResponse",
+                "description": "Model representing a response to a status request.\n\nAttributes:\n    functionality: The functionality of the service.\n    status: The status of the service.\n\nExample:\n    ```python\n    status_response = StatusResponse(\n        functionality=\"feedback\",\n        status={\"enabled\": True},\n    )\n    ```",
+                "examples": [
+                    {
+                        "functionality": "feedback",
+                        "status": {
+                            "enabled": true
+                        }
                     }
                 ]
             },
