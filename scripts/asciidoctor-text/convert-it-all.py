@@ -11,7 +11,7 @@ import yaml
 def process_node(node, dir="", file_list=[]):
     """Process YAML node from the topic map."""
     currentdir = dir
-    if "Topics" in node.keys():
+    if "Topics" in node:
         currentdir = os.path.join(currentdir, node["Dir"])
         for subnode in node["Topics"]:
             file_list = process_node(subnode, dir=currentdir, file_list=file_list)
@@ -44,16 +44,18 @@ if __name__ == "__main__":
 
     attribute_list = []
     if args.attributes is not None:
-        attributes = yaml.safe_load(open(args.attributes, "r"))
+        with open(args.attributes, "r") as fin:
+            attributes = yaml.safe_load(fin)
         for key, value in attributes.items():
             attribute_list = [*attribute_list, "-a", key + '="%s"' % value]
 
-    topic_map = yaml.safe_load_all(open(args.topic_map, "r"))
-    mega_file_list = []
-    for map in topic_map:
-        file_list = []
-        file_list = process_node(map, file_list=file_list)
-        mega_file_list = mega_file_list + file_list
+    with open(args.topic_map, "r") as fin:
+        topic_map = yaml.safe_load_all(fin)
+        mega_file_list = []
+        for map in topic_map:
+            file_list = []
+            file_list = process_node(map, file_list=file_list)
+            mega_file_list = mega_file_list + file_list
 
     output_dir = os.path.normpath(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
