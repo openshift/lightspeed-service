@@ -1,5 +1,7 @@
 """Mock for StrictRedis client."""
 
+from .mock_redis_pipeline import MockRedisPipeline
+
 
 class MockRedisClient:
     """Mock for StrictRedis client.
@@ -41,3 +43,7 @@ class MockRedisClient:
         assert isinstance(value, (str, bytes, int, float))
 
         self.cache[key] = value
+
+    def pipeline(self, transaction):
+        """Create a pipeline."""
+        return MockRedisPipeline(self)

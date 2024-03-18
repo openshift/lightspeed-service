@@ -1,5 +1,6 @@
 """Cache that uses Redis to store cached values."""
 
+import logging
 import pickle
 import threading
 from typing import Any, Optional
@@ -11,11 +12,14 @@ from redis.exceptions import (
     BusyLoadingError,
     ConnectionError,
     RedisError,
+    WatchError,
 )
 from redis.retry import Retry
 
 from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
+
+logger = logging.getLogger(__name__)
 
 
 # TODO
@@ -102,16 +106,41 @@ class RedisCache(Cache):
             OutOfMemoryError: If item is evicted when Redis allocated
                 memory is higher than maxmemory.
         """
-        key = super().construct_key(user_id, conversation_id)
-
+        # lock in order to not allow client from the same process to make
+        # changes
         with self._lock:
-            old_value = self.get(user_id, conversation_id)
-            if old_value:
-                old_value.extend(value)
-                self.redis_client.set(
-                    key, pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
-            else:
-                self.redis_client.set(
-                    key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+            self.insert_or_append_in_transaction(user_id, conversation_id, value)
+
+    def insert_or_append_in_transaction(
+        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+    ) -> None:
+        """Set the value associated with given key in transaction."""
+        key = super().construct_key(user_id, conversation_id)
+        while True:
+            # try to execute GET operation followed by transaction with
+            # watching changes (made by other clients) in updated value
+            with self.redis_client.pipeline(transaction=True) as pipeline:
+                try:
+                    logger.debug("Transaction started")
+                    pipeline.watch(key)
+                    old_value = self.get(user_id, conversation_id)
+                    pipeline.multi()
+                    if old_value:
+                        old_value.extend(value)
+                        pipeline.set(
+                            key,
+                            pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL),
+                        )
+                    else:
+                        pipeline.set(
+                            key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
+                        )
+                    pipeline.execute()
+                    pipeline.unwatch()
+                    logger.debug("Transaction finished")
+                    # transaction finished with success, we can leave the "try" loop
+                    break
+                except WatchError as err:
+                    logger.info(
+                        "Watch error, need to repeat insert_or_append operation", err
+                    )
