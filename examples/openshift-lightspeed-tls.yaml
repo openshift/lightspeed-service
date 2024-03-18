@@ -87,6 +87,34 @@ metadata:
     app.kubernetes.io/part-of: lightspeed-w-rag-app
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: lightspeed-certs
+  name: lightspeed-app-server
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: 8443-tcp
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app: openshift-lightspeed
+    deployment: lightspeed-w-rag
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: openshift-lightspeed
+    app.kubernetes.io/component: lightspeed-w-rag
+    app.kubernetes.io/instance: lightspeed-w-rag
+    app.kubernetes.io/name: lightspeed-w-rag
+    app.kubernetes.io/part-of: lightspeed-w-rag-app
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: lightspeed-certs-old
   name: lightspeed-w-rag
 spec:
   internalTrafficPolicy: Cluster
