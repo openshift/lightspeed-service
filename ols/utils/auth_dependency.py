@@ -37,11 +37,11 @@ class K8sClientSingleton:
             configuration = kubernetes.client.Configuration()
 
             try:
-                if config.ols_config.authentication_config.k8s_cluster_api not in [
+                if config.ols_config.authentication_config.k8s_cluster_api not in {
                     None,
                     "None",
                     "",
-                ] and config.dev_config.k8s_auth_token not in [None, "None", ""]:
+                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
@@ -73,7 +73,7 @@ class K8sClientSingleton:
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
                     if config.ols_config.authentication_config.k8s_cluster_api
-                    not in [None, "None", ""]
+                    not in {None, "None", ""}
                     else configuration.host
                 )
                 configuration.verify_ssl = (
@@ -82,7 +82,7 @@ class K8sClientSingleton:
                 configuration.ssl_ca_cert = (
                     config.ols_config.authentication_config.k8s_ca_cert_path
                     if config.ols_config.authentication_config.k8s_ca_cert_path
-                    not in [None, "None", ""]
+                    not in {None, "None", ""}
                     else configuration.ssl_ca_cert
                 )
                 api_client = kubernetes.client.ApiClient(configuration)
