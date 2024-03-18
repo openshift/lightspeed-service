@@ -10,7 +10,7 @@ from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.utils import suid
-from tests.mock_classes.redis import MockRedis
+from tests.mock_classes.mock_redis_client import MockRedisClient
 
 conversation_id = suid.get_suid()
 
@@ -20,7 +20,7 @@ def cache():
     """Fixture with constucted and initialized Redis cache object."""
     # we don't want to connect to real Redis from unit tests
     # with patch("ols.src.cache.redis_cache.RedisCache.initialize_redis"):
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         return RedisCache(RedisConfig({}))
 
 
@@ -98,7 +98,7 @@ def test_singleton_pattern():
 
 def test_initialize_redis_no_password():
     """Test Redis initialization code when no password is specified."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig({})
         cache = RedisCache(config)
         cache.initialize_redis(config)
@@ -107,7 +107,7 @@ def test_initialize_redis_no_password():
 
 def test_initialize_redis_with_password():
     """Test Redis initialization code when password is specified."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "password_path": "tests/config/redis_password.txt",
@@ -120,7 +120,7 @@ def test_initialize_redis_with_password():
 
 def test_initialize_redis_with_no_ca_cert_path():
     """Test Redis initialization code when no CA certificate path is specified."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig({})
         cache = RedisCache(config)
         cache.initialize_redis(config)
@@ -131,7 +131,7 @@ def test_initialize_redis_with_no_ca_cert_path():
 
 def test_initialize_redis_with_tls_certs():
     """Test Redis initialization code when CA certificate path is specified."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "ca_cert_path": "test/config/redis_ca_cert.crt",
@@ -148,7 +148,7 @@ def test_initialize_redis_with_tls_certs():
 
 def test_initialize_redis_default_retry_settings():
     """Test Redis initialization code, default retry settings."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig({})
         cache = RedisCache(config)
         cache.initialize_redis(config)
@@ -159,7 +159,7 @@ def test_initialize_redis_default_retry_settings():
 
 def test_initialize_redis_retry_settings():
     """Test Redis initialization code when retry settings is specified."""
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "retry_on_error": "false",
@@ -173,7 +173,7 @@ def test_initialize_redis_retry_settings():
         assert cache.redis_client.kwargs["retry_on_error"] is None
         assert cache.redis_client.kwargs["retry"]._retries == 100
 
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "retry_on_error": "False",
@@ -187,7 +187,7 @@ def test_initialize_redis_retry_settings():
         assert cache.redis_client.kwargs["retry_on_error"] is None
         assert cache.redis_client.kwargs["retry"]._retries == 100
 
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "retry_on_error": "true",
@@ -201,7 +201,7 @@ def test_initialize_redis_retry_settings():
         assert cache.redis_client.kwargs["retry_on_error"] is not None
         assert cache.redis_client.kwargs["retry"]._retries == 10
 
-    with patch("redis.StrictRedis", new=MockRedis):
+    with patch("redis.StrictRedis", new=MockRedisClient):
         config = RedisConfig(
             {
                 "retry_on_error": "True",

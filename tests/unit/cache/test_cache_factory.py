@@ -7,7 +7,7 @@ import pytest
 from ols import constants
 from ols.app.models.config import ConversationCacheConfig
 from ols.src.cache.cache_factory import CacheFactory, InMemoryCache, RedisCache
-from tests.mock_classes.redis import MockRedis
+from tests.mock_classes.mock_redis_client import MockRedisClient
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +48,7 @@ def test_conversation_cache_in_memory(in_memory_cache_config):
     assert isinstance(cache, InMemoryCache)
 
 
-@patch("redis.StrictRedis", new=MockRedis)
+@patch("redis.StrictRedis", new=MockRedisClient)
 def test_conversation_cache_in_redis(redis_cache_config):
     """Check if RedisCache is returned by factory with proper configuration."""
     cache = CacheFactory.conversation_cache(redis_cache_config)
