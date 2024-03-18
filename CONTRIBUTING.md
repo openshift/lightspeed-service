@@ -270,6 +270,7 @@ To add a new provider, follow these steps:
 1. Create a new file in the `ols/src/llm/providers/` directory.
 2. In this file, define a class that inherits from `LLMProvider`.
 3. Register this class for use by decorating it with `@register_llm_provider_as("your_provider")`. You can refer to existing providers for examples.
+4. Add your provider to the list of supported providers [SUPPORTED_PROVIDER_TYPES](https://github.com/openshift/lightspeed-service/blob/8d9025b2d866abe2d66e89bfe5d964f3b2571163/ols/constants.py#L151).
 
 Please note that your custom provider must adhere to the interface defined by `AbstractLLMProvider` to ensure proper integration. Specifically, you must define a `default_params` property and a `load` method in your custom provider class.
 
