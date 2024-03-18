@@ -15,6 +15,8 @@ from .metrics import (
 from .token_counter import GenericTokenCounter, TokenMetricUpdater
 
 __all__ = [
+    "GenericTokenCounter",
+    "TokenMetricUpdater",
     "llm_calls_failures_total",
     "llm_calls_total",
     "llm_calls_validation_errors_total",
@@ -23,8 +25,6 @@ __all__ = [
     "metrics_app",
     "response_duration_seconds",
     "rest_api_calls_total",
-    "GenericTokenCounter",
-    "TokenMetricUpdater",
     "selected_model",
     "selected_provider",
 ]
