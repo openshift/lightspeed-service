@@ -1,7 +1,7 @@
 """Mock for StrictRedis client."""
 
 
-class MockRedis:
+class MockRedisClient:
     """Mock for StrictRedis client.
 
     Example usage in a test:
