@@ -9,6 +9,8 @@ from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
+from ols.app.models.config import ProviderConfig
+from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
@@ -87,6 +89,14 @@ class DocsSummarizer(QueryHelper):
 
         return token_handler_obj.truncate_rag_context(retrieved_nodes, available_tokens)
 
+    def _get_model_options(
+        self, provider_config: ProviderConfig
+    ) -> Optional[dict[str, Any]]:
+        if provider_config is not None:
+            model_config = provider_config.models.get(self.model)
+            return model_config.options
+        return None
+
     def summarize(
         self,
         conversation_id: str,
@@ -135,11 +145,16 @@ class DocsSummarizer(QueryHelper):
 
         rag_context, referenced_documents = self._format_rag_data(rag_context_data)
 
+        provider_config = config.llm_config.providers.get(self.provider)
+
+        model_options = self._get_model_options(provider_config)
+
         interim_prompt = CHAT_PROMPT.format(
             context=rag_context, query=query, chat_history=[]
         )
+
         prompt_token_count = len(token_handler.text_to_tokens(interim_prompt))
-        provider_config = config.llm_config.providers.get(self.provider)
+
         if provider_config is not None:
             model_config = provider_config.models.get(self.model)
             response_token_limit = model_config.response_token_limit
@@ -154,9 +169,20 @@ class DocsSummarizer(QueryHelper):
         else:
             truncated = False
 
+        final_prompt = generate_prompt(
+            self.provider,
+            self.model,
+            model_options,
+            conversation_id,
+            query,
+            history,
+            rag_context,
+            referenced_documents,
+        )
+
         chat_engine = LLMChain(
             llm=bare_llm,
-            prompt=CHAT_PROMPT,
+            prompt=final_prompt,
             verbose=verbose,
         )
         with TokenMetricUpdater(
