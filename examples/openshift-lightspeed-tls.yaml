@@ -39,18 +39,6 @@ spec:
             secretName: lightspeed-certs
       containers:
       - image: quay.io/openshift/lightspeed-service-api-rag:latest
-        command:
-          - uvicorn
-        args:
-          - 'ols.app.main:app'
-          - '--host'
-          - 0.0.0.0
-          - '--port'
-          - '8443'
-          - '--ssl-keyfile'
-          - /app-root/certs/tls.key
-          - '--ssl-certfile'
-          - /app-root/certs/tls.crt
         imagePullPolicy: Always
         name: lightspeed-w-rag
         env:
@@ -150,6 +138,9 @@ data:
       logging_config:
         app_log_level: info
         lib_log_level: warning
+      tls_config:
+        tls_certificate_path: /app-root/certs/tls.crt
+        tls_key_path: /app-root/certs/tls.key
       default_provider: openai
       default_model: gpt-3.5-turbo
     dev_config:
