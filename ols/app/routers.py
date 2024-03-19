@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 
-from ols.app import metrics
 from ols.app.endpoints import feedback, health, ols
+from ols.app.metrics import metrics
 
 
 def include_routers(app: FastAPI) -> None:
@@ -15,4 +15,4 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(ols.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(health.router)
-    app.mount("/metrics", metrics.metrics_app)
+    app.include_router(metrics.router)

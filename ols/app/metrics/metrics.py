@@ -1,6 +1,19 @@
 """Prometheus metrics that are exposed by REST API."""
 
-from prometheus_client import Counter, Histogram, Info, make_asgi_app
+from typing import Any
+
+from fastapi import APIRouter, Depends, Response
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    Info,
+    generate_latest,
+)
+
+from ols.utils.auth_dependency import auth_dependency
+
+router = APIRouter(tags=["metrics"])
 
 rest_api_calls_total = Counter(
     "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
@@ -28,5 +41,15 @@ llm_token_received_total = Counter(
 selected_provider = Info("selected_provider", "Selected provider")
 selected_model = Info("selected_model", "Selected model")
 
-# register metric
-metrics_app = make_asgi_app()
+
+@router.get("/metrics/")
+def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
+    """Metrics Endpoint.
+
+    Args:
+        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+
+    Returns:
+        Response containing the latest metrics.
+    """
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
