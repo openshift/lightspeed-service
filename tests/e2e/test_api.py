@@ -26,9 +26,9 @@ LLM_REST_API_TIMEOUT = 90
 
 def read_metrics(client):
     """Read all metrics using REST API call."""
-    response = client.get("/metrics/", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
 
-    # check that the /metrics/ endpoint is correct and we got
+    # check that the /metrics endpoint is correct and we got
     # some response
     assert response.status_code == requests.codes.ok
     assert response.text is not None
@@ -541,7 +541,7 @@ def test_conversation_history() -> None:
 
 def test_metrics() -> None:
     """Check if service provides metrics endpoint with expected metrics."""
-    response = client.get("/metrics/", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     assert response.text is not None
 
@@ -560,8 +560,8 @@ def test_metrics() -> None:
         assert f"{expected_counter} " in response.text
 
     # check the duration histogram presence
-    assert 'response_duration_seconds_count{path="/metrics/"}' in response.text
-    assert 'response_duration_seconds_sum{path="/metrics/"}' in response.text
+    assert 'response_duration_seconds_count{path="/metrics"}' in response.text
+    assert 'response_duration_seconds_sum{path="/metrics"}' in response.text
 
 
 @pytest.mark.cluster

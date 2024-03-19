@@ -11,7 +11,12 @@ from fastapi.openapi.utils import get_openapi
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
-from ols.app.main import app
+
+from ols.utils import config
+
+config.init_empty_config()
+
+from ols.app.main import app  # noqa: E402
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
