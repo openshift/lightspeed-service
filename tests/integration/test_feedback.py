@@ -19,6 +19,7 @@ def setup():
     from ols.app.main import app
 
     client = TestClient(app)
+    config.dev_config.disable_auth = True
 
 
 def test_feedback():

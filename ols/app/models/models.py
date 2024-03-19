@@ -167,3 +167,27 @@ class HealthResponse(BaseModel):
             ]
         }
     }
+
+
+class AuthorizationResponse(BaseModel):
+    """Model representing a response to an authorization request.
+
+    Attributes:
+        user_id: The ID of the logged in user.
+        username: The name of the logged in user.
+    """
+
+    user_id: str
+    username: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "username": "user1",
+                }
+            ]
+        }
+    }
