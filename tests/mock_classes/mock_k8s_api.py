@@ -5,7 +5,6 @@ class MockK8sResponse:
     """Mock Kubernetes API Response.
 
     This class is designed to mock Kubernetes API responses for testing purposes.
-
     """
 
     def __init__(self, authenticated=None, allowed=None, username=None, uid=None):
@@ -49,11 +48,11 @@ def mock_token_review_response(token_review):
     Simulates a response to a Kubernetes TokenReview request,
     returning authenticated user information for a valid token.
 
-    Parameters:
-    - token_review: The TokenReview object being simulated.
+    Args:
+        token_review: The TokenReview object being simulated.
 
     Returns:
-    - A MockK8sResponse object with authentication status and user details.
+        A MockK8sResponse object with authentication status and user details.
     """
     if token_review.spec.token == "valid-token":  # noqa: S105
         return MockK8sResponse(True, username="valid-user", uid="valid-uid")
@@ -67,11 +66,11 @@ def mock_subject_access_review_response(sar):
     Simulates a response to a Kubernetes SubjectAccessReview request,
     determining if a user has authorization for a given action.
 
-    Parameters:
-    - sar: The SubjectAccessReview object being simulated.
+    Args:
+        sar: The SubjectAccessReview object being simulated.
 
     Returns:
-    - A MockK8sResponse object with authorization status.
+        A MockK8sResponse object with authorization status.
     """
     if sar.spec.user == "valid-user":
         return MockK8sResponse(allowed=True)

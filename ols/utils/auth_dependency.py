@@ -118,8 +118,8 @@ class K8sClientSingleton:
 def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
     """Perform a Kubernetes TokenReview to validate a given token.
 
-    Parameters:
-        token (str): The bearer token to be validated.
+    Args:
+        token: The bearer token to be validated.
 
     Returns:
         The user information if the token is valid, None otherwise.
@@ -144,8 +144,8 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
 def _extract_bearer_token(header: str) -> str:
     """Extract the bearer token from an HTTP authorization header.
 
-    Parameters:
-        header (str): The authorization header containing the token.
+    Args:
+        header: The authorization header containing the token.
 
     Returns:
         The extracted token if present, else an empty string.
@@ -163,8 +163,8 @@ async def auth_dependency(request: Request) -> tuple[str, str]:
     Validates the bearer token from the request,
     performs access control checks using Kubernetes TokenReview and SubjectAccessReview.
 
-    Parameters:
-        request (Request): The FastAPI request object.
+    Args:
+        request: The FastAPI request object.
 
     Returns:
         The user's UID and username if authentication and authorization succeed.

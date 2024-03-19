@@ -21,7 +21,7 @@ class GenericTokenCounter(BaseCallbackHandler):
     - llm_calls: number of LLM calls
 
     Example usage:
-
+        ```python
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
         )
@@ -40,14 +40,14 @@ class GenericTokenCounter(BaseCallbackHandler):
         metrics.llm_token_received_total.labels(
             provider=self.provider, model=self.model
         ).inc(token_counter.output_tokens)
-
+        ```
     """
 
     def __init__(self, llm: LLM) -> None:
         """Initialize the token counter callback handler.
 
-        Parameters:
-            llm (LLM): the LLM instance
+        Args:
+            llm: The LLM instance.
         """
         self.llm = llm  # LLM instance
         self.input_tokens = 0  # number of tokens sent to LLM
@@ -102,7 +102,7 @@ class TokenMetricUpdater:
     - llm_calls_total
 
     Example usage:
-
+        ```python
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
         )
@@ -119,15 +119,16 @@ class TokenMetricUpdater:
             response = llm_chain.invoke(
                 input={"query": query}, config={"callbacks": [token_counter]}
             )
+        ```
     """
 
     def __init__(self, llm: LLM, provider: str, model: str) -> None:
         """Initialize the token counter context manager.
 
-        Parameters:
-            llm (LLM): the LLM instance
-            provider (str): the provider name for labeling the metrics
-            model (str): the model name for labeling the metrics
+        Args:
+            llm: The LLM instance.
+            provider: The provider name for labeling the metrics.
+            model: The model name for labeling the metrics.
         """
         self.token_counter = GenericTokenCounter(llm=llm)
         self.provider = provider
