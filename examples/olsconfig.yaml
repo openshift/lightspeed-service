@@ -56,6 +56,10 @@ ols_config:
   user_data_collection:
     feedback_disabled: false
     feedback_storage: "/app-root/data/feedback"
+  tls_config:
+    tls_certificate_path: /app-root/certs/certificate.crt
+    tls_key_path: /app-root/certs/private.key
+    tls_key_password_path: /app-root/certs/password.txt
 dev_config:
   enable_dev_ui: true
   # llm_params:

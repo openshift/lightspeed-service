@@ -38,18 +38,6 @@ spec:
             secretName: ols-certs
       containers:
       - image: "$OLS_IMAGE"
-        command:
-          - uvicorn
-        args:
-          - 'ols.app.main:app'
-          - '--host'
-          - 0.0.0.0
-          - '--port'
-          - '8443'
-          - '--ssl-keyfile'
-          - /app-root/certs/tls.key
-          - '--ssl-certfile'
-          - /app-root/certs/tls.crt
         imagePullPolicy: Always
         name: ols
         env:

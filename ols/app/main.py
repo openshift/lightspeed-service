@@ -1,16 +1,13 @@
 """Entry point to FastAPI-based web service."""
 
 import logging
-import os
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
 from ols.utils import config
-from ols.utils.logging import configure_logging
 
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
@@ -22,16 +19,7 @@ app = FastAPI(
 )
 
 
-cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-config.init_config(cfg_file)
-
-configure_logging(config.ols_config.logging_config)
 logger = logging.getLogger(__name__)
-logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
-
-config.init_query_filter()
-config.init_vector_index()
-
 
 if config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)

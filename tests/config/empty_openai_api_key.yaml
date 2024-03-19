@@ -16,3 +16,4 @@ ols_config:
   default_model: gpt-3.5-turbo
 dev_config:
   disable_auth: true
+  disable_tls: true

@@ -8,6 +8,7 @@ from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 
+from ols.utils import config
 from ols.utils.auth_dependency import auth_dependency
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
@@ -19,6 +20,7 @@ from tests.mock_classes.mock_k8s_api import (
 def setup():
     """Setups and load config."""
     global client
+    config.init_config("tests/config/auth_config.yaml")
     from ols.app.main import app
 
     client = TestClient(app)

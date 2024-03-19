@@ -178,6 +178,8 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -200,6 +202,8 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -222,6 +226,8 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -243,6 +249,8 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -264,6 +272,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     foo: bar
@@ -282,6 +292,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: foobar
@@ -303,6 +315,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -326,6 +340,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: redis
@@ -347,6 +363,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: memory
@@ -368,6 +386,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: redis
@@ -389,6 +409,8 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
+dev_config:
+  disable_tls: true
 ols_config:
   conversation_cache:
     type: redis
@@ -618,6 +640,7 @@ dev_config:
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
+  disable_tls: true
 
 """,
         InvalidConfigurationError,
@@ -664,6 +687,7 @@ dev_config:
   enable_dev_ui: true
   disable_question_validation: false
   disable_auth: false
+  disable_tls: true
   llm_params:
     something: 5
 """

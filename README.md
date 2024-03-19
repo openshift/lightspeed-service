@@ -103,7 +103,54 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
       ```
       **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
 
-7. (Optional) Configure the document store
+7. Configure OLS TLS communication
+
+   This section provides instructions on configuring TLS (Transport Layer Security) for the OLS Application, enabling secure connections via HTTPS. TLS is enabled by default; however, if necessary, it can be disabled through the `dev_config` settings.
+
+
+   1. Enabling and Disabling TLS
+   
+      By default, TLS is enabled in OLS. To disable TLS, adjust the `dev_config` in your configuration file as shown below:
+
+      ```yaml
+         dev_config:
+            disable_tls: false
+      ```
+
+   2. Configuring TLS in local Environments:
+
+      1. Generate Self-Signed Certificates: To generate self-signed certificates, run the following command from the project's root directory:
+         ```bash
+            ./scripts/generate-certs.sh
+         ``` 
+      2. Update OLS Configuration: Modify your config.yaml to include paths to your certificate and its private key:
+         ```yaml
+            ols_config:
+               tls_config:
+                  tls_certificate_path: /full/path/to/certs/cert.pem
+                  tls_key_path: /full/path/to/certs/key.pem
+         ```
+      3. Launch OLS with HTTPS: After applying the above configurations, OLS will run over HTTPS.
+   
+   3. Configuring OLS in OpenShift:
+
+      For deploying in OpenShift, Service-Served Certificates can be utilized. Update your ols-config.yaml as shown below, based on the example provided in the examples directory:
+
+      ```yaml
+         ols_config:
+            tls_config:
+               tls_certificate_path: /app-root/certs/cert.pem
+               tls_key_path: /app-root/certs/key.pem
+      ```
+   4. Using a Private Key with a Password
+      If your private key is encrypted with a password, specify a path to a file that contains the key password as follows:
+      ```yaml
+         ols_config:
+            tls_config:
+               tls_key_password_path: /app-root/certs/password.txt
+      ```
+
+8. (Optional) Configure the document store
    1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
    2. Create vector index directory
       ```sh
@@ -114,7 +161,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
       unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
       ```
 
-8. (Optional) Configure conversation cache
+9.  (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in Redis storage. It is possible to specify storage type in `olsconfig.yaml` configuration file.
    1. Cache stored in memory:
       ```yaml

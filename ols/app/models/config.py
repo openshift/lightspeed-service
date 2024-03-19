@@ -39,6 +39,14 @@ def _dir_check(path: str, desc: str) -> None:
         raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
 
 
+def _file_check(path: str, desc: str) -> None:
+    """Check that path is a readable regular file."""
+    if not os.path.isfile(path):
+        raise InvalidConfigurationError(f"{desc} '{path}' is not a file")
+    if not os.access(path, os.R_OK):
+        raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
+
+
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
 
@@ -123,6 +131,42 @@ class ModelConfig(BaseModel):
         # model options can be None
         if self.options is not None:
             ModelConfig._validate_model_options(self.options)
+
+
+class TLSConfig(BaseModel):
+    """TLS configuration."""
+
+    tls_certificate_path: Optional[str] = None
+    tls_key_path: Optional[str] = None
+    tls_key_password: Optional[str] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data:
+            self.tls_certificate_path = data.get(
+                "tls_certificate_path", self.tls_certificate_path
+            )
+            self.tls_key_path = data.get("tls_key_path", self.tls_key_path)
+            self.tls_key_password = _get_attribute_from_file(
+                data, "tls_key_password_path"
+            )
+
+    def validate_yaml(self, disable_tls: bool = False) -> None:
+        """Validate TLS config."""
+        if not disable_tls:
+            if not self.tls_certificate_path:
+                raise InvalidConfigurationError(
+                    "Can not enable TLS without ols_config.tls_config.tls_certificate_path"
+                )
+            else:
+                _file_check(self.tls_certificate_path, "OLS server certificate")
+                if self.tls_key_path:
+                    _file_check(self.tls_key_path, "OLS server certificate private key")
+                else:
+                    raise InvalidConfigurationError(
+                        "Can not enable TLS without ols_config.tls_config.tls_key_path"
+                    )
 
 
 class AuthenticationConfig(BaseModel):
@@ -589,6 +633,7 @@ class OLSConfig(BaseModel):
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
     authentication_config: Optional[AuthenticationConfig] = None
+    tls_config: Optional[TLSConfig] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -612,6 +657,7 @@ class OLSConfig(BaseModel):
         self.authentication_config = AuthenticationConfig(
             data.get("authentication_config", None)
         )
+        self.tls_config = TLSConfig(data.get("tls_config", None))
         if data.get("query_filters", None) is not None:
             self.query_filters = []
             for item in data.get("query_filters", None):
@@ -630,10 +676,11 @@ class OLSConfig(BaseModel):
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
                 and self.query_filters == other.query_filters
+                and self.tls_config == other.tls_config
             )
         return False
 
-    def validate_yaml(self) -> None:
+    def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
         self.conversation_cache.validate_yaml()
         self.logging_config.validate_yaml()
@@ -641,6 +688,8 @@ class OLSConfig(BaseModel):
             self.reference_content.validate_yaml()
         if self.authentication_config:
             self.authentication_config.validate_yaml()
+        if self.tls_config:
+            self.tls_config.validate_yaml(disable_tls)
         if self.query_filters is not None:
             for filter in self.query_filters:
                 filter.validate_yaml()
@@ -653,7 +702,9 @@ class DevConfig(BaseModel):
     disable_question_validation: bool = False
     llm_params: Optional[dict] = None
     disable_auth: bool = False
+    disable_tls: bool = False
     k8s_auth_token: Optional[str] = None
+    run_on_localhost: Optional[bool] = False
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize developer configuration settings."""
@@ -667,6 +718,10 @@ class DevConfig(BaseModel):
         self.llm_params = data.get("llm_params", {})
         self.k8s_auth_token = str(data.get("k8s_auth_token", None))
         self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
+        self.disable_tls = str(data.get("disable_tls", "False")).lower() == "true"
+        self.run_on_localhost = (
+            str(data.get("run_on_localhost", "False")).lower() == "true"
+        )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -678,6 +733,8 @@ class DevConfig(BaseModel):
                 and self.llm_params == other.llm_params
                 and self.disable_auth == other.disable_auth
                 and self.k8s_auth_token == other.k8s_auth_token
+                and self.disable_tls == other.disable_tls
+                and self.run_on_localhost == other.run_on_localhost
             )
         return False
 
@@ -755,8 +812,8 @@ class Config(BaseModel):
         if self.llm_providers is None:
             raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()
+        self.dev_config.validate_yaml()
         if self.ols_config is None:
             raise InvalidConfigurationError("no OLS config section found")
-        self.ols_config.validate_yaml()
-        self.dev_config.validate_yaml()
+        self.ols_config.validate_yaml(self.dev_config.disable_tls)
         self._validate_providers_and_models()
