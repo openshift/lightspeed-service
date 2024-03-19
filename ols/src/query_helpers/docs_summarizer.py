@@ -139,11 +139,11 @@ class DocsSummarizer(QueryHelper):
             context=rag_context, query=query, chat_history=[]
         )
         prompt_token_count = len(token_handler.text_to_tokens(interim_prompt))
-        token_config = config.llm_config.providers.get(self.provider)
-        if token_config is not None:
-            token_config = token_config.models.get(self.model)
-            response_token_limit = token_config.response_token_limit
-            context_window_size = token_config.context_window_size
+        provider_config = config.llm_config.providers.get(self.provider)
+        if provider_config is not None:
+            model_config = provider_config.models.get(self.model)
+            response_token_limit = model_config.response_token_limit
+            context_window_size = model_config.context_window_size
             available_tokens = (
                 context_window_size - response_token_limit - prompt_token_count
             )
