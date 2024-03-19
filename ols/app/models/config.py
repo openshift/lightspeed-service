@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, DirectoryPath, model_validator
@@ -52,6 +52,7 @@ class ModelConfig(BaseModel):
     credentials: Optional[str] = None
     context_window_size: int = constants.DEFAULT_CONTEXT_WINDOW_SIZE
     response_token_limit: int = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
+    options: Optional[dict[str, Any]] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -72,6 +73,8 @@ class ModelConfig(BaseModel):
                 f"Context window size {self.context_window_size}, "
                 f"should be greater than response token limit {self.response_token_limit}"
             )
+        # fully optional model-specific options
+        self.options = data.get("options", None)
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -82,6 +85,7 @@ class ModelConfig(BaseModel):
                 and self.credentials == other.credentials
                 and self.context_window_size == other.context_window_size
                 and self.response_token_limit == other.response_token_limit
+                and self.options == other.options
             )
         return False
 
@@ -100,6 +104,15 @@ class ModelConfig(BaseModel):
                 )
         return value
 
+    @staticmethod
+    def _validate_model_options(options: dict) -> None:
+        """Validate model options which must be dict[str, Any]."""
+        if not isinstance(options, dict):
+            raise InvalidConfigurationError("model options must be dictionary")
+        for key in options.keys():
+            if not isinstance(key, str):
+                raise InvalidConfigurationError("key for model option must be string")
+
     def validate_yaml(self) -> None:
         """Validate model config."""
         if self.name is None:
@@ -108,6 +121,9 @@ class ModelConfig(BaseModel):
             raise InvalidConfigurationError(
                 "model URL is invalid, only http:// and https:// URLs are supported"
             )
+        # model options can be None
+        if self.options is not None:
+            ModelConfig._validate_model_options(self.options)
 
 
 class AuthenticationConfig(BaseModel):
