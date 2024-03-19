@@ -67,6 +67,7 @@ dependencies = [
     "prometheus-client>=0.19.0",
     "kubernetes>=29.0.0",
     "pytest-asyncio>=0.23.5",
+    "spacy>=3.7.4",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
