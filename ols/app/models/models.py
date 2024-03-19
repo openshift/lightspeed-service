@@ -1,9 +1,8 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel, model_validator
-from typing_extensions import Self
 
 
 class LLMRequest(BaseModel):

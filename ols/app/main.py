@@ -2,8 +2,8 @@
 
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 

@@ -1,7 +1,8 @@
 """Base class for query helpers."""
 
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from langchain.llms.base import LLM
 
