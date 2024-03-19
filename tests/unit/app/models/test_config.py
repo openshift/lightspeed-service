@@ -31,17 +31,26 @@ def test_model_config():
             "name": "test_name",
             "url": "test_url",
             "credentials_path": "tests/config/secret.txt",
+            "options": {
+                "foo": 1,
+                "bar": 2,
+            },
         }
     )
 
     assert model_config.name == "test_name"
     assert model_config.url == "test_url"
     assert model_config.credentials == "secret_key"
+    assert model_config.options == {
+        "foo": 1,
+        "bar": 2,
+    }
 
     model_config = ModelConfig()
     assert model_config.name is None
     assert model_config.url is None
     assert model_config.credentials is None
+    assert model_config.options is None
 
 
 def test_model_config_equality():
@@ -68,9 +77,26 @@ def test_model_config_validation_proper_config():
             "name": "test_name",
             "url": "http://test.url",
             "credentials_path": "tests/config/secret.txt",
+            "options": {
+                "foo": 1,
+                "bar": 2,
+            },
         }
     )
     # validation should not fail
+    model_config.validate_yaml()
+
+
+def test_model_config_no_options():
+    """Test the ModelConfig model validation."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+        }
+    )
+    # validation should not fail because model options are fully optional
     model_config.validate_yaml()
 
 
@@ -94,6 +120,44 @@ def test_model_config_validation_empty_model():
 
     # validation should fail
     with pytest.raises(InvalidConfigurationError, match="model name is missing"):
+        model_config.validate_yaml()
+
+
+def test_model_config_wrong_options():
+    """Test the ModelConfig model validation."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "options": "not-dictionary",
+        }
+    )
+
+    # validation should fail
+    with pytest.raises(
+        InvalidConfigurationError, match="model options must be dictionary"
+    ):
+        model_config.validate_yaml()
+
+
+def test_model_config_wrong_option_key():
+    """Test the ModelConfig model validation."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "http://test.url",
+            "credentials_path": "tests/config/secret.txt",
+            "options": {
+                42: "answer",
+            },
+        }
+    )
+
+    # validation should fail
+    with pytest.raises(
+        InvalidConfigurationError, match="key for model option must be string"
+    ):
         model_config.validate_yaml()
 
 
