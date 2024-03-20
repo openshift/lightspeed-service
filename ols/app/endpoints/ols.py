@@ -41,8 +41,7 @@ def conversation_request(
     previous_input = []
     referenced_documents: list[str] = []
 
-    # auth contains tuple with user ID (in UUID format) and user name
-    user_id = auth[0]
+    user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
 
     conversation_id = retrieve_conversation_id(llm_request)
@@ -95,6 +94,12 @@ def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
         referenced_documents=[],
         truncated=False,
     )
+
+
+def retrieve_user_id(auth: Any) -> str:
+    """Retrieve user ID from the token processed by auth. mechanism."""
+    # auth contains tuple with user ID (in UUID format) and user name
+    return auth[0]
 
 
 def retrieve_conversation_id(llm_request: LLMRequest) -> str:
