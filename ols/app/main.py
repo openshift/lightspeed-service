@@ -47,7 +47,7 @@ async def rest_api_counter(
         response = await call_next(request)
 
     # ignore /metrics endpoint that will be called periodically
-    if not path.endswith("/metrics/"):
+    if not path.endswith("/metrics"):
         # just update metrics
         metrics.rest_api_calls_total.labels(path, response.status_code).inc()
     return response

@@ -267,7 +267,7 @@ curl 'http://127.0.0.1:8080/openapi.json' | jq .
 Service exposes metrics in Prometheus format on `/metrics` endpoint. Scraping them is straightforward:
 
 ```sh
-curl 'http://127.0.0.1:8080/metrics/'
+curl 'http://127.0.0.1:8080/metrics'
 ```
 
 ### Gradio UI

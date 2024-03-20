@@ -21,9 +21,9 @@ def setup():
 
 def retrieve_metrics(client):
     """Retrieve all service metrics."""
-    response = client.get("/metrics/")
+    response = client.get("/metrics")
 
-    # check that the /metrics/ endpoint is correct and we got
+    # check that the /metrics endpoint is correct and we got
     # some response
     assert response.status_code == requests.codes.ok
     assert response.text is not None
@@ -113,16 +113,16 @@ def test_metrics_duration():
     # duration histograms are expected to be part of metrics
 
     # first: check summary and statistic
-    assert 'response_duration_seconds_count{path="/metrics/"}' in response_text
-    assert 'response_duration_seconds_sum{path="/metrics/"}' in response_text
+    assert 'response_duration_seconds_count{path="/metrics"}' in response_text
+    assert 'response_duration_seconds_sum{path="/metrics"}' in response_text
 
     # second: check the histogram itself
     pattern = re.compile(
-        r"response_duration_seconds_bucket{le=\"0\.[0-9]+\",path=\"\/metrics\/\"}"
+        r"response_duration_seconds_bucket{le=\"0\.[0-9]+\",path=\"\/metrics\"}"
     )
     # re.findall() returns empty list if not found, and this empty list is treated as False
     assert re.findall(pattern, response_text)
     pattern = re.compile(
-        r"response_duration_seconds_bucket{le=\"\+Inf\",path=\"\/metrics\/\"}"
+        r"response_duration_seconds_bucket{le=\"\+Inf\",path=\"\/metrics\"}"
     )
     assert re.findall(pattern, response_text)

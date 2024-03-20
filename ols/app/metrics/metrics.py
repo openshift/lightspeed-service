@@ -42,7 +42,7 @@ selected_provider = Info("selected_provider", "Selected provider")
 selected_model = Info("selected_model", "Selected model")
 
 
-@router.get("/metrics/")
+@router.get("/metrics")
 def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
     """Metrics Endpoint.
 
