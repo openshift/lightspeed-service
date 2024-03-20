@@ -36,22 +36,27 @@ if __name__ == "__main__":
     )
     parser.add_argument("--topic-map", "-t", required=True, help="The topic map file")
     parser.add_argument(
-        "--output-dir", "-o", required=True, help="The output directory for text"
+        "--output-dir",
+        "-o",
+        required=True,
+        help="The output directory for text",
     )
     parser.add_argument(
-        "--attributes", "-a", help="An optional file containing attributes"
+        "--attributes",
+        "-a",
+        help="An optional file containing attributes",
     )
 
     args = parser.parse_args(sys.argv[1:])
 
     attribute_list = []
     if args.attributes is not None:
-        with open(args.attributes, "r") as fin:
+        with open(args.attributes) as fin:
             attributes = yaml.safe_load(fin)
         for key, value in attributes.items():
             attribute_list = [*attribute_list, "-a", key + '="%s"' % value]
 
-    with open(args.topic_map, "r") as fin:
+    with open(args.topic_map) as fin:
         topic_map = yaml.safe_load_all(fin)
         mega_file_list = []
         for map in topic_map:
