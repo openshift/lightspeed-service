@@ -20,6 +20,7 @@ data
 vector-db
 vendor
 embeddings_model
+.output
 
 # ignore credential files
 *_api_key.txt
