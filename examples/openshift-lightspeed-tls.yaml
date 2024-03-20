@@ -1,4 +1,47 @@
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ols-sar-check
+  labels:
+    app: ols
+rules:
+- apiGroups: ["authentication.k8s.io"]
+  resources:
+  - tokenreviews
+  verbs: ["create"]
+- apiGroups: ["authorization.k8s.io"]
+  resources:
+  - subjectaccessreviews
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ols-sar-check
+  labels:
+    app: ols
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ols-sar-check
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: openshift-lightspeed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ols-user
+  labels:
+    app: ols
+rules:
+- nonResourceURLs:
+    - "/ols-access"
+  verbs:
+    - "get"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
