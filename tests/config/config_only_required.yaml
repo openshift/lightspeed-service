@@ -1,0 +1,9 @@
+llm_providers:
+  empty_test:
+    type: bam
+    url: "https://dummy.com"
+    credentials_path: tests/config/secret.txt
+    models:
+ols_config:
+  conversation_cache:
+    type: memory

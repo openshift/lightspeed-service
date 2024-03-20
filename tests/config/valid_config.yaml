@@ -1,6 +1,6 @@
 ---
 llm_providers:
-  - name: p1
+  p1:
     type: bam
     url: "https://url1"
     credentials_path: tests/config/secret.txt
@@ -12,7 +12,7 @@ llm_providers:
         response_token_limit: 50
       - name: m2
         url: "https://murl2"
-  - name: p2
+  p2:
     type: bam
     url: "https://url2"
     models:

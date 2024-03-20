@@ -10,7 +10,7 @@ from ols.utils import config
 def test_basic_interface():
     """Test basic interface."""
     config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-    provider_cfg = ProviderConfig(
+    provider_cfg = LLMProvidersRegistry(
         {
             "name": "some_provider",
             "type": "openai",

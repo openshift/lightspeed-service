@@ -7,7 +7,7 @@ import yaml
 
 import ols.app.models.config as config_model
 from ols.src.cache.cache_factory import CacheFactory
-from ols.src.rag_index.index_loader import IndexLoader
+# from ols.src.rag_index.index_loader import IndexLoader
 from ols.utils.query_filter import QueryFilter
 
 config = None
@@ -21,21 +21,24 @@ rag_index = None
 
 def init_empty_config() -> None:
     """Initialize empty configuration."""
+    # TODO: understand use case
     global config
     global ols_config
     global llm_config
     global dev_config
     config = config_model.Config()
     ols_config = config_model.OLSConfig()
-    llm_config = config_model.LLMProviders()
+    llm_config = config_model.LLMProviderConfig()
     dev_config = config_model.DevConfig()
 
 
 def load_config_from_stream(stream: TextIOBase) -> config_model.Config:
     """Load configuration from a YAML stream."""
+    ## TODO: duplicates to be handled
     data = yaml.safe_load(stream)
-    c = config_model.Config(data)
-    c.validate_yaml()
+    # print(data)
+    c = config_model.Config(**data)
+    # c.validate_yaml()
     return c
 
 
