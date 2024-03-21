@@ -57,23 +57,23 @@ def eval_parser(eval_response: str):
     eval_response_parsed = eval_response.split("\n")
     eval_len = len(eval_response_parsed)
 
-    if eval_len == 0:
-        return 0, eval_response_parsed
-    if eval_len == 1:
-        return 0, eval_response_parsed
-    if eval_len == 2:
-        score_str = eval_response_parsed[0]
-        score = float(score_str) if score_str else 0
-        reasoning = eval_response_parsed[1]
-        return score, reasoning
-
-    if eval_len == 3:
-        score_str, reasoning_str = eval_response_parsed[1], eval_response_parsed[2]
-        score = float(score_str) if score_str else 0
-        reasoning = reasoning_str.lstrip("\n")
-        return score, reasoning
-    if eval_len > 3:
-        return 0, eval_response
+    match eval_len:
+        case 0:
+            return 0, eval_response_parsed
+        case 1:
+            return 0, eval_response_parsed
+        case 2:
+            score_str = eval_response_parsed[0]
+            score = float(score_str) if score_str else 0
+            reasoning = eval_response_parsed[1]
+            return score, reasoning
+        case 3:
+            score_str, reasoning_str = eval_response_parsed[1], eval_response_parsed[2]
+            score = float(score_str) if score_str else 0
+            reasoning = reasoning_str.lstrip("\n")
+            return score, reasoning
+        case _:
+            return 0, eval_response
 
 
 def get_eval_results(key, eval_results):
