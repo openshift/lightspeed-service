@@ -347,7 +347,7 @@ async def main():
     dir_list = dirs_all_files(question_folder)
 
     if len(dir_list) == 0:
-        raise "couldn't find dirs in questions folder"
+        raise Exception("couldn't find dirs in questions folder")
 
     print("*** starting question iteration ")
 
