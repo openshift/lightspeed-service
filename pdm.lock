@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:20a1d593ff08f5b7ef3b9909244ce8b5ab6acc05515d302b84dd7408fb89a8a7"
+content_hash = "sha256:320be565a996e1784db75f65854c928c888dc37aa6c6eeb85de05a09346a6a51"
 
 [[package]]
 name = "aiofiles"
@@ -126,7 +126,7 @@ version = "4.0.3"
 requires_python = ">=3.7"
 summary = "Timeout context manager for asyncio programs"
 groups = ["default"]
-marker = "python_full_version <= \"3.11.2\""
+marker = "python_full_version < \"3.11.3\""
 files = [
     {file = "async-timeout-4.0.3.tar.gz", hash = "sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f"},
     {file = "async_timeout-4.0.3-py3-none-any.whl", hash = "sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028"},
@@ -431,16 +431,20 @@ files = [
 
 [[package]]
 name = "faiss-cpu"
-version = "1.7.4"
+version = "1.8.0"
+requires_python = ">=3.8"
 summary = "A library for efficient similarity search and clustering of dense vectors."
 groups = ["default"]
+dependencies = [
+    "numpy",
+]
 files = [
-    {file = "faiss-cpu-1.7.4.tar.gz", hash = "sha256:265dc31b0c079bf4433303bf6010f73922490adff9188b915e2d3f5e9c82dd0a"},
-    {file = "faiss_cpu-1.7.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d0bbd6f55d7940cc0692f79e32a58c66106c3c950cee2341b05722de9da23ea3"},
-    {file = "faiss_cpu-1.7.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e13c14280376100f143767d0efe47dcb32618f69e62bbd3ea5cd38c2e1755926"},
-    {file = "faiss_cpu-1.7.4-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c521cb8462f3b00c0c7dfb11caff492bb67816528b947be28a3b76373952c41d"},
-    {file = "faiss_cpu-1.7.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:afdd9fe1141117fed85961fd36ee627c83fc3b9fd47bafb52d3c849cc2f088b7"},
-    {file = "faiss_cpu-1.7.4-cp311-cp311-win_amd64.whl", hash = "sha256:2ff7f57889ea31d945e3b87275be3cad5d55b6261a4e3f51c7aba304d76b81fb"},
+    {file = "faiss-cpu-1.8.0.tar.gz", hash = "sha256:3ee1549491728f37b65267c192a94661a907154a8ae0546ad50a564b8be0d82e"},
+    {file = "faiss_cpu-1.8.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:c9e6ad94b86626be1a0faff3e53c4ca169eba88aa156d7e90c5a2e9ba30558fb"},
+    {file = "faiss_cpu-1.8.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4601dbd81733bf1bc3bff690aac981289fb386dc8e60d0c4eec8a37ba6856d20"},
+    {file = "faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa943d3b5e8c5c77cdd629d9c3c6f78d7da616e586fdd1b94aecbf2e5fa9ba06"},
+    {file = "faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b644b366c3b239b34fa3e08bf65bfc78a24eda1e1ea5b2b6d9be3e8fc73d8179"},
+    {file = "faiss_cpu-1.8.0-cp311-cp311-win_amd64.whl", hash = "sha256:f85ecf3514850f93985be238351f5a70736133cfae784b372640aa17c6343a1b"},
 ]
 
 [[package]]
@@ -752,26 +756,24 @@ files = [
 
 [[package]]
 name = "ibm-generative-ai"
-version = "2.0.0"
+version = "2.2.0"
 requires_python = ">=3.9,<4.0"
 summary = "IBM Generative AI is a Python library built on IBM's large language model REST interface."
 groups = ["default"]
 dependencies = [
-    "aiohttp<4.0.0,>=3.9.0",
-    "aiolimiter==1.1.0",
+    "aiolimiter<2.0.0,>=1.1.0",
     "httpx-sse<0.4.0,>=0.3.0",
     "httpx<0.27.0,>=0.26.0",
     "pydantic<3.0.0,>=2.0.0",
-    "python-dotenv<2.0.0,>=1.0.0",
 ]
 files = [
-    {file = "ibm_generative_ai-2.0.0-py3-none-any.whl", hash = "sha256:2ab85c2f47047de65f9c66c9addfeec72d645f85eb77c964049320e04a38124a"},
-    {file = "ibm_generative_ai-2.0.0.tar.gz", hash = "sha256:d4eef59a5ba097c492cc2f873d597a3d74288355b21e5f6f28750e515dcd1ba0"},
+    {file = "ibm_generative_ai-2.2.0-py3-none-any.whl", hash = "sha256:514016e6c38547ba3b5291fd95b1bfe8f683a70573079061e66dc1a3554c1388"},
+    {file = "ibm_generative_ai-2.2.0.tar.gz", hash = "sha256:b6ceea47e97590ff23a61d530e273baf2378c1adcf073a74e9d398b426e7fa7c"},
 ]
 
 [[package]]
 name = "ibm-watson-machine-learning"
-version = "1.0.344"
+version = "1.0.352"
 requires_python = ">=3.10"
 summary = "IBM Watson Machine Learning API Client"
 groups = ["default"]
@@ -787,8 +789,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watson_machine_learning-1.0.344-py3-none-any.whl", hash = "sha256:b701b728bbcb7c6096559d0ad51212443110a1a275a7293ddac3e5a492c4b8e7"},
-    {file = "ibm_watson_machine_learning-1.0.344.tar.gz", hash = "sha256:296329c3d68c3ce20f745d93dbc4e77858dfdf829d886285454dd617602fb8a7"},
+    {file = "ibm_watson_machine_learning-1.0.352-py3-none-any.whl", hash = "sha256:be233468bdd8e11ee57975310febefd013bcae35b7d153053e064f0be6a00242"},
+    {file = "ibm_watson_machine_learning-1.0.352.tar.gz", hash = "sha256:937b339c76d4ea143439f98ea60cfabacf802102e39873f361ece82174a791d3"},
 ]
 
 [[package]]
@@ -996,8 +998,8 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.1.12"
-requires_python = ">=3.8.1,<4.0"
+version = "0.1.13"
+requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
 dependencies = [
@@ -1006,8 +1008,8 @@ dependencies = [
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
     "jsonpatch<2.0,>=1.33",
-    "langchain-community<0.1,>=0.0.28",
-    "langchain-core<0.2.0,>=0.1.31",
+    "langchain-community<0.1,>=0.0.29",
+    "langchain-core<0.2.0,>=0.1.33",
     "langchain-text-splitters<0.1,>=0.0.1",
     "langsmith<0.2.0,>=0.1.17",
     "numpy<2,>=1",
@@ -1016,14 +1018,14 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.1.12-py3-none-any.whl", hash = "sha256:b4dd1760e2d035daefad08af60a209b96b729ee45492d34e3e127e553a471034"},
-    {file = "langchain-0.1.12.tar.gz", hash = "sha256:5f612761ba548b81748ed8dc70535e8de0531445415028a82de3fd8255bfa8a3"},
+    {file = "langchain-0.1.13-py3-none-any.whl", hash = "sha256:c87657021b777d6b07e55be379a28660a1cd148c31593569869dd6b0b4cab945"},
+    {file = "langchain-0.1.13.tar.gz", hash = "sha256:db330aa79c33501cb1ed97ff465f7645813eaa6cfd742c61e19c2d48e4aaba18"},
 ]
 
 [[package]]
 name = "langchain-community"
-version = "0.0.28"
-requires_python = ">=3.8.1,<4.0"
+version = "0.0.29"
+requires_python = "<4.0,>=3.8.1"
 summary = "Community contributed LangChain integrations."
 groups = ["default"]
 dependencies = [
@@ -1031,21 +1033,21 @@ dependencies = [
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
-    "langchain-core<0.2.0,>=0.1.31",
+    "langchain-core<0.2.0,>=0.1.33",
     "langsmith<0.2.0,>=0.1.0",
     "numpy<2,>=1",
     "requests<3,>=2",
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_community-0.0.28-py3-none-any.whl", hash = "sha256:bdb015ac455ae68432ea104628717583dce041e1abdfcefe86e39f034f5e90b8"},
-    {file = "langchain_community-0.0.28.tar.gz", hash = "sha256:8664d243a90550fc5ddc137b712034e02c8d43afc8d4cc832ba5842b44c864ce"},
+    {file = "langchain_community-0.0.29-py3-none-any.whl", hash = "sha256:1652dddf257089b7b5066974b636262b4a5b680339f4539be133b14ae351e67d"},
+    {file = "langchain_community-0.0.29.tar.gz", hash = "sha256:d88107fafa9fe2c5733da9630c68d9ee51cd33b1c88a4950e7a2d9a38f7e7aa3"},
 ]
 
 [[package]]
 name = "langchain-core"
-version = "0.1.32"
-requires_python = ">=3.8.1,<4.0"
+version = "0.1.33"
+requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
 dependencies = [
@@ -1059,25 +1061,24 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_core-0.1.32-py3-none-any.whl", hash = "sha256:192aecdee6216af19b596ec18e7be3da0b9ecb9083eec263e02b68125737245d"},
-    {file = "langchain_core-0.1.32.tar.gz", hash = "sha256:d62683becbf20f51f12875791a042320f45eaa0c87a267d30bc03bc1a07f5ec2"},
+    {file = "langchain_core-0.1.33-py3-none-any.whl", hash = "sha256:cee7fbab114c74b7279a92c8a376b40344b0fa3d0f0af3143a858e3b7485bf13"},
+    {file = "langchain_core-0.1.33.tar.gz", hash = "sha256:545eff3de83cc58231bd2b0c6d672323fc2077b94d326ba1a3219118af1d1a66"},
 ]
 
 [[package]]
 name = "langchain-openai"
-version = "0.0.5"
-requires_python = ">=3.8.1,<4.0"
+version = "0.1.0"
+requires_python = "<4.0,>=3.8.1"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.2,>=0.1.16",
-    "numpy<2,>=1",
+    "langchain-core<0.2.0,>=0.1.33",
     "openai<2.0.0,>=1.10.0",
-    "tiktoken<0.6.0,>=0.5.2",
+    "tiktoken<1,>=0.5.2",
 ]
 files = [
-    {file = "langchain_openai-0.0.5-py3-none-any.whl", hash = "sha256:93b37dfac274adad65e46d5d6e71411e00c6984bcc5e10f1d6bb58e7944dc01b"},
-    {file = "langchain_openai-0.0.5.tar.gz", hash = "sha256:f317fee5b652949ad96ad7edf8ef7a044a6a3f0cc71d1e12f9d5261789fd68c4"},
+    {file = "langchain_openai-0.1.0-py3-none-any.whl", hash = "sha256:3cb3da679da9bc33c20634a5a64e65e1f1d9f69a8b71e8622297d8c33623e8d6"},
+    {file = "langchain_openai-0.1.0.tar.gz", hash = "sha256:96bb825be484a19cd0586725856bd159e3ed47d31ad95c6d160852abcb938ae2"},
 ]
 
 [[package]]
@@ -1407,7 +1408,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.14.0"
+version = "1.14.2"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1421,8 +1422,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "openai-1.14.0-py3-none-any.whl", hash = "sha256:5c9fd3a59f5cbdb4020733ddf79a22f6b7a36d561968cb3f3dd255cdd263d9fe"},
-    {file = "openai-1.14.0.tar.gz", hash = "sha256:e287057adf0ec3315abc32ddcc968d095879abd9b68bf51c0402dab13ab5ae9b"},
+    {file = "openai-1.14.2-py3-none-any.whl", hash = "sha256:a48b3c4d635b603952189ac5a0c0c9b06c025b80eb2900396939f02bb2104ac3"},
+    {file = "openai-1.14.2.tar.gz", hash = "sha256:e5642f7c02cf21994b08477d7bb2c1e46d8f335d72c26f0396c5f89b15b5b153"},
 ]
 
 [[package]]
@@ -1751,17 +1752,6 @@ files = [
 ]
 
 [[package]]
-name = "python-dotenv"
-version = "1.0.1"
-requires_python = ">=3.8"
-summary = "Read key-value pairs from a .env file and set them as environment variables"
-groups = ["default"]
-files = [
-    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
-    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
-]
-
-[[package]]
 name = "python-multipart"
 version = "0.0.9"
 requires_python = ">=3.8"
@@ -1802,16 +1792,16 @@ files = [
 
 [[package]]
 name = "redis"
-version = "5.0.1"
+version = "5.0.3"
 requires_python = ">=3.7"
 summary = "Python client for Redis database and key-value store"
 groups = ["default"]
 dependencies = [
-    "async-timeout>=4.0.2; python_full_version <= \"3.11.2\"",
+    "async-timeout>=4.0.3; python_full_version < \"3.11.3\"",
 ]
 files = [
-    {file = "redis-5.0.1-py3-none-any.whl", hash = "sha256:ed4802971884ae19d640775ba3b03aa2e7bd5e8fb8dfaed2decce4d0fc48391f"},
-    {file = "redis-5.0.1.tar.gz", hash = "sha256:0dab495cd5753069d3bc650a0dde8a8f9edde16fc5691b689a566eda58100d0f"},
+    {file = "redis-5.0.3-py3-none-any.whl", hash = "sha256:5da9b8fe9e1254293756c16c008e8620b3d15fcc6dde6babde9541850e72a32d"},
+    {file = "redis-5.0.3.tar.gz", hash = "sha256:4973bae7444c0fbed64a06b87446f79361cb7e4ec1538c022d696ed7a5015580"},
 ]
 
 [[package]]
@@ -2638,7 +2628,7 @@ files = [
 
 [[package]]
 name = "uvicorn"
-version = "0.27.0.post1"
+version = "0.29.0"
 requires_python = ">=3.8"
 summary = "The lightning-fast ASGI server."
 groups = ["default"]
@@ -2647,8 +2637,8 @@ dependencies = [
     "h11>=0.8",
 ]
 files = [
-    {file = "uvicorn-0.27.0.post1-py3-none-any.whl", hash = "sha256:4b85ba02b8a20429b9b205d015cbeb788a12da527f731811b643fd739ef90d5f"},
-    {file = "uvicorn-0.27.0.post1.tar.gz", hash = "sha256:54898fcd80c13ff1cd28bf77b04ec9dbd8ff60c5259b499b4b12bb0917f22907"},
+    {file = "uvicorn-0.29.0-py3-none-any.whl", hash = "sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de"},
+    {file = "uvicorn-0.29.0.tar.gz", hash = "sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0"},
 ]
 
 [[package]]
