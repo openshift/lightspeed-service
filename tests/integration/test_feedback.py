@@ -3,6 +3,7 @@
 import os
 from unittest.mock import patch
 
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
@@ -11,6 +12,7 @@ from ols.utils import config, suid
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
+@pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def setup():
     """Setups the test client."""
@@ -22,7 +24,7 @@ def setup():
     config.dev_config.disable_auth = True
 
 
-def test_feedback():
+def test_feedback(setup):
     """Check if feedback with correct format is accepted by the service."""
     # TODO: should we validate that the correct log messages are written?
 
@@ -37,7 +39,7 @@ def test_feedback():
     assert response.json() == {"response": "feedback received"}
 
 
-def test_feedback_wrong_request():
+def test_feedback_wrong_request(setup):
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
     response = client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
@@ -45,7 +47,7 @@ def test_feedback_wrong_request():
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_wrong_not_filled_in_request():
+def test_feedback_wrong_not_filled_in_request(setup):
     """Check if feedback without feedback object is not accepted by the service."""
     # use proper conversation ID
     conversation_id = suid.get_suid()
@@ -59,7 +61,7 @@ def test_feedback_wrong_not_filled_in_request():
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_no_payload_send():
+def test_feedback_no_payload_send(setup):
     """Check if feedback without feedback payload."""
     response = client.post("/v1/feedback")
     # for the request send w/o payload, the server
@@ -67,7 +69,7 @@ def test_feedback_no_payload_send():
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_wrong_conversation_id():
+def test_feedback_wrong_conversation_id(setup):
     """Check if feedback with wrong conversation ID is not accepted by the service."""
     response = client.post(
         "/v1/feedback",

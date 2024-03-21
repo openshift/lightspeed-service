@@ -4,12 +4,14 @@ import os
 import re
 from unittest.mock import patch
 
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
+@pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def setup():
     """Setups the test client."""
@@ -32,7 +34,7 @@ def retrieve_metrics(client):
     return response.text
 
 
-def test_metrics():
+def test_metrics(setup):
     """Check if service provides metrics endpoint with some expected counters."""
     response_text = retrieve_metrics(client)
 
@@ -73,7 +75,7 @@ def get_counter_value(client, counter_name, path, status_code):
     raise Exception(f"Counter {counter_name} was not found in metrics")
 
 
-def test_rest_api_call_counter_ok_status():
+def test_rest_api_call_counter_ok_status(setup):
     """Check if REST API call counter works as expected, label with 200 OK status."""
     endpoint = "/readiness"
 
@@ -89,7 +91,7 @@ def test_rest_api_call_counter_ok_status():
     assert new == old + 1, "Counter has not been updated properly"
 
 
-def test_rest_api_call_counter_not_found_status():
+def test_rest_api_call_counter_not_found_status(setup):
     """Check if REST API call counter works as expected, label with 404 NotFound status."""
     endpoint = "/this-does-not-exists"
 
@@ -106,7 +108,7 @@ def test_rest_api_call_counter_not_found_status():
     assert new == old + 1, "Counter for 404 NotFound  has not been updated properly"
 
 
-def test_metrics_duration():
+def test_metrics_duration(setup):
     """Check if service provides metrics for durations."""
     response_text = retrieve_metrics(client)
 

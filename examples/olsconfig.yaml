@@ -49,6 +49,7 @@ ols_config:
   #   - name: bar_filter
   #     pattern: '\b(?:bar)\b'
   #     replace_with: "openshift"
+  query_validation_method: llm
   authentication_config:
     k8s_cluster_api: "https://api.example.com:6443"
     k8s_ca_cert_path: "/Users/home/ca.crt"
@@ -64,6 +65,5 @@ dev_config:
   enable_dev_ui: true
   # llm_params:
   #   temperature_override: 0
-  # disable_question_validation: false
   # disable_auth: false
   # k8s_auth_token: optional_token_when_no_available_kube_config

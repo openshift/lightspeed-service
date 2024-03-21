@@ -18,6 +18,7 @@ from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
 from ols.utils.auth_dependency import auth_dependency
+from ols.utils.keywords import KEYWORDS
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +212,8 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         )
 
 
-def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
-    """Validate user question, raise HTTPException in case of any problem."""
+def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str:
+    """Validate user question using llm, raise HTTPException in case of any problem."""
     # Validate the query
     try:
         question_validator = QuestionValidator(
@@ -234,6 +235,43 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error while validating question",
         )
+
+
+def _validate_question_keyword(query: str) -> str:
+    """Validate user question using keyword."""
+    # Current implementation is without any tokenizer method, lemmatization/n-grams.
+    # Add valid keywords to keywords.txt file.
+    query_temp = query.lower()
+    for kw in KEYWORDS:
+        if kw in query_temp:
+            return constants.SUBJECT_VALID
+    # query_temp = {q_word.lower().strip(".?,") for q_word in query.split()}
+    # common_words = config.keywords.intersection(query_temp)
+    # if len(common_words) > 0:
+    #     return constants.SUBJECT_VALID
+
+    logger.debug(f"No matching keyword found for query: {query}")
+    return constants.SUBJECT_INVALID
+
+
+def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
+    """Validate user question."""
+    match config.ols_config.query_validation_method:
+
+        case constants.QueryValidationMethod.DISABLED:
+            logger.debug(
+                f"{conversation_id} Question validation is disabled. "
+                f"Treating question as valid."
+            )
+            return constants.SUBJECT_VALID
+
+        case constants.QueryValidationMethod.KEYWORD:
+            logger.debug("Keyword based query validation.")
+            return _validate_question_keyword(llm_request.query)
+
+        case _:
+            logger.debug("LLM based query validation.")
+            return _validate_question_llm(conversation_id, llm_request)
 
 
 def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str:
