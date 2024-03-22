@@ -7,6 +7,7 @@ import requests
 from httpx import Client
 
 from ols.constants import INVALID_QUERY_RESP, NO_RAG_CONTENT_RESP
+from scripts.validate_response import ResponseValidation
 
 url = os.getenv("OLS_URL", "http://localhost:8080")
 token = os.getenv("OLS_TOKEN")
@@ -22,6 +23,32 @@ conversation_id = "12345678-abcd-0000-0123-456789abcdef"
 BASIC_ENDPOINTS_TIMEOUT = 5
 NON_LLM_REST_API_TIMEOUT = 20
 LLM_REST_API_TIMEOUT = 90
+
+SCORE_THRESHOLD = 0.4  # low score is better
+
+# Sample Question/Answer set
+# TODO: Load this from QnA json file.
+QUESTION1 = "what is kubernetes?"
+ANSWER1 = (
+    "Kubernetes is an open source container orchestration tool developed by Google. "
+    "It allows you to run and manage container-based workloads, making it easier to "
+    "deploy and scale applications in a cloud native way. With Kubernetes, "
+    "you can create clusters that span hosts across on-premise, public, private, or "
+    "hybrid clouds. It helps in sharing resources, orchestrating containers across "
+    "multiple hosts, installing new hardware configurations, running health checks "
+    "and self-healing applications, and scaling containerized applications."
+)
+QUESTION2 = "what is openshift virtualization?"
+ANSWER2 = (
+    "OpenShift Virtualization is an add-on to the Red Hat OpenShift Container Platform "
+    "that enables the running and management of virtual machine workloads alongside "
+    "container workloads. It introduces new objects into the OpenShift cluster using "
+    "Kubernetes custom resources to facilitate virtualization tasks such as creating and "
+    "managing Linux and Windows virtual machines, running pod and VM workloads together "
+    "in a cluster, connecting to VMs through various consoles and CLI tools, importing "
+    "and cloning existing VMs, managing network interface controllers and storage disks "
+    "attached to VMs, as well as live migrating VMs between nodes."
+)
 
 
 def read_metrics(client):
@@ -363,7 +390,7 @@ def test_valid_question() -> None:
     with RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+            json={"conversation_id": conversation_id, "query": QUESTION1},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -379,6 +406,11 @@ def test_valid_question() -> None:
         )
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
+        score = ResponseValidation().get_similarity_score(
+            json_response["response"], ANSWER1
+        )
+        assert score <= SCORE_THRESHOLD
+
 
 @pytest.mark.standalone
 def test_valid_question_tokens_counter() -> None:
@@ -392,7 +424,7 @@ def test_valid_question_tokens_counter() -> None:
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+            json={"conversation_id": conversation_id, "query": QUESTION1},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -474,17 +506,22 @@ def test_rag_question() -> None:
     with RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
-            json={"query": "what is the first step to install an openshift cluster?"},
+            json={"query": QUESTION2},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
         assert len(json_response["referenced_documents"]) > 0
-        assert "install" in json_response["referenced_documents"][0]
+        assert "about_virt" in json_response["referenced_documents"][0]
         assert "https://" in json_response["referenced_documents"][0]
 
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
+
+        score = ResponseValidation().get_similarity_score(
+            json_response["response"], ANSWER2
+        )
+        assert score <= SCORE_THRESHOLD
 
 
 def test_query_filter() -> None:
