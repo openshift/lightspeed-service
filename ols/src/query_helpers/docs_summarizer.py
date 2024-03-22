@@ -4,6 +4,7 @@ import logging
 from typing import Any, Optional
 
 from langchain.chains import LLMChain
+from langchain_core.messages import HumanMessage
 from langchain_core.messages.base import BaseMessage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
@@ -11,7 +12,6 @@ from ols import constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
 from ols.src.prompts.prompt_generator import generate_prompt
-from ols.src.prompts.prompts import CHAT_PROMPT
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
 from ols.utils.token_handler import TokenHandler
@@ -53,7 +53,13 @@ class DocsSummarizer(QueryHelper):
 
         return "\n\n".join(rag_text), file_path
 
-    def _get_rag_data(self, rag_index: VectorStoreIndex, query: str) -> list[dict]:
+    def _get_rag_data(
+        self,
+        rag_index: VectorStoreIndex,
+        query: str,
+        provider_config: ProviderConfig,
+        model_options: Optional[dict[str, Any]],
+    ) -> list[dict]:
         """Get rag index data.
 
         Get relevant rag content based on query.
@@ -77,7 +83,20 @@ class DocsSummarizer(QueryHelper):
         )
         # Truncate rag context, if required.
         token_handler_obj = TokenHandler()
-        interim_prompt = CHAT_PROMPT.format(context="", query=query, chat_history=[])
+
+        rag_context = " "
+        prompt, _ = generate_prompt(
+            self.provider,
+            self.model,
+            model_options,
+            query,
+            [],
+            rag_context,
+        )
+        interim_prompt = prompt.format(
+            context=rag_context, query=query, chat_history=[]
+        )
+
         prompt_token_count = len(token_handler_obj.text_to_tokens(interim_prompt))
         available_tokens = (
             context_window_size - response_token_limit - prompt_token_count
@@ -136,8 +155,13 @@ class DocsSummarizer(QueryHelper):
         rag_context_data: list[dict] = []
         referenced_documents: list[str] = []
 
+        provider_config = config.llm_config.providers.get(self.provider)
+        model_options = self._get_model_options(provider_config)
+
         if vector_index is not None:
-            rag_context_data = self._get_rag_data(vector_index, query)
+            rag_context_data = self._get_rag_data(
+                vector_index, query, provider_config, model_options
+            )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
 
@@ -145,11 +169,16 @@ class DocsSummarizer(QueryHelper):
 
         rag_context, referenced_documents = self._format_rag_data(rag_context_data)
 
-        provider_config = config.llm_config.providers.get(self.provider)
-
-        model_options = self._get_model_options(provider_config)
-
-        interim_prompt = CHAT_PROMPT.format(
+        dummy_history = [HumanMessage(content="dummy")]
+        prompt, _ = generate_prompt(
+            self.provider,
+            self.model,
+            model_options,
+            query,
+            dummy_history,
+            rag_context,
+        )
+        interim_prompt = prompt.format(
             context=rag_context, query=query, chat_history=[]
         )
 
@@ -169,15 +198,13 @@ class DocsSummarizer(QueryHelper):
         else:
             truncated = False
 
-        final_prompt = generate_prompt(
+        final_prompt, llm_input_values = generate_prompt(
             self.provider,
             self.model,
             model_options,
-            conversation_id,
             query,
             history,
             rag_context,
-            referenced_documents,
         )
 
         chat_engine = LLMChain(
@@ -191,7 +218,7 @@ class DocsSummarizer(QueryHelper):
             model=self.model,
         ) as token_counter:
             summary = chat_engine.invoke(
-                input={"context": rag_context, "query": query, "chat_history": history},
+                input=llm_input_values,
                 config={"callbacks": [token_counter]},
             )
 
