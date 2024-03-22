@@ -759,7 +759,8 @@ def test_valid_config_file():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-def test_valid_config_file_with_postgres():
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_valid_config_file_with_postgres(patch):
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
         config.init_config("tests/config/valid_config_postgres.yaml")
