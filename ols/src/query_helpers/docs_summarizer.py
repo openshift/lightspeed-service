@@ -35,7 +35,6 @@ class DocsSummarizer(QueryHelper):
         """
         return (
             constants.OCP_DOCS_ROOT_URL
-            + constants.OCP_DOCS_VERSION
             + file_path.removeprefix(constants.EMBEDDINGS_ROOT_DIR)
         ).removesuffix("txt") + "html"
 

@@ -69,18 +69,14 @@ verify: ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101
 
-get-rag: ## Download RAG embeddings model and index
-	@echo "Downloading embeddings model from HF..."
-	python scripts/download_embeddings_model.py embeddings_model
-	@echo "Downloading embeddings..."
-	mkdir -p vector-db/ocp-product-docs && \
-	pushd vector-db/ocp-product-docs && \
-	wget -q https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip && \
-	unzip -qq -o local.zip && \
-	rm local.zip && popd
-
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
+
+get-rag: ## Download a copy of the RAG embedding model and vector database
+	podman create --replace --name tmp-rag-container quay.io/openshift/lightspeed-rag-content@sha256:eb3472dd675cc79b02e4d15b53b12c9c365d6c2335a6026f55de443dd95c902f true
+	podman cp tmp-rag-container:/rag/vector_db vector_db
+	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
+	podman rm tmp-rag-container
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
@@ -90,4 +86,3 @@ help: ## Show this help screen
 	@grep -E '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 	@echo ''
-
