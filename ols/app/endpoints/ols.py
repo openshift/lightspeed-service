@@ -240,7 +240,7 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str
 def _validate_question_keyword(query: str) -> str:
     """Validate user question using keyword."""
     # Current implementation is without any tokenizer method, lemmatization/n-grams.
-    # Add valid keywords to keywords.txt file.
+    # Add valid keywords to keywords.py file.
     query_temp = query.lower()
     for kw in KEYWORDS:
         if kw in query_temp:

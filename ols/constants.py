@@ -21,8 +21,6 @@ POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
     SUBJECT_INVALID,
 )
 
-KEYWORDS_FILE_PATH = "ols/data_assets/keywords.txt"
-
 # Default responses
 INVALID_QUERY_RESP = (
     "I can only answer questions about OpenShift and Kubernetes. "
