@@ -7,9 +7,13 @@ class MockK8sResponse:
     This class is designed to mock Kubernetes API responses for testing purposes.
     """
 
-    def __init__(self, authenticated=None, allowed=None, username=None, uid=None):
+    def __init__(
+        self, authenticated=None, allowed=None, username=None, uid=None, groups=None
+    ):
         """Init function."""
-        self.status = MockK8sResponseStatus(authenticated, allowed, username, uid)
+        self.status = MockK8sResponseStatus(
+            authenticated, allowed, username, uid, groups
+        )
 
 
 class MockK8sUser:
@@ -18,10 +22,11 @@ class MockK8sUser:
     Represents a user in the mocked Kubernetes environment.
     """
 
-    def __init__(self, username=None, uid=None):
+    def __init__(self, username=None, uid=None, groups=None):
         """Init function."""
         self.username = username
         self.uid = uid
+        self.groups = groups
 
 
 class MockK8sResponseStatus:
@@ -32,12 +37,12 @@ class MockK8sResponseStatus:
     and user information if authenticated.
     """
 
-    def __init__(self, authenticated, allowed, username=None, uid=None):
+    def __init__(self, authenticated, allowed, username=None, uid=None, groups=None):
         """Init function."""
         self.authenticated = authenticated
         self.allowed = allowed
         if authenticated:
-            self.user = MockK8sUser(username, uid)
+            self.user = MockK8sUser(username, uid, groups)
         else:
             self.user = None
 
@@ -55,7 +60,9 @@ def mock_token_review_response(token_review):
         A MockK8sResponse object with authentication status and user details.
     """
     if token_review.spec.token == "valid-token":  # noqa: S105
-        return MockK8sResponse(True, username="valid-user", uid="valid-uid")
+        return MockK8sResponse(
+            True, username="valid-user", uid="valid-uid", groups=["ols-group"]
+        )
     else:
         return MockK8sResponse(False)
 

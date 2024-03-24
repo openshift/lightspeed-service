@@ -6,10 +6,11 @@ import logging
 from fastapi import APIRouter, Request
 
 from ols.app.models.models import AuthorizationResponse
-from ols.utils.auth_dependency import auth_dependency
+from ols.utils.auth_dependency import AuthDependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authorized"])
+auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
 @router.post("/authorized")

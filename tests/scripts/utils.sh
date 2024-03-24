@@ -80,13 +80,22 @@ function install_ols() {
 
     # create a new service account with no special permissions and get an auth token for it
     oc create sa olsuser
+
+    # Create the group ols-users
+    oc adm groups new ols-users
+
+    # Add the olsuser service account to the ols-users group
+    oc adm groups add-users ols-users olsuser
+
+    # Create a token for the olsuser service account
     export OLS_TOKEN=$(oc create token olsuser)
 
-    # grant the service account permission to query ols
-    oc adm policy add-cluster-role-to-user ols-user -z olsuser
+    # Grant the ols-users group permission to the cluster role
+    oc adm policy add-cluster-role-to-group ols-user -z olsuser
 
-    # determine the hostname for the ols route
+    # Determine the hostname for the ols route
     export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
+
 }
 
 # $1 suite id
