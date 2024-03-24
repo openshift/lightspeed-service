@@ -34,23 +34,29 @@ if "localhost" not in ols_url:
 # generic http client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
 client = None
+metrics_client = None
 
 
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
     try:
-        global ols_url, client
+        global ols_url, client, metrics_client
         token = None
+        metrics_token = None
         if on_cluster:
             print("Setting up for on cluster test execution\n")
             ols_url = cluster_utils.get_ols_url("ols")
             cluster_utils.create_user("test-user")
+            cluster_utils.create_user("metrics-test-user")
             token = cluster_utils.get_user_token("test-user")
+            metrics_token = cluster_utils.get_user_token("metrics-test-user")
             cluster_utils.grant_sa_user_access("test-user", "ols-user")
+            cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
         else:
             print("Setting up for standalone test execution\n")
 
         client = testutils.get_http_client(ols_url, token)
+        metrics_client = testutils.get_http_client(ols_url, metrics_token)
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
@@ -86,7 +92,7 @@ def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
@@ -95,7 +101,7 @@ def test_readiness():
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
@@ -104,7 +110,7 @@ def test_liveness():
 def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     endpoint = "/v1/debug/query"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         cid = suid.get_suid()
         r = client.post(
             endpoint,
@@ -125,7 +131,7 @@ def test_raw_prompt():
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         cid = suid.get_suid()
         response = client.post(
             endpoint,
@@ -148,7 +154,7 @@ def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(
-        client, endpoint, status_code=requests.codes.unprocessable_entity
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
     ):
         response = client.post(
             endpoint,
@@ -165,7 +171,7 @@ def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(
-        client, endpoint, status_code=requests.codes.unprocessable_entity
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
     ):
         response = client.post(
             endpoint,
@@ -187,7 +193,7 @@ def test_valid_question(response_eval) -> None:
         response_eval, "eval1", "with_rag"
     )
 
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         cid = suid.get_suid()
         response = client.post(
             endpoint,
@@ -220,12 +226,12 @@ def test_valid_question(response_eval) -> None:
 @pytest.mark.standalone
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
-        metrics_utils.RestAPICallCounterChecker(client, endpoint),
-        metrics_utils.TokenCounterChecker(client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint),
+        metrics_utils.TokenCounterChecker(metrics_client, model, provider),
     ):
         response = client.post(
             endpoint,
@@ -238,12 +244,12 @@ def test_valid_question_tokens_counter() -> None:
 @pytest.mark.standalone
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
-        metrics_utils.RestAPICallCounterChecker(client, endpoint),
-        metrics_utils.TokenCounterChecker(client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint),
+        metrics_utils.TokenCounterChecker(metrics_client, model, provider),
     ):
         response = client.post(
             endpoint,
@@ -255,15 +261,15 @@ def test_invalid_question_tokens_counter() -> None:
 
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
         metrics_utils.RestAPICallCounterChecker(
-            client, endpoint, status_code=requests.codes.unprocessable_entity
+            metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
         ),
         metrics_utils.TokenCounterChecker(
-            client,
+            metrics_client,
             model,
             provider,
             expect_sent_change=False,
@@ -279,15 +285,15 @@ def test_token_counters_for_query_call_without_payload() -> None:
 
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
         metrics_utils.RestAPICallCounterChecker(
-            client, endpoint, status_code=requests.codes.unprocessable_entity
+            metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
         ),
         metrics_utils.TokenCounterChecker(
-            client,
+            metrics_client,
             model,
             provider,
             expect_sent_change=False,
@@ -310,7 +316,7 @@ def test_rag_question(response_eval) -> None:
         response_eval, "eval2", "with_rag"
     )
 
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
             json={"query": eval_query},
@@ -335,7 +341,7 @@ def test_rag_question(response_eval) -> None:
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
             json={"query": "what is foo in bar?"},
@@ -357,7 +363,7 @@ def test_query_filter() -> None:
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
             json={
@@ -385,7 +391,7 @@ def test_conversation_history() -> None:
 
 def test_metrics() -> None:
     """Check if service provides metrics endpoint with expected metrics."""
-    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = metrics_client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     assert response.text is not None
 
@@ -413,7 +419,7 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = metrics_utils.get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(metrics_client)
 
     # check available compbinations
     assert model, provider in {
@@ -438,20 +444,19 @@ def test_improper_token():
 
 @pytest.mark.cluster
 def test_forbidden_user():
-    """Test accessing /v1/query endpoint using a user w/ no ols permissions."""
-    try:
-        cluster_utils.create_user("no-ols-permissions")
-        token = cluster_utils.get_user_token("no-ols-permissions")
-        client = testutils.get_http_client(ols_url, token)
+    """Test scenarios where we expect an unauthorized response.
 
-        response = client.post(
-            "/v1/query",
-            json={"query": "what is foo in bar?"},
-            timeout=NON_LLM_REST_API_TIMEOUT,
-        )
-        assert response.status_code == requests.codes.forbidden
-    finally:
-        cluster_utils.delete_user("no-ols-permissions")
+    Test accessing /v1/query endpoint using the metrics user w/ no ols permissions,
+    Test accessing /metrics endpoint using the ols user w/ no ols-metrics permissions.
+    """
+    response = metrics_client.post(
+        "/v1/query",
+        json={"query": "what is foo in bar?"},
+        timeout=NON_LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.forbidden
+    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.forbidden
 
 
 def test_feedback() -> None:

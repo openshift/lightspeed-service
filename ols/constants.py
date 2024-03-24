@@ -202,3 +202,5 @@ DEFAULT_RESPONSE_TOKEN_LIMIT = 500
 # default indentity for local testing and deployment
 DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"
 DEFAULT_USER_NAME = "OLS"
+# TO-DO: make this UUID dynamic per cluster (dynamic uuid for each cluster)
+DEFAULT_KUBEADMIN_UID = "b6553200-0f7b-4c82-b1c5-9303ff18e5f0"
