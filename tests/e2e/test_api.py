@@ -2,28 +2,63 @@
 
 import json
 import os
+import sys
 
 import pytest
 import requests
-from httpx import Client
 
+import ols.utils.suid as suid
+import tests.e2e.cluster_utils as cluster_utils
+import tests.e2e.metrics_utils as metrics_utils
+import tests.e2e.test_utils as testutils
 from ols.constants import INVALID_QUERY_RESP, NO_RAG_CONTENT_RESP
 from scripts.validate_response import ResponseValidation
+from tests.e2e.consts import (
+    BASIC_ENDPOINTS_TIMEOUT,
+    CONVERSATION_ID,
+    LLM_REST_API_TIMEOUT,
+    NON_LLM_REST_API_TIMEOUT,
+)
 
-url = os.getenv("OLS_URL", "http://localhost:8080")
-token = os.getenv("OLS_TOKEN")
-client = Client(base_url=url, verify=False)  # noqa: S501
-if token:
-    client.headers.update({"Authorization": f"Bearer {token}"})
+# on_cluster is set to true when the tests are being run
+# against ols running on a cluster
+on_cluster = False
+
+# OLS_URL env only needs to be set when running against a local ols instance,
+# when ols is run against a cluster the url is retrieved from the cluster.
+ols_url = os.getenv("OLS_URL")
+if "localhost" not in ols_url:
+    on_cluster = True
+
+# generic http client for talking to OLS, when OLS is run on a cluster
+# this client will be preconfigured with a valid user token header.
+client = None
 
 
-conversation_id = "12345678-abcd-0000-0123-456789abcdef"
+def setup_module(module):
+    """Set up common artifacts used by all e2e tests."""
+    try:
+        global ols_url, client
+        token = None
+        if on_cluster:
+            print("Setting up for on cluster test execution\n")
+            ols_url = cluster_utils.get_ols_url("ols")
+            cluster_utils.create_user("test-user")
+            token = cluster_utils.get_user_token("test-user")
+            cluster_utils.grant_sa_user_access("test-user", "ols-user")
+        else:
+            print("Setting up for standalone test execution\n")
+
+        client = testutils.get_http_client(ols_url, token)
+    except Exception as e:
+        print(f"Failed to setup ols access: {e}")
+        sys.exit(1)
 
 
-# timeout settings
-BASIC_ENDPOINTS_TIMEOUT = 5
-NON_LLM_REST_API_TIMEOUT = 20
-LLM_REST_API_TIMEOUT = 90
+def teardown_module(module):
+    """Clean up the environment after all tests are executed."""
+    # TODO move cluster artifacts gathering(currently in utils.sh:must_gather()) to here.
+    pass
 
 
 @pytest.fixture(scope="module")
@@ -46,249 +81,10 @@ def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
     return eval_query, eval_answer
 
 
-def read_metrics(client):
-    """Read all metrics using REST API call."""
-    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
-
-    # check that the /metrics endpoint is correct and we got
-    # some response
-    assert response.status_code == requests.codes.ok
-    assert response.text is not None
-
-    return response.text
-
-
-def get_rest_api_counter_value(
-    client, path, status_code=requests.codes.ok, default=None
-):
-    """Retrieve counter value from metrics."""
-    response = read_metrics(client)
-    counter_name = "rest_api_calls_total"
-
-    # counters with labels have the following format:
-    # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
-    prefix = f'{counter_name}{{path="{path}",status_code="{status_code}"}} '
-
-    return get_counter_value(counter_name, prefix, response, default)
-
-
-def get_response_duration_seconds_value(client, path, default=None):
-    """Retrieve counter value from metrics."""
-    response = read_metrics(client)
-    counter_name = "response_duration_seconds_sum"
-
-    # counters with response durations have the following format:
-    # response_duration_seconds_sum{path="/v1/debug/query"} 0.123
-    prefix = f'{counter_name}{{path="{path}"}} '
-
-    return get_counter_value(counter_name, prefix, response, default, to_int=False)
-
-
-def get_model_provider_counter_value(
-    client, counter_name, model, provider, default=None
-):
-    """Retrieve counter value from metrics."""
-    response = read_metrics(client)
-
-    # counters with model and provider have the following format:
-    # llm_token_sent_total{model="ibm/granite-13b-chat-v2",provider="bam"} 8.0
-    # llm_token_received_total{model="ibm/granite-13b-chat-v2",provider="bam"} 2465.0
-    prefix = f'{counter_name}{{model="{model}",provider="{provider}"}} '
-
-    return get_counter_value(counter_name, prefix, response, default)
-
-
-def read_info_attribute_value(lines, info_node_name):
-    """Read value of attribute stored in some Info node."""
-    prefix = f'{info_node_name}{{name="'
-
-    for line in lines:
-        if line.startswith(prefix):
-            # strip prefix
-            value = line[len(prefix) :]
-
-            # strip suffix
-            return value[: value.find('"')]
-
-    # info node was not found
-    return None
-
-
-def get_model_and_provider(client):
-    """Read configured model and provider from metrics."""
-    response = read_metrics(client)
-    lines = [line.strip() for line in response.split("\n")]
-
-    model = read_info_attribute_value(lines, "selected_model_info")
-    provider = read_info_attribute_value(lines, "selected_provider_info")
-
-    return model, provider
-
-
-def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
-    """Try to retrieve counter value from response with all metrics."""
-    lines = [line.strip() for line in response.split("\n")]
-
-    # try to find the given counter
-    for line in lines:
-        if line.startswith(prefix):
-            without_prefix = line[len(prefix) :]
-            # parse counter value as float
-            value = float(without_prefix)
-            # convert that float to integer if needed
-            if to_int:
-                return int(value)
-            return value
-
-    # counter was not found, which might be ok for first API call
-    if default is not None:
-        return default
-
-    raise Exception(f"Counter {counter_name} was not found in metrics")
-
-
-def check_counter_increases(endpoint, old_counter, new_counter, delta=1):
-    """Check if the counter value increases as expected."""
-    assert (
-        new_counter >= old_counter + delta
-    ), f"REST API counter for {endpoint} has not been updated properly"
-
-
-def check_duration_sum_increases(endpoint, old_counter, new_counter):
-    """Check if the counter value with total duration increases as expected."""
-    assert (
-        new_counter > old_counter
-    ), f"Duration sum for {endpoint} has not been updated properly"
-
-
-def check_token_counter_increases(counter, old_counter, new_counter, expect_change):
-    """Check if the counter value increases as expected."""
-    if expect_change:
-        assert (
-            new_counter > old_counter
-        ), f"Counter for {counter} tokens has not been updated properly"
-    else:
-        assert (
-            new_counter == old_counter
-        ), f"Counter for {counter} tokens has changed, which is unexpected"
-
-
-class RestAPICallCounterChecker:
-    """Context manager to check if REST API counter is increased for given endpoint."""
-
-    def __init__(self, client, endpoint, status_code=requests.codes.ok):
-        """Register client and endpoint."""
-        self.client = client
-        self.endpoint = endpoint
-        self.status_code = status_code
-
-    def __enter__(self):
-        """Retrieve old counter value before calling REST API."""
-        self.old_counter = get_rest_api_counter_value(
-            self.client, self.endpoint, status_code=self.status_code, default=0
-        )
-        self.old_duration = get_response_duration_seconds_value(
-            self.client, self.endpoint, default=0
-        )
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        """Retrieve new counter value after calling REST API, and check if it increased."""
-        # test if REST API endpoint counter has been updated
-        new_counter = get_rest_api_counter_value(
-            self.client, self.endpoint, status_code=self.status_code
-        )
-        check_counter_increases(self.endpoint, self.old_counter, new_counter)
-
-        # test if duration counter has been updated
-        new_duration = get_response_duration_seconds_value(
-            self.client,
-            self.endpoint,
-        )
-        check_duration_sum_increases(self.endpoint, self.old_duration, new_duration)
-
-
-class TokenCounterChecker:
-    """Context manager to check if token counters are increased before and after LLL calls.
-
-    Example:
-    ```python
-    with TokenCounterChecker(client, "ibm/granite-13b-chat-v2", "bam"):
-        ...
-        ...
-        ...
-    """
-
-    def __init__(
-        self,
-        client,
-        model,
-        provider,
-        expect_sent_change=True,
-        expect_received_change=True,
-    ):
-        """Register model and provider which tokens will be checked."""
-        self.model = model
-        self.provider = provider
-        self.client = client
-        # when model nor provider are specified (OLS cluster), don't run checks
-        self.skip_check = model is None or provider is None
-
-        # expect change in number of sent tokens
-        self.expect_sent_change = expect_sent_change
-
-        # expect change in number of received tokens
-        self.expect_received_change = expect_received_change
-
-    def __enter__(self):
-        """Retrieve old counter values before calling LLM."""
-        if self.skip_check:
-            return
-        self.old_counter_token_sent_total = get_model_provider_counter_value(
-            self.client, "llm_token_sent_total", self.model, self.provider, default=0
-        )
-        self.old_counter_token_received_total = get_model_provider_counter_value(
-            self.client,
-            "llm_token_received_total",
-            self.model,
-            self.provider,
-            default=0,
-        )
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        """Retrieve new counter value after calling REST API, and check if it increased."""
-        if self.skip_check:
-            return
-        # check if counter for sent tokens has been updated
-        new_counter_token_sent_total = get_model_provider_counter_value(
-            self.client, "llm_token_sent_total", self.model, self.provider
-        )
-        check_token_counter_increases(
-            "sent",
-            self.old_counter_token_sent_total,
-            new_counter_token_sent_total,
-            self.expect_sent_change,
-        )
-
-        # check if counter for received tokens has been updated
-        new_counter_token_received_total = get_model_provider_counter_value(
-            self.client,
-            "llm_token_received_total",
-            self.model,
-            self.provider,
-            default=0,
-        )
-        check_token_counter_increases(
-            "received",
-            self.old_counter_token_received_total,
-            new_counter_token_received_total,
-            self.expect_received_change,
-        )
-
-
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
@@ -297,7 +93,7 @@ def test_readiness():
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
@@ -306,11 +102,12 @@ def test_liveness():
 def test_raw_prompt():
     """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
     endpoint = "/v1/debug/query"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+        cid = suid.get_suid()
         r = client.post(
             endpoint,
             json={
-                "conversation_id": conversation_id,
+                "conversation_id": cid,
                 "query": "respond to this message with the word hello",
             },
             timeout=LLM_REST_API_TIMEOUT,
@@ -319,24 +116,25 @@ def test_raw_prompt():
         response = r.json()
 
         assert r.status_code == requests.codes.ok
-        assert response["conversation_id"] == conversation_id
+        assert response["conversation_id"] == cid
         assert "hello" in response["response"].lower()
 
 
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     endpoint = "/v1/query"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+        cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
+            json={"conversation_id": cid, "query": "test query"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
         assert response.status_code == requests.codes.ok
 
         expected_json = {
-            "conversation_id": conversation_id,
+            "conversation_id": cid,
             "response": INVALID_QUERY_RESP,
             "referenced_documents": [],
             "truncated": False,
@@ -347,7 +145,7 @@ def test_invalid_question():
 def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
     endpoint = "/v1/query"
-    with RestAPICallCounterChecker(
+    with metrics_utils.RestAPICallCounterChecker(
         client, endpoint, status_code=requests.codes.unprocessable_entity
     ):
         response = client.post(
@@ -364,7 +162,7 @@ def test_query_call_without_payload():
 def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
     endpoint = "/v1/query"
-    with RestAPICallCounterChecker(
+    with metrics_utils.RestAPICallCounterChecker(
         client, endpoint, status_code=requests.codes.unprocessable_entity
     ):
         response = client.post(
@@ -387,10 +185,11 @@ def test_valid_question(response_eval) -> None:
         response_eval[0], "eval1", "with_rag"
     )
 
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
+        cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": eval_query},
+            json={"conversation_id": cid, "query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -398,7 +197,7 @@ def test_valid_question(response_eval) -> None:
         json_response = response.json()
 
         # checking a few major information from response
-        assert json_response["conversation_id"] == conversation_id
+        assert json_response["conversation_id"] == cid
         assert "Kubernetes is" in json_response["response"]
         assert (
             "orchestration tool" in json_response["response"]
@@ -416,16 +215,16 @@ def test_valid_question(response_eval) -> None:
 @pytest.mark.standalone
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(client)
 
     endpoint = "/v1/query"
     with (
-        RestAPICallCounterChecker(client, endpoint),
-        TokenCounterChecker(client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(client, endpoint),
+        metrics_utils.TokenCounterChecker(client, model, provider),
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
+            json={"query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -434,16 +233,16 @@ def test_valid_question_tokens_counter() -> None:
 @pytest.mark.standalone
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(client)
 
     endpoint = "/v1/query"
     with (
-        RestAPICallCounterChecker(client, endpoint),
-        TokenCounterChecker(client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(client, endpoint),
+        metrics_utils.TokenCounterChecker(client, model, provider),
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
+            json={"query": "test query"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -451,14 +250,14 @@ def test_invalid_question_tokens_counter() -> None:
 
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(client)
 
     endpoint = "/v1/query"
     with (
-        RestAPICallCounterChecker(
+        metrics_utils.RestAPICallCounterChecker(
             client, endpoint, status_code=requests.codes.unprocessable_entity
         ),
-        TokenCounterChecker(
+        metrics_utils.TokenCounterChecker(
             client,
             model,
             provider,
@@ -475,14 +274,14 @@ def test_token_counters_for_query_call_without_payload() -> None:
 
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(client)
 
     endpoint = "/v1/query"
     with (
-        RestAPICallCounterChecker(
+        metrics_utils.RestAPICallCounterChecker(
             client, endpoint, status_code=requests.codes.unprocessable_entity
         ),
-        TokenCounterChecker(
+        metrics_utils.TokenCounterChecker(
             client,
             model,
             provider,
@@ -506,7 +305,7 @@ def test_rag_question(response_eval) -> None:
         response_eval[0], "eval2", "with_rag"
     )
 
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
             json={"query": eval_query},
@@ -531,7 +330,7 @@ def test_rag_question(response_eval) -> None:
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words."""
     endpoint = "/v1/query"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
             json={"query": "what is foo in bar?"},
@@ -553,12 +352,10 @@ def test_query_filter() -> None:
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
     endpoint = "/v1/query"
-    conversation_id = "12345678-abcd-0000-0123-356789abcdef"
-    with RestAPICallCounterChecker(client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
             json={
-                "conversation_id": conversation_id,
                 "query": "what is ingress in kubernetes?",
             },
             timeout=LLM_REST_API_TIMEOUT,
@@ -567,9 +364,12 @@ def test_conversation_history() -> None:
         assert response.status_code == requests.codes.ok
         json_response = response.json()
         assert "ingress" in json_response["response"].lower()
+
+        # get the conversation id so we can reuse it for the follow up question
+        cid = json_response["conversation_id"]
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "what?"},
+            json={"conversation_id": cid, "query": "what?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -608,7 +408,7 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = get_model_and_provider(client)
+    model, provider = metrics_utils.get_model_and_provider(client)
 
     # check available compbinations
     assert model, provider in {
@@ -622,9 +422,6 @@ def test_model_provider():
 @pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
-    # let's assume that auth. is enabled when token is specified
-    if not token:
-        pytest.skip("skipping authentication tests because OLS_TOKEN is not set")
     response = client.post(
         "/v1/query",
         json={"query": "what is foo in bar?"},
@@ -632,6 +429,24 @@ def test_improper_token():
         headers={"Authorization": "Bearer wrong-token"},
     )
     assert response.status_code == requests.codes.forbidden
+
+
+@pytest.mark.cluster
+def test_forbidden_user():
+    """Test accessing /v1/query endpoint using a user w/ no ols permissions."""
+    try:
+        cluster_utils.create_user("no-ols-permissions")
+        token = cluster_utils.get_user_token("no-ols-permissions")
+        client = testutils.get_http_client(ols_url, token)
+
+        response = client.post(
+            "/v1/query",
+            json={"query": "what is foo in bar?"},
+            timeout=NON_LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.forbidden
+    finally:
+        cluster_utils.delete_user("no-ols-permissions")
 
 
 def test_feedback() -> None:
@@ -655,7 +470,7 @@ def test_feedback() -> None:
     posted_feedback = client.post(
         "/v1/feedback",
         json={
-            "conversation_id": conversation_id,
+            "conversation_id": CONVERSATION_ID,
             "user_question": "what is OCP4?",
             "llm_response": "Openshift 4 is ...",
             "sentiment": 1,
@@ -689,13 +504,10 @@ def test_feedback() -> None:
 @pytest.mark.cluster
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
-    # let's assume that auth. is enabled when token is specified
-    if not token:
-        pytest.skip("skipping authentication tests because OLS_TOKEN is not set")
     response = client.post(
         "/v1/feedback",
         json={
-            "conversation_id": conversation_id,
+            "conversation_id": CONVERSATION_ID,
             "user_question": "what is OCP4?",
             "llm_response": "Openshift 4 is ...",
             "sentiment": 1,

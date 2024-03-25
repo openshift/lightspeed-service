@@ -71,19 +71,11 @@ function install_ols() {
     else
         mv "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml.tmp" "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml"
     fi
-
     oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_configmap.yaml"
 
     # create the ols deployment and related resources (service, route, rbac roles)
     envsubst < tests/config/cluster_install/ols_manifests.yaml > "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
     oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
-
-    # create a new service account with no special permissions and get an auth token for it
-    oc create sa olsuser
-    export OLS_TOKEN=$(oc create token olsuser)
-
-    # grant the service account permission to query ols
-    oc adm policy add-cluster-role-to-user ols-user -z olsuser
 
     # determine the hostname for the ols route
     export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
