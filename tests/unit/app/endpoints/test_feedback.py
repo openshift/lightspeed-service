@@ -37,12 +37,12 @@ def load_fake_feedback(filename):
 
 
 def test_get_feedback_status(feedback_location):
-    """Test get_feedback_status function."""
+    """Test is_feedback_enabled function."""
     config.ols_config.user_data_collection.feedback_disabled = False
-    assert feedback.get_feedback_status()
+    assert feedback.is_feedback_enabled()
 
     config.ols_config.user_data_collection.feedback_disabled = True
-    assert not feedback.get_feedback_status()
+    assert not feedback.is_feedback_enabled()
 
 
 def test_list_feedbacks(feedback_location):

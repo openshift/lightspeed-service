@@ -666,3 +666,23 @@ def test_feedback() -> None:
     assert removed_feedback.status_code == requests.codes.ok
     assert "feedbacks" in removed_feedback.json()
     assert len(removed_feedback.json()["feedbacks"]) == 0
+
+
+@pytest.mark.cluster
+def test_feedback_can_post_with_wrong_token():
+    """Test posting feedback with improper auth. token."""
+    # let's assume that auth. is enabled when token is specified
+    if not token:
+        pytest.skip("skipping authentication tests because OLS_TOKEN is not set")
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": conversation_id,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    assert response.status_code == requests.codes.forbidden

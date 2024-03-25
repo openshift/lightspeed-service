@@ -21,28 +21,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
-async def feedback_is_enabled(request: Request) -> bool:
+async def ensure_feedback_enabled(request: Request) -> None:
     """Check if feedback is enabled.
 
     Args:
         request (Request): The FastAPI request object.
 
-    Returns:
-        True if feedback is enabled, False otherwise.
-
     Raises:
         HTTPException: If feedback is disabled.
     """
-    feedback_enabled = not config.ols_config.user_data_collection.feedback_disabled
+    feedback_enabled = is_feedback_enabled()
     if not feedback_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Feedback is currently disabled.",
         )
-    return feedback_enabled
 
 
-def get_feedback_status() -> bool:
+def is_feedback_enabled() -> bool:
     """Check if feedback is enabled.
 
     Returns:
@@ -61,7 +57,7 @@ def list_feedbacks() -> list[str]:
     feedback_files = list(storage_path.glob("*.json"))
     # extensions are trimmed, eg. ["12345678-abcd-0000-0123-456789abcdef", ...]
     feedbacks = [f.stem for f in feedback_files]
-    logger.info(f"'{len(feedbacks)}' feedbacks found")
+    logger.debug(f"'{len(feedbacks)}' feedbacks found")
     return feedbacks
 
 
@@ -75,6 +71,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     # ensures storage path exists
     storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
     if not storage_path.exists():
+        logger.debug(f"creating feedback storage directories '{storage_path}'")
         storage_path.mkdir(parents=True)
 
     data_to_store = {"user_id": user_id, **feedback}
@@ -84,7 +81,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
         json.dump(data_to_store, feedback_file)
 
-    logger.info(f"feedback stored in '{feedback_file_path}'")
+    logger.debug(f"feedback stored in '{feedback_file_path}'")
 
 
 def remove_feedback(feedback_id: str) -> None:
@@ -98,7 +95,7 @@ def remove_feedback(feedback_id: str) -> None:
     if feedback_file.exists():
         feedback_file.unlink()
         if not feedback_file.exists():
-            logger.info(f"feedback file '{feedback_file}' removed")
+            logger.debug(f"feedback file '{feedback_file}' removed")
         else:
             logger.error(f"feedback file '{feedback_file}' failed to remove")
     else:
@@ -112,8 +109,8 @@ def feedback_status() -> StatusResponse:
     Returns:
         Response indicating the status of the feedback.
     """
-    logger.info("feedback status request received")
-    feedback_status = get_feedback_status()
+    logger.debug("feedback status request received")
+    feedback_status = is_feedback_enabled()
     return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
@@ -122,13 +119,13 @@ def feedback_status() -> StatusResponse:
 # If endpoint stays in place, it needs to be properly secured - OLS-404
 @router.get("/list")
 def get_user_feedbacks(
-    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
     auth: Any = Depends(auth_dependency),
 ) -> FeedbacksListResponse:
     """Handle feedback listing requests.
 
     Args:
-        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+        ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
             will handle feedback status checks.
         auth: The Authentication handler (FastAPI Depends) that will
             handle authentication Logic.
@@ -136,7 +133,7 @@ def get_user_feedbacks(
     Returns:
         Response containing the list of feedbacks.
     """
-    logger.info("feedback list request received")
+    logger.debug("feedback list request received")
 
     feedbacks = list_feedbacks()
 
@@ -146,14 +143,14 @@ def get_user_feedbacks(
 @router.post("")
 def store_user_feedback(
     feedback_request: FeedbackRequest,
-    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
     auth: Any = Depends(auth_dependency),
 ) -> FeedbackResponse:
     """Handle feedback requests.
 
     Args:
         feedback_request: The request containing feedback information.
-        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+        ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
             will handle feedback status checks.
         auth: The Authentication handler (FastAPI Depends) that will
             handle authentication Logic.
@@ -161,7 +158,7 @@ def store_user_feedback(
     Returns:
         Response indicating the status of the feedback storage request.
     """
-    logger.info(f"feedback received {feedback_request}")
+    logger.debug(f"feedback received {feedback_request}")
 
     user_id = auth[0]
     store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
@@ -175,14 +172,14 @@ def store_user_feedback(
 @router.delete("/{feedback_id}")
 def remove_user_feedback(
     feedback_id: str,
-    feedback_is_enabled: Any = Depends(feedback_is_enabled),
+    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
     auth: Any = Depends(auth_dependency),
 ) -> FeedbackResponse:
     """Handle feedback removal requests.
 
     Args:
         feedback_id: The feedback ID (UUID) to be removed.
-        feedback_is_enabled: The feedback handler (FastAPI Depends) that
+        ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
             will handle feedback status checks.
         auth: The Authentication handler (FastAPI Depends) that will
             handle authentication Logic.
@@ -190,7 +187,7 @@ def remove_user_feedback(
     Returns:
         Response indicating the status of the feedback removal.
     """
-    logger.info(f"feedback '{feedback_id}' removal request received")
+    logger.debug(f"feedback '{feedback_id}' removal request received")
     remove_feedback(feedback_id)
 
     return FeedbackResponse(response="feedback removed")

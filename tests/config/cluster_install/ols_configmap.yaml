@@ -45,7 +45,9 @@ data:
       tls_config:
         tls_certificate_path: /app-root/certs/tls.crt
         tls_key_path: /app-root/certs/tls.key
-      feedback_storage_location: "/app-root/ols-user-data/feedback"
+      user_data_collection:
+        feedback_disabled: false
+        feedback_storage: "/app-root/ols-user-data/feedback"
     dev_config:
       enable_dev_ui: true
       disable_auth: false

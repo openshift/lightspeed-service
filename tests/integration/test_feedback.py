@@ -14,7 +14,6 @@ from ols.utils.suid import check_suid
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def setup():
     """Setups the test client."""
