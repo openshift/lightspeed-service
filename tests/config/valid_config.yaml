@@ -13,7 +13,7 @@ llm_providers:
       - name: m2
         url: "https://murl2"
   - name: p2
-    type: bam
+    type: openai
     url: "https://url2"
     models:
       - name: m1

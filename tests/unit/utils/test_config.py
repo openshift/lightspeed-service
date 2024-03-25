@@ -720,7 +720,7 @@ def test_valid_config_file():
                     },
                     {
                         "name": "p2",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "https://url2",
                         "models": [
                             {

@@ -590,6 +590,9 @@ def test_metrics() -> None:
         "llm_validation_errors_total",
         "llm_token_sent_total",
         "llm_token_received_total",
+        "selected_model_info",
+        "selected_provider_info",
+        "model_enabled",
     )
 
     # check if all counters are present

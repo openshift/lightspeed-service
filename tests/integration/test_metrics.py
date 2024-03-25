@@ -48,6 +48,7 @@ def test_metrics(setup):
         "llm_token_received_total",
         "selected_provider_info",
         "selected_model_info",
+        "model_enabled",
     )
 
     # check if all counters are present
@@ -128,3 +129,14 @@ def test_metrics_duration(setup):
         r"response_duration_seconds_bucket{le=\"\+Inf\",path=\"\/metrics\"}"
     )
     assert re.findall(pattern, response_text)
+
+
+def test_model_enabled_metrics(setup):
+    """Check if model_enabled metrics shows the expected information."""
+    response_text = retrieve_metrics(client)
+    for provider in ("bam", "openai"):
+        for model in ("m1", "m2"):
+            assert (
+                f'model_enabled{{model="{model}",provider="{provider}"}}'
+                in response_text
+            )
