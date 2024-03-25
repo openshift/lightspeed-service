@@ -6,9 +6,11 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
+    FeedbacksListResponse,
     HealthResponse,
     LLMRequest,
     LLMResponse,
+    StatusResponse,
 )
 
 
@@ -83,22 +85,81 @@ class TestLLM:
         assert not llm_response.truncated
 
 
+class TestStatusResponse:
+    """Unit tests for the StatusResponse model."""
+
+    @staticmethod
+    def test_status_response():
+        """Test the StatusResponse model."""
+        functionality = "feedback"
+        status = {"enabled": True}
+
+        status_response = StatusResponse(functionality=functionality, status=status)
+
+        assert status_response.functionality == functionality
+        assert status_response.status == status
+
+
 class TestFeedback:
     """Unit tests for the FeedbackRequest/FeedbackResponse models."""
 
     @staticmethod
     def test_feedback_request():
         """Test the FeedbackRequest model."""
-        conversation_id = "id"
-        feedback_obj = {"rating": 5, "comment": "Great service!"}
+        conversation_id = "conversation id"
+        user_question = "user question"
+        llm_response = "llm response"
+        sentiment = 1
+        user_feedback = "user feedback"
 
         feedback_request = FeedbackRequest(
             conversation_id=conversation_id,
-            feedback_object=feedback_obj,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=sentiment,
+            user_feedback=user_feedback,
         )
 
         assert feedback_request.conversation_id == conversation_id
-        assert feedback_request.feedback_object == feedback_obj
+        assert feedback_request.user_question == user_question
+        assert feedback_request.llm_response == llm_response
+        assert feedback_request.sentiment == sentiment
+        assert feedback_request.user_feedback == user_feedback
+
+    @staticmethod
+    def test_feedback_request_optional_fields():
+        """Test either sentiment or user_feedback needs to be set."""
+        conversation_id = "conversation id"
+        user_question = "user question"
+        llm_response = "llm response"
+        sentiment = 1
+        user_feedback = "user feedback"
+
+        # no sentiment or user_feedback raises validation error
+        with pytest.raises(
+            ValidationError, match="Either 'sentiment' or 'user_feedback' must be set"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+            )
+
+        # just of those set doesn't raise - sentiment set
+        FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=sentiment,
+        )
+
+        # just of those set doesn't raise - user_feedback set
+        FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            user_feedback=user_feedback,
+        )
 
     @staticmethod
     def test_feedback_response():
@@ -108,6 +169,15 @@ class TestFeedback:
         feedback_request = FeedbackResponse(response=feedback_response)
 
         assert feedback_request.response == feedback_response
+
+    @staticmethod
+    def test_feedback_list_response():
+        """Test the FeedbacksListResponse model."""
+        feedbacks = ["testy test"]
+
+        feedback_list_response = FeedbacksListResponse(feedbacks=feedbacks)
+
+        assert feedback_list_response.feedbacks == feedbacks
 
 
 class TestHealth:

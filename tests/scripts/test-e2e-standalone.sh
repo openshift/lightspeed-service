@@ -43,6 +43,9 @@ mkdir -p $RAG_INDEX_DIR
 wget $RAG_INDEX
 unzip -j local.zip -d $RAG_INDEX_DIR
 rm -f local.zip
+# configure feedback storage location
+export FEEDBACK_STORAGE_LOCATION="$ARTIFACT_DIR/insights/feedback"
+echo "Feedback storage location: $FEEDBACK_STORAGE_LOCATION"
 
 export OLS_CONFIG_FILE="$ARTIFACT_DIR/olsconfig.yaml"
 OLS_LOGS=$ARTIFACT_DIR/ols.log

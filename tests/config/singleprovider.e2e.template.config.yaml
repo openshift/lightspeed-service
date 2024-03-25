@@ -8,6 +8,9 @@ llm_providers:
     models:
       - name: $MODEL
 ols_config:
+  user_data_collection:
+    feedback_disabled: false
+    feedback_storage: $FEEDBACK_STORAGE_LOCATION
   reference_content:
     product_docs_index_path: $RAG_INDEX_DIR
     product_docs_index_id: ocp-product-docs-4_15

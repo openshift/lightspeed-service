@@ -36,6 +36,8 @@ spec:
         - name: tls-certs
           secret:
             secretName: ols-certs
+        - name: ols-user-data
+          emptyDir: {}
       containers:
       - image: "$OLS_IMAGE"
         imagePullPolicy: Always
@@ -56,6 +58,8 @@ spec:
             mountPath: /app-root/config/llmcreds
           - name: tls-certs
             mountPath: /app-root/certs
+          - name: ols-user-data
+            mountPath: /app-root/ols-user-data
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler

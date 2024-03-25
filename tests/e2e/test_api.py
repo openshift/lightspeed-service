@@ -614,3 +614,75 @@ def test_improper_token():
         headers={"Authorization": "Bearer wrong-token"},
     )
     assert response.status_code == requests.codes.forbidden
+
+
+def test_feedback() -> None:
+    """Check if feedback is properly stored.
+
+    This is a full end-to-end scenario where the feedback is stored,
+    retrieved and removed at the end (to avoid leftovers).
+    """
+    # check if feedback is enabled
+    response = client.get("/v1/feedback/status", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    assert response.json()["status"]["enabled"] is True
+
+    # check the feedback store is empty
+    empty_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert empty_feedback.status_code == requests.codes.ok
+    assert "feedbacks" in empty_feedback.json()
+    assert len(empty_feedback.json()["feedbacks"]) == 0
+
+    # store the feedback
+    posted_feedback = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": conversation_id,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+    assert posted_feedback.status_code == requests.codes.ok
+    assert posted_feedback.json() == {"response": "feedback received"}
+
+    # check the feedback store has one feedback
+    stored_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert stored_feedback.status_code == requests.codes.ok
+    assert "feedbacks" in stored_feedback.json()
+    assert len(stored_feedback.json()["feedbacks"]) == 1
+
+    # remove the feedback
+    remove_feedback = client.delete(
+        f'/v1/feedback/{stored_feedback.json()["feedbacks"][0]}',
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+    assert remove_feedback.status_code == requests.codes.ok
+    assert remove_feedback.json() == {"response": "feedback removed"}
+
+    # check the feedback store is empty again
+    removed_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert removed_feedback.status_code == requests.codes.ok
+    assert "feedbacks" in removed_feedback.json()
+    assert len(removed_feedback.json()["feedbacks"]) == 0
+
+
+@pytest.mark.cluster
+def test_feedback_can_post_with_wrong_token():
+    """Test posting feedback with improper auth. token."""
+    # let's assume that auth. is enabled when token is specified
+    if not token:
+        pytest.skip("skipping authentication tests because OLS_TOKEN is not set")
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": conversation_id,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    assert response.status_code == requests.codes.forbidden

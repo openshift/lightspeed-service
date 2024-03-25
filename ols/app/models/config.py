@@ -6,7 +6,7 @@ import re
 from typing import Any, Optional, Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, DirectoryPath, model_validator
+from pydantic import BaseModel, model_validator
 
 from ols import constants
 
@@ -616,7 +616,7 @@ class UserDataCollection(BaseModel):
     """User data collection configuration."""
 
     feedback_disabled: bool = True
-    feedback_storage: Optional[DirectoryPath] = None
+    feedback_storage: Optional[str] = None
 
     @model_validator(mode="after")
     def check_storage_location_is_set_when_needed(self) -> Self:

@@ -1,7 +1,6 @@
 """Unit tests for data models."""
 
 import logging
-import pathlib
 
 import pytest
 
@@ -1012,9 +1011,7 @@ def test_ols_config(tmpdir):
     assert ols_config.logging_config.app_log_level == logging.INFO
     assert ols_config.query_validation_method == constants.QueryValidationMethod.LLM
     assert ols_config.user_data_collection.feedback_disabled is False
-    assert ols_config.user_data_collection.feedback_storage == pathlib.Path(
-        tmpdir.strpath
-    )
+    assert ols_config.user_data_collection.feedback_storage == tmpdir.strpath
 
 
 def test_config():
@@ -1685,7 +1682,7 @@ def test_user_data_config(tmpdir):
         feedback_disabled=False, feedback_storage=tmpdir.strpath
     )
     assert user_data.feedback_disabled is False
-    assert user_data.feedback_storage == pathlib.Path(tmpdir.strpath)
+    assert user_data.feedback_storage == tmpdir.strpath
 
     # enabled needs feedback_storage
     with pytest.raises(
@@ -1698,10 +1695,3 @@ def test_user_data_config(tmpdir):
     user_data = UserDataCollection(feedback_disabled=True)
     assert user_data.feedback_disabled is True
     assert user_data.feedback_storage is None
-
-    # storage location is not directory
-    with pytest.raises(
-        ValueError,
-        match="Path does not point to a directory",
-    ):
-        UserDataCollection(feedback_disabled=False, feedback_storage="some/path")
