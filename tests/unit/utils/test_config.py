@@ -759,6 +759,57 @@ def test_valid_config_file():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
+def test_valid_config_file_with_postgres():
+    """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
+    try:
+        config.init_config("tests/config/valid_config_postgres.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "testdb",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                        },
+                    },
+                    "logging_config": {
+                        "logging_level": "INFO",
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
 def test_valid_config_file_with_redis():
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
