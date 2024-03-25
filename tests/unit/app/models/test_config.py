@@ -4,6 +4,7 @@ import logging
 import pathlib
 
 import pytest
+from pydantic import ValidationError
 
 from ols import constants
 from ols.app.models.config import (
@@ -16,6 +17,7 @@ from ols.app.models.config import (
     MemoryConfig,
     ModelConfig,
     OLSConfig,
+    PostgresConfig,
     ProviderConfig,
     QueryFilter,
     RedisConfig,
@@ -716,6 +718,68 @@ def test_invalid_values():
         LoggingConfig({"app_log_level": "dingdong"})
 
 
+def test_postgres_config_default_values():
+    """Test the PostgresConfig model."""
+    postgres_config = PostgresConfig(**{})
+    assert postgres_config.host == constants.POSTGRES_CACHE_HOST
+    assert postgres_config.port == constants.POSTGRES_CACHE_PORT
+    assert postgres_config.dbname == constants.POSTGRES_CACHE_DBNAME
+    assert postgres_config.user == constants.POSTGRES_CACHE_USER
+
+
+def test_postgres_config_correct_values():
+    """Test the PostgresConfig model when correct values are used."""
+    postgres_config = PostgresConfig(
+        **{
+            "host": "other_host",
+            "port": 1234,
+            "dbname": "my_database",
+            "user": "admin",
+            "require_ssl": True,
+        }
+    )
+
+    # explicitly set values
+    assert postgres_config.host == "other_host"
+    assert postgres_config.port == 1234
+    assert postgres_config.dbname == "my_database"
+    assert postgres_config.user == "admin"
+    assert postgres_config.require_ssl
+
+
+def test_postgres_config_wrong_port():
+    """Test the PostgresConfig model."""
+    with pytest.raises(
+        ValidationError, match="The port needs to be between 0 and 65536"
+    ):
+        PostgresConfig(
+            **{
+                "host": "other_host",
+                "port": 9999999,
+                "dbname": "my_database",
+                "user": "admin",
+                "require_ssl": True,
+            }
+        )
+
+
+def test_postgres_config_equality():
+    """Test the PostgresConfig equality check."""
+    postgres_config_1 = PostgresConfig()
+    postgres_config_2 = PostgresConfig()
+
+    # compare the same Postgres configs
+    assert postgres_config_1 == postgres_config_2
+
+    # compare different Postgres configs
+    postgres_config_2.host = "12.34.56.78"
+    assert postgres_config_1 != postgres_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert postgres_config_1 != other_value
+
+
 def test_redis_config():
     """Test the RedisConfig model."""
     redis_config = RedisConfig({})
@@ -934,10 +998,28 @@ def test_conversation_cache_config():
     assert conversation_cache_config.redis.max_memory == "200mb"
     assert conversation_cache_config.redis.max_memory_policy == "allkeys-lru"
 
+    conversation_cache_config = ConversationCacheConfig(
+        {
+            "type": "postgres",
+            "postgres": {
+                "host": "1.2.3.4",
+                "port": 1234,
+                "dbname": "testdb",
+                "user": "user",
+            },
+        }
+    )
+    assert conversation_cache_config.type == "postgres"
+    assert conversation_cache_config.postgres.host == "1.2.3.4"
+    assert conversation_cache_config.postgres.port == 1234
+    assert conversation_cache_config.postgres.dbname == "testdb"
+    assert conversation_cache_config.postgres.user == "user"
+
     conversation_cache_config = ConversationCacheConfig()
     assert conversation_cache_config.type is None
     assert conversation_cache_config.redis is None
     assert conversation_cache_config.memory is None
+    assert conversation_cache_config.postgres is None
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ConversationCacheConfig({"type": "redis"})
@@ -946,6 +1028,10 @@ def test_conversation_cache_config():
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ConversationCacheConfig({"type": "memory"})
     assert "memory configuration is missing" in str(excinfo.value)
+
+    with pytest.raises(InvalidConfigurationError) as excinfo:
+        ConversationCacheConfig({"type": "postgres"})
+    assert "Postgres configuration is missing" in str(excinfo.value)
 
 
 def test_conversation_cache_config_validation():

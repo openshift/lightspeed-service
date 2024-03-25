@@ -191,6 +191,11 @@ REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 REDIS_RETRY_ON_ERROR = True
 REDIS_RETRY_ON_TIMEOUT = True
 REDIS_NUMBER_OF_RETRIES = 3
+POSTGRES_CACHE = "postgres"
+POSTGRES_CACHE_HOST = "localhost"
+POSTGRES_CACHE_PORT = 5432
+POSTGRES_CACHE_DBNAME = "cache"
+POSTGRES_CACHE_USER = "postgres"
 
 
 # provider and model roles

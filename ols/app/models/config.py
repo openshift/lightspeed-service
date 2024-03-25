@@ -305,6 +305,25 @@ class LLMProviders(BaseModel):
             v.validate_yaml()
 
 
+class PostgresConfig(BaseModel):
+    """Postgres configuration."""
+
+    host: str = constants.POSTGRES_CACHE_HOST
+    port: int = constants.POSTGRES_CACHE_PORT
+    dbname: str = constants.POSTGRES_CACHE_DBNAME
+    user: str = constants.POSTGRES_CACHE_USER
+    password: Optional[str] = None
+    require_ssl: bool = False
+    ca_cert_path: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_yaml(self) -> Self:
+        """Validate Postgres cache config."""
+        if not (0 < self.port < 65536):
+            raise ValueError("The port needs to be between 0 and 65536")
+        return self
+
+
 class RedisConfig(BaseModel):
     """Redis configuration."""
 
@@ -471,6 +490,7 @@ class ConversationCacheConfig(BaseModel):
     type: Optional[str] = None
     redis: Optional[RedisConfig] = None
     memory: Optional[MemoryConfig] = None
+    postgres: Optional[PostgresConfig] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -479,24 +499,32 @@ class ConversationCacheConfig(BaseModel):
             return
         self.type = data.get("type", None)
         if self.type is not None:
-            if self.type == constants.REDIS_CACHE:
-                if constants.REDIS_CACHE not in data:
+            match self.type:
+                case constants.REDIS_CACHE:
+                    if constants.REDIS_CACHE not in data:
+                        raise InvalidConfigurationError(
+                            "redis conversation cache type is specified,"
+                            " but redis configuration is missing"
+                        )
+                    self.redis = RedisConfig(data.get(constants.REDIS_CACHE))
+                case constants.IN_MEMORY_CACHE:
+                    if constants.IN_MEMORY_CACHE not in data:
+                        raise InvalidConfigurationError(
+                            "memory conversation cache type is specified,"
+                            " but memory configuration is missing"
+                        )
+                    self.memory = MemoryConfig(data.get(constants.IN_MEMORY_CACHE))
+                case constants.POSTGRES_CACHE:
+                    if constants.POSTGRES_CACHE not in data:
+                        raise InvalidConfigurationError(
+                            "Postgres conversation cache type is specified,"
+                            " but Postgres configuration is missing"
+                        )
+                    self.postgres = PostgresConfig(**data.get(constants.POSTGRES_CACHE))
+                case _:
                     raise InvalidConfigurationError(
-                        "redis conversation cache type is specified,"
-                        " but redis configuration is missing"
+                        f"unknown conversation cache type: {self.type}"
                     )
-                self.redis = RedisConfig(data.get(constants.REDIS_CACHE))
-            elif self.type == constants.IN_MEMORY_CACHE:
-                if constants.IN_MEMORY_CACHE not in data:
-                    raise InvalidConfigurationError(
-                        "memory conversation cache type is specified,"
-                        " but memory configuration is missing"
-                    )
-                self.memory = MemoryConfig(data.get(constants.IN_MEMORY_CACHE))
-            else:
-                raise InvalidConfigurationError(
-                    f"unknown conversation cache type: {self.type}"
-                )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -518,6 +546,8 @@ class ConversationCacheConfig(BaseModel):
                 self.redis.validate_yaml()
             case constants.IN_MEMORY_CACHE:
                 self.memory.validate_yaml()
+            case constants.POSTGRES_CACHE:
+                pass  # it is validated by Pydantic already
             case _:
                 raise InvalidConfigurationError(
                     f"unknown conversation cache type: {self.type}"
