@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:320be565a996e1784db75f65854c928c888dc37aa6c6eeb85de05a09346a6a51"
+content_hash = "sha256:3f311457ba8229950dd93826f54581b10eb7aac9dd934f71a76a10250254d08c"
 
 [[package]]
 name = "aiofiles"
@@ -557,7 +557,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.19.2"
+version = "4.22.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -566,7 +566,7 @@ dependencies = [
     "altair<6.0,>=4.2.0",
     "fastapi",
     "ffmpy",
-    "gradio-client==0.10.1",
+    "gradio-client==0.13.0",
     "httpx>=0.24.1",
     "huggingface-hub>=0.19.3",
     "importlib-resources<7.0,>=1.3",
@@ -590,13 +590,13 @@ dependencies = [
     "uvicorn>=0.14.0",
 ]
 files = [
-    {file = "gradio-4.19.2-py3-none-any.whl", hash = "sha256:acab4a35f556dbc3ae637469312738d154bcb73f0b8d5f4f65e4d067ecb1e0b1"},
-    {file = "gradio-4.19.2.tar.gz", hash = "sha256:6fe5815bb4dfaeed1fc74223bffd91da70a1b463158af8c5e03d01bb09068a1d"},
+    {file = "gradio-4.22.0-py3-none-any.whl", hash = "sha256:f8bfff36ee1c1219610f58d0f597864e3e99edcebfeafabed1557e99af8b2626"},
+    {file = "gradio-4.22.0.tar.gz", hash = "sha256:9e1ad3e74f71077f91f8717a4c5e404069dfb9f4fa88d9b38f16607152fb7c1a"},
 ]
 
 [[package]]
 name = "gradio-client"
-version = "0.10.1"
+version = "0.13.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -609,8 +609,8 @@ dependencies = [
     "websockets<12.0,>=10.0",
 ]
 files = [
-    {file = "gradio_client-0.10.1-py3-none-any.whl", hash = "sha256:a0413fffdde3360e0f6aaec8b8c23d8a320049a571de2d111d85ebd295002165"},
-    {file = "gradio_client-0.10.1.tar.gz", hash = "sha256:879eb56fae5d6b1603bb9375b88d1de0d034f3dac4b3afc8dbc66f36f6e54d5d"},
+    {file = "gradio_client-0.13.0-py3-none-any.whl", hash = "sha256:f47225bb274834a33a297b5bba95250b63a76ae9f90217631e1e29e90cd857f1"},
+    {file = "gradio_client-0.13.0.tar.gz", hash = "sha256:273b51cc86a39c7ec8ebdda6c8110687e5225c187d25d4a723d15e57edc5c549"},
 ]
 
 [[package]]
@@ -756,24 +756,25 @@ files = [
 
 [[package]]
 name = "ibm-generative-ai"
-version = "2.2.0"
-requires_python = ">=3.9,<4.0"
+version = "2.3.0"
+requires_python = "<4.0,>=3.9"
 summary = "IBM Generative AI is a Python library built on IBM's large language model REST interface."
 groups = ["default"]
 dependencies = [
     "aiolimiter<2.0.0,>=1.1.0",
+    "deprecated<2.0.0,>=1.2.14",
     "httpx-sse<0.4.0,>=0.3.0",
     "httpx<0.27.0,>=0.26.0",
     "pydantic<3.0.0,>=2.0.0",
 ]
 files = [
-    {file = "ibm_generative_ai-2.2.0-py3-none-any.whl", hash = "sha256:514016e6c38547ba3b5291fd95b1bfe8f683a70573079061e66dc1a3554c1388"},
-    {file = "ibm_generative_ai-2.2.0.tar.gz", hash = "sha256:b6ceea47e97590ff23a61d530e273baf2378c1adcf073a74e9d398b426e7fa7c"},
+    {file = "ibm_generative_ai-2.3.0-py3-none-any.whl", hash = "sha256:e1431097b2636be8e7f3cfae0ba411b0264c7199d6279dda05f0c2dc44b45f0e"},
+    {file = "ibm_generative_ai-2.3.0.tar.gz", hash = "sha256:448c1fffb59cac079a8475c542f313dfef3746b72d1978a54884b5ad68c3a945"},
 ]
 
 [[package]]
 name = "ibm-watson-machine-learning"
-version = "1.0.352"
+version = "1.0.353"
 requires_python = ">=3.10"
 summary = "IBM Watson Machine Learning API Client"
 groups = ["default"]
@@ -789,8 +790,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watson_machine_learning-1.0.352-py3-none-any.whl", hash = "sha256:be233468bdd8e11ee57975310febefd013bcae35b7d153053e064f0be6a00242"},
-    {file = "ibm_watson_machine_learning-1.0.352.tar.gz", hash = "sha256:937b339c76d4ea143439f98ea60cfabacf802102e39873f361ece82174a791d3"},
+    {file = "ibm_watson_machine_learning-1.0.353-py3-none-any.whl", hash = "sha256:521387c3b065f66d5bf1137d0d616fb31c73d55c85b5768bbbd772191476ab97"},
+    {file = "ibm_watson_machine_learning-1.0.353.tar.gz", hash = "sha256:f92278d6f30ea5620a222b56e9dc625814479fd1ed76f4c644e5847552f05107"},
 ]
 
 [[package]]
@@ -2094,7 +2095,7 @@ files = [
 
 [[package]]
 name = "sentence-transformers"
-version = "2.5.1"
+version = "2.6.0"
 requires_python = ">=3.8.0"
 summary = "Multilingual text embeddings"
 groups = ["default"]
@@ -2109,8 +2110,8 @@ dependencies = [
     "transformers<5.0.0,>=4.32.0",
 ]
 files = [
-    {file = "sentence-transformers-2.5.1.tar.gz", hash = "sha256:754bf2b2623eb46904fd9c72ff89a0f90200fe141a8d45b03e83bc6d51718153"},
-    {file = "sentence_transformers-2.5.1-py3-none-any.whl", hash = "sha256:f12346f7fca06ed1198d24235cb9114a74665506f7c30044e0a6f12de7eeeb77"},
+    {file = "sentence-transformers-2.6.0.tar.gz", hash = "sha256:cf519d311ddcc8ff84d78d18fae051985bef348716354e069e3d6d670e4db604"},
+    {file = "sentence_transformers-2.6.0-py3-none-any.whl", hash = "sha256:8807db6db0cf0a92f02be799b7c8260029ff91315d18f7b4b51c30b10d6b4fdb"},
 ]
 
 [[package]]
