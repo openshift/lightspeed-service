@@ -206,17 +206,18 @@ class DocsSummarizer(QueryHelper):
     def get_embed_model() -> Optional[str | HuggingFaceBgeEmbeddings]:
         """Get embed model according to configuration."""
         if (
-            config.ols_config.reference_content is not None
-            and config.ols_config.reference_content.embeddings_model_path is not None
+            config.ols_config.reference_content is None
+            or config.ols_config.reference_content.embeddings_model_path is None
         ):
-            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+            return "local:BAAI/bge-base-en"
 
-            # TODO syedriko consolidate these env vars into a central location as per OLS-345.
-            os.environ["TRANSFORMERS_CACHE"] = (
-                config.ols_config.reference_content.embeddings_model_path
-            )
-            os.environ["TRANSFORMERS_OFFLINE"] = "1"
-            return HuggingFaceBgeEmbeddings(
-                model_name=config.ols_config.reference_content.embeddings_model_path
-            )
-        return "local:BAAI/bge-base-en"
+        from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
+        # TODO syedriko consolidate these env vars into a central location as per OLS-345.
+        os.environ["TRANSFORMERS_CACHE"] = (
+            config.ols_config.reference_content.embeddings_model_path
+        )
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        return HuggingFaceBgeEmbeddings(
+            model_name=config.ols_config.reference_content.embeddings_model_path
+        )
