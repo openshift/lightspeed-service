@@ -59,8 +59,10 @@ if __name__ == "__main__":
     with open(args.topic_map) as fin:
         topic_map = yaml.safe_load_all(fin)
         mega_file_list = []
+
+        file_list = []
         for map in topic_map:
-            file_list = []
+
             file_list = process_node(map, file_list=file_list)
             mega_file_list = mega_file_list + file_list
 
@@ -69,13 +71,14 @@ if __name__ == "__main__":
     input_dir = os.path.normpath(args.input_dir)
     script_dir = os.path.dirname(os.path.realpath(__file__))
 
+    command = ["asciidoctor"]
     for filename in mega_file_list:
         output_file = os.path.join(output_dir, filename + ".txt")
         os.makedirs(os.path.dirname(os.path.realpath(output_file)), exist_ok=True)
         input_file = os.path.join(input_dir, filename + ".adoc")
         converter_file = os.path.join(script_dir, "text-converter.rb")
         print("Processing: " + input_file)
-        command = ["asciidoctor"]
+
         command = command + attribute_list
         command = [
             *command,
