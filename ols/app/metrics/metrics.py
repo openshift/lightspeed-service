@@ -6,11 +6,13 @@ from fastapi import APIRouter, Depends, Response
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
+    Gauge,
     Histogram,
     Info,
     generate_latest,
 )
 
+import ols.app.models.config as config_model
 from ols.utils.auth_dependency import auth_dependency
 
 router = APIRouter(tags=["metrics"])
@@ -41,6 +43,10 @@ llm_token_received_total = Counter(
 selected_provider = Info("selected_provider", "Selected provider")
 selected_model = Info("selected_model", "Selected model")
 
+# metric that indicates what provider + model customers are using so we can
+# understand what is popular/important
+model_enabled = Gauge("model_enabled", "Enabled LLM models", ["provider", "model"])
+
 
 @router.get("/metrics")
 def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
@@ -53,3 +59,14 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
         Response containing the latest metrics.
     """
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+def setup_model_metrics(config: config_model.Config) -> None:
+    """Perform setup of all metrics related to LLM model and provider."""
+    selected_provider.info({"name": config.ols_config.default_provider})
+    selected_model.info({"name": config.ols_config.default_model})
+
+    for _, provider in config.llm_config.providers.items():
+        provider_type = provider.type
+        for model_name, _ in provider.models.items():
+            model_enabled.labels(provider_type, model_name).inc()
