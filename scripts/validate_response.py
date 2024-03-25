@@ -35,14 +35,14 @@ def _args_parser(args):
     parser.add_argument(
         "-t",
         "--threshold",
-        type=lambda val: float(val),
+        type=float,
         default=0.25,
         help="Threshold value to be used for similarity score.",
     )
     parser.add_argument(
         "-n",
         "--num_questions",
-        type=lambda val: int(val),
+        type=int,
         default=2,
         help="Number of questions to be validated.",
     )
