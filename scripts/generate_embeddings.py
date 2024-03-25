@@ -62,16 +62,17 @@ if __name__ == "__main__":
     index.set_index_id(args.index)
     index.storage_context.persist(persist_dir=PERSIST_FOLDER)
 
-    metadata = {}
-    metadata["execution-time"] = time.time() - start_time
-    metadata["llm"] = "None"
-    metadata["embedding-model"] = args.model_name
-    metadata["index-id"] = args.index
-    metadata["vector-db"] = "faiss"
-    metadata["embedding-dimension"] = embedding_dimension
-    metadata["chunk"] = args.chunk
-    metadata["overlap"] = args.overlap
-    metadata["total-embedded-files"] = len(documents)
+    metadata = {
+        "execution-time": time.time() - start_time,
+        "llm": "None",
+        "embedding-model": args.model_name,
+        "index-id": args.index,
+        "vector-db": "faiss",
+        "embedding-dimension": embedding_dimension,
+        "chunk": args.chunk,
+        "overlap": args.overlap,
+        "total-embedded-files": len(documents),
+    }
 
     with open(os.path.join(PERSIST_FOLDER, "metadata.json"), "w") as file:
         file.write(json.dumps(metadata))
