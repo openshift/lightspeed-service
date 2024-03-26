@@ -377,9 +377,7 @@ def test_post_query_for_conversation_history(setup) -> None:
             assert response.status_code == requests.codes.ok
             invoke.assert_called_once_with(
                 input={
-                    "context": "",
                     "query": "Query1",
-                    "chat_history": [],
                 },
                 config={"callbacks": [token_counter.return_value]},
             )
@@ -398,7 +396,6 @@ def test_post_query_for_conversation_history(setup) -> None:
             ]
             invoke.assert_called_once_with(
                 input={
-                    "context": "",
                     "query": "Query2",
                     "chat_history": chat_history_expected,
                 },
