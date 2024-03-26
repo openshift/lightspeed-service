@@ -93,13 +93,14 @@ def get_eval_breakdown(key, eval_results):
     results = eval_results[key]
     response = []
     for result in results:
-        res = {}
-        res["query"] = None if result.query is None else result.query
-        res["response"] = result.response
-        res["score"] = result.score
-        res["passing"] = result.passing
-        res["invalid_reason"] = result.invalid_reason
-        res["feedback"] = result.feedback
+        res = {
+            "query": None if result.query is None else result.query,
+            "response": result.response,
+            "score": result.score,
+            "passing": result.passing,
+            "invalid_reason": result.invalid_reason,
+            "feedback": result.feedback,
+        }
         response.append(res)
     return response
 
@@ -118,11 +119,12 @@ def generate_summary(
     print(f"** Total execution time in min: {execution_time_seconds/60}")
 
     # creating metadata folder
-    metadata = {}
-    metadata["execution-time-MIN"] = execution_time_seconds
-    metadata["llm"] = args.provider
-    metadata["model"] = args.model
-    metadata["index-id"] = product_index
+    metadata = {
+        "execution-time-MIN": execution_time_seconds,
+        "llm": args.provider,
+        "model": args.model,
+        "index-id": product_index,
+    }
     if args.include_evaluation == "true":
         metadata["correctness-results"] = sum(total_correctness_score) / len(
             total_correctness_score
