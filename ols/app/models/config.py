@@ -159,14 +159,13 @@ class TLSConfig(BaseModel):
                 raise InvalidConfigurationError(
                     "Can not enable TLS without ols_config.tls_config.tls_certificate_path"
                 )
-            else:
-                _file_check(self.tls_certificate_path, "OLS server certificate")
-                if self.tls_key_path:
-                    _file_check(self.tls_key_path, "OLS server certificate private key")
-                else:
-                    raise InvalidConfigurationError(
-                        "Can not enable TLS without ols_config.tls_config.tls_key_path"
-                    )
+
+            _file_check(self.tls_certificate_path, "OLS server certificate")
+            if not self.tls_key_path:
+                raise InvalidConfigurationError(
+                    "Can not enable TLS without ols_config.tls_config.tls_key_path"
+                )
+            _file_check(self.tls_key_path, "OLS server certificate private key")
 
 
 class AuthenticationConfig(BaseModel):
