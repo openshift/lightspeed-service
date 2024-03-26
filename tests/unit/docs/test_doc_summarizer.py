@@ -30,10 +30,7 @@ def test_summarize():
     assert question in summary["response"]
     documents = summary["referenced_documents"]
     assert len(documents) > 0
-    assert (
-        f"{constants.OCP_DOCS_ROOT_URL}{constants.OCP_DOCS_VERSION}/docs/test.html"
-        in documents
-    )
+    assert f"{constants.OCP_DOCS_ROOT_URL}/docs/test.html" in documents
     assert not summary["history_truncated"]
 
 
