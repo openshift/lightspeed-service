@@ -8,6 +8,7 @@ from langchain.prompts import PromptTemplate
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
+from ols.constants import PROVIDER_BAM, PROVIDER_WATSONX
 from ols.src.query_helpers.query_helper import QueryHelper
 
 logger = logging.getLogger(__name__)
@@ -18,10 +19,17 @@ class QuestionValidator(QueryHelper):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
-        llm_params = {
-            "min_new_tokens": 1,
-            "max_new_tokens": 4,
-        }
+        llm_params = {}
+        provider = kwargs.get("provider", "")
+
+        # min_new_tokens and max_new_tokens are valid just for BAM and Watsonx
+        # for OpenAI and AzureOpenAI it is not possible to set these values
+        # because validation will fail
+        if provider in (PROVIDER_BAM, PROVIDER_WATSONX):
+            llm_params = {
+                "min_new_tokens": 1,
+                "max_new_tokens": 4,
+            }
         super().__init__(*args, **dict(kwargs, llm_params=llm_params))
 
     def validate_question(

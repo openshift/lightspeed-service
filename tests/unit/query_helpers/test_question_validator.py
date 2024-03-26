@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from ols.constants import PROVIDER_BAM, PROVIDER_OPENAI
 from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
 from ols.utils import config
 from tests.mock_classes.llm_chain import mock_llm_chain
@@ -24,16 +25,23 @@ def test_is_query_helper_subclass():
 
 def test_passing_parameters():
     """Test that llm_params is handled correctly and without runtime error."""
-    question_validator = QuestionValidator()
+    question_validator = QuestionValidator(provider=PROVIDER_BAM)
     assert question_validator.llm_params is not None
-    assert "max_new_tokens" in question_validator.llm_params is not None
-    assert "min_new_tokens" in question_validator.llm_params is not None
+    # these params are valid for BAM
+    assert "max_new_tokens" in question_validator.llm_params
+    assert "min_new_tokens" in question_validator.llm_params
 
-    question_validator = QuestionValidator(llm_params={})
+    question_validator = QuestionValidator(llm_params={}, provider=PROVIDER_BAM)
     # the llm_params should be rewritten in constructor
     assert question_validator.llm_params is not None
-    assert "max_new_tokens" in question_validator.llm_params is not None
-    assert "min_new_tokens" in question_validator.llm_params is not None
+    assert "max_new_tokens" in question_validator.llm_params
+    assert "min_new_tokens" in question_validator.llm_params
+
+    question_validator = QuestionValidator(provider=PROVIDER_OPENAI)
+    assert question_validator.llm_params is not None
+    # these params are not valid for OpenAI
+    assert "max_new_tokens" not in question_validator.llm_params
+    assert "min_new_tokens" not in question_validator.llm_params
 
 
 def test_valid_responses(question_validator):
