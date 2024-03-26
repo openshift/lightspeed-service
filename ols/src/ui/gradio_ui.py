@@ -76,10 +76,9 @@ class GradioUI:
                 logger.info(f"Response JSON: {response.json()}")
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
-            else:
-                logger.info(f"Request failed with status code {response.status_code}")
-                logger.info(f"Response text: {response.text}")
-                return f"Sorry, an error occurred: {response.text}"
+            logger.info(f"Request failed with status code {response.status_code}")
+            logger.info(f"Response text: {response.text}")
+            return f"Sorry, an error occurred: {response.text}"
 
         except (ValueError, requests.RequestException) as e:
             # Handle any exceptions that may occur during the request
