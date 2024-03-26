@@ -413,7 +413,6 @@ def test_valid_question() -> None:
         assert score <= SCORE_THRESHOLD
 
 
-@pytest.mark.standalone
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = get_model_and_provider(client)
@@ -431,7 +430,6 @@ def test_valid_question_tokens_counter() -> None:
         assert response.status_code == requests.codes.ok
 
 
-@pytest.mark.standalone
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = get_model_and_provider(client)
