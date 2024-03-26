@@ -33,16 +33,6 @@ TMPDIR=$(mktemp -d)
 # ARTIFACT_DIR is defined when running in a prow job
 ARTIFACT_DIR=${ARTIFACT_DIR:-$TMPDIR}
 
-# temp directory for index store
-RAG_TMP_DIR=$(mktemp -d)
-# Download index store
-RAG_INDEX="https://github.com/ilan-pinto/lightspeed-rag-documents/releases/latest/download/local.zip"
-export RAG_INDEX_DIR="$RAG_TMP_DIR/vector-db/ocp-product-docs"
-# Configure index store
-mkdir -p $RAG_INDEX_DIR
-wget $RAG_INDEX
-unzip -j local.zip -d $RAG_INDEX_DIR
-rm -f local.zip
 # configure feedback storage location
 export FEEDBACK_STORAGE_LOCATION="$ARTIFACT_DIR/insights/feedback"
 echo "Feedback storage location: $FEEDBACK_STORAGE_LOCATION"
@@ -79,7 +69,6 @@ function finish() {
     echo Exit trap: killing OLS server
     kill %1
     rm -rf "$TMPDIR"
-    rm -rf "$RAG_TMP_DIR"
 }
 trap finish EXIT
 
@@ -95,4 +84,4 @@ fi
 set -e
 
 echo Done waiting for OLS server start, running e2e
-SUITE_ID=standalone TEST_TAGS="not cluster" make test-e2e
+SUITE_ID=standalone TEST_TAGS="not cluster and not rag" make test-e2e

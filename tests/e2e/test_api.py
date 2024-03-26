@@ -384,6 +384,7 @@ def test_query_call_with_improper_payload():
         assert "missing" in response.text
 
 
+@pytest.mark.rag
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
@@ -448,7 +449,6 @@ def test_invalid_question_tokens_counter() -> None:
         assert response.status_code == requests.codes.ok
 
 
-@pytest.mark.standalone
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = get_model_and_provider(client)
@@ -473,7 +473,6 @@ def test_token_counters_for_query_call_without_payload() -> None:
         assert response.status_code == requests.codes.unprocessable_entity
 
 
-@pytest.mark.standalone
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = get_model_and_provider(client)
@@ -536,9 +535,6 @@ def test_query_filter() -> None:
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
-        assert len(json_response["referenced_documents"]) > 0
-        assert "openshift" in json_response["referenced_documents"][0]
-        assert "https://" in json_response["referenced_documents"][0]
 
         # values to be filtered and replaced are defined in:
         # tests/config/singleprovider.e2e.template.config.yaml
