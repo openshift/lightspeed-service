@@ -604,6 +604,19 @@ def test_metrics() -> None:
     assert 'response_duration_seconds_sum{path="/metrics"}' in response.text
 
 
+def test_model_provider():
+    """Read configured model and provider from metrics."""
+    model, provider = get_model_and_provider(client)
+
+    # check available compbinations
+    assert model, provider in {
+        ("gpt-3.5-turbo", "openai"),
+        ("gpt-3.5-turbo", "azure_openai"),
+        ("ibm/granite-13b-chat-v2", "bam"),
+        ("ibm/granite-13b-chat-v2", "watsonx"),
+    }
+
+
 @pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
