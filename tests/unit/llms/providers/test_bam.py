@@ -13,7 +13,7 @@ def test_basic_interface():
     provider_cfg = ProviderConfig(
         {
             "name": "some_provider",
-            "type": "openai",
+            "type": "bam",
             "url": "test_url",
             "credentials_path": "tests/config/secret.txt",
             "models": [

@@ -18,9 +18,10 @@ def test_basic_interface():
     provider_cfg = ProviderConfig(
         {
             "name": "some_provider",
-            "type": "openai",
+            "type": "watsonx",
             "url": "https://us-south.ml.cloud.ibm.com",
             "credentials_path": "tests/config/secret.txt",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "models": [
                 {
                     "name": "test_model_name",
