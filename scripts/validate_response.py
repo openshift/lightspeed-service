@@ -11,6 +11,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ols.constants import NO_RAG_CONTENT_RESP
 
 
@@ -40,11 +41,11 @@ def _args_parser(args):
         help="Threshold value to be used for similarity score.",
     )
     parser.add_argument(
-        "-n",
-        "--num_questions",
-        type=int,
-        default=2,
-        help="Number of questions to be validated.",
+        "-q",
+        "--query_ids",
+        nargs="+",
+        default=["eval1"],
+        help="Ids of questions to be validated. Check json file for valid ids.",
     )
     return parser.parse_args(args)
 
@@ -85,9 +86,9 @@ class ResponseValidation:
         """Get response quality."""
         result_dict = defaultdict(list)
 
-        for idx in range(min(len(qa_pairs), args.num_questions)):
-            question = qa_pairs[idx]["question"]
-            answer = qa_pairs[idx]["answer"]
+        for query_id in args.query_ids:
+            question = qa_pairs[query_id]["question"]
+            answer = qa_pairs[query_id]["answer"]
 
             response = requests.post(
                 # API question validator can be disabled.

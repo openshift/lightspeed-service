@@ -1,32 +1,36 @@
 {
     "gpt": {
-        "with_rag": [
-            {
+        "with_rag": {
+            "eval1": {
+                "question": "what is kubernetes?",
+                "answer": "Kubernetes is an open source container orchestration tool developed by Google. It allows you to run and manage container-based workloads, making it easier to deploy and scale applications in a cloud native way. With Kubernetes, you can create clusters that span hosts across on-premise, public, private, or hybrid clouds. It helps in sharing resources, orchestrating containers across multiple hosts, installing new hardware configurations, running health checks and self-healing applications, and scaling containerized applications."
+            },
+            "eval2": {
                 "question": "what is openshift virtualization?",
                 "answer": "OpenShift Virtualization is an add-on to the Red Hat OpenShift Container Platform that enables the running and management of virtual machine workloads alongside container workloads. It introduces new objects into the OpenShift cluster using Kubernetes custom resources to facilitate virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads together in a cluster, connecting to VMs through various consoles and CLI tools, importing and cloning existing VMs, managing network interface controllers and storage disks attached to VMs, as well as live migrating VMs between nodes.\n\nThe add-on also provides an enhanced web console for graphical management of these virtualized resources alongside the OpenShift Container Platform's containers and infrastructure. Additionally, it is designed to work well with Red Hat OpenShift Data Foundation features.\n\nOpenShift Virtualization supports compliance scanning using the Compliance Operator with NIST-certified tooling for security policy enforcement. It is compatible with certified network plugins like OVN-Kubernetes, OpenShift SDN, or other listed options.\n\nIt is important to note that when deploying OpenShift Virtualization with OpenShift Data Foundation for Windows VMs, a dedicated storage class needs to be created. Furthermore, specific volume and access modes are recommended for optimal performance during live migration scenarios."
             },
-            {
+            "eval3": {
                 "question": "What is the purpose of the imagePullPolicy in Red Hat OpenShift Container Platform?",
                 "answer": "The imagePullPolicy in Red Hat OpenShift Container Platform determines whether the container image should be pulled prior to starting the container. It has three possible values: Always, IfNotPresent, and Never. The default behavior is as follows:\n\n1. If the tag of the image is \"latest,\" the imagePullPolicy is set to Always.\n2. Otherwise, if no specific parameter is specified, the imagePullPolicy defaults to IfNotPresent.\n\nThis policy allows for control over when and how container images are pulled, ensuring that containers are always started with the correct and up-to-date images based on their configuration."
             },
-            {
+            "eval4": {
                 "question": "What is the purpose of customizing source-to-image builder images?",
                 "answer": "Customizing source-to-image (S2I) builder images allows users to tailor the behavior of the default scripts included in the builder images to better suit their specific needs. This customization can involve overriding standard scripts with custom ones, adding commands before or after the standard scripts, or creating wrapper scripts that delegate work to the default scripts while incorporating custom logic. By doing so, users can adapt the S2I builder images to their particular use-cases and requirements."
             },
-            {
+            "eval5": {
                 "question": "What is a bundle in the context of the Operator Framework?",
                 "answer": "In the context of the Operator Framework, a bundle is a collection of an Operator CSV (Cluster Service Version), manifests, and metadata. Together, they form a unique version of an Operator that can be installed onto the cluster. Bundles are used to package and distribute Operators and their associated resources as a single unit for installation onto Kubernetes clusters."
             }
-        ],
-        "without_rag": [
-            {
+        },
+        "without_rag": {
+            "eval1": {
                 "question": "what is openshift virtualization?",
                 "answer": "OpenShift Virtualization is a feature of Red Hat OpenShift that allows users to run and manage virtual machines alongside containers in the same platform. It enables organizations to consolidate their workloads by running both VMs and containers on the same infrastructure, providing a unified platform for managing and orchestrating both types of workloads. This integration allows for greater flexibility in deploying and managing applications, as well as optimizing resource utilization within the OpenShift environment."
             },
-            {
+            "eval2": {
                 "question": "What is the purpose of the imagePullPolicy in Red Hat OpenShift Container Platform?",
                 "answer": "The imagePullPolicy in Red Hat OpenShift Container Platform is used to specify when the Kubernetes system should pull a container image. This policy determines whether the system should always pull the latest version of the image, or if it should use a locally cached version if available. The purpose of this setting is to control how OpenShift manages and updates container images, ensuring that applications are using the correct and up-to-date versions of their required images."
             }
-        ]
+        }
     }
 }
