@@ -81,7 +81,7 @@ spec:
           secret:
             secretName: lightspeed-certs
       containers:
-      - image: quay.io/openshift/lightspeed-service-api-rag:latest
+      - image: quay.io/openshift/lightspeed-service-api:latest
         imagePullPolicy: Always
         name: lightspeed-w-rag
         env:
@@ -171,7 +171,7 @@ data:
           - name: gpt-3.5-turbo
     ols_config:
       reference_content:
-        product_docs_index_path: "./vector-db/ocp-product-docs"
+        product_docs_index_path: "./vector-db/ocp_product_docs/4.15"
         product_docs_index_id: ocp-product-docs-4_15
         embeddings_model_path: "./embeddings_model"
       conversation_cache:

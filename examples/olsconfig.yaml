@@ -30,7 +30,7 @@ llm_providers:
       - name: ibm/granite-13b-chat-v2
 ols_config:
   reference_content:
-#    product_docs_index_path: "./vector-db/ocp-product-docs"
+#    product_docs_index_path: "./vector-db/ocp_product_docs/4.15"
 #    product_docs_index_id: ocp-product-docs-4_15
 #    embeddings_model_path: "./embeddings_model"
   conversation_cache:
