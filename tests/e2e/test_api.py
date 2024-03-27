@@ -16,6 +16,7 @@ from scripts.validate_response import ResponseValidation
 from tests.e2e.consts import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
+    EVAL_THRESHOLD,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
@@ -68,8 +69,9 @@ def response_eval(request):
         qa_pairs = json.load(qna_f)
 
     eval_model = request.config.option.eval_model
-    eval_threshold = float(request.config.option.eval_threshold)
-    return qa_pairs[eval_model], eval_threshold
+    print(f"eval model: {eval_model}")
+
+    return qa_pairs[eval_model]
 
 
 def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
@@ -182,7 +184,7 @@ def test_valid_question(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
     eval_query, eval_answer = get_eval_question_answer(
-        response_eval[0], "eval1", "with_rag"
+        response_eval, "eval1", "with_rag"
     )
 
     with metrics_utils.RestAPICallCounterChecker(client, endpoint):
@@ -212,7 +214,7 @@ def test_valid_question(response_eval) -> None:
         score = ResponseValidation().get_similarity_score(
             json_response["response"], eval_answer
         )
-        assert score <= response_eval[1]
+        assert score <= EVAL_THRESHOLD
 
 
 @pytest.mark.standalone
@@ -305,7 +307,7 @@ def test_rag_question(response_eval) -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
     eval_query, eval_answer = get_eval_question_answer(
-        response_eval[0], "eval2", "with_rag"
+        response_eval, "eval2", "with_rag"
     )
 
     with metrics_utils.RestAPICallCounterChecker(client, endpoint):
@@ -327,7 +329,7 @@ def test_rag_question(response_eval) -> None:
         score = ResponseValidation().get_similarity_score(
             json_response["response"], eval_answer
         )
-        assert score <= response_eval[1]
+        assert score <= EVAL_THRESHOLD
 
 
 def test_query_filter() -> None:
