@@ -18,6 +18,7 @@ class QuestionValidator(QueryHelper):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
+        # TODO: need to be refactored out: https://issues.redhat.com/browse/OLS-447
         llm_params = {
             "min_new_tokens": 1,
             "max_new_tokens": 4,
