@@ -397,8 +397,9 @@ def test_valid_question() -> None:
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
-        json_response["conversation_id"] == conversation_id
+
         # checking a few major information from response
+        assert json_response["conversation_id"] == conversation_id
         assert "Kubernetes is" in json_response["response"]
         assert (
             "orchestration tool" in json_response["response"]
@@ -511,6 +512,7 @@ def test_rag_question() -> None:
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
+        assert "conversation_id" in json_response
         assert len(json_response["referenced_documents"]) > 0
         assert "about_virt" in json_response["referenced_documents"][0]
         assert "https://" in json_response["referenced_documents"][0]
@@ -535,6 +537,7 @@ def test_query_filter() -> None:
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
+        assert "conversation_id" in json_response
 
         # values to be filtered and replaced are defined in:
         # tests/config/singleprovider.e2e.template.config.yaml
