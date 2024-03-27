@@ -26,7 +26,7 @@ def test_basic_interface():
         }
     )
 
-    openai = BAM(model="uber-model", params={}, provider_config=provider_cfg)
-    llm = openai.load()
+    bam = BAM(model="uber-model", params={}, provider_config=provider_cfg)
+    llm = bam.load()
     assert isinstance(llm, LangChainInterface)
-    assert openai.default_params
+    assert bam.default_params

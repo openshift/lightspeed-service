@@ -32,7 +32,7 @@ def test_basic_interface():
         }
     )
 
-    openai = WatsonX(model="uber-model", params={}, provider_config=provider_cfg)
-    llm = openai.load()
+    watsonx = WatsonX(model="uber-model", params={}, provider_config=provider_cfg)
+    llm = watsonx.load()
     assert isinstance(llm, WatsonxLLM)
-    assert openai.default_params
+    assert watsonx.default_params
