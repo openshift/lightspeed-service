@@ -22,22 +22,6 @@ logger = logging.getLogger(__name__)
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
-    @staticmethod
-    def _file_path_to_doc_url(file_path: str) -> str:
-        """Convert file_path metadata to the corresponding URL on the OCP docs website.
-
-        Embedding node metadata 'file_path' in the form
-        file_path: /workspace/source/ocp-product-docs-plaintext/hardware_enablement/
-                    psap-node-feature-discovery-operator.txt
-        is mapped into a doc URL such as
-        https://docs.openshift.com/container-platform/4.14/hardware_enablement/
-        psap-node-feature-discovery-operator.html.
-        """
-        return (
-            constants.OCP_DOCS_ROOT_URL
-            + file_path.removeprefix(constants.EMBEDDINGS_ROOT_DIR)
-        ).removesuffix("txt") + "html"
-
     def _format_rag_data(self, rag_data: list[dict]) -> tuple[str, list[str]]:
         """Format rag text & metadata.
 
@@ -45,12 +29,12 @@ class DocsSummarizer(QueryHelper):
         Create list of metadata from rag data dictionary.
         """
         rag_text = []
-        file_path = []
+        docs_url = []
         for data in rag_data:
             rag_text.append(data["text"])
-            file_path.append(self._file_path_to_doc_url(data["file_path"]))
+            docs_url.append(data["docs_url"])
 
-        return "\n\n".join(rag_text), file_path
+        return "\n\n".join(rag_text), docs_url
 
     def _get_rag_data(
         self,

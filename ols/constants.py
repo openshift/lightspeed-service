@@ -175,11 +175,6 @@ GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
-# embeddings metadata
-EMBEDDINGS_ROOT_DIR = "/workdir/ocp-product-docs-plaintext"
-OCP_DOCS_ROOT_URL = "https://docs.openshift.com/container-platform"
-OCP_DOCS_VERSION = "4.15"
-
 # cache constants
 IN_MEMORY_CACHE = "memory"
 IN_MEMORY_CACHE_MAX_ENTRIES = 1000

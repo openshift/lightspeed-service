@@ -41,22 +41,22 @@ class TestTokenHandler(TestCase):
             {
                 "text": "a text text text text",
                 "score": 0.6,
-                "metadata": {"file_path": "data/doc1.pdf"},
+                "metadata": {"docs_url": "data/doc1.pdf"},
             },
             {
                 "text": "b text text text text",
                 "score": 0.55,
-                "metadata": {"file_path": "data/doc2.pdf"},
+                "metadata": {"docs_url": "data/doc2.pdf"},
             },
             {
                 "text": "c text text text text",
                 "score": 0.55,
-                "metadata": {"file_path": "data/doc3.pdf"},
+                "metadata": {"docs_url": "data/doc3.pdf"},
             },
             {
                 "text": "d text text text text",
                 "score": 0.4,
-                "metadata": {"file_path": "data/doc4.pdf"},
+                "metadata": {"docs_url": "data/doc4.pdf"},
             },
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
@@ -71,7 +71,7 @@ class TestTokenHandler(TestCase):
         for idx, data in enumerate(context):
             assert data["text"][0] == self._mock_retrieved_obj[idx].get_text()[0]
             assert (
-                data["file_path"] == self._mock_retrieved_obj[idx].metadata["file_path"]
+                data["docs_url"] == self._mock_retrieved_obj[idx].metadata["docs_url"]
             )
 
     def test_token_handler_token_limit(self):
