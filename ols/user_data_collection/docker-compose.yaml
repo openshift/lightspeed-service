@@ -1,0 +1,47 @@
+version: '3'
+services:
+  ols:
+    build:
+      context: ../..  # path to the root of the project
+      dockerfile: Containerfile
+    image: ols_udc_test_image
+    volumes:
+      - ./udc-config.yaml:/app-root/config/olsconfig.yaml
+      - shared_data:/app-root/data
+    ports:
+      - "8080:8080"
+    environment:
+      - OLS_CONFIG_FILE=/app-root/config/olsconfig.yaml
+    # create an empty file with token, it won't be used anyway
+    entrypoint: >
+      bash -c "touch bam_api_key.txt && exec python3.11 runner.py"
+
+  fake-ingress:
+    image: ols_udc_test_image
+    volumes:
+      - ./fake_ingress.py:/app-root/fake_ingress.py
+    command: uvicorn fake_ingress:app --host=0.0.0.0 --port 5000
+    ports:
+      - "5000:5000"
+
+  data_collector:
+    image: ols_udc_test_image
+    volumes:
+      - shared_data:/app-root/data
+    environment:
+      - OLS_UDC_ENV=dev
+      - UDC_STORAGE=/app-root/data
+      - UDC_COLLECTION_INTERVAL=10
+      - INGRESS_URL=http://fake-ingress:5000
+      - INGRESS_ENDPOINT=/test_endpoint
+    command: >
+      bash -c "exec python3.11 /app-root/ols/user_data_collection/data_collector.py"
+    depends_on:
+      - ols
+      - fake-ingress
+
+volumes:
+  shared_data:
+
+# to test it do
+# curl -X POST -H "Content-Type: application/json" -d '{"conversation_id": "1", "user_question": "a", "llm_response": "b", "sentiment": 1}' http://0.0.0.0:8080/v1/feedback

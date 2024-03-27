@@ -100,6 +100,16 @@ spec:
             mountPath: /app-root/config/openai
           - name: tls-certs
             mountPath: /app-root/certs
+      - name: user-data-collector-sidecar
+        image: quay.io/openshift/lightspeed-service-api-udc:latest
+        # TODO: launch command
+        env:
+          - name: OLS_USER_DATA_PATH
+            value: /app-root/ols-user-data
+          # TODO: token?
+        volumeMounts:
+          - name: ols-user-data
+            mountPath: /app-root/ols-user-data
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
