@@ -1,3 +1,8 @@
+# vim: set filetype=dockerfile
+ARG LIGHTSPEED_RAG_CONTENT_DIGEST=sha256:d15bf56776c40a8709b0e648e3b0f043de63b24ad8f59eeea6f8d965dfcbe4e3
+
+FROM quay.io/openshift/lightspeed-rag-content@${LIGHTSPEED_RAG_CONTENT_DIGEST} as lightspeed-rag-content
+
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 ARG VERSION
@@ -23,6 +28,8 @@ WORKDIR ${APP_ROOT}
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ols ./ols
 COPY pyproject.toml pdm.lock runner.py ./
+COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
+COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 
 RUN pip3.11 install --no-cache-dir --upgrade pip pdm \
     && pdm config python.use_venv false \
