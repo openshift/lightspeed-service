@@ -1,5 +1,6 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+import json
 import os
 
 import pytest
@@ -24,31 +25,25 @@ BASIC_ENDPOINTS_TIMEOUT = 5
 NON_LLM_REST_API_TIMEOUT = 20
 LLM_REST_API_TIMEOUT = 90
 
-SCORE_THRESHOLD = 0.4  # low score is better
 
-# Sample Question/Answer set
-# TODO: Load this from QnA json file.
-QUESTION1 = "what is kubernetes?"
-ANSWER1 = (
-    "Kubernetes is an open source container orchestration tool developed by Google. "
-    "It allows you to run and manage container-based workloads, making it easier to "
-    "deploy and scale applications in a cloud native way. With Kubernetes, "
-    "you can create clusters that span hosts across on-premise, public, private, or "
-    "hybrid clouds. It helps in sharing resources, orchestrating containers across "
-    "multiple hosts, installing new hardware configurations, running health checks "
-    "and self-healing applications, and scaling containerized applications."
-)
-QUESTION2 = "what is openshift virtualization?"
-ANSWER2 = (
-    "OpenShift Virtualization is an add-on to the Red Hat OpenShift Container Platform "
-    "that enables the running and management of virtual machine workloads alongside "
-    "container workloads. It introduces new objects into the OpenShift cluster using "
-    "Kubernetes custom resources to facilitate virtualization tasks such as creating and "
-    "managing Linux and Windows virtual machines, running pod and VM workloads together "
-    "in a cluster, connecting to VMs through various consoles and CLI tools, importing "
-    "and cloning existing VMs, managing network interface controllers and storage disks "
-    "attached to VMs, as well as live migrating VMs between nodes."
-)
+@pytest.fixture(scope="module")
+def response_eval(request):
+    """Set response evaluation fixture."""
+    with open("tests/test_data/question_answer_pair.json") as qna_f:
+        qa_pairs = json.load(qna_f)
+
+    eval_model = request.config.option.eval_model
+    eval_threshold = float(request.config.option.eval_threshold)
+    return qa_pairs[eval_model], eval_threshold
+
+
+def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
+    """Get Evaluation question answer."""
+    eval_query = qna_pair[scenario][qna_id]["question"]
+    eval_answer = qna_pair[scenario][qna_id]["answer"]
+    print(f"Evaluation question: {eval_query}")
+    print(f"Ground truth answer: {eval_answer}")
+    return eval_query, eval_answer
 
 
 def read_metrics(client):
@@ -385,13 +380,17 @@ def test_query_call_with_improper_payload():
 
 
 @pytest.mark.rag
-def test_valid_question() -> None:
+def test_valid_question(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
+    eval_query, eval_answer = get_eval_question_answer(
+        response_eval[0], "eval1", "with_rag"
+    )
+
     with RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": QUESTION1},
+            json={"conversation_id": conversation_id, "query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -408,9 +407,9 @@ def test_valid_question() -> None:
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
         score = ResponseValidation().get_similarity_score(
-            json_response["response"], ANSWER1
+            json_response["response"], eval_answer
         )
-        assert score <= SCORE_THRESHOLD
+        assert score <= response_eval[1]
 
 
 @pytest.mark.standalone
@@ -425,7 +424,7 @@ def test_valid_question_tokens_counter() -> None:
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": QUESTION1},
+            json={"conversation_id": conversation_id, "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -499,13 +498,17 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
 
 
 @pytest.mark.rag
-def test_rag_question() -> None:
+def test_rag_question(response_eval) -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
+    eval_query, eval_answer = get_eval_question_answer(
+        response_eval[0], "eval2", "with_rag"
+    )
+
     with RestAPICallCounterChecker(client, endpoint):
         response = client.post(
             endpoint,
-            json={"query": QUESTION2},
+            json={"query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -518,9 +521,9 @@ def test_rag_question() -> None:
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
         score = ResponseValidation().get_similarity_score(
-            json_response["response"], ANSWER2
+            json_response["response"], eval_answer
         )
-        assert score <= SCORE_THRESHOLD
+        assert score <= response_eval[1]
 
 
 def test_query_filter() -> None:
