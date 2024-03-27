@@ -24,7 +24,6 @@ class CacheFactory:
             case constants.IN_MEMORY_CACHE:
                 return InMemoryCache(config.memory)
             case constants.POSTGRES_CACHE:
-                # TODO in other PR: https://github.com/openshift/lightspeed-service/pull/634
                 return PostgresCache(config.postgres)
             case _:
                 raise ValueError(
