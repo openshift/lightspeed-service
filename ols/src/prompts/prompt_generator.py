@@ -1,7 +1,10 @@
 """Prompt generator based on model / context."""
 
 from collections import namedtuple
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from langchain_core.prompts.chat import MessageLike
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -42,7 +45,7 @@ def prompt_for_configuration(
     model: str,
     rag_exists: bool,
     history_exists: bool,
-    default_prompt: ChatPromptTemplate,
+    default_prompt: str,
 ) -> ChatPromptTemplate:
     """Find prompt for given configuration parameters or return the default one."""
     # construct system prompt first
@@ -56,7 +59,7 @@ def prompt_for_configuration(
         system_prompt += USE_PREVIOUS_HISTORY
 
     # construct chat prompt from sequence of messages
-    messages = []
+    messages: list[MessageLike] = []
     messages.append(SystemMessagePromptTemplate.from_template(system_prompt))
     if history_exists:
         messages.append(MessagesPlaceholder(variable_name="chat_history"))
