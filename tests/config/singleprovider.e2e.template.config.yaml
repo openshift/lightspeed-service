@@ -11,6 +11,8 @@ ols_config:
   user_data_collection:
     feedback_disabled: false
     feedback_storage: $FEEDBACK_STORAGE_LOCATION
+    transcripts_disabled: false
+    transcripts_storage: $TRANSCRIPTS_STORAGE_LOCATION
   conversation_cache:
     type: memory
     memory:

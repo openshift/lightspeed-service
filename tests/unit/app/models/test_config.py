@@ -1761,8 +1761,8 @@ def test_authentication_config_validation_invalid_cert_path():
         auth_config.validate_yaml()
 
 
-def test_user_data_config(tmpdir):
-    """Tests the UserDataCollection model."""
+def test_user_data_config__feedback(tmpdir):
+    """Tests the UserDataCollection model, feedback part."""
     # valid configuration
     user_data = UserDataCollection(
         feedback_disabled=False, feedback_storage=tmpdir.strpath
@@ -1781,3 +1781,25 @@ def test_user_data_config(tmpdir):
     user_data = UserDataCollection(feedback_disabled=True)
     assert user_data.feedback_disabled is True
     assert user_data.feedback_storage is None
+
+
+def test_user_data_config__transcripts(tmpdir):
+    """Tests the UserDataCollection model, transripts part."""
+    # valid configuration
+    user_data = UserDataCollection(
+        transcripts_disabled=False, transcripts_storage=tmpdir.strpath
+    )
+    assert user_data.transcripts_disabled is False
+    assert user_data.transcripts_storage == tmpdir.strpath
+
+    # enabled needs transcripts_storage
+    with pytest.raises(
+        ValueError,
+        match="transcripts_storage is required when transcripts capturing is enabled",
+    ):
+        UserDataCollection(transcripts_disabled=False)
+
+    # disabled doesn't need transcripts_storage
+    user_data = UserDataCollection(transcripts_disabled=True)
+    assert user_data.transcripts_disabled is True
+    assert user_data.transcripts_storage is None

@@ -48,6 +48,8 @@ data:
       user_data_collection:
         feedback_disabled: false
         feedback_storage: "/app-root/ols-user-data/feedback"
+        transcripts_disabled: false
+        transcripts_storage: "/app-root/ols-user-data/transcripts"
     dev_config:
       enable_dev_ui: true
       disable_auth: false

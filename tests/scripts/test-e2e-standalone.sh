@@ -34,8 +34,10 @@ TMPDIR=$(mktemp -d)
 ARTIFACT_DIR=${ARTIFACT_DIR:-$TMPDIR}
 
 # configure feedback storage location
-export FEEDBACK_STORAGE_LOCATION="$ARTIFACT_DIR/insights/feedback"
+export FEEDBACK_STORAGE_LOCATION="$ARTIFACT_DIR/user-data/feedback"
 echo "Feedback storage location: $FEEDBACK_STORAGE_LOCATION"
+export TRANSCRIPTS_STORAGE_LOCATION="$ARTIFACT_DIR/user-data/transcripts"
+echo "Transcripts storage location: $TRANSCRIPTS_STORAGE_LOCATION"
 
 export OLS_CONFIG_FILE="$ARTIFACT_DIR/olsconfig.yaml"
 OLS_LOGS=$ARTIFACT_DIR/ols.log
