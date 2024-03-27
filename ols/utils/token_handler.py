@@ -105,7 +105,7 @@ class TokenHandler:
 
             context_dict["text"] = self.tokens_to_text(tokens[:available_tokens])
             # Add Metadata
-            context_dict["file_path"] = node.metadata.get("file_path", None)
+            context_dict["docs_url"] = node.metadata.get("docs_url", None)
 
             context.append(context_dict)
             max_tokens -= available_tokens

@@ -2,6 +2,7 @@
 
 from langchain_core.documents import Document
 
+from tests import constants
 from tests.unit.utils.test_token_handler import MockRetrievedNode
 
 
@@ -22,7 +23,10 @@ class MockRetriever:
                 {
                     "text": "a text text text text",
                     "score": 0.6,
-                    "metadata": {"file_path": "/docs/test.txt"},
+                    "metadata": {
+                        "docs_url": f"{constants.OCP_DOCS_ROOT_URL}/"
+                        f"{constants.OCP_DOCS_VERSION}/docs/test.html"
+                    },
                 }
             )
         ]
