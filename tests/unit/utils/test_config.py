@@ -871,6 +871,7 @@ def test_config_file_without_logging_config():
     logging_config = config.ols_config.logging_config
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
+    assert logging_config.uvicorn_log_level == logging.WARNING
 
 
 def test_valid_config_without_query_filter():

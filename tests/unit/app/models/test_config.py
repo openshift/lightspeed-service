@@ -688,16 +688,19 @@ def test_valid_values():
     logging_config = LoggingConfig({})
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
+    assert logging_config.uvicorn_log_level == logging.WARNING
 
     # test custom values
     logging_config = LoggingConfig(
         {
             "app_log_level": "debug",
             "lib_log_level": "debug",
+            "uvicorn_log_level": "debug",
         }
     )
     assert logging_config.app_log_level == logging.DEBUG
     assert logging_config.lib_log_level == logging.DEBUG
+    assert logging_config.uvicorn_log_level == logging.DEBUG
 
     logging_config = LoggingConfig()
     assert logging_config.app_log_level == logging.INFO
@@ -715,6 +718,13 @@ def test_invalid_values():
         match="invalid log level for app_log_level: dingdong",
     ):
         LoggingConfig({"app_log_level": "dingdong"})
+
+    # value is not valid log level
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="invalid log level for uvicorn_log_level: foo",
+    ):
+        LoggingConfig({"uvicorn_log_level": "foo"})
 
 
 def test_postgres_config_default_values():
