@@ -102,6 +102,7 @@ def remove_feedback(feedback_id: str) -> None:
         logger.error(f"feedback file '{feedback_file}' not found")
 
 
+# TODO: do we need it for transcripts too?
 @router.get("/status")
 def feedback_status() -> StatusResponse:
     """Handle feedback status requests.
