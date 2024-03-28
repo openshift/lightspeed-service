@@ -17,12 +17,13 @@ from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
-from ols.utils.auth_dependency import auth_dependency
+from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["query"])
+auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
 @router.post("/query")

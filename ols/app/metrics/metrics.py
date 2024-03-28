@@ -13,9 +13,10 @@ from prometheus_client import (
 )
 
 import ols.app.models.config as config_model
-from ols.utils.auth_dependency import auth_dependency
+from ols.utils.auth_dependency import AuthDependency
 
 router = APIRouter(tags=["metrics"])
+auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
 
 rest_api_calls_total = Counter(
     "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]

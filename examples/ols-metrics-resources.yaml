@@ -1,0 +1,35 @@
+# SA, CR ,CRB for accessing the Metrics EndPoint
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ols-metrics-sa
+  labels:
+    app: ols
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ols-metrics-access
+  labels:
+    app: ols
+    purpose: ols-metrics-access
+rules:
+- nonResourceURLs:
+    - "/ols-metrics-access"
+  verbs:
+    - "get"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ols-metrics-access-binding
+  labels:
+    app: ols
+subjects:
+- kind: ServiceAccount
+  name: ols-metrics-sa
+roleRef:
+  kind: ClusterRole
+  name: ols-metrics-access
+  apiGroup: rbac.authorization.k8s.io

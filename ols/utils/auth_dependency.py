@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request
 from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
-from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
+from ols.constants import DEFAULT_KUBEADMIN_UID, DEFAULT_USER_NAME, DEFAULT_USER_UID
 from ols.utils import config
 
 logger = logging.getLogger(__name__)
@@ -157,59 +157,69 @@ def _extract_bearer_token(header: str) -> str:
         return ""
 
 
-async def auth_dependency(request: Request) -> tuple[str, str]:
-    """Validate FastAPI Requests for authentication and authorization.
+class AuthDependency:
+    """Create an AuthDependency Class that allows customizing the acces Scope path to check."""
 
-    Validates the bearer token from the request,
-    performs access control checks using Kubernetes TokenReview and SubjectAccessReview.
+    def __init__(self, virtual_path: str = "/ols-access"):
+        """Initialize the required allowed paths for authorization checks."""
+        self.virtual_path = virtual_path
 
-    Args:
-        request: The FastAPI request object.
+    async def __call__(self, request: Request) -> tuple[str, str]:
+        """Validate FastAPI Requests for authentication and authorization.
 
-    Returns:
-        The user's UID and username if authentication and authorization succeed.
+        Validates the bearer token from the request,
+        performs access control checks using Kubernetes TokenReview and SubjectAccessReview.
 
-    Raises:
-        HTTPException: If authentication fails or the user does not have access.
-    """
-    if config.dev_config.disable_auth:
-        logger.warn("Auth checks disabled, skipping")
-        # TODO: replace with constants for default identity
-        return DEFAULT_USER_UID, DEFAULT_USER_NAME
-    authorization_header = request.headers.get("Authorization")
-    if not authorization_header:
-        raise HTTPException(
-            status_code=401, detail="Unauthorized: No auth header found"
-        )
-    token = _extract_bearer_token(authorization_header)
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail="Unauthorized: Bearer token not found or invalid",
-        )
-    user_info = get_user_info(token)
-    if user_info is None:
-        raise HTTPException(
-            status_code=403, detail="Forbidden: Invalid or expired token"
-        )
-    authorization_api = K8sClientSingleton.get_authz_api()
-    # TODO: we can support Groups here also admins, developers etc..
-    sar = kubernetes.client.V1SubjectAccessReview(
-        spec=kubernetes.client.V1SubjectAccessReviewSpec(
-            user=user_info.user.username,
-            non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
-                path="/ols-access", verb="get"
-            ),
-        )
-    )
-    try:
-        response = authorization_api.create_subject_access_review(sar)
-        if not response.status.allowed:
+        Args:
+            request: The FastAPI request object.
+
+        Returns:
+            The user's UID and username if authentication and authorization succeed.
+
+        Raises:
+            HTTPException: If authentication fails or the user does not have access.
+        """
+        if config.dev_config.disable_auth:
+            logger.warn("Auth checks disabled, skipping")
+            # TODO: replace with constants for default identity
+            return DEFAULT_USER_UID, DEFAULT_USER_NAME
+        authorization_header = request.headers.get("Authorization")
+        if not authorization_header:
             raise HTTPException(
-                status_code=403, detail="Forbidden: User does not have access"
+                status_code=401, detail="Unauthorized: No auth header found"
             )
-    except ApiException as e:
-        logger.error(f"API exception during SubjectAccessReview: {e}")
-        raise HTTPException(status_code=403, detail="Internal server error")
+        token = _extract_bearer_token(authorization_header)
+        if not token:
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized: Bearer token not found or invalid",
+            )
+        user_info = get_user_info(token)
+        if user_info is None:
+            raise HTTPException(
+                status_code=403, detail="Forbidden: Invalid or expired token"
+            )
+        if user_info.user.username == "kube:admin":
+            user_info.user.uid = DEFAULT_KUBEADMIN_UID
+        authorization_api = K8sClientSingleton.get_authz_api()
 
-    return user_info.user.uid, user_info.user.username
+        sar = kubernetes.client.V1SubjectAccessReview(
+            spec=kubernetes.client.V1SubjectAccessReviewSpec(
+                user=user_info.user.username,
+                groups=user_info.user.groups,
+                non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
+                    path=self.virtual_path, verb="get"
+                ),
+            )
+        )
+        try:
+            response = authorization_api.create_subject_access_review(sar)
+            if not response.status.allowed:
+                raise HTTPException(
+                    status_code=403, detail="Forbidden: User does not have access"
+                )
+        except ApiException as e:
+            logger.error(f"API exception during SubjectAccessReview: {e}")
+            raise HTTPException(status_code=403, detail="Internal server error")
+
+        return user_info.user.uid, user_info.user.username
