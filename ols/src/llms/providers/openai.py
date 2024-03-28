@@ -40,12 +40,4 @@ class OpenAI(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
-        # TODO: these are not allowed for OpenAI - we need to figure
-        # out first how to handle params in general - whitelist/validation, ...
-        # https://issues.redhat.com/browse/OLS-363
-        if "min_new_tokens" in self.params:
-            self.params.pop("min_new_tokens")
-        if "max_new_tokens" in self.params:
-            self.params.pop("max_new_tokens")
-
         return ChatOpenAI(**self.params)  # type: ignore [return-value]
