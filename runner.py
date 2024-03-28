@@ -73,4 +73,5 @@ if __name__ == "__main__":
             ssl_keyfile=config.ols_config.tls_config.tls_key_path,
             ssl_certfile=config.ols_config.tls_config.tls_certificate_path,
             ssl_keyfile_password=config.ols_config.tls_config.tls_key_password,
+            log_level="debug",
         )
