@@ -163,8 +163,6 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
 )
 
 # models
-# embedding
-TEI_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 
 # BAM
 GRANITE_13B_CHAT_V1 = "ibm/granite-13b-chat-v1"

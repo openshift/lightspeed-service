@@ -517,7 +517,7 @@ def test_rag_question(response_eval) -> None:
         json_response = response.json()
         assert "conversation_id" in json_response
         assert len(json_response["referenced_documents"]) > 0
-        assert "about_virt" in json_response["referenced_documents"][0]
+        assert "performance" in json_response["referenced_documents"][0]
         assert "https://" in json_response["referenced_documents"][0]
 
         assert NO_RAG_CONTENT_RESP not in json_response["response"]

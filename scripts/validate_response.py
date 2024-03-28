@@ -55,7 +55,9 @@ class ResponseValidation:
 
     def __init__(self):
         """Initialize."""
-        self._embedding_model = HuggingFaceEmbedding("BAAI/bge-base-en")
+        self._embedding_model = HuggingFaceEmbedding(
+            "sentence-transformers/all-mpnet-base-v2"
+        )
 
     def get_similarity_score(self, response, answer):
         """Calculate similarity score between two strings."""

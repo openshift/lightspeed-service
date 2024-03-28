@@ -9,13 +9,13 @@ from llama_index.vector_stores.faiss import FaissVectorStore
 
 from ols.app.models.config import ReferenceContent
 
-# This is to avoid importing HuggingFaceBgeEmbeddings in all cases, because in
+# This is to avoid importing HuggingFaceEmbeddings in all cases, because in
 # runtime it is used only under some conditions. OTOH we need to make Python
 # interpreter happy in all circumstances, hence the definiton of Any symbol.
 if TYPE_CHECKING:
-    from langchain_community.embeddings import HuggingFaceBgeEmbeddings  # TCH004
+    from langchain_community.embeddings import HuggingFaceEmbeddings  # TCH004
 else:
-    HuggingFaceBgeEmbeddings = Any
+    HuggingFaceEmbeddings = Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,19 +40,19 @@ class IndexLoader:
             self._embed_model = self._get_embed_model()
             self._load_index()
 
-    def _get_embed_model(self) -> Optional[str | HuggingFaceBgeEmbeddings]:
+    def _get_embed_model(self) -> Optional[str | HuggingFaceEmbeddings]:
         """Get embed model according to configuration."""
         if self._embed_model_path is not None:
-            from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+            from langchain_community.embeddings import HuggingFaceEmbeddings
 
             logger.debug(
                 f"Loading embedding model info from path {self._embed_model_path}"
             )
-            return HuggingFaceBgeEmbeddings(model_name=self._embed_model_path)
+            return HuggingFaceEmbeddings(model_name=self._embed_model_path)
 
         logger.warning("Embedding model path is not set.")
         logger.warning("Embedding model is set to default")
-        return "local:BAAI/bge-base-en"
+        return "local:sentence-transformers/all-mpnet-base-v2"
 
     def _set_context(self) -> None:
         """Set storage/service context required for index load."""

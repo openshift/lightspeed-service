@@ -274,7 +274,7 @@ async def main():
     parser.add_argument(
         "-m",
         "--model",
-        default="local:BAAI/bge-base-en",
+        default="local:sentence-transformers/all-mpnet-base-v2",
         help="the valid models are:\
             - ibm/granite-13b-chat-v1, ibm/granite-13b-chat-v2, ibm/granite-20b-code-instruct-v1 \
             - gpt-3.5-turbo-1106, gpt-3.5-turbo for openai",
@@ -320,7 +320,7 @@ async def main():
 
     print("** settings params")
 
-    embed_model = "local:BAAI/bge-base-en"
+    embed_model = "local:sentence-transformers/all-mpnet-base-v2"
     bare_llm = load_llm(args.provider, args.model)
 
     service_context = ServiceContext.from_defaults(
