@@ -17,7 +17,7 @@ scratch
 # ignore locally significant directories
 tmp
 data
-vector-db
+vector_db
 vendor
 embeddings_model
 .output
