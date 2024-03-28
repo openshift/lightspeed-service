@@ -3,7 +3,9 @@
 
 def pytest_addoption(parser):
     """Argument parser for pytest."""
-    parser.addoption("--eval_model", default="gpt", help="Model to be evaluated.")
     parser.addoption(
-        "--eval_threshold", default="0.5", help="Evaluation threshold value."
+        "--eval_model",
+        default="gpt",
+        type=lambda v: "gpt" if "gpt" in v else "granite",
+        help="Model to be evaluated.",
     )
