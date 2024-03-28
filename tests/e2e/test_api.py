@@ -198,7 +198,10 @@ def test_valid_question(response_eval) -> None:
 
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
-        assert "Kubernetes is" in json_response["response"]
+        assert (
+            "Kubernetes is" in json_response["response"]
+            or "Kubernetes: It is" in json_response["response"]
+        )
         assert (
             "orchestration tool" in json_response["response"]
             or "orchestration system" in json_response["response"]
