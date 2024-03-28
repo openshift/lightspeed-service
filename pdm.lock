@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:b39fada539237f87e436cc2585abd7340e51f9ddd74f1c00c5c7902a27c5524a"
+content_hash = "sha256:10a79f656065311c413792fa50fa55054c34bd0dd27d7048c3d8e8f82b0b7ed6"
 
 [[package]]
 name = "aiofiles"
@@ -557,7 +557,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.22.0"
+version = "4.23.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -566,7 +566,7 @@ dependencies = [
     "altair<6.0,>=4.2.0",
     "fastapi",
     "ffmpy",
-    "gradio-client==0.13.0",
+    "gradio-client==0.14.0",
     "httpx>=0.24.1",
     "huggingface-hub>=0.19.3",
     "importlib-resources<7.0,>=1.3",
@@ -582,21 +582,21 @@ dependencies = [
     "pydub",
     "python-multipart>=0.0.9",
     "pyyaml<7.0,>=5.0",
-    "ruff>=0.2.2",
+    "ruff>=0.2.2; sys_platform != \"emscripten\"",
     "semantic-version~=2.0",
     "tomlkit==0.12.0",
     "typer[all]<1.0,>=0.9",
     "typing-extensions~=4.0",
-    "uvicorn>=0.14.0",
+    "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.22.0-py3-none-any.whl", hash = "sha256:f8bfff36ee1c1219610f58d0f597864e3e99edcebfeafabed1557e99af8b2626"},
-    {file = "gradio-4.22.0.tar.gz", hash = "sha256:9e1ad3e74f71077f91f8717a4c5e404069dfb9f4fa88d9b38f16607152fb7c1a"},
+    {file = "gradio-4.23.0-py3-none-any.whl", hash = "sha256:a5be2485f967fed83b82395b345caee28dfd15cdfe7a487b5817f31803981b5a"},
+    {file = "gradio-4.23.0.tar.gz", hash = "sha256:f75772a5316e4492e49f3e52aaa9f7d9325b7d2b15594ba50fcabbf169ecd166"},
 ]
 
 [[package]]
 name = "gradio-client"
-version = "0.13.0"
+version = "0.14.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -609,8 +609,8 @@ dependencies = [
     "websockets<12.0,>=10.0",
 ]
 files = [
-    {file = "gradio_client-0.13.0-py3-none-any.whl", hash = "sha256:f47225bb274834a33a297b5bba95250b63a76ae9f90217631e1e29e90cd857f1"},
-    {file = "gradio_client-0.13.0.tar.gz", hash = "sha256:273b51cc86a39c7ec8ebdda6c8110687e5225c187d25d4a723d15e57edc5c549"},
+    {file = "gradio_client-0.14.0-py3-none-any.whl", hash = "sha256:fdce4ecabc1d06d40bffd18923c9710b021d012edba8a1f851bc109eb9ee443e"},
+    {file = "gradio_client-0.14.0.tar.gz", hash = "sha256:18be8d5fb6468729f19547b39d89b66ec9e775d0c5ce9666cc940f11ab1a519c"},
 ]
 
 [[package]]
@@ -1068,7 +1068,7 @@ files = [
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.0"
+version = "0.1.1"
 requires_python = "<4.0,>=3.8.1"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
@@ -1078,8 +1078,8 @@ dependencies = [
     "tiktoken<1,>=0.5.2",
 ]
 files = [
-    {file = "langchain_openai-0.1.0-py3-none-any.whl", hash = "sha256:3cb3da679da9bc33c20634a5a64e65e1f1d9f69a8b71e8622297d8c33623e8d6"},
-    {file = "langchain_openai-0.1.0.tar.gz", hash = "sha256:96bb825be484a19cd0586725856bd159e3ed47d31ad95c6d160852abcb938ae2"},
+    {file = "langchain_openai-0.1.1-py3-none-any.whl", hash = "sha256:5cf4df5d2550af673337eafedaeec014ba52f9a25aeb8451206ca254bed01e5c"},
+    {file = "langchain_openai-0.1.1.tar.gz", hash = "sha256:d10e9a9fc4c8ea99ca98f23808ce44c7dcdd65354ac07ad10afe874ecf3401ca"},
 ]
 
 [[package]]
@@ -1409,7 +1409,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.14.2"
+version = "1.14.3"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1423,8 +1423,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "openai-1.14.2-py3-none-any.whl", hash = "sha256:a48b3c4d635b603952189ac5a0c0c9b06c025b80eb2900396939f02bb2104ac3"},
-    {file = "openai-1.14.2.tar.gz", hash = "sha256:e5642f7c02cf21994b08477d7bb2c1e46d8f335d72c26f0396c5f89b15b5b153"},
+    {file = "openai-1.14.3-py3-none-any.whl", hash = "sha256:7a465994a7ccf677a110c6cc2ef9d86229bad42c060b585b67049aa749f3b774"},
+    {file = "openai-1.14.3.tar.gz", hash = "sha256:37b514e9c0ff45383ec9b242abd0f7859b1080d4b54b61393ed341ecad1b8eb9"},
 ]
 
 [[package]]
@@ -2095,7 +2095,7 @@ files = [
 
 [[package]]
 name = "sentence-transformers"
-version = "2.6.0"
+version = "2.6.1"
 requires_python = ">=3.8.0"
 summary = "Multilingual text embeddings"
 groups = ["default"]
@@ -2110,8 +2110,8 @@ dependencies = [
     "transformers<5.0.0,>=4.32.0",
 ]
 files = [
-    {file = "sentence-transformers-2.6.0.tar.gz", hash = "sha256:cf519d311ddcc8ff84d78d18fae051985bef348716354e069e3d6d670e4db604"},
-    {file = "sentence_transformers-2.6.0-py3-none-any.whl", hash = "sha256:8807db6db0cf0a92f02be799b7c8260029ff91315d18f7b4b51c30b10d6b4fdb"},
+    {file = "sentence-transformers-2.6.1.tar.gz", hash = "sha256:633ad6b70e390ea335de8689652a5d6c21a323b79ed19519c2f392451088487f"},
+    {file = "sentence_transformers-2.6.1-py3-none-any.whl", hash = "sha256:a887e17696b513f99a709ce1f37fd547f53857aebe863785ede546c303b09ea0"},
 ]
 
 [[package]]
