@@ -651,12 +651,18 @@ class UserDataCollection(BaseModel):
 
     feedback_disabled: bool = True
     feedback_storage: Optional[str] = None
+    transcripts_disabled: bool = True
+    transcripts_storage: Optional[str] = None
 
     @model_validator(mode="after")
     def check_storage_location_is_set_when_needed(self) -> Self:
         """Check that storage_location is set when enabled."""
         if not self.feedback_disabled and self.feedback_storage is None:
             raise ValueError("feedback_storage is required when feedback is enabled")
+        if not self.transcripts_disabled and self.transcripts_storage is None:
+            raise ValueError(
+                "transcripts_storage is required when transcripts capturing is enabled"
+            )
         return self
 
 

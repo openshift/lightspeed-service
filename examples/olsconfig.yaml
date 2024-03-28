@@ -58,6 +58,8 @@ ols_config:
   user_data_collection:
     feedback_disabled: false
     feedback_storage: "/app-root/data/feedback"
+    transcripts_disabled: false
+    transcripts_storage: "/app-root/data/transcripts"
   tls_config:
     tls_certificate_path: /app-root/certs/certificate.crt
     tls_key_path: /app-root/certs/private.key
