@@ -105,7 +105,7 @@ function run_suite() {
     return 1
   fi
   
-  SUITE_ID=$1 TEST_TAGS=$2 make test-e2e
+  SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 make test-e2e
   rc=$?
   must_gather $1
   return $rc
