@@ -40,7 +40,6 @@ llm_token_received_total = Counter(
 
 # expose selected provider and model
 # (these are represented by counters, but the only meaning is presence of label)
-selected_provider = Info("selected_provider", "Selected provider")
 selected_model = Info("selected_model", "Selected model")
 
 # metric that indicates what provider + model customers are using so we can
@@ -63,8 +62,12 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
 
 def setup_model_metrics(config: config_model.Config) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
-    selected_provider.info({"name": config.ols_config.default_provider})
-    selected_model.info({"name": config.ols_config.default_model})
+    selected_model.info(
+        {
+            "model": config.ols_config.default_model,
+            "provider": config.ols_config.default_provider,
+        }
+    )
 
     for _, provider in config.llm_config.providers.items():
         provider_type = provider.type

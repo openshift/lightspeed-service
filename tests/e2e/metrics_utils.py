@@ -57,17 +57,25 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
-def read_info_attribute_value(lines, info_node_name):
-    """Read value of attribute stored in some Info node."""
-    prefix = f'{info_node_name}{{name="'
+def get_metric_labels(lines, info_node_name) -> dict:
+    """Get labels associated with a metric string as printed from /metrics."""
+    prefix = info_node_name
 
+    attrs = {}
     for line in lines:
         if line.startswith(prefix):
             # strip prefix
-            value = line[len(prefix) :]
+            metric = line[len(prefix) + 1 :]
 
             # strip suffix
-            return value[: value.find('"')]
+            labels = metric[: metric.find("} ")]
+            labels = labels.split(",")
+            for label in labels:
+                kv = label.split("=")
+                print(f"kv: {kv}")
+                # strip leading/trailing quotation from value
+                attrs[kv[0]] = kv[1][1:-1]
+            return attrs
 
     # info node was not found
     return None
@@ -78,10 +86,9 @@ def get_model_and_provider(client):
     response = read_metrics(client)
     lines = [line.strip() for line in response.split("\n")]
 
-    model = read_info_attribute_value(lines, "selected_model_info")
-    provider = read_info_attribute_value(lines, "selected_provider_info")
+    labels = get_metric_labels(lines, "selected_model_info")
 
-    return model, provider
+    return labels["model"], labels["provider"]
 
 
 def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
