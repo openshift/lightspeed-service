@@ -1,3 +1,0 @@
-# vim: set filetype=dockerfile
-ARG OLS_VERSION=latest
-FROM quay.io/openshift/lightspeed-service-api:${OLS_VERSION}
