@@ -6,6 +6,8 @@ from langchain_core.messages.base import BaseMessage
 from llama_index.schema import NodeWithScore
 from tiktoken import get_encoding
 
+from ols.app.models.config import ModelConfig
+
 # TODO: distribute these constants if needed
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 
@@ -69,9 +71,34 @@ class TokenHandler:
         content = " ".join(content)
         return self.text_to_tokens(content)
 
+    def get_available_tokens(self, prompt: str, model_config: ModelConfig) -> int:
+        """Get available tokens that can be used for prompt augmentation.
+
+        Args:
+            prompt: format prompt template to string before passing as arg
+            model_config: model config to get other tokens spec.
+
+        Returns:
+            available_tokens: int, tokens that can be used for augmentation.
+        """
+        context_window_size = model_config.context_window_size
+        response_token_limit = model_config.response_token_limit
+        logger.debug(
+            f"Context window size: {context_window_size}, "
+            f"Response token limit: {response_token_limit}"
+        )
+
+        prompt_token_count = len(self.text_to_tokens(prompt))
+        logger.debug(f"Prompt tokens: {prompt_token_count}")
+
+        available_tokens = (
+            context_window_size - response_token_limit - prompt_token_count
+        )
+        return available_tokens
+
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
-    ) -> list[dict]:
+    ) -> tuple[list[dict], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
@@ -80,7 +107,8 @@ class TokenHandler:
 
         Returns:
             context: A list of dictionary containing text & metadata
-            Example:
+            max_tokens: int, available tokens after context usage
+            Context Example:
                 [
                     {
                         "text": "This is my doc",
@@ -110,7 +138,7 @@ class TokenHandler:
             context.append(context_dict)
             max_tokens -= available_tokens
 
-        return context
+        return context, max_tokens
 
     @staticmethod
     def limit_conversation_history(

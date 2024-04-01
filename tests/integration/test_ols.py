@@ -1,6 +1,5 @@
 """Integration tests for basic OLS REST API endpoints."""
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -15,12 +14,10 @@ from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
 
-# we need to patch the config file path to point to the test
-# config file before we import anything from main.py
 @pytest.fixture(scope="module")
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def setup():
     """Setups the test client."""
+    config.init_config("tests/config/valid_config.yaml")
     global client
     from ols.app.main import app
 
@@ -218,7 +215,6 @@ def test_unsupported_model_in_post(setup):
 
 def test_post_question_on_noyaml_response_type(setup) -> None:
     """Check the REST API /v1/query with POST HTTP method when call is success."""
-    config.init_empty_config()
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
     config.ols_config.reference_content.product_docs_index_id = "product"
@@ -257,12 +253,13 @@ def test_post_question_on_noyaml_response_type(setup) -> None:
             assert constants.NO_RAG_CONTENT_RESP in response.json()["response"]
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.KEYWORD,
+)
 @patch("ols.app.endpoints.ols.QuestionValidator.validate_question")
 def test_post_question_with_keyword(mock_llm_validation, setup) -> None:
     """Check the REST API /v1/query with keyword validation."""
-    config.init_empty_config()
-    config.ols_config.query_validation_method = constants.QueryValidationMethod.KEYWORD
-    config.dev_config.disable_auth = True
     query = "What is Openshift ?"
 
     from tests.mock_classes.langchain_interface import mock_langchain_interface
@@ -291,7 +288,6 @@ def test_post_question_with_keyword(mock_llm_validation, setup) -> None:
 
 def test_post_query_with_query_filters_response_type(setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
-    config.init_empty_config()
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_VALID
 
@@ -341,7 +337,6 @@ def test_post_query_with_query_filters_response_type(setup) -> None:
 
 def test_post_query_for_conversation_history(setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
-    config.init_empty_config()
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_VALID
     with patch(

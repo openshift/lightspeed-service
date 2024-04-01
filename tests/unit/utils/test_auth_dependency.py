@@ -15,6 +15,7 @@ from tests.mock_classes.mock_k8s_api import (
 )
 
 
+@pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/auth_config.yaml"})
 def setup():
     """Setups and load config."""
@@ -24,7 +25,7 @@ def setup():
     auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-def test_singleton_pattern():
+def test_singleton_pattern(setup):
     """Test if K8sClientSingleton is really a singleton."""
     k1 = K8sClientSingleton()
     k2 = K8sClientSingleton()
@@ -34,7 +35,7 @@ def test_singleton_pattern():
 @pytest.mark.asyncio
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
+async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api, setup):
     """Tests the auth dependency with a mocked valid-token."""
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -59,7 +60,7 @@ async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
 @pytest.mark.asyncio
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
+async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api, setup):
     """Test the auth dependency with a mocked invalid-token."""
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -83,7 +84,7 @@ async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
 
 
 @patch.dict(os.environ, {"KUBECONFIG": "tests/config/kubeconfig"})
-def test_auth_dependency_config():
+def test_auth_dependency_config(setup):
     """Test the auth dependency can load kubeconfig file."""
     from ols.utils.auth_dependency import K8sClientSingleton
 

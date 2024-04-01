@@ -1,8 +1,8 @@
 """Integration tests for /livenss and /readiness REST API endpoints."""
 
-import os
 from unittest.mock import patch
 
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
@@ -14,9 +14,7 @@ from tests.mock_classes.mock_k8s_api import (
 )
 
 
-# we need to patch the config file path to point to the test
-# config file before we import anything from main.py
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+@pytest.fixture(scope="module")
 def setup():
     """Setups the test client."""
     global client
@@ -26,7 +24,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_post_authorized_disabled():
+def test_post_authorized_disabled(setup):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request with authentication disabled
     config.dev_config.disable_auth = True
@@ -40,7 +38,7 @@ def test_post_authorized_disabled():
     }
 
 
-def test_post_authorized_no_token():
+def test_post_authorized_no_token(setup):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
     config.dev_config.disable_auth = False
@@ -50,7 +48,7 @@ def test_post_authorized_no_token():
 
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api, setup):
     """Tests the is_user_authorized function with a mocked valid-token."""
     config.dev_config.disable_auth = False
     # Setup mock responses for valid token
@@ -73,7 +71,7 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
 
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api, setup):
     """Test the is_user_authorized function with a mocked invalid-token."""
     config.dev_config.disable_auth = False
     # Setup mock responses for invalid token

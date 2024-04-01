@@ -65,7 +65,9 @@ class TestTokenHandler(TestCase):
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        context = self._token_handler_obj.truncate_rag_context(retrieved_nodes)
+        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+            retrieved_nodes
+        )
 
         assert len(context) == len(retrieved_nodes)
         for idx, data in enumerate(context):
@@ -73,10 +75,11 @@ class TestTokenHandler(TestCase):
             assert (
                 data["docs_url"] == self._mock_retrieved_obj[idx].metadata["docs_url"]
             )
+        assert available_tokens == 485
 
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
-        context = self._token_handler_obj.truncate_rag_context(
+        context, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
@@ -85,21 +88,24 @@ class TestTokenHandler(TestCase):
             context[1]["text"].split()
             == self._mock_retrieved_obj[1].get_text().split()[:2]
         )
+        assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
-        context = self._token_handler_obj.truncate_rag_context(
+        context, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
         assert len(context) == 1
+        assert available_tokens == 2
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
-        context = self._token_handler_obj.truncate_rag_context([], 5)
+        context, available_tokens = self._token_handler_obj.truncate_rag_context([], 5)
 
         assert len(context) == 0
+        assert available_tokens == 5
 
     def test_message_length_string_content(self):
         """Test the message_length method when message content is a string."""
