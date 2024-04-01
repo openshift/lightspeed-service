@@ -196,7 +196,7 @@ POSTGRES_CACHE_USER = "postgres"
 PROVIDER_MODEL_ROLES = frozenset({"default"})
 
 # model configs
-DEFAULT_CONTEXT_WINDOW_SIZE = 2000
+DEFAULT_CONTEXT_WINDOW_SIZE = 8000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500
 
 # default indentity for local testing and deployment
