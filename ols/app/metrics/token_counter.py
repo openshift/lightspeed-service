@@ -7,6 +7,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.llms.base import LLM
 from langchain_core.outputs.llm_result import LLMResult
 
+from ols.utils.token_handler import TokenHandler
+
 from .metrics import llm_calls_total, llm_token_received_total, llm_token_sent_total
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,7 @@ class GenericTokenCounter(BaseCallbackHandler):
         self.output_tokens = 0  # number of tokens received from LLM
         self.input_tokens_counted = 0  # number of input tokens counted by the handler
         self.llm_calls = 0  # number of LLM calls
+        self.token_handler = TokenHandler()  # used for counting input and output tokens
 
     def on_llm_start(
         self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
@@ -62,7 +65,7 @@ class GenericTokenCounter(BaseCallbackHandler):
         self.llm_calls += 1
         self.input_tokens_counted = 0
         for p in prompts:
-            self.input_tokens_counted += self.llm.get_num_tokens(p)
+            self.input_tokens_counted += self.tokens_count(p)
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Run when LLM completes running."""
@@ -78,19 +81,24 @@ class GenericTokenCounter(BaseCallbackHandler):
                 if "completion_tokens" in token_usage:
                     self.output_tokens += token_usage["completion_tokens"]
                 else:
-                    self.output_tokens += self.llm.get_num_tokens(
-                        r.generations[0][0].text
-                    )
+                    # fallback to token counting if counter is not provided by LLM
+                    text = r.generations[0][0].text
+                    self.output_tokens += self.tokens_count(text)
 
             else:
-                # fallback to counting
-                self.output_tokens += self.llm.get_num_tokens(r.generations[0][0].text)
+                # fallback to token counting if LLM does not return token_usage metadata
+                text = r.generations[0][0].text
+                self.output_tokens += self.tokens_count(text)
 
         # override the input tokens count if we have a value from LLM response
         if input_tokens_llm_reported > 0:
             self.input_tokens += input_tokens_llm_reported
         else:
             self.input_tokens += self.input_tokens_counted
+
+    def tokens_count(self, text: str) -> int:
+        """Compute tokens count for given input text."""
+        return len(self.token_handler.text_to_tokens(text))
 
 
 class TokenMetricUpdater:
