@@ -46,7 +46,6 @@ def test_metrics(setup):
         "llm_validation_errors_total",
         "llm_token_sent_total",
         "llm_token_received_total",
-        "selected_provider_info",
         "selected_model_info",
         "model_enabled",
     )
