@@ -7,6 +7,7 @@ ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
+SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 
 images: ## Build container images
 	scripts/build-container.sh
@@ -55,6 +56,10 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/e2e -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" --eval_model "${MODEL}"
+
+response-sanity-check: ## Checks response quality - requires running OLS server
+	@echo "Running response sanity check..."
+	python scripts/validate_response.py -m ${MODEL} -s ${SCENARIO}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
