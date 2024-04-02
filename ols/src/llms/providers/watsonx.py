@@ -4,13 +4,11 @@ import logging
 from typing import Any
 
 from ibm_watson_machine_learning.foundation_models import Model
-from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
-    WatsonxLLM,
-)
 from ibm_watson_machine_learning.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
+from langchain_ibm import WatsonxLLM
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
