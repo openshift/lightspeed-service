@@ -1,0 +1,5 @@
+# Use offical quay.io postgres image
+FROM quay.io/sclorg/postgresql-13-c9s:latest
+
+# Expose the PostgreSQL port
+EXPOSE 5432
