@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:10a79f656065311c413792fa50fa55054c34bd0dd27d7048c3d8e8f82b0b7ed6"
+content_hash = "sha256:3d040581b37837646e3e78a060892192c1bfa68c371a4d5694cade1ff2eb73dc"
 
 [[package]]
 name = "aiofiles"
@@ -272,6 +272,7 @@ version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
 groups = ["default", "dev"]
+marker = "sys_platform != \"emscripten\" or platform_system == \"Windows\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -557,7 +558,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.23.0"
+version = "4.24.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -585,13 +586,13 @@ dependencies = [
     "ruff>=0.2.2; sys_platform != \"emscripten\"",
     "semantic-version~=2.0",
     "tomlkit==0.12.0",
-    "typer[all]<1.0,>=0.9",
+    "typer[all]<1.0,>=0.9; sys_platform != \"emscripten\"",
     "typing-extensions~=4.0",
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.23.0-py3-none-any.whl", hash = "sha256:a5be2485f967fed83b82395b345caee28dfd15cdfe7a487b5817f31803981b5a"},
-    {file = "gradio-4.23.0.tar.gz", hash = "sha256:f75772a5316e4492e49f3e52aaa9f7d9325b7d2b15594ba50fcabbf169ecd166"},
+    {file = "gradio-4.24.0-py3-none-any.whl", hash = "sha256:63c95c515b66e7df5a2a94f287269a9bca3c3b6e52cbafd140bb13dd7a841827"},
+    {file = "gradio-4.24.0.tar.gz", hash = "sha256:1c14360e39f66aafea78d176e73b4efd60ee4e5fbbb0054ae325724343ca0856"},
 ]
 
 [[package]]
@@ -999,7 +1000,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.1.13"
+version = "0.1.14"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1009,8 +1010,8 @@ dependencies = [
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
     "jsonpatch<2.0,>=1.33",
-    "langchain-community<0.1,>=0.0.29",
-    "langchain-core<0.2.0,>=0.1.33",
+    "langchain-community<0.1,>=0.0.30",
+    "langchain-core<0.2.0,>=0.1.37",
     "langchain-text-splitters<0.1,>=0.0.1",
     "langsmith<0.2.0,>=0.1.17",
     "numpy<2,>=1",
@@ -1019,13 +1020,13 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.1.13-py3-none-any.whl", hash = "sha256:c87657021b777d6b07e55be379a28660a1cd148c31593569869dd6b0b4cab945"},
-    {file = "langchain-0.1.13.tar.gz", hash = "sha256:db330aa79c33501cb1ed97ff465f7645813eaa6cfd742c61e19c2d48e4aaba18"},
+    {file = "langchain-0.1.14-py3-none-any.whl", hash = "sha256:94f9b5df2421faaf762d4f43b9d65c270c2f701934580d281e4c6226deef7234"},
+    {file = "langchain-0.1.14.tar.gz", hash = "sha256:124c6244cf3957616b98f2df07dc2992fc40dff6ed1a62d8ee8a40f1e0260a40"},
 ]
 
 [[package]]
 name = "langchain-community"
-version = "0.0.29"
+version = "0.0.31"
 requires_python = "<4.0,>=3.8.1"
 summary = "Community contributed LangChain integrations."
 groups = ["default"]
@@ -1034,26 +1035,25 @@ dependencies = [
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
-    "langchain-core<0.2.0,>=0.1.33",
+    "langchain-core<0.2.0,>=0.1.37",
     "langsmith<0.2.0,>=0.1.0",
     "numpy<2,>=1",
     "requests<3,>=2",
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_community-0.0.29-py3-none-any.whl", hash = "sha256:1652dddf257089b7b5066974b636262b4a5b680339f4539be133b14ae351e67d"},
-    {file = "langchain_community-0.0.29.tar.gz", hash = "sha256:d88107fafa9fe2c5733da9630c68d9ee51cd33b1c88a4950e7a2d9a38f7e7aa3"},
+    {file = "langchain_community-0.0.31-py3-none-any.whl", hash = "sha256:905c01b978a1cef7fdcddd2d9241dedc9987db6f23ba1b58d974e38b1cdf2775"},
+    {file = "langchain_community-0.0.31.tar.gz", hash = "sha256:9a970bc2bb59bb4c204b696d8c62c2534f6ddb31005005cc1b7d7f934e58a5fc"},
 ]
 
 [[package]]
 name = "langchain-core"
-version = "0.1.33"
+version = "0.1.38"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
 dependencies = [
     "PyYAML>=5.3",
-    "anyio<5,>=3",
     "jsonpatch<2.0,>=1.33",
     "langsmith<0.2.0,>=0.1.0",
     "packaging<24.0,>=23.2",
@@ -1062,8 +1062,8 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_core-0.1.33-py3-none-any.whl", hash = "sha256:cee7fbab114c74b7279a92c8a376b40344b0fa3d0f0af3143a858e3b7485bf13"},
-    {file = "langchain_core-0.1.33.tar.gz", hash = "sha256:545eff3de83cc58231bd2b0c6d672323fc2077b94d326ba1a3219118af1d1a66"},
+    {file = "langchain_core-0.1.38-py3-none-any.whl", hash = "sha256:d881b2754254cb4bdb0d5bb56e5c138d032b6e75e5cb21f151b01224b322e02b"},
+    {file = "langchain_core-0.1.38.tar.gz", hash = "sha256:ee8da6d061c06cce7dc22fec224b6ecbc3a8de106d6dd9f409c7fe448ea41861"},
 ]
 
 [[package]]
@@ -1172,6 +1172,7 @@ version = "3.0.0"
 requires_python = ">=3.8"
 summary = "Python port of markdown-it. Markdown parsing, done right!"
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 dependencies = [
     "mdurl~=0.1",
 ]
@@ -1250,6 +1251,7 @@ version = "0.1.2"
 requires_python = ">=3.7"
 summary = "Markdown URL utilities"
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
@@ -1676,6 +1678,7 @@ version = "2.17.2"
 requires_python = ">=3.7"
 summary = "Pygments is a syntax highlighting package written in Python."
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 files = [
     {file = "pygments-2.17.2-py3-none-any.whl", hash = "sha256:b27c2826c47d0f3219f29554824c30c5e8945175d888647acd804ddd04af846c"},
     {file = "pygments-2.17.2.tar.gz", hash = "sha256:da46cec9fd2de5be3a8a784f434e4c4ab670b4ff54d605c4c2717e9d49c4c367"},
@@ -1883,6 +1886,7 @@ version = "13.7.0"
 requires_python = ">=3.7.0"
 summary = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 dependencies = [
     "markdown-it-py>=2.2.0",
     "pygments<3.0.0,>=2.13.0",
@@ -2131,6 +2135,7 @@ version = "1.5.4"
 requires_python = ">=3.7"
 summary = "Tool to Detect Surrounding Shell"
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 files = [
     {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
     {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
@@ -2556,6 +2561,7 @@ extras = ["all"]
 requires_python = ">=3.6"
 summary = "Typer, build great CLIs. Easy to code. Based on Python type hints."
 groups = ["default"]
+marker = "sys_platform != \"emscripten\""
 dependencies = [
     "colorama<0.5.0,>=0.4.3",
     "rich<14.0.0,>=10.11.0",
