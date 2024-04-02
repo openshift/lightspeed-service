@@ -150,16 +150,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
                tls_key_password_path: /app-root/certs/password.txt
       ```
 
-8. (Optional) Configure the document store
-   1. Download local.zip from [releases](https://github.com/ilan-pinto/lightspeed-rag-documents/releases)
-   2. Create vector index directory
-      ```sh
-         mkdir -p vector-db/ocp-product-docs
-      ```
-   3. Unzip local.zip in vector-db/ocp-product-docs directory
-      ```sh
-      unzip -j <path-to-downloaded-file>/local.zip -d vector-db/ocp-product-docs
-      ```
+8. (Optional) Configure the local document store
+   ```sh
+   make get-rag
+   ```
 
 9.  (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in Redis storage. It is possible to specify storage type in `olsconfig.yaml` configuration file.
