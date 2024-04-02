@@ -2,7 +2,7 @@
 
 import requests
 
-from tests.e2e.consts import BASIC_ENDPOINTS_TIMEOUT
+from tests.e2e.constants import BASIC_ENDPOINTS_TIMEOUT
 
 
 def read_metrics(client):
