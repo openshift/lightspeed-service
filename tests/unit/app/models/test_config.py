@@ -1230,10 +1230,7 @@ def test_config_without_ols_section():
 
 def test_config_improper_missing_model():
     """Test the Config model of the Global service configuration when model is missing."""
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="default_provider is specified, but default_model is missing",
-    ):
+    with pytest.raises(InvalidConfigurationError, match="default_model is missing"):
         Config(
             {
                 "llm_providers": [
@@ -1259,6 +1256,40 @@ def test_config_improper_missing_model():
                         },
                     },
                     "default_provider": "test_default_provider",
+                },
+                "dev_config": {"disable_tls": "true"},
+            }
+        ).validate_yaml()
+
+
+def test_config_improper_missing_provider():
+    """Test the Config model of the Global service configuration when provider is missing."""
+    with pytest.raises(InvalidConfigurationError, match="default_provider is missing"):
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "test_provider_name",
+                        "type": "bam",
+                        "url": "http://test_provider_url",
+                        "credentials_path": "tests/config/secret.txt",
+                        "models": [
+                            {
+                                "name": "test_model_name",
+                                "url": "http://test_model_url",
+                                "credentials_path": "tests/config/secret.txt",
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 1000,
+                        },
+                    },
+                    "default_model": "test_default_model",
                 },
                 "dev_config": {"disable_tls": "true"},
             }
