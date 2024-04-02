@@ -9,11 +9,11 @@ import requests
 
 import ols.utils.suid as suid
 import tests.e2e.cluster_utils as cluster_utils
+import tests.e2e.helper_utils as testutils
 import tests.e2e.metrics_utils as metrics_utils
-import tests.e2e.test_utils as testutils
 from ols.constants import INVALID_QUERY_RESP, NO_RAG_CONTENT_RESP
 from scripts.validate_response import ResponseValidation
-from tests.e2e.consts import (
+from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
     EVAL_THRESHOLD,
