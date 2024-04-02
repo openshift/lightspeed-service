@@ -27,7 +27,7 @@ on_cluster = False
 
 # OLS_URL env only needs to be set when running against a local ols instance,
 # when ols is run against a cluster the url is retrieved from the cluster.
-ols_url = os.getenv("OLS_URL")
+ols_url = os.getenv("OLS_URL", "http://localhost:8080")
 if "localhost" not in ols_url:
     on_cluster = True
 
