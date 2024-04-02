@@ -1,9 +1,10 @@
 """Entry point to FastAPI-based web service."""
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
+from starlette.responses import StreamingResponse
 
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
@@ -50,6 +51,55 @@ async def rest_api_counter(
     if not path.endswith("/metrics"):
         # just update metrics
         metrics.rest_api_calls_total.labels(path, response.status_code).inc()
+    return response
+
+
+@app.middleware("")
+async def log_requests_responses(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Middleware for logging of HTTP requests and responses, at debug level."""
+    # Bail out early if not logging
+    if not logger.isEnabledFor(logging.DEBUG):
+        return await call_next(request)
+
+    request_log_message = (
+        f"Request from {request.client.host}:{request.client.port}"
+        f" {request.headers}, Body: "
+    )
+
+    request_body = await request.body()
+    if request_body:
+        request_log_message += f"{request_body.decode('utf-8')}"
+    else:
+        request_log_message += "None"
+
+    logger.debug(request_log_message)
+
+    response = await call_next(request)
+
+    logger.debug(
+        f"Response to {request.client.host}:{request.client.port} {response.headers}"
+    )
+
+    async def stream_response_body(
+        response_body: AsyncGenerator[bytes, None]
+    ) -> AsyncGenerator[bytes, None]:
+        async for chunk in response_body:
+            logger.debug(
+                f"Response to {request.client.host}:{request.client.port} "
+                f"Body chunk: {chunk.decode('utf-8', errors='ignore')}"
+            )
+            yield chunk
+
+    if isinstance(response, StreamingResponse):
+        # The response is already a streaming response
+        response.body_iterator = stream_response_body(response.body_iterator)
+    else:
+        # Convert non-streaming response to a streaming response to log its body
+        response_body = response.body
+        response = StreamingResponse(stream_response_body(iter([response_body])))
+
     return response
 
 
