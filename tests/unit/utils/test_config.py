@@ -10,7 +10,6 @@ from unittest.mock import patch
 import pytest
 from yaml.parser import ParserError
 
-from ols import constants
 from ols.app.models.config import Config, InvalidConfigurationError
 from ols.utils import config
 from ols.utils.query_filter import RegexFilter
@@ -167,9 +166,8 @@ llm_providers:
         "provider URL is invalid",
     )
 
-    for role in constants.PROVIDER_MODEL_ROLES:
-        check_expected_exception(
-            f"""
+    check_expected_exception(
+        """
 ---
 llm_providers:
   - name: p1
@@ -185,15 +183,15 @@ ols_config:
     type: memory
     memory:
       max_entries: 1000
-  {role}_provider: no_such_provider
-  {role}_model: m1
+  default_provider: no_such_provider
+  default_model: m1
     """,
-            InvalidConfigurationError,
-            f"{role}_provider specifies an unknown provider no_such_provider",
-        )
+        InvalidConfigurationError,
+        "default_provider specifies an unknown provider no_such_provider",
+    )
 
-        check_expected_exception(
-            f"""
+    check_expected_exception(
+        """
 ---
 llm_providers:
   - name: p1
@@ -209,15 +207,15 @@ ols_config:
     type: memory
     memory:
       max_entries: 1000
-  {role}_provider: p1
-  {role}_model: no_such_model
+  default_provider: p1
+  default_model: no_such_model
     """,
-            InvalidConfigurationError,
-            f"{role}_model specifies an unknown model no_such_model",
-        )
+        InvalidConfigurationError,
+        "default_model specifies an unknown model no_such_model",
+    )
 
-        check_expected_exception(
-            f"""
+    check_expected_exception(
+        """
 ---
 llm_providers:
   - name: p1
@@ -233,14 +231,14 @@ ols_config:
     type: memory
     memory:
       max_entries: 1000
-  {role}_provider: p1
+  default_provider: p1
     """,
-            InvalidConfigurationError,
-            f"{role}_provider is specified, but {role}_model is missing",
-        )
+        InvalidConfigurationError,
+        "default_model is missing",
+    )
 
-        check_expected_exception(
-            f"""
+    check_expected_exception(
+        """
 ---
 llm_providers:
   - name: p1
@@ -256,11 +254,11 @@ ols_config:
     type: memory
     memory:
       max_entries: 1000
-  {role}_model: m1
+  default_model: m1
     """,
-            InvalidConfigurationError,
-            f"{role}_model is specified, but {role}_provider is missing",
-        )
+        InvalidConfigurationError,
+        "default_provider is missing",
+    )
 
     check_expected_exception(
         """

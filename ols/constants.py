@@ -193,9 +193,6 @@ POSTGRES_CACHE_USER = "postgres"
 POSTGRES_CACHE_MAX_ENTRIES = 1000
 
 
-# provider and model roles
-PROVIDER_MODEL_ROLES = frozenset({"default"})
-
 # model configs
 DEFAULT_CONTEXT_WINDOW_SIZE = 8000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500

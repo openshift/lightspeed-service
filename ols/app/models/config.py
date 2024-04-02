@@ -822,37 +822,29 @@ class Config(BaseModel):
             )
         return False
 
-    def _validate_provider_and_model(
-        self, provider_attr_name: str, model_attr_name: str
-    ) -> None:
-        provider_attr_value = getattr(self.ols_config, provider_attr_name, None)
-        model_attr_value = getattr(self.ols_config, model_attr_name, None)
+    def _validate_default_provider_and_model(self) -> None:
+        selected_default_provider = self.ols_config.default_provider
+        selected_default_model = self.ols_config.default_model
 
-        provider_specified = isinstance(provider_attr_value, str)
-        model_specified = isinstance(model_attr_value, str)
+        provider_specified = selected_default_provider is not None
+        model_specified = selected_default_model is not None
 
-        if provider_specified and model_specified:
-            provider_config = self.llm_providers.providers.get(provider_attr_value)
-            if provider_config is None:
-                raise InvalidConfigurationError(
-                    f"{provider_attr_name} specifies an unknown provider {provider_attr_value}"
-                )
-            model_config = provider_config.models.get(model_attr_value)
-            if model_config is None:
-                raise InvalidConfigurationError(
-                    f"{model_attr_name} specifies an unknown model {model_attr_value}"
-                )
-        elif provider_specified and not model_specified:
+        if not provider_specified:
+            raise InvalidConfigurationError("default_provider is missing")
+        if not model_specified:
+            raise InvalidConfigurationError("default_model is missing")
+
+        # provider and model are specified
+        provider_config = self.llm_providers.providers.get(selected_default_provider)
+        if provider_config is None:
             raise InvalidConfigurationError(
-                f"{provider_attr_name} is specified, but {model_attr_name} is missing"
+                f"default_provider specifies an unknown provider {selected_default_provider}"
             )
-        elif not provider_specified and model_specified:
+        model_config = provider_config.models.get(selected_default_model)
+        if model_config is None:
             raise InvalidConfigurationError(
-                f"{model_attr_name} is specified, but {provider_attr_name} is missing"
+                f"default_model specifies an unknown model {selected_default_model}"
             )
-
-    def _validate_providers_and_models(self) -> None:
-        self._validate_provider_and_model("default_provider", "default_model")
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""
@@ -863,4 +855,4 @@ class Config(BaseModel):
         if self.ols_config is None:
             raise InvalidConfigurationError("no OLS config section found")
         self.ols_config.validate_yaml(self.dev_config.disable_tls)
-        self._validate_providers_and_models()
+        self._validate_default_provider_and_model()
