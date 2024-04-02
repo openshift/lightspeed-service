@@ -79,6 +79,7 @@ function install_ols() {
 
     # determine the hostname for the ols route
     export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
+
 }
 
 # $1 suite id

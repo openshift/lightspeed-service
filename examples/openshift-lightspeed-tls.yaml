@@ -42,6 +42,18 @@ rules:
   verbs:
     - "get"
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ols-metrics-user
+  labels:
+    app: ols
+rules:
+- nonResourceURLs:
+    - "/ols-metrics-access"
+  verbs:
+    - "get"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

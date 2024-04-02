@@ -5,11 +5,10 @@ from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException, Request
-from fastapi.testclient import TestClient
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 
 from ols.utils import config
-from ols.utils.auth_dependency import auth_dependency
+from ols.utils.auth_dependency import AuthDependency
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -19,11 +18,10 @@ from tests.mock_classes.mock_k8s_api import (
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/auth_config.yaml"})
 def setup():
     """Setups and load config."""
-    global client
+    global auth_dependency
     config.init_config("tests/config/auth_config.yaml")
-    from ols.app.main import app
 
-    client = TestClient(app)
+    auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
 @pytest.mark.asyncio
