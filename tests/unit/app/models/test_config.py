@@ -734,6 +734,7 @@ def test_postgres_config_default_values():
     assert postgres_config.port == constants.POSTGRES_CACHE_PORT
     assert postgres_config.dbname == constants.POSTGRES_CACHE_DBNAME
     assert postgres_config.user == constants.POSTGRES_CACHE_USER
+    assert postgres_config.max_entries == constants.POSTGRES_CACHE_MAX_ENTRIES
 
 
 def test_postgres_config_correct_values():
@@ -745,6 +746,7 @@ def test_postgres_config_correct_values():
             "dbname": "my_database",
             "user": "admin",
             "require_ssl": True,
+            "max_entries": 42,
         }
     )
 
@@ -754,6 +756,7 @@ def test_postgres_config_correct_values():
     assert postgres_config.dbname == "my_database"
     assert postgres_config.user == "admin"
     assert postgres_config.require_ssl
+    assert postgres_config.max_entries == 42
 
 
 def test_postgres_config_wrong_port():

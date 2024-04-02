@@ -6,7 +6,7 @@ import re
 from typing import Any, Optional, Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, PositiveInt, model_validator
 
 from ols import constants
 
@@ -308,12 +308,13 @@ class PostgresConfig(BaseModel):
     """Postgres configuration."""
 
     host: str = constants.POSTGRES_CACHE_HOST
-    port: int = constants.POSTGRES_CACHE_PORT
+    port: PositiveInt = constants.POSTGRES_CACHE_PORT
     dbname: str = constants.POSTGRES_CACHE_DBNAME
     user: str = constants.POSTGRES_CACHE_USER
     password: Optional[str] = None
     require_ssl: bool = False
     ca_cert_path: Optional[str] = None
+    max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
 
     @model_validator(mode="after")
     def validate_yaml(self) -> Self:
