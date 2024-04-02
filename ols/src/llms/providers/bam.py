@@ -5,7 +5,7 @@ from typing import Any
 
 from genai import Client, Credentials
 from genai.extensions.langchain import LangChainInterface
-from genai.text.generation import TextGenerationParameters
+from genai.schema import TextGenerationParameters
 from langchain.llms.base import LLM
 
 from ols import constants
