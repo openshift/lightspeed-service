@@ -1,5 +1,7 @@
 """Utilities for reading and checking metrics from REST API."""
 
+from typing import Optional
+
 import requests
 
 from tests.e2e.consts import BASIC_ENDPOINTS_TIMEOUT
@@ -57,7 +59,7 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
-def get_metric_labels(lines, info_node_name) -> dict:
+def get_metric_labels(lines, info_node_name) -> Optional[dict]:
     """Get labels associated with a metric string as printed from /metrics."""
     prefix = info_node_name
 
