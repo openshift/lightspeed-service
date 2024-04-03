@@ -6,8 +6,8 @@ from typing import Any
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from ols import constants
 from ols.app.metrics import TokenMetricUpdater
+from ols.src.prompts.prompts import QUESTION_VALIDATOR_PROMPT_TEMPLATE
 from ols.src.query_helpers.query_helper import QueryHelper
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class QuestionValidator(QueryHelper):
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
-            constants.QUESTION_VALIDATOR_PROMPT_TEMPLATE
+            QUESTION_VALIDATOR_PROMPT_TEMPLATE
         )
 
         logger.info(f"{conversation_id} Validating query")
