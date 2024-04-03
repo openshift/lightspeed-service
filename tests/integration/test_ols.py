@@ -98,7 +98,13 @@ def test_post_question_on_generic_response_type_summarize_error(setup):
             json={"conversation_id": conversation_id, "query": "test query"},
         )
         assert response.status_code == requests.codes.internal_server_error
-        expected_json = {"detail": "Error while obtaining answer for user question"}
+        expected_json = {
+            "detail": {
+                "cause": "summarizer error",
+                "response": "Error while obtaining answer for user question",
+            }
+        }
+
         assert response.json() == expected_json
 
 
@@ -117,7 +123,12 @@ def test_post_question_that_is_not_validated(setup):
 
         # error should be returned
         assert response.status_code == requests.codes.internal_server_error
-        expected_details = {"detail": "Error while validating question"}
+        expected_details = {
+            "detail": {
+                "cause": "can not validate",
+                "response": "Error while validating question",
+            }
+        }
         assert response.json() == expected_details
 
 
@@ -175,13 +186,15 @@ def test_unknown_provider_in_post(setup):
         )
 
         assert response.status_code == requests.codes.unprocessable
-        assert response.json() == {
+        expected_json = {
             "detail": {
-                "response": "Unable to process this request because "
-                "'Provider 'some-provider' is not a valid provider. "
-                "Valid providers are: []'"
+                "cause": "Provider 'some-provider' is not a valid provider. "
+                "Valid providers are: []",
+                "response": "Unable to process this request",
             }
         }
+
+        assert response.json() == expected_json
 
 
 def test_unsupported_model_in_post(setup):
@@ -204,13 +217,14 @@ def test_unsupported_model_in_post(setup):
         )
 
         assert response.status_code == requests.codes.unprocessable
-        assert response.json() == {
+        expected_json = {
             "detail": {
-                "response": "Unable to process this request because "
-                "'Model 'some-model' is not a valid model for provider "
-                "'test-provider'. Valid models are: []'"
+                "cause": "Model 'some-model' is not a valid model for "
+                "provider 'test-provider'. Valid models are: []",
+                "response": "Unable to process this request",
             }
         }
+        assert response.json() == expected_json
 
 
 def test_post_question_on_noyaml_response_type(setup) -> None:

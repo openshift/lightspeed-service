@@ -11,7 +11,7 @@ from langchain_core.messages.base import BaseMessage
 from ols import constants
 from ols.app import metrics
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import LLMRequest, LLMResponse
+from ols.app.models.models import ErrorResponse, LLMRequest, LLMResponse
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -26,7 +26,19 @@ router = APIRouter(tags=["query"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-@router.post("/query")
+query_responses = {
+    200: {
+        "description": "Query is valid and correct response from LLM is returned",
+        "model": LLMResponse,
+    },
+    500: {
+        "description": "Query can not be validated, LLM is not accessible or other internal error",
+        "model": ErrorResponse,
+    },
+}
+
+
+@router.post("/query", responses=query_responses)
 def conversation_request(
     llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
 ) -> LLMResponse:
@@ -125,17 +137,27 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
 
 def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseMessage]:
     """Retrieve previous user input, if exists."""
-    previous_input: list[BaseMessage] = []
-    if llm_request.conversation_id:
-        cache_content = config.conversation_cache.get(
-            user_id, llm_request.conversation_id
+    try:
+        previous_input: list[BaseMessage] = []
+        if llm_request.conversation_id:
+            cache_content = config.conversation_cache.get(
+                user_id, llm_request.conversation_id
+            )
+            if cache_content is not None:
+                previous_input = cache_content
+            logger.info(
+                f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
+            )
+        return previous_input
+    except Exception as e:
+        logger.error(f"Error retrieving previous user input for user {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error retrieving conversation history",
+                "cause": str(e),
+            },
         )
-        if cache_content is not None:
-            previous_input = cache_content
-        logger.info(
-            f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
-        )
-    return previous_input
 
 
 def generate_response(
@@ -162,7 +184,10 @@ def generate_response(
         logger.exception(summarizer_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error while obtaining answer for user question",
+            detail={
+                "response": "Error while obtaining answer for user question",
+                "cause": str(summarizer_error),
+            },
         )
 
 
@@ -170,15 +195,29 @@ def store_conversation_history(
     user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
 ) -> None:
     """Store conversation history into selected cache."""
-    if config.conversation_cache is not None:
-        logger.info(f"{conversation_id} Storing conversation history.")
-        chat_message_history = ChatHistory.get_chat_message_history(
-            llm_request.query, response or ""
+    try:
+        if config.conversation_cache is not None:
+            logger.info(f"{conversation_id} Storing conversation history.")
+            chat_message_history = ChatHistory.get_chat_message_history(
+                llm_request.query, response or ""
+            )
+            config.conversation_cache.insert_or_append(
+                user_id,
+                conversation_id,
+                chat_message_history,
+            )
+    except Exception as e:
+        logger.error(
+            "Error storing conversation history for user "
+            "{user_id} and conversation {conversation_id}"
         )
-        config.conversation_cache.insert_or_append(
-            user_id,
-            conversation_id,
-            chat_message_history,
+        logger.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error storing conversation",
+                "cause": str(e),
+            },
         )
 
 
@@ -199,7 +238,10 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"response": f"Error while redacting query '{redactor_error}'"},
+            detail={
+                "response": "Error while redacting query",
+                "cause": str(redactor_error),
+            },
         )
 
 
@@ -216,7 +258,7 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> boo
         logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"response": f"Unable to process this request because '{e}'"},
+            detail={"response": "Unable to process this request", "cause": str(e)},
         )
     except Exception as validation_error:
         metrics.llm_calls_failures_total.inc()
@@ -224,7 +266,10 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> boo
         logger.exception(validation_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error while validating question",
+            detail={
+                "response": "Error while validating question",
+                "cause": str(validation_error),
+            },
         )
 
 
