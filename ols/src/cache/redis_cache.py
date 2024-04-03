@@ -31,7 +31,7 @@ class RedisCache(Cache):
         """Create a new instance of the `RedisCache` class."""
         with cls._lock:
             if not cls._instance:
-                cls._instance = super(RedisCache, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance.initialize_redis(config)
         return cls._instance
 

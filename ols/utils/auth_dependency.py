@@ -33,7 +33,7 @@ class K8sClientSingleton:
         and ensures that subsequent calls return the same instance.
         """
         if cls._instance is None:
-            cls._instance = super(K8sClientSingleton, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             configuration = kubernetes.client.Configuration()
 
             try:

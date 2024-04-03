@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 
 from ols.utils import config
-from ols.utils.auth_dependency import AuthDependency
+from ols.utils.auth_dependency import AuthDependency, K8sClientSingleton
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -22,6 +22,13 @@ def setup():
     config.init_config("tests/config/auth_config.yaml")
 
     auth_dependency = AuthDependency(virtual_path="/ols-access")
+
+
+def test_singleton_pattern():
+    """Test if K8sClientSingleton is really a singleton."""
+    k1 = K8sClientSingleton()
+    k2 = K8sClientSingleton()
+    assert k1 is k2
 
 
 @pytest.mark.asyncio
