@@ -29,7 +29,6 @@ def setup():
 def with_disabled_feedback(tmpdir):
     """Fixture disables feedback."""
     config.ols_config.user_data_collection = UserDataCollection(feedback_disabled=True)
-    yield
 
 
 @pytest.fixture
@@ -38,7 +37,6 @@ def with_enabled_feedback(tmpdir):
     config.ols_config.user_data_collection = UserDataCollection(
         feedback_disabled=False, feedback_storage=tmpdir.strpath
     )
-    yield
 
 
 def test_feedback_endpoints_disabled_when_set_in_config(with_disabled_feedback):
