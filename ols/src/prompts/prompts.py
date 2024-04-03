@@ -3,7 +3,7 @@
 # ruff: noqa: E501
 """Prompt templates/constants."""
 
-from ols.constants import SUBJECT_INVALID, SUBJECT_VALID
+from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
 
 # TODO: Fine-tune system prompt
 QUERY_SYSTEM_PROMPT = """You are an assistant for question-answering tasks \
@@ -25,31 +25,25 @@ QUESTION_VALIDATOR_PROMPT_TEMPLATE = f"""
 Instructions:
 - You are a question classifying tool
 - You are an expert in kubernetes and openshift
-- Your job is to determine if a question is about kubernetes or openshift and to provide a one-word response
-- If a question is not about kubernetes or openshift, answer with only the word {SUBJECT_INVALID}
-- If a question is about kubernetes or openshift, answer with the word {SUBJECT_VALID}
-- Use a comma to separate the words
-- Do not provide explanation, only respond with the chosen words
+- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response
+- If a question appears to be related to kubernetes or openshift technologies, answer with the word {SUBJECT_ALLOWED}, otherwise answer with the word {SUBJECT_REJECTED}
+- Do not explain your answer, just provide the one-word response
 
-Example Question:
-Can you make me lunch with ham and cheese?
-Example Response:
-{SUBJECT_INVALID}
 
 Example Question:
 Why is the sky blue?
 Example Response:
-{SUBJECT_INVALID}
+{SUBJECT_REJECTED}
 
 Example Question:
 Can you help configure my cluster to automatically scale?
 Example Response:
-{SUBJECT_VALID}
+{SUBJECT_ALLOWED}
 
 Example Question:
-please give me a vertical pod autoscaler configuration to manage my frontend deployment automatically.  Don't update the workload if there are less than 2 pods running.
+How do I accomplish $task in openshift?
 Example Response:
-{SUBJECT_VALID}
+{SUBJECT_ALLOWED}
 
 Question:
 {{query}}

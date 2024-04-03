@@ -168,7 +168,7 @@ def test_validate_question_valid_kw(llm_validate_question_mock, load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     resp = ols.validate_question(conversation_id, llm_request)
 
-    assert resp == constants.SUBJECT_VALID
+    assert resp
     assert llm_validate_question_mock.call_count == 0
 
 
@@ -182,7 +182,7 @@ def test_validate_question_invalid_kw(load_config):
     query = "What does 42 signify ?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     resp = ols.validate_question(conversation_id, llm_request)
-    assert resp == constants.SUBJECT_INVALID
+    assert not resp
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
@@ -240,7 +240,7 @@ def test_validate_question_disabled(
 
     assert validate_question_llm_mock.call_count == 0
     assert validate_question_kw_mock.call_count == 0
-    assert resp == constants.SUBJECT_VALID
+    assert resp
 
 
 def test_query_filter_no_redact_filters(load_config):
@@ -326,7 +326,7 @@ def test_conversation_request(
 ):
     """Test conversation request API endpoint."""
     # valid question
-    mock_validate_question.return_value = constants.SUBJECT_VALID
+    mock_validate_question.return_value = True
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
@@ -346,7 +346,7 @@ def test_conversation_request(
     ), "Improper conversation ID returned"
 
     # invalid question
-    mock_validate_question.return_value = constants.SUBJECT_INVALID
+    mock_validate_question.return_value = False
     llm_request = LLMRequest(query="Generate a yaml")
     response = ols.conversation_request(llm_request, auth)
     assert response.response == constants.INVALID_QUERY_RESP
@@ -389,11 +389,11 @@ def test_conversation_request_on_wrong_configuration(
 @patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=None))
 @patch(
     "ols.app.endpoints.ols.validate_question",
-    new=Mock(return_value=constants.SUBJECT_INVALID),
+    new=Mock(return_value=False),
 )
 def test_question_validation_in_conversation_start(load_config, auth):
     """Test if question validation is skipped in follow-up conversation."""
-    # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
+    # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # this should resolve in rejection in summarization
     conversation_id = suid.get_suid()
     query = "some elaborate question"
@@ -401,7 +401,7 @@ def test_question_validation_in_conversation_start(load_config, auth):
 
     response = ols.conversation_request(llm_request, auth)
 
-    assert response.response.startswith("I can only answer questions about OpenShift")
+    assert response.response.startswith(constants.INVALID_QUERY_RESP)
 
 
 @patch(
@@ -409,14 +409,14 @@ def test_question_validation_in_conversation_start(load_config, auth):
 )
 @patch(
     "ols.app.endpoints.ols.validate_question",
-    new=Mock(return_value=constants.SUBJECT_INVALID),
+    new=Mock(return_value=constants.SUBJECT_REJECTED),
 )
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 def test_no_question_validation_in_follow_up_conversation(
     mock_summarize, load_config, auth
 ):
     """Test if question validation is skipped in follow-up conversation."""
-    # note the `validate_question` is patched to always return as `SUBJECT_INVALID`
+    # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # but as it is not the first question, it should proceed to summarization
     mock_summarize.return_value = {
         "response": "some elaborate answer",
@@ -453,23 +453,17 @@ def test_conversation_request_debug_api_with_conversation_id(load_config):
     assert response.response == "llm response"
 
 
-def test_generate_response_invalid_subject(load_config):
+@patch("ols.app.endpoints.ols.validate_question")
+def test_conversation_request_invalid_subject(mock_validate, load_config, auth):
     """Test how generate_response function checks validation results."""
     # prepare arguments for DocsSummarizer
-    conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    validation_result = constants.SUBJECT_INVALID
-    previous_input = None
 
-    # try to get response
-    response, documents, truncated = ols.generate_response(
-        conversation_id, llm_request, validation_result, previous_input
-    )
-
-    # check the response
-    assert "I can only answer questions about OpenShift and Kubernetes" in response
-    assert len(documents) == 0
-    assert not truncated
+    mock_validate.return_value = False
+    response = ols.conversation_request(llm_request, auth)
+    assert response.response == constants.INVALID_QUERY_RESP
+    assert len(response.referenced_documents) == 0
+    assert not response.truncated
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
@@ -488,12 +482,11 @@ def test_generate_response_valid_subject(mock_summarize, load_config):
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    validation_result = constants.SUBJECT_VALID
     previous_input = None
 
     # try to get response
     response, documents, truncated = ols.generate_response(
-        conversation_id, llm_request, validation_result, previous_input
+        conversation_id, llm_request, previous_input
     )
 
     # check the response
@@ -510,38 +503,36 @@ def test_generate_response_on_summarizer_error(mock_summarize, load_config):
     mock_response.response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.side_effect = Exception  # any exception migth occurs
+    mock_summarize.side_effect = Exception  # any exception might occur
 
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    validation_result = constants.SUBJECT_VALID
     previous_input = None
 
     # try to get response
     with pytest.raises(
         HTTPException, match="Error while obtaining answer for user question"
     ):
-        ols.generate_response(
-            conversation_id, llm_request, validation_result, previous_input
-        )
+        ols.generate_response(conversation_id, llm_request, previous_input)
 
 
+@patch(
+    "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
+    side_effect=Exception("mocked exception"),
+)
 def test_generate_response_unknown_validation_result(load_config):
     """Test how generate_response function checks validation results."""
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    validation_result = "Unknown"
     previous_input = None
 
     # try to get response
     with pytest.raises(
         HTTPException, match="Error while obtaining answer for user question"
     ):
-        ols.generate_response(
-            conversation_id, llm_request, validation_result, previous_input
-        )
+        ols.generate_response(conversation_id, llm_request, previous_input)
 
 
 @patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))

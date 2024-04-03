@@ -57,14 +57,21 @@ def conversation_request(
 
     # Validate the query
     if not previous_input:
-        validation_result = validate_question(conversation_id, llm_request)
+        valid = validate_question(conversation_id, llm_request)
     else:
         logger.debug("follow-up conversation - skipping question validation")
-        validation_result = constants.SUBJECT_VALID
+        valid = True
 
-    response, referenced_documents, truncated = generate_response(
-        conversation_id, llm_request, validation_result, previous_input
-    )
+    if not valid:
+        response, referenced_documents, truncated = (
+            constants.INVALID_QUERY_RESP,
+            [],
+            False,
+        )
+    else:
+        response, referenced_documents, truncated = generate_response(
+            conversation_id, llm_request, previous_input
+        )
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
     return LLMResponse(
@@ -134,46 +141,29 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseM
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    validation_result: str,
     previous_input: list[BaseMessage],
-) -> tuple[Optional[str], list[str], bool]:
+) -> tuple[str, list[str], bool]:
     """Generate response based on validation result, previous input, and model output."""
-    match (validation_result):
-        case constants.SUBJECT_INVALID:
-            logger.info(
-                f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
-            )
-            return constants.INVALID_QUERY_RESP, [], False
-        case constants.SUBJECT_VALID:
-            logger.info(
-                f"{conversation_id} - Question is relevant to kubernetes or ocp"
-            )
-            # Summarize documentation
-            try:
-                docs_summarizer = DocsSummarizer(
-                    provider=llm_request.provider, model=llm_request.model
-                )
-                llm_response = docs_summarizer.summarize(
-                    conversation_id, llm_request.query, config.rag_index, previous_input
-                )
-                return (
-                    llm_response["response"],
-                    llm_response["referenced_documents"],
-                    llm_response["history_truncated"],
-                )
-            except Exception as summarizer_error:
-                logger.error("Error while obtaining answer for user question")
-                logger.exception(summarizer_error)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error while obtaining answer for user question",
-                )
-        case _:
-            logger.error("Invalid validation result (internal error)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error while obtaining answer for user question",
-            )
+    # Summarize documentation
+    try:
+        docs_summarizer = DocsSummarizer(
+            provider=llm_request.provider, model=llm_request.model
+        )
+        llm_response = docs_summarizer.summarize(
+            conversation_id, llm_request.query, config.rag_index, previous_input
+        )
+        return (
+            llm_response["response"],
+            llm_response["referenced_documents"],
+            llm_response["history_truncated"],
+        )
+    except Exception as summarizer_error:
+        logger.error("Error while obtaining answer for user question")
+        logger.exception(summarizer_error)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error while obtaining answer for user question",
+        )
 
 
 def store_conversation_history(
@@ -213,7 +203,7 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         )
 
 
-def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str:
+def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question using llm, raise HTTPException in case of any problem."""
     # Validate the query
     try:
@@ -238,24 +228,24 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str
         )
 
 
-def _validate_question_keyword(query: str) -> str:
+def _validate_question_keyword(query: str) -> bool:
     """Validate user question using keyword."""
     # Current implementation is without any tokenizer method, lemmatization/n-grams.
     # Add valid keywords to keywords.py file.
     query_temp = query.lower()
     for kw in KEYWORDS:
         if kw in query_temp:
-            return constants.SUBJECT_VALID
+            return True
     # query_temp = {q_word.lower().strip(".?,") for q_word in query.split()}
     # common_words = config.keywords.intersection(query_temp)
     # if len(common_words) > 0:
-    #     return constants.SUBJECT_VALID
+    #     return constants.SUBJECT_ALLOWED
 
     logger.debug(f"No matching keyword found for query: {query}")
-    return constants.SUBJECT_INVALID
+    return False
 
 
-def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
+def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question."""
     match config.ols_config.query_validation_method:
 
@@ -264,7 +254,7 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
                 f"{conversation_id} Question validation is disabled. "
                 f"Treating question as valid."
             )
-            return constants.SUBJECT_VALID
+            return True
 
         case constants.QueryValidationMethod.KEYWORD:
             logger.debug("Keyword based query validation.")

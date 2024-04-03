@@ -13,18 +13,18 @@ class QueryValidationMethod(StrEnum):
 
 
 # Query validation responses
-SUBJECT_VALID = "SUBJECT_VALID"
-SUBJECT_INVALID = "SUBJECT_INVALID"
+SUBJECT_REJECTED = "REJECTED"
+SUBJECT_ALLOWED = "ALLOWED"
 POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
-    SUBJECT_VALID,
-    SUBJECT_INVALID,
+    SUBJECT_REJECTED,
+    SUBJECT_ALLOWED,
 )
 
 
 # Default responses
 INVALID_QUERY_RESP = (
-    "I can only answer questions about OpenShift and Kubernetes. "
-    "Please rephrase your question"
+    "I'm sorry, this question does not appear to be about OpenShift or Kubernetes.  "
+    "I can only answer questions related to those topics, please rephrase or ask another question."
 )
 NO_RAG_CONTENT_RESP = (
     "The following response was generated without access to reference content:\n\n"
