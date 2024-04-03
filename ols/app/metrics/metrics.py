@@ -65,8 +65,8 @@ def setup_model_metrics(config: config_model.Config) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
     selected_model.info(
         {
-            "model": config.ols_config.default_model,
-            "provider": config.ols_config.default_provider,
+            "model": str(config.ols_config.default_model),
+            "provider": str(config.ols_config.default_provider),
         }
     )
 
