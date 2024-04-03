@@ -43,7 +43,7 @@ def conversation_history():
     ]
 
 
-@pytest.mark.parametrize("provider,model", provider_and_model)
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
 @pytest.mark.parametrize("query", queries)
 def test_generate_prompt_default_prompt(provider, model, query, conversation_history):
     """Test if prompt generator returns default prompt for given input."""
@@ -76,7 +76,7 @@ def test_generate_prompt_default_prompt(provider, model, query, conversation_his
     assert "chat_history" in llm_input_values
 
 
-@pytest.mark.parametrize("provider,model", provider_and_model)
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
 @pytest.mark.parametrize("query", queries)
 def test_generate_prompt_without_rag_context(
     provider, model, query, conversation_history
@@ -111,7 +111,7 @@ def test_generate_prompt_without_rag_context(
     assert "chat_history" in llm_input_values
 
 
-@pytest.mark.parametrize("provider,model", provider_and_model)
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
 @pytest.mark.parametrize("query", queries)
 def test_generate_prompt_without_history(provider, model, query):
     """Test if prompt generator returns prompt without history."""
@@ -144,7 +144,7 @@ def test_generate_prompt_without_history(provider, model, query):
     assert "chat_history" not in llm_input_values
 
 
-@pytest.mark.parametrize("provider,model", provider_and_model)
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
 @pytest.mark.parametrize("query", queries)
 def test_generate_prompt_without_rag_without_history(provider, model, query):
     """Test if prompt generator returns prompt without RAG and without history."""
