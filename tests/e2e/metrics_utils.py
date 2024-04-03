@@ -59,7 +59,7 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
-def get_metric_labels(lines, info_node_name) -> Optional[dict]:
+def get_metric_labels(lines, info_node_name, value=None) -> Optional[dict]:
     """Get labels associated with a metric string as printed from /metrics."""
     prefix = info_node_name
 
@@ -68,13 +68,13 @@ def get_metric_labels(lines, info_node_name) -> Optional[dict]:
         if line.startswith(prefix):
             # strip prefix
             metric = line[len(prefix) + 1 :]
-
+            if value and not line.endswith(value):
+                continue
             # strip suffix
             labels = metric[: metric.find("} ")]
             labels = labels.split(",")
             for label in labels:
                 kv = label.split("=")
-                print(f"kv: {kv}")
                 # strip leading/trailing quotation from value
                 attrs[kv[0]] = kv[1][1:-1]
             return attrs
@@ -83,12 +83,12 @@ def get_metric_labels(lines, info_node_name) -> Optional[dict]:
     return None
 
 
-def get_model_and_provider(client):
+def get_enabled_model_and_provider(client):
     """Read configured model and provider from metrics."""
     response = read_metrics(client)
     lines = [line.strip() for line in response.split("\n")]
 
-    labels = get_metric_labels(lines, "selected_model_info")
+    labels = get_metric_labels(lines, "provider_model_configuration", "1.0")
 
     return labels["model"], labels["provider"]
 

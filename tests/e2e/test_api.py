@@ -225,7 +225,7 @@ def test_valid_question(response_eval) -> None:
 
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
@@ -242,7 +242,7 @@ def test_valid_question_tokens_counter() -> None:
 
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
@@ -259,7 +259,7 @@ def test_invalid_question_tokens_counter() -> None:
 
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
@@ -283,7 +283,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
 
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
-    model, provider = metrics_utils.get_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
     endpoint = "/v1/query"
     with (
@@ -401,8 +401,7 @@ def test_metrics() -> None:
         "llm_validation_errors_total",
         "llm_token_sent_total",
         "llm_token_received_total",
-        "selected_model_info",
-        "model_enabled",
+        "provider_model_configuration",
     )
 
     # check if all counters are present
@@ -416,9 +415,9 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = metrics_utils.get_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
-    # check available compbinations
+    # enabled model must be one of our expected combinations
     assert model, provider in {
         ("gpt-3.5-turbo", "openai"),
         ("gpt-3.5-turbo", "azure_openai"),

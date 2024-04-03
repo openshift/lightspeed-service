@@ -8,6 +8,8 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from ols.utils import config
+
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
@@ -18,6 +20,7 @@ def setup():
     global client
     from ols.app.main import app
 
+    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 
@@ -46,8 +49,7 @@ def test_metrics(setup):
         "llm_validation_errors_total",
         "llm_token_sent_total",
         "llm_token_received_total",
-        "selected_model_info",
-        "model_enabled",
+        "provider_model_configuration",
     )
 
     # check if all counters are present
@@ -130,12 +132,21 @@ def test_metrics_duration(setup):
     assert re.findall(pattern, response_text)
 
 
-def test_model_enabled_metrics(setup):
-    """Check if model_enabled metrics shows the expected information."""
+def test_provider_model_configuration_metrics(setup):
+    """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(client)
+    print(response_text)
     for provider in ("bam", "openai"):
         for model in ("m1", "m2"):
-            assert (
-                f'model_enabled{{model="{model}",provider="{provider}"}}'
-                in response_text
-            )
+            if provider == "bam" and model == "m1":
+                # default/enabled model should have a metric value of 1.0
+                assert (
+                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 1.0'
+                    in response_text
+                )
+            else:
+                # non-enabled models should have a metric value of 0.0
+                assert (
+                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 0.0'
+                    in response_text
+                )

@@ -33,7 +33,7 @@ else:
 
 # update provider and model as soon as possible so the metrics will be visible
 # even for first scraping
-metrics.setup_model_metrics(config)
+metrics.setup_model_metrics(config.config)
 
 
 @app.middleware("")

@@ -7,6 +7,8 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from ols.utils import config
+
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
@@ -17,6 +19,7 @@ def setup():
     global client
     from ols.app.main import app
 
+    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 

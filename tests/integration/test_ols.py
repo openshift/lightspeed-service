@@ -24,6 +24,7 @@ def setup():
     global client
     from ols.app.main import app
 
+    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 
