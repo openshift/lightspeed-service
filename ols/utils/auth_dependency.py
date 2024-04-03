@@ -180,7 +180,7 @@ class AuthDependency:
             HTTPException: If authentication fails or the user does not have access.
         """
         if config.dev_config.disable_auth:
-            logger.warn("Auth checks disabled, skipping")
+            logger.warning("Auth checks disabled, skipping")
             # TODO: replace with constants for default identity
             return DEFAULT_USER_UID, DEFAULT_USER_NAME
         authorization_header = request.headers.get("Authorization")
