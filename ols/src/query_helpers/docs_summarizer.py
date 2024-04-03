@@ -40,14 +40,12 @@ class DocsSummarizer(QueryHelper):
         self,
         rag_index: VectorStoreIndex,
         query: str,
-        provider_config: ProviderConfig,
-        model_options: Optional[dict[str, Any]],
-    ) -> list[dict]:
+        available_tokens: int,
+    ) -> tuple[list[dict], int]:
         """Get rag index data.
 
         Get relevant rag content based on query.
-        Calculate available tokens.
-        Returns rag content text & metadata as dictionary.
+        Returns rag content text & metadata as dictionary, Available tokens.
         """
         # TODO: Implement a different module for retrieval
         # with different options, currently it is top_k.
@@ -56,34 +54,9 @@ class DocsSummarizer(QueryHelper):
         retriever = rag_index.as_retriever(similarity_top_k=1)
         retrieved_nodes = retriever.retrieve(query)
 
-        token_config = config.llm_config.providers.get(self.provider)
-        token_config = token_config.models.get(self.model)
-        context_window_size = token_config.context_window_size
-        response_token_limit = token_config.response_token_limit
-        logger.info(
-            f"context_window_size: {context_window_size}, "
-            f"response_token_limit: {response_token_limit}"
-        )
         # Truncate rag context, if required.
         token_handler_obj = TokenHandler()
 
-        rag_context = " "
-        prompt, _ = generate_prompt(
-            self.provider,
-            self.model,
-            model_options,
-            query,
-            [],
-            rag_context,
-        )
-        interim_prompt = prompt.format(
-            context=rag_context, query=query, chat_history=[]
-        )
-
-        prompt_token_count = len(token_handler_obj.text_to_tokens(interim_prompt))
-        available_tokens = (
-            context_window_size - response_token_limit - prompt_token_count
-        )
         # TODO: Now we have option to set context window & response limit set
         # from the config. With this we need to change default max token parameter
         # for the model dynamically. Also a check for
@@ -97,7 +70,6 @@ class DocsSummarizer(QueryHelper):
         if provider_config is not None:
             model_config = provider_config.models.get(self.model)
             return model_config.options
-        return None
 
     def summarize(
         self,
@@ -139,47 +111,35 @@ class DocsSummarizer(QueryHelper):
         referenced_documents: list[str] = []
 
         provider_config = config.llm_config.providers.get(self.provider)
+        model_config = provider_config.models.get(self.model)
         model_options = self._get_model_options(provider_config)
 
-        if vector_index is not None:
-            rag_context_data = self._get_rag_data(
-                vector_index, query, provider_config, model_options
-            )
-        else:
-            logger.warning("Proceeding without RAG content. Check start up messages.")
-
-        token_handler = TokenHandler()
-
-        rag_context, referenced_documents = self._format_rag_data(rag_context_data)
-
-        dummy_history = [HumanMessage(content="dummy")]
-        prompt, _ = generate_prompt(
+        # Use dummy text for context/history to get complete prompt instruction.
+        temp_prompt, temp_prompt_input = generate_prompt(
             self.provider,
             self.model,
             model_options,
             query,
-            dummy_history,
-            rag_context,
+            [HumanMessage(content="dummy")],
+            "dummy",
         )
-        interim_prompt = prompt.format(
-            context=rag_context, query=query, chat_history=[]
+        token_handler = TokenHandler()
+        available_tokens = token_handler.get_available_tokens(
+            temp_prompt.format(**temp_prompt_input), model_config
         )
 
-        prompt_token_count = len(token_handler.text_to_tokens(interim_prompt))
-
-        if provider_config is not None:
-            model_config = provider_config.models.get(self.model)
-            response_token_limit = model_config.response_token_limit
-            context_window_size = model_config.context_window_size
-            available_tokens = (
-                context_window_size - response_token_limit - prompt_token_count
-            )
-
-            history, truncated = TokenHandler.limit_conversation_history(
-                history, available_tokens
+        if vector_index is not None:
+            rag_context_data, available_tokens = self._get_rag_data(
+                vector_index, query, available_tokens
             )
         else:
-            truncated = False
+            logger.warning("Proceeding without RAG content. Check start up messages.")
+
+        rag_context, referenced_documents = self._format_rag_data(rag_context_data)
+
+        history, truncated = TokenHandler.limit_conversation_history(
+            history, available_tokens
+        )
 
         final_prompt, llm_input_values = generate_prompt(
             self.provider,

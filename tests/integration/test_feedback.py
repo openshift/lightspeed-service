@@ -1,6 +1,5 @@
 """Integration tests for REST API endpoints for providing user feedback."""
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -12,9 +11,7 @@ from ols.utils import config, suid
 from ols.utils.suid import check_suid
 
 
-# we need to patch the config file path to point to the test
-# config file before we import anything from main.py
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+@pytest.fixture(scope="module")
 def setup():
     """Setups the test client."""
     global client
@@ -39,7 +36,7 @@ def with_enabled_feedback(tmpdir):
     )
 
 
-def test_feedback_endpoints_disabled_when_set_in_config(with_disabled_feedback):
+def test_feedback_endpoints_disabled_when_set_in_config(setup, with_disabled_feedback):
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
     response = client.get("/v1/feedback/status")
