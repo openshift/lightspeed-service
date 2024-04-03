@@ -31,20 +31,21 @@ def _args_parser(args):
         "--model",
         choices=["gpt", "granite"],
         default="gpt",
+        type=lambda v: "gpt" if "gpt" in v else "granite",
         help="Model for which responses will be evaluated.",
     )
     parser.add_argument(
         "-t",
         "--threshold",
         type=float,
-        default=0.25,
+        default=0.7,
         help="Threshold value to be used for similarity score.",
     )
     parser.add_argument(
         "-q",
         "--query_ids",
         nargs="+",
-        default=["eval1"],
+        default=None,
         help="Ids of questions to be validated. Check json file for valid ids.",
     )
     return parser.parse_args(args)
@@ -88,7 +89,11 @@ class ResponseValidation:
         """Get response quality."""
         result_dict = defaultdict(list)
 
-        for query_id in args.query_ids:
+        query_ids = args.query_ids
+        if not query_ids:
+            query_ids = qa_pairs.keys()
+
+        for query_id in query_ids:
             question = qa_pairs[query_id]["question"]
             answer = qa_pairs[query_id]["answer"]
 
