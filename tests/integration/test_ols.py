@@ -58,9 +58,8 @@ def test_post_question_without_payload(setup):
 def test_post_question_on_invalid_question(setup):
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
-    answer = constants.SUBJECT_INVALID
     with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=False
     ):
         conversation_id = suid.get_suid()
         response = client.post(
@@ -81,7 +80,7 @@ def test_post_question_on_invalid_question(setup):
 def test_post_question_on_generic_response_type_summarize_error(setup):
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = constants.SUBJECT_VALID
+    answer = constants.SUBJECT_ALLOWED
     with (
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
@@ -219,7 +218,7 @@ def test_post_question_on_noyaml_response_type(setup) -> None:
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
     config.ols_config.reference_content.product_docs_index_id = "product"
     config.dev_config.disable_auth = True
-    answer = constants.SUBJECT_VALID
+    answer = constants.SUBJECT_ALLOWED
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -289,7 +288,7 @@ def test_post_question_with_keyword(mock_llm_validation, setup) -> None:
 def test_post_query_with_query_filters_response_type(setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
     config.dev_config.disable_auth = True
-    answer = constants.SUBJECT_VALID
+    answer = constants.SUBJECT_ALLOWED
 
     query_filters = [
         QueryFilter(
@@ -338,7 +337,7 @@ def test_post_query_with_query_filters_response_type(setup) -> None:
 def test_post_query_for_conversation_history(setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
     config.dev_config.disable_auth = True
-    answer = constants.SUBJECT_VALID
+    answer = constants.SUBJECT_ALLOWED
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
