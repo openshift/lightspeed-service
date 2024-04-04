@@ -40,7 +40,7 @@ class TestTokenHandler(TestCase):
         node_data = [
             {
                 "text": "a text text text text",
-                "score": 0.6,
+                "score": 0.4,
                 "metadata": {"docs_url": "data/doc1.pdf"},
             },
             {
@@ -55,13 +55,14 @@ class TestTokenHandler(TestCase):
             },
             {
                 "text": "d text text text text",
-                "score": 0.4,
+                "score": 0.6,
                 "metadata": {"docs_url": "data/doc4.pdf"},
             },
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
         self._token_handler_obj = TokenHandler()
 
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
@@ -69,14 +70,30 @@ class TestTokenHandler(TestCase):
             retrieved_nodes
         )
 
-        assert len(context) == len(retrieved_nodes)
-        for idx, data in enumerate(context):
-            assert data["text"][0] == self._mock_retrieved_obj[idx].get_text()[0]
+        assert len(context) == len(("text", "docs_url"))
+        assert len(context["text"]) == 3
+        for idx in range(3):
+            assert context["text"][idx] == self._mock_retrieved_obj[idx].get_text()
             assert (
-                data["docs_url"] == self._mock_retrieved_obj[idx].metadata["docs_url"]
+                context["docs_url"][idx]
+                == self._mock_retrieved_obj[idx].metadata["docs_url"]
             )
         assert available_tokens == 485
 
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.5)
+    def test_token_handler_score(self):
+        """Test token handler for context when score is higher than threshold."""
+        retrieved_nodes = self._mock_retrieved_obj[:3]
+        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+            retrieved_nodes
+        )
+
+        assert len(context) == len(("text", "docs_url"))
+        assert len(context["text"]) == 1
+        assert context["text"][0] == self._mock_retrieved_obj[0].get_text()
+        assert available_tokens == 495
+
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
         context, available_tokens = self._token_handler_obj.truncate_rag_context(
@@ -84,20 +101,22 @@ class TestTokenHandler(TestCase):
         )
 
         assert len(context) == 2
+        assert len(context["text"]) == 2
         assert (
-            context[1]["text"].split()
+            context["text"][1].split()
             == self._mock_retrieved_obj[1].get_text().split()[:2]
         )
         assert available_tokens == 0
 
-    @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_LIMIT", 3)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
         context, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context) == 1
+        assert len(context["text"]) == 1
         assert available_tokens == 2
 
     def test_token_handler_empty(self):
@@ -105,6 +124,7 @@ class TestTokenHandler(TestCase):
         context, available_tokens = self._token_handler_obj.truncate_rag_context([], 5)
 
         assert len(context) == 0
+        assert isinstance(context, dict)
         assert available_tokens == 5
 
     def test_message_length_string_content(self):

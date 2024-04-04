@@ -8,9 +8,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages.base import BaseMessage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
-from ols import constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
+from ols.constants import NO_RAG_CONTENT_RESP, RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
@@ -21,48 +21,6 @@ logger = logging.getLogger(__name__)
 
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
-
-    def _format_rag_data(self, rag_data: list[dict]) -> tuple[str, list[str]]:
-        """Format rag text & metadata.
-
-        Join multiple rag text with new line.
-        Create list of metadata from rag data dictionary.
-        """
-        rag_text = []
-        docs_url = []
-        for data in rag_data:
-            rag_text.append(data["text"])
-            docs_url.append(data["docs_url"])
-
-        return "\n\n".join(rag_text), docs_url
-
-    def _get_rag_data(
-        self,
-        rag_index: VectorStoreIndex,
-        query: str,
-        available_tokens: int,
-    ) -> tuple[list[dict], int]:
-        """Get rag index data.
-
-        Get relevant rag content based on query.
-        Returns rag content text & metadata as dictionary, Available tokens.
-        """
-        # TODO: Implement a different module for retrieval
-        # with different options, currently it is top_k.
-        # We do have a module with langchain, but not compatible
-        # with llamaindex object.
-        retriever = rag_index.as_retriever(similarity_top_k=1)
-        retrieved_nodes = retriever.retrieve(query)
-
-        # Truncate rag context, if required.
-        token_handler_obj = TokenHandler()
-
-        # TODO: Now we have option to set context window & response limit set
-        # from the config. With this we need to change default max token parameter
-        # for the model dynamically. Also a check for
-        # (response limit + prompt + any additional user context) < context window
-
-        return token_handler_obj.truncate_rag_context(retrieved_nodes, available_tokens)
 
     def _get_model_options(
         self, provider_config: ProviderConfig
@@ -103,18 +61,17 @@ class DocsSummarizer(QueryHelper):
             f"model: {self.model}, "
             f"verbose: {verbose}"
         )
-        logger.info(f"{conversation_id} call settings: {settings_string}")
+        logger.debug(f"{conversation_id} call settings: {settings_string}")
 
+        token_handler = TokenHandler()
         bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
-
-        rag_context_data: list[dict] = []
-        referenced_documents: list[str] = []
 
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
         model_options = self._get_model_options(provider_config)
 
         # Use dummy text for context/history to get complete prompt instruction.
+        # This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = generate_prompt(
             self.provider,
             self.model,
@@ -123,21 +80,26 @@ class DocsSummarizer(QueryHelper):
             [HumanMessage(content="dummy")],
             "dummy",
         )
-        token_handler = TokenHandler()
         available_tokens = token_handler.get_available_tokens(
             temp_prompt.format(**temp_prompt_input), model_config
         )
 
+        # Get RAG context, truncate if applicable.
+        rag_context_data: dict[str, list[str]] = {}
+
         if vector_index is not None:
-            rag_context_data, available_tokens = self._get_rag_data(
-                vector_index, query, available_tokens
+            retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
+            rag_context_data, available_tokens = token_handler.truncate_rag_context(
+                retriever.retrieve(query), available_tokens
             )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
 
-        rag_context, referenced_documents = self._format_rag_data(rag_context_data)
+        rag_context = "\n\n".join(rag_context_data.get("text", []))
+        referenced_documents = rag_context_data.get("docs_url", [])
 
-        history, truncated = TokenHandler.limit_conversation_history(
+        # Truncate history, if applicable
+        history, truncated = token_handler.limit_conversation_history(
             history, available_tokens
         )
 
@@ -149,12 +111,12 @@ class DocsSummarizer(QueryHelper):
             history,
             rag_context,
         )
-
         chat_engine = LLMChain(
             llm=bare_llm,
             prompt=final_prompt,
             verbose=verbose,
         )
+
         with TokenMetricUpdater(
             llm=bare_llm,
             provider=self.provider,
@@ -166,13 +128,12 @@ class DocsSummarizer(QueryHelper):
             )
 
         response = summary["text"]
-
         if len(rag_context) == 0:
-            logger.info("Using llm to answer the query without reference content")
-            response = constants.NO_RAG_CONTENT_RESP + str(response)
+            logger.debug("Using llm to answer the query without reference content")
+            response = NO_RAG_CONTENT_RESP + str(response)
 
-        logger.info(f"{conversation_id} Summary response: {response}")
-        logger.info(f"{conversation_id} Referenced documents: {referenced_documents}")
+        logger.debug(f"{conversation_id} Summary response: {response}")
+        logger.debug(f"{conversation_id} Referenced documents: {referenced_documents}")
 
         return {
             "response": response,
