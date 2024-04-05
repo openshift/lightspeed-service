@@ -8,7 +8,6 @@ from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
-    Info,
     generate_latest,
 )
 
@@ -39,13 +38,13 @@ llm_token_received_total = Counter(
     "llm_token_received_total", "LLM tokens received", ["provider", "model"]
 )
 
-# expose selected provider and model
-# (these are represented by counters, but the only meaning is presence of label)
-selected_model = Info("selected_model", "Selected model")
-
 # metric that indicates what provider + model customers are using so we can
 # understand what is popular/important
-model_enabled = Gauge("model_enabled", "Enabled LLM models", ["provider", "model"])
+provider_model_configuration = Gauge(
+    "provider_model_configuration",
+    "LLM provider/models combinations defined in configuration",
+    ["provider", "model"],
+)
 
 
 @router.get("/metrics")
@@ -63,14 +62,12 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
 
 def setup_model_metrics(config: config_model.Config) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
-    selected_model.info(
-        {
-            "model": str(config.ols_config.default_model),
-            "provider": str(config.ols_config.default_provider),
-        }
-    )
-
-    for _, provider in config.llm_config.providers.items():
-        provider_type = provider.type
+    for _, provider in config.llm_providers.providers.items():
         for model_name, _ in provider.models.items():
-            model_enabled.labels(provider_type, model_name).inc()
+            if (
+                provider.name == config.ols_config.default_provider
+                and model_name == config.ols_config.default_model
+            ):
+                provider_model_configuration.labels(provider.type, model_name).set(1)
+            else:
+                provider_model_configuration.labels(provider.type, model_name).set(0)

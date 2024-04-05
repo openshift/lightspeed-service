@@ -7,7 +7,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import suid
+from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
 
@@ -21,6 +21,7 @@ def setup():
     global client
     from ols.app.main import app
 
+    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 
