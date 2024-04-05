@@ -8,6 +8,7 @@ from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
+    disable_created_metrics,
     generate_latest,
 )
 
@@ -17,31 +18,35 @@ from ols.utils.auth_dependency import AuthDependency
 router = APIRouter(tags=["metrics"])
 auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
 
+disable_created_metrics()
+
 rest_api_calls_total = Counter(
-    "rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
+    "ols_rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
 )
 
 response_duration_seconds = Histogram(
-    "response_duration_seconds", "Response durations", ["path"]
+    "ols_response_duration_seconds", "Response durations", ["path"]
 )
 
-llm_calls_total = Counter("llm_calls_total", "LLM calls counter", ["provider", "model"])
-llm_calls_failures_total = Counter("llm_calls_failures_total", "LLM calls failures")
+llm_calls_total = Counter(
+    "ols_llm_calls_total", "LLM calls counter", ["provider", "model"]
+)
+llm_calls_failures_total = Counter("ols_llm_calls_failures_total", "LLM calls failures")
 llm_calls_validation_errors_total = Counter(
-    "llm_validation_errors_total", "LLM validation errors"
+    "ols_llm_validation_errors_total", "LLM validation errors"
 )
 
 llm_token_sent_total = Counter(
-    "llm_token_sent_total", "LLM tokens sent", ["provider", "model"]
+    "ols_llm_token_sent_total", "LLM tokens sent", ["provider", "model"]
 )
 llm_token_received_total = Counter(
-    "llm_token_received_total", "LLM tokens received", ["provider", "model"]
+    "ols_llm_token_received_total", "LLM tokens received", ["provider", "model"]
 )
 
 # metric that indicates what provider + model customers are using so we can
 # understand what is popular/important
 provider_model_configuration = Gauge(
-    "provider_model_configuration",
+    "ols_provider_model_configuration",
     "LLM provider/models combinations defined in configuration",
     ["provider", "model"],
 )

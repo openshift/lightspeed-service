@@ -444,13 +444,13 @@ def test_metrics() -> None:
 
     # counters that are expected to be part of metrics
     expected_counters = (
-        "rest_api_calls_total",
-        "llm_calls_total",
-        "llm_calls_failures_total",
-        "llm_validation_errors_total",
-        "llm_token_sent_total",
-        "llm_token_received_total",
-        "provider_model_configuration",
+        "ols_rest_api_calls_total",
+        "ols_llm_calls_total",
+        "ols_llm_calls_failures_total",
+        "ols_llm_validation_errors_total",
+        "ols_llm_token_sent_total",
+        "ols_llm_token_received_total",
+        "ols_provider_model_configuration",
     )
 
     # check if all counters are present

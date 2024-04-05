@@ -43,13 +43,13 @@ def test_metrics(setup):
 
     # counters that are expected to be part of metrics
     expected_counters = (
-        "rest_api_calls_total",
-        "llm_calls_total",
-        "llm_calls_failures_total",
-        "llm_validation_errors_total",
-        "llm_token_sent_total",
-        "llm_token_received_total",
-        "provider_model_configuration",
+        "ols_rest_api_calls_total",
+        "ols_llm_calls_total",
+        "ols_llm_calls_failures_total",
+        "ols_llm_validation_errors_total",
+        "ols_llm_token_sent_total",
+        "ols_llm_token_received_total",
+        "ols_provider_model_configuration",
     )
 
     # check if all counters are present
@@ -83,11 +83,11 @@ def test_rest_api_call_counter_ok_status(setup):
 
     # initialize counter with label by calling endpoint
     client.get(endpoint)
-    old = get_counter_value(client, "rest_api_calls_total", endpoint, "200")
+    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
 
     # call some REST API endpoint
     client.get(endpoint)
-    new = get_counter_value(client, "rest_api_calls_total", endpoint, "200")
+    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
 
     # compare counters
     assert new == old + 1, "Counter has not been updated properly"
@@ -99,11 +99,11 @@ def test_rest_api_call_counter_not_found_status(setup):
 
     # initialize counter with label
     client.get(endpoint)
-    old = get_counter_value(client, "rest_api_calls_total", endpoint, "404")
+    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
 
     # call some REST API endpoint
     client.get(endpoint)
-    new = get_counter_value(client, "rest_api_calls_total", endpoint, "404")
+    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
 
     # compare counters
     # just the NotFound value should change
