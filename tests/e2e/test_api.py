@@ -185,6 +185,55 @@ def test_query_call_with_improper_payload():
         assert "missing" in response.text
 
 
+def test_valid_question_improper_conversation_id(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for improper conversation ID."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "with_rag")
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.internal_server_error
+    ):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": "not-uuid", "query": eval_query},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.internal_server_error
+        json_response = response.json()
+        expected_response = {
+            "detail": {
+                "response": "Error retrieving conversation history",
+                "cause": "Invalid conversation ID not-uuid",
+            }
+        }
+        assert json_response == expected_response
+
+
+def test_valid_question_missing_conversation_id(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.ok
+    ):
+        response = client.post(
+            endpoint,
+            json={"conversation_id": "", "query": eval_query},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        json_response = response.json()
+
+        # new conversation ID should be returned
+        assert (
+            "conversation_id" in json_response
+        ), "New conversation ID was not generated"
+        assert suid.check_suid(json_response["conversation_id"]), (
+            "Conversation ID is not in UUID format" ""
+        )
+
+
 @pytest.mark.rag
 def test_valid_question(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
