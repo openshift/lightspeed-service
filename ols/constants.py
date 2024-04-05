@@ -15,10 +15,6 @@ class QueryValidationMethod(StrEnum):
 # Query validation responses
 SUBJECT_REJECTED = "REJECTED"
 SUBJECT_ALLOWED = "ALLOWED"
-POSSIBLE_QUESTION_VALIDATOR_RESPONSES = (
-    SUBJECT_REJECTED,
-    SUBJECT_ALLOWED,
-)
 
 
 # Default responses
