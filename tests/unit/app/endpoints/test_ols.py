@@ -60,9 +60,9 @@ def test_retrieve_previous_input_empty_user_id(load_config):
         query="Tell me about Kubernetes", conversation_id=conversation_id
     )
     # cache must check if user ID is correct
-    with pytest.raises(ValueError, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Invalid user ID"):
         ols.retrieve_previous_input("", llm_request)
-    with pytest.raises(ValueError, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Invalid user ID"):
         ols.retrieve_previous_input(None, llm_request)
 
 
@@ -73,7 +73,7 @@ def test_retrieve_previous_input_improper_user_id(load_config):
         query="Tell me about Kubernetes", conversation_id=conversation_id
     )
     # cache must check if user ID is correct
-    with pytest.raises(ValueError, match="Invalid user ID improper_user_id"):
+    with pytest.raises(HTTPException, match="Invalid user ID improper_user_id"):
         ols.retrieve_previous_input("improper_user_id", llm_request)
 
 
@@ -131,9 +131,9 @@ def test_store_conversation_history_empty_user_id(load_config):
     user_id = ""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(ValueError, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Invalid user ID"):
         ols.store_conversation_history(user_id, conversation_id, llm_request, "")
-    with pytest.raises(ValueError, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Invalid user ID"):
         ols.store_conversation_history(user_id, conversation_id, llm_request, None)
 
 
@@ -142,7 +142,7 @@ def test_store_conversation_history_improper_user_id(load_config):
     user_id = "::::"
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(ValueError, match="Invalid user ID"):
+    with pytest.raises(HTTPException, match="Invalid user ID"):
         ols.store_conversation_history(user_id, conversation_id, llm_request, "")
 
 
@@ -150,7 +150,7 @@ def test_store_conversation_history_improper_conversation_id(load_config):
     """Test if basic input verification is done during history store operation."""
     conversation_id = "::::"
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    with pytest.raises(ValueError, match="Invalid conversation ID"):
+    with pytest.raises(HTTPException, match="Invalid conversation ID"):
         ols.store_conversation_history(
             constants.DEFAULT_USER_UID, conversation_id, llm_request, ""
         )
@@ -380,9 +380,7 @@ def test_conversation_request_on_wrong_configuration(
     llm_request = LLMRequest(query="Tell me about Kubernetes")
 
     # call must fail because we mocked invalid configuration state
-    with pytest.raises(
-        HTTPException, match=f"Unable to process this request because '{message}'"
-    ):
+    with pytest.raises(HTTPException, match="Unable to process this request"):
         ols.conversation_request(llm_request, auth)
 
 

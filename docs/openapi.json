@@ -26,11 +26,21 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Query is valid and correct response from LLM is returned",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/LLMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Query can not be validated, LLM is not accessible or other internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -366,6 +376,37 @@
                     {
                         "user_id": "123e4567-e89b-12d3-a456-426614174000",
                         "username": "user1"
+                    }
+                ]
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "detail": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "ErrorResponse",
+                "description": "Model representing error response for query endpoint.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Failed to handle request to https://bam-api.res.ibm.com/v2/text",
+                            "response": "Error while validation question"
+                        }
+                    },
+                    {
+                        "detail": {
+                            "cause": "Invalid conversation ID 1237-e89b-12d3-a456-426614174000",
+                            "response": "Error retrieving conversation history"
+                        }
                     }
                 ]
             },
