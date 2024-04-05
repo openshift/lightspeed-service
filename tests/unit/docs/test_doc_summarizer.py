@@ -33,7 +33,7 @@ def test_summarize():
     assert len(documents) > 0
     assert (
         f"{constants.OCP_DOCS_ROOT_URL}/{constants.OCP_DOCS_VERSION}/docs/test.html"
-        in documents
+        in [documents[0].docs_url]
     )
     assert not summary["history_truncated"]
 

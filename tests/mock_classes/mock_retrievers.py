@@ -25,7 +25,8 @@ class MockRetriever:
                     "score": 0.6,
                     "metadata": {
                         "docs_url": f"{constants.OCP_DOCS_ROOT_URL}/"
-                        f"{constants.OCP_DOCS_VERSION}/docs/test.html"
+                        f"{constants.OCP_DOCS_VERSION}/docs/test.html",
+                        "title": "Docs Test",
                     },
                 }
             )

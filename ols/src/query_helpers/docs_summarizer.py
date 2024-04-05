@@ -10,6 +10,7 @@ from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
+from ols.app.models.models import ReferencedDocument
 from ols.constants import NO_RAG_CONTENT_RESP, RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -96,7 +97,12 @@ class DocsSummarizer(QueryHelper):
             logger.warning("Proceeding without RAG content. Check start up messages.")
 
         rag_context = "\n\n".join(rag_context_data.get("text", []))
-        referenced_documents = rag_context_data.get("docs_url", [])
+        referenced_documents = [
+            ReferencedDocument(docs_url=docs_url, title=title)
+            for docs_url, title in zip(
+                rag_context_data.get("docs_url", []), rag_context_data.get("title", [])
+            )
+        ]
 
         # Truncate history, if applicable
         history, truncated = token_handler.limit_conversation_history(

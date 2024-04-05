@@ -13,7 +13,7 @@ from langchain.schema import AIMessage, HumanMessage
 from ols import constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
-from ols.app.models.models import LLMRequest
+from ols.app.models.models import LLMRequest, ReferencedDocument
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config, suid
 from ols.utils.query_filter import QueryFilter, RegexFilter
@@ -587,7 +587,10 @@ def test_store_transcript(transcripts_location):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     response = "Kubernetes is ..."
-    ref_docs = ["d"]
+    ref_docs = [
+        ReferencedDocument("https://foo.bar", "Foo Bar"),
+        ReferencedDocument("https://bar.baz", "Bar Baz"),
+    ]
     truncated = True
 
     ols.store_transcript(
@@ -609,7 +612,9 @@ def test_store_transcript(transcripts_location):
 
     # check the transcript json content
     with open(transcripts[0]) as f:
-        transcript = json.loads(f.read())
+        transcript = json.loads(
+            f.read(), object_hook=ReferencedDocument.json_decode_object_hook
+        )
     # we don't really care about the timestamp, so let's just set it to
     # a fixed value
     transcript["metadata"]["timestamp"] = "fake-timestamp"

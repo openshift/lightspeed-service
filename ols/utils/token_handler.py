@@ -122,7 +122,8 @@ class TokenHandler:
             Context Example:
                 {
                     "text": ["This is my doc1", "This is my doc2"],
-                    "doc_link": [doc_link1, doc_link2]
+                    "docs_url": ["https://doc_url1", "https://doc_url2"]
+                    "title": ["Title of doc 1", "Title of doc 2"]
                 }
         """
         context_dict = defaultdict(list)
@@ -152,6 +153,7 @@ class TokenHandler:
             context_dict["text"].append(self.tokens_to_text(tokens[:available_tokens]))
             # Add Metadata
             context_dict["docs_url"].append(node.metadata.get("docs_url", None))
+            context_dict["title"].append(node.metadata.get("title", None))
 
             max_tokens -= available_tokens
 

@@ -9,6 +9,7 @@ from ols.app.models.models import (
     HealthResponse,
     LLMRequest,
     LLMResponse,
+    ReferencedDocument,
     StatusResponse,
 )
 from ols.utils import suid
@@ -70,7 +71,11 @@ class TestLLM:
         """Test the LLMResponse model."""
         conversation_id = "id"
         response = "response"
-        referenced_documents = ["https://foo.bar.com/index.html"]
+        referenced_documents = [
+            ReferencedDocument(
+                docs_url="https://foo.bar.com/index.html", title="Foo Bar"
+            )
+        ]
 
         llm_response = LLMResponse(
             conversation_id=conversation_id,
