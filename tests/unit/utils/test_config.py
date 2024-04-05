@@ -789,10 +789,11 @@ def test_valid_config_file_with_postgres(patch):
                         "postgres": {
                             "host": "foobar.com",
                             "port": "1234",
-                            "dbname": "testdb",
+                            "dbname": "test",
                             "user": "user",
                             "password_path": "tests/config/postgres_password.txt",
                             "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
                         },
                     },
                     "logging_config": {

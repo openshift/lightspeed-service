@@ -2,6 +2,7 @@
 
 import json
 import os
+import pickle
 import re
 import shutil
 import sys
@@ -22,6 +23,12 @@ from tests.e2e.constants import (
     EVAL_THRESHOLD,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
+)
+
+from .postgres_utils import (
+    read_conversation_history,
+    read_conversation_history_count,
+    retrieve_connection,
 )
 
 # on_cluster is set to true when the tests are being run
@@ -73,6 +80,12 @@ def teardown_module(module):
     """Clean up the environment after all tests are executed."""
     # TODO: OLS-506 Move the program logic to gather cluster artifacts from utils.sh into e2e module
     pass
+
+
+@pytest.fixture(scope="module")
+def postgres_connection():
+    """Fixture with Postgres connection."""
+    return retrieve_connection()
 
 
 @pytest.fixture(scope="module")
@@ -1002,3 +1015,80 @@ def test_openapi_endpoint():
     paths = payload["paths"]
     for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
+
+
+def test_cache_existence(postgres_connection):
+    """Test the cache existence."""
+    if postgres_connection is None:
+        pytest.skip("Postgres is not accessible." "")
+        return
+
+    value = read_conversation_history_count(postgres_connection)
+    # check if history exists at all
+    assert value is not None
+
+
+def _perform_query(client, conversation_id, response_eval, qna_pair):
+    endpoint = "/v1/query"
+    eval_query, eval_answer = get_eval_question_answer(
+        response_eval, qna_pair, "without_rag"
+    )
+
+    response = client.post(
+        endpoint,
+        json={"conversation_id": conversation_id, "query": eval_query},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    check_content_type(response, "application/json")
+    print(vars(response))
+
+
+def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
+    """Check how/if the conversation is stored in cache."""
+    if postgres_connection is None:
+        pytest.skip("Postgres is not accessible." "")
+        return
+
+    cid = suid.get_suid()
+    _perform_query(client, cid, response_eval, "eval1")
+
+    conversation, updated_at = read_conversation_history(postgres_connection, cid)
+    assert conversation is not None
+
+    # unpickle conversation into list of messages
+    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
+    assert unpickled is not None
+
+    # we expect one question + one answer
+    assert len(unpickled) == 2
+
+    # question check
+    assert "what is kubernetes?" in unpickled[0].content
+
+    # trivial check for answer (exact check is done in different tests)
+    assert "Kubernetes" in unpickled[1].content
+
+    # second question
+    _perform_query(client, cid, response_eval, "eval2")
+
+    conversation, updated_at = read_conversation_history(postgres_connection, cid)
+    assert conversation is not None
+
+    # unpickle conversation into list of messages
+    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
+    assert unpickled is not None
+
+    # we expect one question + one answer
+    assert len(unpickled) == 4
+
+    # first question
+    assert "what is kubernetes?" in unpickled[0].content
+
+    # first answer
+    assert "Kubernetes" in unpickled[1].content
+
+    # second question
+    assert "what is openshift virtualization?" in unpickled[2].content
+
+    # second answer
+    assert "OpenShift" in unpickled[3].content

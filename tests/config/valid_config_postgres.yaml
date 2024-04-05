@@ -20,6 +20,7 @@ ols_config:
       user: "user"
       password_path: tests/config/postgres_password.txt
       ca_cert_path: tests/config/postgres_cert.crt
+      ssl_mode: "require"
   logging_config:
     logging_level: INFO
   default_provider: p1

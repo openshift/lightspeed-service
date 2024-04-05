@@ -67,6 +67,7 @@ dependencies = [
     "kubernetes>=29.0.0",
     "pytest-asyncio>=0.23.5",
     "spacy>=3.7.4",
+    "psycopg2-binary>=2.9.9",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"

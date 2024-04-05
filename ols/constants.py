@@ -102,6 +102,10 @@ POSTGRES_CACHE_DBNAME = "cache"
 POSTGRES_CACHE_USER = "postgres"
 POSTGRES_CACHE_MAX_ENTRIES = 1000
 
+# look at https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
+# for all possible options
+POSTGRES_CACHE_SSL_MODE = "prefer"
+
 
 # default indentity for local testing and deployment
 DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"

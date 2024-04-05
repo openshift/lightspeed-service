@@ -745,7 +745,7 @@ def test_postgres_config_correct_values():
             "port": 1234,
             "dbname": "my_database",
             "user": "admin",
-            "require_ssl": True,
+            "ssl_mode": "allow",
             "max_entries": 42,
         }
     )
@@ -755,7 +755,7 @@ def test_postgres_config_correct_values():
     assert postgres_config.port == 1234
     assert postgres_config.dbname == "my_database"
     assert postgres_config.user == "admin"
-    assert postgres_config.require_ssl
+    assert postgres_config.ssl_mode == "allow"
     assert postgres_config.max_entries == 42
 
 
@@ -770,7 +770,7 @@ def test_postgres_config_wrong_port():
                 "port": 9999999,
                 "dbname": "my_database",
                 "user": "admin",
-                "require_ssl": True,
+                "ssl_mode": "allow",
             }
         )
 
@@ -801,7 +801,7 @@ def test_postgres_config_with_password():
             "dbname": "my_database",
             "user": "admin",
             "password_path": "tests/config/postgres_password.txt",
-            "require_ssl": True,
+            "ssl_mode": "allow",
             "max_entries": 42,
         }
     )
@@ -1035,6 +1035,7 @@ def test_conversation_cache_config():
                 "port": 1234,
                 "dbname": "testdb",
                 "user": "user",
+                "ssl_mode": "allow",
             },
         }
     )
@@ -1043,6 +1044,7 @@ def test_conversation_cache_config():
     assert conversation_cache_config.postgres.port == 1234
     assert conversation_cache_config.postgres.dbname == "testdb"
     assert conversation_cache_config.postgres.user == "user"
+    assert conversation_cache_config.postgres.ssl_mode == "allow"
 
     conversation_cache_config = ConversationCacheConfig()
     assert conversation_cache_config.type is None
