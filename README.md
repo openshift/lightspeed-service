@@ -7,7 +7,8 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 * Python 3.11
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
-* An LLM api key, currently BAM (IBM's research environment) and OpenAI are supported as backends.
+* An LLM api key, currently BAM (IBM's research environment), OpenAI, Azure
+  OpenAI, and Watsonx are supported as backends.
 
 ## Installation
 
@@ -55,8 +56,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    API credentials are in turn loaded from files specified in the config YAML by the `credentials_path` attributes. If these paths are relative,
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
-   The example config file defines providers for both BAM and OpenAI, but defines BAM as the default provider.  If you prefer to use OpenAI, ensure that the provider definition
-   points to file containing a valid OpenAI api key, and change the `default_model` and `default_provider` values to reference the openai provider and model.
+   The example configuration file defines providers for four LLM providers: BAM, OpenAI, Azure OpenAI, and Watsonx, but defines BAM
+   as the default provider. If you prefer to use different LLM provider than BAM, such as OpenAI, ensure that the provider definition
+   points to file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to
+   reference the selected provider and model.
 
 6. Configure OLS Authentication
 
