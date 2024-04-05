@@ -426,6 +426,15 @@ def test_model_provider():
     }
 
 
+def test_one_default_model_provider():
+    """Check if one model and provider is selected as default."""
+    states = metrics_utils.get_enable_status_for_all_models(metrics_client)
+    enabled_states = [state for state in states if state is True]
+    assert (
+        len(enabled_states) == 1
+    ), "one model and provider should be selected as default"
+
+
 @pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
