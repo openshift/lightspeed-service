@@ -59,6 +59,17 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
+def get_all_metric_counters(response, metric_name) -> list[float]:
+    """Get all counters associated with one metric with any labels."""
+    # make sure there won't be any whitespace characters at beginning or end
+    lines = [
+        line.strip() for line in response.split("\n") if line.startswith(metric_name)
+    ]
+
+    # find the number in string and convert accordingly
+    return [float(line[1 + line.rindex(" ") :]) for line in lines]
+
+
 def get_metric_labels(lines, info_node_name, value=None) -> Optional[dict]:
     """Get labels associated with a metric string as printed from /metrics."""
     prefix = info_node_name
@@ -91,6 +102,13 @@ def get_enabled_model_and_provider(client):
     labels = get_metric_labels(lines, "provider_model_configuration", "1.0")
 
     return labels["model"], labels["provider"]
+
+
+def get_enable_status_for_all_models(client):
+    """Read states about all model and providers."""
+    response = read_metrics(client)
+    counters = get_all_metric_counters(response, "provider_model_configuration")
+    return [counter == 1.0 for counter in counters]
 
 
 def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
