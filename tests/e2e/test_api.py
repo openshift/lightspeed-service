@@ -236,7 +236,7 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         )
 
 
-@pytest.mark.rag
+@pytest.mark.rag()
 def test_valid_question(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
@@ -357,7 +357,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         assert response.status_code == requests.codes.unprocessable_entity
 
 
-@pytest.mark.rag
+@pytest.mark.rag()
 def test_rag_question(response_eval) -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
@@ -486,7 +486,7 @@ def test_one_default_model_provider():
     ), "one model and provider should be selected as default"
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster()
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
     response = client.post(
@@ -498,7 +498,7 @@ def test_improper_token():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster()
 def test_forbidden_user():
     """Test scenarios where we expect an unauthorized response.
 
@@ -567,7 +567,7 @@ def test_feedback() -> None:
     assert len(removed_feedback.json()["feedbacks"]) == 0
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster()
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
     response = client.post(
