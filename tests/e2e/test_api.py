@@ -2,7 +2,9 @@
 
 import json
 import os
+import shutil
 import sys
+from pathlib import Path
 
 import pytest
 import requests
@@ -523,3 +525,78 @@ def test_feedback_can_post_with_wrong_token():
         headers={"Authorization": "Bearer wrong-token"},
     )
     assert response.status_code == requests.codes.forbidden
+
+
+@pytest.mark.standalone
+def test_transcripts_storing__standalone():
+    """Test if the transcripts are stored properly."""
+    # the standalone testing exposes the value via env
+    transcript_dir = Path(os.environ["TRANSCRIPTS_STORAGE_LOCATION"])
+
+    # as this test is ran multiple times in test suite, we need to
+    # ensure the storage is empty
+    if transcript_dir.exists():
+        shutil.rmtree(transcript_dir)
+
+    query = "what is kubernetes?"
+
+    response = client.post(
+        "/v1/query",
+        json={"query": query},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+
+    assert response.status_code == requests.codes.ok
+
+    assert transcript_dir.exists()
+
+    transcripts = list(transcript_dir.glob("*/*/*.json"))
+    assert len(transcripts) == 1
+
+    transcript = transcripts[0]
+    with open(transcript) as f:
+        transcript_data = json.load(f)
+
+    # we just test metadata exists as we don't know uuid for user and conversation
+    assert transcript_data["metadata"]
+    assert transcript_data["redacted_query"] == query
+    assert transcript_data["query_is_valid"] is True
+    assert transcript_data["llm_response"]  # we don't care about the content
+    assert transcript_data["referenced_documents"] == []
+    assert transcript_data["truncated"] is False
+
+
+@pytest.mark.cluster
+def test_transcripts_storing__cluster():
+    """Test if the transcripts are stored properly."""
+    transcripts_path = "/app-root/ols-user-data/transcripts"
+    pod_name = cluster_utils.get_single_existing_pod_name()
+
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    transcripts = cluster_utils.list_path(pod_name, transcripts_path)
+    if transcripts:
+        cluster_utils.remove_dir(pod_name, transcripts_path)
+        assert cluster_utils.list_path(pod_name, transcripts_path) == []
+
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
+
+    transcript = cluster_utils.get_single_existing_transcript(
+        pod_name, transcripts_path
+    )
+
+    assert transcript["metadata"]  # just check if it is not empty
+    assert transcript["redacted_query"] == "what is kubernetes?"
+    # we don't want llm response influence this test
+    assert "query_is_valid" in transcript
+    assert "llm_response" in transcript
+    assert "referenced_documents" in transcript
+    assert "truncated" in transcript

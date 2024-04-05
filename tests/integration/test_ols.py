@@ -8,7 +8,12 @@ from fastapi.testclient import TestClient
 from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
-from ols.app.models.config import ProviderConfig, QueryFilter, ReferenceContent
+from ols.app.models.config import (
+    ProviderConfig,
+    QueryFilter,
+    ReferenceContent,
+    UserDataCollection,
+)
 from ols.utils import config, suid
 from tests.mock_classes.llm_chain import mock_llm_chain
 from tests.mock_classes.llm_loader import mock_llm_loader
@@ -219,6 +224,9 @@ def test_post_question_on_noyaml_response_type(setup) -> None:
     config.ols_config.reference_content.product_docs_index_id = "product"
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
+    config.ols_config.user_data_collection = UserDataCollection(
+        transcripts_disabled=True
+    )
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -289,6 +297,9 @@ def test_post_query_with_query_filters_response_type(setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
+    config.ols_config.user_data_collection = UserDataCollection(
+        transcripts_disabled=True
+    )
 
     query_filters = [
         QueryFilter(
@@ -338,6 +349,9 @@ def test_post_query_for_conversation_history(setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
+    config.ols_config.user_data_collection = UserDataCollection(
+        transcripts_disabled=True
+    )
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):

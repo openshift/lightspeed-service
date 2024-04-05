@@ -1,8 +1,12 @@
 """Handlers for all OLS-related REST API endpoints."""
 
+import json
 import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
+import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -74,6 +78,20 @@ def conversation_request(
         )
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
+
+    if config.ols_config.user_data_collection.transcripts_disabled:
+        logger.debug("transcripts collections is disabled in configuration")
+    else:
+        store_transcript(
+            user_id,
+            conversation_id,
+            valid,
+            llm_request,
+            response,
+            referenced_documents,
+            truncated,
+        )
+
     return LLMResponse(
         conversation_id=conversation_id,
         response=response,
@@ -286,3 +304,56 @@ def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str
 
     logger.info(f"{conversation_id} Model returned: {response}")
     return response["text"]
+
+
+def store_transcript(
+    user_id: str,
+    conversation_id: str,
+    query_is_valid: bool,
+    llm_request: LLMRequest,
+    response: str,
+    referenced_documents: list[str],
+    truncated: bool,
+) -> None:
+    """Store transcript in the local filesystem.
+
+    Args:
+        user_id: The user ID (UUID).
+        conversation_id: The conversation ID (UUID).
+        query_is_valid: The result of the query validation.
+        llm_request: The request containing a query.
+        response: The response to store.
+        referenced_documents: The list of referenced documents.
+        truncated: The flag indicating if the history was truncated.
+    """
+    # ensures storage path exists
+    transcripts_path = Path(
+        config.ols_config.user_data_collection.transcripts_storage,
+        user_id,
+        conversation_id,
+    )
+    if not transcripts_path.exists():
+        logger.debug(f"creating transcript storage directory '{transcripts_path}'")
+        transcripts_path.mkdir(parents=True)
+
+    data_to_store = {
+        "metadata": {
+            "provider": llm_request.provider or config.ols_config.default_provider,
+            "model": llm_request.model or config.ols_config.default_model,
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "timestamp": datetime.now(pytz.UTC).isoformat(),
+        },
+        "redacted_query": llm_request.query,
+        "query_is_valid": query_is_valid,
+        "llm_response": response,
+        "referenced_documents": referenced_documents,
+        "truncated": truncated,
+    }
+
+    # stores feedback in a file under unique uuid
+    transcript_file_path = transcripts_path / f"{suid.get_suid()}.json"
+    with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
+        json.dump(data_to_store, transcript_file)
+
+    logger.debug(f"transcript stored in '{transcript_file_path}'")
