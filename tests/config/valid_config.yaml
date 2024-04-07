@@ -38,6 +38,8 @@ ols_config:
   summarizer_model: m1
   validator_provider: p1
   validator_model: m1
+  user_data_collection:
+    transcripts_disabled: true
 dev_config:
   disable_auth: true
   disable_tls: true
