@@ -15,7 +15,13 @@ from langchain_core.messages.base import BaseMessage
 from ols import constants
 from ols.app import metrics
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import ErrorResponse, LLMRequest, LLMResponse
+from ols.app.models.models import (
+    ErrorResponse,
+    ForbiddenResponse,
+    LLMRequest,
+    LLMResponse,
+    UnauthorizedResponse,
+)
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -34,6 +40,14 @@ query_responses = {
     200: {
         "description": "Query is valid and correct response from LLM is returned",
         "model": LLMResponse,
+    },
+    401: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "Client does not have permission to access resource",
+        "model": ForbiddenResponse,
     },
     500: {
         "description": "Query can not be validated, LLM is not accessible or other internal error",
