@@ -584,7 +584,7 @@ def test_feedback_can_post_with_wrong_token():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.standalone
+@pytest.mark.standalone()
 def test_transcripts_storing__standalone():
     """Test if the transcripts are stored properly."""
     # the standalone testing exposes the value via env
@@ -623,7 +623,7 @@ def test_transcripts_storing__standalone():
     assert transcript_data["truncated"] is False
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster()
 def test_transcripts_storing__cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = "/app-root/ols-user-data/transcripts"

@@ -32,7 +32,7 @@ def test_singleton_pattern(setup):
     assert k1 is k2
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api, setup):
@@ -57,7 +57,7 @@ async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api, setup
     assert username == "valid-user"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api, setup):
