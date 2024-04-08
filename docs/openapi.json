@@ -35,6 +35,26 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Query can not be validated, LLM is not accessible or other internal error",
                         "content": {
@@ -508,6 +528,25 @@
                     }
                 ]
             },
+            "ForbiddenResponse": {
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "ForbiddenResponse",
+                "description": "Model representing response when client does not have permission to access resource.",
+                "examples": [
+                    {
+                        "detail": "Unable to review token"
+                    }
+                ]
+            },
             "HTTPValidationError": {
                 "properties": {
                     "detail": {
@@ -665,6 +704,25 @@
                         "status": {
                             "enabled": true
                         }
+                    }
+                ]
+            },
+            "UnauthorizedResponse": {
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "UnauthorizedResponse",
+                "description": "Model representing response for missing or invalid credentials.",
+                "examples": [
+                    {
+                        "detail": "Unauthorized: No auth header found"
                     }
                 ]
             },

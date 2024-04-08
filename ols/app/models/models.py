@@ -85,6 +85,40 @@ class LLMResponse(BaseModel):
     }
 
 
+class UnauthorizedResponse(BaseModel):
+    """Model representing response for missing or invalid credentials."""
+
+    detail: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "detail": "Unauthorized: No auth header found",
+                },
+            ]
+        }
+    }
+
+
+class ForbiddenResponse(BaseModel):
+    """Model representing response when client does not have permission to access resource."""
+
+    detail: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "detail": "Unable to review token",
+                },
+            ]
+        }
+    }
+
+
 class ErrorResponse(BaseModel):
     """Model representing error response for query endpoint."""
 
