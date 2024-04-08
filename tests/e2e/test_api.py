@@ -127,6 +127,7 @@ def test_raw_prompt():
 
         assert r.status_code == requests.codes.ok
         assert response["conversation_id"] == cid
+        assert response["referenced_documents"] == []
         assert "hello" in response["response"].lower()
 
 
@@ -150,6 +151,29 @@ def test_invalid_question():
             "truncated": False,
         }
         assert response.json() == expected_json
+
+
+def test_invalid_question_without_conversation_id():
+    """Check the REST API /v1/query with invalid question and without conversation ID."""
+    endpoint = "/v1/query"
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        response = client.post(
+            endpoint,
+            json={"query": "test query"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        print(vars(response))
+        assert response.status_code == requests.codes.ok
+
+        json_response = response.json()
+        assert json_response["response"] == INVALID_QUERY_RESP
+        assert json_response["referenced_documents"] == []
+        assert json_response["truncated"] is False
+
+        # new conversation ID should be generated
+        assert suid.check_suid(json_response["conversation_id"]), (
+            "Conversation ID is not in UUID format" ""
+        )
 
 
 def test_query_call_without_payload():
@@ -436,6 +460,126 @@ def test_conversation_history() -> None:
         assert response.status_code == requests.codes.ok
         json_response = response.json()
         assert "ingress" in json_response["response"].lower()
+
+
+def test_query_with_provider_but_not_model(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for provider specified, but no model."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        # just the provider is explicitly specified, but model selection is missing
+        response = client.post(
+            endpoint,
+            json={"conversation_id": "", "query": eval_query, "provider": "bam"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
+        json_response = response.json()
+
+        # error thrown on Pydantic level
+        assert (
+            json_response["detail"][0]["msg"]
+            == "Value error, LLM model must be specified when the provider is specified."
+        )
+
+
+def test_query_with_model_but_not_provider(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for model specified, but no provider."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        # just model is explicitly specified, but provider selection is missing
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": eval_query,
+                "model": "ibm/granite-13b-chat-v2",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
+        json_response = response.json()
+
+        assert (
+            json_response["detail"][0]["msg"]
+            == "Value error, LLM provider must be specified when the model is specified."
+        )
+
+
+def test_query_with_unknown_provider(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for unknown provider specified."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
+
+    # retrieve currently selected model
+    model, _ = metrics_utils.get_enabled_model_and_provider(metrics_client)
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        # provider is unknown
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": eval_query,
+                "provider": "foo",
+                "model": model,
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
+        json_response = response.json()
+
+        # explicit response and cause check
+        assert (
+            "detail" in json_response
+        ), "Improper response format: 'detail' node is missing"
+        assert "Unable to process this request" in json_response["detail"]["response"]
+        assert (
+            "Provider 'foo' is not a valid provider."
+            in json_response["detail"]["cause"]
+        )
+
+
+def test_query_with_unknown_model(response_eval) -> None:
+    """Check the REST API /v1/query with POST HTTP method for unknown model specified."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
+
+    # retrieve currently selected provider
+    _, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        # model is unknown
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": eval_query,
+                "provider": provider,
+                "model": "bar",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.unprocessable_entity
+        json_response = response.json()
+
+        # explicit response and cause check
+        assert (
+            "detail" in json_response
+        ), "Improper response format: 'detail' node is missing"
+        assert "Unable to process this request" in json_response["detail"]["response"]
+        assert "Model 'bar' is not a valid model " in json_response["detail"]["cause"]
 
 
 def test_metrics() -> None:
