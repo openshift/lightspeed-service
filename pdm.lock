@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:7598800bb580c06975d02ebe1675394e541953ff500af970a69f3ba80b4e0114"
+content_hash = "sha256:e303d527b49aa941b25096b5b6326bd3c56b53a846d88bbc1ed16fa8c4adf399"
 
 [[package]]
 name = "aiofiles"
@@ -450,18 +450,18 @@ files = [
 
 [[package]]
 name = "fastapi"
-version = "0.110.0"
+version = "0.110.1"
 requires_python = ">=3.8"
 summary = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 groups = ["default"]
 dependencies = [
     "pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4",
-    "starlette<0.37.0,>=0.36.3",
+    "starlette<0.38.0,>=0.37.2",
     "typing-extensions>=4.8.0",
 ]
 files = [
-    {file = "fastapi-0.110.0-py3-none-any.whl", hash = "sha256:87a1f6fb632a218222c5984be540055346a8f5d8a68e8f6fb647b1dc9934de4b"},
-    {file = "fastapi-0.110.0.tar.gz", hash = "sha256:266775f0dcc95af9d3ef39bad55cff525329a931d5fd51930aadd4f428bf7ff3"},
+    {file = "fastapi-0.110.1-py3-none-any.whl", hash = "sha256:5df913203c482f820d31f48e635e022f8cbfe7350e4830ef05a3163925b1addc"},
+    {file = "fastapi-0.110.1.tar.gz", hash = "sha256:6feac43ec359dfe4f45b2c18ec8c94edb8dc2dfc461d417d9e626590c071baad"},
 ]
 
 [[package]]
@@ -558,7 +558,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.24.0"
+version = "4.25.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -567,7 +567,7 @@ dependencies = [
     "altair<6.0,>=4.2.0",
     "fastapi",
     "ffmpy",
-    "gradio-client==0.14.0",
+    "gradio-client==0.15.0",
     "httpx>=0.24.1",
     "huggingface-hub>=0.19.3",
     "importlib-resources<7.0,>=1.3",
@@ -591,13 +591,13 @@ dependencies = [
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.24.0-py3-none-any.whl", hash = "sha256:63c95c515b66e7df5a2a94f287269a9bca3c3b6e52cbafd140bb13dd7a841827"},
-    {file = "gradio-4.24.0.tar.gz", hash = "sha256:1c14360e39f66aafea78d176e73b4efd60ee4e5fbbb0054ae325724343ca0856"},
+    {file = "gradio-4.25.0-py3-none-any.whl", hash = "sha256:3e953bf14ada8ed31a839e349b094a2f3894d80272848d604f14dea857d08272"},
+    {file = "gradio-4.25.0.tar.gz", hash = "sha256:1b87cc817ebedcac6b2542d550e0c9f63472f9dafc85a21617c97b784c5646c2"},
 ]
 
 [[package]]
 name = "gradio-client"
-version = "0.14.0"
+version = "0.15.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -610,8 +610,8 @@ dependencies = [
     "websockets<12.0,>=10.0",
 ]
 files = [
-    {file = "gradio_client-0.14.0-py3-none-any.whl", hash = "sha256:fdce4ecabc1d06d40bffd18923c9710b021d012edba8a1f851bc109eb9ee443e"},
-    {file = "gradio_client-0.14.0.tar.gz", hash = "sha256:18be8d5fb6468729f19547b39d89b66ec9e775d0c5ce9666cc940f11ab1a519c"},
+    {file = "gradio_client-0.15.0-py3-none-any.whl", hash = "sha256:3cf5f5fdf9225256856e03574148a0b7bd32d82da4b7c890d006db92f8bb3ebb"},
+    {file = "gradio_client-0.15.0.tar.gz", hash = "sha256:eb9533f6457cc158128dbf307c44a8123e41da18a040cb3dfa66860ba9029911"},
 ]
 
 [[package]]
@@ -714,7 +714,6 @@ version = "2.13.3"
 requires_python = ">= 3.6"
 summary = "IBM SDK for Python"
 groups = ["default"]
-marker = "python_version >= \"3.10\""
 dependencies = [
     "ibm-cos-sdk-core==2.13.3",
     "ibm-cos-sdk-s3transfer==2.13.3",
@@ -730,7 +729,6 @@ version = "2.13.3"
 requires_python = ">= 3.6"
 summary = "Low-level, data-driven core of IBM SDK for Python"
 groups = ["default"]
-marker = "python_version >= \"3.10\""
 dependencies = [
     "jmespath<=1.0.1,>=0.10.0",
     "python-dateutil<3.0.0,>=2.8.2",
@@ -747,7 +745,6 @@ version = "2.13.3"
 requires_python = ">= 3.6"
 summary = "IBM S3 Transfer Manager"
 groups = ["default"]
-marker = "python_version >= \"3.10\""
 dependencies = [
     "ibm-cos-sdk-core==2.13.3",
 ]
@@ -775,24 +772,24 @@ files = [
 
 [[package]]
 name = "ibm-watson-machine-learning"
-version = "1.0.353"
+version = "1.0.354"
 requires_python = ">=3.10"
 summary = "IBM Watson Machine Learning API Client"
 groups = ["default"]
 dependencies = [
     "certifi",
-    "ibm-cos-sdk<2.14.0,>=2.12.0; python_version >= \"3.10\"",
+    "ibm-cos-sdk<2.14.0,>=2.12.0",
     "importlib-metadata",
     "lomond",
     "packaging",
-    "pandas<1.6.0,>=0.24.2",
+    "pandas<2.2.0,>=0.24.2",
     "requests",
     "tabulate",
     "urllib3",
 ]
 files = [
-    {file = "ibm_watson_machine_learning-1.0.353-py3-none-any.whl", hash = "sha256:521387c3b065f66d5bf1137d0d616fb31c73d55c85b5768bbbd772191476ab97"},
-    {file = "ibm_watson_machine_learning-1.0.353.tar.gz", hash = "sha256:f92278d6f30ea5620a222b56e9dc625814479fd1ed76f4c644e5847552f05107"},
+    {file = "ibm_watson_machine_learning-1.0.354-py3-none-any.whl", hash = "sha256:004638cef991be501cc6af696eb9cb7f5275dd4363d2b2a4cd381c2db17f9faa"},
+    {file = "ibm_watson_machine_learning-1.0.354.tar.gz", hash = "sha256:4853e18efc0c70ce6ba86e178c32352bdcdd028a247e3b037c5a65c8803b3bab"},
 ]
 
 [[package]]
@@ -876,7 +873,6 @@ version = "1.0.1"
 requires_python = ">=3.7"
 summary = "JSON Matching Expressions"
 groups = ["default"]
-marker = "python_version >= \"3.10\""
 files = [
     {file = "jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980"},
     {file = "jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe"},
@@ -1440,7 +1436,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.14.3"
+version = "1.16.2"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1454,8 +1450,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "openai-1.14.3-py3-none-any.whl", hash = "sha256:7a465994a7ccf677a110c6cc2ef9d86229bad42c060b585b67049aa749f3b774"},
-    {file = "openai-1.14.3.tar.gz", hash = "sha256:37b514e9c0ff45383ec9b242abd0f7859b1080d4b54b61393ed341ecad1b8eb9"},
+    {file = "openai-1.16.2-py3-none-any.whl", hash = "sha256:46a435380921e42dae218d04d6dd0e89a30d7f3b9d8a778d5887f78003cf9354"},
+    {file = "openai-1.16.2.tar.gz", hash = "sha256:c93d5efe5b73b6cb72c4cd31823852d2e7c84a138c0af3cbe4a8eb32b1164ab2"},
 ]
 
 [[package]]
@@ -2329,7 +2325,7 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.36.3"
+version = "0.37.2"
 requires_python = ">=3.8"
 summary = "The little ASGI library that shines."
 groups = ["default"]
@@ -2337,8 +2333,8 @@ dependencies = [
     "anyio<5,>=3.4.0",
 ]
 files = [
-    {file = "starlette-0.36.3-py3-none-any.whl", hash = "sha256:13d429aa93a61dc40bf503e8c801db1f1bca3dc706b10ef2434a36123568f044"},
-    {file = "starlette-0.36.3.tar.gz", hash = "sha256:90a671733cfb35771d8cc605e0b679d23b992f8dcfad48cc60b38cb29aeb7080"},
+    {file = "starlette-0.37.2-py3-none-any.whl", hash = "sha256:6fe59f29268538e5d0d182f2791a479a0c64638e6935d1c6989e63fb2699c6ee"},
+    {file = "starlette-0.37.2.tar.gz", hash = "sha256:9af890290133b79fc3db55474ade20f6220a364a0402e0b556e7cd5e1e093823"},
 ]
 
 [[package]]
