@@ -24,7 +24,7 @@ class CacheFactory:
             case constants.IN_MEMORY_CACHE:
                 return InMemoryCache(config.memory)
             case constants.POSTGRES_CACHE:
-                # TODO in other PR: https://github.com/openshift/lightspeed-service/pull/634
+                # TODO OLS-440: OLS support Postgres as storage for conversation cache
                 return PostgresCache(config.postgres)
             case _:
                 raise ValueError(
