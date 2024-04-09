@@ -12,7 +12,7 @@ from ols.utils.suid import check_suid
 
 
 @pytest.fixture(scope="module")
-def setup():
+def _setup():
     """Setups the test client."""
     global client
     config.init_config("tests/config/valid_config.yaml")
@@ -23,20 +23,22 @@ def setup():
 
 
 @pytest.fixture
-def with_disabled_feedback(tmpdir):
+def _with_disabled_feedback(tmpdir):
     """Fixture disables feedback."""
     config.ols_config.user_data_collection = UserDataCollection(feedback_disabled=True)
 
 
 @pytest.fixture
-def with_enabled_feedback(tmpdir):
+def _with_enabled_feedback(tmpdir):
     """Fixture enables feedback and configures its location."""
     config.ols_config.user_data_collection = UserDataCollection(
         feedback_disabled=False, feedback_storage=tmpdir.strpath
     )
 
 
-def test_feedback_endpoints_disabled_when_set_in_config(setup, with_disabled_feedback):
+def test_feedback_endpoints_disabled_when_set_in_config(
+    _setup, _with_disabled_feedback
+):
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
     response = client.get("/v1/feedback/status")
@@ -52,14 +54,14 @@ def test_feedback_endpoints_disabled_when_set_in_config(setup, with_disabled_fee
     assert response.status_code == requests.codes.forbidden
 
 
-def test_feedback_status(with_enabled_feedback):
+def test_feedback_status(_with_enabled_feedback):
     """Check if feedback status is returned."""
     response = client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"functionality": "feedback", "status": {"enabled": True}}
 
 
-def test_feedback(with_enabled_feedback):
+def test_feedback(_with_enabled_feedback):
     """Check if feedback with correct format is accepted by the service."""
     # use proper conversation ID
     conversation_id = suid.get_suid()
@@ -77,7 +79,7 @@ def test_feedback(with_enabled_feedback):
     assert response.json() == {"response": "feedback received"}
 
 
-def test_feedback_wrong_request(with_enabled_feedback):
+def test_feedback_wrong_request(_with_enabled_feedback):
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
     response = client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
@@ -86,7 +88,7 @@ def test_feedback_wrong_request(with_enabled_feedback):
 
 
 def test_feedback_mandatory_fields_not_provided_filled_in_request(
-    with_enabled_feedback,
+    _with_enabled_feedback,
 ):
     """Check if feedback without mandatory fields is not accepted by the service."""
     # use proper conversation ID
@@ -105,7 +107,7 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request(
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_no_payload_send(with_enabled_feedback):
+def test_feedback_no_payload_send(_with_enabled_feedback):
     """Check if feedback without feedback payload."""
     response = client.post("/v1/feedback")
     # for the request send w/o payload, the server
@@ -113,7 +115,7 @@ def test_feedback_no_payload_send(with_enabled_feedback):
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_list(with_enabled_feedback):
+def test_feedback_list(_with_enabled_feedback):
     """Check if feedback list is returned."""
     # store some feedback first
     conversation_id = suid.get_suid()
@@ -135,7 +137,7 @@ def test_feedback_list(with_enabled_feedback):
     assert check_suid(response.json()["feedbacks"][0])
 
 
-def test_feedback_remove(with_enabled_feedback):
+def test_feedback_remove(_with_enabled_feedback):
     """Check if feedback is removed."""
     # store some feedback first
     conversation_id = suid.get_suid()

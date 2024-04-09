@@ -20,7 +20,7 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 
 
 @pytest.fixture(scope="module")
-def setup():
+def _setup():
     """Setups the test client."""
     config.init_config("tests/config/valid_config.yaml")
     global client
@@ -30,7 +30,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_post_question_on_unexpected_payload(setup):
+def test_post_question_on_unexpected_payload(_setup):
     """Check the REST API /v1/query with POST HTTP method when unexpected payload is posted."""
     response = client.post("/v1/query", json="this is really not proper payload")
     assert response.status_code == requests.codes.unprocessable
@@ -47,7 +47,7 @@ def test_post_question_on_unexpected_payload(setup):
     }
 
 
-def test_post_question_without_payload(setup):
+def test_post_question_without_payload(_setup):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
     response = client.post("/v1/query")
@@ -61,7 +61,7 @@ def test_post_question_without_payload(setup):
     assert "Field required" in detail["msg"]
 
 
-def test_post_question_on_invalid_question(setup):
+def test_post_question_on_invalid_question(_setup):
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
     with patch(
@@ -83,7 +83,7 @@ def test_post_question_on_invalid_question(setup):
         assert response.json() == expected_json
 
 
-def test_post_question_on_generic_response_type_summarize_error(setup):
+def test_post_question_on_generic_response_type_summarize_error(_setup):
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
     answer = constants.SUBJECT_ALLOWED
@@ -113,7 +113,7 @@ def test_post_question_on_generic_response_type_summarize_error(setup):
         assert response.json() == expected_json
 
 
-def test_post_question_that_is_not_validated(setup):
+def test_post_question_that_is_not_validated(_setup):
     """Check the REST API /v1/query with POST HTTP method for question that is not validated."""
     # let's pretend the question can not be validated
     with patch(
@@ -137,7 +137,7 @@ def test_post_question_that_is_not_validated(setup):
         assert response.json() == expected_details
 
 
-def test_post_question_with_provider_but_not_model(setup):
+def test_post_question_with_provider_but_not_model(_setup):
     """Check how missing model is detected in request."""
     conversation_id = suid.get_suid()
     response = client.post(
@@ -157,7 +157,7 @@ def test_post_question_with_provider_but_not_model(setup):
     )
 
 
-def test_post_question_with_model_but_not_provider(setup):
+def test_post_question_with_model_but_not_provider(_setup):
     """Check how missing provider is detected in request."""
     conversation_id = suid.get_suid()
     response = client.post(
@@ -177,7 +177,7 @@ def test_post_question_with_model_but_not_provider(setup):
     )
 
 
-def test_unknown_provider_in_post(setup):
+def test_unknown_provider_in_post(_setup):
     """Check the REST API /v1/query with POST method when unknown provider is requested."""
     # empty config - no providers
     with patch("ols.utils.config.llm_config.providers", new={}):
@@ -202,7 +202,7 @@ def test_unknown_provider_in_post(setup):
         assert response.json() == expected_json
 
 
-def test_unsupported_model_in_post(setup):
+def test_unsupported_model_in_post(_setup):
     """Check the REST API /v1/query with POST method when unsupported model is requested."""
     test_provider = "test-provider"
     provider_config = ProviderConfig()
@@ -232,7 +232,7 @@ def test_unsupported_model_in_post(setup):
         assert response.json() == expected_json
 
 
-def test_post_question_on_noyaml_response_type(setup) -> None:
+def test_post_question_on_noyaml_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method when call is success."""
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
@@ -280,7 +280,7 @@ def test_post_question_on_noyaml_response_type(setup) -> None:
     constants.QueryValidationMethod.KEYWORD,
 )
 @patch("ols.app.endpoints.ols.QuestionValidator.validate_question")
-def test_post_question_with_keyword(mock_llm_validation, setup) -> None:
+def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
     """Check the REST API /v1/query with keyword validation."""
     query = "What is Openshift ?"
 
@@ -308,7 +308,7 @@ def test_post_question_with_keyword(mock_llm_validation, setup) -> None:
         assert mock_llm_validation.call_count == 0
 
 
-def test_post_query_with_query_filters_response_type(setup) -> None:
+def test_post_query_with_query_filters_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
@@ -360,7 +360,7 @@ def test_post_query_with_query_filters_response_type(setup) -> None:
             )
 
 
-def test_post_query_for_conversation_history(setup) -> None:
+def test_post_query_for_conversation_history(_setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
