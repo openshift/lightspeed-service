@@ -31,7 +31,8 @@ from .prompts import (
 
 PromptConfiguration = namedtuple("PromptConfiguration", "provider model")
 
-# TODO: this might be expanded in the future.
+# This dictionary might be expanded in the future, if some combination of model+provider
+# requires specifically updated prompt.
 prompt_configurations = {
     PromptConfiguration(PROVIDER_BAM, GRANITE_13B_CHAT_V2): QUERY_SYSTEM_PROMPT,
     PromptConfiguration(PROVIDER_OPENAI, GPT35_TURBO): QUERY_SYSTEM_PROMPT,
@@ -100,11 +101,19 @@ def generate_prompt(
     if history_exists:
         llm_input_values["chat_history"] = history
 
-    # TODO: this is place to insert logic there for specific cases, for example:
+    # this is place to insert program logic there for specific cases, for example:
     #
     # ```python
     # if model == PROVIDER_BAM and len(rag_context) > model_options.max_rag_context:
     #    prompt.expand(whatever is needed)
+    #    llm_input_values["foo"] = "bar"
+    #    del llm_input_values["xyzzy"]
+    #    ...
+    #    ...
+    #    ...
     # ```
+    #
+    # any condition can be used and any modification of `prompt` and
+    # `llm_input_values` can be made
 
     return prompt, llm_input_values
