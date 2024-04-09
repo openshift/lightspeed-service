@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ols.constants import NO_RAG_CONTENT_RESP
 
 
-# TODO: Add more question/answer pair
+# TODO: OLS-491 Generate QnA for each model/scenario for evaluation
 def _args_parser(args):
     """Arguments parser."""
     parser = argparse.ArgumentParser(description="Response validation module.")
@@ -75,7 +75,7 @@ class ResponseValidation:
         len_score = (abs(len_res - len_ans) / (len_res + len_ans)) * 0.1
 
         score = len_score + (cos_score + euc_score) / 2
-        # TODO: Consider both contextual/non-contextual embedding.
+        # TODO: OLS-409 Use non-contextual score to evaluate response
 
         print(
             f"cos_score: {cos_score}, "
