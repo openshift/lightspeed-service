@@ -14,7 +14,7 @@ from ols.utils import config
 # config file before we import anything from main.py
 @pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
-def setup():
+def _setup():
     """Setups the test client."""
     global client
     from ols.app.main import app
@@ -23,28 +23,28 @@ def setup():
     client = TestClient(app)
 
 
-def test_liveness(setup):
+def test_liveness(_setup):
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": {"status": "healthy"}}
 
 
-def test_readiness(setup):
+def test_readiness(_setup):
     """Test handler for /readiness REST API endpoint."""
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"status": {"status": "healthy"}}
 
 
-def test_liveness_head_http_method(setup) -> None:
+def test_liveness_head_http_method(_setup) -> None:
     """Test handler for /liveness REST API endpoint when HEAD HTTP method is used."""
     response = client.head("/liveness")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
 
 
-def test_readiness_head_http_method(setup) -> None:
+def test_readiness_head_http_method(_setup) -> None:
     """Test handler for /readiness REST API endpoint when HEAD HTTP method is used."""
     response = client.head("/readiness")
     assert response.status_code == requests.codes.ok

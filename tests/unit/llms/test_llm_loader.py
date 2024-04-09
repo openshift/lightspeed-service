@@ -18,7 +18,7 @@ from ols.utils import config
 
 
 @pytest.fixture
-def registered_fake_provider():
+def _registered_fake_provider():
     """Register fake provider."""
 
     @register_llm_provider_as("fake-provider")
@@ -74,7 +74,7 @@ def test_unsupported_provider_error():
 
 
 @patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"])
-def test_load_llm(registered_fake_provider):
+def test_load_llm(_registered_fake_provider):
     """Test load_llm function."""
     providers = LLMProviders(
         [

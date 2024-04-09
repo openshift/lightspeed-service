@@ -15,7 +15,7 @@ from ols.utils import config
 # config file before we import anything from main.py
 @pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
-def setup():
+def _setup():
     """Setups the test client."""
     global client
     from ols.app.main import app
@@ -24,7 +24,7 @@ def setup():
     client = TestClient(app)
 
 
-def test_openapi_endpoint(setup):
+def test_openapi_endpoint(_setup):
     """Check if REST API provides endpoint with OpenAPI specification."""
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
@@ -50,14 +50,14 @@ def test_openapi_endpoint(setup):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
 
-def test_openapi_endpoint_head_method(setup):
+def test_openapi_endpoint_head_method(_setup):
     """Check if REST API allows HEAD HTTP method for endpoint with OpenAPI specification."""
     response = client.head("/openapi.json")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
 
 
-def test_openapi_content(setup):
+def test_openapi_content(_setup):
     """Check if the pre-generated OpenAPI schema is up-to date."""
     # retrieve pre-generated OpenAPI schema
     with open("docs/openapi.json") as fin:
