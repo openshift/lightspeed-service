@@ -80,10 +80,7 @@ class TokenHandler:
         Returns:
             available_tokens: int, tokens that can be used for augmentation.
         """
-        # TODO: Now we have option to set context window & response limit set
-        # from the config. With this we need to change default max token parameter
-        # for the model dynamically. Also a check for
-        # (response limit + prompt + any additional user context) < context window
+        # TODO: OLS-490 Sync Max response token for token handler with model parameter
         context_window_size = model_config.context_window_size
         response_token_limit = model_config.response_token_limit
         logger.debug(
@@ -91,6 +88,7 @@ class TokenHandler:
             f"Response token limit: {response_token_limit}"
         )
 
+        # TODO: OLS-469 Handle user query exceeds llm context window size
         prompt_token_count = len(self.text_to_tokens(prompt))
         logger.debug(f"Prompt tokens: {prompt_token_count}")
 
