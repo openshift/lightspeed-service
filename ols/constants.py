@@ -124,3 +124,11 @@ DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"
 DEFAULT_USER_NAME = "OLS"
 # TO-DO: make this UUID dynamic per cluster (dynamic uuid for each cluster)
 DEFAULT_KUBEADMIN_UID = "b6553200-0f7b-4c82-b1c5-9303ff18e5f0"
+
+# HTTP headers to redact from FastAPI HTTP logs
+HTTP_REQUEST_HEADERS_TO_REDACT = frozenset(
+    {"authorization", "proxy-authorization", "cookie"}
+)
+HTTP_RESPONSE_HEADERS_TO_REDACT = frozenset(
+    {"www-authenticate", "proxy-authenticate", "set-cookie"}
+)

@@ -16,7 +16,11 @@ import ols.utils.suid as suid
 import tests.e2e.cluster_utils as cluster_utils
 import tests.e2e.helper_utils as testutils
 import tests.e2e.metrics_utils as metrics_utils
-from ols.constants import INVALID_QUERY_RESP, NO_RAG_CONTENT_RESP
+from ols.constants import (
+    HTTP_REQUEST_HEADERS_TO_REDACT,
+    INVALID_QUERY_RESP,
+    NO_RAG_CONTENT_RESP,
+)
 from scripts.validate_response import ResponseValidation
 from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
@@ -1202,3 +1206,27 @@ def test_user_data_collection():
     assert "data upload failed with response:" not in logs
     user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
     assert user_data == []
+
+
+@pytest.mark.cluster()
+def test_http_header_redaction():
+    """Test that sensitive HTTP headers are redacted from the logs."""
+    for header in HTTP_REQUEST_HEADERS_TO_REDACT:
+        endpoint = "/liveness"
+        with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+            response = client.get(
+                endpoint,
+                headers={f"{header}": "some_value"},
+                timeout=BASIC_ENDPOINTS_TIMEOUT,
+            )
+            assert response.status_code == requests.codes.ok
+            check_content_type(response, "application/json")
+            assert response.json() == {"status": {"status": "healthy"}}
+
+    container_log = cluster_utils.get_container_log(
+        cluster_utils.get_single_existing_pod_name(), "ols"
+    )
+
+    for header in HTTP_REQUEST_HEADERS_TO_REDACT:
+        assert f'"{header}":"XXXXX"' in container_log
+        assert f'"{header}":"some_value"' not in container_log
