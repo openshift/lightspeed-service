@@ -12,7 +12,8 @@ from ols.app.models.models import HealthResponse
 router = APIRouter(tags=["health"])
 
 
-# TODO: Still to be decided on their functionality.
+# TODO: OLS-488: Define behaviour of /readiness and /liveness endpoints in OLS service
+#
 # Example status response:
 # {
 #     "status": "unhealthy",
