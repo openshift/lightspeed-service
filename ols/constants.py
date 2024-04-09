@@ -79,7 +79,7 @@ RAG_CONTENT_LIMIT = 1
 # And if we set a very low value, then there is risk of discarding all the chunks,
 # as there won't be perfect matching chunk. This also depends on embedding model
 # used during index creation/retrieval.
-# Range: 0 to 1
+# Range: positive float value (can be > 1)
 RAG_SIMILARITY_CUTOFF_L2 = 0.5
 
 
