@@ -316,7 +316,6 @@ def test_query_filter_on_redact_error(mock_redact_query, load_config):
         ols.redact_query(conversation_id, llm_request)
 
 
-# TODO: distribute individual test cases to separate test functions
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 @patch("ols.utils.config.conversation_cache.get")
