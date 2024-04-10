@@ -181,7 +181,7 @@ class AuthDependency:
         """
         if config.dev_config.disable_auth:
             logger.warning("Auth checks disabled, skipping")
-            # TODO: replace with constants for default identity
+            # TODO: OLS-495 replace with constants for default identity
             return DEFAULT_USER_UID, DEFAULT_USER_NAME
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
