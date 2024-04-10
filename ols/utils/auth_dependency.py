@@ -138,7 +138,10 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         return None
     except Exception as e:
         logger.error(f"Unexpected error during TokenReview - Unauthorized: {e}")
-        raise HTTPException(status_code=500, detail="Forbidden: Unable to Review Token")
+        raise HTTPException(
+            status_code=500,
+            detail={"response": "Forbidden: Unable to Review Token", "cause": str(e)},
+        )
 
 
 def _extract_bearer_token(header: str) -> str:
