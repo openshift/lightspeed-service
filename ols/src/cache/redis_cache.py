@@ -18,9 +18,6 @@ from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
 
 
-# TODO
-# Good for on-premise hosting for now
-# Extend it to distributed setting using cloud offerings
 class RedisCache(Cache):
     """Cache that uses Redis to store cached values."""
 
