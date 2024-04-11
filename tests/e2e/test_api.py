@@ -91,11 +91,17 @@ def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
     return eval_query, eval_answer
 
 
+def check_content_type(response, content_type):
+    """Check if response content-type is set to defined value."""
+    assert response.headers["content-type"].startswith(content_type)
+
+
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
 
@@ -105,6 +111,7 @@ def test_liveness():
     endpoint = "/liveness"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.ok
         assert response.json() == {"status": {"status": "healthy"}}
 
@@ -122,6 +129,7 @@ def test_raw_prompt():
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(r, "application/json")
         print(vars(r))
         response = r.json()
 
@@ -141,6 +149,7 @@ def test_invalid_question():
             json={"conversation_id": cid, "query": "test query"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
 
@@ -162,6 +171,7 @@ def test_invalid_question_without_conversation_id():
             json={"query": "test query"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
 
@@ -186,6 +196,7 @@ def test_query_call_without_payload():
             endpoint,
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.unprocessable_entity
         # the actual response might differ when new Pydantic version will be used
@@ -204,6 +215,7 @@ def test_query_call_with_improper_payload():
             json={"parameter": "this-is-not-proper-question-my-friend"},
             timeout=NON_LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.unprocessable_entity
         # the actual response might differ when new Pydantic version will be used
@@ -224,6 +236,7 @@ def test_valid_question_improper_conversation_id(response_eval) -> None:
             json={"conversation_id": "not-uuid", "query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.internal_server_error
         json_response = response.json()
         expected_response = {
@@ -248,6 +261,7 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
             json={"conversation_id": "", "query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.ok
         json_response = response.json()
 
@@ -275,6 +289,7 @@ def test_valid_question(response_eval) -> None:
             json={"conversation_id": cid, "query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
@@ -312,6 +327,7 @@ def test_valid_question_tokens_counter() -> None:
             json={"query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.ok
 
 
@@ -329,6 +345,7 @@ def test_invalid_question_tokens_counter() -> None:
             json={"query": "test query"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.ok
 
 
@@ -353,6 +370,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
             endpoint,
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
 
 
@@ -378,6 +396,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
             json={"parameter": "this-is-not-proper-question-my-friend"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
 
 
@@ -395,6 +414,7 @@ def test_rag_question(response_eval) -> None:
             json={"query": eval_query},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
@@ -420,6 +440,7 @@ def test_query_filter() -> None:
             json={"query": "what is foo in bar?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
@@ -444,6 +465,7 @@ def test_conversation_history() -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
@@ -476,6 +498,7 @@ def test_query_with_provider_but_not_model(response_eval) -> None:
             json={"conversation_id": "", "query": eval_query, "provider": "bam"},
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
         json_response = response.json()
 
@@ -504,6 +527,7 @@ def test_query_with_model_but_not_provider(response_eval) -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
         json_response = response.json()
 
@@ -535,6 +559,7 @@ def test_query_with_unknown_provider(response_eval) -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
         json_response = response.json()
 
@@ -571,6 +596,7 @@ def test_query_with_unknown_model(response_eval) -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
+        check_content_type(response, "application/json")
         assert response.status_code == requests.codes.unprocessable_entity
         json_response = response.json()
 
