@@ -1,5 +1,7 @@
 """Utility script to generate automatic questions."""
 
+# TODO: OLS-505 Refactor script scripts/question_get.py to adhere to Python standards and idioms
+
 import argparse
 import asyncio
 import json
@@ -144,7 +146,6 @@ def generate_summary(
     with open(file_path, "w") as file:
         file.write(json_metadata)
 
-    # TODO-rewrite
     full_results_markdown_content = "    \n"
     for res in full_results:
         for key, value in res.items():
