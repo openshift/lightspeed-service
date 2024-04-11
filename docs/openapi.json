@@ -341,8 +341,10 @@
                     "200": {
                         "description": "Successful Response",
                         "content": {
-                            "application/json": {
-                                "schema": {}
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }

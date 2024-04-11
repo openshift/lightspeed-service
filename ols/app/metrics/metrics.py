@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
+from fastapi.responses import PlainTextResponse
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
@@ -52,8 +53,8 @@ provider_model_configuration = Gauge(
 )
 
 
-@router.get("/metrics")
-def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
+@router.get("/metrics", response_class=PlainTextResponse)
+def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
     """Metrics Endpoint.
 
     Args:
@@ -62,7 +63,7 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> Response:
     Returns:
         Response containing the latest metrics.
     """
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 def setup_model_metrics(config: config_model.Config) -> None:
