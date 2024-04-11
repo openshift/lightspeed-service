@@ -66,7 +66,7 @@ def setup_module(module):
 
 def teardown_module(module):
     """Clean up the environment after all tests are executed."""
-    # TODO move cluster artifacts gathering(currently in utils.sh:must_gather()) to here.
+    # TODO: OLS-506 Move the program logic to gather cluster artifacts from utils.sh into e2e module
     pass
 
 
