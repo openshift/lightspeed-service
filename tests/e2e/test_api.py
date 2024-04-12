@@ -39,6 +39,10 @@ client = None
 metrics_client = None
 
 
+# constant from tests/config/cluster_install/ols_manifests.yaml
+OLS_USER_DATA_PATH = "/app-root/ols-user-data"
+
+
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
     try:
@@ -659,58 +663,6 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
-def test_feedback() -> None:
-    """Check if feedback is properly stored.
-
-    This is a full end-to-end scenario where the feedback is stored,
-    retrieved and removed at the end (to avoid leftovers).
-    """
-    # check if feedback is enabled
-    response = client.get("/v1/feedback/status", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert response.status_code == requests.codes.ok
-    assert response.json()["status"]["enabled"] is True
-
-    # check the feedback store is empty
-    empty_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert empty_feedback.status_code == requests.codes.ok
-    assert "feedbacks" in empty_feedback.json()
-    assert len(empty_feedback.json()["feedbacks"]) == 0
-
-    # store the feedback
-    posted_feedback = client.post(
-        "/v1/feedback",
-        json={
-            "conversation_id": CONVERSATION_ID,
-            "user_question": "what is OCP4?",
-            "llm_response": "Openshift 4 is ...",
-            "sentiment": 1,
-        },
-        timeout=BASIC_ENDPOINTS_TIMEOUT,
-    )
-    assert posted_feedback.status_code == requests.codes.ok
-    assert posted_feedback.json() == {"response": "feedback received"}
-
-    # check the feedback store has one feedback
-    stored_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert stored_feedback.status_code == requests.codes.ok
-    assert "feedbacks" in stored_feedback.json()
-    assert len(stored_feedback.json()["feedbacks"]) == 1
-
-    # remove the feedback
-    remove_feedback = client.delete(
-        f'/v1/feedback/{stored_feedback.json()["feedbacks"][0]}',
-        timeout=BASIC_ENDPOINTS_TIMEOUT,
-    )
-    assert remove_feedback.status_code == requests.codes.ok
-    assert remove_feedback.json() == {"response": "feedback removed"}
-
-    # check the feedback store is empty again
-    removed_feedback = client.get("/v1/feedback/list", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert removed_feedback.status_code == requests.codes.ok
-    assert "feedbacks" in removed_feedback.json()
-    assert len(removed_feedback.json()["feedbacks"]) == 0
-
-
 @pytest.mark.cluster()
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
@@ -729,7 +681,84 @@ def test_feedback_can_post_with_wrong_token():
 
 
 @pytest.mark.standalone()
-def test_transcripts_storing__standalone():
+def test_feedback_storing_standalone():
+    """Test if the feedbacks are stored properly."""
+    # the standalone testing exposes the value via env
+    feedback_dir = Path(os.environ["FEEDBACK_STORAGE_LOCATION"])
+
+    # as this test is ran multiple times in test suite, we need to
+    # ensure the storage is empty
+    if feedback_dir.exists():
+        shutil.rmtree(feedback_dir)
+
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    assert response.status_code == requests.codes.ok
+
+    assert feedback_dir.exists()
+
+    feedbacks = list(feedback_dir.glob("*.json"))
+    assert len(feedbacks) == 1
+
+    feedback = feedbacks[0]
+    with open(feedback) as f:
+        feedback_data = json.load(f)
+
+    assert feedback_data["user_id"]  # we don't care about actual value
+    assert feedback_data["conversation_id"] == CONVERSATION_ID
+    assert feedback_data["user_question"] == "what is OCP4?"
+    assert feedback_data["llm_response"] == "Openshift 4 is ..."
+    assert feedback_data["sentiment"] == 1
+
+
+@pytest.mark.cluster()
+def test_feedback_storing_cluster():
+    """Test if the feedbacks are stored properly."""
+    # constant from tests/config/cluster_install/ols_manifests.yaml
+    feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
+    pod_name = cluster_utils.get_single_existing_pod_name()
+
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
+    if feedbacks:
+        cluster_utils.remove_dir(pod_name, feedbacks_path)
+        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
+
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    assert response.status_code == requests.codes.ok
+
+    feedback_data = cluster_utils.get_single_existing_feedback(pod_name, feedbacks_path)
+
+    assert feedback_data["user_id"]  # we don't care about actual value
+    assert feedback_data["conversation_id"] == CONVERSATION_ID
+    assert feedback_data["user_question"] == "what is OCP4?"
+    assert feedback_data["llm_response"] == "Openshift 4 is ..."
+    assert feedback_data["sentiment"] == 1
+
+
+@pytest.mark.standalone()
+def test_transcripts_storing_standalone():
     """Test if the transcripts are stored properly."""
     # the standalone testing exposes the value via env
     transcript_dir = Path(os.environ["TRANSCRIPTS_STORAGE_LOCATION"])
@@ -768,9 +797,9 @@ def test_transcripts_storing__standalone():
 
 
 @pytest.mark.cluster()
-def test_transcripts_storing__cluster():
+def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
-    transcripts_path = "/app-root/ols-user-data/transcripts"
+    transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
     pod_name = cluster_utils.get_single_existing_pod_name()
 
     # there are multiple tests running agains cluster, so transcripts

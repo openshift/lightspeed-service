@@ -140,3 +140,18 @@ def get_single_existing_transcript(pod_name: str, transcripts_path: str) -> dict
         return json.loads(transcript_content.stdout)
     except subprocess.CalledProcessError as e:
         raise Exception("Error reading transcript") from e
+
+
+def get_single_existing_feedback(pod_name: str, feedbacks_path: str) -> dict:
+    """Return the content of the single feedback that is in the cluster."""
+    feedbacks = list_path(pod_name, feedbacks_path)
+    assert len(feedbacks) == 1
+    feedback = feedbacks[0]
+
+    full_path = f"{feedbacks_path}/{feedback}"
+
+    try:
+        feedback_content = run_oc(["exec", pod_name, "--", "cat", full_path])
+        return json.loads(feedback_content.stdout)
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error reading feedback") from e

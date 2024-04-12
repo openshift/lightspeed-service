@@ -224,34 +224,6 @@ class FeedbackRequest(BaseModel):
         return self
 
 
-class FeedbacksListResponse(BaseModel):
-    """Model representing a response to a feedback list request.
-
-    Attributes:
-        feedbacks: The list of feedback IDs.
-
-    Example:
-        ```python
-        feedbacks_list_response = FeedbacksListResponse(
-            feedbacks=["12345678-abcd-0000-0123-456789abcdef"]
-        )
-        ```
-    """
-
-    feedbacks: list[str]
-
-    # provides examples for /docs endpoint
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "feedbacks": ["12345678-abcd-0000-0123-456789abcdef"],
-                }
-            ]
-        }
-    }
-
-
 class FeedbackResponse(BaseModel):
     """Model representing a response to a feedback request.
 

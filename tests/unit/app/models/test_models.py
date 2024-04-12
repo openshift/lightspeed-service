@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
-    FeedbacksListResponse,
     HealthResponse,
     LLMRequest,
     LLMResponse,
@@ -169,15 +168,6 @@ class TestFeedback:
         feedback_request = FeedbackResponse(response=feedback_response)
 
         assert feedback_request.response == feedback_response
-
-    @staticmethod
-    def test_feedback_list_response():
-        """Test the FeedbacksListResponse model."""
-        feedbacks = ["testy test"]
-
-        feedback_list_response = FeedbacksListResponse(feedbacks=feedbacks)
-
-        assert feedback_list_response.feedbacks == feedbacks
 
 
 class TestHealth:
