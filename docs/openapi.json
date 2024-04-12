@@ -142,28 +142,6 @@
                 }
             }
         },
-        "/v1/feedback/list": {
-            "get": {
-                "tags": [
-                    "feedback"
-                ],
-                "summary": "Get User Feedbacks",
-                "description": "Handle feedback listing requests.\n\nArgs:\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response containing the list of feedbacks.",
-                "operationId": "get_user_feedbacks_v1_feedback_list_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FeedbacksListResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v1/feedback": {
             "post": {
                 "tags": [
@@ -182,49 +160,6 @@
                     },
                     "required": true
                 },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FeedbackResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/feedback/{feedback_id}": {
-            "delete": {
-                "tags": [
-                    "feedback"
-                ],
-                "summary": "Remove User Feedback",
-                "description": "Handle feedback removal requests.\n\nArgs:\n    feedback_id: The feedback ID (UUID) to be removed.\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback removal.",
-                "operationId": "remove_user_feedback_v1_feedback__feedback_id__delete",
-                "parameters": [
-                    {
-                        "name": "feedback_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Feedback Id"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -533,30 +468,6 @@
                 "examples": [
                     {
                         "response": "feedback received"
-                    }
-                ]
-            },
-            "FeedbacksListResponse": {
-                "properties": {
-                    "feedbacks": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Feedbacks"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "feedbacks"
-                ],
-                "title": "FeedbacksListResponse",
-                "description": "Model representing a response to a feedback list request.\n\nAttributes:\n    feedbacks: The list of feedback IDs.\n\nExample:\n    ```python\n    feedbacks_list_response = FeedbacksListResponse(\n        feedbacks=[\"12345678-abcd-0000-0123-456789abcdef\"]\n    )\n    ```",
-                "examples": [
-                    {
-                        "feedbacks": [
-                            "12345678-abcd-0000-0123-456789abcdef"
-                        ]
                     }
                 ]
             },
