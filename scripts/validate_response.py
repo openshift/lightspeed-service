@@ -6,13 +6,15 @@ import os
 import sys
 from collections import defaultdict
 
-import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ols.constants import NO_RAG_CONTENT_RESP
+from tests.e2e.cluster_utils import create_user, get_user_token, grant_sa_user_access
+from tests.e2e.constants import LLM_REST_API_TIMEOUT
+from tests.e2e.helper_utils import get_http_client
 
 
 # TODO: OLS-491 Generate QnA for each model/scenario for evaluation
@@ -85,7 +87,7 @@ class ResponseValidation:
         )
         return score
 
-    def get_response_quality(self, args, qa_pairs):
+    def get_response_quality(self, args, qa_pairs, api_client):
         """Get response quality."""
         result_dict = defaultdict(list)
 
@@ -97,12 +99,15 @@ class ResponseValidation:
             question = qa_pairs[query_id]["question"]
             answer = qa_pairs[query_id]["answer"]
 
-            response = requests.post(
-                # API question validator can be disabled.
-                "http://localhost:8080/v1/query",
+            response = api_client.post(
+                "/v1/query",
                 json={"query": question},
-                timeout=90,
-            ).json()["response"]
+                timeout=LLM_REST_API_TIMEOUT,
+            )
+            if response.status_code != 200:
+                raise Exception(response)
+
+            response = response.json()["response"]
 
             print(f"Calculating score for query: {question}")
             score = self.get_similarity_score(response, answer)
@@ -131,7 +136,15 @@ def main():
         qa_pairs = json.load(qna_f)
         qa_pairs = qa_pairs.get(args.model, {}).get(args.scenario, [])
 
-    result_df = ResponseValidation().get_response_quality(args, qa_pairs)
+    ols_url = os.getenv("OLS_URL", "http://localhost:8080")
+    token = None
+    if "localhost" not in ols_url:
+        create_user("test-user")
+        token = get_user_token("test-user")
+        grant_sa_user_access("test-user", "ols-user")
+    api_client = get_http_client(ols_url, token)
+
+    result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
 
     if len(result_df) > 0:
         result_dir = f"{parent_dir}/test_results"
