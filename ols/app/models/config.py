@@ -311,10 +311,19 @@ class PostgresConfig(BaseModel):
     port: PositiveInt = constants.POSTGRES_CACHE_PORT
     dbname: str = constants.POSTGRES_CACHE_DBNAME
     user: str = constants.POSTGRES_CACHE_USER
+    password_path: Optional[str] = None
     password: Optional[str] = None
     require_ssl: bool = False
     ca_cert_path: Optional[str] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
+
+    def __init__(self, **data: Any) -> None:
+        """Initialize configuration."""
+        super().__init__(**data)
+        # password should be read from file
+        if self.password_path is not None:
+            with open(self.password_path) as f:
+                self.password = f.read().rstrip()
 
     @model_validator(mode="after")
     def validate_yaml(self) -> Self:

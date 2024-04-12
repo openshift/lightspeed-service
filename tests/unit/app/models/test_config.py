@@ -792,6 +792,23 @@ def test_postgres_config_equality():
     assert postgres_config_1 != other_value
 
 
+def test_postgres_config_with_password():
+    """Test the PostgresConfig model."""
+    postgres_config = PostgresConfig(
+        **{
+            "host": "other_host",
+            "port": 1234,
+            "dbname": "my_database",
+            "user": "admin",
+            "password_path": "tests/config/postgres_password.txt",
+            "require_ssl": True,
+            "max_entries": 42,
+        }
+    )
+    # check if password was read correctly from file
+    assert postgres_config.password == "postgres_password"  # noqa: S105
+
+
 def test_redis_config():
     """Test the RedisConfig model."""
     redis_config = RedisConfig({})
