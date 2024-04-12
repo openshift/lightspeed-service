@@ -441,14 +441,14 @@
                     "llm_response"
                 ],
                 "title": "FeedbackRequest",
-                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n\nExample:\n    ```python\n    feedback_request = FeedbackRequest(\n        conversation_id=\"12345678-abcd-0000-0123-456789abcdef\",\n        user_question=\"what are you doing?\",\n        llm_response=\"I don't know\",\n        sentiment=-1,\n    )\n    ```",
+                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n\nExample:\n    ```python\n    feedback_request = FeedbackRequest(\n        conversation_id=\"12345678-abcd-0000-0123-456789abcdef\",\n        user_question=\"what are you doing?\",\n        user_feedback=\"Great service!\",\n        llm_response=\"I don't know\",\n        sentiment=-1,\n    )\n    ```",
                 "examples": [
                     {
                         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
-                        "feedback_object": {
-                            "comment": "Great service!",
-                            "rating": 5
-                        }
+                        "llm_response": "bar",
+                        "sentiment": 5,
+                        "user_feedback": "Great service!",
+                        "user_question": "foo"
                     }
                 ]
             },

@@ -192,6 +192,7 @@ class FeedbackRequest(BaseModel):
         feedback_request = FeedbackRequest(
             conversation_id="12345678-abcd-0000-0123-456789abcdef",
             user_question="what are you doing?",
+            user_feedback="Great service!",
             llm_response="I don't know",
             sentiment=-1,
         )
@@ -210,7 +211,10 @@ class FeedbackRequest(BaseModel):
             "examples": [
                 {
                     "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
-                    "feedback_object": {"rating": 5, "comment": "Great service!"},
+                    "user_question": "foo",
+                    "llm_response": "bar",
+                    "user_feedback": "Great service!",
+                    "sentiment": 5,
                 }
             ]
         }
