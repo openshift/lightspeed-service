@@ -783,6 +783,98 @@ def test_feedback_storing_cluster():
     assert feedback_data["sentiment"] == 1
 
 
+def check_missing_field_response(response, field_name):
+    """Check if 'Field required' error is returned by the service."""
+    # error should be detected on Pydantic level
+    assert response.status_code == requests.codes.unprocessable
+
+    # the resonse payload should be valid JSON
+    check_content_type(response, "application/json")
+    json_response = response.json()
+
+    # check payload details
+    assert (
+        "detail" in json_response
+    ), "Improper response format: 'detail' node is missing"
+    assert json_response["detail"][0]["msg"] == "Field required"
+    assert json_response["detail"][0]["loc"][0] == "body"
+    assert json_response["detail"][0]["loc"][1] == field_name
+
+
+def test_feedback_missing_conversation_id():
+    """Test posting feedback with missing conversation ID."""
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    check_missing_field_response(response, "conversation_id")
+
+
+def test_feedback_missing_user_question():
+    """Test posting feedback with missing user question."""
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    check_missing_field_response(response, "user_question")
+
+
+def test_feedback_missing_llm_response():
+    """Test posting feedback with missing LLM response."""
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    check_missing_field_response(response, "llm_response")
+
+
+def test_feedback_improper_conversation_id():
+    """Test posting feedback with improper conversation ID."""
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": "incorrect-conversation-id",
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+
+    # error should be detected on Pydantic level
+    assert response.status_code == requests.codes.unprocessable
+
+    # for incorrect conversation ID, the payload should be valid JSON
+    check_content_type(response, "application/json")
+    json_response = response.json()
+
+    assert (
+        "detail" in json_response
+    ), "Improper response format: 'detail' node is missing"
+    assert (
+        json_response["detail"][0]["msg"]
+        == "Value error, Improper conversation ID incorrect-conversation-id"
+    )
+
+
 @pytest.mark.standalone()
 def test_transcripts_storing_standalone():
     """Test if the transcripts are stored properly."""
