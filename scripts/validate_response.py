@@ -26,6 +26,7 @@ def _args_parser(args):
         "--scenario",
         choices=["with_rag", "without_rag"],
         default="with_rag",
+        type=str,
         help="Scenario for which responses will be evaluated.",
     )
     parser.add_argument(
@@ -33,7 +34,7 @@ def _args_parser(args):
         "--model",
         choices=["gpt", "granite"],
         default="gpt",
-        type=lambda v: "gpt" if "gpt" in v else "granite",
+        type=str,
         help="Model for which responses will be evaluated.",
     )
     parser.add_argument(
