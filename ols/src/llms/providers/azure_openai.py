@@ -26,7 +26,7 @@ class AzureOpenAI(LLMProvider):
         return {
             "azure_endpoint": self.provider_config.url or self.url,
             "api_key": self.provider_config.credentials,
-            "api_version": "2023-05-15",
+            "api_version": "2024-02-01",
             "deployment_name": self.provider_config.deployment_name,
             "model": self.model,
             "model_kwargs": {
