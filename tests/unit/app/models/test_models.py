@@ -11,6 +11,7 @@ from ols.app.models.models import (
     LLMResponse,
     StatusResponse,
 )
+from ols.utils import suid
 
 
 class TestLLM:
@@ -105,7 +106,7 @@ class TestFeedback:
     @staticmethod
     def test_feedback_request():
         """Test the FeedbackRequest model."""
-        conversation_id = "conversation id"
+        conversation_id = suid.get_suid()
         user_question = "user question"
         llm_response = "llm response"
         sentiment = 1
@@ -128,7 +129,7 @@ class TestFeedback:
     @staticmethod
     def test_feedback_request_optional_fields():
         """Test either sentiment or user_feedback needs to be set."""
-        conversation_id = "conversation id"
+        conversation_id = suid.get_suid()
         user_question = "user question"
         llm_response = "llm response"
         sentiment = 1
@@ -159,6 +160,25 @@ class TestFeedback:
             llm_response=llm_response,
             user_feedback=user_feedback,
         )
+
+    @staticmethod
+    def test_feedback_request_improper_conversation_id():
+        """Test if conversation ID format is checked."""
+        conversation_id = "this-is-bad"
+        user_question = "user question"
+        llm_response = "llm response"
+        sentiment = 1
+        user_feedback = "user feedback"
+
+        # ValueError should be raised
+        with pytest.raises(ValueError, match="Improper conversation ID this-is-bad"):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=sentiment,
+                user_feedback=user_feedback,
+            )
 
     @staticmethod
     def test_feedback_response():
