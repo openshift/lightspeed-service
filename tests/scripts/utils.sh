@@ -115,7 +115,7 @@ function run_suite() {
     MODEL=$8 SCENARIO=$SCENARIO make response-sanity-check
   fi
 
-  rc=$?
+  local rc=$?
   must_gather $1
   return $rc
 }
