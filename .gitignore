@@ -34,7 +34,7 @@ logs/*
 # ignore test results
 tests/test_results/*
 htmlcov/
-.coverage*
+.coverage
 
 # ignore cache directories
 .mypy_cache
@@ -46,3 +46,5 @@ index/
 
 # ignore .idea for pycharm
 .idea
+
+dev/

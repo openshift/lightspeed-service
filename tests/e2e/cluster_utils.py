@@ -115,7 +115,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
 def remove_dir(pod_name: str, directory: str) -> None:
     """Remove a directory in a pod."""
     try:
-        result = run_oc(["exec", pod_name, "--", "rm", "-rf", directory])
+        result = run_oc(["rsh", pod_name, "rm", "-rf", directory])
         return result
     except subprocess.CalledProcessError as e:
         raise Exception("Error removing directory") from e
@@ -155,3 +155,23 @@ def get_single_existing_feedback(pod_name: str, feedbacks_path: str) -> dict:
         return json.loads(feedback_content.stdout)
     except subprocess.CalledProcessError as e:
         raise Exception("Error reading feedback") from e
+
+
+def get_container_log(pod_name: str, container_name: str) -> str:
+    """Return the logs of a container in a pod."""
+    try:
+        result = run_oc(["logs", "--follow=false", pod_name, "-c", container_name])
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting container logs") from e
+
+
+def create_file(pod_name: str, path: str, content: str) -> None:
+    """Create a file in a pod."""
+    try:
+        # ensure dir exists
+        dir_path = path.rsplit("/", 1)[0]  # without file
+        run_oc(["exec", pod_name, "--", "mkdir", "-p", dir_path])
+        run_oc(["exec", pod_name, "--", "sh", "-c", f"echo '{content}' > {path}"])
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error creating file") from e
