@@ -1,5 +1,6 @@
 # Env vars for use w/ envsubst:
 # $OLS_IMAGE - the pullspec for the OLS container image to deploy
+# $CP_OFFLINE_TOKEN - the "offline" token to console.stage.redhat.com
 
 ---
 apiVersion: apps/v1
@@ -58,6 +59,24 @@ spec:
             mountPath: /app-root/config/llmcreds
           - name: tls-certs
             mountPath: /app-root/certs
+          - name: ols-user-data
+            mountPath: /app-root/ols-user-data
+      - image: "$OLS_IMAGE"
+        name: ols-sidecar-user-data-collector
+        imagePullPolicy: Always
+        env:
+          - name: OLS_USER_DATA_PATH
+            value: /app-root/ols-user-data
+          - name: OLS_USER_DATA_COLLECTION_INTERVAL
+            value: "10"
+          - name: RUN_WITHOUT_INITIAL_WAIT
+            value: "true"
+          - name: INGRESS_ENV
+            value: "stage"
+          - name: CP_OFFLINE_TOKEN
+            value: "$CP_OFFLINE_TOKEN"
+        command: ["python3.11", "/app-root/ols/user_data_collection/data_collector.py"]
+        volumeMounts:
           - name: ols-user-data
             mountPath: /app-root/ols-user-data
       dnsPolicy: ClusterFirst

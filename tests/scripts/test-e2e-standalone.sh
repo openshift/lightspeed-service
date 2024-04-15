@@ -86,4 +86,4 @@ fi
 set -e
 
 echo Done waiting for OLS server start, running e2e
-OLS_URL="http://localhost:8080" SUITE_ID=standalone TEST_TAGS="not cluster and not rag" make test-e2e
+OLS_URL="http://localhost:8080" SUITE_ID=standalone TEST_TAGS="not cluster and not rag and not cluster_with_collector" make test-e2e

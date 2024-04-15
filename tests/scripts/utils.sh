@@ -53,6 +53,7 @@ function install_ols() {
     export PROVIDER_DEPLOYMENT_NAME=$6
     export MODEL=$7
     export OLS_IMAGE=$8
+    export WITH_COLLECTOR_SIDECAR=$9
 
     oc create ns openshift-lightspeed
     oc project openshift-lightspeed
@@ -75,7 +76,18 @@ function install_ols() {
 
     # create the ols deployment and related resources (service, route, rbac roles)
     envsubst < tests/config/cluster_install/ols_manifests.yaml > "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
-    oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
+    envsubst < tests/config/cluster_install/ols_manifests_with_collector.yaml > "$ARTIFACT_DIR/$SUITE_ID/ols_manifests_with_collector.yaml"
+    
+    # deploy with or without the collector sidecar
+    if [ "$WITH_COLLECTOR_SIDECAR" == "yes" ]; then
+      oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_manifests_with_collector.yaml"
+    elif [ "$WITH_COLLECTOR_SIDECAR" == "no" ]; then
+      oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
+    else
+      echo "WITH_COLLECTOR_SIDECAR must be set to 'yes' or 'no'" >&2
+      exit 1
+    fi
+    
 
     # determine the hostname for the ols route
     export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
@@ -91,12 +103,13 @@ function install_ols() {
 # $7 PROVIDER_DEPLOYMENT_NAME
 # $8 MODEL
 # $9 OLS_IMAGE
+# $10 WITH_COLLECTOR_SIDECAR
 function run_suite() {
   echo "Preparing to run suite $1"
 
   cleanup_ols
   
-  install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+  install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 
   # wait for the ols api server to come up
   wait_for_ols "$OLS_URL"

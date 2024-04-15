@@ -748,42 +748,41 @@ def test_feedback_storing_standalone():
     assert feedback_data["sentiment"] == 1
 
 
-# TODO: OLS-508 - This test is influenced by running sidecar with collector
-# @pytest.mark.cluster()
-# def test_feedback_storing_cluster():
-#     """Test if the feedbacks are stored properly."""
-#     # constant from tests/config/cluster_install/ols_manifests.yaml
-#     feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
-#     pod_name = cluster_utils.get_single_existing_pod_name()
+@pytest.mark.cluster()
+def test_feedback_storing_cluster():
+    """Test if the feedbacks are stored properly."""
+    # constant from tests/config/cluster_install/ols_manifests.yaml
+    feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-#     # there are multiple tests running agains cluster, so transcripts
-#     # can be already present - we need to ensure the storage is empty
-#     # for this test
-#     feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
-#     if feedbacks:
-#         cluster_utils.remove_dir(pod_name, feedbacks_path)
-#         assert cluster_utils.list_path(pod_name, feedbacks_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
+    if feedbacks:
+        cluster_utils.remove_dir(pod_name, feedbacks_path)
+        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
 
-#     response = client.post(
-#         "/v1/feedback",
-#         json={
-#             "conversation_id": CONVERSATION_ID,
-#             "user_question": "what is OCP4?",
-#             "llm_response": "Openshift 4 is ...",
-#             "sentiment": 1,
-#         },
-#         timeout=BASIC_ENDPOINTS_TIMEOUT,
-#     )
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
 
-#     assert response.status_code == requests.codes.ok
+    assert response.status_code == requests.codes.ok
 
-#     feedback_data = cluster_utils.get_single_existing_feedback(pod_name, feedbacks_path)
+    feedback_data = cluster_utils.get_single_existing_feedback(pod_name, feedbacks_path)
 
-#     assert feedback_data["user_id"]  # we don't care about actual value
-#     assert feedback_data["conversation_id"] == CONVERSATION_ID
-#     assert feedback_data["user_question"] == "what is OCP4?"
-#     assert feedback_data["llm_response"] == "Openshift 4 is ..."
-#     assert feedback_data["sentiment"] == 1
+    assert feedback_data["user_id"]  # we don't care about actual value
+    assert feedback_data["conversation_id"] == CONVERSATION_ID
+    assert feedback_data["user_question"] == "what is OCP4?"
+    assert feedback_data["llm_response"] == "Openshift 4 is ..."
+    assert feedback_data["sentiment"] == 1
 
 
 @pytest.mark.standalone()
@@ -825,44 +824,43 @@ def test_transcripts_storing_standalone():
     assert transcript_data["truncated"] is False
 
 
-# TODO: OLS-508 - This test is influenced by running sidecar with collector
-# @pytest.mark.cluster()
-# def test_transcripts_storing_cluster():
-#     """Test if the transcripts are stored properly."""
-#     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
-#     pod_name = cluster_utils.get_single_existing_pod_name()
+@pytest.mark.cluster()
+def test_transcripts_storing_cluster():
+    """Test if the transcripts are stored properly."""
+    transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-#     # there are multiple tests running agains cluster, so transcripts
-#     # can be already present - we need to ensure the storage is empty
-#     # for this test
-#     transcripts = cluster_utils.list_path(pod_name, transcripts_path)
-#     if transcripts:
-#         cluster_utils.remove_dir(pod_name, transcripts_path)
-#         assert cluster_utils.list_path(pod_name, transcripts_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    transcripts = cluster_utils.list_path(pod_name, transcripts_path)
+    if transcripts:
+        cluster_utils.remove_dir(pod_name, transcripts_path)
+        assert cluster_utils.list_path(pod_name, transcripts_path) == []
 
-#     response = client.post(
-#         "/v1/query",
-#         json={
-#             "query": "what is kubernetes?",
-#         },
-#         timeout=LLM_REST_API_TIMEOUT,
-#     )
-#     assert response.status_code == requests.codes.ok
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
 
-#     transcript = cluster_utils.get_single_existing_transcript(
-#         pod_name, transcripts_path
-#     )
+    transcript = cluster_utils.get_single_existing_transcript(
+        pod_name, transcripts_path
+    )
 
-#     assert transcript["metadata"]  # just check if it is not empty
-#     assert transcript["redacted_query"] == "what is kubernetes?"
-#     # we don't want llm response influence this test
-#     assert "query_is_valid" in transcript
-#     assert "llm_response" in transcript
-#     assert "referenced_documents" in transcript
-#     assert "truncated" in transcript
+    assert transcript["metadata"]  # just check if it is not empty
+    assert transcript["redacted_query"] == "what is kubernetes?"
+    # we don't want llm response influence this test
+    assert "query_is_valid" in transcript
+    assert "llm_response" in transcript
+    assert "referenced_documents" in transcript
+    assert "truncated" in transcript
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster_with_collector()
 def test_user_data_collection():
     """Test user data collection.
 
