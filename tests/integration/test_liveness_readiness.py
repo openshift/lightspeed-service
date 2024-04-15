@@ -17,9 +17,11 @@ from ols.utils import config
 def _setup():
     """Setups the test client."""
     global client
+    config.init_config("tests/config/valid_config.yaml")
+
+    # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
-    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 

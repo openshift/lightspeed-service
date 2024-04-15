@@ -19,6 +19,8 @@ def _setup():
     """Setups the test client."""
     global client
     config.init_config("tests/config/valid_config.yaml")
+
+    # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
     client = TestClient(app)

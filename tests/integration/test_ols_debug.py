@@ -19,9 +19,11 @@ from tests.mock_classes.llm_loader import mock_llm_loader
 def _setup():
     """Setups the test client."""
     global client
+    config.init_config("tests/config/valid_config.yaml")
+
+    # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
-    config.init_config("tests/config/valid_config.yaml")
     client = TestClient(app)
 
 
