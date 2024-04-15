@@ -7,10 +7,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from ols.app.endpoints.ols import retrieve_user_id
 from ols.app.models.models import (
+    ErrorResponse,
     FeedbackRequest,
     FeedbackResponse,
+    ForbiddenResponse,
     StatusResponse,
+    UnauthorizedResponse,
 )
 from ols.utils import config
 from ols.utils.auth_dependency import AuthDependency
@@ -82,7 +86,27 @@ def feedback_status() -> StatusResponse:
     return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
-@router.post("")
+post_feedback_responses = {
+    200: {
+        "description": "Feedback received and stored",
+        "model": FeedbackResponse,
+    },
+    401: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "Client does not have permission to access resource",
+        "model": ForbiddenResponse,
+    },
+    500: {
+        "description": "User feedback can not be stored",
+        "model": ErrorResponse,
+    },
+}
+
+
+@router.post("", responses=post_feedback_responses)
 def store_user_feedback(
     feedback_request: FeedbackRequest,
     ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
@@ -102,7 +126,18 @@ def store_user_feedback(
     """
     logger.debug(f"feedback received {feedback_request}")
 
-    user_id = auth[0]
-    store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
+    user_id = retrieve_user_id(auth)
+    try:
+        store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
+    except Exception as e:
+        logger.error("Error storing user feedback")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error storing user feedback",
+                "cause": str(e),
+            },
+        )
+        logger.error(e)
 
     return FeedbackResponse(response="feedback received")
