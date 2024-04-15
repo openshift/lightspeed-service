@@ -21,6 +21,10 @@ def test_is_query_helper_subclass():
 
 def test_passing_parameters():
     """Test that llm_params is handled correctly and without runtime error."""
+    # it is needed to initialize configuration in order to be able
+    # to construct QuestionValidator instance
+    config.init_config("tests/config/valid_config.yaml")
+
     question_validator = QuestionValidator()
     assert question_validator.llm_params is not None
     assert "max_new_tokens" in question_validator.llm_params is not None
