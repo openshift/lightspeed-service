@@ -6,13 +6,12 @@ import subprocess
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
-    result = subprocess.run(
+    return subprocess.run(
         ["oc", *args],  # noqa: S603, S607
         capture_output=True,
         text=True,
         check=True,
     )
-    return result
 
 
 def create_user(name: str) -> None:
@@ -86,8 +85,7 @@ def get_single_existing_pod_name() -> str:
                 "jsonpath='{.items[*].metadata.name}'",
             ]
         )
-        pod_name = result.stdout.strip("'")
-        return pod_name
+        return result.stdout.strip("'")
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting pod name") from e
 
@@ -104,8 +102,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
             ]
         )
         # files are returned as 'file1\nfile2\n'
-        files = [f for f in result.stdout.split("\n") if f]
-        return files
+        return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
         if e.returncode == 2 and "No such file or directory" in e.stderr:
             return []
@@ -115,8 +112,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
 def remove_dir(pod_name: str, directory: str) -> None:
     """Remove a directory in a pod."""
     try:
-        result = run_oc(["exec", pod_name, "--", "rm", "-rf", directory])
-        return result
+        return run_oc(["exec", pod_name, "--", "rm", "-rf", directory])
     except subprocess.CalledProcessError as e:
         raise Exception("Error removing directory") from e
 
