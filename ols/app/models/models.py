@@ -2,7 +2,9 @@
 
 from typing import Optional, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, field_validator, model_validator
+
+from ols.utils import suid
 
 
 class LLMRequest(BaseModel):
@@ -219,6 +221,14 @@ class FeedbackRequest(BaseModel):
             ]
         }
     }
+
+    @field_validator("conversation_id")
+    @classmethod
+    def check_uuid(cls, value: str) -> str:
+        """Check if conversation ID has the proper format."""
+        if not (suid.check_suid(value)):
+            raise ValueError(f"Improper conversation ID {value}")
+        return value
 
     @model_validator(mode="after")
     def check_sentiment_or_user_feedback_set(self) -> "FeedbackRequest":
