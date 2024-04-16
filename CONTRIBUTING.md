@@ -227,6 +227,36 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
 ```
 
 
+## Detecting which statements are called in real service
+
+It is possible to start the service using the following command:
+
+```bash
+coverage run runner.py
+```
+
+The service can be used as expected (via REST API or via GradioUI).
+
+When the service is stopped, it is possible to display which statements were executed and which was omitted:
+
+```bash
+coverage report -m
+```
+
+The output format is the same as coverage report for unit tests and integrations tests:
+
+```
+Name                                          Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------
+ols/__init__.py                                   0      0   100%
+ols/app/__init__.py                               0      0   100%
+ols/app/endpoints/__init__.py                     0      0   100%
+ols/app/endpoints/authorized.py                  13      2    85%   54-55
+ols/app/endpoints/feedback.py                    45     24    47%   37-39, 51, 62-74, 84-86, 127-142
+...
+...
+...
+```
 
 ## Updating Dependencies
 
