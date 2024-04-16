@@ -233,6 +233,33 @@ def test_unsupported_model_in_post(_setup):
         assert response.json() == expected_json
 
 
+def test_post_question_improper_conversation_id(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with improper conversation ID."""
+    config.dev_config.disable_auth = True
+    answer = constants.SUBJECT_ALLOWED
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+
+        conversation_id = "not-correct-uuid"
+        response = client.post(
+            "/v1/query",
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query",
+            },
+        )
+        # error should be returned
+        assert response.status_code == requests.codes.internal_server_error
+        expected_details = {
+            "detail": {
+                "cause": "Invalid conversation ID not-correct-uuid",
+                "response": "Error retrieving conversation history",
+            }
+        }
+        assert response.json() == expected_details
+
+
 def test_post_question_on_noyaml_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method when call is success."""
     config.ols_config.reference_content = ReferenceContent(None)
