@@ -29,6 +29,7 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
+from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,15 @@ def generate_response(
             llm_response["referenced_documents"],
             llm_response["history_truncated"],
         )
+    except PromptTooLongError as summarizer_error:
+        logger.error(f"Prompt is too long: {summarizer_error}")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "response": "Prompt is too long",
+                "cause": str(summarizer_error),
+            },
+        )
     except Exception as summarizer_error:
         logger.error("Error while obtaining answer for user question")
         logger.exception(summarizer_error)
@@ -291,6 +301,15 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> boo
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"response": "Unable to process this request", "cause": str(e)},
+        )
+    except PromptTooLongError as e:
+        logger.error(f"Prompt is too long: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "response": "Prompt is too long",
+                "cause": str(e),
+            },
         )
     except Exception as validation_error:
         metrics.llm_calls_failures_total.inc()

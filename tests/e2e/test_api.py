@@ -278,6 +278,30 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         )
 
 
+def test_too_long_question(response_eval) -> None:
+    """Check the REST API /v1/query with too long question."""
+    endpoint = "/v1/query"
+    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "without_rag")
+    # let's make the query really large, larger that context window size
+    eval_query *= 10000
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.request_entity_too_large
+    ):
+        cid = suid.get_suid()
+        response = client.post(
+            endpoint,
+            json={"conversation_id": cid, "query": eval_query},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        check_content_type(response, "application/json")
+        print(vars(response))
+        assert response.status_code == requests.codes.request_entity_too_large
+        json_response = response.json()
+        assert "detail" in json_response
+        assert json_response["detail"]["response"] == "Prompt is too long"
+
+
 @pytest.mark.rag()
 def test_valid_question(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
