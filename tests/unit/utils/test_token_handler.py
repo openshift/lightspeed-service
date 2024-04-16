@@ -3,9 +3,11 @@
 from typing import Any
 from unittest import TestCase, mock
 
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from ols.utils.token_handler import TokenHandler
+from ols.app.models.config import ModelConfig
+from ols.utils.token_handler import PromptTooLongError, TokenHandler
 
 
 class MockRetrievedNode:
@@ -61,6 +63,77 @@ class TestTokenHandler(TestCase):
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
         self._token_handler_obj = TokenHandler()
+
+    def test_available_tokens_for_empty_prompt(self):
+        """Test the get_available_tokens method for default model config."""
+        # use default model config
+        model_config = ModelConfig({})
+
+        prompt = ""
+
+        available_tokens = self._token_handler_obj.get_available_tokens(
+            prompt, model_config
+        )
+        assert (
+            available_tokens
+            == model_config.context_window_size - model_config.response_token_limit
+        )
+
+    def test_available_tokens_for_regular_prompt(self):
+        """Test the get_available_tokens method for default model config."""
+        # use default model config
+        model_config = ModelConfig({})
+
+        prompt = "What is Kubernetes?"
+        prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
+
+        available_tokens = self._token_handler_obj.get_available_tokens(
+            prompt, model_config
+        )
+        expected_value = (
+            model_config.context_window_size
+            - model_config.response_token_limit
+            - prompt_length
+        )
+        assert available_tokens == expected_value
+
+    def test_available_tokens_for_large_prompt(self):
+        """Test the get_available_tokens method for default model config."""
+        # use default model config
+        model_config = ModelConfig({})
+
+        # this prompt will surely exceeds context window size
+        prompt = "What is Kubernetes?" * 10000
+
+        with pytest.raises(
+            PromptTooLongError, match="Prompt length exceeds LLM context window limit"
+        ):
+            self._token_handler_obj.get_available_tokens(prompt, model_config)
+
+    def test_available_tokens_specific_model_config(self):
+        """Test the get_available_tokens method for specific model config."""
+        # use specific model config
+        model_config = ModelConfig(
+            {
+                "name": "test_name",
+                "url": "test_url",
+                "context_window_size": 100,
+                "response_token_limit": 50,
+            },
+        )
+
+        prompt = "What is Kubernetes?"
+        prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
+
+        available_tokens = self._token_handler_obj.get_available_tokens(
+            prompt, model_config
+        )
+        expected_value = (
+            model_config.context_window_size
+            - model_config.response_token_limit
+            - prompt_length
+        )
+        assert available_tokens == expected_value
 
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     def test_token_handler(self):

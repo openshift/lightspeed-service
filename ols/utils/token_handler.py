@@ -17,6 +17,10 @@ from ols.constants import (
 logger = logging.getLogger(__name__)
 
 
+class PromptTooLongError(Exception):
+    """Prompt is too long."""
+
+
 class TokenHandler:
     """This class handles tokens.
 
@@ -88,13 +92,19 @@ class TokenHandler:
             f"Response token limit: {response_token_limit}"
         )
 
-        # TODO: OLS-469 Handle user query exceeds llm context window size
         prompt_token_count = len(self.text_to_tokens(prompt))
         logger.debug(f"Prompt tokens: {prompt_token_count}")
 
         available_tokens = (
             context_window_size - response_token_limit - prompt_token_count
         )
+
+        if available_tokens <= 0:
+            limit = context_window_size
+            raise PromptTooLongError(
+                f"Prompt length exceeds LLM context window limit ({limit} tokens)"
+            )
+
         return available_tokens
 
     def truncate_rag_context(
