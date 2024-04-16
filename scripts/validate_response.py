@@ -34,7 +34,7 @@ def _args_parser(args):
         "--model",
         choices=["gpt", "granite"],
         default="gpt",
-        type=str,
+        type=lambda v: "gpt" if "gpt" in v else "granite",
         help="Model for which responses will be evaluated.",
     )
     parser.add_argument(
