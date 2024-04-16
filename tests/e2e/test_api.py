@@ -80,7 +80,7 @@ def response_eval(request):
     with open("tests/test_data/question_answer_pair.json") as qna_f:
         qa_pairs = json.load(qna_f)
 
-    eval_model = request.config.option.eval_model
+    eval_model = "gpt" if "gpt" in request.config.option.eval_model else "granite"
     print(f"eval model: {eval_model}")
 
     return qa_pairs[eval_model]
