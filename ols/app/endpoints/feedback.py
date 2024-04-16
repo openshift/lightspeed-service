@@ -130,7 +130,7 @@ def store_user_feedback(
     try:
         store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
     except Exception as e:
-        logger.error("Error storing user feedback")
+        logger.error(f"Error storing user feedback: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -138,6 +138,5 @@ def store_user_feedback(
                 "cause": str(e),
             },
         )
-        logger.error(e)
 
     return FeedbackResponse(response="feedback received")
