@@ -21,6 +21,7 @@ from ols.app.models.models import (
     LLMRequest,
     LLMResponse,
     PromptTooLongResponse,
+    ReferencedDocument,
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
@@ -77,7 +78,7 @@ def conversation_request(
     """
     # Initialize variables
     previous_input = []
-    referenced_documents: list[str] = []
+    referenced_documents: list[ReferencedDocument] = []
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
@@ -202,7 +203,7 @@ def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
     previous_input: list[BaseMessage],
-) -> tuple[str, list[str], bool]:
+) -> tuple[str, list[ReferencedDocument], bool]:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
     try:
@@ -395,7 +396,7 @@ def store_transcript(
     query_is_valid: bool,
     llm_request: LLMRequest,
     response: str,
-    referenced_documents: list[str],
+    referenced_documents: list[ReferencedDocument],
     truncated: bool,
 ) -> None:
     """Store transcript in the local filesystem.
@@ -430,7 +431,7 @@ def store_transcript(
         "redacted_query": llm_request.query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": referenced_documents,
+        "referenced_documents": [doc.model_dump() for doc in referenced_documents],
         "truncated": truncated,
     }
 

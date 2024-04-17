@@ -1,6 +1,6 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Optional, Self
+from typing import Any, Dict, Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -55,19 +55,51 @@ class LLMRequest(BaseModel):
         return self
 
 
+class ReferencedDocument(BaseModel):
+    """RAG referenced document.
+
+    Attributes:
+    docs_url: URL of the corresponding OCP documentation page
+    title: Title of the corresponding OCP documentation page
+    """
+
+    docs_url: Optional[str] = None
+    title: Optional[str] = None
+
+    def __init__(self, docs_url: str, title: str) -> None:
+        """Initialize a ReferencedDocument."""
+        super().__init__()
+        self.docs_url = docs_url
+        self.title = title
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, ReferencedDocument):
+            return self.docs_url == other.docs_url and self.title == other.title
+        return False
+
+    @staticmethod
+    def json_decode_object_hook(dct: Dict[str, Any]) -> Any:
+        """Deserialize dict into ReferencedDocument if we can."""
+        if "docs_url" in dct and "title" in dct:
+            return ReferencedDocument(**dct)
+        return dct
+
+
 class LLMResponse(BaseModel):
     """Model representing a response from the LLM (Language Model).
 
     Attributes:
         conversation_id: The optional conversation ID (UUID).
         response: The optional response.
-        referenced_documents: The optional URLs for the documents used to generate the response.
+        referenced_documents: The optional URLs and titles for the documents used
+                              to generate the response.
         truncated: Set to True if conversation history was truncated to be within context window.
     """
 
     conversation_id: str
     response: str
-    referenced_documents: list[str]
+    referenced_documents: list[ReferencedDocument]
     truncated: bool
 
     # provides examples for /docs endpoint
@@ -78,8 +110,11 @@ class LLMResponse(BaseModel):
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "response": "Operator Lifecycle Manager (OLM) helps users install...",
                     "referenced_documents": [
-                        "https://docs.openshift.com/container-platform/4.14/operators/"
-                        "understanding/olm/olm-understanding-olm.html"
+                        {
+                            "docs_url": "https://docs.openshift.com/container-platform/4.15/operators/"
+                            "understanding/olm/olm-understanding-olm.html",
+                            "title": "Operator Lifecycle Manager concepts and resources",
+                        },
                     ],
                 }
             ]

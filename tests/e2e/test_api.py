@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -328,10 +329,10 @@ def test_valid_question(response_eval) -> None:
             "Kubernetes is" in json_response["response"]
             or "Kubernetes: It is" in json_response["response"]
         )
-        assert (
-            "orchestration tool" in json_response["response"]
-            or "orchestration system" in json_response["response"]
-            or "orchestration platform" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
         )
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
@@ -448,8 +449,9 @@ def test_rag_question(response_eval) -> None:
         json_response = response.json()
         assert "conversation_id" in json_response
         assert len(json_response["referenced_documents"]) > 0
-        assert "performance" in json_response["referenced_documents"][0]
-        assert "https://" in json_response["referenced_documents"][0]
+        assert "virt" in json_response["referenced_documents"][0]["docs_url"]
+        assert "https://" in json_response["referenced_documents"][0]["docs_url"]
+        assert json_response["referenced_documents"][0]["title"]
 
         assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
@@ -971,4 +973,6 @@ def test_transcripts_storing_cluster():
     assert "query_is_valid" in transcript
     assert "llm_response" in transcript
     assert "referenced_documents" in transcript
+    assert transcript["referenced_documents"][0]["docs_url"]
+    assert transcript["referenced_documents"][0]["title"]
     assert "truncated" in transcript

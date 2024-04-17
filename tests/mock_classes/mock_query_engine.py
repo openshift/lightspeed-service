@@ -6,17 +6,17 @@ from .mock_summary import MockSummary
 class Node:
     """Node containing source node metadata."""
 
-    def __init__(self, docs_url):
+    def __init__(self, docs_url, title):
         """Initialize docs_url metadata."""
-        self.metadata = {"docs_url": docs_url}
+        self.metadata = {"docs_url": docs_url, "title": title}
 
 
 class SourceNode:
     """Node containing one reference to document."""
 
-    def __init__(self, docs_url):
+    def __init__(self, docs_url, title):
         """Initialize sub-node with metadata."""
-        self.node = Node(docs_url)
+        self.node = Node(docs_url, title)
 
 
 class MockQueryEngine:
@@ -31,8 +31,8 @@ class MockQueryEngine:
         """Return summary for given query."""
         # fill-in some documents for more realistic tests
         nodes = [
-            SourceNode("/docs/test."),
-            SourceNode("/known-bugs."),
-            SourceNode("/errata."),
+            SourceNode("/docs/test.", "Docs Test"),
+            SourceNode("/known-bugs.", "Known Bugs"),
+            SourceNode("/errata.", "Errata"),
         ]
         return MockSummary(query, nodes)

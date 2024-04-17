@@ -43,22 +43,22 @@ class TestTokenHandler(TestCase):
             {
                 "text": "a text text text text",
                 "score": 0.4,
-                "metadata": {"docs_url": "data/doc1.pdf"},
+                "metadata": {"docs_url": "data/doc1.pdf", "title": "Doc1"},
             },
             {
                 "text": "b text text text text",
                 "score": 0.55,
-                "metadata": {"docs_url": "data/doc2.pdf"},
+                "metadata": {"docs_url": "data/doc2.pdf", "title": "Doc2"},
             },
             {
                 "text": "c text text text text",
                 "score": 0.55,
-                "metadata": {"docs_url": "data/doc3.pdf"},
+                "metadata": {"docs_url": "data/doc3.pdf", "title": "Doc3"},
             },
             {
                 "text": "d text text text text",
                 "score": 0.6,
-                "metadata": {"docs_url": "data/doc4.pdf"},
+                "metadata": {"docs_url": "data/doc4.pdf", "title": "Doc4"},
             },
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
@@ -143,7 +143,7 @@ class TestTokenHandler(TestCase):
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url"))
+        assert len(context) == len(("text", "docs_url", "title"))
         assert len(context["text"]) == 3
         for idx in range(3):
             assert context["text"][idx] == self._mock_retrieved_obj[idx].get_text()
@@ -161,7 +161,7 @@ class TestTokenHandler(TestCase):
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url"))
+        assert len(context) == len(("text", "docs_url", "title"))
         assert len(context["text"]) == 1
         assert context["text"][0] == self._mock_retrieved_obj[0].get_text()
         assert available_tokens == 495
@@ -173,7 +173,7 @@ class TestTokenHandler(TestCase):
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context) == 2
+        assert len(context) == 3
         assert len(context["text"]) == 2
         assert (
             context["text"][1].split()
