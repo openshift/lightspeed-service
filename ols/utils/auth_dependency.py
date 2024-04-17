@@ -163,7 +163,7 @@ def _extract_bearer_token(header: str) -> str:
 class AuthDependency:
     """Create an AuthDependency Class that allows customizing the acces Scope path to check."""
 
-    def __init__(self, virtual_path: str = "/ols-access"):
+    def __init__(self, virtual_path: str = "/ols-access") -> None:
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path = virtual_path
 

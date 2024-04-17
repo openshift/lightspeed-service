@@ -11,7 +11,7 @@ from ols.src.cache.cache import Cache
 class PostgresCache(Cache):
     """Cache that uses Postgres to store cached values."""
 
-    def __init__(self, config: PostgresConfig):
+    def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
 
     def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
