@@ -1,11 +1,16 @@
 """Integration tests for REST API endpoints for providing user feedback."""
 
+from unittest.mock import patch
+
 import pytest
 import requests
 from fastapi.testclient import TestClient
 
 from ols.app.models.config import UserDataCollection
 from ols.utils import config, suid
+
+# use proper conversation ID
+CONVERSATION_ID = suid.get_suid()
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -56,13 +61,10 @@ def test_feedback_status(_with_enabled_feedback):
 
 def test_feedback(_with_enabled_feedback):
     """Check if feedback with correct format is accepted by the service."""
-    # use proper conversation ID
-    conversation_id = suid.get_suid()
-
     response = client.post(
         "/v1/feedback",
         json={
-            "conversation_id": conversation_id,
+            "conversation_id": CONVERSATION_ID,
             "user_question": "what are you doing?",
             "llm_response": "I don't know",
             "sentiment": -1,
@@ -84,13 +86,10 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request(
     _with_enabled_feedback,
 ):
     """Check if feedback without mandatory fields is not accepted by the service."""
-    # use proper conversation ID
-    conversation_id = suid.get_suid()
-
     response = client.post(
         "/v1/feedback",
         json={
-            "conversation_id": conversation_id,
+            "conversation_id": CONVERSATION_ID,
             "user_question": "what are you doing?",
             "llm_response": "I don't know",
         },
@@ -106,3 +105,21 @@ def test_feedback_no_payload_send(_with_enabled_feedback):
     # for the request send w/o payload, the server
     # should respond with proper error code
     assert response.status_code == requests.codes.unprocessable_entity
+
+
+def test_feedback_error_raised(_with_enabled_feedback):
+    """Check if feedback endpoint raises an exception when storing feedback fails."""
+    with patch(
+        "ols.app.endpoints.feedback.store_feedback",
+        side_effect=Exception("Test exception"),
+    ):
+        response = client.post(
+            "/v1/feedback",
+            json={
+                "conversation_id": CONVERSATION_ID,
+                "user_question": "what are you doing?",
+                "llm_response": "I don't know",
+                "sentiment": -1,
+            },
+        )
+        assert response.status_code == requests.codes.internal_server_error

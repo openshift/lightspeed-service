@@ -14,10 +14,11 @@ from ols.utils import config
 def feedback_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
     config.init_empty_config()
+    full_path = (tmpdir / "feedback").strpath
     config.ols_config.user_data_collection = UserDataCollection(
-        feedback_disabled=False, feedback_storage=tmpdir.strpath
+        feedback_disabled=False, feedback_storage=full_path
     )
-    return tmpdir.strpath
+    return full_path
 
 
 def store_fake_feedback(path, filename, data):
