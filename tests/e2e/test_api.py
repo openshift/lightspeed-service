@@ -976,3 +976,29 @@ def test_transcripts_storing_cluster():
     assert transcript["referenced_documents"][0]["docs_url"]
     assert transcript["referenced_documents"][0]["title"]
     assert "truncated" in transcript
+
+
+def test_openapi_endpoint():
+    """Test handler for /opanapi REST API endpoint."""
+    response = client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    check_content_type(response, "application/json")
+
+    payload = response.json()
+    assert payload is not None, "Incorrect response"
+
+    # check the metadata nodes
+    for attribute in ("openapi", "info", "components", "paths"):
+        assert (
+            attribute in payload
+        ), f"Required metadata attribute {attribute} not found"
+
+    # check application description
+    info = payload["info"]
+    assert "description" in info, "Service description not provided"
+    assert "OpenShift LightSpeed Service API specification" in info["description"]
+
+    # elementary check that all mandatory endpoints are covered
+    paths = payload["paths"]
+    for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
+        assert endpoint in paths, f"Endpoint {endpoint} is not described"
