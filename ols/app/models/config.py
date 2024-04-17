@@ -116,7 +116,7 @@ class ModelConfig(BaseModel):
         """Validate model options which must be dict[str, Any]."""
         if not isinstance(options, dict):
             raise InvalidConfigurationError("model options must be dictionary")
-        for key in options.keys():
+        for key in options:
             if not isinstance(key, str):
                 raise InvalidConfigurationError("key for model option must be string")
 
