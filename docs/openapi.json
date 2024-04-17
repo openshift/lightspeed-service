@@ -55,6 +55,16 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Query can not be validated, LLM is not accessible or other internal error",
                         "content": {
@@ -650,6 +660,31 @@
                             "https://docs.openshift.com/container-platform/4.14/operators/understanding/olm/olm-understanding-olm.html"
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install..."
+                    }
+                ]
+            },
+            "PromptTooLongResponse": {
+                "properties": {
+                    "detail": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "PromptTooLongResponse",
+                "description": "Model representing error response when prompt is too long.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Prompt length exceeds LLM context window limit (8000 tokens)",
+                            "response": "Prompt is too long"
+                        }
                     }
                 ]
             },

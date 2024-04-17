@@ -20,6 +20,7 @@ from ols.app.models.models import (
     ForbiddenResponse,
     LLMRequest,
     LLMResponse,
+    PromptTooLongResponse,
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
@@ -49,6 +50,10 @@ query_responses = {
     403: {
         "description": "Client does not have permission to access resource",
         "model": ForbiddenResponse,
+    },
+    413: {
+        "description": "Prompt is too long",
+        "model": PromptTooLongResponse,
     },
     500: {
         "description": "Query can not be validated, LLM is not accessible or other internal error",
