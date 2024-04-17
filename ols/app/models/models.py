@@ -147,6 +147,24 @@ class ErrorResponse(BaseModel):
     }
 
 
+class PromptTooLongResponse(ErrorResponse):
+    """Model representing error response when prompt is too long."""
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "detail": {
+                        "response": "Prompt is too long",
+                        "cause": "Prompt length exceeds LLM context window limit (8000 tokens)",
+                    },
+                },
+            ]
+        }
+    }
+
+
 class StatusResponse(BaseModel):
     """Model representing a response to a status request.
 
