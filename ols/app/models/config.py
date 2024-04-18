@@ -200,7 +200,7 @@ class LoggingConfig(BaseModel):
     lib_log_level: Optional[str] = "warning"
     uvicorn_log_level: Optional[str] = "warning"
 
-    @field_validator("app_log_level", "lib_log_level")
+    @field_validator("app_log_level", "lib_log_level", "uvicorn_log_level")
     @classmethod
     def validate_log_level(cls, v):  # type: ignore
         """Validate log levels."""
@@ -215,6 +215,7 @@ class LoggingConfig(BaseModel):
         super().__init__(**data)
         self.app_log_level = logging.getLevelName(self.app_log_level.upper())
         self.lib_log_level = logging.getLevelName(self.lib_log_level.upper())
+        self.uvicorn_log_level = logging.getLevelName(self.uvicorn_log_level.upper())
 
 
 class ReferenceContent(BaseModel):
