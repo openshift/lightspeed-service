@@ -6,7 +6,12 @@ import pytest
 
 from ols import constants
 from ols.app.models.config import ConversationCacheConfig
-from ols.src.cache.cache_factory import CacheFactory, InMemoryCache, RedisCache
+from ols.src.cache.cache_factory import (
+    CacheFactory,
+    InMemoryCache,
+    PostgresCache,
+    RedisCache,
+)
 from tests.mock_classes.mock_redis_client import MockRedisClient
 
 
@@ -28,6 +33,17 @@ def redis_cache_config():
         {
             "type": constants.REDIS_CACHE,
             constants.REDIS_CACHE: {"host": "localhost", "port": 6379},
+        }
+    )
+
+
+@pytest.fixture(scope="module")
+def postgres_cache_config():
+    """Fixture containing initialized instance of ConversationCacheConfig."""
+    return ConversationCacheConfig(
+        {
+            "type": constants.POSTGRES_CACHE,
+            constants.POSTGRES_CACHE: {"host": "localhost", "port": 5432},
         }
     )
 
@@ -55,6 +71,15 @@ def test_conversation_cache_in_redis(redis_cache_config):
     assert cache is not None
     # check if the object has the right type
     assert isinstance(cache, RedisCache), type(cache)
+
+
+@patch("psycopg2.connect")
+def test_conversation_cache_in_postgres(mock, postgres_cache_config):
+    """Check if PostgresCache is returned by factory with proper configuration."""
+    cache = CacheFactory.conversation_cache(postgres_cache_config)
+    assert cache is not None
+    # check if the object has the right type
+    assert isinstance(cache, PostgresCache), type(cache)
 
 
 def test_conversation_cache_wrong_cache(invalid_cache_type_config):

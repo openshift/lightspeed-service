@@ -313,7 +313,7 @@ class PostgresConfig(BaseModel):
     user: str = constants.POSTGRES_CACHE_USER
     password_path: Optional[str] = None
     password: Optional[str] = None
-    require_ssl: bool = False
+    ssl_mode: str = constants.POSTGRES_CACHE_SSL_MODE
     ca_cert_path: Optional[str] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
 
@@ -542,6 +542,7 @@ class ConversationCacheConfig(BaseModel):
                 self.type == other.type
                 and self.redis == other.redis
                 and self.memory == other.memory
+                and self.postgres == other.postgres
             )
         return False
 
