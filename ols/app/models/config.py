@@ -57,8 +57,8 @@ class ModelConfig(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
     credentials: Optional[str] = None
-    context_window_size: int = constants.DEFAULT_CONTEXT_WINDOW_SIZE
-    response_token_limit: int = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
+    context_window_size: int = -1  # need to be set later, based on model
+    response_token_limit: int = -1  # need to be set later, based on model
     options: Optional[dict[str, Any]] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -69,11 +69,18 @@ class ModelConfig(BaseModel):
         self.name = data.get("name", None)
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
-        self.context_window_size = self._validate_token_limit(
-            data, "context_window_size", self.context_window_size
+
+        # if the context window size is not set explicitly, use value
+        # set for given model, or default value for model without size setup
+        default = constants.CONTEXT_WINDOW_SIZES.get(
+            self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
         )
+        self.context_window_size = self._validate_token_limit(
+            data, "context_window_size", default
+        )
+        default = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
         self.response_token_limit = self._validate_token_limit(
-            data, "response_token_limit", self.response_token_limit
+            data, "response_token_limit", default
         )
         if self.context_window_size <= self.response_token_limit:
             raise InvalidConfigurationError(
@@ -97,7 +104,7 @@ class ModelConfig(BaseModel):
         return False
 
     @staticmethod
-    def _validate_token_limit(data: dict, token_type: str, value: int) -> int:
+    def _validate_token_limit(data: dict, token_type: str, default: int) -> int:
         """Validate token limit."""
         if token_type in data:
             value = data[token_type]
@@ -105,11 +112,12 @@ class ModelConfig(BaseModel):
                 value = int(value)
                 if value <= 0:
                     raise ValueError
+                return value
             except (ValueError, TypeError):
                 raise InvalidConfigurationError(
                     f"invalid {token_type} = {value}, positive value expected"
                 )
-        return value
+        return default
 
     @staticmethod
     def _validate_model_options(options: dict) -> None:
