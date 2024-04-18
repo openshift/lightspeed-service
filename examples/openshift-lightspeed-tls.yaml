@@ -93,6 +93,7 @@ spec:
           secret:
             secretName: lightspeed-certs
       containers:
+      # this example is without the data collection sidecar
       - image: quay.io/openshift/lightspeed-service-api:latest
         imagePullPolicy: Always
         name: lightspeed-w-rag
@@ -198,6 +199,9 @@ data:
         tls_key_path: /app-root/certs/tls.key
       default_provider: openai
       default_model: gpt-3.5-turbo
+      user_data_collection:
+        feedback_disabled: true
+        transcripts_disabled: true
     dev_config:
       enable_dev_ui: true
       # llm_temperature_override: 0
