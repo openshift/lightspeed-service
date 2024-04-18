@@ -47,11 +47,23 @@ GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
+GPT4_TURBO = "gpt-4-turbo"
+
 
 # Token related constants
 DEFAULT_CONTEXT_WINDOW_SIZE = 8000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500
 MINIMUM_CONTEXT_TOKEN_LIMIT = 1
+
+# Model-specific context window size
+# see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4
+# and https://www.ibm.com/docs/en/cloud-paks/cp-data/4.8.x?topic=models-supported-foundation
+CONTEXT_WINDOW_SIZES = {
+    GRANITE_13B_CHAT_V1: 8192,
+    GRANITE_13B_CHAT_V2: 8192,
+    GPT4_TURBO: 128000,
+    GPT35_TURBO: 16385,
+}
 
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 
