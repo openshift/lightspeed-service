@@ -28,6 +28,7 @@ class ModelConfigMissingError(LLMConfigurationError):
     """No configuration exists for the requested model name."""
 
 
+# TODO redundant
 def _resolve_provider_config(
     provider: str, model: str, providers_config: dict[str, LLMProviderConfig]
 ) -> LLMProviderConfig:
@@ -43,10 +44,10 @@ def _resolve_provider_config(
 
     provider_config = providers_config.get(provider)
 
-    if model not in provider_config.models:
+    if model not in [model_name.name for model_name in provider_config.models]:
         raise ModelConfigMissingError(
             f"Model '{model}' is not a valid model for provider '{provider}'. "
-            f"Valid models are: {list(provider_config.models.keys())}"
+            f"Valid models are: {[model_name.name for model_name in provider_config.models]}"
         )
 
     return provider_config  # type: ignore [return-value]
