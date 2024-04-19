@@ -68,6 +68,10 @@ class ClusterPullSecretNotFoundError(Exception):
     """Cluster pull-secret is not found."""
 
 
+class ClusterIDNotFoundError(Exception):
+    """Cluster id is not found."""
+
+
 def get_ingress_upload_url() -> str:
     """Get the Ingress upload URL based on the environment."""
     upload_endpoint = "api/ingress/v1/upload"
@@ -115,15 +119,21 @@ def get_cloud_openshift_pull_secret() -> str:
     kubernetes.config.load_incluster_config()
     v1 = kubernetes.client.CoreV1Api()
 
-    # get the pull-secret from openshift-config namespace
-    secret = v1.read_namespaced_secret("pull-secret", "openshift-config")
     try:
+        secret = v1.read_namespaced_secret("pull-secret", "openshift-config")
         dockerconfigjson = secret.data[".dockerconfigjson"]
         dockerconfig = json.loads(base64.b64decode(dockerconfigjson).decode("utf-8"))
         return dockerconfig["auths"]["cloud.openshift.com"]["auth"]
     except KeyError:
-        logger.error("failed to get token from cluster pull-secret")
-        raise ClusterPullSecretNotFoundError
+        logger.error("failed to get token from cluster pull-secret, missing keys")
+    except TypeError:
+        logger.error(
+            "failed to get token from cluster pull-secret, unexpected "
+            f"object type: {type(dockerconfig)}"
+        )
+    except kubernetes.client.exceptions.ApiException as e:
+        logger.error(f"failed to get pull-secret object, body: {e.body}")
+    raise ClusterPullSecretNotFoundError
 
 
 def get_cluster_id() -> str:
@@ -131,15 +141,20 @@ def get_cluster_id() -> str:
     kubernetes.config.load_incluster_config()
     custom_objects_api = kubernetes.client.CustomObjectsApi()
 
-    # get the cluster version object
-    version_data = custom_objects_api.get_cluster_custom_object(
-        "config.openshift.io", "v1", "clusterversions", "version"
-    )
     try:
+        version_data = custom_objects_api.get_cluster_custom_object(
+            "config.openshift.io", "v1", "clusterversions", "versions"
+        )
         return version_data["spec"]["clusterID"]
     except KeyError:
-        logger.error("failed to get cluster_id from cluster")
-        return "unknown"
+        logger.error(
+            "failed to get cluster_id from cluster, missing keys in version object"
+        )
+    except TypeError:
+        logger.error(f"failed to get cluster_id, version object is: {version_data}")
+    except kubernetes.client.exceptions.ApiException as e:
+        logger.error(f"failed to get version object, body: {e.body}")
+    raise ClusterIDNotFoundError
 
 
 def collect_ols_data_from(location: str) -> list[pathlib.Path]:
@@ -243,24 +258,20 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
     if CP_OFFLINE_TOKEN:
         logger.debug("using CP offline token to generate refresh token")
         token = access_token_from_offline_token(CP_OFFLINE_TOKEN)
-        cluster_id = "unknown"
+        # when authenticating with token, user-agent is not accepted
+        # causing "UHC services authentication failed"
+        headers = {"Authorization": f"Bearer {token}"}
     else:
         logger.debug("using cluster pull secret to authenticate")
-        token = get_cloud_openshift_pull_secret()
         cluster_id = get_cluster_id()
-
-    with requests.Session() as s:
-        s.headers = {
-            # TODO: OLS-486 User agent needs to be set as insights operator,
-            # otherwise JWT token is not accepted - we use just random hash
-            # "User-Agent": f"openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}",  # noqa E501
-            "User-Agent": f"insights-operator/abcdefgijklmnopqrstuvwxyz01234567891011 cluster/{cluster_id}",  # noqa: E501
+        token = get_cloud_openshift_pull_secret()
+        headers = {
+            "User-Agent": f"openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}",  # noqa E501
             "Authorization": f"Bearer {token}",
         }
-        if CP_OFFLINE_TOKEN:
-            # when authenticating with token, user-agent is not accepted
-            # causing "UHC services authentication failed"
-            del s.headers["User-Agent"]
+
+    with requests.Session() as s:
+        s.headers = headers
 
         response = s.post(
             url=get_ingress_upload_url(),
@@ -302,10 +313,8 @@ def gather_ols_user_data(data_path: str) -> None:
             upload_data_to_ingress(tarball)
             delete_data(collected_files)
             logger.info("uploaded data removed")
-        except ClusterPullSecretNotFoundError:
-            logger.error(
-                "missing cluster pull secret, upload and data removal canceled"
-            )
+        except (ClusterPullSecretNotFoundError, ClusterIDNotFoundError) as e:
+            logger.error(f"{e.__class__.__name__} - upload and data removal canceled")
         # TODO: OLS-473
         # ensure_data_folder_is_not_bigger_than(OLS_USER_DATA_MAX_SIZE)
     else:
