@@ -69,11 +69,11 @@ check-types: ## Checks type hints in sources
 
 format: ## Format the code into unified format
 	black .
-	ruff check . --fix --per-file-ignores=tests/*:S101
+	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
 verify: ## Verify the code using various linters
 	black . --check
-	ruff check . --per-file-ignores=tests/*:S101
+	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
