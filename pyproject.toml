@@ -11,7 +11,6 @@ lint.ignore = []
 target-version = "py311"
 lint.pydocstyle.convention = "google"
 line-length = 100
-lint.flake8-pytest-style.fixture-parentheses = false
 
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
