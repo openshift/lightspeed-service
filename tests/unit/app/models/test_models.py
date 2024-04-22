@@ -186,6 +186,69 @@ class TestFeedback:
             )
 
     @staticmethod
+    def test_feedback_sentiment():
+        """Test the sentiment field of the FeedbackRequest model."""
+        conversation_id = suid.get_suid()
+        user_question = "user question"
+        llm_response = "llm response"
+
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=1,
+        )
+        assert feedback_request.sentiment == 1
+
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=-1,
+        )
+        assert feedback_request.sentiment == -1
+
+        # can convert strings
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment="1",
+        )
+        assert feedback_request.sentiment == 1
+
+        # check some invalid values
+        with pytest.raises(
+            ValidationError, match="Improper value 2, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=2,
+            )
+
+        with pytest.raises(
+            ValidationError, match="Improper value 0, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=0,
+            )
+
+        with pytest.raises(
+            ValidationError, match="Improper value 2, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment="2",
+            )
+
+    @staticmethod
     def test_feedback_response():
         """Test the FeedbackResponse model."""
         feedback_response = "feedback received"

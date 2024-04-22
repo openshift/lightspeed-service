@@ -269,7 +269,7 @@ class FeedbackRequest(BaseModel):
                     "user_question": "foo",
                     "llm_response": "bar",
                     "user_feedback": "Great service!",
-                    "sentiment": 5,
+                    "sentiment": 1,
                 }
             ]
         }
@@ -281,6 +281,14 @@ class FeedbackRequest(BaseModel):
         """Check if conversation ID has the proper format."""
         if not (suid.check_suid(value)):
             raise ValueError(f"Improper conversation ID {value}")
+        return value
+
+    @field_validator("sentiment")
+    @classmethod
+    def check_sentiment(cls, value: Optional[int]) -> Optional[int]:
+        """Check if sentiment value is as expected."""
+        if value not in {-1, 1, None}:
+            raise ValueError(f"Improper value {value}, needs to be -1 or 1")
         return value
 
     @model_validator(mode="after")

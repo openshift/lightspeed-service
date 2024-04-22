@@ -486,7 +486,7 @@
                     {
                         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
                         "llm_response": "bar",
-                        "sentiment": 5,
+                        "sentiment": 1,
                         "user_feedback": "Great service!",
                         "user_question": "foo"
                     }
