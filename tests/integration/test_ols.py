@@ -35,7 +35,15 @@ def test_post_question_on_unexpected_payload(_setup):
     """Check the REST API /v1/query with POST HTTP method when unexpected payload is posted."""
     response = client.post("/v1/query", json="this is really not proper payload")
     assert response.status_code == requests.codes.unprocessable
-    assert response.json() == {
+
+    # try to deserialize payload
+    response_json = response.json()
+
+    # remove attribute that strongly depends on Pydantic version
+    if "url" in response_json["detail"][0]:
+        del response_json["detail"][0]["url"]
+
+    assert response_json == {
         "detail": [
             {
                 "input": "this is really not proper payload",
