@@ -88,48 +88,6 @@
                 }
             }
         },
-        "/v1/debug/query": {
-            "post": {
-                "tags": [
-                    "query"
-                ],
-                "summary": "Conversation Request Debug Api",
-                "description": "Handle requests for the base LLM completion endpoint.\n\nArgs:\n    llm_request: The request containing a query.\n\nReturns:\n    Response containing the processed information.",
-                "operationId": "conversation_request_debug_api_v1_debug_query_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LLMRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LLMResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v1/feedback/status": {
             "get": {
                 "tags": [

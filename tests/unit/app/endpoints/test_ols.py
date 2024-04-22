@@ -17,8 +17,6 @@ from ols.app.models.models import LLMRequest, ReferencedDocument
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config, suid
 from ols.utils.query_filter import QueryFilter, RegexFilter
-from tests.mock_classes.llm_chain import mock_llm_chain
-from tests.mock_classes.llm_loader import mock_llm_loader
 
 
 @pytest.fixture(scope="module")
@@ -432,27 +430,6 @@ def test_no_question_validation_in_follow_up_conversation(
     assert response.response == "some elaborate answer"
 
 
-@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
-def test_conversation_request_debug_api_no_conversation_id(_load_config):
-    """Test conversation request debug API endpoint."""
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
-    response = ols.conversation_request_debug_api(llm_request)
-    assert response.response == "llm response"
-
-
-@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
-def test_conversation_request_debug_api_with_conversation_id(_load_config):
-    """Test conversation request debug API endpoint."""
-    conversation_id = suid.get_suid()
-    llm_request = LLMRequest(
-        query="Tell me about Kubernetes", conversation_id=conversation_id
-    )
-    response = ols.conversation_request_debug_api(llm_request)
-    assert response.response == "llm response"
-
-
 @patch("ols.app.endpoints.ols.validate_question")
 def test_conversation_request_invalid_subject(mock_validate, _load_config, auth):
     """Test how generate_response function checks validation results."""
@@ -533,15 +510,6 @@ def test_generate_response_unknown_validation_result(_load_config):
         HTTPException, match="Error while obtaining answer for user question"
     ):
         ols.generate_response(conversation_id, llm_request, previous_input)
-
-
-@patch("ols.app.endpoints.ols.LLMChain", new=mock_llm_chain({"text": "llm response"}))
-@patch("ols.app.endpoints.ols.load_llm", new=mock_llm_loader(None))
-def test_generate_bare_response(_load_config):
-    """Test the generation of bare response for debug endpoint."""
-    llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
-    response = ols.generate_bare_response(None, llm_request)
-    assert response == "llm response"
 
 
 @pytest.fixture

@@ -8,13 +8,10 @@ from typing import Any, Optional
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 from langchain_core.messages.base import BaseMessage
 
 from ols import constants
 from ols.app import metrics
-from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import (
     ErrorResponse,
     ForbiddenResponse,
@@ -24,7 +21,7 @@ from ols.app.models.models import (
     ReferencedDocument,
     UnauthorizedResponse,
 )
-from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
+from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
@@ -130,29 +127,6 @@ def conversation_request(
         response=response,
         referenced_documents=referenced_documents,
         truncated=truncated,
-    )
-
-
-@router.post("/debug/query")
-def conversation_request_debug_api(llm_request: LLMRequest) -> LLMResponse:
-    """Handle requests for the base LLM completion endpoint.
-
-    Args:
-        llm_request: The request containing a query.
-
-    Returns:
-        Response containing the processed information.
-    """
-    conversation_id = retrieve_conversation_id(llm_request)
-    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
-
-    response = generate_bare_response(conversation_id, llm_request)
-
-    return LLMResponse(
-        conversation_id=conversation_id,
-        response=response,
-        referenced_documents=[],
-        truncated=False,
     )
 
 
@@ -365,29 +339,6 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
         case _:
             logger.debug("LLM based query validation.")
             return _validate_question_llm(conversation_id, llm_request)
-
-
-def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str:
-    """Generate bare response without validation not using conversation history."""
-    bare_llm = load_llm(
-        config.ols_config.default_provider,
-        config.ols_config.default_model,
-    )
-
-    prompt = PromptTemplate.from_template("{query}")
-    llm_chain = LLMChain(llm=bare_llm, prompt=prompt, verbose=True)
-
-    with TokenMetricUpdater(
-        llm=bare_llm,
-        provider=config.ols_config.default_provider,
-        model=config.ols_config.default_model,
-    ) as token_counter:
-        response = llm_chain.invoke(
-            input={"query": llm_request.query}, config={"callbacks": [token_counter]}
-        )
-
-    logger.info(f"{conversation_id} Model returned: {response}")
-    return response["text"]
 
 
 def store_transcript(

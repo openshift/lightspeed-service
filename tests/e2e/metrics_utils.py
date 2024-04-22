@@ -39,7 +39,7 @@ def get_response_duration_seconds_value(client, path, default=None):
     counter_name = "ols_response_duration_seconds_sum"
 
     # counters with response durations have the following format:
-    # response_duration_seconds_sum{path="/v1/debug/query"} 0.123
+    # response_duration_seconds_sum{path="/v1/query"} 0.123
     prefix = f'{counter_name}{{path="{path}"}} '
 
     return get_counter_value(counter_name, prefix, response, default, to_int=False)
