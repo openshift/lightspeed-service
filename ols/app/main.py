@@ -4,8 +4,10 @@ import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
+from starlette.datastructures import Headers
 from starlette.responses import StreamingResponse
 
+from ols import constants
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
 from ols.utils import config
@@ -54,6 +56,15 @@ async def rest_api_counter(
     return response
 
 
+def _log_headers(headers: Headers, to_redact: set[str]) -> str:
+    """Serialize headers into a string while redacting sensitive values."""
+    pairs = []
+    for h, v in headers.items():
+        value = "XXXXX" if h.lower() in to_redact else v
+        pairs.append(f'"{h}":"{value}"')
+    return "Headers({" + ", ".join(pairs) + "})"
+
+
 @app.middleware("")
 async def log_requests_responses(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -63,10 +74,11 @@ async def log_requests_responses(
     if not logger.isEnabledFor(logging.DEBUG):
         return await call_next(request)
 
-    request_log_message = (
-        f"Request from {request.client.host}:{request.client.port}"
-        f" {request.headers}, Body: "
+    request_log_message = f"Request from {request.client.host}:{request.client.port} "
+    request_log_message += _log_headers(
+        request.headers, constants.HTTP_REQUEST_HEADERS_TO_REDACT
     )
+    request_log_message += ", Body: "
 
     request_body = await request.body()
     if request_body:
@@ -78,9 +90,13 @@ async def log_requests_responses(
 
     response = await call_next(request)
 
-    logger.debug(
-        f"Response to {request.client.host}:{request.client.port} {response.headers}"
+    response_headers_log_message = (
+        f"Response to {request.client.host}:{request.client.port} "
     )
+    response_headers_log_message += _log_headers(
+        response.headers, constants.HTTP_RESPONSE_HEADERS_TO_REDACT
+    )
+    logger.debug(response_headers_log_message)
 
     async def stream_response_body(
         response_body: AsyncGenerator[bytes, None]
