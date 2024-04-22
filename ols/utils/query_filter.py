@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 RegexFilter = namedtuple("RegexFilter", "pattern, name, replace_with")
 
 
+# TODO: OLS-380 Config object mirrors configuration
+
+
 class QueryFilter:
     """Redact the query based on the regex filters provided in the config file."""
 

@@ -65,11 +65,13 @@ def init_config(config_file: str) -> None:
 
 def init_query_filter() -> None:
     """Initialize question filter."""
+    # TODO: OLS-380 Config object mirrors configuration
     global query_redactor
     query_redactor = QueryFilter()
 
 
 def init_vector_index() -> None:
     """Initialize vector index."""
+    # TODO: OLS-380 Config object mirrors configuration
     global rag_index
     rag_index = IndexLoader(ols_config.reference_content).vector_index
