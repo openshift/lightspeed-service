@@ -4,10 +4,10 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 import pytz
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.messages.base import BaseMessage
@@ -65,13 +65,16 @@ query_responses = {
 
 @router.post("/query", responses=query_responses)
 def conversation_request(
-    llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
+    llm_request: LLMRequest,
+    auth: Any = Depends(auth_dependency),
+    authorization: Annotated[list[str] | None, Header()] = None,
 ) -> LLMResponse:
     """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The request containing a query and conversation ID.
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        authorization: Authorization HTTP request header
 
     Returns:
         Response containing the processed information.

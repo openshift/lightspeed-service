@@ -12,17 +12,38 @@
                     "query"
                 ],
                 "summary": "Conversation Request",
-                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query and conversation ID.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the processed information.",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query and conversation ID.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n    authorization: Authorization HTTP request header\n\nReturns:\n    Response containing the processed information.",
                 "operationId": "conversation_request_v1_query_post",
+                "parameters": [
+                    {
+                        "name": "authorization",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
                 "requestBody": {
+                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/LLMRequest"
                             }
                         }
-                    },
-                    "required": true
+                    }
                 },
                 "responses": {
                     "200": {
