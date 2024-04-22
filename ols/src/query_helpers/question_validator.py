@@ -22,10 +22,7 @@ class QuestionValidator(QueryHelper):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
         # TODO: OLS-447 Refactor code that pass parameters into LLM in QuestionValidator
-        llm_params = {
-            "min_new_tokens": 1,
-            "max_new_tokens": 4,
-        }
+        llm_params = {"max_new_tokens": 4}
         super().__init__(*args, **dict(kwargs, llm_params=llm_params))
 
     def validate_question(

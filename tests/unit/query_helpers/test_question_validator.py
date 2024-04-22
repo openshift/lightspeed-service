@@ -27,11 +27,9 @@ def test_passing_parameters():
 
     question_validator = QuestionValidator()
     assert question_validator.llm_params is not None
-    assert "max_new_tokens" in question_validator.llm_params is not None
-    assert "min_new_tokens" in question_validator.llm_params is not None
+    assert "max_new_tokens" in question_validator.llm_params
 
     question_validator = QuestionValidator(llm_params={})
     # the llm_params should be rewritten in constructor
     assert question_validator.llm_params is not None
-    assert "max_new_tokens" in question_validator.llm_params is not None
-    assert "min_new_tokens" in question_validator.llm_params is not None
+    assert "max_new_tokens" in question_validator.llm_params
