@@ -52,8 +52,8 @@ def test_retrieve_conversation_id_existing_id(_load_config):
 def test_retrieve_previous_input_no_previous_history(_load_config):
     """Check how function to retrieve previous input handle empty history."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
-    input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
-    assert input == []
+    llm_input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
+    assert llm_input == []
 
 
 def test_retrieve_previous_input_empty_user_id(_load_config):

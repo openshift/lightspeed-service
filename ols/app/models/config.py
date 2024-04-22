@@ -755,8 +755,8 @@ class OLSConfig(BaseModel):
         if self.tls_config:
             self.tls_config.validate_yaml(disable_tls)
         if self.query_filters is not None:
-            for filter in self.query_filters:
-                filter.validate_yaml()
+            for query_filter in self.query_filters:
+                query_filter.validate_yaml()
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:
