@@ -30,6 +30,7 @@ class DocsSummarizer(QueryHelper):
             model_config = provider_config.models.get(self.model)
             return model_config.options
 
+    # TODO: OLS-524 Mutable objects used as function argument defaults
     def summarize(
         self,
         conversation_id: str,
