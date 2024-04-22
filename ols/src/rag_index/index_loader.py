@@ -20,6 +20,9 @@ else:
 logger = logging.getLogger(__name__)
 
 
+# TODO: OLS-380 Config object mirrors configuration
+
+
 class IndexLoader:
     """Load index from local file storage."""
 
