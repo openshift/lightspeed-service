@@ -45,6 +45,7 @@ REDHAT_SSO_TIMEOUT = 5  # seconds
 
 # TODO: OLS-473
 # OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MB
+USER_AGENT = "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
 
 if INGRESS_ENV == "stage" and not CP_OFFLINE_TOKEN:
     raise ValueError("CP_OFFLINE_TOKEN is required for stage environment")
@@ -266,7 +267,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         cluster_id = get_cluster_id()
         token = get_cloud_openshift_pull_secret()
         headers = {
-            "User-Agent": f"openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}",  # noqa E501
+            "User-Agent": USER_AGENT.format(cluster_id=cluster_id),
             "Authorization": f"Bearer {token}",
         }
 
