@@ -6,18 +6,49 @@
 from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
 
 # TODO: OLS-503 Fine tune system prompt
-QUERY_SYSTEM_PROMPT = """You are an assistant for question-answering tasks \
-related to the openshift and kubernetes container orchestration platforms. \
+
+# Note::
+# Right now templates are somewhat alligned to make granite work better.
+# GPT still works well with this. Ideally we should have model specific tags.
+# For history we can laverage ChatPromptTemplate from langchain,
+# but that is not done as granite was adding role tags like `Human:` in the response.
+# With PromptTemplate, we have more control how we want to structure the prompt.
+
+QUERY_SYSTEM_INSTRUCTION = """
+You are an assistant for question-answering tasks \
+related to the openshift and kubernetes container orchestration platforms.
+
 """
 
-USE_PREVIOUS_HISTORY = """
+USE_CONTEXT_INSTRUCTION = """
+Use the retrieved document to answer the question.
+"""
+
+CONTEXT_PLACEHOLDER = """
+
+[DOCUMENT]
+{context}
+[END]
+
+"""
+
+USE_HISTORY_INSTRUCTION = """
 Use the previous chat history to interact and help the user.
 """
 
-USE_RETRIEVED_CONTEXT = """
-Use the following pieces of retrieved context to answer the question.
+HISTORY_PLACEHOLDER = """
 
-{context}
+[HISTORY]
+{chat_history}
+[END]
+
+"""
+
+QUERY_PLACEHOLDER = """
+<|user|>
+{query}
+<|assistant|>
+
 """
 
 # {{query}} is escaped because it will be replaced as a parameter at time of use
