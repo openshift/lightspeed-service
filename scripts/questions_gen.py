@@ -356,17 +356,17 @@ async def main():
 
     full_results = []
     total_correctness_score = []
-    for dir in dir_list:
-        print(f"gen questions for: {dir}")
+    for directory in dir_list:
+        print(f"gen questions for: {directory}")
         results = {}
-        reader = SimpleDirectoryReader(dir)
+        reader = SimpleDirectoryReader(directory)
         question = reader.load_data()
         data_generator = DatasetGenerator.from_documents(question)
         eval_questions = data_generator.generate_questions_from_nodes(
             num=num_of_questions
         )
 
-        results["dir_name"] = dir
+        results["dir_name"] = directory
         results["questions"] = eval_questions
         print(eval_questions)
 
