@@ -303,6 +303,13 @@ def test_provider_config():
     assert "deployment_name is required" in str(excinfo.value)
 
 
+providers = (
+    constants.PROVIDER_BAM,
+    constants.PROVIDER_OPENAI,
+    constants.PROVIDER_AZURE_OPENAI,
+    constants.PROVIDER_WATSONX,
+)
+
 models = (
     constants.GRANITE_13B_CHAT_V1,
     constants.GRANITE_13B_CHAT_V2,
@@ -312,14 +319,18 @@ models = (
 )
 
 
+@pytest.mark.parametrize("provider_name", providers)
 @pytest.mark.parametrize("model_name", models)
-def test_model_specific_tokens_limit(model_name):
+def test_provider_model_specific_tokens_limit(provider_name, model_name):
     """Test if the model specific token limits are set as default."""
+    # provider config with attributes 'blended' for all providers
     provider_config = ProviderConfig(
         {
             "name": "test_name",
-            "type": "bam",
+            "type": provider_name,
             "url": "test_url",
+            "deployment_name": "test",
+            "project_id": 42,
             "models": [
                 {
                     "name": model_name,
@@ -328,10 +339,19 @@ def test_model_specific_tokens_limit(model_name):
         }
     )
     # expected token limit for given model
-    expected_limit = constants.CONTEXT_WINDOW_SIZES.get(
+    expected_limit = constants.DEFAULT_CONTEXT_WINDOW_SIZE
+
+    # some provider+model combinations are not specified; in this case
+    # default value is used instead
+    expected_limit = constants.CONTEXT_WINDOW_SIZES.get(provider_name).get(
         model_name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
     )
     assert provider_config.models[model_name].context_window_size == expected_limit
+    if model_name == "test":
+        assert (
+            provider_config.models[model_name].context_window_size
+            == constants.DEFAULT_CONTEXT_WINDOW_SIZE
+        )
 
 
 @pytest.mark.parametrize("model_name", models)
