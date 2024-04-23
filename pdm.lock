@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:2ab0c099ca713d7a7b162ba37956e0a7245137017e97d68f794ffb5ebeac71f6"
+content_hash = "sha256:ec7b95cf3d33ce8a5688067a85afd0cb8ee45967a95857140e11cc6161c4d05d"
 
 [[package]]
 name = "aiofiles"
@@ -772,7 +772,7 @@ files = [
 
 [[package]]
 name = "ibm-watson-machine-learning"
-version = "1.0.354"
+version = "1.0.355"
 requires_python = ">=3.10"
 summary = "IBM Watson Machine Learning API Client"
 groups = ["default"]
@@ -788,8 +788,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watson_machine_learning-1.0.354-py3-none-any.whl", hash = "sha256:004638cef991be501cc6af696eb9cb7f5275dd4363d2b2a4cd381c2db17f9faa"},
-    {file = "ibm_watson_machine_learning-1.0.354.tar.gz", hash = "sha256:4853e18efc0c70ce6ba86e178c32352bdcdd028a247e3b037c5a65c8803b3bab"},
+    {file = "ibm_watson_machine_learning-1.0.355-py3-none-any.whl", hash = "sha256:fbd6b06df7b43086483eeab1dbb535d2017191a6a51e2ae1beaa5af5dee01558"},
+    {file = "ibm_watson_machine_learning-1.0.355.tar.gz", hash = "sha256:b8443a302a50e4e1868e1315bc0a83c8b0de10953780227ea8c0c33909b6ae0c"},
 ]
 
 [[package]]
@@ -1010,7 +1010,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.1.14"
+version = "0.1.16"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1020,8 +1020,8 @@ dependencies = [
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
     "jsonpatch<2.0,>=1.33",
-    "langchain-community<0.1,>=0.0.30",
-    "langchain-core<0.2.0,>=0.1.37",
+    "langchain-community<0.1,>=0.0.32",
+    "langchain-core<0.2.0,>=0.1.42",
     "langchain-text-splitters<0.1,>=0.0.1",
     "langsmith<0.2.0,>=0.1.17",
     "numpy<2,>=1",
@@ -1030,8 +1030,8 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.1.14-py3-none-any.whl", hash = "sha256:94f9b5df2421faaf762d4f43b9d65c270c2f701934580d281e4c6226deef7234"},
-    {file = "langchain-0.1.14.tar.gz", hash = "sha256:124c6244cf3957616b98f2df07dc2992fc40dff6ed1a62d8ee8a40f1e0260a40"},
+    {file = "langchain-0.1.16-py3-none-any.whl", hash = "sha256:bc074cc5e51fad79b9ead1572fc3161918d0f614a6c8f0460543d505ad249ac7"},
+    {file = "langchain-0.1.16.tar.gz", hash = "sha256:b6bce78f8c071baa898884accfff15c3d81da2f0dd86c20e2f4c80b41463f49f"},
 ]
 
 [[package]]
@@ -1092,18 +1092,18 @@ files = [
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.1"
+version = "0.1.3"
 requires_python = "<4.0,>=3.8.1"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.2.0,>=0.1.33",
+    "langchain-core<0.2.0,>=0.1.42",
     "openai<2.0.0,>=1.10.0",
     "tiktoken<1,>=0.5.2",
 ]
 files = [
-    {file = "langchain_openai-0.1.1-py3-none-any.whl", hash = "sha256:5cf4df5d2550af673337eafedaeec014ba52f9a25aeb8451206ca254bed01e5c"},
-    {file = "langchain_openai-0.1.1.tar.gz", hash = "sha256:d10e9a9fc4c8ea99ca98f23808ce44c7dcdd65354ac07ad10afe874ecf3401ca"},
+    {file = "langchain_openai-0.1.3-py3-none-any.whl", hash = "sha256:fa1f27815649291447e5370cb08e2f5a84e5c7c6121d0c055a6e296bd16d1e47"},
+    {file = "langchain_openai-0.1.3.tar.gz", hash = "sha256:7f6e377d6bf88d6c2b1969fe5eecc1326271757512739e2f17c855cd7af53345"},
 ]
 
 [[package]]
@@ -1436,7 +1436,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.16.2"
+version = "1.23.2"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1450,8 +1450,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "openai-1.16.2-py3-none-any.whl", hash = "sha256:46a435380921e42dae218d04d6dd0e89a30d7f3b9d8a778d5887f78003cf9354"},
-    {file = "openai-1.16.2.tar.gz", hash = "sha256:c93d5efe5b73b6cb72c4cd31823852d2e7c84a138c0af3cbe4a8eb32b1164ab2"},
+    {file = "openai-1.23.2-py3-none-any.whl", hash = "sha256:293a36effde29946eb221040c89c46a4850f2f2e30b37ef09ff6d75226d71b42"},
+    {file = "openai-1.23.2.tar.gz", hash = "sha256:b84aa3005357ceb38f22a269e0e22ee58ce103897f447032d021906f18178a8e"},
 ]
 
 [[package]]
@@ -2142,7 +2142,7 @@ files = [
 
 [[package]]
 name = "sentence-transformers"
-version = "2.6.1"
+version = "2.7.0"
 requires_python = ">=3.8.0"
 summary = "Multilingual text embeddings"
 groups = ["default"]
@@ -2154,11 +2154,11 @@ dependencies = [
     "scipy",
     "torch>=1.11.0",
     "tqdm",
-    "transformers<5.0.0,>=4.32.0",
+    "transformers<5.0.0,>=4.34.0",
 ]
 files = [
-    {file = "sentence-transformers-2.6.1.tar.gz", hash = "sha256:633ad6b70e390ea335de8689652a5d6c21a323b79ed19519c2f392451088487f"},
-    {file = "sentence_transformers-2.6.1-py3-none-any.whl", hash = "sha256:a887e17696b513f99a709ce1f37fd547f53857aebe863785ede546c303b09ea0"},
+    {file = "sentence_transformers-2.7.0-py3-none-any.whl", hash = "sha256:6a7276b05a95931581bbfa4ba49d780b2cf6904fa4a171ec7fd66c343f761c98"},
+    {file = "sentence_transformers-2.7.0.tar.gz", hash = "sha256:2f7df99d1c021dded471ed2d079e9d1e4fc8e30ecb06f957be060511b36f24ea"},
 ]
 
 [[package]]
