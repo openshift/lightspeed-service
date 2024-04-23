@@ -303,7 +303,39 @@ def test_provider_config():
     assert "deployment_name is required" in str(excinfo.value)
 
 
-def test_provider_config_explicit_tokens():
+models = (
+    constants.GRANITE_13B_CHAT_V1,
+    constants.GRANITE_13B_CHAT_V2,
+    constants.GPT4_TURBO,
+    constants.GPT35_TURBO,
+    "test",
+)
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_model_specific_tokens_limit(model_name):
+    """Test if the model specific token limits are set as default."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "bam",
+            "url": "test_url",
+            "models": [
+                {
+                    "name": model_name,
+                }
+            ],
+        }
+    )
+    # expected token limit for given model
+    expected_limit = constants.CONTEXT_WINDOW_SIZES.get(
+        model_name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
+    )
+    assert provider_config.models[model_name].context_window_size == expected_limit
+
+
+@pytest.mark.parametrize("model_name", models)
+def test_provider_config_explicit_tokens(model_name):
     """Test the ProviderConfig model when explicit tokens are specified."""
     context_window_size = 500
     response_token_limit = 100
@@ -317,7 +349,7 @@ def test_provider_config_explicit_tokens():
             "project_id": "test_project_id",
             "models": [
                 {
-                    "name": "test_model_name",
+                    "name": model_name,
                     "url": "test_model_url",
                     "credentials_path": "tests/config/secret.txt",
                     "context_window_size": context_window_size,
@@ -326,13 +358,9 @@ def test_provider_config_explicit_tokens():
             ],
         }
     )
+    assert provider_config.models[model_name].context_window_size == context_window_size
     assert (
-        provider_config.models["test_model_name"].context_window_size
-        == context_window_size
-    )
-    assert (
-        provider_config.models["test_model_name"].response_token_limit
-        == response_token_limit
+        provider_config.models[model_name].response_token_limit == response_token_limit
     )
 
 
@@ -745,7 +773,7 @@ def test_postgres_config_correct_values():
             "port": 1234,
             "dbname": "my_database",
             "user": "admin",
-            "require_ssl": True,
+            "ssl_mode": "allow",
             "max_entries": 42,
         }
     )
@@ -755,7 +783,7 @@ def test_postgres_config_correct_values():
     assert postgres_config.port == 1234
     assert postgres_config.dbname == "my_database"
     assert postgres_config.user == "admin"
-    assert postgres_config.require_ssl
+    assert postgres_config.ssl_mode == "allow"
     assert postgres_config.max_entries == 42
 
 
@@ -770,7 +798,7 @@ def test_postgres_config_wrong_port():
                 "port": 9999999,
                 "dbname": "my_database",
                 "user": "admin",
-                "require_ssl": True,
+                "ssl_mode": "allow",
             }
         )
 
@@ -790,6 +818,23 @@ def test_postgres_config_equality():
     # compare with value of different type
     other_value = "foo"
     assert postgres_config_1 != other_value
+
+
+def test_postgres_config_with_password():
+    """Test the PostgresConfig model."""
+    postgres_config = PostgresConfig(
+        **{
+            "host": "other_host",
+            "port": 1234,
+            "dbname": "my_database",
+            "user": "admin",
+            "password_path": "tests/config/postgres_password.txt",
+            "ssl_mode": "allow",
+            "max_entries": 42,
+        }
+    )
+    # check if password was read correctly from file
+    assert postgres_config.password == "postgres_password"  # noqa: S105
 
 
 def test_redis_config():
@@ -1018,6 +1063,7 @@ def test_conversation_cache_config():
                 "port": 1234,
                 "dbname": "testdb",
                 "user": "user",
+                "ssl_mode": "allow",
             },
         }
     )
@@ -1026,6 +1072,7 @@ def test_conversation_cache_config():
     assert conversation_cache_config.postgres.port == 1234
     assert conversation_cache_config.postgres.dbname == "testdb"
     assert conversation_cache_config.postgres.user == "user"
+    assert conversation_cache_config.postgres.ssl_mode == "allow"
 
     conversation_cache_config = ConversationCacheConfig()
     assert conversation_cache_config.type is None

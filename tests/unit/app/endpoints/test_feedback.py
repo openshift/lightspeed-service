@@ -1,7 +1,6 @@
 """Unit tests for feedback endpoint handlers."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -15,10 +14,11 @@ from ols.utils import config
 def feedback_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
     config.init_empty_config()
+    full_path = (tmpdir / "feedback").strpath
     config.ols_config.user_data_collection = UserDataCollection(
-        feedback_disabled=False, feedback_storage=tmpdir.strpath
+        feedback_disabled=False, feedback_storage=full_path
     )
-    return tmpdir.strpath
+    return full_path
 
 
 def store_fake_feedback(path, filename, data):
@@ -45,16 +45,6 @@ def test_get_feedback_status(feedback_location):
     assert not feedback.is_feedback_enabled()
 
 
-def test_list_feedbacks(feedback_location):
-    """Test list_feedbacks function."""
-    feedbacks = feedback.list_feedbacks()
-    assert feedbacks == []
-
-    store_fake_feedback(feedback_location, "test", {"some": "data"})
-    feedbacks = feedback.list_feedbacks()
-    assert feedbacks == ["test"]
-
-
 def test_store_feedback(feedback_location):
     """Test store_feedback function."""
     user_id = "12345678-abcd-0000-0123-456789abcdef"
@@ -68,14 +58,3 @@ def test_store_feedback(feedback_location):
         "user_id": "12345678-abcd-0000-0123-456789abcdef",
         **feedback_data,
     }
-
-
-def test_remove_feedback(feedback_location):
-    """Test remove_feedback function."""
-    feedback_id = "fake-id"
-    store_fake_feedback(feedback_location, feedback_id, {"some": "data"})
-    assert len(list(Path(feedback_location).iterdir())) == 1
-
-    feedback.remove_feedback(feedback_id)
-
-    assert len(list(Path(feedback_location).iterdir())) == 0

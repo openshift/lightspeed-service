@@ -71,7 +71,7 @@ to enable it automatically).
 
 ### Code coverage measurement
 
-During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
+During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value stored in section `[tool.coverage.report]`), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
 
 Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
@@ -81,7 +81,7 @@ Overall code coverage measured for both unit tests and integration tests can be 
 make check-coverage
 ```
 
-The threshold set for combined coverage is larger than threshold for unit tests and integration tests because it is preferred to have most statements covered by at least one type of tests.
+The threshold set for combined coverage (currently 94%) is larger than threshold for unit tests and integration tests because it is preferred to have most statements covered by at least one type of tests.
 
 
 
@@ -227,6 +227,36 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
 ```
 
 
+## Detecting which statements are called in real service
+
+It is possible to start the service using the following command:
+
+```bash
+coverage run runner.py
+```
+
+The service can be used as expected (via REST API or via GradioUI).
+
+When the service is stopped, it is possible to display which statements were executed and which was omitted:
+
+```bash
+coverage report -m
+```
+
+The output format is the same as coverage report for unit tests and integrations tests:
+
+```
+Name                                          Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------
+ols/__init__.py                                   0      0   100%
+ols/app/__init__.py                               0      0   100%
+ols/app/endpoints/__init__.py                     0      0   100%
+ols/app/endpoints/authorized.py                  13      2    85%   54-55
+ols/app/endpoints/feedback.py                    45     24    47%   37-39, 51, 62-74, 84-86, 127-142
+...
+...
+...
+```
 
 ## Updating Dependencies
 

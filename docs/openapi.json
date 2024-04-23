@@ -26,11 +26,51 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Query is valid and correct response from LLM is returned",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/LLMResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Query can not be validated, LLM is not accessible or other internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -112,28 +152,6 @@
                 }
             }
         },
-        "/v1/feedback/list": {
-            "get": {
-                "tags": [
-                    "feedback"
-                ],
-                "summary": "Get User Feedbacks",
-                "description": "Handle feedback listing requests.\n\nArgs:\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response containing the list of feedbacks.",
-                "operationId": "get_user_feedbacks_v1_feedback_list_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FeedbacksListResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v1/feedback": {
             "post": {
                 "tags": [
@@ -154,7 +172,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Feedback received and stored",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -163,45 +181,32 @@
                             }
                         }
                     },
-                    "422": {
-                        "description": "Validation Error",
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
                                 }
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/v1/feedback/{feedback_id}": {
-            "delete": {
-                "tags": [
-                    "feedback"
-                ],
-                "summary": "Remove User Feedback",
-                "description": "Handle feedback removal requests.\n\nArgs:\n    feedback_id: The feedback ID (UUID) to be removed.\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback removal.",
-                "operationId": "remove_user_feedback_v1_feedback__feedback_id__delete",
-                "parameters": [
-                    {
-                        "name": "feedback_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Feedback Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/FeedbackResponse"
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "User feedback can not be stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -311,8 +316,10 @@
                     "200": {
                         "description": "Successful Response",
                         "content": {
-                            "application/json": {
-                                "schema": {}
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -329,11 +336,41 @@
                 "operationId": "is_user_authorized_authorized_post",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "The user is logged-in and authorized to access OLS",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AuthorizationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "User is not authorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error during token review",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -366,6 +403,37 @@
                     {
                         "user_id": "123e4567-e89b-12d3-a456-426614174000",
                         "username": "user1"
+                    }
+                ]
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "detail": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "ErrorResponse",
+                "description": "Model representing error response for query endpoint.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Failed to handle request to https://bam-api.res.ibm.com/v2/text",
+                            "response": "Error while validation question"
+                        }
+                    },
+                    {
+                        "detail": {
+                            "cause": "Invalid conversation ID 1237-e89b-12d3-a456-426614174000",
+                            "response": "Error retrieving conversation history"
+                        }
                     }
                 ]
             },
@@ -413,14 +481,14 @@
                     "llm_response"
                 ],
                 "title": "FeedbackRequest",
-                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n\nExample:\n    ```python\n    feedback_request = FeedbackRequest(\n        conversation_id=\"12345678-abcd-0000-0123-456789abcdef\",\n        user_question=\"what are you doing?\",\n        llm_response=\"I don't know\",\n        sentiment=-1,\n    )\n    ```",
+                "description": "Model representing a feedback request.\n\nAttributes:\n    conversation_id: The required conversation ID (UUID).\n    user_question: The required user question.\n    llm_response: The required LLM response.\n    sentiment: The optional sentiment.\n    user_feedback: The optional user feedback.\n\nExample:\n    ```python\n    feedback_request = FeedbackRequest(\n        conversation_id=\"12345678-abcd-0000-0123-456789abcdef\",\n        user_question=\"what are you doing?\",\n        user_feedback=\"Great service!\",\n        llm_response=\"I don't know\",\n        sentiment=-1,\n    )\n    ```",
                 "examples": [
                     {
                         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
-                        "feedback_object": {
-                            "comment": "Great service!",
-                            "rating": 5
-                        }
+                        "llm_response": "bar",
+                        "sentiment": 1,
+                        "user_feedback": "Great service!",
+                        "user_question": "foo"
                     }
                 ]
             },
@@ -443,27 +511,22 @@
                     }
                 ]
             },
-            "FeedbacksListResponse": {
+            "ForbiddenResponse": {
                 "properties": {
-                    "feedbacks": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Feedbacks"
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "feedbacks"
+                    "detail"
                 ],
-                "title": "FeedbacksListResponse",
-                "description": "Model representing a response to a feedback list request.\n\nAttributes:\n    feedbacks: The list of feedback IDs.\n\nExample:\n    ```python\n    feedbacks_list_response = FeedbacksListResponse(\n        feedbacks=[\"12345678-abcd-0000-0123-456789abcdef\"]\n    )\n    ```",
+                "title": "ForbiddenResponse",
+                "description": "Model representing response when client does not have permission to access resource.",
                 "examples": [
                     {
-                        "feedbacks": [
-                            "12345678-abcd-0000-0123-456789abcdef"
-                        ]
+                        "detail": "Unable to review token"
                     }
                 ]
             },
@@ -571,7 +634,7 @@
                     },
                     "referenced_documents": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ReferencedDocument"
                         },
                         "type": "array",
                         "title": "Referenced Documents"
@@ -589,16 +652,73 @@
                     "truncated"
                 ],
                 "title": "LLMResponse",
-                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs for the documents used to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.",
+                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.",
                 "examples": [
                     {
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "referenced_documents": [
-                            "https://docs.openshift.com/container-platform/4.14/operators/understanding/olm/olm-understanding-olm.html"
+                            {
+                                "docs_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html",
+                                "title": "Operator Lifecycle Manager concepts and resources"
+                            }
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install..."
                     }
                 ]
+            },
+            "PromptTooLongResponse": {
+                "properties": {
+                    "detail": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "PromptTooLongResponse",
+                "description": "Model representing error response when prompt is too long.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Prompt length exceeds LLM context window limit (8000 tokens)",
+                            "response": "Prompt is too long"
+                        }
+                    }
+                ]
+            },
+            "ReferencedDocument": {
+                "properties": {
+                    "docs_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Docs Url"
+                    },
+                    "title": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Title"
+                    }
+                },
+                "type": "object",
+                "title": "ReferencedDocument",
+                "description": "RAG referenced document.\n\nAttributes:\ndocs_url: URL of the corresponding OCP documentation page\ntitle: Title of the corresponding OCP documentation page"
             },
             "StatusResponse": {
                 "properties": {
@@ -624,6 +744,25 @@
                         "status": {
                             "enabled": true
                         }
+                    }
+                ]
+            },
+            "UnauthorizedResponse": {
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "UnauthorizedResponse",
+                "description": "Model representing response for missing or invalid credentials.",
+                "examples": [
+                    {
+                        "detail": "Unauthorized: No auth header found"
                     }
                 ]
             },

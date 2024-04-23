@@ -18,9 +18,6 @@ from ols.app.models.config import RedisConfig
 from ols.src.cache.cache import Cache
 
 
-# TODO
-# Good for on-premise hosting for now
-# Extend it to distributed setting using cloud offerings
 class RedisCache(Cache):
     """Cache that uses Redis to store cached values."""
 
@@ -31,7 +28,7 @@ class RedisCache(Cache):
         """Create a new instance of the `RedisCache` class."""
         with cls._lock:
             if not cls._instance:
-                cls._instance = super(RedisCache, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance.initialize_redis(config)
         return cls._instance
 

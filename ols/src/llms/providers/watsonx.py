@@ -3,14 +3,11 @@
 import logging
 from typing import Any
 
-from ibm_watson_machine_learning.foundation_models import Model
-from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
-    WatsonxLLM,
-)
 from ibm_watson_machine_learning.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
+from langchain_ibm.llms import WatsonxLLM
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
@@ -42,15 +39,10 @@ class WatsonX(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
-        creds = {
-            "url": self.provider_config.url or self.url,
-            "apikey": self.provider_config.credentials,
-        }
-
-        llm_model = Model(
+        return WatsonxLLM(
             model_id=self.model,
-            credentials=creds,
-            params=self.params,
+            url=self.provider_config.url or self.url,
+            apikey=self.provider_config.credentials,
             project_id=self.provider_config.project_id,
+            params=self.params,
         )
-        return WatsonxLLM(model=llm_model)

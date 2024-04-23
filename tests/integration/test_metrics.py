@@ -8,14 +8,17 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from ols.utils import config
+
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
 @pytest.fixture(scope="module")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
-def setup():
+def _setup():
     """Setups the test client."""
     global client
+    config.init_config("tests/config/valid_config.yaml")
     from ols.app.main import app
 
     client = TestClient(app)
@@ -34,20 +37,19 @@ def retrieve_metrics(client):
     return response.text
 
 
-def test_metrics(setup):
+def test_metrics(_setup):
     """Check if service provides metrics endpoint with some expected counters."""
     response_text = retrieve_metrics(client)
 
     # counters that are expected to be part of metrics
     expected_counters = (
-        "rest_api_calls_total",
-        "llm_calls_total",
-        "llm_calls_failures_total",
-        "llm_validation_errors_total",
-        "llm_token_sent_total",
-        "llm_token_received_total",
-        "selected_model_info",
-        "model_enabled",
+        "ols_rest_api_calls_total",
+        "ols_llm_calls_total",
+        "ols_llm_calls_failures_total",
+        "ols_llm_validation_errors_total",
+        "ols_llm_token_sent_total",
+        "ols_llm_token_received_total",
+        "ols_provider_model_configuration",
     )
 
     # check if all counters are present
@@ -75,40 +77,40 @@ def get_counter_value(client, counter_name, path, status_code):
     raise Exception(f"Counter {counter_name} was not found in metrics")
 
 
-def test_rest_api_call_counter_ok_status(setup):
+def test_rest_api_call_counter_ok_status(_setup):
     """Check if REST API call counter works as expected, label with 200 OK status."""
     endpoint = "/readiness"
 
     # initialize counter with label by calling endpoint
     client.get(endpoint)
-    old = get_counter_value(client, "rest_api_calls_total", endpoint, "200")
+    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
 
     # call some REST API endpoint
     client.get(endpoint)
-    new = get_counter_value(client, "rest_api_calls_total", endpoint, "200")
+    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
 
     # compare counters
     assert new == old + 1, "Counter has not been updated properly"
 
 
-def test_rest_api_call_counter_not_found_status(setup):
+def test_rest_api_call_counter_not_found_status(_setup):
     """Check if REST API call counter works as expected, label with 404 NotFound status."""
     endpoint = "/this-does-not-exists"
 
     # initialize counter with label
     client.get(endpoint)
-    old = get_counter_value(client, "rest_api_calls_total", endpoint, "404")
+    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
 
     # call some REST API endpoint
     client.get(endpoint)
-    new = get_counter_value(client, "rest_api_calls_total", endpoint, "404")
+    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
 
     # compare counters
     # just the NotFound value should change
     assert new == old + 1, "Counter for 404 NotFound  has not been updated properly"
 
 
-def test_metrics_duration(setup):
+def test_metrics_duration(_setup):
     """Check if service provides metrics for durations."""
     response_text = retrieve_metrics(client)
 
@@ -130,12 +132,21 @@ def test_metrics_duration(setup):
     assert re.findall(pattern, response_text)
 
 
-def test_model_enabled_metrics(setup):
-    """Check if model_enabled metrics shows the expected information."""
+def test_provider_model_configuration_metrics(_setup):
+    """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(client)
+    print(response_text)
     for provider in ("bam", "openai"):
         for model in ("m1", "m2"):
-            assert (
-                f'model_enabled{{model="{model}",provider="{provider}"}}'
-                in response_text
-            )
+            if provider == "bam" and model == "m1":
+                # default/enabled model should have a metric value of 1.0
+                assert (
+                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 1.0'
+                    in response_text
+                )
+            else:
+                # non-enabled models should have a metric value of 0.0
+                assert (
+                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 0.0'
+                    in response_text
+                )

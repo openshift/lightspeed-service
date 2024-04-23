@@ -57,8 +57,8 @@ class ModelConfig(BaseModel):
     name: Optional[str] = None
     url: Optional[str] = None
     credentials: Optional[str] = None
-    context_window_size: int = constants.DEFAULT_CONTEXT_WINDOW_SIZE
-    response_token_limit: int = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
+    context_window_size: int = -1  # need to be set later, based on model
+    response_token_limit: int = -1  # need to be set later, based on model
     options: Optional[dict[str, Any]] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -69,11 +69,18 @@ class ModelConfig(BaseModel):
         self.name = data.get("name", None)
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
-        self.context_window_size = self._validate_token_limit(
-            data, "context_window_size", self.context_window_size
+
+        # if the context window size is not set explicitly, use value
+        # set for given model, or default value for model without size setup
+        default = constants.CONTEXT_WINDOW_SIZES.get(
+            self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
         )
+        self.context_window_size = self._validate_token_limit(
+            data, "context_window_size", default
+        )
+        default = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
         self.response_token_limit = self._validate_token_limit(
-            data, "response_token_limit", self.response_token_limit
+            data, "response_token_limit", default
         )
         if self.context_window_size <= self.response_token_limit:
             raise InvalidConfigurationError(
@@ -97,7 +104,7 @@ class ModelConfig(BaseModel):
         return False
 
     @staticmethod
-    def _validate_token_limit(data: dict, token_type: str, value: int) -> int:
+    def _validate_token_limit(data: dict, token_type: str, default: int) -> int:
         """Validate token limit."""
         if token_type in data:
             value = data[token_type]
@@ -105,18 +112,19 @@ class ModelConfig(BaseModel):
                 value = int(value)
                 if value <= 0:
                     raise ValueError
+                return value
             except (ValueError, TypeError):
                 raise InvalidConfigurationError(
                     f"invalid {token_type} = {value}, positive value expected"
                 )
-        return value
+        return default
 
     @staticmethod
     def _validate_model_options(options: dict) -> None:
         """Validate model options which must be dict[str, Any]."""
         if not isinstance(options, dict):
             raise InvalidConfigurationError("model options must be dictionary")
-        for key in options.keys():
+        for key in options:
             if not isinstance(key, str):
                 raise InvalidConfigurationError("key for model option must be string")
 
@@ -311,10 +319,19 @@ class PostgresConfig(BaseModel):
     port: PositiveInt = constants.POSTGRES_CACHE_PORT
     dbname: str = constants.POSTGRES_CACHE_DBNAME
     user: str = constants.POSTGRES_CACHE_USER
+    password_path: Optional[str] = None
     password: Optional[str] = None
-    require_ssl: bool = False
+    ssl_mode: str = constants.POSTGRES_CACHE_SSL_MODE
     ca_cert_path: Optional[str] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
+
+    def __init__(self, **data: Any) -> None:
+        """Initialize configuration."""
+        super().__init__(**data)
+        # password should be read from file
+        if self.password_path is not None:
+            with open(self.password_path) as f:
+                self.password = f.read().rstrip()
 
     @model_validator(mode="after")
     def validate_yaml(self) -> Self:
@@ -533,6 +550,7 @@ class ConversationCacheConfig(BaseModel):
                 self.type == other.type
                 and self.redis == other.redis
                 and self.memory == other.memory
+                and self.postgres == other.postgres
             )
         return False
 
@@ -737,8 +755,8 @@ class OLSConfig(BaseModel):
         if self.tls_config:
             self.tls_config.validate_yaml(disable_tls)
         if self.query_filters is not None:
-            for filter in self.query_filters:
-                filter.validate_yaml()
+            for query_filter in self.query_filters:
+                query_filter.validate_yaml()
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:

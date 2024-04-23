@@ -757,7 +757,8 @@ def test_valid_config_file():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-def test_valid_config_file_with_postgres():
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_valid_config_file_with_postgres(patch):
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
         config.init_config("tests/config/valid_config_postgres.yaml")
@@ -788,10 +789,11 @@ def test_valid_config_file_with_postgres():
                         "postgres": {
                             "host": "foobar.com",
                             "port": "1234",
-                            "dbname": "testdb",
+                            "dbname": "test",
                             "user": "user",
                             "password_path": "tests/config/postgres_password.txt",
                             "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
                         },
                     },
                     "logging_config": {
@@ -808,7 +810,8 @@ def test_valid_config_file_with_postgres():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-def test_valid_config_file_with_redis():
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_valid_config_file_with_redis(patch):
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
         config.init_config("tests/config/valid_config_redis.yaml")
@@ -859,7 +862,8 @@ def test_valid_config_file_with_redis():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-def test_config_file_without_logging_config():
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_config_file_without_logging_config(patch):
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail

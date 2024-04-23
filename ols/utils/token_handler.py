@@ -1,19 +1,24 @@
 """Utility to handle tokens."""
 
 import logging
+from collections import defaultdict
 
 from langchain_core.messages.base import BaseMessage
 from llama_index.schema import NodeWithScore
 from tiktoken import get_encoding
 
-# TODO: distribute these constants if needed
-DEFAULT_TOKENIZER_MODEL = "cl100k_base"
-
-MINIMUM_CONTEXT_LIMIT = 1
-SIMILARITY_SCORE_THRESHOLD = 0.5
-
+from ols.app.models.config import ModelConfig
+from ols.constants import (
+    DEFAULT_TOKENIZER_MODEL,
+    MINIMUM_CONTEXT_TOKEN_LIMIT,
+    RAG_SIMILARITY_CUTOFF_L2,
+)
 
 logger = logging.getLogger(__name__)
+
+
+class PromptTooLongError(Exception):
+    """Prompt is too long."""
 
 
 class TokenHandler:
@@ -69,9 +74,42 @@ class TokenHandler:
         content = " ".join(content)
         return self.text_to_tokens(content)
 
+    def get_available_tokens(self, prompt: str, model_config: ModelConfig) -> int:
+        """Get available tokens that can be used for prompt augmentation.
+
+        Args:
+            prompt: format prompt template to string before passing as arg
+            model_config: model config to get other tokens spec.
+
+        Returns:
+            available_tokens: int, tokens that can be used for augmentation.
+        """
+        # TODO: OLS-490 Sync Max response token for token handler with model parameter
+        context_window_size = model_config.context_window_size
+        response_token_limit = model_config.response_token_limit
+        logger.debug(
+            f"Context window size: {context_window_size}, "
+            f"Response token limit: {response_token_limit}"
+        )
+
+        prompt_token_count = len(self.text_to_tokens(prompt))
+        logger.debug(f"Prompt tokens: {prompt_token_count}")
+
+        available_tokens = (
+            context_window_size - response_token_limit - prompt_token_count
+        )
+
+        if available_tokens <= 0:
+            limit = context_window_size
+            raise PromptTooLongError(
+                f"Prompt length exceeds LLM context window limit ({limit} tokens)"
+            )
+
+        return available_tokens
+
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
-    ) -> list[dict]:
+    ) -> tuple[dict[str, list[str]], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
@@ -79,38 +117,47 @@ class TokenHandler:
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
-            context: A list of dictionary containing text & metadata
-            Example:
-                [
-                    {
-                        "text": "This is my doc",
-                        "file_name": "doc1.pdf",
-                        "doc_link": link1,
-                    },
-                ]
+            context_dict: A dictionary containing list of context & metadata
+            max_tokens: int, available tokens after context usage
+            Context Example:
+                {
+                    "text": ["This is my doc1", "This is my doc2"],
+                    "docs_url": ["https://doc_url1", "https://doc_url2"]
+                    "title": ["Title of doc 1", "Title of doc 2"]
+                }
         """
-        context = []
+        context_dict = defaultdict(list)
 
         for node in retrieved_nodes:
-            context_dict = {}
+
+            score = float(node.score)
+            if score > RAG_SIMILARITY_CUTOFF_L2:
+                # L2 distance is checked here, lower score is better.
+                logger.debug(
+                    f"RAG content similarity score: {score} is "
+                    f"more than threshold {RAG_SIMILARITY_CUTOFF_L2}."
+                )
+                break
 
             tokens = self.text_to_tokens(node.get_text())
             tokens_count = len(tokens)
-            logger.info(f"Tokens count: {tokens_count}.")
-            available_tokens = min(tokens_count, max_tokens)
+            logger.debug(f"RAG content tokens count: {tokens_count}.")
 
-            if available_tokens < MINIMUM_CONTEXT_LIMIT:
-                logger.warning(f"{available_tokens} tokens are less than threshold.")
+            available_tokens = min(tokens_count, max_tokens)
+            logger.debug(f"Available tokens: {tokens_count}.")
+
+            if available_tokens < MINIMUM_CONTEXT_TOKEN_LIMIT:
+                logger.debug(f"{available_tokens} tokens are less than threshold.")
                 break
 
-            context_dict["text"] = self.tokens_to_text(tokens[:available_tokens])
+            context_dict["text"].append(self.tokens_to_text(tokens[:available_tokens]))
             # Add Metadata
-            context_dict["docs_url"] = node.metadata.get("docs_url", None)
+            context_dict["docs_url"].append(node.metadata.get("docs_url", None))
+            context_dict["title"].append(node.metadata.get("title", None))
 
-            context.append(context_dict)
             max_tokens -= available_tokens
 
-        return context
+        return context_dict, max_tokens
 
     @staticmethod
     def limit_conversation_history(

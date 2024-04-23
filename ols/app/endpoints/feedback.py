@@ -7,11 +7,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from ols.app.endpoints.ols import retrieve_user_id
 from ols.app.models.models import (
+    ErrorResponse,
     FeedbackRequest,
     FeedbackResponse,
-    FeedbacksListResponse,
+    ForbiddenResponse,
     StatusResponse,
+    UnauthorizedResponse,
 )
 from ols.utils import config
 from ols.utils.auth_dependency import AuthDependency
@@ -48,20 +51,6 @@ def is_feedback_enabled() -> bool:
     return not config.ols_config.user_data_collection.feedback_disabled
 
 
-def list_feedbacks() -> list[str]:
-    """List feedbacks in the local filesystem.
-
-    Returns:
-        List of feedback files (without the ".json" extension).
-    """
-    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
-    feedback_files = list(storage_path.glob("*.json"))
-    # extensions are trimmed, eg. ["12345678-abcd-0000-0123-456789abcdef", ...]
-    feedbacks = [f.stem for f in feedback_files]
-    logger.debug(f"'{len(feedbacks)}' feedbacks found")
-    return feedbacks
-
-
 def store_feedback(user_id: str, feedback: dict) -> None:
     """Store feedback in the local filesystem.
 
@@ -85,24 +74,6 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     logger.debug(f"feedback stored in '{feedback_file_path}'")
 
 
-def remove_feedback(feedback_id: str) -> None:
-    """Remove feedback from the local filesystem.
-
-    Args:
-        feedback_id: The feedback ID (UUID).
-    """
-    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
-    feedback_file = storage_path / f"{feedback_id}.json"
-    if feedback_file.exists():
-        feedback_file.unlink()
-        if not feedback_file.exists():
-            logger.debug(f"feedback file '{feedback_file}' removed")
-        else:
-            logger.error(f"feedback file '{feedback_file}' failed to remove")
-    else:
-        logger.error(f"feedback file '{feedback_file}' not found")
-
-
 @router.get("/status")
 def feedback_status() -> StatusResponse:
     """Handle feedback status requests.
@@ -115,33 +86,27 @@ def feedback_status() -> StatusResponse:
     return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
-# TODO: OLS-136 implements the collection mechanism - revisit the need
-# of this endpoint
-# If endpoint stays in place, it needs to be properly secured - OLS-404
-@router.get("/list")
-def get_user_feedbacks(
-    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
-    auth: Any = Depends(auth_dependency),
-) -> FeedbacksListResponse:
-    """Handle feedback listing requests.
-
-    Args:
-        ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
-            will handle feedback status checks.
-        auth: The Authentication handler (FastAPI Depends) that will
-            handle authentication Logic.
-
-    Returns:
-        Response containing the list of feedbacks.
-    """
-    logger.debug("feedback list request received")
-
-    feedbacks = list_feedbacks()
-
-    return FeedbacksListResponse(feedbacks=feedbacks)
+post_feedback_responses = {
+    200: {
+        "description": "Feedback received and stored",
+        "model": FeedbackResponse,
+    },
+    401: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "Client does not have permission to access resource",
+        "model": ForbiddenResponse,
+    },
+    500: {
+        "description": "User feedback can not be stored",
+        "model": ErrorResponse,
+    },
+}
 
 
-@router.post("")
+@router.post("", responses=post_feedback_responses)
 def store_user_feedback(
     feedback_request: FeedbackRequest,
     ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
@@ -161,34 +126,17 @@ def store_user_feedback(
     """
     logger.debug(f"feedback received {feedback_request}")
 
-    user_id = auth[0]
-    store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
+    user_id = retrieve_user_id(auth)
+    try:
+        store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
+    except Exception as e:
+        logger.error(f"Error storing user feedback: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error storing user feedback",
+                "cause": str(e),
+            },
+        )
 
     return FeedbackResponse(response="feedback received")
-
-
-# TODO: OLS-136 implements the collection mechanism - revisit the need
-# of this endpoint
-# If endpoint stays in place, it needs to be properly secured - OLS-404
-@router.delete("/{feedback_id}")
-def remove_user_feedback(
-    feedback_id: str,
-    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
-    auth: Any = Depends(auth_dependency),
-) -> FeedbackResponse:
-    """Handle feedback removal requests.
-
-    Args:
-        feedback_id: The feedback ID (UUID) to be removed.
-        ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
-            will handle feedback status checks.
-        auth: The Authentication handler (FastAPI Depends) that will
-            handle authentication Logic.
-
-    Returns:
-        Response indicating the status of the feedback removal.
-    """
-    logger.debug(f"feedback '{feedback_id}' removal request received")
-    remove_feedback(feedback_id)
-
-    return FeedbackResponse(response="feedback removed")

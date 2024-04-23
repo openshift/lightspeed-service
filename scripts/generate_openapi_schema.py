@@ -14,7 +14,9 @@ sys.path.append(
 
 from ols.utils import config
 
-config.init_empty_config()
+# it is needed to read proper configuration in order to start the app to generate schema
+cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+config.init_config(cfg_file)
 
 from ols.app.main import app  # noqa: E402
 

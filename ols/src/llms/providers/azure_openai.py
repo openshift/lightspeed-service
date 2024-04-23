@@ -22,11 +22,11 @@ class AzureOpenAI(LLMProvider):
     @property
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
-        # TODO: need to be parameterize the api version probably
+        # TODO: OLS-496 API version for Azure OpenAI needs to be parametrized
         return {
             "azure_endpoint": self.provider_config.url or self.url,
             "api_key": self.provider_config.credentials,
-            "api_version": "2023-05-15",
+            "api_version": "2024-02-01",
             "deployment_name": self.provider_config.deployment_name,
             "model": self.model,
             "model_kwargs": {

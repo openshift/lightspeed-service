@@ -1,22 +1,15 @@
 """Prompt generator based on model / context."""
 
 from collections import namedtuple
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
-if TYPE_CHECKING:
-    from langchain_core.prompts.chat import MessageLike
-
-from langchain.prompts import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate,
-)
+from langchain.prompts import PromptTemplate
 from langchain_core.messages.base import BaseMessage
 
 from ols.constants import (
     GPT35_TURBO,
     GRANITE_13B_CHAT_V2,
+    NO_RAG_CONTENT_RESP,
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
     PROVIDER_OPENAI,
@@ -24,48 +17,26 @@ from ols.constants import (
 )
 
 from .prompts import (
-    QUERY_SYSTEM_PROMPT,
-    USE_PREVIOUS_HISTORY,
-    USE_RETRIEVED_CONTEXT,
+    CONTEXT_PLACEHOLDER,
+    HISTORY_PLACEHOLDER,
+    QUERY_PLACEHOLDER,
+    QUERY_SYSTEM_INSTRUCTION,
+    USE_CONTEXT_INSTRUCTION,
+    USE_HISTORY_INSTRUCTION,
 )
 
 PromptConfiguration = namedtuple("PromptConfiguration", "provider model")
 
-# TODO: this might be expanded in the future.
+# This dictionary might be expanded in the future, if some combination of model+provider
+# requires specifically updated prompt.
 prompt_configurations = {
-    PromptConfiguration(PROVIDER_BAM, GRANITE_13B_CHAT_V2): QUERY_SYSTEM_PROMPT,
-    PromptConfiguration(PROVIDER_OPENAI, GPT35_TURBO): QUERY_SYSTEM_PROMPT,
-    PromptConfiguration(PROVIDER_WATSONX, GRANITE_13B_CHAT_V2): QUERY_SYSTEM_PROMPT,
-    PromptConfiguration(PROVIDER_AZURE_OPENAI, GPT35_TURBO): QUERY_SYSTEM_PROMPT,
+    PromptConfiguration(PROVIDER_BAM, GRANITE_13B_CHAT_V2): QUERY_SYSTEM_INSTRUCTION,
+    PromptConfiguration(PROVIDER_OPENAI, GPT35_TURBO): QUERY_SYSTEM_INSTRUCTION,
+    PromptConfiguration(
+        PROVIDER_WATSONX, GRANITE_13B_CHAT_V2
+    ): QUERY_SYSTEM_INSTRUCTION,
+    PromptConfiguration(PROVIDER_AZURE_OPENAI, GPT35_TURBO): QUERY_SYSTEM_INSTRUCTION,
 }
-
-
-def prompt_for_configuration(
-    provider: str,
-    model: str,
-    rag_exists: bool,
-    history_exists: bool,
-    default_prompt: str,
-) -> ChatPromptTemplate:
-    """Find prompt for given configuration parameters or return the default one."""
-    # construct system prompt first
-    selector = PromptConfiguration(provider, model)
-    system_prompt = prompt_configurations.get(selector, default_prompt)
-
-    # add optional parts into system prompt
-    if rag_exists:
-        system_prompt += USE_RETRIEVED_CONTEXT
-    if history_exists:
-        system_prompt += USE_PREVIOUS_HISTORY
-
-    # construct chat prompt from sequence of messages
-    messages: list[MessageLike] = []
-    messages.append(SystemMessagePromptTemplate.from_template(system_prompt))
-    if history_exists:
-        messages.append(MessagesPlaceholder(variable_name="chat_history"))
-    messages.append(HumanMessagePromptTemplate.from_template("{query}"))
-
-    return ChatPromptTemplate.from_messages(messages)
 
 
 def generate_prompt(
@@ -75,7 +46,7 @@ def generate_prompt(
     query: str,
     history: list[BaseMessage],
     rag_context: str,
-) -> tuple[ChatPromptTemplate, dict[str, Any]]:
+) -> tuple[PromptTemplate, dict[str, Any]]:
     """Dynamically creates prompt template and input values specification for LLM.
 
     Prompt template is created by combining these values:
@@ -87,24 +58,30 @@ def generate_prompt(
     - system prompt
     - user query
     """
-    rag_exists = len(rag_context) > 0
-    history_exists = len(history) > 0
-    prompt = prompt_for_configuration(
-        provider, model, rag_exists, history_exists, QUERY_SYSTEM_PROMPT
-    )
+    # Add system instruction to the prompt first.
+    selector = PromptConfiguration(provider, model)
+    prompt = prompt_configurations.get(selector, QUERY_SYSTEM_INSTRUCTION)
+    llm_input_values = {"query": query}
 
-    # construct LLM input values
-    llm_input_values: dict[str, Any] = {"query": query}
-    if rag_exists:
+    # Add optional instruction to the prompt & create prompt inputs.
+    if len(rag_context) > 0:
+        prompt += USE_CONTEXT_INSTRUCTION
+        prompt += CONTEXT_PLACEHOLDER
+
         llm_input_values["context"] = rag_context
-    if history_exists:
-        llm_input_values["chat_history"] = history
 
-    # TODO: this is place to insert logic there for specific cases, for example:
-    #
-    # ```python
-    # if model == PROVIDER_BAM and len(rag_context) > model_options.max_rag_context:
-    #    prompt.expand(whatever is needed)
-    # ```
+    if len(history) > 0:
+        prompt += USE_HISTORY_INSTRUCTION
+        prompt += HISTORY_PLACEHOLDER
+        formatted_history = [
+            conversation.type.capitalize()
+            + ": "
+            + conversation.content.strip().replace(NO_RAG_CONTENT_RESP, "")
+            for conversation in history
+            if conversation
+        ]
+        llm_input_values["chat_history"] = "\n".join(formatted_history)
 
-    return prompt, llm_input_values
+    prompt += QUERY_PLACEHOLDER
+
+    return PromptTemplate.from_template(prompt), llm_input_values

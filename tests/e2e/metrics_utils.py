@@ -24,7 +24,7 @@ def get_rest_api_counter_value(
 ):
     """Retrieve counter value from metrics."""
     response = read_metrics(client)
-    counter_name = "rest_api_calls_total"
+    counter_name = "ols_rest_api_calls_total"
 
     # counters with labels have the following format:
     # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
@@ -36,7 +36,7 @@ def get_rest_api_counter_value(
 def get_response_duration_seconds_value(client, path, default=None):
     """Retrieve counter value from metrics."""
     response = read_metrics(client)
-    counter_name = "response_duration_seconds_sum"
+    counter_name = "ols_response_duration_seconds_sum"
 
     # counters with response durations have the following format:
     # response_duration_seconds_sum{path="/v1/debug/query"} 0.123
@@ -59,7 +59,18 @@ def get_model_provider_counter_value(
     return get_counter_value(counter_name, prefix, response, default)
 
 
-def get_metric_labels(lines, info_node_name) -> Optional[dict]:
+def get_all_metric_counters(response, metric_name) -> list[float]:
+    """Get all counters associated with one metric with any labels."""
+    # make sure there won't be any whitespace characters at beginning or end
+    lines = [
+        line.strip() for line in response.split("\n") if line.startswith(metric_name)
+    ]
+
+    # find the number in string and convert accordingly
+    return [float(line[1 + line.rindex(" ") :]) for line in lines]
+
+
+def get_metric_labels(lines, info_node_name, value=None) -> Optional[dict]:
     """Get labels associated with a metric string as printed from /metrics."""
     prefix = info_node_name
 
@@ -68,13 +79,13 @@ def get_metric_labels(lines, info_node_name) -> Optional[dict]:
         if line.startswith(prefix):
             # strip prefix
             metric = line[len(prefix) + 1 :]
-
+            if value and not line.endswith(value):
+                continue
             # strip suffix
             labels = metric[: metric.find("} ")]
             labels = labels.split(",")
             for label in labels:
                 kv = label.split("=")
-                print(f"kv: {kv}")
                 # strip leading/trailing quotation from value
                 attrs[kv[0]] = kv[1][1:-1]
             return attrs
@@ -83,14 +94,21 @@ def get_metric_labels(lines, info_node_name) -> Optional[dict]:
     return None
 
 
-def get_model_and_provider(client):
+def get_enabled_model_and_provider(client):
     """Read configured model and provider from metrics."""
     response = read_metrics(client)
     lines = [line.strip() for line in response.split("\n")]
 
-    labels = get_metric_labels(lines, "selected_model_info")
+    labels = get_metric_labels(lines, "ols_provider_model_configuration", "1.0")
 
     return labels["model"], labels["provider"]
+
+
+def get_enable_status_for_all_models(client):
+    """Read states about all model and providers."""
+    response = read_metrics(client)
+    counters = get_all_metric_counters(response, "ols_provider_model_configuration")
+    return [counter == 1.0 for counter in counters]
 
 
 def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
@@ -212,11 +230,15 @@ class TokenCounterChecker:
         if self.skip_check:
             return
         self.old_counter_token_sent_total = get_model_provider_counter_value(
-            self.client, "llm_token_sent_total", self.model, self.provider, default=0
+            self.client,
+            "ols_llm_token_sent_total",
+            self.model,
+            self.provider,
+            default=0,
         )
         self.old_counter_token_received_total = get_model_provider_counter_value(
             self.client,
-            "llm_token_received_total",
+            "ols_llm_token_received_total",
             self.model,
             self.provider,
             default=0,
@@ -228,7 +250,7 @@ class TokenCounterChecker:
             return
         # check if counter for sent tokens has been updated
         new_counter_token_sent_total = get_model_provider_counter_value(
-            self.client, "llm_token_sent_total", self.model, self.provider
+            self.client, "ols_llm_token_sent_total", self.model, self.provider
         )
         check_token_counter_increases(
             "sent",
@@ -240,7 +262,7 @@ class TokenCounterChecker:
         # check if counter for received tokens has been updated
         new_counter_token_received_total = get_model_provider_counter_value(
             self.client,
-            "llm_token_received_total",
+            "ols_llm_token_received_total",
             self.model,
             self.provider,
             default=0,

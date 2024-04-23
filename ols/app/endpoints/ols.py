@@ -1,8 +1,12 @@
 """Handlers for all OLS-related REST API endpoints."""
 
+import json
 import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
+import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
@@ -11,7 +15,15 @@ from langchain_core.messages.base import BaseMessage
 from ols import constants
 from ols.app import metrics
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import LLMRequest, LLMResponse
+from ols.app.models.models import (
+    ErrorResponse,
+    ForbiddenResponse,
+    LLMRequest,
+    LLMResponse,
+    PromptTooLongResponse,
+    ReferencedDocument,
+    UnauthorizedResponse,
+)
 from ols.src.llms.llm_loader import LLMConfigurationError, load_llm
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -19,6 +31,7 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import config, suid
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
+from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +39,31 @@ router = APIRouter(tags=["query"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-@router.post("/query")
+query_responses = {
+    200: {
+        "description": "Query is valid and correct response from LLM is returned",
+        "model": LLMResponse,
+    },
+    401: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "Client does not have permission to access resource",
+        "model": ForbiddenResponse,
+    },
+    413: {
+        "description": "Prompt is too long",
+        "model": PromptTooLongResponse,
+    },
+    500: {
+        "description": "Query can not be validated, LLM is not accessible or other internal error",
+        "model": ErrorResponse,
+    },
+}
+
+
+@router.post("/query", responses=query_responses)
 def conversation_request(
     llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
 ) -> LLMResponse:
@@ -41,7 +78,7 @@ def conversation_request(
     """
     # Initialize variables
     previous_input = []
-    referenced_documents: list[str] = []
+    referenced_documents: list[ReferencedDocument] = []
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
@@ -57,16 +94,37 @@ def conversation_request(
 
     # Validate the query
     if not previous_input:
-        validation_result = validate_question(conversation_id, llm_request)
+        valid = validate_question(conversation_id, llm_request)
     else:
         logger.debug("follow-up conversation - skipping question validation")
-        validation_result = constants.SUBJECT_VALID
+        valid = True
 
-    response, referenced_documents, truncated = generate_response(
-        conversation_id, llm_request, validation_result, previous_input
-    )
+    if not valid:
+        response, referenced_documents, truncated = (
+            constants.INVALID_QUERY_RESP,
+            [],
+            False,
+        )
+    else:
+        response, referenced_documents, truncated = generate_response(
+            conversation_id, llm_request, previous_input
+        )
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
+
+    if config.ols_config.user_data_collection.transcripts_disabled:
+        logger.debug("transcripts collections is disabled in configuration")
+    else:
+        store_transcript(
+            user_id,
+            conversation_id,
+            valid,
+            llm_request,
+            response,
+            referenced_documents,
+            truncated,
+        )
+
     return LLMResponse(
         conversation_id=conversation_id,
         response=response,
@@ -118,77 +176,96 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
 
 def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseMessage]:
     """Retrieve previous user input, if exists."""
-    previous_input: list[BaseMessage] = []
-    if llm_request.conversation_id:
-        cache_content = config.conversation_cache.get(
-            user_id, llm_request.conversation_id
+    try:
+        previous_input: list[BaseMessage] = []
+        if llm_request.conversation_id:
+            cache_content = config.conversation_cache.get(
+                user_id, llm_request.conversation_id
+            )
+            if cache_content is not None:
+                previous_input = cache_content
+            logger.info(
+                f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
+            )
+        return previous_input
+    except Exception as e:
+        logger.error(f"Error retrieving previous user input for user {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error retrieving conversation history",
+                "cause": str(e),
+            },
         )
-        if cache_content is not None:
-            previous_input = cache_content
-        logger.info(
-            f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
-        )
-    return previous_input
 
 
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    validation_result: str,
     previous_input: list[BaseMessage],
-) -> tuple[Optional[str], list[str], bool]:
+) -> tuple[str, list[ReferencedDocument], bool]:
     """Generate response based on validation result, previous input, and model output."""
-    match (validation_result):
-        case constants.SUBJECT_INVALID:
-            logger.info(
-                f"{conversation_id} - Query is not relevant to kubernetes or ocp, returning"
-            )
-            return constants.INVALID_QUERY_RESP, [], False
-        case constants.SUBJECT_VALID:
-            logger.info(
-                f"{conversation_id} - Question is relevant to kubernetes or ocp"
-            )
-            # Summarize documentation
-            try:
-                docs_summarizer = DocsSummarizer(
-                    provider=llm_request.provider, model=llm_request.model
-                )
-                llm_response = docs_summarizer.summarize(
-                    conversation_id, llm_request.query, config.rag_index, previous_input
-                )
-                return (
-                    llm_response["response"],
-                    llm_response["referenced_documents"],
-                    llm_response["history_truncated"],
-                )
-            except Exception as summarizer_error:
-                logger.error("Error while obtaining answer for user question")
-                logger.exception(summarizer_error)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error while obtaining answer for user question",
-                )
-        case _:
-            logger.error("Invalid validation result (internal error)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error while obtaining answer for user question",
-            )
+    # Summarize documentation
+    try:
+        docs_summarizer = DocsSummarizer(
+            provider=llm_request.provider, model=llm_request.model
+        )
+        llm_response = docs_summarizer.summarize(
+            conversation_id, llm_request.query, config.rag_index, previous_input
+        )
+        return (
+            llm_response["response"],
+            llm_response["referenced_documents"],
+            llm_response["history_truncated"],
+        )
+    except PromptTooLongError as summarizer_error:
+        logger.error(f"Prompt is too long: {summarizer_error}")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "response": "Prompt is too long",
+                "cause": str(summarizer_error),
+            },
+        )
+    except Exception as summarizer_error:
+        logger.error("Error while obtaining answer for user question")
+        logger.exception(summarizer_error)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error while obtaining answer for user question",
+                "cause": str(summarizer_error),
+            },
+        )
 
 
 def store_conversation_history(
     user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
 ) -> None:
     """Store conversation history into selected cache."""
-    if config.conversation_cache is not None:
-        logger.info(f"{conversation_id} Storing conversation history.")
-        chat_message_history = ChatHistory.get_chat_message_history(
-            llm_request.query, response or ""
+    try:
+        if config.conversation_cache is not None:
+            logger.info(f"{conversation_id} Storing conversation history.")
+            chat_message_history = ChatHistory.get_chat_message_history(
+                llm_request.query, response or ""
+            )
+            config.conversation_cache.insert_or_append(
+                user_id,
+                conversation_id,
+                chat_message_history,
+            )
+    except Exception as e:
+        logger.error(
+            "Error storing conversation history for user "
+            "{user_id} and conversation {conversation_id}"
         )
-        config.conversation_cache.insert_or_append(
-            user_id,
-            conversation_id,
-            chat_message_history,
+        logger.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error storing conversation",
+                "cause": str(e),
+            },
         )
 
 
@@ -209,11 +286,14 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"response": f"Error while redacting query '{redactor_error}'"},
+            detail={
+                "response": "Error while redacting query",
+                "cause": str(redactor_error),
+            },
         )
 
 
-def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str:
+def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question using llm, raise HTTPException in case of any problem."""
     # Validate the query
     try:
@@ -226,7 +306,16 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str
         logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"response": f"Unable to process this request because '{e}'"},
+            detail={"response": "Unable to process this request", "cause": str(e)},
+        )
+    except PromptTooLongError as e:
+        logger.error(f"Prompt is too long: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "response": "Prompt is too long",
+                "cause": str(e),
+            },
         )
     except Exception as validation_error:
         metrics.llm_calls_failures_total.inc()
@@ -234,28 +323,31 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> str
         logger.exception(validation_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error while validating question",
+            detail={
+                "response": "Error while validating question",
+                "cause": str(validation_error),
+            },
         )
 
 
-def _validate_question_keyword(query: str) -> str:
+def _validate_question_keyword(query: str) -> bool:
     """Validate user question using keyword."""
     # Current implementation is without any tokenizer method, lemmatization/n-grams.
     # Add valid keywords to keywords.py file.
     query_temp = query.lower()
     for kw in KEYWORDS:
         if kw in query_temp:
-            return constants.SUBJECT_VALID
+            return True
     # query_temp = {q_word.lower().strip(".?,") for q_word in query.split()}
     # common_words = config.keywords.intersection(query_temp)
     # if len(common_words) > 0:
-    #     return constants.SUBJECT_VALID
+    #     return constants.SUBJECT_ALLOWED
 
     logger.debug(f"No matching keyword found for query: {query}")
-    return constants.SUBJECT_INVALID
+    return False
 
 
-def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
+def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question."""
     match config.ols_config.query_validation_method:
 
@@ -264,7 +356,7 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> str:
                 f"{conversation_id} Question validation is disabled. "
                 f"Treating question as valid."
             )
-            return constants.SUBJECT_VALID
+            return True
 
         case constants.QueryValidationMethod.KEYWORD:
             logger.debug("Keyword based query validation.")
@@ -296,3 +388,56 @@ def generate_bare_response(conversation_id: str, llm_request: LLMRequest) -> str
 
     logger.info(f"{conversation_id} Model returned: {response}")
     return response["text"]
+
+
+def store_transcript(
+    user_id: str,
+    conversation_id: str,
+    query_is_valid: bool,
+    llm_request: LLMRequest,
+    response: str,
+    referenced_documents: list[ReferencedDocument],
+    truncated: bool,
+) -> None:
+    """Store transcript in the local filesystem.
+
+    Args:
+        user_id: The user ID (UUID).
+        conversation_id: The conversation ID (UUID).
+        query_is_valid: The result of the query validation.
+        llm_request: The request containing a query.
+        response: The response to store.
+        referenced_documents: The list of referenced documents.
+        truncated: The flag indicating if the history was truncated.
+    """
+    # ensures storage path exists
+    transcripts_path = Path(
+        config.ols_config.user_data_collection.transcripts_storage,
+        user_id,
+        conversation_id,
+    )
+    if not transcripts_path.exists():
+        logger.debug(f"creating transcript storage directory '{transcripts_path}'")
+        transcripts_path.mkdir(parents=True)
+
+    data_to_store = {
+        "metadata": {
+            "provider": llm_request.provider or config.ols_config.default_provider,
+            "model": llm_request.model or config.ols_config.default_model,
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "timestamp": datetime.now(pytz.UTC).isoformat(),
+        },
+        "redacted_query": llm_request.query,
+        "query_is_valid": query_is_valid,
+        "llm_response": response,
+        "referenced_documents": [doc.model_dump() for doc in referenced_documents],
+        "truncated": truncated,
+    }
+
+    # stores feedback in a file under unique uuid
+    transcript_file_path = transcripts_path / f"{suid.get_suid()}.json"
+    with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
+        json.dump(data_to_store, transcript_file)
+
+    logger.debug(f"transcript stored in '{transcript_file_path}'")

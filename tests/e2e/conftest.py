@@ -6,6 +6,6 @@ def pytest_addoption(parser):
     parser.addoption(
         "--eval_model",
         default="gpt",
-        type=lambda v: "gpt" if "gpt" in v else "granite",
+        type=str,
         help="Model to be evaluated.",
     )

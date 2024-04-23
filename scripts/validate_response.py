@@ -6,16 +6,18 @@ import os
 import sys
 from collections import defaultdict
 
-import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from ols.constants import NO_RAG_CONTENT_RESP
+from tests.e2e.cluster_utils import create_user, get_user_token, grant_sa_user_access
+from tests.e2e.constants import LLM_REST_API_TIMEOUT
+from tests.e2e.helper_utils import get_http_client
 
 
-# TODO: Add more question/answer pair
+# TODO: OLS-491 Generate QnA for each model/scenario for evaluation
 def _args_parser(args):
     """Arguments parser."""
     parser = argparse.ArgumentParser(description="Response validation module.")
@@ -24,6 +26,7 @@ def _args_parser(args):
         "--scenario",
         choices=["with_rag", "without_rag"],
         default="with_rag",
+        type=str,
         help="Scenario for which responses will be evaluated.",
     )
     parser.add_argument(
@@ -31,20 +34,21 @@ def _args_parser(args):
         "--model",
         choices=["gpt", "granite"],
         default="gpt",
+        type=lambda v: "gpt" if "gpt" in v else "granite",
         help="Model for which responses will be evaluated.",
     )
     parser.add_argument(
         "-t",
         "--threshold",
         type=float,
-        default=0.25,
+        default=0.7,
         help="Threshold value to be used for similarity score.",
     )
     parser.add_argument(
         "-q",
         "--query_ids",
         nargs="+",
-        default=["eval1"],
+        default=None,
         help="Ids of questions to be validated. Check json file for valid ids.",
     )
     return parser.parse_args(args)
@@ -74,7 +78,7 @@ class ResponseValidation:
         len_score = (abs(len_res - len_ans) / (len_res + len_ans)) * 0.1
 
         score = len_score + (cos_score + euc_score) / 2
-        # TODO: Consider both contextual/non-contextual embedding.
+        # TODO: OLS-409 Use non-contextual score to evaluate response
 
         print(
             f"cos_score: {cos_score}, "
@@ -84,20 +88,27 @@ class ResponseValidation:
         )
         return score
 
-    def get_response_quality(self, args, qa_pairs):
+    def get_response_quality(self, args, qa_pairs, api_client):
         """Get response quality."""
         result_dict = defaultdict(list)
 
-        for query_id in args.query_ids:
+        query_ids = args.query_ids
+        if not query_ids:
+            query_ids = qa_pairs.keys()
+
+        for query_id in query_ids:
             question = qa_pairs[query_id]["question"]
             answer = qa_pairs[query_id]["answer"]
 
-            response = requests.post(
-                # API question validator can be disabled.
-                "http://localhost:8080/v1/query",
+            response = api_client.post(
+                "/v1/query",
                 json={"query": question},
-                timeout=90,
-            ).json()["response"]
+                timeout=LLM_REST_API_TIMEOUT,
+            )
+            if response.status_code != 200:
+                raise Exception(response)
+
+            response = response.json()["response"]
 
             print(f"Calculating score for query: {question}")
             score = self.get_similarity_score(response, answer)
@@ -126,7 +137,15 @@ def main():
         qa_pairs = json.load(qna_f)
         qa_pairs = qa_pairs.get(args.model, {}).get(args.scenario, [])
 
-    result_df = ResponseValidation().get_response_quality(args, qa_pairs)
+    ols_url = os.getenv("OLS_URL", "http://localhost:8080")
+    token = None
+    if "localhost" not in ols_url:
+        create_user("test-user")
+        token = get_user_token("test-user")
+        grant_sa_user_access("test-user", "ols-user")
+    api_client = get_http_client(ols_url, token)
+
+    result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
 
     if len(result_df) > 0:
         result_dir = f"{parent_dir}/test_results"

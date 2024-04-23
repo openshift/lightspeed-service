@@ -105,9 +105,17 @@ function run_suite() {
     must_gather $1
     return 1
   fi
-  
-  SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 make test-e2e
-  rc=$?
+
+  # run response evaluation when env variable is set,
+  # otherwise run e2e tests.
+  if [ -z ${RESPONSE_EVALUATION:-} ]; then  
+    SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 make test-e2e
+  else
+    export SCENARIO="${SCENARIO:-with_rag}"
+    MODEL=$8 SCENARIO=$SCENARIO make response-sanity-check
+  fi
+
+  local rc=$?
   must_gather $1
   return $rc
 }

@@ -3,6 +3,7 @@
 import re
 from unittest import TestCase
 
+from ols.utils import config
 from ols.utils.query_filter import QueryFilter, RegexFilter
 
 
@@ -11,6 +12,9 @@ class TestQueryFilter(TestCase):
 
     def setUp(self):
         """Set up the test."""
+        config.query_redactor = None
+        config.init_config("tests/config/valid_config_with_query_filter.yaml")
+        config.init_query_filter()
         self.query_filter = QueryFilter()
 
     def test_redact_question_image_ip(self):
@@ -27,10 +31,11 @@ class TestQueryFilter(TestCase):
             "write a deployment yaml for the mongodb image with nodeip as 1.123.0.99"
         )
         redacted_question = self.query_filter.redact_query("test_id", query)
-        self.assertEqual(
-            redacted_question,
-            "write a deployment yaml for the mongodb REDACTED_image with nodeip as REDACTED_IP",
+        expected_output = (
+            "write a deployment yaml for the mongodb REDACTED_image with nodeip "
+            + "as REDACTED_IP"
         )
+        assert redacted_question == expected_output
 
     def test_redact_question_mongopart_url_phone(self):
         """Test redact question with partial_word, url and phone number."""
@@ -50,15 +55,13 @@ class TestQueryFilter(TestCase):
         query = "write a deployment yaml for\
         the mongodb image from www.mongodb.com and call me at 123-456-7890"
         redacted_question = self.query_filter.redact_query("test_id", query)
-        self.assertEqual(
-            redacted_question,
-            "write a deployment yaml for\
-        the REDACTED_MONGOdb image from  and call me at REDACTED_PHONE_NUMBER",
-        )
+        expected_output = "write a deployment yaml for\
+        the REDACTED_MONGOdb image from  and call me at REDACTED_PHONE_NUMBER"
+        assert redacted_question == expected_output
 
     def test_redact_query_with_empty_filters(self):
         """Test redact query with empty filters."""
         query = "write a deployment yaml for the mongodb image"
         self.query_filter.regex_filters = []
         redacted_query = self.query_filter.redact_query("test_id", query)
-        self.assertEqual(redacted_query, query)
+        assert redacted_query == query

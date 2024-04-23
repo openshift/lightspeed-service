@@ -23,7 +23,7 @@ class InMemoryCache(Cache):
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
-                cls._instance = super(InMemoryCache, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance.initialize_cache(config)
         return cls._instance
 

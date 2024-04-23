@@ -6,12 +6,13 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
-    FeedbacksListResponse,
     HealthResponse,
     LLMRequest,
     LLMResponse,
+    ReferencedDocument,
     StatusResponse,
 )
+from ols.utils import suid
 
 
 class TestLLM:
@@ -70,7 +71,11 @@ class TestLLM:
         """Test the LLMResponse model."""
         conversation_id = "id"
         response = "response"
-        referenced_documents = ["https://foo.bar.com/index.html"]
+        referenced_documents = [
+            ReferencedDocument(
+                docs_url="https://foo.bar.com/index.html", title="Foo Bar"
+            )
+        ]
 
         llm_response = LLMResponse(
             conversation_id=conversation_id,
@@ -106,7 +111,7 @@ class TestFeedback:
     @staticmethod
     def test_feedback_request():
         """Test the FeedbackRequest model."""
-        conversation_id = "conversation id"
+        conversation_id = suid.get_suid()
         user_question = "user question"
         llm_response = "llm response"
         sentiment = 1
@@ -129,7 +134,7 @@ class TestFeedback:
     @staticmethod
     def test_feedback_request_optional_fields():
         """Test either sentiment or user_feedback needs to be set."""
-        conversation_id = "conversation id"
+        conversation_id = suid.get_suid()
         user_question = "user question"
         llm_response = "llm response"
         sentiment = 1
@@ -162,6 +167,88 @@ class TestFeedback:
         )
 
     @staticmethod
+    def test_feedback_request_improper_conversation_id():
+        """Test if conversation ID format is checked."""
+        conversation_id = "this-is-bad"
+        user_question = "user question"
+        llm_response = "llm response"
+        sentiment = 1
+        user_feedback = "user feedback"
+
+        # ValueError should be raised
+        with pytest.raises(ValueError, match="Improper conversation ID this-is-bad"):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=sentiment,
+                user_feedback=user_feedback,
+            )
+
+    @staticmethod
+    def test_feedback_sentiment():
+        """Test the sentiment field of the FeedbackRequest model."""
+        conversation_id = suid.get_suid()
+        user_question = "user question"
+        llm_response = "llm response"
+
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=1,
+        )
+        assert feedback_request.sentiment == 1
+
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=-1,
+        )
+        assert feedback_request.sentiment == -1
+
+        # can convert strings
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment="1",
+        )
+        assert feedback_request.sentiment == 1
+
+        # check some invalid values
+        with pytest.raises(
+            ValidationError, match="Improper value 2, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=2,
+            )
+
+        with pytest.raises(
+            ValidationError, match="Improper value 0, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment=0,
+            )
+
+        with pytest.raises(
+            ValidationError, match="Improper value 2, needs to be -1 or 1"
+        ):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment="2",
+            )
+
+    @staticmethod
     def test_feedback_response():
         """Test the FeedbackResponse model."""
         feedback_response = "feedback received"
@@ -169,15 +256,6 @@ class TestFeedback:
         feedback_request = FeedbackResponse(response=feedback_response)
 
         assert feedback_request.response == feedback_response
-
-    @staticmethod
-    def test_feedback_list_response():
-        """Test the FeedbacksListResponse model."""
-        feedbacks = ["testy test"]
-
-        feedback_list_response = FeedbacksListResponse(feedbacks=feedbacks)
-
-        assert feedback_list_response.feedbacks == feedbacks
 
 
 class TestHealth:

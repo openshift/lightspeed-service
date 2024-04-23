@@ -6,9 +6,12 @@ from typing import Any
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-from ols import constants
 from ols.app.metrics import TokenMetricUpdater
+from ols.constants import SUBJECT_REJECTED
+from ols.src.prompts.prompts import QUESTION_VALIDATOR_PROMPT_TEMPLATE
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.utils import config
+from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +21,13 @@ class QuestionValidator(QueryHelper):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
-        # TODO: need to be refactored out: https://issues.redhat.com/browse/OLS-447
-        llm_params = {
-            "min_new_tokens": 1,
-            "max_new_tokens": 4,
-        }
+        # TODO: OLS-447 Refactor code that pass parameters into LLM in QuestionValidator
+        llm_params = {"max_new_tokens": 4}
         super().__init__(*args, **dict(kwargs, llm_params=llm_params))
 
     def validate_question(
         self, conversation_id: str, query: str, verbose: bool = False
-    ) -> str:
+    ) -> bool:
         """Validate a question and provides a one-word response.
 
         Args:
@@ -36,7 +36,7 @@ class QuestionValidator(QueryHelper):
           verbose: If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
-            One-word response.
+            bool: true/false indicating if the question was deemed valid
         """
         settings_string = (
             f"conversation_id: {conversation_id}, "
@@ -48,20 +48,24 @@ class QuestionValidator(QueryHelper):
         logger.info(f"{conversation_id} call settings: {settings_string}")
 
         prompt_instructions = PromptTemplate.from_template(
-            constants.QUESTION_VALIDATOR_PROMPT_TEMPLATE
+            QUESTION_VALIDATOR_PROMPT_TEMPLATE
         )
 
-        logger.info(f"{conversation_id} Validating query")
-
         bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
+
+        # we just need to compute prompt length (in tokens) and check
+        # if it's in context window limit
+        provider_config = config.llm_config.providers.get(self.provider)
+        model_config = provider_config.models.get(self.model)
+        TokenHandler().get_available_tokens(query, model_config)
+
         llm_chain = LLMChain(
             llm=bare_llm,
             prompt=prompt_instructions,
             verbose=verbose,
         )
 
-        task_query = prompt_instructions.format(query=query)
-        logger.info(f"{conversation_id} task query: {task_query}")
+        logger.debug(f"{conversation_id} validating user query: {query}")
 
         with TokenMetricUpdater(
             llm=bare_llm,
@@ -73,9 +77,8 @@ class QuestionValidator(QueryHelper):
             )
         clean_response = str(response["text"]).strip()
 
-        logger.info(f"{conversation_id} response: {clean_response}")
+        logger.debug(f"{conversation_id} query validation response: {clean_response}")
 
-        # Will return one of the following string:
-        # SUBJECT_VALID
-        # SUBJECT_INVALID
-        return clean_response
+        # Default to be permissive(allow the question) if we don't get a clean
+        # rejection from the LLM.
+        return SUBJECT_REJECTED not in clean_response

@@ -1,17 +1,14 @@
 """Unit tests for OpenAI provider."""
 
-from unittest.mock import MagicMock, patch
-
-from ibm_watson_machine_learning.foundation_models.extensions.langchain import (
-    WatsonxLLM,
-)
+from unittest.mock import patch
 
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.watsonx import WatsonX
 from ols.utils import config
+from tests.mock_classes.mock_watsonxllm import WatsonxLLM
 
 
-@patch("ols.src.llms.providers.watsonx.Model", new=MagicMock())
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_basic_interface():
     """Test basic interface."""
     config.init_empty_config()  # needed for checking the config.dev_config.llm_params

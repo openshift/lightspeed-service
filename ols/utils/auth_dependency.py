@@ -33,7 +33,7 @@ class K8sClientSingleton:
         and ensures that subsequent calls return the same instance.
         """
         if cls._instance is None:
-            cls._instance = super(K8sClientSingleton, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             configuration = kubernetes.client.Configuration()
 
             try:
@@ -138,7 +138,10 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         return None
     except Exception as e:
         logger.error(f"Unexpected error during TokenReview - Unauthorized: {e}")
-        raise HTTPException(status_code=500, detail="Forbidden: Unable to Review Token")
+        raise HTTPException(
+            status_code=500,
+            detail={"response": "Forbidden: Unable to Review Token", "cause": str(e)},
+        )
 
 
 def _extract_bearer_token(header: str) -> str:
@@ -160,7 +163,7 @@ def _extract_bearer_token(header: str) -> str:
 class AuthDependency:
     """Create an AuthDependency Class that allows customizing the acces Scope path to check."""
 
-    def __init__(self, virtual_path: str = "/ols-access"):
+    def __init__(self, virtual_path: str = "/ols-access") -> None:
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path = virtual_path
 
@@ -180,8 +183,8 @@ class AuthDependency:
             HTTPException: If authentication fails or the user does not have access.
         """
         if config.dev_config.disable_auth:
-            logger.warn("Auth checks disabled, skipping")
-            # TODO: replace with constants for default identity
+            logger.warning("Auth checks disabled, skipping")
+            # TODO: OLS-495 replace with constants for default identity
             return DEFAULT_USER_UID, DEFAULT_USER_NAME
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:

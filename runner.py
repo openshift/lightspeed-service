@@ -42,6 +42,7 @@ if __name__ == "__main__":
 
     cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 
+    # TODO: OLS-381 A proper configuration flow
     config.init_config(cfg_file)
 
     configure_logging(config.ols_config.logging_config)
@@ -65,7 +66,12 @@ if __name__ == "__main__":
     if config.dev_config.disable_tls:
         # TLS is disabled, run without SSL configuration
         uvicorn.run(
-            "ols.app.main:app", host=host, port=8080, log_level=log_level, workers=1
+            "ols.app.main:app",
+            host=host,
+            port=8080,
+            log_level=log_level,
+            workers=1,
+            access_log=log_level < logging.INFO,
         )
     else:
         uvicorn.run(
@@ -77,4 +83,5 @@ if __name__ == "__main__":
             ssl_keyfile=config.ols_config.tls_config.tls_key_path,
             ssl_certfile=config.ols_config.tls_config.tls_certificate_path,
             ssl_keyfile_password=config.ols_config.tls_config.tls_key_password,
+            access_log=log_level < logging.INFO,
         )

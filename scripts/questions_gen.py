@@ -1,5 +1,7 @@
 """Utility script to generate automatic questions."""
 
+# TODO: OLS-505 Refactor script scripts/question_get.py to adhere to Python standards and idioms
+
 import argparse
 import asyncio
 import json
@@ -144,7 +146,6 @@ def generate_summary(
     with open(file_path, "w") as file:
         file.write(json_metadata)
 
-    # TODO-rewrite
     full_results_markdown_content = "    \n"
     for res in full_results:
         for key, value in res.items():
@@ -355,17 +356,17 @@ async def main():
 
     full_results = []
     total_correctness_score = []
-    for dir in dir_list:
-        print(f"gen questions for: {dir}")
+    for directory in dir_list:
+        print(f"gen questions for: {directory}")
         results = {}
-        reader = SimpleDirectoryReader(dir)
+        reader = SimpleDirectoryReader(directory)
         question = reader.load_data()
         data_generator = DatasetGenerator.from_documents(question)
         eval_questions = data_generator.generate_questions_from_nodes(
             num=num_of_questions
         )
 
-        results["dir_name"] = dir
+        results["dir_name"] = directory
         results["questions"] = eval_questions
         print(eval_questions)
 
