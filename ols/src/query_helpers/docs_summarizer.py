@@ -30,13 +30,12 @@ class DocsSummarizer(QueryHelper):
             model_config = provider_config.models.get(self.model)
             return model_config.options
 
-    # TODO: OLS-524 Mutable objects used as function argument defaults
     def summarize(
         self,
         conversation_id: str,
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
-        history: list[BaseMessage] = [],
+        history: Optional[list[BaseMessage]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Summarize the given query based on the provided conversation context.
@@ -55,6 +54,10 @@ class DocsSummarizer(QueryHelper):
             - flag indicating that conversation history has been truncated
               to fit within context window.
         """
+        # if history is not provided, initialize to empty history
+        if history is None:
+            history = []
+
         verbose = kwargs.get("verbose", "").lower() == "true"
         settings_string = (
             f"conversation_id: {conversation_id}, "
