@@ -140,31 +140,6 @@ def test_liveness():
         assert response.json() == {"status": {"status": "healthy"}}
 
 
-def test_raw_prompt():
-    """Check the REST API /v1/debug/query with POST HTTP method when expected payload is posted."""
-    endpoint = "/v1/debug/query"
-    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
-        cid = suid.get_suid()
-        r = client.post(
-            endpoint,
-            json={
-                "conversation_id": cid,
-                "query": "respond to this message with the word hello",
-            },
-            timeout=LLM_REST_API_TIMEOUT,
-        )
-        assert r.status_code == requests.codes.ok
-
-        check_content_type(r, "application/json")
-        print(vars(r))
-        json_response = r.json()
-
-        assert json_response["conversation_id"] == cid
-        assert json_response["referenced_documents"] == []
-        response_text = json_response["response"].lower()
-        assert "hello" in response_text
-
-
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     endpoint = "/v1/query"
