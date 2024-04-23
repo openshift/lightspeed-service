@@ -61,7 +61,9 @@ class ModelConfig(BaseModel):
     response_token_limit: int = -1  # need to be set later, based on model
     options: Optional[dict[str, Any]] = None
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self, data: Optional[dict] = None, provider: Optional[str] = None
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -71,10 +73,13 @@ class ModelConfig(BaseModel):
         self.credentials = _get_attribute_from_file(data, "credentials_path")
 
         # if the context window size is not set explicitly, use value
-        # set for given model, or default value for model without size setup
-        default = constants.CONTEXT_WINDOW_SIZES.get(
-            self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
-        )
+        # set for given provider + model, or default value for model without
+        # size setup (note that at this stage, provider is always correct)
+        default = constants.DEFAULT_CONTEXT_WINDOW_SIZE
+        if provider in constants.CONTEXT_WINDOW_SIZES:
+            default = constants.CONTEXT_WINDOW_SIZES.get(provider).get(
+                self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
+            )
         self.context_window_size = self._validate_token_limit(
             data, "context_window_size", default
         )
@@ -249,7 +254,7 @@ class ProviderConfig(BaseModel):
         for m in data["models"]:
             if "name" not in m:
                 raise InvalidConfigurationError("model name is missing")
-            model = ModelConfig(m)
+            model = ModelConfig(m, self.type)
             self.models[m["name"]] = model
         if self.type == constants.PROVIDER_AZURE_OPENAI:
             # deployment_name only required when using Azure OpenAI

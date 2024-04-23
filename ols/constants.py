@@ -55,14 +55,26 @@ DEFAULT_CONTEXT_WINDOW_SIZE = 8000
 DEFAULT_RESPONSE_TOKEN_LIMIT = 500
 MINIMUM_CONTEXT_TOKEN_LIMIT = 1
 
-# Model-specific context window size
+# Provider and Model-specific context window size
 # see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4
 # and https://www.ibm.com/docs/en/cloud-paks/cp-data/4.8.x?topic=models-supported-foundation
 CONTEXT_WINDOW_SIZES = {
-    GRANITE_13B_CHAT_V1: 8192,
-    GRANITE_13B_CHAT_V2: 8192,
-    GPT4_TURBO: 128000,
-    GPT35_TURBO: 16385,
+    PROVIDER_BAM: {
+        GRANITE_13B_CHAT_V1: 8192,
+        GRANITE_13B_CHAT_V2: 8192,
+    },
+    PROVIDER_WATSONX: {
+        GRANITE_13B_CHAT_V1: 8192,
+        GRANITE_13B_CHAT_V2: 8192,
+    },
+    PROVIDER_AZURE_OPENAI: {
+        GPT4_TURBO: 128000,
+        GPT35_TURBO: 16384,
+    },
+    PROVIDER_OPENAI: {
+        GPT4_TURBO: 128000,
+        GPT35_TURBO: 16384,
+    },
 }
 
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
