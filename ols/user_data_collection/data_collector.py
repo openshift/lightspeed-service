@@ -324,6 +324,18 @@ def gather_ols_user_data(data_path: str) -> None:
         logger.info(f"'{data_path}' contains no data, nothing to do...")
 
 
+# NOTE: This condition is here mainly to have a way how to influence
+# when the collector is running in the e2e tests. It is not meant to be
+# used in the production.
+def disabled_by_file() -> bool:
+    """Check if the data collection is disabled by a file.
+
+    Pure existence of the file `disable_collector` in the root of the
+    user data dir is enough to disable the data collection.
+    """
+    return (pathlib.Path(OLS_USER_DATA_PATH) / "disable_collector").exists()
+
+
 if __name__ == "__main__":
     if not RUN_WITHOUT_INITIAL_WAIT:
         logger.info(
@@ -331,5 +343,8 @@ if __name__ == "__main__":
         )
         time.sleep(INITIAL_WAIT)
     while True:
-        gather_ols_user_data(OLS_USER_DATA_PATH)
+        if not disabled_by_file():
+            gather_ols_user_data(OLS_USER_DATA_PATH)
+        else:
+            logger.info("disabled by control file, skipping data collection")
         time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL)
