@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:ec7b95cf3d33ce8a5688067a85afd0cb8ee45967a95857140e11cc6161c4d05d"
+content_hash = "sha256:69f51049632c6517ac9e740a409673810ad4d4b460438798aa51aa81edf8802e"
 
 [[package]]
 name = "aiofiles"
@@ -166,23 +166,6 @@ files = [
 ]
 
 [[package]]
-name = "blis"
-version = "0.7.11"
-summary = "The Blis BLAS-like linear algebra library, as a self-contained C-extension."
-groups = ["default"]
-dependencies = [
-    "numpy>=1.19.0; python_version >= \"3.9\"",
-]
-files = [
-    {file = "blis-0.7.11-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:1b68df4d01d62f9adaef3dad6f96418787265a6878891fc4e0fabafd6d02afba"},
-    {file = "blis-0.7.11-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:162e60d941a8151418d558a94ee5547cb1bbeed9f26b3b6f89ec9243f111a201"},
-    {file = "blis-0.7.11-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:686a7d0111d5ba727cd62f374748952fd6eb74701b18177f525b16209a253c01"},
-    {file = "blis-0.7.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0421d6e44cda202b113a34761f9a062b53f8c2ae8e4ec8325a76e709fca93b6e"},
-    {file = "blis-0.7.11-cp311-cp311-win_amd64.whl", hash = "sha256:0dc9dcb3843045b6b8b00432409fd5ee96b8344a324e031bfec7303838c41a1a"},
-    {file = "blis-0.7.11.tar.gz", hash = "sha256:cec6d48f75f7ac328ae1b6fbb372dde8c8a57c89559172277f66e01ff08d4d42"},
-]
-
-[[package]]
 name = "cachetools"
 version = "5.3.3"
 requires_python = ">=3.7"
@@ -191,17 +174,6 @@ groups = ["default"]
 files = [
     {file = "cachetools-5.3.3-py3-none-any.whl", hash = "sha256:0abad1021d3f8325b2fc1d2e9c8b9c9d57b04c3932657a72465447332c24d945"},
     {file = "cachetools-5.3.3.tar.gz", hash = "sha256:ba29e2dfa0b8b556606f097407ed1aa62080ee108ab0dc5ec9d6a723a007d105"},
-]
-
-[[package]]
-name = "catalogue"
-version = "2.0.10"
-requires_python = ">=3.6"
-summary = "Super lightweight function registries for your library"
-groups = ["default"]
-files = [
-    {file = "catalogue-2.0.10-py3-none-any.whl", hash = "sha256:58c2de0020aa90f4a2da7dfad161bf7b3b054c86a5f09fcedc0b2b740c109a9f"},
-    {file = "catalogue-2.0.10.tar.gz", hash = "sha256:4f56daa940913d3f09d589c191c74e5a6d51762b3a9e37dd53b7437afd6cda15"},
 ]
 
 [[package]]
@@ -256,41 +228,15 @@ files = [
 ]
 
 [[package]]
-name = "cloudpathlib"
-version = "0.16.0"
-requires_python = ">=3.7"
-summary = "pathlib-style classes for cloud storage services."
-groups = ["default"]
-files = [
-    {file = "cloudpathlib-0.16.0-py3-none-any.whl", hash = "sha256:f46267556bf91f03db52b5df7a152548596a15aabca1c8731ef32b0b25a1a6a3"},
-    {file = "cloudpathlib-0.16.0.tar.gz", hash = "sha256:cdfcd35d46d529587d744154a0bdf962aca953b725c8784cd2ec478354ea63a3"},
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
 groups = ["default", "dev"]
-marker = "sys_platform != \"emscripten\" or platform_system == \"Windows\""
+marker = "sys_platform == \"win32\" or platform_system == \"Windows\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
-]
-
-[[package]]
-name = "confection"
-version = "0.1.4"
-requires_python = ">=3.6"
-summary = "The sweetest config system for Python"
-groups = ["default"]
-dependencies = [
-    "pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4",
-    "srsly<3.0.0,>=2.4.0",
-]
-files = [
-    {file = "confection-0.1.4-py3-none-any.whl", hash = "sha256:a658818d004939069c3e2b3db74a2cb9d956a5e61a1c9ad61788e0ee09a7090f"},
-    {file = "confection-0.1.4.tar.gz", hash = "sha256:e80f22fd008b5231a2e8852fac6de9e28f2276a04031d0536cff74fe4a990c8f"},
 ]
 
 [[package]]
@@ -374,20 +320,6 @@ groups = ["default"]
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
     {file = "cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c"},
-]
-
-[[package]]
-name = "cymem"
-version = "2.0.8"
-summary = "Manage calls to calloc/free through Cython"
-groups = ["default"]
-files = [
-    {file = "cymem-2.0.8-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:6b84b780d52cb2db53d4494fe0083c4c5ee1f7b5380ceaea5b824569009ee5bd"},
-    {file = "cymem-2.0.8-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:0d5f83dc3cb5a39f0e32653cceb7c8ce0183d82f1162ca418356f4a8ed9e203e"},
-    {file = "cymem-2.0.8-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4ac218cf8a43a761dc6b2f14ae8d183aca2bbb85b60fe316fd6613693b2a7914"},
-    {file = "cymem-2.0.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:42c993589d1811ec665d37437d5677b8757f53afadd927bf8516ac8ce2d3a50c"},
-    {file = "cymem-2.0.8-cp311-cp311-win_amd64.whl", hash = "sha256:ab3cf20e0eabee9b6025ceb0245dadd534a96710d43fb7a91a35e0b9e672ee44"},
-    {file = "cymem-2.0.8.tar.gz", hash = "sha256:8fb09d222e21dcf1c7e907dc85cf74501d4cea6c4ed4ac6c9e016f98fb59cbbf"},
 ]
 
 [[package]]
@@ -558,7 +490,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.25.0"
+version = "4.27.0"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -567,7 +499,7 @@ dependencies = [
     "altair<6.0,>=4.2.0",
     "fastapi",
     "ffmpy",
-    "gradio-client==0.15.0",
+    "gradio-client==0.15.1",
     "httpx>=0.24.1",
     "huggingface-hub>=0.19.3",
     "importlib-resources<7.0,>=1.3",
@@ -586,18 +518,19 @@ dependencies = [
     "ruff>=0.2.2; sys_platform != \"emscripten\"",
     "semantic-version~=2.0",
     "tomlkit==0.12.0",
-    "typer[all]<1.0,>=0.9; sys_platform != \"emscripten\"",
+    "typer<1.0,>=0.12; sys_platform != \"emscripten\"",
     "typing-extensions~=4.0",
+    "urllib3~=2.0",
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.25.0-py3-none-any.whl", hash = "sha256:3e953bf14ada8ed31a839e349b094a2f3894d80272848d604f14dea857d08272"},
-    {file = "gradio-4.25.0.tar.gz", hash = "sha256:1b87cc817ebedcac6b2542d550e0c9f63472f9dafc85a21617c97b784c5646c2"},
+    {file = "gradio-4.27.0-py3-none-any.whl", hash = "sha256:4d7e09751f17294aaea5de720813ddbc430b9bf4b17a01b8a5f10db4589b6c93"},
+    {file = "gradio-4.27.0.tar.gz", hash = "sha256:eb5ef3bad1614bc3463b8f9f7002c7f1a29b93eade182eb90cd58a5552a2584c"},
 ]
 
 [[package]]
 name = "gradio-client"
-version = "0.15.0"
+version = "0.15.1"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -610,8 +543,8 @@ dependencies = [
     "websockets<12.0,>=10.0",
 ]
 files = [
-    {file = "gradio_client-0.15.0-py3-none-any.whl", hash = "sha256:3cf5f5fdf9225256856e03574148a0b7bd32d82da4b7c890d006db92f8bb3ebb"},
-    {file = "gradio_client-0.15.0.tar.gz", hash = "sha256:eb9533f6457cc158128dbf307c44a8123e41da18a040cb3dfa66860ba9029911"},
+    {file = "gradio_client-0.15.1-py3-none-any.whl", hash = "sha256:c31f2e00030cf39df7f198d1e430f38500b27232b7b62a7c42bdb26aee4c75b1"},
+    {file = "gradio_client-0.15.1.tar.gz", hash = "sha256:c6b12f7d3f63b65d6539920023ca733fddcacdc45a712c0c32342d34428c8130"},
 ]
 
 [[package]]
@@ -1121,17 +1054,6 @@ files = [
 ]
 
 [[package]]
-name = "langcodes"
-version = "3.3.0"
-requires_python = ">=3.6"
-summary = "Tools for labeling human languages with IETF language tags"
-groups = ["default"]
-files = [
-    {file = "langcodes-3.3.0-py3-none-any.whl", hash = "sha256:4d89fc9acb6e9c8fdef70bcdf376113a3db09b67285d9e1d534de6d8818e7e69"},
-    {file = "langcodes-3.3.0.tar.gz", hash = "sha256:794d07d5a28781231ac335a1561b8442f8648ca07cd518310aeb45d6f0807ef6"},
-]
-
-[[package]]
 name = "langsmith"
 version = "0.1.49"
 requires_python = "<4.0,>=3.8.1"
@@ -1315,21 +1237,6 @@ files = [
     {file = "multidict-6.0.5-cp311-cp311-win_amd64.whl", hash = "sha256:2faa5ae9376faba05f630d7e5e6be05be22913782b927b19d12b8145968a85ea"},
     {file = "multidict-6.0.5-py3-none-any.whl", hash = "sha256:0d63c74e3d7ab26de115c49bffc92cc77ed23395303d496eae515d4204a625e7"},
     {file = "multidict-6.0.5.tar.gz", hash = "sha256:f7e301075edaf50500f0b341543c41194d8df3ae5caf4702f2095f3ca73dd8da"},
-]
-
-[[package]]
-name = "murmurhash"
-version = "1.0.10"
-requires_python = ">=3.6"
-summary = "Cython bindings for MurmurHash"
-groups = ["default"]
-files = [
-    {file = "murmurhash-1.0.10-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:90ed37ee2cace9381b83d56068334f77e3e30bc521169a1f886a2a2800e965d6"},
-    {file = "murmurhash-1.0.10-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:22e9926fdbec9d24ced9b0a42f0fee68c730438be3cfb00c2499fd495caec226"},
-    {file = "murmurhash-1.0.10-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:54bfbfd68baa99717239b8844600db627f336a08b1caf4df89762999f681cdd1"},
-    {file = "murmurhash-1.0.10-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:18b9d200a09d48ef67f6840b77c14f151f2b6c48fd69661eb75c7276ebdb146c"},
-    {file = "murmurhash-1.0.10-cp311-cp311-win_amd64.whl", hash = "sha256:e5d7cfe392c0a28129226271008e61e77bf307afc24abf34f386771daa7b28b0"},
-    {file = "murmurhash-1.0.10.tar.gz", hash = "sha256:5282aab1317804c6ebd6dd7f69f15ba9075aee671c44a34be2bde0f1b11ef88a"},
 ]
 
 [[package]]
@@ -1573,25 +1480,6 @@ groups = ["default", "dev"]
 files = [
     {file = "pluggy-1.5.0-py3-none-any.whl", hash = "sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669"},
     {file = "pluggy-1.5.0.tar.gz", hash = "sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1"},
-]
-
-[[package]]
-name = "preshed"
-version = "3.0.9"
-requires_python = ">=3.6"
-summary = "Cython hash table that trusts the keys are pre-hashed"
-groups = ["default"]
-dependencies = [
-    "cymem<2.1.0,>=2.0.2",
-    "murmurhash<1.1.0,>=0.28.0",
-]
-files = [
-    {file = "preshed-3.0.9-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e7c2364da27f2875524ce1ca754dc071515a9ad26eb5def4c7e69129a13c9a59"},
-    {file = "preshed-3.0.9-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:182138033c0730c683a6d97e567ceb8a3e83f3bff5704f300d582238dbd384b3"},
-    {file = "preshed-3.0.9-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:345a10be3b86bcc6c0591d343a6dc2bfd86aa6838c30ced4256dfcfa836c3a64"},
-    {file = "preshed-3.0.9-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:51d0192274aa061699b284f9fd08416065348edbafd64840c3889617ee1609de"},
-    {file = "preshed-3.0.9-cp311-cp311-win_amd64.whl", hash = "sha256:96b857d7a62cbccc3845ac8c41fd23addf052821be4eb987f2eb0da3d8745aa1"},
-    {file = "preshed-3.0.9.tar.gz", hash = "sha256:721863c5244ffcd2651ad0928951a2c7c77b102f4e11a251ad85d37ee7621660"},
 ]
 
 [[package]]
@@ -2196,17 +2084,6 @@ files = [
 ]
 
 [[package]]
-name = "smart-open"
-version = "6.4.0"
-requires_python = ">=3.6,<4.0"
-summary = "Utils for streaming large files (S3, HDFS, GCS, Azure Blob Storage, gzip, bz2...)"
-groups = ["default"]
-files = [
-    {file = "smart_open-6.4.0-py3-none-any.whl", hash = "sha256:8d3ef7e6997e8e42dd55c74166ed21e6ac70664caa32dd940b26d54a8f6b4142"},
-    {file = "smart_open-6.4.0.tar.gz", hash = "sha256:be3c92c246fbe80ebce8fbacb180494a481a77fcdcb7c1aadb2ea5b9c2bee8b9"},
-]
-
-[[package]]
 name = "sniffio"
 version = "1.3.1"
 requires_python = ">=3.7"
@@ -2215,65 +2092,6 @@ groups = ["default", "dev"]
 files = [
     {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
     {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
-]
-
-[[package]]
-name = "spacy"
-version = "3.7.4"
-requires_python = ">=3.7"
-summary = "Industrial-strength Natural Language Processing (NLP) in Python"
-groups = ["default"]
-dependencies = [
-    "catalogue<2.1.0,>=2.0.6",
-    "cymem<2.1.0,>=2.0.2",
-    "jinja2",
-    "langcodes<4.0.0,>=3.2.0",
-    "murmurhash<1.1.0,>=0.28.0",
-    "numpy>=1.19.0; python_version >= \"3.9\"",
-    "packaging>=20.0",
-    "preshed<3.1.0,>=3.0.2",
-    "pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4",
-    "requests<3.0.0,>=2.13.0",
-    "setuptools",
-    "smart-open<7.0.0,>=5.2.1",
-    "spacy-legacy<3.1.0,>=3.0.11",
-    "spacy-loggers<2.0.0,>=1.0.0",
-    "srsly<3.0.0,>=2.4.3",
-    "thinc<8.3.0,>=8.2.2",
-    "tqdm<5.0.0,>=4.38.0",
-    "typer<0.10.0,>=0.3.0",
-    "wasabi<1.2.0,>=0.9.1",
-    "weasel<0.4.0,>=0.1.0",
-]
-files = [
-    {file = "spacy-3.7.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e82b9da21853d4aee46811804dc7e136895f087fda25c7585172d95eb9b70833"},
-    {file = "spacy-3.7.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:07ffedf51899441070fb70432f8f873696f39e0e31c9ce7403101c459f8a1281"},
-    {file = "spacy-3.7.4-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ba57bcc111eca7b086ee33a9636df775cfd4b14302f7d0ffbc11e95ac0fb3f0e"},
-    {file = "spacy-3.7.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7580d1565f4d1ccbee9a18531f993a5b9b37ced96f145153dd4e98ceec607a55"},
-    {file = "spacy-3.7.4-cp311-cp311-win_amd64.whl", hash = "sha256:df99c6f0085b1ec8e88beb5fd96d4371cef6fc19c202c41fc4fadc2afd55a157"},
-    {file = "spacy-3.7.4.tar.gz", hash = "sha256:525f2ced2e40761562c8cace93ef6a1e6e8c483f27bd564bc1b15f608efbe85b"},
-]
-
-[[package]]
-name = "spacy-legacy"
-version = "3.0.12"
-requires_python = ">=3.6"
-summary = "Legacy registered functions for spaCy backwards compatibility"
-groups = ["default"]
-files = [
-    {file = "spacy-legacy-3.0.12.tar.gz", hash = "sha256:b37d6e0c9b6e1d7ca1cf5bc7152ab64a4c4671f59c85adaf7a3fcb870357a774"},
-    {file = "spacy_legacy-3.0.12-py2.py3-none-any.whl", hash = "sha256:476e3bd0d05f8c339ed60f40986c07387c0a71479245d6d0f4298dbd52cda55f"},
-]
-
-[[package]]
-name = "spacy-loggers"
-version = "1.0.5"
-requires_python = ">=3.6"
-summary = "Logging utilities for SpaCy"
-groups = ["default"]
-files = [
-    {file = "spacy-loggers-1.0.5.tar.gz", hash = "sha256:d60b0bdbf915a60e516cc2e653baeff946f0cfc461b452d11a4d5458c6fe5f24"},
-    {file = "spacy_loggers-1.0.5-py3-none-any.whl", hash = "sha256:196284c9c446cc0cdb944005384270d775fdeaf4f494d8e269466cfa497ef645"},
 ]
 
 [[package]]
@@ -2324,24 +2142,6 @@ files = [
 ]
 
 [[package]]
-name = "srsly"
-version = "2.4.8"
-requires_python = ">=3.6"
-summary = "Modern high-performance serialization utilities for Python"
-groups = ["default"]
-dependencies = [
-    "catalogue<2.1.0,>=2.0.3",
-]
-files = [
-    {file = "srsly-2.4.8-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:5472ed9f581e10c32e79424c996cf54c46c42237759f4224806a0cd4bb770993"},
-    {file = "srsly-2.4.8-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:50f10afe9230072c5aad9f6636115ea99b32c102f4c61e8236d8642c73ec7a13"},
-    {file = "srsly-2.4.8-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c994a89ba247a4d4f63ef9fdefb93aa3e1f98740e4800d5351ebd56992ac75e3"},
-    {file = "srsly-2.4.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ace7ed4a0c20fa54d90032be32f9c656b6d75445168da78d14fe9080a0c208ad"},
-    {file = "srsly-2.4.8-cp311-cp311-win_amd64.whl", hash = "sha256:7a919236a090fb93081fbd1cec030f675910f3863825b34a9afbcae71f643127"},
-    {file = "srsly-2.4.8.tar.gz", hash = "sha256:b24d95a65009c2447e0b49cda043ac53fecf4f09e358d87a57446458f91b8a91"},
-]
-
-[[package]]
 name = "starlette"
 version = "0.37.2"
 requires_python = ">=3.8"
@@ -2389,35 +2189,6 @@ groups = ["default"]
 files = [
     {file = "tenacity-8.2.3-py3-none-any.whl", hash = "sha256:ce510e327a630c9e1beaf17d42e6ffacc88185044ad85cf74c0a8887c6a0f88c"},
     {file = "tenacity-8.2.3.tar.gz", hash = "sha256:5398ef0d78e63f40007c1fb4c0bff96e1911394d2fa8d194f77619c05ff6cc8a"},
-]
-
-[[package]]
-name = "thinc"
-version = "8.2.3"
-requires_python = ">=3.6"
-summary = "A refreshing functional take on deep learning, compatible with your favorite libraries"
-groups = ["default"]
-dependencies = [
-    "blis<0.8.0,>=0.7.8",
-    "catalogue<2.1.0,>=2.0.4",
-    "confection<1.0.0,>=0.0.1",
-    "cymem<2.1.0,>=2.0.2",
-    "murmurhash<1.1.0,>=1.0.2",
-    "numpy>=1.19.0; python_version >= \"3.9\"",
-    "packaging>=20.0",
-    "preshed<3.1.0,>=3.0.2",
-    "pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4",
-    "setuptools",
-    "srsly<3.0.0,>=2.4.0",
-    "wasabi<1.2.0,>=0.8.1",
-]
-files = [
-    {file = "thinc-8.2.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:9db67f460dae2e3aada1ff166394ce13c2dabb4db93d6bd79cd256f5beab9599"},
-    {file = "thinc-8.2.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:0d57bdf43e0acd1406d681bf988179f677cf1b385c86f744bf314d827383ce31"},
-    {file = "thinc-8.2.3-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:78311a593b8bf3f03af52bf71d6b364463c598f3540ea8387c00017d2a0e0a5d"},
-    {file = "thinc-8.2.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b9489ae7fec427064a50a0c3e7c661a95251756032e31316add2c8c13f98f93c"},
-    {file = "thinc-8.2.3-cp311-cp311-win_amd64.whl", hash = "sha256:d0bf3840d434e3dbdf294643e6d54d2042d0e652abc68dee16673f28269fc456"},
-    {file = "thinc-8.2.3.tar.gz", hash = "sha256:f5afc5222912a80bda8bdcec958362a2ba538d7027dc8db6154845d2859dca76"},
 ]
 
 [[package]]
@@ -2584,36 +2355,20 @@ files = [
 
 [[package]]
 name = "typer"
-version = "0.9.4"
-requires_python = ">=3.6"
-summary = "Typer, build great CLIs. Easy to code. Based on Python type hints."
-groups = ["default"]
-dependencies = [
-    "click<9.0.0,>=7.1.1",
-    "typing-extensions>=3.7.4.3",
-]
-files = [
-    {file = "typer-0.9.4-py3-none-any.whl", hash = "sha256:aa6c4a4e2329d868b80ecbaf16f807f2b54e192209d7ac9dd42691d63f7a54eb"},
-    {file = "typer-0.9.4.tar.gz", hash = "sha256:f714c2d90afae3a7929fcd72a3abb08df305e1ff61719381384211c4070af57f"},
-]
-
-[[package]]
-name = "typer"
-version = "0.9.4"
-extras = ["all"]
-requires_python = ">=3.6"
+version = "0.12.3"
+requires_python = ">=3.7"
 summary = "Typer, build great CLIs. Easy to code. Based on Python type hints."
 groups = ["default"]
 marker = "sys_platform != \"emscripten\""
 dependencies = [
-    "colorama<0.5.0,>=0.4.3",
-    "rich<14.0.0,>=10.11.0",
-    "shellingham<2.0.0,>=1.3.0",
-    "typer==0.9.4",
+    "click>=8.0.0",
+    "rich>=10.11.0",
+    "shellingham>=1.3.0",
+    "typing-extensions>=3.7.4.3",
 ]
 files = [
-    {file = "typer-0.9.4-py3-none-any.whl", hash = "sha256:aa6c4a4e2329d868b80ecbaf16f807f2b54e192209d7ac9dd42691d63f7a54eb"},
-    {file = "typer-0.9.4.tar.gz", hash = "sha256:f714c2d90afae3a7929fcd72a3abb08df305e1ff61719381384211c4070af57f"},
+    {file = "typer-0.12.3-py3-none-any.whl", hash = "sha256:070d7ca53f785acbccba8e7d28b08dcd88f79f1fbda035ade0aecec71ca5c914"},
+    {file = "typer-0.12.3.tar.gz", hash = "sha256:49e73131481d804288ef62598d97a1ceef3058905aa536a1134f90891ba35482"},
 ]
 
 [[package]]
@@ -2690,42 +2445,6 @@ dependencies = [
 files = [
     {file = "uvicorn-0.29.0-py3-none-any.whl", hash = "sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de"},
     {file = "uvicorn-0.29.0.tar.gz", hash = "sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0"},
-]
-
-[[package]]
-name = "wasabi"
-version = "1.1.2"
-requires_python = ">=3.6"
-summary = "A lightweight console printing and formatting toolkit"
-groups = ["default"]
-dependencies = [
-    "colorama>=0.4.6; sys_platform == \"win32\" and python_version >= \"3.7\"",
-]
-files = [
-    {file = "wasabi-1.1.2-py3-none-any.whl", hash = "sha256:0a3f933c4bf0ed3f93071132c1b87549733256d6c8de6473c5f7ed2e171b5cf9"},
-    {file = "wasabi-1.1.2.tar.gz", hash = "sha256:1aaef3aceaa32edb9c91330d29d3936c0c39fdb965743549c173cb54b16c30b5"},
-]
-
-[[package]]
-name = "weasel"
-version = "0.3.4"
-requires_python = ">=3.6"
-summary = "Weasel: A small and easy workflow system"
-groups = ["default"]
-dependencies = [
-    "cloudpathlib<0.17.0,>=0.7.0",
-    "confection<0.2.0,>=0.0.4",
-    "packaging>=20.0",
-    "pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4",
-    "requests<3.0.0,>=2.13.0",
-    "smart-open<7.0.0,>=5.2.1",
-    "srsly<3.0.0,>=2.4.3",
-    "typer<0.10.0,>=0.3.0",
-    "wasabi<1.2.0,>=0.9.1",
-]
-files = [
-    {file = "weasel-0.3.4-py3-none-any.whl", hash = "sha256:ee48a944f051d007201c2ea1661d0c41035028c5d5a8bcb29a0b10f1100206ae"},
-    {file = "weasel-0.3.4.tar.gz", hash = "sha256:eb16f92dc9f1a3ffa89c165e3a9acd28018ebb656e0da4da02c0d7d8ae3f6178"},
 ]
 
 [[package]]
