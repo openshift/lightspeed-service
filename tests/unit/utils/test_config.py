@@ -904,3 +904,102 @@ def test_valid_config_with_query_filter():
             replace_with="kubernetes",
         ),
     ]
+
+
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_valid_config_with_azure_openai(patch):
+    """Check if a valid configuration file with Azure OpenAI is handled correctly."""
+    config.query_redactor = None
+    try:
+        config.init_config("tests/config/valid_config_with_azure_openai.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "azure_openai",
+                        "url": "https://url1",
+                        "credentials": "secret_key",
+                        "deployment_name": "test",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
+def test_valid_config_with_azure_openai_api_version(patch):
+    """Check if a valid configuration file with Azure OpenAI is handled correctly."""
+    config.query_redactor = None
+    try:
+        config.init_config(
+            "tests/config/valid_config_with_azure_openai_api_version.yaml"
+        )
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "azure_openai",
+                        "url": "https://url1",
+                        "credentials": "secret_key",
+                        "deployment_name": "test",
+                        "api_version": "2023-12-31",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
