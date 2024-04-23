@@ -11,7 +11,7 @@ from llama_index.indices.vector_store.base import VectorStoreIndex
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
 from ols.app.models.models import ReferencedDocument
-from ols.constants import NO_RAG_CONTENT_RESP, RAG_CONTENT_LIMIT
+from ols.constants import RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
@@ -142,8 +142,6 @@ class DocsSummarizer(QueryHelper):
         response = summary["text"]
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
-            response = NO_RAG_CONTENT_RESP + str(response)
-
         logger.debug(f"{conversation_id} Summary response: {response}")
         logger.debug(f"{conversation_id} Referenced documents: {referenced_documents}")
 

@@ -306,7 +306,6 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
             )
             print(response)
             assert response.status_code == requests.codes.ok
-            assert constants.NO_RAG_CONTENT_RESP in response.json()["response"]
 
 
 @patch(
@@ -387,7 +386,6 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
             )
             print(response.json())
             assert response.status_code == requests.codes.ok
-            assert constants.NO_RAG_CONTENT_RESP in response.json()["response"]
             assert (
                 "test query with redacted_ip will be replaced with redacted_ip"
                 in response.json()["response"]
@@ -414,6 +412,7 @@ def test_post_query_for_conversation_history(_setup) -> None:
             ),
             patch(
                 "ols.src.query_helpers.docs_summarizer.LLMChain.invoke",
+                return_value={"text": "some response"},
             ) as invoke,
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
@@ -448,9 +447,7 @@ def test_post_query_for_conversation_history(_setup) -> None:
                 },
             )
             chat_history_expected = (
-                "Human: Query1"
-                "\n"
-                f"Ai: {response.json()['response'].replace(constants.NO_RAG_CONTENT_RESP, '')}"
+                "Human: Query1" "\n" f"Ai: {response.json()['response']}"
             )
             invoke.assert_called_once_with(
                 input={

@@ -257,7 +257,7 @@ def store_conversation_history(
     except Exception as e:
         logger.error(
             "Error storing conversation history for user "
-            "{user_id} and conversation {conversation_id}"
+            f"{user_id} and conversation {conversation_id}"
         )
         logger.exception(e)
         raise HTTPException(

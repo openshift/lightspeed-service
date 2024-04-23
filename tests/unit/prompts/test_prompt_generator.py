@@ -7,7 +7,6 @@ from langchain.schema import AIMessage, HumanMessage
 from ols.constants import (
     GPT35_TURBO,
     GRANITE_13B_CHAT_V2,
-    NO_RAG_CONTENT_RESP,
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
     PROVIDER_OPENAI,
@@ -81,7 +80,7 @@ def test_generate_prompt_without_rag_context(provider, model, query):
     rag_context = ""
     conversation_history = [
         HumanMessage(content="First human message"),
-        AIMessage(content=f"\n\n{NO_RAG_CONTENT_RESP}First AI response\n"),
+        AIMessage(content="First AI response"),
     ]
 
     prompt, llm_input_values = generate_prompt(
