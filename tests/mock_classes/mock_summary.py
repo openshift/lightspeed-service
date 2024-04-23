@@ -4,9 +4,11 @@
 class MockSummary:
     """Mocked summary returned from query engine."""
 
-    # TODO: OLS-524 Mutable objects used as function argument defaults
-    def __init__(self, query, nodes=[]):
+    def __init__(self, query, nodes=None):
         """Initialize all required object attributes."""
+        if nodes is None:
+            nodes = []
+
         self.query = query
         self.source_nodes = nodes
 
