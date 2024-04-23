@@ -41,6 +41,7 @@ def test_basic_interface(provider_config):
     assert "deployment_name" in azure_openai.default_params
     assert "azure_endpoint" in azure_openai.default_params
     assert "max_tokens" in azure_openai.default_params
+    assert "api_version" in azure_openai.default_params
 
 
 def test_params_handling(provider_config):
@@ -55,6 +56,7 @@ def test_params_handling(provider_config):
         "max_new_tokens": 10,
         "temperature": 0.3,
         "verbose": True,
+        "api_version": "2023-12-31",
     }
 
     azure_openai = AzureOpenAI(
@@ -68,13 +70,32 @@ def test_params_handling(provider_config):
     # known parameters should be there
     assert "temperature" in azure_openai.params
     assert "verbose" in azure_openai.params
+    assert "api_version" in azure_openai.params
     assert azure_openai.params["temperature"] == 0.3
     assert azure_openai.params["verbose"] is True
+    assert azure_openai.params["api_version"] == "2023-12-31"
 
     # unknown parameters should be filtered out
     assert "min_new_tokens" not in azure_openai.params
     assert "max_new_tokens" not in azure_openai.params
     assert "unknown_parameter" not in azure_openai.params
+
+
+def test_api_version_can_not_be_none(provider_config):
+    """Test that api_version parameter can not be None."""
+    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+
+    params = {
+        "api_version": None,
+    }
+
+    azure_openai = AzureOpenAI(
+        model="uber-model", params=params, provider_config=provider_config
+    )
+
+    # api_version is required parameter and can not be None
+    with pytest.raises(KeyError, match="api_version"):
+        azure_openai.load()
 
 
 def test_none_params_handling(provider_config):
