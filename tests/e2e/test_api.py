@@ -1169,6 +1169,10 @@ def test_user_data_collection():
         cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
         assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
 
+    # safety wait for the script to start after beying disabled by other
+    # tests
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+
     # data shoud be pruned now and this is the point from which we want
     # to check the logs
     container_log = cluster_utils.get_container_log(
