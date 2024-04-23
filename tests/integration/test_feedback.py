@@ -74,6 +74,31 @@ def test_feedback(_with_enabled_feedback):
     assert response.json() == {"response": "feedback received"}
 
 
+def test_feedback_improper_sentiment(_with_enabled_feedback):
+    """Check if feedback with improper sentiment value is rejected."""
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what are you doing?",
+            "llm_response": "I don't know",
+            "sentiment": -2,
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable_entity
+
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what are you doing?",
+            "llm_response": "I don't know",
+            "sentiment": "foo",
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable_entity
+
+
 def test_feedback_wrong_request(_with_enabled_feedback):
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
     response = client.post("/v1/feedback", json={})
