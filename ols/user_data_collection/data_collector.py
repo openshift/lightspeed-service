@@ -248,6 +248,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         Response object from the Ingress.
     """
     logger.info("sending collected data")
+    url = get_ingress_upload_url()
     payload = {
         "file": (
             "ols.tgz",
@@ -273,9 +274,9 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
 
     with requests.Session() as s:
         s.headers = headers
-
+        logger.debug(f"posting payload to {url}")
         response = s.post(
-            url=get_ingress_upload_url(),
+            url=url,
             files=payload,
             timeout=INGRESS_TIMEOUT,
         )
@@ -309,6 +310,7 @@ def gather_ols_user_data(data_path: str) -> None:
     collected_files = collect_ols_data_from(data_path)
     if collected_files:
         logger.info(f"collected {len(collected_files)} files from '{data_path}'")
+        logger.debug(f"collected files: {collected_files}")
         tarball = package_files_into_tarball(collected_files, path_to_strip=data_path)
         try:
             upload_data_to_ingress(tarball)
