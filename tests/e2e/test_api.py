@@ -157,11 +157,12 @@ def test_raw_prompt():
 
         check_content_type(r, "application/json")
         print(vars(r))
-        response = r.json()
+        json_response = r.json()
 
-        assert response["conversation_id"] == cid
-        assert response["referenced_documents"] == []
-        assert "hello" in response["response"].lower()
+        assert json_response["conversation_id"] == cid
+        assert json_response["referenced_documents"] == []
+        response_text = json_response["response"].lower()
+        assert "hello" in response_text
 
 
 def test_invalid_question():
@@ -505,10 +506,11 @@ def test_query_filter() -> None:
 
         # values to be filtered and replaced are defined in:
         # tests/config/singleprovider.e2e.template.config.yaml
-        assert "openshift" in json_response["response"].lower()
-        assert "deploy" in json_response["response"].lower()
-        assert "foo" not in json_response["response"]
-        assert "bar" not in json_response["response"]
+        response_text = json_response["response"].lower()
+        assert "openshift" in response_text
+        assert "deploy" in response_text
+        assert "foo" not in response_text
+        assert "bar" not in response_text
 
 
 def test_conversation_history() -> None:
@@ -527,7 +529,8 @@ def test_conversation_history() -> None:
 
         print(vars(response))
         json_response = response.json()
-        assert "ingress" in json_response["response"].lower()
+        response_text = json_response["response"].lower()
+        assert "ingress" in response_text
 
         # get the conversation id so we can reuse it for the follow up question
         cid = json_response["conversation_id"]
@@ -539,7 +542,8 @@ def test_conversation_history() -> None:
         print(vars(response))
         assert response.status_code == requests.codes.ok
         json_response = response.json()
-        assert "ingress" in json_response["response"].lower()
+        response_text = json_response["response"].lower()
+        assert "ingress" in response_text
 
 
 def test_query_with_provider_but_not_model(response_eval) -> None:
