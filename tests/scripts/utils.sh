@@ -19,7 +19,9 @@ function must_gather() {
   mkdir -p $ARTIFACT_DIR/$1/cluster/podlogs
   for podname in `oc get pods -o jsonpath="{.items[].metadata.name}"`; do
     echo "dumping pod $podname"
-    oc logs pod/${podname} > $ARTIFACT_DIR/$1/cluster/podlogs/${podname}.log
+    for containername in `oc get pod $podname -o jsonpath="{.spec.containers[*].name}"`; do
+      oc logs pod/$podname -c $containername > $ARTIFACT_DIR/$1/cluster/podlogs/${podname}-${containername}.log
+    done
   done
 }
 
