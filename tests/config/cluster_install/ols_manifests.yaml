@@ -74,6 +74,8 @@ spec:
             value: "stage"
           - name: CP_OFFLINE_TOKEN
             value: "$CP_OFFLINE_TOKEN"
+          - name: LOG_LEVEL
+            value: "DEBUG"
         command: ["python3.11", "/app-root/ols/user_data_collection/data_collector.py"]
         volumeMounts:
           - name: ols-user-data
