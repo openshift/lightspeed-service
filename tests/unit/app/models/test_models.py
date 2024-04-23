@@ -208,6 +208,15 @@ class TestFeedback:
         )
         assert feedback_request.sentiment == -1
 
+        feedback_request = FeedbackRequest(
+            conversation_id=conversation_id,
+            user_question=user_question,
+            llm_response=llm_response,
+            sentiment=None,
+            user_feedback="user feedback",
+        )
+        assert feedback_request.sentiment is None
+
         # can convert strings
         feedback_request = FeedbackRequest(
             conversation_id=conversation_id,
@@ -246,6 +255,22 @@ class TestFeedback:
                 user_question=user_question,
                 llm_response=llm_response,
                 sentiment="2",
+            )
+
+        with pytest.raises(ValidationError, match="Input should be a valid integer"):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment="",
+            )
+
+        with pytest.raises(ValidationError, match="Input should be a valid integer"):
+            FeedbackRequest(
+                conversation_id=conversation_id,
+                user_question=user_question,
+                llm_response=llm_response,
+                sentiment="foo",
             )
 
     @staticmethod
