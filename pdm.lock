@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:69f51049632c6517ac9e740a409673810ad4d4b460438798aa51aa81edf8802e"
+content_hash = "sha256:75cda600ff77c17af27cf8df7ab1cffe014130825c416e5117dc234fb2ce6a9f"
 
 [[package]]
 name = "aiofiles"
@@ -2299,7 +2299,7 @@ files = [
 
 [[package]]
 name = "torch"
-version = "2.2.0+cpu"
+version = "2.2.2+cpu"
 requires_python = ">=3.8.0"
 summary = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 groups = ["default"]
@@ -2312,8 +2312,8 @@ dependencies = [
     "typing-extensions>=4.8.0",
 ]
 files = [
-    {file = "torch-2.2.0+cpu-cp311-cp311-linux_x86_64.whl", hash = "sha256:2a8ff4440c1f024ad7982018c378470d2ae0a72f2bc269a22b1a677e09bdd3b1"},
-    {file = "torch-2.2.0+cpu-cp311-cp311-win_amd64.whl", hash = "sha256:58194066e594cd8aff27ddb746399d040900cc0e8a331d67ea98499777fa4d31"},
+    {file = "torch-2.2.2+cpu-cp311-cp311-linux_x86_64.whl", hash = "sha256:90089cae572672fb449c8ff1dc1b29daaffa117bf97ede7463dcd2fd1b991e4c"},
+    {file = "torch-2.2.2+cpu-cp311-cp311-win_amd64.whl", hash = "sha256:88e63c916e3275fa30a220ee736423a95573b96072ded85e5c0171fd8f37a755"},
 ]
 
 [[package]]
