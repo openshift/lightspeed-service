@@ -132,7 +132,9 @@ POSTGRES_CACHE_SSL_MODE = "prefer"
 
 
 # default indentity for local testing and deployment
-DEFAULT_USER_UID = "c1143120-551e-4a47-ad47-2748d6f3c81c"
+# "nil" UUID is used on purpose, because it will be easier to
+# filter these values in CSV export with user feedbacks etc.
+DEFAULT_USER_UID = "00000000-0000-0000-0000-000000000000"
 DEFAULT_USER_NAME = "OLS"
 # TO-DO: make this UUID dynamic per cluster (dynamic uuid for each cluster)
 DEFAULT_KUBEADMIN_UID = "b6553200-0f7b-4c82-b1c5-9303ff18e5f0"
