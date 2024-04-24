@@ -147,7 +147,7 @@ def test_invalid_question():
         cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": "test query"},
+            json={"conversation_id": cid, "query": "how to make burger?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -170,7 +170,7 @@ def test_invalid_question_without_conversation_id():
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
-            json={"query": "test query"},
+            json={"query": "how to make burger?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -372,7 +372,7 @@ def test_invalid_question_tokens_counter() -> None:
     ):
         response = client.post(
             endpoint,
-            json={"query": "test query"},
+            json={"query": "how to make burger?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
