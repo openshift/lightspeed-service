@@ -159,7 +159,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    ```
 
 9.  (Optional) Configure conversation cache
-   Conversation cache can be stored in memory (it's content will be lost after shutdown) or in Redis storage. It is possible to specify storage type in `olsconfig.yaml` configuration file.
+   Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
    1. Cache stored in memory:
       ```yaml
       ols_config:
@@ -168,22 +168,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
           memory:
             max_entries: 1000
       ```
-   2. Cache stored in Redis:
-      ```yaml
-      ols_config:
-        conversation_cache:
-          type: redis
-          redis:
-            host: "localhost"
-            port: "6379"
-            max_memory: 100MB
-            max_memory_policy: "allkeys-lru"
-            password_path: redis_password.txt
-            ca_cert_path: redis_ca_cert.crt
-      ```
-      In this case, file `redis_password.txt` contains password required to connect with Redis. Also CA certificate can be specified using `redis_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
-
-   3. Cache stored in PostgreSQL:
+   2. Cache stored in PostgreSQL:
       ```yaml
       conversation_cache:
         type: postgres
