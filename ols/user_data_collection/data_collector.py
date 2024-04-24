@@ -144,7 +144,7 @@ def get_cluster_id() -> str:
 
     try:
         version_data = custom_objects_api.get_cluster_custom_object(
-            "config.openshift.io", "v1", "clusterversions", "versions"
+            "config.openshift.io", "v1", "clusterversions", "version"
         )
         return version_data["spec"]["clusterID"]
     except KeyError:
