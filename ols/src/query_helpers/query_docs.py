@@ -99,10 +99,10 @@ class QueryDocs:
 
         try:
             docs = db_retriever.get_relevant_documents(query=query)
-        except Exception:
+        except Exception as e:
             logger.error(f"exception raised while getting the docs for query: {query}")
             raise RetrieveDocsExceptionError(
                 "error in getting the docs from vectorstore"
-            )
+            ) from e
 
         return docs
