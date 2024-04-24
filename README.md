@@ -183,6 +183,20 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
       ```
       In this case, file `redis_password.txt` contains password required to connect with Redis. Also CA certificate can be specified using `redis_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
+   3. Cache stored in PostgreSQL:
+      ```yaml
+      conversation_cache:
+        type: postgres
+        postgres:
+          host: "foobar.com"
+          port: "1234"
+          dbname: "test"
+          user: "user"
+          password_path: postgres_password.txt
+          ca_cert_path: postgres_cert.crt
+          ssl_mode: "require"
+      ```
+      In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
 
 # Usage
