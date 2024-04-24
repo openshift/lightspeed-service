@@ -2,6 +2,7 @@
 
 import logging
 from collections import defaultdict
+from math import ceil
 
 from langchain_core.messages.base import BaseMessage
 from llama_index.schema import NodeWithScore
@@ -12,6 +13,7 @@ from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
     MINIMUM_CONTEXT_TOKEN_LIMIT,
     RAG_SIMILARITY_CUTOFF_L2,
+    TOKEN_BUFFER_WEIGHT,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,8 @@ class TokenHandler:
 
     def __init__(self, encoding_name: str = DEFAULT_TOKENIZER_MODEL) -> None:
         """Initialize the class instance."""
+        # Note: We need an approximate tokens count.
+        # For different models, exact tokens may vary due to different tokenizer.
         self._encoder = get_encoding(encoding_name)
 
     def text_to_tokens(self, text: str) -> list[int]:
@@ -42,8 +46,6 @@ class TokenHandler:
         Returns:
             List of tokens, ex: [1, 2, 3, 4]
         """
-        # Note: We need an approximate tokens count.
-        # For different models, exact tokens count may vary.
         return self._encoder.encode(text)
 
     def tokens_to_text(self, tokens: list) -> str:
@@ -56,6 +58,14 @@ class TokenHandler:
             text: ex "This is my doc"
         """
         return self._encoder.decode(tokens)
+
+    @staticmethod
+    def _get_token_count(tokens: list[int]) -> int:
+        """Get approximate tokens count."""
+        # Note: As we get approximate tokens count, we want to have enough
+        # buffer so that there is less chance of under-estimation.
+        # We increase by certain percentage to nearest integer (ceil).
+        return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
     def message_to_tokens(self, message: BaseMessage) -> list[int]:
         """Convert message (ie. HumanMessage etc.) to tokens.
@@ -92,7 +102,7 @@ class TokenHandler:
             f"Response token limit: {response_token_limit}"
         )
 
-        prompt_token_count = len(self.text_to_tokens(prompt))
+        prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
         logger.debug(f"Prompt tokens: {prompt_token_count}")
 
         available_tokens = (
@@ -141,7 +151,7 @@ class TokenHandler:
                 break
 
             tokens = self.text_to_tokens(node.get_text())
-            tokens_count = len(tokens)
+            tokens_count = TokenHandler._get_token_count(tokens)
             logger.debug(f"RAG content tokens count: {tokens_count}.")
 
             available_tokens = min(tokens_count, max_tokens)
@@ -160,22 +170,22 @@ class TokenHandler:
 
         return context_dict, max_tokens
 
-    @staticmethod
     def limit_conversation_history(
-        history: list[BaseMessage], limit: int = 0
+        self, history: list[BaseMessage], limit: int = 0
     ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
         index = 0
 
-        token_handler_obj = TokenHandler()
-
         for message in reversed(history):
-            message_length = len(token_handler_obj.message_to_tokens(message))
+            message_length = TokenHandler._get_token_count(
+                self.message_to_tokens(message)
+            )
             total_length += message_length
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)
             if total_length > limit:
+                logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
             index += 1
         return history, False
