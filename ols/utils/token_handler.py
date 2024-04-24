@@ -100,9 +100,10 @@ class TokenHandler:
         )
 
         if available_tokens <= 0:
-            limit = context_window_size
+            limit = context_window_size - response_token_limit
             raise PromptTooLongError(
-                f"Prompt length exceeds LLM context window limit ({limit} tokens)"
+                f"Prompt length {prompt_token_count} exceeds LLM "
+                f"available context window limit {limit} tokens"
             )
 
         return available_tokens
