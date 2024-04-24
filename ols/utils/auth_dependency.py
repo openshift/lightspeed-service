@@ -184,7 +184,10 @@ class AuthDependency:
         """
         if config.dev_config.disable_auth:
             logger.warning("Auth checks disabled, skipping")
-            # TODO: OLS-495 replace with constants for default identity
+            # Use constant user ID and user name in case auth. is disabled
+            # It will be needed for testing purposes because (for example)
+            # conversation history and user feedback depend on having any
+            # user ID (identity) in proper format (UUID)
             return DEFAULT_USER_UID, DEFAULT_USER_NAME
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
