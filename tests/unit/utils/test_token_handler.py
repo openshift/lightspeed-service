@@ -105,9 +105,10 @@ class TestTokenHandler(TestCase):
         # this prompt will surely exceeds context window size
         prompt = "What is Kubernetes?" * 10000
 
-        with pytest.raises(
-            PromptTooLongError, match="Prompt length exceeds LLM context window limit"
-        ):
+        expected_error_messge = (
+            "Prompt length 40000 exceeds LLM available context window limit"
+        )
+        with pytest.raises(PromptTooLongError, match=expected_error_messge):
             self._token_handler_obj.get_available_tokens(prompt, model_config)
 
     def test_available_tokens_specific_model_config(self):
