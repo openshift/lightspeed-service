@@ -19,7 +19,6 @@ import tests.e2e.metrics_utils as metrics_utils
 from ols.constants import (
     HTTP_REQUEST_HEADERS_TO_REDACT,
     INVALID_QUERY_RESP,
-    NO_RAG_CONTENT_RESP,
 )
 from scripts.validate_response import ResponseValidation
 from tests.e2e.constants import (
@@ -335,7 +334,6 @@ def test_valid_question(response_eval) -> None:
             json_response["response"],
             re.IGNORECASE,
         )
-        assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
         score = ResponseValidation().get_similarity_score(
             json_response["response"], eval_answer
@@ -454,8 +452,6 @@ def test_rag_question(response_eval) -> None:
         assert "virt" in json_response["referenced_documents"][0]["docs_url"]
         assert "https://" in json_response["referenced_documents"][0]["docs_url"]
         assert json_response["referenced_documents"][0]["title"]
-
-        assert NO_RAG_CONTENT_RESP not in json_response["response"]
 
         score = ResponseValidation().get_similarity_score(
             json_response["response"], eval_answer

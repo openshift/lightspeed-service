@@ -9,7 +9,6 @@ from langchain_core.messages.base import BaseMessage
 from ols.constants import (
     GPT35_TURBO,
     GRANITE_13B_CHAT_V2,
-    NO_RAG_CONTENT_RESP,
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
     PROVIDER_OPENAI,
@@ -74,9 +73,7 @@ def generate_prompt(
         prompt += USE_HISTORY_INSTRUCTION
         prompt += HISTORY_PLACEHOLDER
         formatted_history = [
-            conversation.type.capitalize()
-            + ": "
-            + conversation.content.strip().replace(NO_RAG_CONTENT_RESP, "")
+            conversation.type.capitalize() + ": " + conversation.content.strip()
             for conversation in history
             if conversation
         ]

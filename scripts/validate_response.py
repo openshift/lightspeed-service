@@ -11,7 +11,6 @@ from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from ols.constants import NO_RAG_CONTENT_RESP
 from tests.e2e.cluster_utils import create_user, get_user_token, grant_sa_user_access
 from tests.e2e.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.helper_utils import get_http_client
@@ -65,7 +64,6 @@ class ResponseValidation:
 
     def get_similarity_score(self, response, answer):
         """Calculate similarity score between two strings."""
-        response = response.replace(NO_RAG_CONTENT_RESP, "")
         res_vec = self._embedding_model.get_text_embedding(response)
         ans_vec = self._embedding_model.get_text_embedding(answer)
 

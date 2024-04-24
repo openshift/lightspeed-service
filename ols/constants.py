@@ -22,9 +22,6 @@ INVALID_QUERY_RESP = (
     "I'm sorry, this question does not appear to be about OpenShift or Kubernetes.  "
     "I can only answer questions related to those topics, please rephrase or ask another question."
 )
-NO_RAG_CONTENT_RESP = (
-    "The following response was generated without access to reference content:\n\n"
-)
 
 
 # providers
