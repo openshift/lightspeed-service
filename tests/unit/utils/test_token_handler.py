@@ -1,5 +1,6 @@
 """Unit test for the token handler."""
 
+from math import ceil
 from typing import Any
 from unittest import TestCase, mock
 
@@ -7,6 +8,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ols.app.models.config import ModelConfig
+from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
 
 
@@ -93,7 +95,7 @@ class TestTokenHandler(TestCase):
         expected_value = (
             model_config.context_window_size
             - model_config.response_token_limit
-            - prompt_length
+            - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value
 
@@ -101,12 +103,18 @@ class TestTokenHandler(TestCase):
         """Test the get_available_tokens method for default model config."""
         # use default model config
         model_config = ModelConfig({})
+        context_limit = (
+            model_config.context_window_size - model_config.response_token_limit
+        )
 
         # this prompt will surely exceeds context window size
         prompt = "What is Kubernetes?" * 10000
+        prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
+        prompt_length = ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
 
         expected_error_messge = (
-            "Prompt length 40000 exceeds LLM available context window limit"
+            f"Prompt length {prompt_length} exceeds "
+            f"LLM available context window limit {context_limit} tokens"
         )
         with pytest.raises(PromptTooLongError, match=expected_error_messge):
             self._token_handler_obj.get_available_tokens(prompt, model_config)
@@ -132,10 +140,11 @@ class TestTokenHandler(TestCase):
         expected_value = (
             model_config.context_window_size
             - model_config.response_token_limit
-            - prompt_length
+            - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     def test_token_handler(self):
         """Test token handler for context."""
@@ -152,8 +161,9 @@ class TestTokenHandler(TestCase):
                 context["docs_url"][idx]
                 == self._mock_retrieved_obj[idx].metadata["docs_url"]
             )
-        assert available_tokens == 485
+        assert available_tokens == 482
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.5)
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
@@ -165,8 +175,9 @@ class TestTokenHandler(TestCase):
         assert len(context) == len(("text", "docs_url", "title"))
         assert len(context["text"]) == 1
         assert context["text"][0] == self._mock_retrieved_obj[0].get_text()
-        assert available_tokens == 495
+        assert available_tokens == 494
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
@@ -178,10 +189,11 @@ class TestTokenHandler(TestCase):
         assert len(context["text"]) == 2
         assert (
             context["text"][1].split()
-            == self._mock_retrieved_obj[1].get_text().split()[:2]
+            == self._mock_retrieved_obj[1].get_text().split()[:1]
         )
         assert available_tokens == 0
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
@@ -191,7 +203,7 @@ class TestTokenHandler(TestCase):
         )
 
         assert len(context["text"]) == 1
-        assert available_tokens == 2
+        assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
@@ -231,7 +243,9 @@ class TestTokenHandler(TestCase):
 
     def test_limit_conversation_history_when_no_history_exists(self):
         """Check the behaviour of limiting conversation history if it does not exists."""
-        history, truncated = TokenHandler.limit_conversation_history([], 1000)
+        history, truncated = self._token_handler_obj.limit_conversation_history(
+            [], 1000
+        )
         # history must be empty
         assert history == []
         assert not truncated
@@ -244,13 +258,14 @@ class TestTokenHandler(TestCase):
             HumanMessage(content="second message from human"),
             AIMessage(content="second answer from AI"),
         ]
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 1000
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 1000)
         )
         # history must remain the same and truncate flag should be False
         assert truncated_history == history
         assert not truncated
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     def test_limit_long_conversation_history(self):
         """Check the behaviour of limiting long conversation history."""
         history = [
@@ -261,28 +276,30 @@ class TestTokenHandler(TestCase):
             HumanMessage(content="third message from human"),
             AIMessage(content="third answer from AI"),
         ]
+        # As tokens are increased by 5% (ceil),
+        # for each of the above messages the tokens count is 5, instead of 4.
 
-        # try to truncate to 16 tokens
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 16
+        # try to truncate to 20 tokens
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 20)
         )
         # history should truncate to 4 newest messages only and flag should be True
         assert len(truncated_history) == 4
         assert truncated_history == history[2:]
         assert truncated
 
-        # try to truncate to 8 tokens
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 8
+        # try to truncate to 10 tokens
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 10)
         )
         # history should truncate to 2 messages only and flag should be True
         assert len(truncated_history) == 2
         assert truncated_history == history[4:]
         assert truncated
 
-        # try to truncate to 4 tokens - this means just one message
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 4
+        # try to truncate to 5 tokens - this means just one message
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 5)
         )
         # history should truncate to one message only and flag should be True
         assert len(truncated_history) == 1
@@ -290,16 +307,16 @@ class TestTokenHandler(TestCase):
         assert truncated
 
         # try to truncate to zero tokens
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 0
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 0)
         )
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated
 
         # try to truncate to one token, but the 1st message is already longer than 1 token
-        truncated_history, truncated = TokenHandler.limit_conversation_history(
-            history, 1
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 1)
         )
         # history should truncate to empty list and flag should be True
         assert truncated_history == []

@@ -76,6 +76,9 @@ CONTEXT_WINDOW_SIZES = {
 
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 
+# Example: 1.05 means we increase by 5%.
+TOKEN_BUFFER_WEIGHT = 1.1
+
 
 # RAG related constants
 
