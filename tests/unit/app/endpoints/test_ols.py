@@ -403,7 +403,8 @@ def test_question_validation_in_conversation_start(_load_config, auth):
 
 
 @patch(
-    "ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value="something")
+    "ols.app.endpoints.ols.retrieve_previous_input",
+    new=Mock(return_value=[HumanMessage(content="something")]),
 )
 @patch(
     "ols.app.endpoints.ols.validate_question",
@@ -459,7 +460,7 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
-    previous_input = None
+    previous_input = []
 
     # try to get response
     response, documents, truncated = ols.generate_response(

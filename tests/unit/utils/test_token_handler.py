@@ -5,7 +5,6 @@ from typing import Any
 from unittest import TestCase, mock
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
 
 from ols.app.models.config import ModelConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
@@ -213,34 +212,6 @@ class TestTokenHandler(TestCase):
         assert isinstance(context, dict)
         assert available_tokens == 5
 
-    def test_message_length_string_content(self):
-        """Test the message_length method when message content is a string."""
-        message = HumanMessage(content="")
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert context == []
-
-        message = HumanMessage(content="message from human")
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert len(context) == 3
-
-        message = AIMessage(content="message from AI system")
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert len(context) == 4
-
-    def test_message_length_list_content(self):
-        """Test the message_length method when message content is list of strings."""
-        message = HumanMessage(content=[""])
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert context == []
-
-        message = HumanMessage(content=["message from", "human"])
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert len(context) == 3
-
-        message = AIMessage(content=["message from", "AI system"])
-        context = self._token_handler_obj.message_to_tokens(message)
-        assert len(context) == 4
-
     def test_limit_conversation_history_when_no_history_exists(self):
         """Check the behaviour of limiting conversation history if it does not exists."""
         history, truncated = self._token_handler_obj.limit_conversation_history(
@@ -250,14 +221,20 @@ class TestTokenHandler(TestCase):
         assert history == []
         assert not truncated
 
-    def test_limit_short_conversation_history(self):
-        """Check the behaviour of limiting short conversation history."""
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_limit_conversation_history(self):
+        """Check the behaviour of limiting long conversation history."""
         history = [
-            HumanMessage(content="first message from human"),
-            AIMessage(content="first answer from AI"),
-            HumanMessage(content="second message from human"),
-            AIMessage(content="second answer from AI"),
+            "first message from human",
+            "first answer from AI",
+            "second message from human",
+            "second answer from AI",
+            "third message from human",
+            "third answer from AI",
         ]
+        # As tokens are increased by 5% (ceil),
+        # for each of the above messages the tokens count is 5, instead of 4.
+
         truncated_history, truncated = (
             self._token_handler_obj.limit_conversation_history(history, 1000)
         )
@@ -265,36 +242,31 @@ class TestTokenHandler(TestCase):
         assert truncated_history == history
         assert not truncated
 
-    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    def test_limit_long_conversation_history(self):
-        """Check the behaviour of limiting long conversation history."""
-        history = [
-            HumanMessage(content="first message from human"),
-            AIMessage(content="first answer from AI"),
-            HumanMessage(content="second message from human"),
-            AIMessage(content="second answer from AI"),
-            HumanMessage(content="third message from human"),
-            AIMessage(content="third answer from AI"),
-        ]
-        # As tokens are increased by 5% (ceil),
-        # for each of the above messages the tokens count is 5, instead of 4.
-
-        # try to truncate to 20 tokens
+        # try to truncate to 23 tokens; 20 for 4 messages & 3 for 3 new-lines.
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 20)
+            self._token_handler_obj.limit_conversation_history(history, 23)
         )
         # history should truncate to 4 newest messages only and flag should be True
         assert len(truncated_history) == 4
         assert truncated_history == history[2:]
         assert truncated
 
-        # try to truncate to 10 tokens
+        # try to truncate to 11 tokens
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 10)
+            self._token_handler_obj.limit_conversation_history(history, 11)
         )
         # history should truncate to 2 messages only and flag should be True
         assert len(truncated_history) == 2
         assert truncated_history == history[4:]
+        assert truncated
+
+        # try to truncate to 10 tokens; without new line token
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, 10)
+        )
+        # history should truncate to 1 message
+        assert len(truncated_history) == 1
+        assert truncated_history == history[5:]
         assert truncated
 
         # try to truncate to 5 tokens - this means just one message

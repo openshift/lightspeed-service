@@ -2,7 +2,6 @@
 
 import pytest
 from langchain.prompts import PromptTemplate
-from langchain.schema import AIMessage, HumanMessage
 
 from ols.constants import (
     GPT35_TURBO,
@@ -36,8 +35,8 @@ queries = ("What is Kubernetes?", "When is my birthday?")
 def conversation_history():
     """Non-empty conversation history."""
     return [
-        HumanMessage(content="First human message"),
-        AIMessage(content="First AI response"),
+        "First human message",
+        "First AI response",
     ]
 
 
@@ -74,14 +73,12 @@ def test_generate_prompt_default_prompt(provider, model, query, conversation_his
 
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)
 @pytest.mark.parametrize("query", queries)
-def test_generate_prompt_without_rag_context(provider, model, query):
+def test_generate_prompt_without_rag_context(
+    provider, model, query, conversation_history
+):
     """Test what prompt will be returned for non-existent RAG context."""
     model_options = {}
     rag_context = ""
-    conversation_history = [
-        HumanMessage(content="First human message"),
-        AIMessage(content="First AI response"),
-    ]
 
     prompt, llm_input_values = generate_prompt(
         provider,
@@ -103,10 +100,7 @@ def test_generate_prompt_without_rag_context(provider, model, query):
     assert "context" not in llm_input_values
     assert "query" in llm_input_values
     assert "chat_history" in llm_input_values
-    assert (
-        "Human: First human message\nAi: First AI response"
-        == llm_input_values["chat_history"]
-    )
+    assert "First human message\nFirst AI response" == llm_input_values["chat_history"]
 
 
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)

@@ -184,8 +184,14 @@ def generate_response(
         docs_summarizer = DocsSummarizer(
             provider=llm_request.provider, model=llm_request.model
         )
+        # TODO: OLS-551 Store history in more readable format
+        history = [
+            conversation.type + ": " + conversation.content.strip()
+            for conversation in previous_input
+            if conversation
+        ]
         llm_response = docs_summarizer.summarize(
-            conversation_id, llm_request.query, config.rag_index, previous_input
+            conversation_id, llm_request.query, config.rag_index, history
         )
         return (
             llm_response["response"],
