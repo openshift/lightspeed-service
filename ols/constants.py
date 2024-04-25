@@ -133,7 +133,9 @@ POSTGRES_CACHE_SSL_MODE = "prefer"
 # filter these values in CSV export with user feedbacks etc.
 DEFAULT_USER_UID = "00000000-0000-0000-0000-000000000000"
 DEFAULT_USER_NAME = "OLS"
-# TO-DO: make this UUID dynamic per cluster (dynamic uuid for each cluster)
+
+# TODO: OLS-546 make default Kubeadmin UUID dynamic per cluster
+# (dynamic uuid for each cluster)
 DEFAULT_KUBEADMIN_UID = "b6553200-0f7b-4c82-b1c5-9303ff18e5f0"
 
 # HTTP headers to redact from FastAPI HTTP logs
