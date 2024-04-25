@@ -42,7 +42,6 @@ if __name__ == "__main__":
 
     cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 
-    # TODO: OLS-381 A proper configuration flow
     config.init_config(cfg_file)
 
     configure_logging(config.ols_config.logging_config)
