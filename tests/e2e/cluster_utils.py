@@ -171,3 +171,11 @@ def create_file(pod_name: str, path: str, content: str) -> None:
         run_oc(["exec", pod_name, "--", "sh", "-c", f"echo '{content}' > {path}"])
     except subprocess.CalledProcessError as e:
         raise Exception("Error creating file") from e
+
+
+def remove_file(pod_name: str, path: str) -> None:
+    """Remove a file in a pod."""
+    try:
+        return run_oc(["exec", pod_name, "--", "rm", path])
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error removing file") from e
