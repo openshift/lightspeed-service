@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from math import ceil
 
-from llama_index.schema import NodeWithScore
+from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
 from ols.app.models.config import ModelConfig

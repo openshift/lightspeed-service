@@ -4,7 +4,7 @@ import logging
 from typing import Any, Optional
 
 from langchain.chains import LLMChain
-from llama_index.indices.vector_store.base import VectorStoreIndex
+from llama_index.core import VectorStoreIndex
 
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
