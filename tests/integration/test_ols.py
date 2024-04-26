@@ -446,9 +446,7 @@ def test_post_query_for_conversation_history(_setup) -> None:
                     "query": "Query2",
                 },
             )
-            chat_history_expected = (
-                "Human: Query1" "\n" f"Ai: {response.json()['response']}"
-            )
+            chat_history_expected = f"human: Query1\nai: {response.json()['response']}"
             invoke.assert_called_once_with(
                 input={
                     "query": "Query2",

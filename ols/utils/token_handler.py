@@ -4,7 +4,6 @@ import logging
 from collections import defaultdict
 from math import ceil
 
-from langchain_core.messages.base import BaseMessage
 from llama_index.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -66,23 +65,6 @@ class TokenHandler:
         # buffer so that there is less chance of under-estimation.
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
-
-    def message_to_tokens(self, message: BaseMessage) -> list[int]:
-        """Convert message (ie. HumanMessage etc.) to tokens.
-
-        Args:
-            message: instance of any class derived from BaseMessage
-
-        Returns:
-            List of tokens, ex: [1, 2, 3, 4]
-        """
-        content = message.content
-
-        # content is either string or list of strings
-        if isinstance(content, str):
-            return self.text_to_tokens(content)
-        content = " ".join(content)
-        return self.text_to_tokens(content)
 
     def get_available_tokens(self, prompt: str, model_config: ModelConfig) -> int:
         """Get available tokens that can be used for prompt augmentation.
@@ -171,16 +153,14 @@ class TokenHandler:
         return context_dict, max_tokens
 
     def limit_conversation_history(
-        self, history: list[BaseMessage], limit: int = 0
-    ) -> tuple[list[BaseMessage], bool]:
+        self, history: list[str], limit: int = 0
+    ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
         index = 0
 
         for message in reversed(history):
-            message_length = TokenHandler._get_token_count(
-                self.message_to_tokens(message)
-            )
+            message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)
@@ -188,4 +168,6 @@ class TokenHandler:
                 logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
             index += 1
+            total_length += 1  # Additional token for new-line.
+
         return history, False

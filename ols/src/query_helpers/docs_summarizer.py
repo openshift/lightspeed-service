@@ -4,8 +4,6 @@ import logging
 from typing import Any, Optional
 
 from langchain.chains import LLMChain
-from langchain_core.messages import HumanMessage
-from langchain_core.messages.base import BaseMessage
 from llama_index.indices.vector_store.base import VectorStoreIndex
 
 from ols.app.metrics import TokenMetricUpdater
@@ -35,7 +33,7 @@ class DocsSummarizer(QueryHelper):
         conversation_id: str,
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
-        history: Optional[list[BaseMessage]] = None,
+        history: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Summarize the given query based on the provided conversation context.
@@ -82,7 +80,7 @@ class DocsSummarizer(QueryHelper):
             self.model,
             model_options,
             query,
-            [HumanMessage(content="dummy")],
+            ["dummy"],
             "dummy",
         )
         available_tokens = token_handler.get_available_tokens(

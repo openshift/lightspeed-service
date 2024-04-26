@@ -2,8 +2,6 @@
 
 from unittest.mock import ANY, patch
 
-from langchain_core.messages import HumanMessage
-
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import config, suid
 from tests import constants
@@ -65,7 +63,7 @@ def test_summarize_history_provided():
     config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
-    history = (HumanMessage(content="What is Kubernetes?"),)
+    history = ["What is Kubernetes?"]
     rag_index = MockLlamaIndex()
 
     # first call with history provided
@@ -97,7 +95,7 @@ def test_summarize_truncation():
     rag_index = MockLlamaIndex()
 
     # too long history
-    history = [HumanMessage(content="What is Kubernetes?") for i in range(10000)]
+    history = ["What is Kubernetes?"] * 10000
     summary = summarizer.summarize(conversation_id, question, rag_index, history)
 
     # truncation should be done

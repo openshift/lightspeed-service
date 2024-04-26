@@ -4,7 +4,6 @@ from collections import namedtuple
 from typing import Any, Optional
 
 from langchain.prompts import PromptTemplate
-from langchain_core.messages.base import BaseMessage
 
 from ols.constants import (
     GPT35_TURBO,
@@ -43,7 +42,7 @@ def generate_prompt(
     model: str,
     model_options: Optional[dict[str, Any]],
     query: str,
-    history: list[BaseMessage],
+    history: list[str],
     rag_context: str,
 ) -> tuple[PromptTemplate, dict[str, Any]]:
     """Dynamically creates prompt template and input values specification for LLM.
@@ -72,12 +71,7 @@ def generate_prompt(
     if len(history) > 0:
         prompt += USE_HISTORY_INSTRUCTION
         prompt += HISTORY_PLACEHOLDER
-        formatted_history = [
-            conversation.type.capitalize() + ": " + conversation.content.strip()
-            for conversation in history
-            if conversation
-        ]
-        llm_input_values["chat_history"] = "\n".join(formatted_history)
+        llm_input_values["chat_history"] = "\n".join(history)
 
     prompt += QUERY_PLACEHOLDER
 
