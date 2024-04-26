@@ -17,6 +17,7 @@ from ols.app.models.models import LLMRequest, ReferencedDocument
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import config, suid
 from ols.utils.query_filter import QueryFilter, RegexFilter
+from ols.utils.token_handler import PromptTooLongError
 
 
 @pytest.fixture(scope="module")
@@ -171,6 +172,20 @@ def test_validate_question_valid_kw(llm_validate_question_mock, _load_config):
 
     assert resp
     assert llm_validate_question_mock.call_count == 0
+
+
+@patch(
+    "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
+    side_effect=PromptTooLongError("Prompt length 10000 exceeds LLM"),
+)
+def test_validate_question_too_long_query(llm_validate_question_mock, _load_config):
+    """Check the behaviour of validate_question function with too long query."""
+    conversation_id = suid.get_suid()
+    query = "Tell me about Kubernetes?"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    # PromptTooLongError should be caught and HTTPException needs to be raised
+    with pytest.raises(HTTPException, match="413: {'response': 'Prompt is too long'"):
+        ols.validate_question(conversation_id, llm_request)
 
 
 @patch(
