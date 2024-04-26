@@ -121,6 +121,13 @@ class DocsSummarizer(QueryHelper):
             history,
             rag_context,
         )
+
+        # Final check if we don't use more tokens than permitted by provider+model
+        # Handles: OLS-538
+        token_handler.get_available_tokens(
+            final_prompt.format(**llm_input_values), model_config
+        )
+
         chat_engine = LLMChain(
             llm=bare_llm,
             prompt=final_prompt,
