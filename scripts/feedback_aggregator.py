@@ -353,8 +353,8 @@ def aggregate_from_files(filewriter, directory_name: str) -> None:
                         cluster_id,
                         feedback["user_id"],
                         feedback["conversation_id"],
-                        feedback["user_question"],
-                        feedback["llm_response"],
+                        feedback["user_question"].strip(),
+                        feedback["llm_response"].strip(),
                         feedback["sentiment"],
                         feedback["user_feedback"],
                     ]
@@ -370,8 +370,8 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         filewriter = csv.writer(
             csvfile,
             delimiter=",",
-            quotechar="|",
-            quoting=csv.QUOTE_MINIMAL,
+            quotechar='"',
+            quoting=csv.QUOTE_ALL,
             lineterminator="\n",
         )
         # write header
