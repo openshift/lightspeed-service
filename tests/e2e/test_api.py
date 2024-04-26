@@ -4,10 +4,8 @@ import json
 import os
 import pickle
 import re
-import shutil
 import sys
 import time
-from pathlib import Path
 
 import pytest
 import requests
@@ -740,46 +738,6 @@ def test_feedback_can_post_with_wrong_token():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.standalone()
-def test_feedback_storing_standalone():
-    """Test if the feedbacks are stored properly."""
-    # the standalone testing exposes the value via env
-    feedback_dir = Path(os.environ["FEEDBACK_STORAGE_LOCATION"])
-
-    # as this test is ran multiple times in test suite, we need to
-    # ensure the storage is empty
-    if feedback_dir.exists():
-        shutil.rmtree(feedback_dir)
-
-    response = client.post(
-        "/v1/feedback",
-        json={
-            "conversation_id": CONVERSATION_ID,
-            "user_question": "what is OCP4?",
-            "llm_response": "Openshift 4 is ...",
-            "sentiment": 1,
-        },
-        timeout=BASIC_ENDPOINTS_TIMEOUT,
-    )
-
-    assert response.status_code == requests.codes.ok
-
-    assert feedback_dir.exists()
-
-    feedbacks = list(feedback_dir.glob("*.json"))
-    assert len(feedbacks) == 1
-
-    feedback = feedbacks[0]
-    with open(feedback) as f:
-        feedback_data = json.load(f)
-
-    assert feedback_data["user_id"]  # we don't care about actual value
-    assert feedback_data["conversation_id"] == CONVERSATION_ID
-    assert feedback_data["user_question"] == "what is OCP4?"
-    assert feedback_data["llm_response"] == "Openshift 4 is ..."
-    assert feedback_data["sentiment"] == 1
-
-
 @pytest.mark.cluster()
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
@@ -919,45 +877,6 @@ def test_feedback_improper_conversation_id():
         json_response["detail"][0]["msg"]
         == "Value error, Improper conversation ID incorrect-conversation-id"
     )
-
-
-@pytest.mark.standalone()
-def test_transcripts_storing_standalone():
-    """Test if the transcripts are stored properly."""
-    # the standalone testing exposes the value via env
-    transcript_dir = Path(os.environ["TRANSCRIPTS_STORAGE_LOCATION"])
-
-    # as this test is ran multiple times in test suite, we need to
-    # ensure the storage is empty
-    if transcript_dir.exists():
-        shutil.rmtree(transcript_dir)
-
-    query = "what is kubernetes?"
-
-    response = client.post(
-        "/v1/query",
-        json={"query": query},
-        timeout=LLM_REST_API_TIMEOUT,
-    )
-
-    assert response.status_code == requests.codes.ok
-
-    assert transcript_dir.exists()
-
-    transcripts = list(transcript_dir.glob("*/*/*.json"))
-    assert len(transcripts) == 1
-
-    transcript = transcripts[0]
-    with open(transcript) as f:
-        transcript_data = json.load(f)
-
-    # we just test metadata exists as we don't know uuid for user and conversation
-    assert transcript_data["metadata"]
-    assert transcript_data["redacted_query"] == query
-    assert transcript_data["query_is_valid"] is True
-    assert transcript_data["llm_response"]  # we don't care about the content
-    assert transcript_data["referenced_documents"] == []
-    assert transcript_data["truncated"] is False
 
 
 @pytest.mark.cluster()
