@@ -10,13 +10,13 @@ import sys
 import time
 
 import nest_asyncio
-from llama_index import (
-    ServiceContext,
+from llama_index.core import (
+    Settings,
     SimpleDirectoryReader,
     StorageContext,
     load_index_from_storage,
 )
-from llama_index.evaluation import (
+from llama_index.core.evaluation import (
     BatchEvalRunner,
     CorrectnessEvaluator,
     DatasetGenerator,
@@ -321,15 +321,10 @@ async def main():
 
     print("** settings params")
 
-    embed_model = "local:sentence-transformers/all-mpnet-base-v2"
-    bare_llm = load_llm(args.provider, args.model)
-
-    service_context = ServiceContext.from_defaults(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        llm=bare_llm,
-        embed_model=embed_model,
-    )
+    Settings.chunk_size = chunk_size
+    Settings.chunk_overlap = chunk_overlap
+    Settings.embed_model = "local:sentence-transformers/all-mpnet-base-v2"
+    Settings.llm = load_llm(args.provider, args.model)
 
     print("** settings context")
     storage_context = StorageContext.from_defaults(persist_dir=product_docs_persist_dir)
@@ -339,7 +334,6 @@ async def main():
     index = load_index_from_storage(
         storage_context=storage_context,
         index_id=product_index,
-        service_context=service_context,
     )
     nest_asyncio.apply()
 
@@ -374,7 +368,6 @@ async def main():
             await questions_eval(
                 start_time,
                 similarity,
-                service_context,
                 index,
                 full_results,
                 total_correctness_score,

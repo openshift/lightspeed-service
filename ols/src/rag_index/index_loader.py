@@ -3,8 +3,10 @@
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index.indices.base import BaseIndex
+from llama_index.core import Settings, StorageContext, load_index_from_storage
+from llama_index.core.embeddings.utils import EmbedType
+from llama_index.core.indices.base import BaseIndex
+from llama_index.core.llms.utils import resolve_llm
 from llama_index.vector_stores.faiss import FaissVectorStore
 
 from ols.app.models.config import ReferenceContent
@@ -13,9 +15,9 @@ from ols.app.models.config import ReferenceContent
 # runtime it is used only under some conditions. OTOH we need to make Python
 # interpreter happy in all circumstances, hence the definiton of Any symbol.
 if TYPE_CHECKING:
-    from langchain_community.embeddings import HuggingFaceEmbeddings  # TCH004
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding  # TCH004
 else:
-    HuggingFaceEmbeddings = Any
+    HuggingFaceEmbedding = Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +45,15 @@ class IndexLoader:
             self._embed_model = self._get_embed_model()
             self._load_index()
 
-    def _get_embed_model(self) -> Optional[str | HuggingFaceEmbeddings]:
+    def _get_embed_model(self) -> EmbedType:
         """Get embed model according to configuration."""
         if self._embed_model_path is not None:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
             logger.debug(
                 f"Loading embedding model info from path {self._embed_model_path}"
             )
-            return HuggingFaceEmbeddings(model_name=self._embed_model_path)
+            return HuggingFaceEmbedding(model_name=self._embed_model_path)
 
         logger.warning("Embedding model path is not set.")
         logger.warning("Embedding model is set to default")
@@ -60,10 +62,9 @@ class IndexLoader:
     def _set_context(self) -> None:
         """Set storage/service context required for index load."""
         logger.debug(f"Using {self._embed_model!s} as embedding model for index.")
-        logger.info("Setting up service context for index load...")
-        self._service_context = ServiceContext.from_defaults(
-            embed_model=self._embed_model, llm=None
-        )
+        logger.info("Setting up settings for index load...")
+        Settings.embed_model = self._embed_model
+        Settings.llm = resolve_llm(None)
         logger.info("Setting up storage context for index load...")
         self._storage_context = StorageContext.from_defaults(
             vector_store=FaissVectorStore.from_persist_dir(self._index_path),
@@ -79,7 +80,6 @@ class IndexLoader:
                 self._set_context()
                 logger.info("Loading vector index...")
                 self._index = load_index_from_storage(
-                    service_context=self._service_context,
                     storage_context=self._storage_context,
                     index_id=self._index_id,
                 )
