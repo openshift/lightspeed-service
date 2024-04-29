@@ -1,6 +1,8 @@
-"""Unit tests for OpenAI provider."""
+"""Unit tests for Watsonx provider."""
 
 from unittest.mock import patch
+
+import pytest
 
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.watsonx import WatsonX
@@ -8,11 +10,10 @@ from ols.utils import config
 from tests.mock_classes.mock_watsonxllm import WatsonxLLM
 
 
-@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
-def test_basic_interface():
-    """Test basic interface."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-    provider_cfg = ProviderConfig(
+@pytest.fixture
+def provider_config():
+    """Fixture with provider configuration for Watsonx."""
+    return ProviderConfig(
         {
             "name": "some_provider",
             "type": "watsonx",
@@ -29,7 +30,13 @@ def test_basic_interface():
         }
     )
 
-    watsonx = WatsonX(model="uber-model", params={}, provider_config=provider_cfg)
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_basic_interface(provider_config):
+    """Test basic interface."""
+    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+
+    watsonx = WatsonX(model="uber-model", params={}, provider_config=provider_config)
     llm = watsonx.load()
     assert isinstance(llm, WatsonxLLM)
     assert watsonx.default_params
