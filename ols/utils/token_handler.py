@@ -66,7 +66,9 @@ class TokenHandler:
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
-    def get_available_tokens(self, prompt: str, model_config: ModelConfig) -> int:
+    def calculate_and_check_available_tokens(
+        self, prompt: str, model_config: ModelConfig
+    ) -> int:
         """Get available tokens that can be used for prompt augmentation.
 
         Args:
