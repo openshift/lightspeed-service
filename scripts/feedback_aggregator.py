@@ -253,6 +253,9 @@ def check_key(key: str) -> bool:
 def construct_filename(key: str) -> str:
     """Construct filename from key."""
     groups = key_match(key)
+    if groups is None:
+        raise Exception(f"Can not construct filename from key {key}")
+
     cluster_id = groups[1].lower()
     year = groups[2][:4]
     month = groups[2][4:]
@@ -468,6 +471,9 @@ incorrect_keys = (
     "archives/compressed/ff/01234567-89ab-cdef-0123-456789abcdef/2024Z4/08/073607.tar.gz",
     "archives/compressed/fZ/01234567-89ab-cdef-0123-456789abcdef/202404/08/073607.tar.gz",
     "archives/compressed/ff/01234567-89ab-cdZf-0123-456789abcdef/202404/08/073607.tar.gz",
+    "archives/compressed/00/00000000-0000-0000-0000-000000000001/20240/08/073607.tar.gz",
+    "archives/compressed/00/00000000-0000-0000-0000-000000000001/202404/8/073607.tar.gz",
+    "archives/compressed/00/00000000-0000-0000-0000-000000000001/202404/08/73607.tar.gz",
 )
 
 
@@ -509,6 +515,13 @@ keys_filenames = (
 def test_construct_filename(key, filename):
     """Test the function construct_filename."""
     assert construct_filename(key) == filename
+
+
+@pytest.mark.parametrize("key", incorrect_keys)
+def test_construct_filename_negative(key):
+    """Test the function construct_filename - negative test cases."""
+    with pytest.raises(Exception, match=f"Can not construct filename from key {key}"):
+        construct_filename(key)
 
 
 if __name__ == "__main__":
