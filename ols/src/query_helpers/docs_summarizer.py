@@ -83,7 +83,7 @@ class DocsSummarizer(QueryHelper):
             ["dummy"],
             "dummy",
         )
-        available_tokens = token_handler.get_available_tokens(
+        available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input), model_config
         )
 
@@ -124,7 +124,7 @@ class DocsSummarizer(QueryHelper):
 
         # Final check if we don't use more tokens than permitted by provider+model
         # Handles: OLS-538
-        token_handler.get_available_tokens(
+        token_handler.calculate_and_check_available_tokens(
             final_prompt.format(**llm_input_values), model_config
         )
 

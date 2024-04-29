@@ -57,7 +57,7 @@ class QuestionValidator(QueryHelper):
         # if it's in context window limit
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
-        TokenHandler().get_available_tokens(query, model_config)
+        TokenHandler().calculate_and_check_available_tokens(query, model_config)
 
         llm_chain = LLMChain(
             llm=bare_llm,

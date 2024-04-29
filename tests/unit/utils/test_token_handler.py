@@ -66,13 +66,13 @@ class TestTokenHandler(TestCase):
         self._token_handler_obj = TokenHandler()
 
     def test_available_tokens_for_empty_prompt(self):
-        """Test the get_available_tokens method for default model config."""
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
         # use default model config
         model_config = ModelConfig({})
 
         prompt = ""
 
-        available_tokens = self._token_handler_obj.get_available_tokens(
+        available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
             prompt, model_config
         )
         assert (
@@ -81,14 +81,14 @@ class TestTokenHandler(TestCase):
         )
 
     def test_available_tokens_for_regular_prompt(self):
-        """Test the get_available_tokens method for default model config."""
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
         # use default model config
         model_config = ModelConfig({})
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
-        available_tokens = self._token_handler_obj.get_available_tokens(
+        available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
             prompt, model_config
         )
         expected_value = (
@@ -99,7 +99,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == expected_value
 
     def test_available_tokens_for_large_prompt(self):
-        """Test the get_available_tokens method for default model config."""
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
         # use default model config
         model_config = ModelConfig({})
         context_limit = (
@@ -116,10 +116,12 @@ class TestTokenHandler(TestCase):
             f"LLM available context window limit {context_limit} tokens"
         )
         with pytest.raises(PromptTooLongError, match=expected_error_messge):
-            self._token_handler_obj.get_available_tokens(prompt, model_config)
+            self._token_handler_obj.calculate_and_check_available_tokens(
+                prompt, model_config
+            )
 
     def test_available_tokens_specific_model_config(self):
-        """Test the get_available_tokens method for specific model config."""
+        """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa E501
         # use specific model config
         model_config = ModelConfig(
             {
@@ -133,7 +135,7 @@ class TestTokenHandler(TestCase):
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
-        available_tokens = self._token_handler_obj.get_available_tokens(
+        available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
             prompt, model_config
         )
         expected_value = (
