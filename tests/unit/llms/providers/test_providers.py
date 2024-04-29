@@ -3,6 +3,7 @@
 import pytest
 
 from ols import constants
+from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import (
     LLMProvidersRegistry,
@@ -58,7 +59,7 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
     class MyProvider(LLMProvider):
         @property
         def default_params(self):
-            return {"provider-param": 1}
+            return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
             return
@@ -68,6 +69,7 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
     )
 
     assert my_provider.params["provider-param"] == 2
+    assert my_provider.params["not-to-be-overwritten-param"] == "foo"
 
 
 def test_llm_provider_params_order__config_overrides_everything():
@@ -78,7 +80,7 @@ def test_llm_provider_params_order__config_overrides_everything():
     class MyProvider(LLMProvider):
         @property
         def default_params(self):
-            return {"provider-param": 1}
+            return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
             return
@@ -88,3 +90,27 @@ def test_llm_provider_params_order__config_overrides_everything():
     )
 
     assert my_provider.params["provider-param"] == 3
+    assert my_provider.params["not-to-be-overwritten-param"] == "foo"
+
+
+def test_llm_provider_params_order__no_provider_type():
+    """Test how missing provider type is handled."""
+    config.init_empty_config()
+    config.dev_config.llm_params = {"provider-param": 3}
+
+    class MyProvider(LLMProvider):
+        @property
+        def default_params(self):
+            return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
+
+        def load(self):
+            return
+
+    # set up provider configuration with type set to None
+    provider_config = ProviderConfig()
+    provider_config.type = None
+
+    my_provider = MyProvider(model="bla", params={}, provider_config=provider_config)
+
+    assert my_provider.params["provider-param"] == 3
+    assert my_provider.params["not-to-be-overwritten-param"] == "foo"
