@@ -47,6 +47,8 @@ options:
                         Output file name
   -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
                         Directory to store downloaded tarballs
+  -c, --conversation-history
+                        Include the whole conversation history in the generated output
   -t, --statistic       Print aggregation statistic at the end
   -v, --verbose         Verbose operations
 """
@@ -71,6 +73,9 @@ TOPLEVEL_MAGIC_FILE = "openshift_lightspeed.json"
 # directory within tarball with user feedback files
 FEEDBACK_DIRECTORY = "feedback/"
 
+# directory within tarball with conversation history
+HISTORY_DIRECTORY = "transcripts/"
+
 logger = logging.getLogger("Feedback aggregator")
 
 
@@ -85,6 +90,7 @@ class Statistic:
     feedback_read_error: int = 0
     feedbacks_read: int = 0
     feedbacks_aggregated: int = 0
+    conversation_history_included: int = 0
 
 
 statistic = Statistic()
@@ -174,6 +180,13 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         type=str,
         default=".",
         help="Directory to store downloaded tarballs",
+    )
+    parser.add_argument(
+        "-c",
+        "--conversation-history",
+        default=False,
+        action="store_true",
+        help="Include the whole conversation history in the generated output",
     )
     parser.add_argument(
         "-t",
@@ -339,7 +352,41 @@ def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
     return feedbacks
 
 
-def aggregate_from_files(filewriter, directory_name: str) -> None:
+def read_full_conversation_history(
+    tarball_name: str, user_id: str, history_id: str
+) -> str:
+    """Read full conversation history from tarball."""
+    logger.info(f"Reading full conversation history from {tarball_name}")
+    tarball = tarfile.open(tarball_name, "r:gz")
+    separator = 100 * "-"
+
+    history = {}
+    for filename in tarball.getnames():
+        if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
+            try:
+                f = tarball.extractfile(filename)
+                if f is not None:
+                    data = f.read().decode("UTF-8")
+                    conversation = json.loads(data)
+                    timestamp = conversation["metadata"]["timestamp"]
+                    query = conversation["redacted_query"].strip()
+                    response = conversation["llm_response"].strip()
+                    history[timestamp] = f"\nQ:{query}\nA:{response}\n{separator}\n"
+                    statistic.conversation_history_included += 1
+                else:
+                    logger.error(f"Nothing to extract from {filename}")
+            except Exception as e:
+                logger.error(f"Unable to read conversation history: {e}")
+
+    output = ""
+    for timestamp in sorted(history):
+        output += f"{timestamp}\n{history[timestamp]}\n"
+    return output
+
+
+def aggregate_from_files(
+    filewriter, directory_name: str, conversation_history: bool
+) -> None:
     """Aggregate feedbacks from files in specified directory."""
     logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
     directory = os.fsencode(directory_name)
@@ -351,17 +398,25 @@ def aggregate_from_files(filewriter, directory_name: str) -> None:
             logger.info(f"Processing tarball {filename}")
             feedbacks = feedbacks_from_tarball(filename)
             for feedback in feedbacks:
-                filewriter.writerow(
-                    [
-                        cluster_id,
-                        feedback["user_id"],
-                        feedback["conversation_id"],
-                        feedback["user_question"].strip(),
-                        feedback["llm_response"].strip(),
-                        feedback["sentiment"],
-                        feedback["user_feedback"],
-                    ]
-                )
+                user_id = feedback["user_id"]
+                conversation_id = feedback["conversation_id"]
+                rows = [
+                    cluster_id,
+                    user_id,
+                    conversation_id,
+                    feedback["user_question"].strip(),
+                    feedback["llm_response"].strip(),
+                    feedback["sentiment"],
+                    feedback["user_feedback"],
+                ]
+                if conversation_history:
+                    full_history = read_full_conversation_history(
+                        filename,
+                        user_id,
+                        conversation_id,
+                    )
+                    rows.append(full_history)
+                filewriter.writerow(rows)
                 statistic.feedbacks_aggregated += 1
 
 
@@ -377,19 +432,24 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
             quoting=csv.QUOTE_ALL,
             lineterminator="\n",
         )
-        # write header
-        filewriter.writerow(
-            [
-                "Cluster ID",
-                "User ID",
-                "Conversation ID",
-                "Question",
-                "LLM response",
-                "Sentiment",
-                "Feedback",
-            ]
-        )
-        aggregate_from_files(filewriter, args.work_directory)
+        # column headers written as first row in CSV file
+        column_headers = [
+            "Cluster ID",
+            "User ID",
+            "Conversation ID",
+            "Question",
+            "LLM response",
+            "Sentiment",
+            "Feedback",
+        ]
+        if args.conversation_history:
+            column_headers.append("Conversation history")
+
+        # write column headers into CSV
+        filewriter.writerow(column_headers)
+
+        # write all feedbacks and optionally conversation history into CSV
+        aggregate_from_files(filewriter, args.work_directory, args.conversation_history)
 
 
 def perform_cleanup(args: argparse.Namespace) -> None:
@@ -407,13 +467,14 @@ def print_statistic(statistic: Statistic) -> None:
     """Print statistic onto the standard output."""
     print()
     print("-" * 100)
-    print(f"Downloaded tarballs:         {statistic.downloaded_tarballs}")
-    print(f"Tarballs not downloaded:     {statistic.tarballs_not_downloaded}")
-    print(f"Tarballs with incorrect key: {statistic.tarballs_with_incorrect_key}")
-    print(f"Tarballs without feedback:   {statistic.tarballs_without_feedback}")
-    print(f"Feedbacks read:              {statistic.feedbacks_read}")
-    print(f"Feedback read errors:        {statistic.feedback_read_error}")
-    print(f"Feedbacks aggregated:        {statistic.feedbacks_aggregated}")
+    print(f"Downloaded tarballs:            {statistic.downloaded_tarballs}")
+    print(f"Tarballs not downloaded:        {statistic.tarballs_not_downloaded}")
+    print(f"Tarballs with incorrect key:    {statistic.tarballs_with_incorrect_key}")
+    print(f"Tarballs without feedback:      {statistic.tarballs_without_feedback}")
+    print(f"Feedbacks read:                 {statistic.feedbacks_read}")
+    print(f"Feedback read errors:           {statistic.feedback_read_error}")
+    print(f"Feedbacks aggregated:           {statistic.feedbacks_aggregated}")
+    print(f"Conversation history included:  {statistic.conversation_history_included}")
     print("-" * 100)
 
 
@@ -479,7 +540,7 @@ incorrect_keys = (
 
 @pytest.mark.parametrize("key", incorrect_keys)
 def test_check_key_negative(key):
-    """Test the function check_key with invalid keys."""
+    """Test the function check_key with invalid keys provided at input."""
     assert not check_key(key)
 
 
@@ -513,13 +574,13 @@ keys_filenames = (
 
 @pytest.mark.parametrize("key, filename", keys_filenames)
 def test_construct_filename(key, filename):
-    """Test the function construct_filename."""
+    """Test the function construct_filename with valid keys provided at input."""
     assert construct_filename(key) == filename
 
 
 @pytest.mark.parametrize("key", incorrect_keys)
 def test_construct_filename_negative(key):
-    """Test the function construct_filename - negative test cases."""
+    """Test the function construct_filename - negative test cases with invalid keys."""
     with pytest.raises(Exception, match=f"Can not construct filename from key {key}"):
         construct_filename(key)
 
