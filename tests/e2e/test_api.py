@@ -10,13 +10,15 @@ import time
 import pytest
 import requests
 
-import ols.utils.suid as suid
-import tests.e2e.cluster_utils as cluster_utils
-import tests.e2e.helper_utils as testutils
-import tests.e2e.metrics_utils as metrics_utils
 from ols.constants import (
     HTTP_REQUEST_HEADERS_TO_REDACT,
     INVALID_QUERY_RESP,
+)
+from ols.utils import suid
+from tests.e2e import (
+    cluster_utils,
+    helper_utils,
+    metrics_utils,
 )
 from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
@@ -73,8 +75,8 @@ def setup_module(module):
         else:
             print("Setting up for standalone test execution\n")
 
-        client = testutils.get_http_client(ols_url, token)
-        metrics_client = testutils.get_http_client(ols_url, metrics_token)
+        client = helper_utils.get_http_client(ols_url, token)
+        metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
