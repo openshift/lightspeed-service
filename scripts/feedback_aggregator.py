@@ -45,6 +45,8 @@ options:
   -l, --list-objects    Just list objects in bucket
   -o OUTPUT, --output OUTPUT
                         Output file name
+  -co CONVERSATION_HISTORY_OUTPUT, --conversation-history-output CONVERSATION_HISTORY_OUTPUT
+                        Output file name for conversation history
   -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
                         Directory to store downloaded tarballs
   -c, --conversation-history
@@ -174,7 +176,14 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         "--output",
         type=str,
         default="feedbacks.csv",
-        help="Output file name",
+        help="Output file name for user feedback",
+    )
+    parser.add_argument(
+        "-co",
+        "--conversation-history-output",
+        type=str,
+        default="conversation_history.csv",
+        help="Output file name for conversation history",
     )
     parser.add_argument(
         "-w",
@@ -411,7 +420,7 @@ def read_full_conversation_history(
     return output
 
 
-def aggregate_from_files(
+def aggregate_user_feedback_from_files(
     filewriter,
     directory_name: str,
     referenced_documents: bool,
@@ -480,12 +489,87 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         filewriter.writerow(column_headers)
 
         # write all feedbacks and optionally conversation history into CSV
-        print(args.referenced_documents)
-        aggregate_from_files(
+        aggregate_user_feedback_from_files(
             filewriter,
             args.work_directory,
             args.referenced_documents,
             args.conversation_history,
+        )
+
+
+def read_full_conversation_history_for_all_users(
+    tarball_name: str, referenced_documents: bool
+) -> tuple[str]:
+    """Read conversation history for all users and return it as list of conversations."""
+    logger.info(f"Reading full conversation history from {tarball_name} for all users")
+    tarball = tarfile.open(tarball_name, "r:gz")
+    filenames = tarball.getnames()
+    tarball.close()
+
+    history = []
+    for filename in filenames:
+        if filename.startswith(f"{HISTORY_DIRECTORY}"):
+            parts = filename.split("/")
+            if len(parts) <= 2:
+                continue
+            user_id = parts[1]
+            conversation_id = parts[2]
+            conversation = read_full_conversation_history(
+                tarball_name,
+                user_id,
+                conversation_id,
+                referenced_documents,
+            )
+            history.append((user_id, conversation_id, conversation))
+
+    return history
+
+
+def aggregate_conversation_history_from_files(
+    filewriter, directory_name: str, referenced_documents: bool
+) -> None:
+    """Aggregate feedbacks from files in specified directory."""
+    logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
+    directory = os.fsencode(directory_name)
+
+    for file in os.listdir(directory):
+        filename = os.fsdecode(file)
+        if filename.endswith(".tar.gz"):
+            cluster_id = filename[:36]
+            logger.info(f"Processing tarball {filename}")
+            full_history = read_full_conversation_history_for_all_users(
+                filename, referenced_documents
+            )
+            for history in full_history:
+                row = [cluster_id, *history]
+                filewriter.writerow(row)
+
+
+def aggregate_conversation_history(args: argparse.Namespace) -> None:
+    """Aggregate conversation history and store it into CSV file."""
+    output_filename = args.conversation_history_output
+    logger.info(f"Generating {output_filename}")
+    with open(output_filename, "w") as csvfile:
+        filewriter = csv.writer(
+            csvfile,
+            delimiter=",",
+            quotechar='"',
+            quoting=csv.QUOTE_ALL,
+            lineterminator="\n",
+        )
+        # column headers written as first row in CSV file
+        column_headers = [
+            "Cluster ID",
+            "User ID",
+            "Conversation ID",
+            "Conversation history",
+        ]
+        # write column headers into CSV
+        filewriter.writerow(column_headers)
+
+        # write conversation histories into CSV
+        aggregate_conversation_history_from_files(
+            filewriter, args.work_directory, args.referenced_documents
         )
 
 
@@ -536,6 +620,7 @@ def main() -> None:
     if args.download_only:
         return
     aggregate_feedbacks(args)
+    aggregate_conversation_history(args)
     if not args.keep:
         perform_cleanup(args)
     if args.statistic:
