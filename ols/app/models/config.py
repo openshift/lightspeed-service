@@ -244,7 +244,7 @@ class ProviderConfig(BaseModel):
         self.project_id = data.get("project_id", None)
         if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
             raise InvalidConfigurationError(
-                f"project_id is required for WatsonX provider {self.name}"
+                f"project_id is required for Watsonx provider {self.name}"
             )
 
         if "models" not in data or len(data["models"]) == 0:

@@ -8,7 +8,7 @@ from ibm_watson_machine_learning.metanames import (
 )
 
 from ols.app.models.config import ProviderConfig
-from ols.src.llms.providers.watsonx import WatsonX
+from ols.src.llms.providers.watsonx import Watsonx
 from ols.utils import config
 from tests.mock_classes.mock_watsonxllm import WatsonxLLM
 
@@ -39,7 +39,7 @@ def test_basic_interface(provider_config):
     """Test basic interface."""
     config.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
-    watsonx = WatsonX(model="uber-model", params={}, provider_config=provider_config)
+    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     llm = watsonx.load()
     assert isinstance(llm, WatsonxLLM)
     assert watsonx.default_params
@@ -60,7 +60,7 @@ def test_params_handling(provider_config):
         "temperature": 0.3,
     }
 
-    watsonx = WatsonX(
+    watsonx = Watsonx(
         model="uber-model", params=params, provider_config=provider_config
     )
     llm = watsonx.load()
@@ -95,7 +95,7 @@ def test_params_handling_none_values(provider_config):
         "max_new_tokens": None,
     }
 
-    watsonx = WatsonX(
+    watsonx = Watsonx(
         model="uber-model", params=params, provider_config=provider_config
     )
     llm = watsonx.load()
@@ -124,7 +124,7 @@ def test_params_replace_default_values_with_none(provider_config):
     config.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
     # provider initialization with empty set of params
-    watsonx = WatsonX(model="uber-model", params={}, provider_config=provider_config)
+    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     watsonx.load()
 
     # check default value
@@ -134,7 +134,7 @@ def test_params_replace_default_values_with_none(provider_config):
     # provider initialization where default parameter is overriden
     params = {"decoding_method": None}
 
-    watsonx = WatsonX(
+    watsonx = Watsonx(
         model="uber-model", params=params, provider_config=provider_config
     )
     watsonx.load()

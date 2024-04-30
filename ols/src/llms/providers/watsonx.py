@@ -1,4 +1,4 @@
-"""WatsonX provider implementation."""
+"""Watsonx provider implementation."""
 
 import logging
 from typing import Any
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 @register_llm_provider_as(constants.PROVIDER_WATSONX)
-class WatsonX(LLMProvider):
-    """WatsonX provider."""
+class Watsonx(LLMProvider):
+    """Watsonx provider."""
 
     url: str = "https://us-south.ml.cloud.ibm.com"
 

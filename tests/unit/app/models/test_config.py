@@ -650,7 +650,7 @@ def test_llm_providers_type_validation():
 
 
 def test_llm_providers_watsonx_required_projectid():
-    """Test that project_id is required for watsonx provider."""
+    """Test that project_id is required for Watsonx provider."""
     with pytest.raises(InvalidConfigurationError) as excinfo:
         LLMProviders(
             [
@@ -659,7 +659,7 @@ def test_llm_providers_watsonx_required_projectid():
                 },
             ]
         )
-    assert "project_id is required for WatsonX provider" in str(excinfo.value)
+    assert "project_id is required for Watsonx provider" in str(excinfo.value)
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         LLMProviders(
@@ -670,7 +670,7 @@ def test_llm_providers_watsonx_required_projectid():
                 },
             ]
         )
-    assert "project_id is required for WatsonX provider" in str(excinfo.value)
+    assert "project_id is required for Watsonx provider" in str(excinfo.value)
 
     llm_providers = LLMProviders(
         [

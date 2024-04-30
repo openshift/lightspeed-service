@@ -21,11 +21,11 @@ def test_providers_are_registered():
     # import after previous test to not influence the auto-registration
     from ols.src.llms.providers.bam import BAM
     from ols.src.llms.providers.openai import OpenAI
-    from ols.src.llms.providers.watsonx import WatsonX
+    from ols.src.llms.providers.watsonx import Watsonx
 
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_OPENAI] == OpenAI
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_BAM] == BAM
-    assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_WATSONX] == WatsonX
+    assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_WATSONX] == Watsonx
 
 
 def test_valid_provider_is_registered():
