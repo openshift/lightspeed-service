@@ -20,7 +20,6 @@ from ols.constants import (
     HTTP_REQUEST_HEADERS_TO_REDACT,
     INVALID_QUERY_RESP,
 )
-from scripts.validate_response import ResponseValidation
 from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
@@ -28,6 +27,7 @@ from tests.e2e.constants import (
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
+from tests.scripts.validate_response import ResponseValidation
 
 from .postgres_utils import (
     read_conversation_history,
