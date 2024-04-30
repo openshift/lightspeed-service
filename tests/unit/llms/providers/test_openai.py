@@ -103,3 +103,26 @@ def test_none_params_handling(provider_config):
     assert "min_new_tokens" not in openai.params
     assert "max_new_tokens" not in openai.params
     assert "unknown_parameter" not in openai.params
+
+
+def test_params_replace_default_values_with_none(provider_config):
+    """Test if default values are replaced by None values."""
+    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+
+    # provider initialization with empty set of params
+    openai = OpenAI(model="uber-model", params={}, provider_config=provider_config)
+    openai.load()
+
+    # check default value
+    assert "base_url" in openai.params
+    assert openai.params["base_url"] is not None
+
+    # try to override default parameter
+    params = {"base_url": None}
+
+    openai = OpenAI(model="uber-model", params=params, provider_config=provider_config)
+    openai.load()
+
+    # known parameter(s) should be there, now with None values
+    assert "base_url" in openai.params
+    assert openai.params["base_url"] is None
