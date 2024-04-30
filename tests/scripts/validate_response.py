@@ -147,7 +147,7 @@ def main():
     result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
 
     if len(result_df) > 0:
-        result_dir = "test_results"
+        result_dir = "tests/test_results"
         os.makedirs(result_dir, exist_ok=True)
         result_file = (
             f"{result_dir}/question_answer_result_{args.scenario}_{args.model}.csv"
