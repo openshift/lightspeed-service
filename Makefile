@@ -59,7 +59,7 @@ test-e2e: ## Run e2e tests - requires running OLS server
 
 response-sanity-check: ## Checks response quality - requires running OLS server
 	@echo "Running response sanity check..."
-	python scripts/validate_response.py -m ${MODEL} -s ${SCENARIO}
+	python -m tests.scripts.validate_response -m ${MODEL} -s ${SCENARIO}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"

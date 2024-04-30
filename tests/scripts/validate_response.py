@@ -10,8 +10,11 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from tests.e2e.cluster_utils import create_user, get_user_token, grant_sa_user_access
+from tests.e2e.cluster_utils import (
+    create_user,
+    get_user_token,
+    grant_sa_user_access,
+)
 from tests.e2e.constants import LLM_REST_API_TIMEOUT
 from tests.e2e.helper_utils import get_http_client
 
@@ -129,9 +132,7 @@ def main():
     args = _args_parser(sys.argv[1:])
     print(f"Arguments passed: {args}")
 
-    parent_dir = os.path.dirname(os.path.dirname(__file__)) + "/tests"
-
-    with open(f"{parent_dir}/test_data/question_answer_pair.json") as qna_f:
+    with open("tests/test_data/question_answer_pair.json") as qna_f:
         qa_pairs = json.load(qna_f)
         qa_pairs = qa_pairs.get(args.model, {}).get(args.scenario, [])
 
@@ -146,7 +147,7 @@ def main():
     result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
 
     if len(result_df) > 0:
-        result_dir = f"{parent_dir}/test_results"
+        result_dir = "tests/test_results"
         os.makedirs(result_dir, exist_ok=True)
         result_file = (
             f"{result_dir}/question_answer_result_{args.scenario}_{args.model}.csv"
