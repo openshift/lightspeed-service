@@ -8,6 +8,7 @@ from ibm_watson_machine_learning.metanames import (
 )
 
 from ols.app.models.config import ProviderConfig
+from ols.constants import GenericLLMParameters
 from ols.src.llms.providers.watsonx import Watsonx
 from ols.utils import config
 from tests.mock_classes.mock_watsonxllm import WatsonxLLM
@@ -142,3 +143,38 @@ def test_params_replace_default_values_with_none(provider_config):
     # check default value overrided by None
     assert GenParams.DECODING_METHOD in watsonx.params
     assert watsonx.params[GenParams.DECODING_METHOD] is None
+
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_generic_parameter_mappings(provider_config):
+    """Test generic parameter mapping to provider parameter list."""
+    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+
+    # some non-default values for generic LLM parameters
+    generic_llm_params = {
+        GenericLLMParameters.MIN_NEW_TOKENS: 100,
+        GenericLLMParameters.MAX_NEW_TOKENS: 200,
+        GenericLLMParameters.TOP_K: 10,
+        GenericLLMParameters.TOP_P: 1.5,
+        GenericLLMParameters.TEMPERATURE: 42.0,
+    }
+
+    watsonx = Watsonx(
+        model="uber-model", params=generic_llm_params, provider_config=provider_config
+    )
+    llm = watsonx.load()
+    assert isinstance(llm, WatsonxLLM)
+    assert watsonx.default_params
+    assert watsonx.params
+
+    # generic parameters should be remapped to Watsonx-specific parameters
+    assert GenParams.MIN_NEW_TOKENS in watsonx.params
+    assert GenParams.MAX_NEW_TOKENS in watsonx.params
+    assert GenParams.TOP_K in watsonx.params
+    assert GenParams.TOP_P in watsonx.params
+    assert GenParams.TEMPERATURE in watsonx.params
+    assert watsonx.params[GenParams.MIN_NEW_TOKENS] == 100
+    assert watsonx.params[GenParams.MAX_NEW_TOKENS] == 200
+    assert watsonx.params[GenParams.TOP_K] == 10
+    assert watsonx.params[GenParams.TOP_P] == 1.5
+    assert watsonx.params[GenParams.TEMPERATURE] == 42.0

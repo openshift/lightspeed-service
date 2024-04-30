@@ -19,7 +19,7 @@ class QueryHelper:
         self,
         provider: Optional[str] = None,
         model: Optional[str] = None,
-        llm_params: Optional[dict] = None,
+        generic_llm_params: Optional[dict] = None,
         llm_loader: Optional[Callable[[str, str, dict], LLM]] = None,
     ) -> None:
         """Initialize query helper."""
@@ -28,5 +28,5 @@ class QueryHelper:
         # need to use those values in the init evaluation.
         self.provider = provider or config.ols_config.default_provider
         self.model = model or config.ols_config.default_model
-        self.llm_params = llm_params or {}
+        self.generic_llm_params = generic_llm_params or {}
         self.llm_loader = llm_loader or load_llm

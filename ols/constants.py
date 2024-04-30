@@ -47,6 +47,16 @@ GPT35_TURBO = "gpt-3.5-turbo"
 GPT4_TURBO = "gpt-4-turbo"
 
 
+class GenericLLMParameters:
+    """Generic LLM parameters that can be mapped into LLM provider-specific parameters."""
+
+    MIN_NEW_TOKENS = "min_new_tokens"
+    MAX_NEW_TOKENS = "max_new_tokens"
+    TOP_K = "top_k"
+    TOP_P = "top_p"
+    TEMPERATURE = "temperature"
+
+
 # Token related constants
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
 DEFAULT_RESPONSE_TOKEN_LIMIT = 512
