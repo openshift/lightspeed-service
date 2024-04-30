@@ -49,6 +49,8 @@ options:
                         Directory to store downloaded tarballs
   -c, --conversation-history
                         Include the whole conversation history in the generated output
+  -rd, --referenced-documents
+                        Include referenced documents in the generated output
   -t, --statistic       Print aggregation statistic at the end
   -v, --verbose         Verbose operations
 """
@@ -187,6 +189,13 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         default=False,
         action="store_true",
         help="Include the whole conversation history in the generated output",
+    )
+    parser.add_argument(
+        "-rd",
+        "--referenced-documents",
+        default=False,
+        action="store_true",
+        help="Include referenced documents in the generated output",
     )
     parser.add_argument(
         "-t",
@@ -352,8 +361,18 @@ def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
     return feedbacks
 
 
+def format_referenced_documents(docs: list[dict[str, str]]) -> str:
+    """Format referenced documents section in full conversation history for feedback."""
+    output = ""
+    for doc in docs:
+        title = doc["title"]
+        url = doc["docs_url"]
+        output += f"{title}: {url}\n"
+    return output or "[None]"
+
+
 def read_full_conversation_history(
-    tarball_name: str, user_id: str, history_id: str
+    tarball_name: str, user_id: str, history_id: str, referenced_documents: bool
 ) -> str:
     """Read full conversation history from tarball."""
     logger.info(f"Reading full conversation history from {tarball_name}")
@@ -371,7 +390,15 @@ def read_full_conversation_history(
                     timestamp = conversation["metadata"]["timestamp"]
                     query = conversation["redacted_query"].strip()
                     response = conversation["llm_response"].strip()
-                    history[timestamp] = f"\nQ:{query}\nA:{response}\n{separator}\n"
+                    conversation_record = f"\nQ:{query}\nA:{response}\n"
+
+                    if referenced_documents:
+                        docs = format_referenced_documents(
+                            conversation["referenced_documents"]
+                        )
+                        conversation_record += f"\nReferenced documents:\n{docs}\n"
+                    conversation_record += f"{separator}\n"
+                    history[timestamp] = conversation_record
                     statistic.conversation_history_included += 1
                 else:
                     logger.error(f"Nothing to extract from {filename}")
@@ -385,7 +412,10 @@ def read_full_conversation_history(
 
 
 def aggregate_from_files(
-    filewriter, directory_name: str, conversation_history: bool
+    filewriter,
+    directory_name: str,
+    referenced_documents: bool,
+    conversation_history: bool,
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
     logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
@@ -414,6 +444,7 @@ def aggregate_from_files(
                         filename,
                         user_id,
                         conversation_id,
+                        referenced_documents,
                     )
                     rows.append(full_history)
                 filewriter.writerow(rows)
@@ -449,7 +480,13 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         filewriter.writerow(column_headers)
 
         # write all feedbacks and optionally conversation history into CSV
-        aggregate_from_files(filewriter, args.work_directory, args.conversation_history)
+        print(args.referenced_documents)
+        aggregate_from_files(
+            filewriter,
+            args.work_directory,
+            args.referenced_documents,
+            args.conversation_history,
+        )
 
 
 def perform_cleanup(args: argparse.Namespace) -> None:
