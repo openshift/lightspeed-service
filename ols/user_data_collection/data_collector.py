@@ -257,6 +257,8 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         ),
     }
 
+    headers: dict[str, str | bytes]
+
     if CP_OFFLINE_TOKEN:
         logger.debug("using CP offline token to generate refresh token")
         token = access_token_from_offline_token(CP_OFFLINE_TOKEN)
