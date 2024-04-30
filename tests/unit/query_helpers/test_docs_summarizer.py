@@ -5,10 +5,10 @@ from unittest.mock import ANY, patch
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import config, suid
 from tests import constants
-from tests.mock_classes.langchain_interface import mock_langchain_interface
-from tests.mock_classes.llm_chain import mock_llm_chain
-from tests.mock_classes.llm_loader import mock_llm_loader
+from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
+from tests.mock_classes.mock_llm_chain import mock_llm_chain
+from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
 conversation_id = suid.get_suid()
 
