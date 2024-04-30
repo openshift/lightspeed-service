@@ -4,7 +4,7 @@ import pytest
 
 from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
 from ols.utils import config
-from tests.mock_classes.llm_loader import mock_llm_loader
+from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
 
 @pytest.fixture

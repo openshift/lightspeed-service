@@ -14,8 +14,8 @@ from ols.app.models.config import (
     UserDataCollection,
 )
 from ols.utils import config, suid
-from tests.mock_classes.llm_chain import mock_llm_chain
-from tests.mock_classes.llm_loader import mock_llm_loader
+from tests.mock_classes.mock_llm_chain import mock_llm_chain
+from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
 
 @pytest.fixture(scope="module")
@@ -279,7 +279,7 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.langchain_interface import mock_langchain_interface
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
         with (
@@ -317,7 +317,7 @@ def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
     """Check the REST API /v1/query with keyword validation."""
     query = "What is Openshift ?"
 
-    from tests.mock_classes.langchain_interface import mock_langchain_interface
+    from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
     ml = mock_langchain_interface(None)
     with (
@@ -363,7 +363,7 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.langchain_interface import mock_langchain_interface
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
         with (
@@ -402,7 +402,7 @@ def test_post_query_for_conversation_history(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.langchain_interface import mock_langchain_interface
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
         with (
