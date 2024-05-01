@@ -1,7 +1,20 @@
+JUNIT_SETUP_TEMPLATE=$(cat << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+    <testsuite name="SUITE_ID">
+        <testcase name="setup" classname="SUITE_ID.setup">
+            <failure message="OLS failed to start up for SUITE_ID"/>
+        </testcase>
+    </testsuite>
+</testsuites>
+EOF
+)
+
+
 # Wait for the ols api server to respond 200 on the readiness endpoint
 # $1 - url of the ols server to poll
 function wait_for_ols() {
-  for i in {1..30}; do
+  for i in {1..60}; do
     echo Checking OLS readiness, attempt "$i" of 30
     curl -sk --fail "$1/readiness"
     if [ $? -eq 0 ]; then
@@ -104,6 +117,8 @@ function run_suite() {
   wait_for_ols "$OLS_URL"
   if [ $? -ne 0 ]; then
     echo "Timed out waiting for OLS to become available"
+    echo "${JUNIT_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
+
     must_gather $1
     return 1
   fi
