@@ -499,7 +499,7 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
 
 def read_full_conversation_history_for_all_users(
     tarball_name: str, referenced_documents: bool
-) -> tuple[str]:
+) -> list[tuple[str, str, str]]:
     """Read conversation history for all users and return it as list of conversations."""
     logger.info(f"Reading full conversation history from {tarball_name} for all users")
     tarball = tarfile.open(tarball_name, "r:gz")
