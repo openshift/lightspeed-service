@@ -884,6 +884,7 @@ def test_valid_config_without_query_filter():
     assert config.query_redactor is None
     print(config.query_redactor)
     config.init_query_filter()
+    assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == []
 
 
@@ -892,6 +893,7 @@ def test_valid_config_with_query_filter():
     config.query_redactor = None
     config.init_config("tests/config/valid_config_with_query_filter.yaml")
     config.init_query_filter()
+    assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == [
         RegexFilter(
             pattern=re.compile(r"\b(?:foo)\b"),
