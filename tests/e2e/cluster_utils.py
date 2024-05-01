@@ -112,7 +112,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
 def remove_dir(pod_name: str, directory: str) -> None:
     """Remove a directory in a pod."""
     try:
-        return run_oc(["rsh", pod_name, "rm", "-rf", directory])
+        run_oc(["rsh", pod_name, "rm", "-rf", directory])
     except subprocess.CalledProcessError as e:
         raise Exception("Error removing directory") from e
 
@@ -176,6 +176,6 @@ def create_file(pod_name: str, path: str, content: str) -> None:
 def remove_file(pod_name: str, path: str) -> None:
     """Remove a file in a pod."""
     try:
-        return run_oc(["exec", pod_name, "--", "rm", path])
+        run_oc(["exec", pod_name, "--", "rm", path])
     except subprocess.CalledProcessError as e:
         raise Exception("Error removing file") from e
