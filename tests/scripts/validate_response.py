@@ -6,6 +6,7 @@ import os
 import sys
 from collections import defaultdict
 
+import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
@@ -106,7 +107,7 @@ class ResponseValidation:
                 json={"query": question},
                 timeout=LLM_REST_API_TIMEOUT,
             )
-            if response.status_code != 200:
+            if response.status_code != requests.codes.ok:
                 raise Exception(response)
 
             response = response.json()["response"]
