@@ -39,6 +39,7 @@ test-unit: ## Run the unit tests
 	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
 	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
+	cp README.md ${ARTIFACT_DIR}/
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
