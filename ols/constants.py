@@ -104,7 +104,7 @@ RAG_CONTENT_LIMIT = 1
 # as there won't be perfect matching chunk. This also depends on embedding model
 # used during index creation/retrieval.
 # Range: positive float value (can be > 1)
-RAG_SIMILARITY_CUTOFF_L2 = 0.75
+RAG_SIMILARITY_CUTOFF_L2 = 1.4
 
 
 # cache constants
