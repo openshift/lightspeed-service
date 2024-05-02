@@ -1,7 +1,7 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_DIGEST=sha256:69a805043f61fc999fd190263646f9c3ef91f30f0d025574dd7ebc542f07a6c5
 
-FROM quay.io/openshift/lightspeed-rag-content@${LIGHTSPEED_RAG_CONTENT_DIGEST} as lightspeed-rag-content
+FROM quay.io/openshift-lightspeed/lightspeed-rag-content@${LIGHTSPEED_RAG_CONTENT_DIGEST} as lightspeed-rag-content
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 

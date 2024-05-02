@@ -94,7 +94,7 @@ spec:
             secretName: lightspeed-certs
       containers:
       # this example is without the data collection sidecar
-      - image: quay.io/openshift/lightspeed-service-api:latest
+      - image: quay.io/openshift-lightspeed/lightspeed-service-api:latest
         imagePullPolicy: Always
         name: lightspeed-w-rag
         env:
