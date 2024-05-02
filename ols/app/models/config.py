@@ -6,7 +6,7 @@ import re
 from typing import Any, Optional, Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, PositiveInt, model_validator
+from pydantic import BaseModel, FilePath, PositiveInt, model_validator
 
 from ols import constants
 
@@ -29,7 +29,7 @@ def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
     return None
 
 
-def _dir_check(path: str, desc: str) -> None:
+def _dir_check(path: FilePath, desc: str) -> None:
     """Check that path is a readable directory."""
     if not os.path.exists(path):
         raise InvalidConfigurationError(f"{desc} '{path}' does not exist")
@@ -39,7 +39,7 @@ def _dir_check(path: str, desc: str) -> None:
         raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
 
 
-def _file_check(path: str, desc: str) -> None:
+def _file_check(path: FilePath, desc: str) -> None:
     """Check that path is a readable regular file."""
     if not os.path.isfile(path):
         raise InvalidConfigurationError(f"{desc} '{path}' is not a file")
@@ -149,8 +149,8 @@ class ModelConfig(BaseModel):
 class TLSConfig(BaseModel):
     """TLS configuration."""
 
-    tls_certificate_path: Optional[str] = None
-    tls_key_path: Optional[str] = None
+    tls_certificate_path: Optional[FilePath] = None
+    tls_key_path: Optional[FilePath] = None
     tls_key_password: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -186,7 +186,7 @@ class AuthenticationConfig(BaseModel):
 
     skip_tls_verification: Optional[bool] = False
     k8s_cluster_api: Optional[str] = None
-    k8s_ca_cert_path: Optional[str] = None
+    k8s_ca_cert_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -324,10 +324,10 @@ class PostgresConfig(BaseModel):
     port: PositiveInt = constants.POSTGRES_CACHE_PORT
     dbname: str = constants.POSTGRES_CACHE_DBNAME
     user: str = constants.POSTGRES_CACHE_USER
-    password_path: Optional[str] = None
+    password_path: Optional[FilePath] = None
     password: Optional[str] = None
     ssl_mode: str = constants.POSTGRES_CACHE_SSL_MODE
-    ca_cert_path: Optional[str] = None
+    ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
 
     def __init__(self, **data: Any) -> None:
@@ -354,7 +354,7 @@ class RedisConfig(BaseModel):
     max_memory: Optional[str] = None
     max_memory_policy: Optional[str] = None
     password: Optional[str] = None
-    ca_cert_path: Optional[str] = None
+    ca_cert_path: Optional[FilePath] = None
     retry_on_error: Optional[bool] = None
     retry_on_timeout: Optional[bool] = None
     number_of_retries: Optional[int] = None
@@ -624,9 +624,9 @@ class LoggingConfig(BaseModel):
 class ReferenceContent(BaseModel):
     """Reference content configuration."""
 
-    product_docs_index_path: Optional[str] = None
+    product_docs_index_path: Optional[FilePath] = None
     product_docs_index_id: Optional[str] = None
-    embeddings_model_path: Optional[str] = None
+    embeddings_model_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
