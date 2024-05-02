@@ -9,6 +9,7 @@ import time
 
 import pytest
 import requests
+from httpx import Client
 
 from ols.constants import (
     HTTP_REQUEST_HEADERS_TO_REDACT,
@@ -47,8 +48,8 @@ if "localhost" not in ols_url:
 
 # generic http client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
-client = None
-metrics_client = None
+client: Client
+metrics_client: Client
 
 
 # constant from tests/config/cluster_install/ols_manifests.yaml
