@@ -16,13 +16,14 @@ from ols.app.models.models import (
     StatusResponse,
     UnauthorizedResponse,
 )
-from ols.utils import config
 from ols.utils.auth_dependency import AuthDependency
+from ols.utils.config import ConfigManager
 from ols.utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
+config_manager = ConfigManager()
 
 
 async def ensure_feedback_enabled(request: Request) -> None:
@@ -48,7 +49,7 @@ def is_feedback_enabled() -> bool:
     Returns:
         True if feedback is enabled, False otherwise.
     """
-    return not config.ols_config.user_data_collection.feedback_disabled
+    return not config_manager.get_ols_config().user_data_collection.feedback_disabled
 
 
 def store_feedback(user_id: str, feedback: dict) -> None:
@@ -59,7 +60,9 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         feedback: The feedback to store.
     """
     # ensures storage path exists
-    storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
+    storage_path = Path(
+        config_manager.get_ols_config().user_data_collection.feedback_storage
+    )
     if not storage_path.exists():
         logger.debug(f"creating feedback storage directories '{storage_path}'")
         storage_path.mkdir(parents=True)

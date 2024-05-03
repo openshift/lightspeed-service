@@ -4,8 +4,6 @@ import logging
 import re
 from collections import namedtuple
 
-from ols.utils import config
-
 logger = logging.getLogger(__name__)
 
 RegexFilter = namedtuple("RegexFilter", "pattern, name, replace_with")
@@ -19,12 +17,15 @@ class QueryFilter:
 
     def __init__(self) -> None:
         """Initialize the class instance."""
+        from ols.utils.config import ConfigManager
+
+        config_manager = ConfigManager()
         regex_filters: list[RegexFilter] = []
         self.regex_filters = regex_filters
-        logger.debug(f"Query filters : {config.ols_config.query_filters}")
-        if not config.ols_config.query_filters:
+        logger.debug(f"Query filters : {config_manager.get_ols_config().query_filters}")
+        if not config_manager.get_ols_config().query_filters:
             return
-        for query_filter in config.ols_config.query_filters:
+        for query_filter in config_manager.get_ols_config().query_filters:
             pattern = re.compile(str(query_filter.pattern))
             regex_filters.append(
                 RegexFilter(

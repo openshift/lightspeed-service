@@ -124,7 +124,6 @@ class TokenHandler:
         context_dict = defaultdict(list)
 
         for node in retrieved_nodes:
-
             score = float(node.score)
             if score > RAG_SIMILARITY_CUTOFF_L2:
                 # L2 distance is checked here, lower score is better.

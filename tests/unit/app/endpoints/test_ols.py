@@ -15,15 +15,19 @@ from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
 from ols.app.models.models import LLMRequest, ReferencedDocument
 from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import config, suid
+from ols.utils import suid
+from ols.utils.config import ConfigManager
 from ols.utils.query_filter import QueryFilter, RegexFilter
 from ols.utils.token_handler import PromptTooLongError
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def _load_config():
     """Load config before unit tests."""
-    config.init_config("tests/config/test_app_endpoints.yaml")
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/test_app_endpoints.yaml")
+
+    return config_manager
 
 
 @pytest.fixture
@@ -79,11 +83,15 @@ def test_retrieve_previous_input_improper_user_id(_load_config):
         ols.retrieve_previous_input("improper_user_id", llm_request)
 
 
-@patch("ols.utils.config.conversation_cache.get")
-def test_retrieve_previous_input_for_previous_history(get, _load_config):
+@patch("ols.utils.config.ConfigManager.get_conversation_cache")
+def test_retrieve_previous_input_for_previous_history(
+    mock_conversation_cache, _load_config
+):
     """Check how function to retrieve previous input handle existing history."""
     conversation_id = suid.get_suid()
-    get.return_value = "input"
+    mock_cache = Mock()
+    mock_cache.get.return_value = "input"
+    mock_conversation_cache.return_value = mock_cache
     llm_request = LLMRequest(
         query="Tell me about Kubernetes", conversation_id=conversation_id
     )
@@ -93,9 +101,12 @@ def test_retrieve_previous_input_for_previous_history(get, _load_config):
     assert previous_input == "input"
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
-def test_store_conversation_history(insert_or_append, _load_config):
+@patch("ols.utils.config.ConfigManager.get_conversation_cache")
+def test_store_conversation_history(mock_conversation_cache, _load_config):
     """Test if operation to store conversation history to cache is called."""
+    mock_cache = Mock()
+    mock_cache.insert_or_append.return_value = None
+    mock_conversation_cache.return_value = mock_cache
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query)
@@ -107,14 +118,19 @@ def test_store_conversation_history(insert_or_append, _load_config):
         HumanMessage(content="Tell me about Kubernetes"),
         AIMessage(content=""),
     ]
-    insert_or_append.assert_called_with(
+    mock_cache.insert_or_append.assert_called_with(
         constants.DEFAULT_USER_UID, conversation_id, expected_history
     )
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
-def test_store_conversation_history_some_response(insert_or_append, _load_config):
+@patch("ols.utils.config.ConfigManager.get_conversation_cache")
+def test_store_conversation_history_some_response(
+    mock_conversation_cache, _load_config
+):
     """Test if operation to store conversation history to cache is called."""
+    mock_cache = Mock()
+    mock_cache.insert_or_append.return_value = None
+    mock_conversation_cache.return_value = mock_cache
     user_id = "1234"
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -125,7 +141,9 @@ def test_store_conversation_history_some_response(insert_or_append, _load_config
         HumanMessage(content="Tell me about Kubernetes"),
         AIMessage(content="*response*"),
     ]
-    insert_or_append.assert_called_with(user_id, conversation_id, expected_history)
+    mock_cache.insert_or_append.assert_called_with(
+        user_id, conversation_id, expected_history
+    )
 
 
 def test_store_conversation_history_empty_user_id(_load_config):
@@ -158,13 +176,15 @@ def test_store_conversation_history_improper_conversation_id(_load_config):
         )
 
 
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.KEYWORD,
-)
+@patch("ols.app.endpoints.ols.ConfigManager.get_ols_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_valid_kw(llm_validate_question_mock, _load_config):
+def test_validate_question_valid_kw(
+    llm_validate_question_mock, mock_get_ols_config, _load_config
+):
     """Check the behaviour of validate_question function using valid keyword."""
+    mock_ols_config = Mock()
+    mock_ols_config.query_validation_method = constants.QueryValidationMethod.KEYWORD
+    mock_get_ols_config.return_value = mock_ols_config
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -188,12 +208,12 @@ def test_validate_question_too_long_query(llm_validate_question_mock, _load_conf
         ols.validate_question(conversation_id, llm_request)
 
 
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.KEYWORD,
-)
-def test_validate_question_invalid_kw(_load_config):
+@patch("ols.app.endpoints.ols.ConfigManager.get_ols_config")
+def test_validate_question_invalid_kw(mock_get_ols_config, _load_config):
     """Check the behaviour of validate_question function using invalid keyword."""
+    mock_ols_config = Mock()
+    mock_ols_config.query_validation_method = constants.QueryValidationMethod.KEYWORD
+    mock_get_ols_config.return_value = mock_ols_config
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -239,16 +259,16 @@ def test_validate_question_on_validation_error(validate_question_mock, _load_con
         ols.validate_question(conversation_id, llm_request)
 
 
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.DISABLED,
-)
+@patch("ols.app.endpoints.ols.ConfigManager.get_ols_config")
 @patch("ols.app.endpoints.ols._validate_question_keyword")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 def test_validate_question_disabled(
-    validate_question_llm_mock, validate_question_kw_mock
+    validate_question_llm_mock, validate_question_kw_mock, mock_get_ols_config
 ):
     """Check the behaviour of validate_question function when it is disabled."""
+    mock_ols_config = Mock()
+    mock_ols_config.query_validation_method = constants.QueryValidationMethod.DISABLED
+    mock_get_ols_config.return_value = mock_ols_config
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -271,6 +291,7 @@ def test_query_filter_no_redact_filters(_load_config):
 
 def test_query_filter_with_one_redact_filter(_load_config):
     """Test the function to redact query when filter is setup."""
+    config_manager = _load_config
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -284,7 +305,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
             replace_with="FooBar",
         )
     ]
-    config.query_redactor = q
+    config_manager.set_query_redactor(q)
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
@@ -293,6 +314,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
 
 def test_query_filter_with_two_redact_filters(_load_config):
     """Test the function to redact query when multiple filters are setup."""
+    config_manager = _load_config
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -311,29 +333,31 @@ def test_query_filter_with_two_redact_filters(_load_config):
             replace_with="Baz",
         ),
     ]
-    config.query_redactor = q
+    config_manager.set_query_redactor(q)
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
     assert result.query == "Tell me about Baz"
 
 
-@patch("ols.utils.config.query_redactor")
+@patch("ols.utils.config.ConfigManager.get_query_redactor")
 def test_query_filter_on_redact_error(mock_redact_query, _load_config):
     """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    mock_redact_query.redact_query.side_effect = Exception
+    mock_redact = Mock()
+    mock_redact.redact_query.side_effect = Exception
+    mock_redact_query.return_value = mock_redact
     with pytest.raises(HTTPException, match="Error while redacting query"):
         ols.redact_query(conversation_id, llm_request)
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.utils.config.ConfigManager.get_conversation_cache")
 def test_conversation_request(
-    mock_conversation_cache_get,
+    mock_conversation_cache,
     mock_summarize,
     mock_validate_question,
     _load_config,
@@ -341,6 +365,9 @@ def test_conversation_request(
 ):
     """Test conversation request API endpoint."""
     # valid question
+    mock_cache = Mock()
+    mock_cache.get.return_value = "input"
+    mock_conversation_cache.return_value = mock_cache
     mock_validate_question.return_value = True
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
@@ -379,15 +406,18 @@ def test_conversation_request(
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.utils.config.ConfigManager.get_conversation_cache")
 def test_conversation_request_on_wrong_configuration(
-    mock_conversation_cache_get,
+    mock_conversation_cache,
     mock_validate_question,
     _load_config,
     auth,
 ):
     """Test conversation request API endpoint."""
     # mock invalid configuration
+    mock_cache = Mock()
+    mock_cache.get.return_value = "input"
+    mock_conversation_cache.return_value = mock_cache
     message = "wrong model is configured"
     mock_validate_question.side_effect = Mock(
         side_effect=LLMConfigurationError(message)
@@ -531,8 +561,9 @@ def test_generate_response_unknown_validation_result(_load_config):
 @pytest.fixture
 def transcripts_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
-    config.init_empty_config()
-    config.ols_config.user_data_collection = UserDataCollection(
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()
+    config_manager.get_ols_config().user_data_collection = UserDataCollection(
         transcripts_disabled=False, transcripts_storage=tmpdir.strpath
     )
     return tmpdir.strpath
@@ -542,8 +573,8 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
     """Test nothing is stored when the transcript collection is disabled."""
     with (
         patch(
-            "ols.app.endpoints.ols.config.ols_config.user_data_collection.transcripts_disabled",
-            True,
+            "ols.app.endpoints.ols.ConfigManager.get_ols_config",
+            return_value=Mock(user_data_collection=Mock(transcripts_disabled=True)),
         ),
         patch(
             "ols.app.endpoints.ols.validate_question",

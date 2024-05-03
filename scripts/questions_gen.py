@@ -30,10 +30,11 @@ sys.path.append(
 )
 
 from ols.src.llms.llm_loader import load_llm
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-config.init_config(cfg_file)
+config_manager = ConfigManager()
+config_manager.init_config(cfg_file)
 
 
 def dirs_all_files(folder):

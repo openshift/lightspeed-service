@@ -3,7 +3,7 @@
 import re
 from unittest import TestCase
 
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from ols.utils.query_filter import QueryFilter, RegexFilter
 
 
@@ -12,9 +12,11 @@ class TestQueryFilter(TestCase):
 
     def setUp(self):
         """Set up the test."""
-        config.query_redactor = None
-        config.init_config("tests/config/valid_config_with_query_filter.yaml")
-        config.init_query_filter()
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.set_query_redactor(None)
+        config_manager.init_config("tests/config/valid_config_with_query_filter.yaml")
+        config_manager.init_query_filter()
         self.query_filter = QueryFilter()
 
     def test_redact_question_image_ip(self):

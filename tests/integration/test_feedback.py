@@ -7,35 +7,43 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols.app.models.config import UserDataCollection
-from ols.utils import config, suid
+from ols.utils import suid
+from ols.utils.config import ConfigManager
 
 # use proper conversation ID
 CONVERSATION_ID = suid.get_suid()
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Setups the test client."""
-    global client
-    config.init_config("tests/config/valid_config.yaml")
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
     client = TestClient(app)
-    config.dev_config.disable_auth = True
+    config_manager.get_dev_config().disable_auth = True
+
+    return client, config_manager
 
 
 @pytest.fixture
 def _with_disabled_feedback(tmpdir):
     """Fixture disables feedback."""
-    config.ols_config.user_data_collection = UserDataCollection(feedback_disabled=True)
+    _, config_manager = _setup
+    config_manager.get_ols_config().user_data_collection = UserDataCollection(
+        feedback_disabled=True
+    )
 
 
 @pytest.fixture
 def _with_enabled_feedback(tmpdir):
     """Fixture enables feedback and configures its location."""
-    config.ols_config.user_data_collection = UserDataCollection(
+    _, config_manager = _setup
+    config_manager.get_ols_config().user_data_collection = UserDataCollection(
         feedback_disabled=False, feedback_storage=tmpdir.strpath
     )
 
@@ -45,6 +53,7 @@ def test_feedback_endpoints_disabled_when_set_in_config(
 ):
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
+    client, _ = _setup
     response = client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
 
@@ -54,6 +63,7 @@ def test_feedback_endpoints_disabled_when_set_in_config(
 
 def test_feedback_status(_with_enabled_feedback):
     """Check if feedback status is returned."""
+    client, _ = _setup
     response = client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"functionality": "feedback", "status": {"enabled": True}}
@@ -61,6 +71,7 @@ def test_feedback_status(_with_enabled_feedback):
 
 def test_feedback(_with_enabled_feedback):
     """Check if feedback with correct format is accepted by the service."""
+    client, _ = _setup
     response = client.post(
         "/v1/feedback",
         json={
@@ -76,6 +87,7 @@ def test_feedback(_with_enabled_feedback):
 
 def test_feedback_improper_sentiment(_with_enabled_feedback):
     """Check if feedback with improper sentiment value is rejected."""
+    client, _ = _setup
     response = client.post(
         "/v1/feedback",
         json={
@@ -101,6 +113,7 @@ def test_feedback_improper_sentiment(_with_enabled_feedback):
 
 def test_feedback_wrong_request(_with_enabled_feedback):
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
+    client, _ = _setup
     response = client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
     # should respond with proper error code
@@ -111,6 +124,7 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request(
     _with_enabled_feedback,
 ):
     """Check if feedback without mandatory fields is not accepted by the service."""
+    client, _ = _setup
     response = client.post(
         "/v1/feedback",
         json={
@@ -126,6 +140,7 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request(
 
 def test_feedback_no_payload_send(_with_enabled_feedback):
     """Check if feedback without feedback payload."""
+    client, _ = _setup
     response = client.post("/v1/feedback")
     # for the request send w/o payload, the server
     # should respond with proper error code
@@ -134,6 +149,7 @@ def test_feedback_no_payload_send(_with_enabled_feedback):
 
 def test_feedback_error_raised(_with_enabled_feedback):
     """Check if feedback endpoint raises an exception when storing feedback fails."""
+    client, _ = _setup
     with patch(
         "ols.app.endpoints.feedback.store_feedback",
         side_effect=Exception("Test exception"),

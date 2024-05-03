@@ -237,61 +237,68 @@ class TestTokenHandler(TestCase):
         # As tokens are increased by 5% (ceil),
         # for each of the above messages the tokens count is 5, instead of 4.
 
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 1000)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 1000)
         # history must remain the same and truncate flag should be False
         assert truncated_history == history
         assert not truncated
 
         # try to truncate to 23 tokens; 20 for 4 messages & 3 for 3 new-lines.
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 23)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 23)
         # history should truncate to 4 newest messages only and flag should be True
         assert len(truncated_history) == 4
         assert truncated_history == history[2:]
         assert truncated
 
         # try to truncate to 11 tokens
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 11)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 11)
         # history should truncate to 2 messages only and flag should be True
         assert len(truncated_history) == 2
         assert truncated_history == history[4:]
         assert truncated
 
         # try to truncate to 10 tokens; without new line token
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 10)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 10)
         # history should truncate to 1 message
         assert len(truncated_history) == 1
         assert truncated_history == history[5:]
         assert truncated
 
         # try to truncate to 5 tokens - this means just one message
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 5)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 5)
         # history should truncate to one message only and flag should be True
         assert len(truncated_history) == 1
         assert truncated_history == history[5:]
         assert truncated
 
         # try to truncate to zero tokens
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 0)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 0)
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated
 
         # try to truncate to one token, but the 1st message is already longer than 1 token
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 1)
-        )
+        (
+            truncated_history,
+            truncated,
+        ) = self._token_handler_obj.limit_conversation_history(history, 1)
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated

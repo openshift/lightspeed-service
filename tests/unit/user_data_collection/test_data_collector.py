@@ -21,9 +21,9 @@ def with_mocked_config():
     global data_collector
     global original_collect_ols_data_from
     with (
-        patch("ols.utils.config.init_config", new=Mock()),
+        patch("ols.utils.config.ConfigManager.init_config", new=Mock()),
         patch(
-            "ols.utils.config.ols_config",
+            "ols.utils.config.ConfigManager.get_ols_config",
             return_value=MagicMock(user_data_collection=MagicMock(feedback_storage="")),
         ),
         patch.dict(

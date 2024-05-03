@@ -11,7 +11,7 @@ import pytest
 from yaml.parser import ParserError
 
 from ols.app.models.config import Config, InvalidConfigurationError
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from ols.utils.query_filter import RegexFilter
 
 E = TypeVar("E", bound=Exception)
@@ -22,7 +22,9 @@ def check_expected_exception(
 ) -> None:
     """Check that an expected exception is raised."""
     with pytest.raises(expected_exception_type, match=expected_error_msg):
-        config.load_config_from_stream(io.StringIO(yaml_stream))
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.load_config_from_stream(io.StringIO(yaml_stream))
 
 
 def test_malformed_yaml():
@@ -49,7 +51,9 @@ def test_missing_config_file():
     with pytest.raises(Exception, match="Not a directory"):
         # /dev/null is special file so it can't be directory
         # at the same moment
-        config.init_config("/dev/null/non-existent")
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.init_config("/dev/null/non-existent")
 
 
 def test_invalid_config():
@@ -642,8 +646,9 @@ dev_config:
 
 def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
+    config_manager = ConfigManager()
     try:
-        config.load_config_from_stream(
+        config_manager.load_config_from_stream(
             io.StringIO(
                 """
 ---
@@ -692,7 +697,9 @@ dev_config:
 def test_valid_config_file():
     """Check if a valid configuration file is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config.yaml")
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.init_config("tests/config/valid_config.yaml")
 
         expected_config = Config(
             {
@@ -751,7 +758,7 @@ def test_valid_config_file():
                 },
             }
         )
-        assert config.config == expected_config
+        assert config_manager.get_config() == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -761,7 +768,9 @@ def test_valid_config_file():
 def test_valid_config_file_with_postgres(patch):
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_postgres.yaml")
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.init_config("tests/config/valid_config_postgres.yaml")
 
         expected_config = Config(
             {
@@ -804,7 +813,7 @@ def test_valid_config_file_with_postgres(patch):
                 },
             }
         )
-        assert config.config == expected_config
+        assert config_manager.get_config() == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -814,7 +823,9 @@ def test_valid_config_file_with_postgres(patch):
 def test_valid_config_file_with_redis(patch):
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_redis.yaml")
+        ConfigManager._instance = None
+        config_manager = ConfigManager()
+        config_manager.init_config("tests/config/valid_config_redis.yaml")
 
         expected_config = Config(
             {
@@ -856,7 +867,7 @@ def test_valid_config_file_with_redis(patch):
                 },
             }
         )
-        assert config.config == expected_config
+        assert config_manager.get_config() == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -867,10 +878,12 @@ def test_config_file_without_logging_config(patch):
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail
-    config.init_config("tests/config/config_without_logging.yaml")
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/config_without_logging.yaml")
 
     # test if default values have been set
-    logging_config = config.ols_config.logging_config
+    logging_config = config_manager.get_ols_config().logging_config
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
     assert logging_config.uvicorn_log_level == logging.WARNING
@@ -878,21 +891,27 @@ def test_config_file_without_logging_config(patch):
 
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
-    config.query_redactor = None
-    config.init_empty_config()
-    config.init_config("tests/config/valid_config_without_query_filter.yaml")
-    assert config.query_redactor is None
-    print(config.query_redactor)
-    config.init_query_filter()
-    assert config.query_redactor.regex_filters == []
+    config_manager = ConfigManager()
+    config_manager.set_query_redactor(None)
+    config_manager.init_empty_config()
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config_without_query_filter.yaml")
+    assert config_manager.get_query_redactor() is None
+    print(config_manager.query_redactor)
+    config_manager = ConfigManager()
+    config_manager.init_query_filter()
+    assert config_manager.get_query_redactor().regex_filters == []
 
 
 def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
-    config.query_redactor = None
-    config.init_config("tests/config/valid_config_with_query_filter.yaml")
-    config.init_query_filter()
-    assert config.query_redactor.regex_filters == [
+    config_manager = ConfigManager()
+    config_manager.set_query_redactor(None)
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config_with_query_filter.yaml")
+    config_manager = ConfigManager()
+    config_manager.init_query_filter()
+    assert config_manager.get_query_redactor().regex_filters == [
         RegexFilter(
             pattern=re.compile(r"\b(?:foo)\b"),
             name="foo_filter",
@@ -909,9 +928,11 @@ def test_valid_config_with_query_filter():
 @patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
 def test_valid_config_with_azure_openai(patch):
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.set_query_redactor(None)
     try:
-        config.init_config("tests/config/valid_config_with_azure_openai.yaml")
+        config_manager.init_config("tests/config/valid_config_with_azure_openai.yaml")
 
         expected_config = Config(
             {
@@ -948,7 +969,7 @@ def test_valid_config_with_azure_openai(patch):
                 },
             }
         )
-        assert config.config == expected_config
+        assert config_manager.get_config() == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -957,9 +978,11 @@ def test_valid_config_with_azure_openai(patch):
 @patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
 def test_valid_config_with_azure_openai_api_version(patch):
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.set_query_redactor(None)
     try:
-        config.init_config(
+        config_manager.init_config(
             "tests/config/valid_config_with_azure_openai_api_version.yaml"
         )
 
@@ -999,7 +1022,7 @@ def test_valid_config_with_azure_openai_api_version(patch):
                 },
             }
         )
-        assert config.config == expected_config
+        assert config_manager.get_config() == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")

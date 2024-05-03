@@ -5,7 +5,7 @@ from genai.extensions.langchain import LangChainInterface
 
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.bam import BAM
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 
 @pytest.fixture
@@ -30,7 +30,9 @@ def provider_config():
 
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
     bam = BAM(model="uber-model", params={}, provider_config=provider_config)
     llm = bam.load()
@@ -40,7 +42,9 @@ def test_basic_interface(provider_config):
 
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
     # first two parameters should be removed before model init
     # rest need to stay
@@ -76,7 +80,9 @@ def test_params_handling(provider_config):
 
 def test_params_handling_none_values(provider_config):
     """Test handling parameters with None values."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
     # first two parameters should be removed before model init
     # rest need to stay
@@ -112,7 +118,9 @@ def test_params_handling_none_values(provider_config):
 
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()  # needed for checking the config.dev_config.llm_params
 
     # provider initialization with empty set of params
     bam = BAM(model="uber-model", params={}, provider_config=provider_config)

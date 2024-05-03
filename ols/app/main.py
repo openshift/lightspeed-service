@@ -10,7 +10,7 @@ from starlette.responses import StreamingResponse
 from ols import constants
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
@@ -21,10 +21,10 @@ app = FastAPI(
     },
 )
 
-
+config_manager = ConfigManager()
 logger = logging.getLogger(__name__)
 
-if config.dev_config.enable_dev_ui:
+if config_manager.get_dev_config().enable_dev_ui:
     app = GradioUI().mount_ui(app)
 else:
     logger.info(
@@ -35,7 +35,7 @@ else:
 
 # update provider and model as soon as possible so the metrics will be visible
 # even for first scraping
-metrics.setup_model_metrics(config.config)
+metrics.setup_model_metrics(config_manager.get_config())
 
 
 @app.middleware("")

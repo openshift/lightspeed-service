@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from ols.app.models.config import ReferenceContent
 from ols.src.rag_index.index_loader import IndexLoader
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
 
 
@@ -21,11 +21,15 @@ def test_index_loader_empty_config(caplog):
 @patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
 def test_index_loader_no_id(storage_context):
     """Test index loader without index id."""
-    config.init_empty_config()
-    config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./some_dir"
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()
+    config_manager.get_ols_config().reference_content = ReferenceContent(None)
+    config_manager.get_ols_config().reference_content.product_docs_index_path = (
+        "./some_dir"
+    )
 
-    index_loader_obj = IndexLoader(config.ols_config.reference_content)
+    index_loader_obj = IndexLoader(config_manager.get_ols_config().reference_content)
     index = index_loader_obj.vector_index
 
     assert (
@@ -39,13 +43,18 @@ def test_index_loader_no_id(storage_context):
 @patch("ols.src.rag_index.index_loader.load_index_from_storage", new=MockLlamaIndex)
 def test_index_loader(storage_context, from_persist_dir):
     """Test index loader."""
-    config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./some_dir"
-    config.ols_config.reference_content.product_docs_index_id = "./some_id"
+    config_manager = ConfigManager()
+    config_manager.get_ols_config().reference_content = ReferenceContent(None)
+    config_manager.get_ols_config().reference_content.product_docs_index_path = (
+        "./some_dir"
+    )
+    config_manager.get_ols_config().reference_content.product_docs_index_id = (
+        "./some_id"
+    )
 
     from_persist_dir.return_value = None
 
-    index_loader_obj = IndexLoader(config.ols_config.reference_content)
+    index_loader_obj = IndexLoader(config_manager.ols_config.reference_content)
     index = index_loader_obj.vector_index
 
     assert isinstance(index, MockLlamaIndex)

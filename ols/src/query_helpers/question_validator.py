@@ -10,7 +10,7 @@ from ols.app.metrics import TokenMetricUpdater
 from ols.constants import SUBJECT_REJECTED
 from ols.src.prompts.prompts import QUESTION_VALIDATOR_PROMPT_TEMPLATE
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,8 @@ class QuestionValidator(QueryHelper):
 
         # we just need to compute prompt length (in tokens) and check
         # if it's in context window limit
-        provider_config = config.llm_config.providers.get(self.provider)
+        config_manager = ConfigManager()
+        provider_config = config_manager.get_llm_config().providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
         TokenHandler().calculate_and_check_available_tokens(query, model_config)
 

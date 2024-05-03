@@ -13,25 +13,30 @@ from ols.app.models.config import (
     ReferenceContent,
     UserDataCollection,
 )
-from ols.utils import config, suid
+from ols.utils import suid
+from ols.utils.config import ConfigManager
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
-    config.init_config("tests/config/valid_config.yaml")
-    global client
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
     client = TestClient(app)
 
+    return client, config_manager
+
 
 def test_post_question_on_unexpected_payload(_setup):
     """Check the REST API /v1/query with POST HTTP method when unexpected payload is posted."""
+    client, _ = _setup
     response = client.post("/v1/query", json="this is really not proper payload")
     assert response.status_code == requests.codes.unprocessable
 
@@ -57,6 +62,7 @@ def test_post_question_on_unexpected_payload(_setup):
 def test_post_question_without_payload(_setup):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
+    client, _ = _setup
     response = client.post("/v1/query")
     assert response.status_code == requests.codes.unprocessable
 
@@ -71,6 +77,7 @@ def test_post_question_without_payload(_setup):
 def test_post_question_on_invalid_question(_setup):
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
+    client, _ = _setup
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=False
     ):
@@ -93,6 +100,7 @@ def test_post_question_on_invalid_question(_setup):
 def test_post_question_on_generic_response_type_summarize_error(_setup):
     """Check the REST API /v1/query with POST HTTP method when generic response type is returned."""
     # let's pretend the question is valid and generic one
+    client, _ = _setup
     answer = constants.SUBJECT_ALLOWED
     with (
         patch(
@@ -123,6 +131,7 @@ def test_post_question_on_generic_response_type_summarize_error(_setup):
 def test_post_question_that_is_not_validated(_setup):
     """Check the REST API /v1/query with POST HTTP method for question that is not validated."""
     # let's pretend the question can not be validated
+    client, _ = _setup
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=Exception("can not validate"),
@@ -147,6 +156,7 @@ def test_post_question_that_is_not_validated(_setup):
 def test_post_question_with_provider_but_not_model(_setup):
     """Check how missing model is detected in request."""
     conversation_id = suid.get_suid()
+    client, _ = _setup
     response = client.post(
         "/v1/query",
         json={
@@ -167,6 +177,7 @@ def test_post_question_with_provider_but_not_model(_setup):
 def test_post_question_with_model_but_not_provider(_setup):
     """Check how missing provider is detected in request."""
     conversation_id = suid.get_suid()
+    client, _ = _setup
     response = client.post(
         "/v1/query",
         json={
@@ -187,7 +198,8 @@ def test_post_question_with_model_but_not_provider(_setup):
 def test_unknown_provider_in_post(_setup):
     """Check the REST API /v1/query with POST method when unknown provider is requested."""
     # empty config - no providers
-    with patch("ols.utils.config.llm_config.providers", new={}):
+    client, _ = _setup
+    with patch("ols.utils.config.ConfigManager.llm_config.providers", new={}):
         response = client.post(
             "/v1/query",
             json={
@@ -214,9 +226,9 @@ def test_unsupported_model_in_post(_setup):
     test_provider = "test-provider"
     provider_config = ProviderConfig()
     provider_config.models = {}  # no models configured
-
+    client, _ = _setup
     with patch(
-        "ols.utils.config.llm_config.providers",
+        "ols.utils.config.ConfigManager.llm_config.providers",
         new={test_provider: provider_config},
     ):
         response = client.post(
@@ -241,12 +253,12 @@ def test_unsupported_model_in_post(_setup):
 
 def test_post_question_improper_conversation_id(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with improper conversation ID."""
-    config.dev_config.disable_auth = True
+    client, config_manager = _setup
+    config_manager.get_dev_config().disable_auth = True
     answer = constants.SUBJECT_ALLOWED
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-
         conversation_id = "not-correct-uuid"
         response = client.post(
             "/v1/query",
@@ -268,14 +280,14 @@ def test_post_question_improper_conversation_id(_setup) -> None:
 
 def test_post_question_on_noyaml_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method when call is success."""
-    config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
-    config.ols_config.reference_content.product_docs_index_id = "product"
-    config.dev_config.disable_auth = True
+    client, config_manager = _setup
+    ols_config = config_manager.get_ols_config()
+    ols_config.reference_content = ReferenceContent(None)
+    ols_config.reference_content.product_docs_index_path = "./invalid_dir"
+    ols_config.reference_content.product_docs_index_id = "product"
+    config_manager.get_dev_config().disable_auth = True
     answer = constants.SUBJECT_ALLOWED
-    config.ols_config.user_data_collection = UserDataCollection(
-        transcripts_disabled=True
-    )
+    ols_config.user_data_collection = UserDataCollection(transcripts_disabled=True)
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -292,7 +304,7 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
                 new=mock_llm_loader(ml()),
             ),
             patch(
-                "ols.utils.config.ols_config.reference_content.product_docs_index_path",
+                "ols.utils.config.ConfigManager.ols_config.reference_content.product_docs_index_path",
                 "./invalid_dir",
             ),
         ):
@@ -309,13 +321,14 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
 
 
 @patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    "ols.app.endpoints.ols.config.ConfigManager.ols_config.query_validation_method",
     constants.QueryValidationMethod.KEYWORD,
 )
 @patch("ols.app.endpoints.ols.QuestionValidator.validate_question")
 def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
     """Check the REST API /v1/query with keyword validation."""
     query = "What is Openshift ?"
+    client, _ = _setup
 
     from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
@@ -343,9 +356,10 @@ def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
 
 def test_post_query_with_query_filters_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
-    config.dev_config.disable_auth = True
+    client, config_manager = _setup
+    config_manager.get_dev_config().disable_auth = True
     answer = constants.SUBJECT_ALLOWED
-    config.ols_config.user_data_collection = UserDataCollection(
+    config_manager.get_ols_config().user_data_collection = UserDataCollection(
         transcripts_disabled=True
     )
 
@@ -358,8 +372,8 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
             }
         )
     ]
-    config.ols_config.query_filters = query_filters
-    config.init_query_filter()
+    config_manager.get_ols_config().query_filters = query_filters
+    config_manager.init_query_filter()
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -394,9 +408,10 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
 
 def test_post_query_for_conversation_history(_setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
-    config.dev_config.disable_auth = True
+    client, config_manager = _setup
+    config_manager.get_dev_config().disable_auth = True
     answer = constants.SUBJECT_ALLOWED
-    config.ols_config.user_data_collection = UserDataCollection(
+    config_manager.get_ols_config().user_data_collection = UserDataCollection(
         transcripts_disabled=True
     )
     with patch(

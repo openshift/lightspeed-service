@@ -25,13 +25,14 @@ from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.utils import config, suid
+from ols.utils import suid
 from ols.utils.auth_dependency import AuthDependency
+from ols.utils.config import ConfigManager
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
 
+config_manager = ConfigManager()
 logger = logging.getLogger(__name__)
-
 router = APIRouter(tags=["query"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
@@ -109,7 +110,7 @@ def conversation_request(
 
     store_conversation_history(user_id, conversation_id, llm_request, response)
 
-    if config.ols_config.user_data_collection.transcripts_disabled:
+    if config_manager.get_ols_config().user_data_collection.transcripts_disabled:
         logger.debug("transcripts collections is disabled in configuration")
     else:
         store_transcript(
@@ -153,7 +154,7 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseM
     try:
         previous_input: list[BaseMessage] = []
         if llm_request.conversation_id:
-            cache_content = config.conversation_cache.get(
+            cache_content = config_manager.get_conversation_cache().get(
                 user_id, llm_request.conversation_id
             )
             if cache_content is not None:
@@ -191,7 +192,7 @@ def generate_response(
             if conversation
         ]
         llm_response = docs_summarizer.summarize(
-            conversation_id, llm_request.query, config.rag_index, history
+            conversation_id, llm_request.query, config_manager.get_rag_index(), history
         )
         return (
             llm_response["response"],
@@ -224,12 +225,12 @@ def store_conversation_history(
 ) -> None:
     """Store conversation history into selected cache."""
     try:
-        if config.conversation_cache is not None:
+        if config_manager.get_conversation_cache() is not None:
             logger.info(f"{conversation_id} Storing conversation history.")
             chat_message_history = ChatHistory.get_chat_message_history(
                 llm_request.query, response or ""
             )
-            config.conversation_cache.insert_or_append(
+            config_manager.get_conversation_cache().insert_or_append(
                 user_id,
                 conversation_id,
                 chat_message_history,
@@ -253,10 +254,10 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
     """Redact query using query_redactor, raise HTTPException in case of any problem."""
     try:
         logger.debug(f"Redacting query for conversation {conversation_id}")
-        if not config.query_redactor:
+        if not config_manager.get_query_redactor():
             logger.debug("query_redactor not found")
             return llm_request
-        llm_request.query = config.query_redactor.redact_query(
+        llm_request.query = config_manager.get_query_redactor().redact_query(
             conversation_id, llm_request.query
         )
         return llm_request
@@ -329,8 +330,7 @@ def _validate_question_keyword(query: str) -> bool:
 
 def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question."""
-    match config.ols_config.query_validation_method:
-
+    match config_manager.get_ols_config().query_validation_method:
         case constants.QueryValidationMethod.DISABLED:
             logger.debug(
                 f"{conversation_id} Question validation is disabled. "
@@ -369,7 +369,7 @@ def store_transcript(
     """
     # ensures storage path exists
     transcripts_path = Path(
-        config.ols_config.user_data_collection.transcripts_storage,
+        config_manager.get_ols_config().user_data_collection.transcripts_storage,
         user_id,
         conversation_id,
     )
@@ -379,8 +379,9 @@ def store_transcript(
 
     data_to_store = {
         "metadata": {
-            "provider": llm_request.provider or config.ols_config.default_provider,
-            "model": llm_request.model or config.ols_config.default_model,
+            "provider": llm_request.provider
+            or config_manager.get_ols_config().default_provider,
+            "model": llm_request.model or config_manager.get_ols_config().default_model,
             "user_id": user_id,
             "conversation_id": conversation_id,
             "timestamp": datetime.now(pytz.UTC).isoformat(),

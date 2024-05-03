@@ -8,24 +8,28 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def _setup():
     """Setups the test client."""
-    global client
-    config.init_config("tests/config/valid_config.yaml")
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
     from ols.app.main import app
 
     client = TestClient(app)
 
+    return client
+
 
 def retrieve_metrics(client):
     """Retrieve all service metrics."""
+    client = _setup
     response = client.get("/metrics")
 
     # check that the /metrics endpoint is correct and we got
@@ -39,6 +43,7 @@ def retrieve_metrics(client):
 
 def test_metrics(_setup):
     """Check if service provides metrics endpoint with some expected counters."""
+    client = _setup
     response_text = retrieve_metrics(client)
 
     # counters that are expected to be part of metrics
@@ -80,6 +85,7 @@ def get_counter_value(client, counter_name, path, status_code):
 def test_rest_api_call_counter_ok_status(_setup):
     """Check if REST API call counter works as expected, label with 200 OK status."""
     endpoint = "/readiness"
+    client = _setup
 
     # initialize counter with label by calling endpoint
     client.get(endpoint)
@@ -96,6 +102,7 @@ def test_rest_api_call_counter_ok_status(_setup):
 def test_rest_api_call_counter_not_found_status(_setup):
     """Check if REST API call counter works as expected, label with 404 NotFound status."""
     endpoint = "/this-does-not-exists"
+    client = _setup
 
     # initialize counter with label
     client.get(endpoint)
@@ -112,6 +119,7 @@ def test_rest_api_call_counter_not_found_status(_setup):
 
 def test_metrics_duration(_setup):
     """Check if service provides metrics for durations."""
+    client = _setup
     response_text = retrieve_metrics(client)
 
     # duration histograms are expected to be part of metrics
@@ -134,6 +142,7 @@ def test_metrics_duration(_setup):
 
 def test_provider_model_configuration_metrics(_setup):
     """Check if provider_model_configuration metrics shows the expected information."""
+    client = _setup
     response_text = retrieve_metrics(client)
     print(response_text)
     for provider in ("bam", "openai"):

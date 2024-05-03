@@ -8,26 +8,30 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def _setup():
     """Setups the test client."""
-    global client
-    config.init_config("tests/config/valid_config.yaml")
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app
 
     client = TestClient(app)
 
+    return client, config_manager
+
 
 def test_openapi_endpoint(_setup):
     """Check if REST API provides endpoint with OpenAPI specification."""
+    client, _ = _setup
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
 
@@ -54,6 +58,7 @@ def test_openapi_endpoint(_setup):
 
 def test_openapi_endpoint_head_method(_setup):
     """Check if REST API allows HEAD HTTP method for endpoint with OpenAPI specification."""
+    client, _ = _setup
     response = client.head("/openapi.json")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
@@ -66,6 +71,7 @@ def test_openapi_content(_setup):
         pre_generated_schema = json.load(fin)
 
     # retrieve current OpenAPI schema
+    client, _ = _setup
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
     current_schema = response.json()

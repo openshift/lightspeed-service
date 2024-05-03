@@ -9,7 +9,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
 from ols.constants import DEFAULT_KUBEADMIN_UID, DEFAULT_USER_NAME, DEFAULT_USER_UID
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +35,22 @@ class K8sClientSingleton:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             configuration = kubernetes.client.Configuration()
+            config_manager = ConfigManager()
 
             try:
-                if config.ols_config.authentication_config.k8s_cluster_api not in {
+                if config_manager.get_ols_config().authentication_config.k8s_cluster_api not in {
                     None,
                     "None",
                     "",
-                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
+                } and config_manager.get_dev_config().k8s_auth_token not in {
+                    None,
+                    "None",
+                    "",
+                }:
                     logger.info("loading kubeconfig from app Config config")
-                    configuration.api_key["authorization"] = (
-                        config.dev_config.k8s_auth_token
-                    )
+                    configuration.api_key[
+                        "authorization"
+                    ] = config_manager.get_dev_config().k8s_auth_token
                     configuration.api_key_prefix["authorization"] = "Bearer"
                 else:
                     logger.debug(
@@ -71,17 +76,17 @@ class K8sClientSingleton:
                             )
 
                 configuration.host = (
-                    config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api
+                    config_manager.get_ols_config().authentication_config.k8s_cluster_api
+                    if config_manager.get_ols_config().authentication_config.k8s_cluster_api
                     not in {None, "None", ""}
                     else configuration.host
                 )
                 configuration.verify_ssl = (
-                    not config.ols_config.authentication_config.skip_tls_verification
+                    not config_manager.get_ols_config().authentication_config.skip_tls_verification
                 )
                 configuration.ssl_ca_cert = (
-                    config.ols_config.authentication_config.k8s_ca_cert_path
-                    if config.ols_config.authentication_config.k8s_ca_cert_path
+                    config_manager.get_ols_config().authentication_config.k8s_ca_cert_path
+                    if config_manager.get_ols_config().authentication_config.k8s_ca_cert_path
                     not in {None, "None", ""}
                     else configuration.ssl_ca_cert
                 )
@@ -182,7 +187,8 @@ class AuthDependency:
         Raises:
             HTTPException: If authentication fails or the user does not have access.
         """
-        if config.dev_config.disable_auth:
+        config_manager = ConfigManager()
+        if config_manager.get_dev_config().disable_auth:
             logger.warning("Auth checks disabled, skipping")
             # Use constant user ID and user name in case auth. is disabled
             # It will be needed for testing purposes because (for example)

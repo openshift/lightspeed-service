@@ -14,7 +14,7 @@ from ols.constants import (
     PROVIDER_OPENAI,
     PROVIDER_WATSONX,
 )
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -177,12 +177,15 @@ class LLMProvider(AbstractLLMProvider):
         """Override LLM parameters if defined in developer config."""
         # input params overrides default params
         updated_params = {**self.default_params, **params}
+        config_manager = ConfigManager()
+        llm_params = config_manager.get_dev_config().llm_params
 
         # config params overrides everything
-        if config.dev_config.llm_params:
-            logger.debug(
-                f"overriding LLM params with debug options {config.dev_config.llm_params}"
-            )
-            updated_params = {**updated_params, **config.dev_config.llm_params}
+        if llm_params:
+            logger.debug(f"overriding LLM params with debug options {llm_params}")
+            updated_params = {
+                **updated_params,
+                **llm_params,
+            }
 
         return updated_params

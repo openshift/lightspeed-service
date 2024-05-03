@@ -3,7 +3,8 @@
 from unittest.mock import ANY, patch
 
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
-from ols.utils import config, suid
+from ols.utils import suid
+from ols.utils.config import ConfigManager
 from tests import constants
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
@@ -34,7 +35,9 @@ def check_summary_result(summary, question):
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.init_config("tests/config/valid_config.yaml")
+    # ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -47,7 +50,9 @@ def test_summarize_empty_history():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
-    config.init_config("tests/config/valid_config.yaml")
+    # ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -60,7 +65,9 @@ def test_summarize_no_history():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
-    config.init_config("tests/config/valid_config.yaml")
+    # ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     history = ["What is Kubernetes?"]
@@ -89,7 +96,9 @@ def test_summarize_history_provided():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
-    config.init_config("tests/config/valid_config.yaml")
+    # ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()

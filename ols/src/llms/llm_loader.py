@@ -7,7 +7,7 @@ from langchain.llms.base import LLM
 
 from ols.app.models.config import LLMProviders, ProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
-from ols.utils import config
+from ols.utils.config import ConfigManager
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,8 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
         ```
     """
-    providers_config = config.config.llm_providers
+    config_manager = ConfigManager()
+    providers_config = config_manager.get_config().llm_providers
     llm_providers_reg = LLMProvidersRegistry
 
     provider_config = _resolve_provider_config(provider, model, providers_config)

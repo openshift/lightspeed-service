@@ -10,7 +10,7 @@ from ols.app.endpoints.authorized import (
     is_user_authorized,
 )
 from ols.app.models.models import AuthorizationResponse
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -20,8 +20,9 @@ from tests.mock_classes.mock_k8s_api import (
 def test_is_user_authorized_auth_disabled():
     """Test the is_user_authorized function when the authentication is disabled."""
     # the tested function returns constant right now
-    config.init_empty_config()
-    config.dev_config.disable_auth = True
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()
+    config_manager.get_dev_config().disable_auth = True
     request = Request(scope={"type": "http"})
     response = is_user_authorized(request)
     assert response == AuthorizationResponse(
@@ -32,8 +33,8 @@ def test_is_user_authorized_auth_disabled():
 def test_is_user_authorized_false_no_bearer_token():
     """Test the is_user_authorized function when its missing authorization header."""
     # the tested function returns constant right now
-    config.init_empty_config()
-    config.dev_config.disable_auth = False
+    config_manager = ConfigManager()
+    config_manager.get_dev_config().disable_auth = False
     request = Request(scope={"type": "http", "headers": []})
 
     # Expect an HTTPException for invalid tokens
@@ -48,8 +49,8 @@ def test_is_user_authorized_false_no_bearer_token():
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
     """Tests the is_user_authorized function with a mocked valid-token."""
-    config.init_empty_config()
-    config.dev_config.disable_auth = False
+    config_manager = ConfigManager()
+    config_manager.get_dev_config().disable_auth = False
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
         mock_token_review_response
@@ -71,8 +72,8 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
     """Test the is_user_authorized function with a mocked invalid-token."""
-    config.init_empty_config()
-    config.dev_config.disable_auth = False
+    config_manager = ConfigManager()
+    config_manager.get_dev_config().disable_auth = False
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.side_effect = (
         mock_token_review_response

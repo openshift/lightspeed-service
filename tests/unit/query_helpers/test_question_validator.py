@@ -3,14 +3,16 @@
 import pytest
 
 from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
-from ols.utils import config
+from ols.utils.config import ConfigManager
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
 
 @pytest.fixture
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
-    config.init_empty_config()
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_empty_config()
     return QuestionValidator(llm_loader=mock_llm_loader(None))
 
 
@@ -23,7 +25,9 @@ def test_passing_parameters():
     """Test that llm_params is handled correctly and without runtime error."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
-    config.init_config("tests/config/valid_config.yaml")
+    ConfigManager._instance = None
+    config_manager = ConfigManager()
+    config_manager.init_config("tests/config/valid_config.yaml")
 
     question_validator = QuestionValidator()
     assert question_validator.llm_params is not None
