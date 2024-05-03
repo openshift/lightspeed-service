@@ -19,8 +19,8 @@ SUBJECT_ALLOWED = "ALLOWED"
 
 # Default responses
 INVALID_QUERY_RESP = (
-    "I'm sorry, this question does not appear to be about OpenShift or Kubernetes.  "
-    "I can only answer questions related to those topics, please rephrase or ask another question."
+    "Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, "
+    "please ask me a question related to OpenShift."
 )
 
 
