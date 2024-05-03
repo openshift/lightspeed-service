@@ -92,8 +92,7 @@ def test_load_llm(_registered_fake_provider):
     assert llm == "fake_llm"
 
 
-@patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"])
-def test_load_llm_no_provider_config(_registered_fake_provider):
+def test_load_llm_no_provider_config():
     """Test load_llm function."""
     config.init_empty_config()
     config.config.llm_providers = None
