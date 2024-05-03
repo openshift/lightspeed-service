@@ -15,7 +15,7 @@ EOF
 # $1 - url of the ols server to poll
 function wait_for_ols() {
   for i in {1..60}; do
-    echo Checking OLS readiness, attempt "$i" of 30
+    echo Checking OLS readiness, attempt "$i" of 60
     curl -sk --fail "$1/readiness"
     if [ $? -eq 0 ]; then
       return 0
