@@ -6,7 +6,7 @@ import re
 from typing import Any, Optional, Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, FilePath, PositiveInt, model_validator
+from pydantic import AnyHttpUrl, BaseModel, FilePath, PositiveInt, model_validator
 
 from ols import constants
 
@@ -55,7 +55,7 @@ class ModelConfig(BaseModel):
     """Model configuration."""
 
     name: Optional[str] = None
-    url: Optional[str] = None
+    url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
     context_window_size: int = -1  # need to be set later, based on model
     response_token_limit: int = -1  # need to be set later, based on model
@@ -185,7 +185,7 @@ class AuthenticationConfig(BaseModel):
     """Authentication configuration."""
 
     skip_tls_verification: Optional[bool] = False
-    k8s_cluster_api: Optional[str] = None
+    k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -219,7 +219,7 @@ class ProviderConfig(BaseModel):
 
     name: Optional[str] = None
     type: Optional[str] = None
-    url: Optional[str] = None
+    url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
