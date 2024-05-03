@@ -207,7 +207,7 @@ key file(s) (eg: `credentials_path: config/openai_api_key.txt`)
    ```sh
     podman run -it --rm -v `/path/to/config:/app-root/config:Z \
     -e OLS_CONFIG_FILE=/app-root/config/olsconfig.yaml -p 8080:8080 \
-    quay.io/openshift/lightspeed-api-service-rag:latest
+    quay.io/openshift-lightspeed/lightspeed-service-api:latest
     ```
 
 ### Optionally run inside an OpenShift environment
