@@ -6,6 +6,7 @@ import os
 import sys
 from collections import defaultdict
 
+import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
@@ -32,6 +33,12 @@ def _args_parser(args):
         help="Scenario for which responses will be evaluated.",
     )
     parser.add_argument(
+        "-p",
+        "--provider",
+        default="openai",
+        help="Provider name, currently used only to form output file name.",
+    )
+    parser.add_argument(
         "-m",
         "--model",
         choices=["gpt", "granite"],
@@ -52,6 +59,12 @@ def _args_parser(args):
         nargs="+",
         default=None,
         help="Ids of questions to be validated. Check json file for valid ids.",
+    )
+    parser.add_argument(
+        "-o",
+        "--out_dir",
+        default="tests/test_results",
+        help="Result destination.",
     )
     return parser.parse_args(args)
 
@@ -106,7 +119,7 @@ class ResponseValidation:
                 json={"query": question},
                 timeout=LLM_REST_API_TIMEOUT,
             )
-            if response.status_code != 200:
+            if response.status_code != requests.codes.ok:
                 raise Exception(response)
 
             response = response.json()["response"]
@@ -147,10 +160,11 @@ def main():
     result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
 
     if len(result_df) > 0:
-        result_dir = "tests/test_results"
+        result_dir = args.out_dir
         os.makedirs(result_dir, exist_ok=True)
         result_file = (
-            f"{result_dir}/question_answer_result_{args.scenario}_{args.model}.csv"
+            f"{result_dir}/question_answer_result_"
+            f"{args.provider}_{args.model}_{args.scenario}.csv"
         )
         result_df.to_csv(result_file, index=False)
         print(f"Result is saved to {result_file}")

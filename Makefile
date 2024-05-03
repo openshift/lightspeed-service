@@ -4,8 +4,9 @@
 .PHONY: test test-unit test-e2e images run format verify
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
-TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
+TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),not cluster)
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
+PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
 SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 
@@ -59,7 +60,7 @@ test-e2e: ## Run e2e tests - requires running OLS server
 
 response-sanity-check: ## Checks response quality - requires running OLS server
 	@echo "Running response sanity check..."
-	python -m tests.scripts.validate_response -m ${MODEL} -s ${SCENARIO}
+	python -m tests.scripts.validate_response -p ${PROVIDER} -m ${MODEL} -s ${SCENARIO} -o ${ARTIFACT_DIR}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"

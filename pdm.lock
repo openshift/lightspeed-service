@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:29e871920d2bbb032ba1d9a8a5ee91999d82083432a68b784828673ed2e548b9"
+content_hash = "sha256:538a83c3a4f3c480f70177dda808498c83ca453eb33a5100c4b4580a7eaee038"
 
 [[package]]
 name = "aiofiles"
@@ -1032,7 +1032,7 @@ files = [
 
 [[package]]
 name = "langchain-core"
-version = "0.1.45"
+version = "0.1.48"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1045,8 +1045,8 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_core-0.1.45-py3-none-any.whl", hash = "sha256:91eff20de0bcf5f025e1d8c4582cb597a9c17527965eb03b314486e7c834e7df"},
-    {file = "langchain_core-0.1.45.tar.gz", hash = "sha256:526532c1af279a9e2debe7a4e143ba6e980cf90b5ab2e0991c2230ee04c693e2"},
+    {file = "langchain_core-0.1.48-py3-none-any.whl", hash = "sha256:f3078d97a38ac79083cf5a9f3dfd2bb340c08fd93d0064c608be9aa40a73b038"},
+    {file = "langchain_core-0.1.48.tar.gz", hash = "sha256:f0a9b0a8f22f219ef6fd84e2b1d92a8014e84514c0a1b553370fd40296813c16"},
 ]
 
 [[package]]
@@ -1066,18 +1066,18 @@ files = [
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.3"
+version = "0.1.4"
 requires_python = "<4.0,>=3.8.1"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.2.0,>=0.1.42",
+    "langchain-core<0.2.0,>=0.1.46",
     "openai<2.0.0,>=1.10.0",
     "tiktoken<1,>=0.5.2",
 ]
 files = [
-    {file = "langchain_openai-0.1.3-py3-none-any.whl", hash = "sha256:fa1f27815649291447e5370cb08e2f5a84e5c7c6121d0c055a6e296bd16d1e47"},
-    {file = "langchain_openai-0.1.3.tar.gz", hash = "sha256:7f6e377d6bf88d6c2b1969fe5eecc1326271757512739e2f17c855cd7af53345"},
+    {file = "langchain_openai-0.1.4-py3-none-any.whl", hash = "sha256:a349ada8724921e380aab03ee312568f5ca99adbc806f6878d79ff9cd1d6d353"},
+    {file = "langchain_openai-0.1.4.tar.gz", hash = "sha256:1a3220464c270d73ea3987010617789adc2099d4d4740b15c7734ab07e1f054b"},
 ]
 
 [[package]]
@@ -1112,14 +1112,14 @@ files = [
 
 [[package]]
 name = "llama-index"
-version = "0.10.31"
+version = "0.10.33"
 requires_python = "<4.0,>=3.8.1"
 summary = "Interface between LLMs and your data"
 groups = ["default"]
 dependencies = [
     "llama-index-agent-openai<0.3.0,>=0.1.4",
     "llama-index-cli<0.2.0,>=0.1.2",
-    "llama-index-core<0.11.0,>=0.10.31",
+    "llama-index-core<0.11.0,>=0.10.32",
     "llama-index-embeddings-openai<0.2.0,>=0.1.5",
     "llama-index-indices-managed-llama-cloud<0.2.0,>=0.1.2",
     "llama-index-legacy<0.10.0,>=0.9.48",
@@ -1131,8 +1131,8 @@ dependencies = [
     "llama-index-readers-llama-parse<0.2.0,>=0.1.2",
 ]
 files = [
-    {file = "llama_index-0.10.31-py3-none-any.whl", hash = "sha256:2d79ce49ed6f7e55f36a19cc60b4b8c07d622f98aa5945e1c0bdf82f56bd0afc"},
-    {file = "llama_index-0.10.31.tar.gz", hash = "sha256:68476fb34364cdfcaccd4e09114d7489b13db431f4987c921d9a848893549215"},
+    {file = "llama_index-0.10.33-py3-none-any.whl", hash = "sha256:d39b8f55491e51fdcf610e277580089a6e00f73669c9fd7dd78c5264e9c9c584"},
+    {file = "llama_index-0.10.33.tar.gz", hash = "sha256:d77ab29883b05cc57adfa50fa44ababf2b7bc62a988fb6ed0b6460179e67a10b"},
 ]
 
 [[package]]

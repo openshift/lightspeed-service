@@ -61,6 +61,7 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
         llm_params: The optional LLM parameters.
 
     Raises:
+        LLMConfigurationError: If the whole provider configuration is missing.
         UnsupportedProviderError: If the provider is not supported (implemented).
         UnknownProviderError: If the provider is not known.
         ModelConfigMissingError: If the model configuration is missing.
@@ -76,6 +77,8 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
     """
     config_manager = ConfigManager()
     providers_config = config_manager.get_config().llm_providers
+    if providers_config is None:
+        raise LLMConfigurationError("Providers configuration missing in olsconfig.yaml")
     llm_providers_reg = LLMProvidersRegistry
 
     provider_config = _resolve_provider_config(provider, model, providers_config)

@@ -894,11 +894,9 @@ def test_valid_config_without_query_filter():
     config_manager = ConfigManager()
     config_manager.set_query_redactor(None)
     config_manager.init_empty_config()
-    config_manager = ConfigManager()
     config_manager.init_config("tests/config/valid_config_without_query_filter.yaml")
     assert config_manager.get_query_redactor() is None
     print(config_manager.query_redactor)
-    config_manager = ConfigManager()
     config_manager.init_query_filter()
     assert config_manager.get_query_redactor().regex_filters == []
 
@@ -907,9 +905,7 @@ def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
     config_manager = ConfigManager()
     config_manager.set_query_redactor(None)
-    config_manager = ConfigManager()
     config_manager.init_config("tests/config/valid_config_with_query_filter.yaml")
-    config_manager = ConfigManager()
     config_manager.init_query_filter()
     assert config_manager.get_query_redactor().regex_filters == [
         RegexFilter(
