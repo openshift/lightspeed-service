@@ -67,7 +67,7 @@ class DocsSummarizer(QueryHelper):
         logger.debug(f"{conversation_id} call settings: {settings_string}")
 
         token_handler = TokenHandler()
-        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
+        bare_llm = self.llm_loader(self.provider, self.model, self.generic_llm_params)
 
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)

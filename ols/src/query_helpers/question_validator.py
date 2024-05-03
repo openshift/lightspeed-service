@@ -7,7 +7,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 from ols.app.metrics import TokenMetricUpdater
-from ols.constants import SUBJECT_REJECTED
+from ols.constants import SUBJECT_REJECTED, GenericLLMParameters
 from ols.src.prompts.prompts import QUESTION_VALIDATOR_PROMPT_TEMPLATE
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils import config
@@ -21,9 +21,8 @@ class QuestionValidator(QueryHelper):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the QuestionValidator."""
-        # TODO: OLS-447 Refactor code that pass parameters into LLM in QuestionValidator
-        llm_params = {"max_new_tokens": 4}
-        super().__init__(*args, **dict(kwargs, llm_params=llm_params))
+        generic_llm_params = {GenericLLMParameters.MAX_NEW_TOKENS: 4}
+        super().__init__(*args, **dict(kwargs, generic_llm_params=generic_llm_params))
 
     def validate_question(
         self, conversation_id: str, query: str, verbose: bool = False
@@ -51,7 +50,7 @@ class QuestionValidator(QueryHelper):
             QUESTION_VALIDATOR_PROMPT_TEMPLATE
         )
 
-        bare_llm = self.llm_loader(self.provider, self.model, self.llm_params)
+        bare_llm = self.llm_loader(self.provider, self.model, self.generic_llm_params)
 
         # we just need to compute prompt length (in tokens) and check
         # if it's in context window limit

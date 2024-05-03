@@ -5,6 +5,9 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from ibm_watson_machine_learning.metanames import (
+    GenTextParamsMetaNames as GenParams,
+)
 from langchain.llms.base import LLM
 
 from ols.app.models.config import ProviderConfig
@@ -13,6 +16,7 @@ from ols.constants import (
     PROVIDER_BAM,
     PROVIDER_OPENAI,
     PROVIDER_WATSONX,
+    GenericLLMParameters,
 )
 from ols.utils import config
 
@@ -71,14 +75,14 @@ BAMParameters = {
 }
 
 WatsonxParameters = {
-    ProviderParameter("decoding_method", str),
-    ProviderParameter("max_new_tokens", int),
-    ProviderParameter("min_new_tokens", int),
-    ProviderParameter("random_seed", int),
-    ProviderParameter("top_k", int),
-    ProviderParameter("top_p", float),
-    ProviderParameter("repetition_penalty", float),
-    ProviderParameter("temperature", float),
+    ProviderParameter(GenParams.DECODING_METHOD, str),
+    ProviderParameter(GenParams.MIN_NEW_TOKENS, int),
+    ProviderParameter(GenParams.MAX_NEW_TOKENS, int),
+    ProviderParameter(GenParams.RANDOM_SEED, int),
+    ProviderParameter(GenParams.TOP_K, int),
+    ProviderParameter(GenParams.TOP_P, float),
+    ProviderParameter(GenParams.TEMPERATURE, float),
+    ProviderParameter(GenParams.REPETITION_PENALTY, float),
 }
 
 # available parameters for all supported LLM providers
@@ -87,6 +91,32 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_OPENAI: OpenAIParameters,
     PROVIDER_BAM: BAMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
+}
+
+# Generic to Azure OpenAI parameters mapping
+AzureOpenAIParametersMapping: dict[str, str] = {}
+
+# Generic to OpenAI parameters mapping
+OpenAIParametersMapping: dict[str, str] = {}
+
+# Generic to BAM parameters mapping
+BAMParametersMapping: dict[str, str] = {}
+
+# Generic to Watsonx parameters mapping
+WatsonxParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MIN_NEW_TOKENS: GenParams.MIN_NEW_TOKENS,
+    GenericLLMParameters.MAX_NEW_TOKENS: GenParams.MAX_NEW_TOKENS,
+    GenericLLMParameters.TOP_K: GenParams.TOP_K,
+    GenericLLMParameters.TOP_P: GenParams.TOP_P,
+    GenericLLMParameters.TEMPERATURE: GenParams.TEMPERATURE,
+}
+
+# mapping between generic parameters and LLM-specific parameters
+generic_to_llm_parameters: dict[str, dict[str, str]] = {
+    PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
+    PROVIDER_OPENAI: OpenAIParametersMapping,
+    PROVIDER_BAM: BAMParametersMapping,
+    PROVIDER_WATSONX: WatsonxParametersMapping,
 }
 
 
@@ -117,12 +147,48 @@ class LLMProvider(AbstractLLMProvider):
         Args:
             model: The model name.
             provider_config: The provider configuration.
-            params: The optional LLM parameters.
+            params: The optional parameters that will be converted into LLM specific ones.
         """
         self.model = model
         self.provider_config = provider_config
         params = self._override_params(params or {})
+        params = self._remap_to_llm_params(params)
         self.params = self._validate_parameters(params)
+
+    def _remap_to_llm_params(
+        self, generic_llm_params: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Remap generic parameters into LLM specific ones."""
+        if self.provider_config is None:
+            logger.warning("Provider is not set. Parameters mapping won't proceed.")
+            return generic_llm_params
+
+        provider = self.provider_config.type
+
+        if provider is None:
+            logger.warning(
+                "Provider type is not set. Parameters mapping won't proceed."
+            )
+            return generic_llm_params
+
+        if provider not in generic_to_llm_parameters:
+            logger.warning(f"Mappings for provider {provider} are not defined.")
+            return generic_llm_params
+
+        # retrieve mapping
+        mapping = generic_to_llm_parameters[provider]
+
+        llm_parameters = {}
+
+        # map parameters
+        for key, value in generic_llm_params.items():
+            if key in mapping:
+                new_key = mapping[key]
+                llm_parameters[new_key] = value
+            else:
+                llm_parameters[key] = value
+
+        return llm_parameters
 
     def _validate_parameters(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate parameters for LLM provider."""

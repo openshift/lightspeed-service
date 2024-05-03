@@ -52,13 +52,15 @@ def _resolve_provider_config(
     return provider_config  # type: ignore [return-value]
 
 
-def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LLM:
+def load_llm(
+    provider: str, model: str, generic_llm_params: Optional[dict] = None
+) -> LLM:
     """Load LLM according to input provider and model.
 
     Args:
         provider: The provider name.
         model: The model name.
-        llm_params: The optional LLM parameters.
+        generic_llm_params: The optional parameters that will be converted into LLM-specific ones.
 
     Raises:
         LLMConfigurationError: If the whole provider configuration is missing.
@@ -69,9 +71,10 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
     Example:
         ```python
         # using the class and overriding specific parameters
-        llm_params = {'temperature': 0.02, 'top_p': 0.95}
+        generic_llm_params = {'temperature': 0.02, 'top_p': 0.95}
 
-        bare_llm = load_llm(provider="openai", model="gpt-3.5-turbo", llm_params=llm_params).llm
+        bare_llm = load_llm(provider="openai", model="gpt-3.5-turbo",
+                            generic_llm_params=generic_llm_params).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
         ```
     """
@@ -89,4 +92,4 @@ def load_llm(provider: str, model: str, llm_params: Optional[dict] = None) -> LL
     logger.debug(f"loading LLM '{model}' from '{provider}'")
 
     llm_provider = llm_providers_reg.llm_providers[provider_config.type]
-    return llm_provider(model, provider_config, llm_params or {}).load()
+    return llm_provider(model, provider_config, generic_llm_params or {}).load()

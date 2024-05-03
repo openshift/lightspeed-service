@@ -14,7 +14,7 @@ def test_defaults_used():
     assert qh.provider == config.ols_config.default_provider
     assert qh.model == config.ols_config.default_model
     assert qh.llm_loader is load_llm
-    assert qh.llm_params == {}
+    assert qh.generic_llm_params == {}
 
 
 def test_inputs_are_used():
