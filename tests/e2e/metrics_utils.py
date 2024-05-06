@@ -1,7 +1,5 @@
 """Utilities for reading and checking metrics from REST API."""
 
-from typing import Optional
-
 import requests
 
 from tests.e2e.constants import BASIC_ENDPOINTS_TIMEOUT
@@ -70,7 +68,7 @@ def get_all_metric_counters(response, metric_name) -> list[float]:
     return [float(line[1 + line.rindex(" ") :]) for line in lines]
 
 
-def get_metric_labels(lines, info_node_name, value=None) -> Optional[dict]:
+def get_metric_labels(lines, info_node_name, value=None) -> dict:
     """Get labels associated with a metric string as printed from /metrics."""
     prefix = info_node_name
 
@@ -91,7 +89,7 @@ def get_metric_labels(lines, info_node_name, value=None) -> Optional[dict]:
             return attrs
 
     # info node was not found
-    return None
+    return {}
 
 
 def get_enabled_model_and_provider(client):
