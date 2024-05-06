@@ -25,19 +25,6 @@ function wait_for_ols() {
   return 1
 }
 
-# collect logs + state from openshift-lightspeed namespace
-function must_gather() {
-  mkdir -p $ARTIFACT_DIR/$1/cluster
-  oc get all -n openshift-lightspeed -o yaml > $ARTIFACT_DIR/$1/cluster/resources.yaml
-  mkdir -p $ARTIFACT_DIR/$1/cluster/podlogs
-  for podname in `oc get pods -o jsonpath="{.items[].metadata.name}"`; do
-    echo "dumping pod $podname"
-    for containername in `oc get pod $podname -o jsonpath="{.spec.containers[*].name}"`; do
-      oc logs pod/$podname -c $containername > $ARTIFACT_DIR/$1/cluster/podlogs/${podname}-${containername}.log
-    done
-  done
-}
-
 # no arguments
 function cleanup_ols() {
     # Deletes may fail if this is the first time running against
@@ -119,20 +106,19 @@ function run_suite() {
     echo "Timed out waiting for OLS to become available"
     echo "${JUNIT_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
 
-    must_gather $1
+    ARTIFACT_DIR=$ARTIFACT_DIR SUITE_ID=$1 python tests/scripts/must_gather.py
     return 1
   fi
 
   # run response evaluation when env variable is set,
   # otherwise run e2e tests.
   if [ -z ${RESPONSE_EVALUATION:-} ]; then  
-    SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 make test-e2e
+    SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
   else
     export SCENARIO="${SCENARIO:-with_rag}"
     PROVIDER=$3 MODEL=$8 SCENARIO=$SCENARIO make response-sanity-check
   fi
 
   local rc=$?
-  must_gather $1
   return $rc
 }
