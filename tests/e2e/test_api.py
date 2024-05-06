@@ -28,6 +28,7 @@ from tests.e2e.constants import (
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
+from tests.scripts.must_gather import must_gather
 from tests.scripts.validate_response import ResponseValidation
 
 from .postgres_utils import (
@@ -85,8 +86,8 @@ def setup_module(module):
 
 def teardown_module(module):
     """Clean up the environment after all tests are executed."""
-    # TODO: OLS-506 Move the program logic to gather cluster artifacts from utils.sh into e2e module
-    pass
+    if on_cluster:
+        must_gather()
 
 
 @pytest.fixture(scope="module")

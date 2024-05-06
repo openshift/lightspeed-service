@@ -14,6 +14,19 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     )
 
 
+def run_oc_and_store_stdout(
+    args: list[str], stdout_file: str
+) -> subprocess.CompletedProcess:
+    """Run a command in the OpenShift cluster and store the stdout in a file."""
+    try:
+        result = run_oc(args)
+        assert result.returncode == 0
+        with open(stdout_file, "w") as fout:
+            fout.write(result.stdout)
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error running oc command") from e
+
+
 def create_user(name: str) -> None:
     """Create a service account user for testing."""
     try:
@@ -74,20 +87,51 @@ def get_ols_url(route_name: str) -> str:
         raise Exception("Error getting route hostname") from e
 
 
-def get_single_existing_pod_name() -> str:
-    """Return name of the single pod that is in the cluster."""
+def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
+    """Get the names of all pods in the cluster."""
     try:
         result = run_oc(
             [
                 "get",
                 "pods",
+                "-n",
+                namespace,
                 "-o",
                 "jsonpath='{.items[*].metadata.name}'",
             ]
         )
-        return result.stdout.strip("'")
+        return result.stdout.strip("'").split()
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting pods") from e
+
+
+def get_single_existing_pod_name(namespace: str = "openshift-lightspeed") -> str:
+    """Return name of the single pod that is in the cluster."""
+    try:
+        result = get_pods(namespace)
+        assert len(result) == 1
+        return result[0]
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting pod name") from e
+
+
+def get_pod_containers(pod, namespace: str = "openshift-lightspeed") -> list[str]:
+    """Get the names of all containers in the pod."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "-n",
+                namespace,
+                "pod",
+                pod,
+                "-o",
+                "jsonpath='{.spec.containers[*].name}'",
+            ]
+        )
+        return result.stdout.strip("'").split()
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Error getting containers of pod {pod}") from e
 
 
 def list_path(pod_name: str, path: str) -> list[str]:
