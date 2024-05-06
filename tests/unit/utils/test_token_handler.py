@@ -29,6 +29,10 @@ class MockRetrievedNode:
         """Mock score."""
         return self._score
 
+    def get_score(self, **kwargs) -> float:
+        """Mock method to retrieve score."""
+        return self.score
+
     @property
     def metadata(self) -> dict[str, Any]:
         """Mock metadata."""

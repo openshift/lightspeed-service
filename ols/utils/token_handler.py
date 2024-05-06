@@ -125,7 +125,7 @@ class TokenHandler:
 
         for node in retrieved_nodes:
 
-            score = float(node.score)
+            score = float(node.get_score(raise_error=False))
             if score > RAG_SIMILARITY_CUTOFF_L2:
                 # L2 distance is checked here, lower score is better.
                 logger.debug(
