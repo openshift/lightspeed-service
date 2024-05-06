@@ -118,9 +118,9 @@ RAG_SIMILARITY_CUTOFF_L2 = 1.4
 
 
 # cache constants
-IN_MEMORY_CACHE = "memory"
+CACHE_TYPE_MEMORY = "memory"
 IN_MEMORY_CACHE_MAX_ENTRIES = 1000
-REDIS_CACHE = "redis"
+CACHE_TYPE_REDIS = "redis"
 REDIS_CACHE_HOST = "lightspeed-redis-server.openshift-lightspeed.svc"
 REDIS_CACHE_PORT = 6379
 REDIS_CACHE_MAX_MEMORY = "1024mb"
@@ -129,7 +129,7 @@ REDIS_CACHE_MAX_MEMORY_POLICIES = frozenset({"allkeys-lru", "volatile-lru"})
 REDIS_RETRY_ON_ERROR = True
 REDIS_RETRY_ON_TIMEOUT = True
 REDIS_NUMBER_OF_RETRIES = 3
-POSTGRES_CACHE = "postgres"
+CACHE_TYPE_POSTGRES = "postgres"
 POSTGRES_CACHE_HOST = "localhost"
 POSTGRES_CACHE_PORT = 5432
 POSTGRES_CACHE_DBNAME = "cache"

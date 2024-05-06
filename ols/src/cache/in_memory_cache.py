@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from langchain_core.messages.base import BaseMessage
 
-    from ols.app.models.config import MemoryConfig
+    from ols.app.models.config import InMemoryCacheConfig
 from ols.src.cache.cache import Cache
 
 
@@ -19,7 +19,7 @@ class InMemoryCache(Cache):
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls: type[InMemoryCache], config: MemoryConfig) -> InMemoryCache:
+    def __new__(cls: type[InMemoryCache], config: InMemoryCacheConfig) -> InMemoryCache:
         """Implement Singleton pattern with thread safety."""
         with cls._lock:
             if not cls._instance:
@@ -27,7 +27,7 @@ class InMemoryCache(Cache):
                 cls._instance.initialize_cache(config)
         return cls._instance
 
-    def initialize_cache(self, config: MemoryConfig) -> None:
+    def initialize_cache(self, config: InMemoryCacheConfig) -> None:
         """Initialize the InMemoryCache."""
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()

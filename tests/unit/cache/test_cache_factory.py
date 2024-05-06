@@ -20,8 +20,8 @@ def in_memory_cache_config():
     """Fixture containing initialized instance of ConversationCacheConfig."""
     return ConversationCacheConfig(
         {
-            "type": constants.IN_MEMORY_CACHE,
-            constants.IN_MEMORY_CACHE: {"max_entries": 10},
+            "type": constants.CACHE_TYPE_MEMORY,
+            constants.CACHE_TYPE_MEMORY: {"max_entries": 10},
         }
     )
 
@@ -31,8 +31,8 @@ def redis_cache_config():
     """Fixture containing initialized instance of ConversationCacheConfig."""
     return ConversationCacheConfig(
         {
-            "type": constants.REDIS_CACHE,
-            constants.REDIS_CACHE: {"host": "localhost", "port": 6379},
+            "type": constants.CACHE_TYPE_REDIS,
+            constants.CACHE_TYPE_REDIS: {"host": "localhost", "port": 6379},
         }
     )
 
@@ -42,8 +42,8 @@ def postgres_cache_config():
     """Fixture containing initialized instance of ConversationCacheConfig."""
     return ConversationCacheConfig(
         {
-            "type": constants.POSTGRES_CACHE,
-            constants.POSTGRES_CACHE: {"host": "localhost", "port": 5432},
+            "type": constants.CACHE_TYPE_POSTGRES,
+            constants.CACHE_TYPE_POSTGRES: {"host": "localhost", "port": 5432},
         }
     )
 
