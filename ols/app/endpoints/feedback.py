@@ -128,7 +128,7 @@ def store_user_feedback(
 
     user_id = retrieve_user_id(auth)
     try:
-        store_feedback(user_id, feedback_request.model_dump(exclude=["model_config"]))
+        store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
     except Exception as e:
         logger.error(f"Error storing user feedback: {e}")
         raise HTTPException(
