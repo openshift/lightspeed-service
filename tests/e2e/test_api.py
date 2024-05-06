@@ -6,6 +6,7 @@ import pickle
 import re
 import sys
 import time
+from typing import Optional
 
 import pytest
 import requests
@@ -744,6 +745,7 @@ def test_feedback_can_post_with_wrong_token():
 @pytest.mark.cluster()
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
+    pod_name: Optional[str] = None
     try:
         feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
         pod_name = cluster_utils.get_single_existing_pod_name()
@@ -783,11 +785,12 @@ def test_feedback_storing_cluster():
         assert feedback_data["sentiment"] == 1
 
     finally:
-        # ensure script is enabled again after test (succesfull or not)
-        cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-        assert "disable_collector" not in cluster_utils.list_path(
-            pod_name, OLS_USER_DATA_PATH
-        )
+        if pod_name is not None:
+            # ensure script is enabled again after test (succesfull or not)
+            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
+            assert "disable_collector" not in cluster_utils.list_path(
+                pod_name, OLS_USER_DATA_PATH
+            )
 
 
 def check_missing_field_response(response, field_name):
@@ -885,6 +888,7 @@ def test_feedback_improper_conversation_id():
 @pytest.mark.cluster()
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
+    pod_name: Optional[str] = None
     try:
         transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
         pod_name = cluster_utils.get_single_existing_pod_name()
@@ -923,11 +927,12 @@ def test_transcripts_storing_cluster():
         assert transcript["referenced_documents"][0]["title"]
         assert "truncated" in transcript
     finally:
-        # ensure script is enabled again after test (succesfull or not)
-        cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-        assert "disable_collector" not in cluster_utils.list_path(
-            pod_name, OLS_USER_DATA_PATH
-        )
+        if pod_name is not None:
+            # ensure script is enabled again after test (succesfull or not)
+            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
+            assert "disable_collector" not in cluster_utils.list_path(
+                pod_name, OLS_USER_DATA_PATH
+            )
 
 
 def test_openapi_endpoint():
