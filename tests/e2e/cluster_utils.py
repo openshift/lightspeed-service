@@ -119,15 +119,17 @@ def remove_dir(pod_name: str, directory: str) -> None:
 
 def get_single_existing_transcript(pod_name: str, transcripts_path: str) -> dict:
     """Return the content of the single transcript that is in the cluster."""
-    user_id = list_path(pod_name, transcripts_path)
-    assert len(user_id) == 1
-    user_id = user_id[0]
-    conv_id = list_path(pod_name, transcripts_path + "/" + user_id)
-    assert len(conv_id) == 1
-    conv_id = conv_id[0]
-    transcript = list_path(pod_name, transcripts_path + "/" + user_id + "/" + conv_id)
-    assert len(transcript) == 1
-    transcript = transcript[0]
+    user_id_list = list_path(pod_name, transcripts_path)
+    assert len(user_id_list) == 1
+    user_id = user_id_list[0]
+    conv_id_list = list_path(pod_name, transcripts_path + "/" + user_id)
+    assert len(conv_id_list) == 1
+    conv_id = conv_id_list[0]
+    transcript_list = list_path(
+        pod_name, transcripts_path + "/" + user_id + "/" + conv_id
+    )
+    assert len(transcript_list) == 1
+    transcript = transcript_list[0]
 
     full_path = f"{transcripts_path}/{user_id}/{conv_id}/{transcript}"
 
