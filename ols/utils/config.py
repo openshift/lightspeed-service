@@ -1,77 +1,51 @@
 """Configuration loader."""
 
+import os
 import traceback
 from io import TextIOBase
 
 import yaml
 
 import ols.app.models.config as config_model
-from ols.src.cache.cache_factory import CacheFactory
 from ols.src.rag_index.index_loader import IndexLoader
 from ols.utils.query_filter import QueryFilter
 
-config = None
-ols_config = None
-llm_config = None
-dev_config = None
-conversation_cache = None
-query_redactor = None
-rag_index = None
 
-
-def init_empty_config() -> None:
+def load_empty_config() -> None:
     """Initialize empty configuration."""
-    global config
-    global ols_config
-    global llm_config
-    global dev_config
-    config = config_model.Config()
-    ols_config = config_model.OLSConfig()
-    llm_config = config_model.LLMProviders()
-    dev_config = config_model.DevConfig()
+    return config_model.Config()
 
 
 def load_config_from_stream(stream: TextIOBase) -> config_model.Config:
     """Load configuration from a YAML stream."""
     data = yaml.safe_load(stream)
-    c = config_model.Config(data)
-    c.validate_yaml()
-    return c
+    loaded_config = config_model.Config(data)
+    loaded_config.validate_yaml()
+    return loaded_config
 
 
-def init_config(config_file: str) -> None:
+def load_config(config_file: str) -> None:
     """Load configuration from a YAML file."""
-    global config
-    global ols_config
-    global llm_config
-    global dev_config
-    global conversation_cache
-
     try:
         with open(config_file, "r", encoding="utf-8") as f:
-            config = load_config_from_stream(f)
-            ols_config = config.ols_config
-            llm_config = config.llm_providers
-            dev_config = config.dev_config
-
-            conversation_cache = CacheFactory.conversation_cache(
-                ols_config.conversation_cache
-            )
+            return load_config_from_stream(f)
     except Exception as e:
         print(f"Failed to load config file {config_file}: {e!s}")
         print(traceback.format_exc())
         raise
 
 
+# TODO: move to ols_config or resolve as singleton
 def init_query_filter() -> None:
     """Initialize question filter."""
-    # TODO: OLS-380 Config object mirrors configuration
-    global query_redactor
-    query_redactor = QueryFilter()
+    return QueryFilter()
 
 
-def init_vector_index() -> None:
+def init_vector_index(ols_config) -> None:
     """Initialize vector index."""
-    # TODO: OLS-380 Config object mirrors configuration
-    global rag_index
-    rag_index = IndexLoader(ols_config.reference_content).vector_index
+    return IndexLoader(ols_config.reference_content).vector_index
+
+
+# this is the config that should be used in the code
+cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+config = load_config(cfg_file)

@@ -25,8 +25,9 @@ from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.query_helpers.chat_history import ChatHistory
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.utils import config, suid
+from ols.utils import suid
 from ols.utils.auth_dependency import AuthDependency
+from ols.utils.config import config
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
 
@@ -153,7 +154,7 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[BaseM
     try:
         previous_input: list[BaseMessage] = []
         if llm_request.conversation_id:
-            cache_content = config.conversation_cache.get(
+            cache_content = config.ols_config.conversation_cache.get(
                 user_id, llm_request.conversation_id
             )
             if cache_content is not None:
@@ -224,12 +225,12 @@ def store_conversation_history(
 ) -> None:
     """Store conversation history into selected cache."""
     try:
-        if config.conversation_cache is not None:
+        if config.ols_config.conversation_cache is not None:
             logger.info(f"{conversation_id} Storing conversation history.")
             chat_message_history = ChatHistory.get_chat_message_history(
                 llm_request.query, response or ""
             )
-            config.conversation_cache.insert_or_append(
+            config.ols_config.conversation_cache.insert_or_append(
                 user_id,
                 conversation_id,
                 chat_message_history,
