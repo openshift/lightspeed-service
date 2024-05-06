@@ -175,7 +175,6 @@ def generate_summary(
 async def questions_eval(
     start_time,
     similarity,
-    service_context,
     index,
     full_results,
     total_correctness_score,
@@ -184,10 +183,9 @@ async def questions_eval(
 ):
     """Evaluate questions."""
     print("*** start evaluation")
-    faithfulness = FaithfulnessEvaluator(service_context=service_context)
-    relevancy = RelevancyEvaluator(service_context=service_context)
+    faithfulness = FaithfulnessEvaluator()
+    relevancy = RelevancyEvaluator()
     correctness = CorrectnessEvaluator(
-        service_context=service_context,
         score_threshold=2.0,
         parser_function=eval_parser,
     )
@@ -202,9 +200,7 @@ async def questions_eval(
     )
 
     eval_results = await runner.aevaluate_queries(
-        index.as_query_engine(
-            similarity_top_k=similarity, service_context=service_context
-        ),
+        index.as_query_engine(similarity_top_k=similarity),
         queries=eval_questions,
     )
 
@@ -220,9 +216,7 @@ async def questions_eval(
 
     # correctness
 
-    engine = index.as_query_engine(
-        similarity_top_k=similarity, service_context=service_context
-    )
+    engine = index.as_query_engine(similarity_top_k=similarity)
     res_table = []
 
     for query in eval_questions:
