@@ -23,6 +23,7 @@ def run_oc_and_store_stdout(
         assert result.returncode == 0
         with open(stdout_file, "w") as fout:
             fout.write(result.stdout)
+        return result
     except subprocess.CalledProcessError as e:
         raise Exception("Error running oc command") from e
 
