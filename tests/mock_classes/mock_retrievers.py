@@ -3,7 +3,8 @@
 from langchain_core.documents import Document
 
 from tests import constants
-from tests.unit.utils.test_token_handler import MockRetrievedNode
+
+from .mock_retrieved_node import MockRetrievedNode
 
 
 class MockRetriever:
