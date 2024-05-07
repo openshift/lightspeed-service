@@ -1,7 +1,6 @@
 """Unit test for the token handler."""
 
 from math import ceil
-from typing import Any
 from unittest import TestCase, mock
 
 import pytest
@@ -9,34 +8,7 @@ import pytest
 from ols.app.models.config import ModelConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
-
-
-class MockRetrievedNode:
-    """Class to create mock data for retrieved node."""
-
-    def __init__(self, node_detail: dict):
-        """Initialize the class instance."""
-        self._text = node_detail["text"]
-        self._score = node_detail["score"]
-        self._metadata = node_detail["metadata"]
-
-    def get_text(self) -> str:
-        """Mock get_text."""
-        return self._text
-
-    @property
-    def score(self) -> float:
-        """Mock score."""
-        return self._score
-
-    def get_score(self, **kwargs) -> float:
-        """Mock method to retrieve score."""
-        return self.score
-
-    @property
-    def metadata(self) -> dict[str, Any]:
-        """Mock metadata."""
-        return self._metadata
+from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
 
 
 class TestTokenHandler(TestCase):
