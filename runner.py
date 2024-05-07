@@ -58,7 +58,7 @@ if __name__ == "__main__":
     config.init_query_filter()
     config.init_vector_index()
 
-    host = "localhost" if config.dev_config.run_on_localhost else None
+    host = "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa S104
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
     # use workers=1 so config loaded can be accessed from other modules
