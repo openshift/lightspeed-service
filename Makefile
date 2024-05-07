@@ -4,7 +4,7 @@
 .PHONY: test test-unit test-e2e images run format verify
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
-TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),not cluster)
+TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
