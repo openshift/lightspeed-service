@@ -1,5 +1,6 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -241,6 +242,7 @@ def test_unsupported_model_in_post(_setup):
 
 def test_post_question_improper_conversation_id(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with improper conversation ID."""
+    assert config.dev_config is not None
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
     with patch(
@@ -268,8 +270,10 @@ def test_post_question_improper_conversation_id(_setup) -> None:
 
 def test_post_question_on_noyaml_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method when call is success."""
+    assert config.ols_config is not None
+    assert config.dev_config is not None
     config.ols_config.reference_content = ReferenceContent(None)
-    config.ols_config.reference_content.product_docs_index_path = "./invalid_dir"
+    config.ols_config.reference_content.product_docs_index_path = Path("./invalid_dir")
     config.ols_config.reference_content.product_docs_index_id = "product"
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
@@ -343,6 +347,8 @@ def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
 
 def test_post_query_with_query_filters_response_type(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with query filters."""
+    assert config.ols_config is not None
+    assert config.dev_config is not None
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
     config.ols_config.user_data_collection = UserDataCollection(
@@ -394,6 +400,8 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
 
 def test_post_query_for_conversation_history(_setup) -> None:
     """Check the REST API /v1/query with same conversation_id for conversation history."""
+    assert config.ols_config is not None
+    assert config.dev_config is not None
     config.dev_config.disable_auth = True
     answer = constants.SUBJECT_ALLOWED
     config.ols_config.user_data_collection = UserDataCollection(
