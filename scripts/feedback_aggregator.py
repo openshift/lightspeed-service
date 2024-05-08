@@ -38,6 +38,8 @@ options:
   -r REGION, --region REGION
                         Ceph region
   -p, --ping            Perform check if Ceph bucket is accessible
+  -i IGNORE, --ignore IGNORE
+                        Cluster IDs to ignore during processing
   -k, --keep            Keep downloaded files on disk
   -s, --skip-downloading
                         Skip downloading, generate CSV from existing files
@@ -142,6 +144,14 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         default=False,
         action="store_true",
         help="Perform check if Ceph bucket is accessible",
+    )
+    parser.add_argument(
+        "-i",
+        "--ignore",
+        # cluster UUID used by CCX monitoring infrastructure
+        default="00000000-1111-0000-1111-000000000001",
+        help="Cluster IDs to ignore during processing splited by comma: "
+        + "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
     )
     parser.add_argument(
         "-k",
@@ -297,6 +307,15 @@ def construct_filename(key: str) -> str:
     return f"{cluster_id}_{year}_{month}_{day}_{hour}_{minute}_{second}.tar.gz"
 
 
+def get_cluster_name(key: str) -> str:
+    """Retrieve cluster name from object key."""
+    groups = key_match(key)
+    if groups is None:
+        raise Exception(f"Can not construct filename from key {key}")
+
+    return groups[1].lower()
+
+
 def download_tarball(client, bucket_name: str, obj) -> None:
     """Download one tarball from Ceph."""
     try:
@@ -318,6 +337,7 @@ def download_tarball(client, bucket_name: str, obj) -> None:
 
 def download_tarballs(args: argparse.Namespace) -> None:
     """Download all tarballs from Ceph."""
+    ignored_clusters = args.ignore.split(",")
     client = connect(args)
     bucket_name = args.bucket
     try:
@@ -325,7 +345,9 @@ def download_tarballs(args: argparse.Namespace) -> None:
         logger.debug(response)
         if "Contents" in response:
             for obj in response["Contents"]:
-                download_tarball(client, bucket_name, obj)
+                cluster_name = get_cluster_name(obj["Key"])
+                if cluster_name not in ignored_clusters:
+                    download_tarball(client, bucket_name, obj)
         else:
             logger.warning(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
