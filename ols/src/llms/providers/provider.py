@@ -123,7 +123,8 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
 class AbstractLLMProvider(abc.ABC):
     """Abstract class defining `LLMProvider` interface."""
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def default_params(self) -> dict:
         """Defaults LLM params.
 
