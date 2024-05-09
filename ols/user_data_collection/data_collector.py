@@ -43,8 +43,7 @@ INGRESS_MAX_RETRIES = 3  # exponential backoff parameter
 CP_OFFLINE_TOKEN = os.environ.get("CP_OFFLINE_TOKEN")
 REDHAT_SSO_TIMEOUT = 5  # seconds
 
-# TODO: OLS-473
-# OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MB
+OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MB
 USER_AGENT = "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
 
 if INGRESS_ENV == "stage" and not CP_OFFLINE_TOKEN:
@@ -307,23 +306,84 @@ def delete_data(file_paths: list[pathlib.Path]) -> None:
             logger.error(f"failed to remove '{file_path}'")
 
 
+def chunk_data(
+    data: list[pathlib.Path], chunk_max_size: int = OLS_USER_DATA_MAX_SIZE
+) -> list[list[pathlib.Path]]:
+    """Chunk the data into smaller parts.
+
+    Args:
+        data: List of paths to the files to be chunked.
+        chunk_max_size: Maximum size of a chunk.
+
+    Returns:
+        List of lists of paths to the chunked files.
+    """
+    # if file is bigger than OLS_USER_DATA_MAX_SIZE, it will be in a
+    # chunk by itself
+    chunk_size = 0
+    chunks: list = []
+    chunk: list = []
+    for file in data:
+        file_size = file.stat().st_size
+        if chunk_max_size < chunk_size + file_size or file_size > chunk_max_size:
+            if chunk:
+                chunks.append(chunk)
+            chunk = []
+            chunk_size = 0
+        chunk.append(file)
+        chunk_size += file_size
+    chunks.append(chunk)
+    return chunks
+
+
 def gather_ols_user_data(data_path: str) -> None:
     """Gather OLS user data and upload it to the Ingress service."""
     collected_files = collect_ols_data_from(data_path)
-    if collected_files:
-        logger.info(f"collected {len(collected_files)} files from '{data_path}'")
+    data_chunks = chunk_data(collected_files)
+    if any(data_chunks):
+        logger.info(
+            f"collected {len(collected_files)} files (splitted to "
+            f"{len(data_chunks)} chunks) from '{data_path}'"
+        )
         logger.debug(f"collected files: {collected_files}")
-        tarball = package_files_into_tarball(collected_files, path_to_strip=data_path)
-        try:
-            upload_data_to_ingress(tarball)
-            delete_data(collected_files)
-            logger.info("uploaded data removed")
-        except (ClusterPullSecretNotFoundError, ClusterIDNotFoundError) as e:
-            logger.error(f"{e.__class__.__name__} - upload and data removal canceled")
-        # TODO: OLS-473
-        # ensure_data_folder_is_not_bigger_than(OLS_USER_DATA_MAX_SIZE)
+        for i, data_chunk in enumerate(data_chunks):
+            logger.info(f"uploading data chunk {i + 1}/{len(data_chunks)}")
+            tarball = package_files_into_tarball(data_chunk, path_to_strip=data_path)
+            try:
+                upload_data_to_ingress(tarball)
+                delete_data(data_chunk)
+                logger.info("uploaded data removed")
+            except (ClusterPullSecretNotFoundError, ClusterIDNotFoundError) as e:
+                logger.error(
+                    f"{e.__class__.__name__} - upload and data removal canceled"
+                )
     else:
         logger.info(f"'{data_path}' contains no data, nothing to do...")
+
+
+def ensure_data_dir_is_not_bigger_than_defined(
+    data_dir: str = OLS_USER_DATA_PATH, max_size: int = OLS_USER_DATA_MAX_SIZE
+) -> None:
+    """Ensure that the data dir is not bigger than it should be.
+
+    Args:
+        data_dir: Path to the directory to be checked.
+        max_size: Maximum size of the directory.
+    """
+    collected_files = collect_ols_data_from(data_dir)
+    data_size = sum(file.stat().st_size for file in collected_files)
+    if data_size > max_size:
+        logger.error(
+            f"data folder size is bigger than the maximum allowed size: "
+            f"{data_size} > {max_size}"
+        )
+        logger.info("removing files to fit the data into the limit...")
+        extra_size = data_size - max_size
+        for file in collected_files:
+            extra_size -= file.stat().st_size
+            delete_data([file])
+            if extra_size < 0:
+                break
 
 
 # NOTE: This condition is here mainly to have a way how to influence
@@ -347,6 +407,7 @@ if __name__ == "__main__":
     while True:
         if not disabled_by_file():
             gather_ols_user_data(OLS_USER_DATA_PATH)
+            ensure_data_dir_is_not_bigger_than_defined()
         else:
             logger.info("disabled by control file, skipping data collection")
         time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL)
