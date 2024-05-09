@@ -56,7 +56,7 @@ async def rest_api_counter(
     return response
 
 
-def _log_headers(headers: Headers, to_redact: set[str]) -> str:
+def _log_headers(headers: Headers, to_redact: frozenset[str]) -> str:
     """Serialize headers into a string while redacting sensitive values."""
     pairs = []
     for h, v in headers.items():
