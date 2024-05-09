@@ -10,10 +10,10 @@ from ols.app.models.config import (
     AuthenticationConfig,
     Config,
     ConversationCacheConfig,
+    InMemoryCacheConfig,
     InvalidConfigurationError,
     LLMProviders,
     LoggingConfig,
-    MemoryConfig,
     ModelConfig,
     OLSConfig,
     PostgresConfig,
@@ -1004,14 +1004,14 @@ def test_redis_config_equality():
 
 def test_memory_cache_config():
     """Test the MemoryCacheConfig model."""
-    memory_cache_config = MemoryConfig(
+    memory_cache_config = InMemoryCacheConfig(
         {
             "max_entries": 100,
         }
     )
     assert memory_cache_config.max_entries == 100
 
-    memory_cache_config = MemoryConfig()
+    memory_cache_config = InMemoryCacheConfig()
     assert memory_cache_config.max_entries is None
 
 
@@ -1021,7 +1021,7 @@ def test_memory_cache_config_improper_entries():
         InvalidConfigurationError,
         match="invalid max_entries for memory conversation cache",
     ):
-        MemoryConfig(
+        InMemoryCacheConfig(
             {
                 "max_entries": -100,
             }
@@ -1030,8 +1030,8 @@ def test_memory_cache_config_improper_entries():
 
 def test_memory_config_equality():
     """Test the MemoryConfig equality check."""
-    memory_config_1 = MemoryConfig()
-    memory_config_2 = MemoryConfig()
+    memory_config_1 = InMemoryCacheConfig()
+    memory_config_2 = InMemoryCacheConfig()
 
     # compare the same memory configs
     assert memory_config_1 == memory_config_2

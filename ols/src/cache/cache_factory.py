@@ -19,15 +19,15 @@ class CacheFactory:
             An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
         """
         match config.type:
-            case constants.REDIS_CACHE:
+            case constants.CACHE_TYPE_REDIS:
                 return RedisCache(config.redis)
-            case constants.IN_MEMORY_CACHE:
+            case constants.CACHE_TYPE_MEMORY:
                 return InMemoryCache(config.memory)
-            case constants.POSTGRES_CACHE:
+            case constants.CACHE_TYPE_POSTGRES:
                 return PostgresCache(config.postgres)
             case _:
                 raise ValueError(
                     f"Invalid cache type: {config.type}. "
-                    f"Use '{constants.REDIS_CACHE}', '{constants.POSTGRES_CACHE}' or "
-                    f"'{constants.IN_MEMORY_CACHE}' options."
+                    f"Use '{constants.CACHE_TYPE_REDIS}', '{constants.CACHE_TYPE_POSTGRES}' or "
+                    f"'{constants.CACHE_TYPE_MEMORY}' options."
                 )

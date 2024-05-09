@@ -426,7 +426,7 @@ class RedisConfig(BaseModel):
             )
 
 
-class MemoryConfig(BaseModel):
+class InMemoryCacheConfig(BaseModel):
     """In-memory cache configuration."""
 
     max_entries: Optional[int] = None
@@ -451,7 +451,7 @@ class MemoryConfig(BaseModel):
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
-        if isinstance(other, MemoryConfig):
+        if isinstance(other, InMemoryCacheConfig):
             return self.max_entries == other.max_entries
         return False
 
@@ -511,7 +511,7 @@ class ConversationCacheConfig(BaseModel):
 
     type: Optional[str] = None
     redis: Optional[RedisConfig] = None
-    memory: Optional[MemoryConfig] = None
+    memory: Optional[InMemoryCacheConfig] = None
     postgres: Optional[PostgresConfig] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -522,27 +522,31 @@ class ConversationCacheConfig(BaseModel):
         self.type = data.get("type", None)
         if self.type is not None:
             match self.type:
-                case constants.REDIS_CACHE:
-                    if constants.REDIS_CACHE not in data:
+                case constants.CACHE_TYPE_REDIS:
+                    if constants.CACHE_TYPE_REDIS not in data:
                         raise InvalidConfigurationError(
                             "redis conversation cache type is specified,"
                             " but redis configuration is missing"
                         )
-                    self.redis = RedisConfig(data.get(constants.REDIS_CACHE))
-                case constants.IN_MEMORY_CACHE:
-                    if constants.IN_MEMORY_CACHE not in data:
+                    self.redis = RedisConfig(data.get(constants.CACHE_TYPE_REDIS))
+                case constants.CACHE_TYPE_MEMORY:
+                    if constants.CACHE_TYPE_MEMORY not in data:
                         raise InvalidConfigurationError(
                             "memory conversation cache type is specified,"
                             " but memory configuration is missing"
                         )
-                    self.memory = MemoryConfig(data.get(constants.IN_MEMORY_CACHE))
-                case constants.POSTGRES_CACHE:
-                    if constants.POSTGRES_CACHE not in data:
+                    self.memory = InMemoryCacheConfig(
+                        data.get(constants.CACHE_TYPE_MEMORY)
+                    )
+                case constants.CACHE_TYPE_POSTGRES:
+                    if constants.CACHE_TYPE_POSTGRES not in data:
                         raise InvalidConfigurationError(
                             "Postgres conversation cache type is specified,"
                             " but Postgres configuration is missing"
                         )
-                    self.postgres = PostgresConfig(**data.get(constants.POSTGRES_CACHE))
+                    self.postgres = PostgresConfig(
+                        **data.get(constants.CACHE_TYPE_POSTGRES)
+                    )
                 case _:
                     raise InvalidConfigurationError(
                         f"unknown conversation cache type: {self.type}"
@@ -565,11 +569,11 @@ class ConversationCacheConfig(BaseModel):
             raise InvalidConfigurationError("missing conversation cache type")
         # cache type is specified, we can decide which cache configuration to validate
         match self.type:
-            case constants.REDIS_CACHE:
+            case constants.CACHE_TYPE_REDIS:
                 self.redis.validate_yaml()
-            case constants.IN_MEMORY_CACHE:
+            case constants.CACHE_TYPE_MEMORY:
                 self.memory.validate_yaml()
-            case constants.POSTGRES_CACHE:
+            case constants.CACHE_TYPE_POSTGRES:
                 pass  # it is validated by Pydantic already
             case _:
                 raise InvalidConfigurationError(
