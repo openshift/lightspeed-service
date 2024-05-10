@@ -620,7 +620,8 @@
                                 "title": "Operator Lifecycle Manager concepts and resources"
                             }
                         ],
-                        "response": "Operator Lifecycle Manager (OLM) helps users install..."
+                        "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                        "truncated": false
                     }
                 ]
             },

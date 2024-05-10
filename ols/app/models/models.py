@@ -116,6 +116,7 @@ class LLMResponse(BaseModel):
                             "title": "Operator Lifecycle Manager concepts and resources",
                         },
                     ],
+                    "truncated": False,
                 }
             ]
         }
