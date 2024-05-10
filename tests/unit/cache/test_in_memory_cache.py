@@ -50,10 +50,9 @@ def test_insert_or_append_existing_key(cache):
     expected_cache = [
         HumanMessage(content="user_message1"),
         AIMessage(content="ai_response1"),
+        HumanMessage(content="user_message2"),
+        AIMessage(content="ai_response2"),
     ]
-    expected_cache.extend(
-        [HumanMessage(content="user_message2"), AIMessage(content="ai_response2")]
-    )
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
 
 
