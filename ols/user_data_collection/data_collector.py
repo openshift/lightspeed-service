@@ -43,7 +43,7 @@ INGRESS_MAX_RETRIES = 3  # exponential backoff parameter
 CP_OFFLINE_TOKEN = os.environ.get("CP_OFFLINE_TOKEN")
 REDHAT_SSO_TIMEOUT = 5  # seconds
 
-OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MB
+OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MiB
 USER_AGENT = "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
 
 if INGRESS_ENV == "stage" and not CP_OFFLINE_TOKEN:
@@ -332,7 +332,8 @@ def chunk_data(
             chunk_size = 0
         chunk.append(file)
         chunk_size += file_size
-    chunks.append(chunk)
+    if chunk:
+        chunks.append(chunk)
     return chunks
 
 
