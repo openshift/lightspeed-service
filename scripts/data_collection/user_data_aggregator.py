@@ -2,24 +2,24 @@
 
 """Script to download feedbacks from Ceph bucket and create CSV file with consolidated report.
 
-usage: feedback_aggregator.py [-h] [-e ENDPOINT] [-b BUCKET]
-                              [--access-key ACCESS_KEY] [--secret-access-key SECRET_ACCESS_KEY]
-                              [-r REGION] [-p] [-k KEEP]
-                              [-s] [-d] [-l] [-o OUTPUT] [-w WORK_DIRECTORY] [-t] [-v]
+usage: user_data_aggregator.py [-h] [-e ENDPOINT] [-b BUCKET]
+                               [--access-key ACCESS_KEY] [--secret-access-key SECRET_ACCESS_KEY]
+                               [-r REGION] [-p] [-k KEEP]
+                               [-s] [-d] [-l] [-o OUTPUT] [-w WORK_DIRECTORY] [-t] [-v]
 
 
 Typical use cases:
 ~~~~~~~~~~~~~~~~~~
     Test if Ceph bucket is accessible:
-        ./feedback_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -p
+        ./user_data_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -p
     List all objects stored in Ceph bucket:
-        ./feedback_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -l
+        ./user_data_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -l
     Download tarballs, aggregate feedback, and cleanup tarballs:
-        ./feedback_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET
+        ./user_data_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET
     Download tarballs, aggregate feedback, without cleanup:
-        ./feedback_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -k
+        ./user_data_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -k
     Download tarballs only:
-        ./feedback_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -d
+        ./user_data_aggregator.py -e URL --access-key=KEY --secret-access-key=KEY --bucket=BUCKET -d
 
 
 All CLI options:
