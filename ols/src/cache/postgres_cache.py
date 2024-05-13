@@ -121,7 +121,6 @@ class PostgresCache(Cache):
             except psycopg2.DatabaseError as e:
                 logger.error(f"PostgresCache.get {e}")
                 raise CacheError("PostgresCache.get", e)
-            return None
 
     def insert_or_append(
         self, user_id: str, conversation_id: str, value: list[BaseMessage]
