@@ -60,6 +60,8 @@ def eval_parser(eval_response: str):
     eval_len = len(eval_response_parsed)
 
     match eval_len:
+        # TODO: OLS-606 Incorrect value is returned from eval_parser when the
+        #               response contains no data or just one line
         case 0:
             return 0, eval_response_parsed
         case 1:
