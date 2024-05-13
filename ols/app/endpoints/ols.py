@@ -216,6 +216,16 @@ def generate_response(
         )
 
 
+def human_msg(content: str) -> dict:
+    """Create a human message dictionary."""
+    return {"type": "human", "content": content}
+
+
+def ai_msg(content: str) -> dict:
+    """Create an AI message dictionary."""
+    return {"type": "ai", "content": content}
+
+
 def store_conversation_history(
     user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
 ) -> None:
@@ -233,8 +243,8 @@ def store_conversation_history(
         if config.conversation_cache is not None:
             logger.info(f"{conversation_id} Storing conversation history.")
             chat_message_history = [
-                {"type": "human", "content": llm_request.query},
-                {"type": "ai", "content": response or ""},
+                human_msg(llm_request.query),
+                ai_msg(response or ""),
             ]
             config.conversation_cache.insert_or_append(
                 user_id,

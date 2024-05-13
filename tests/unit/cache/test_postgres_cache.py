@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, call, patch
 import psycopg2
 import pytest
 
+from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import PostgresConfig
 from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
@@ -80,10 +81,10 @@ def test_get_operation_invalid_value(mock_connect):
 def test_get_operation_valid_value(mock_connect):
     """Test the Cache.get operation when valid value is returned from cache."""
     history = [
-        {"type": "human", "content": "first message from human"},
-        {"type": "ai", "content": "first answer from AI"},
-        {"type": "human", "content": "second message from human"},
-        {"type": "ai", "content": "second answer from AI"},
+        human_msg("first message from human"),
+        ai_msg("first answer from AI"),
+        human_msg("second message from human"),
+        ai_msg("second answer from AI"),
     ]
 
     conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
@@ -130,10 +131,10 @@ def test_get_operation_on_exception(mock_connect):
 def test_insert_or_append_operation_first_item(mock_connect):
     """Test the Cache.insert_or_append operation for first item to be inserted."""
     history = [
-        {"type": "human", "content": "first message from human"},
-        {"type": "ai", "content": "first answer from AI"},
-        {"type": "human", "content": "second message from human"},
-        {"type": "ai", "content": "second answer from AI"},
+        human_msg("first message from human"),
+        ai_msg("first answer from AI"),
+        human_msg("second message from human"),
+        ai_msg("second answer from AI"),
     ]
 
     conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
@@ -170,15 +171,15 @@ def test_insert_or_append_operation_first_item(mock_connect):
 def test_insert_or_append_operation_append_item(mock_connect):
     """Test the Cache.insert_or_append operation for more item to be inserted."""
     stored_history = [
-        {"type": "human", "content": "first message from human"},
-        {"type": "ai", "content": "first answer from AI"},
+        human_msg("first message from human"),
+        ai_msg("first answer from AI"),
     ]
 
     old_conversation = pickle.dumps(stored_history, protocol=pickle.HIGHEST_PROTOCOL)
 
     appended_history = [
-        {"type": "human", "content": "second message from human"},
-        {"type": "ai", "content": "second answer from AI"},
+        human_msg("first message from human"),
+        ai_msg("first answer from AI"),
     ]
 
     # create pickled object in the exactly same format
@@ -217,10 +218,10 @@ def test_insert_or_append_operation_append_item(mock_connect):
 def test_insert_or_append_operation_on_exception(mock_connect):
     """Test the Cache.insert_or_append operation when exception is thrown."""
     history = [
-        {"type": "human", "content": "first message from human"},
-        {"type": "ai", "content": "first answer from AI"},
-        {"type": "human", "content": "second message from human"},
-        {"type": "ai", "content": "second answer from AI"},
+        human_msg("first message from human"),
+        ai_msg("first answer from AI"),
+        human_msg("second message from human"),
+        ai_msg("second answer from AI"),
     ]
 
     # mock the query result

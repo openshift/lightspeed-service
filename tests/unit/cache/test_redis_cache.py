@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from ols import constants
+from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
 from ols.utils import suid
@@ -26,8 +27,8 @@ def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) is None
     conversation = [
-        {"type": "human", "content": "user_message"},
-        {"type": "ai", "content": "ai_response"},
+        human_msg("user_message"),
+        ai_msg("ai_response"),
     ]
 
     cache.insert_or_append(
@@ -46,12 +47,12 @@ def test_insert_or_append_existing_key(cache):
     user_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert cache.get(user_uuid, conversation_id) is None
     first_message = [
-        {"type": "human", "content": "user_message1"},
-        {"type": "ai", "content": "ai_response1"},
+        human_msg("user_message1"),
+        ai_msg("ai_response1"),
     ]
     second_message = [
-        {"type": "human", "content": "user_message2"},
-        {"type": "ai", "content": "ai_response2"},
+        human_msg("user_message2"),
+        ai_msg("ai_response2"),
     ]
     cache.insert_or_append(user_uuid, conversation_id, first_message)
     cache.insert_or_append(user_uuid, conversation_id, second_message)

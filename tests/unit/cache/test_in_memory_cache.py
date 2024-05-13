@@ -3,6 +3,7 @@
 import pytest
 
 from ols import constants
+from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import InMemoryCacheConfig
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
@@ -22,8 +23,8 @@ def cache():
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
     conversation = [
-        {"type": "human", "content": "user_message"},
-        {"type": "ai", "content": "ai_response"},
+        human_msg("user_message"),
+        ai_msg("ai_response"),
     ]
 
     cache.insert_or_append(
@@ -41,23 +42,23 @@ def test_insert_or_append_existing_key(cache):
         constants.DEFAULT_USER_UID,
         conversation_id,
         [
-            {"type": "human", "content": "user_message1"},
-            {"type": "ai", "content": "ai_response1"},
+            human_msg("user_message1"),
+            ai_msg("ai_response1"),
         ],
     )
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
         [
-            {"type": "human", "content": "user_message2"},
-            {"type": "ai", "content": "ai_response2"},
+            human_msg("user_message2"),
+            ai_msg("ai_response2"),
         ],
     )
     expected_cache = [
-        {"type": "human", "content": "user_message1"},
-        {"type": "ai", "content": "ai_response1"},
-        {"type": "human", "content": "user_message2"},
-        {"type": "ai", "content": "ai_response2"},
+        human_msg("user_message1"),
+        ai_msg("ai_response1"),
+        human_msg("user_message2"),
+        ai_msg("ai_response2"),
     ]
 
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
@@ -77,8 +78,8 @@ def test_insert_or_append_overflow(cache):
             user,
             conversation_id,
             [
-                {"type": "human", "content": value},
-                {"type": "ai", "content": "ai_response"},
+                human_msg(value),
+                ai_msg("ai_response"),
             ],
         )
 
@@ -86,8 +87,8 @@ def test_insert_or_append_overflow(cache):
     assert cache.get(f"{user_name_prefix}0", conversation_id) is None
     # Ensure the newest entry is still present
     expected_result = [
-        {"type": "human", "content": f"value{capacity}"},
-        {"type": "ai", "content": "ai_response"},
+        human_msg(f"value{capacity}"),
+        ai_msg("ai_response"),
     ]
     assert (
         cache.get(f"{user_name_prefix}{capacity}", conversation_id) == expected_result

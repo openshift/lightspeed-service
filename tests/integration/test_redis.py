@@ -2,6 +2,7 @@
 
 import pytest
 
+from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
 
@@ -41,8 +42,8 @@ def test_conversation_in_redis():
 
     # insert some conversation
     conversation = [
-        {"type": "human", "content": "First human message"},
-        {"type": "ai", "content": "First AI response"},
+        human_msg("First human message"),
+        ai_msg("First AI response"),
     ]
     redis_cache.insert_or_append(user_id, conversation_id, conversation)
 
@@ -55,8 +56,8 @@ def test_conversation_in_redis():
 
     # append more conversation
     conversation2 = [
-        {"type": "human", "content": "Second human message"},
-        {"type": "ai", "content": "Second AI response"},
+        human_msg("Second human message"),
+        ai_msg("Second AI response"),
     ]
     redis_cache.insert_or_append(user_id, conversation_id, conversation2)
 
