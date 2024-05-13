@@ -88,3 +88,32 @@ An example:
 ```
 python download_ols_archive.py archives/compressed/b6/b6cf044a-4870-4a8c-a849-1b0016cc8171/202404/25/185345.tar.gz
 ```
+
+## `delete_ols_archive.py`
+
+### Description
+
+Delete OLS archive specified by its key from Ceph bucket. Usually the object
+contains a tarball with conversation history and/or user feedback.
+
+### Usage
+
+Four environment variables should be set before running the script:
+
+- `ENDPOINT_URL` - Ceph endpoint URL
+- `AWS_ACCESS_KEY` - access key for user or service
+- `AWS_SECRET_ACCESS_KEY` - secret access key for user or service
+- `BUCKET` - bucket name, for example QA-OLS-ARCHIVES or PROD-OLS-ARCHIVES
+
+Run:
+
+```
+python delete_ols_archive.py key
+```
+
+An example:
+
+```
+python delete_ols_archive.py archives/compressed/b6/b6cf044a-4870-4a8c-a849-1b0016cc8171/202404/25/185345.tar.gz
+```
+
