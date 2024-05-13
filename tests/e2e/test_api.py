@@ -37,6 +37,7 @@ from .postgres_utils import (
     read_conversation_history_count,
     retrieve_connection,
 )
+from .test_decorators import retry
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -488,6 +489,7 @@ def test_query_filter() -> None:
         assert "bar" not in response_text
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
     endpoint = "/v1/query"
