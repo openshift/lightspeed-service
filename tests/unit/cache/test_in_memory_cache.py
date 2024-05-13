@@ -1,12 +1,10 @@
 """Unit tests for InMemoryCache class."""
 
 import pytest
-from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
 from ols.app.models.config import InMemoryCacheConfig
 from ols.src.cache.in_memory_cache import InMemoryCache
-from ols.src.query_helpers.chat_history import ChatHistory
 from ols.utils import suid
 
 conversation_id = suid.get_suid()
@@ -23,16 +21,18 @@ def cache():
 
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
+    conversation = [
+        {"type": "human", "content": "user_message"},
+        {"type": "ai", "content": "ai_response"},
+    ]
+
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        ChatHistory.get_chat_message_history("user_message", "ai_response"),
+        conversation,
     )
-    expected_cache = [
-        HumanMessage(content="user_message"),
-        AIMessage(content="ai_response"),
-    ]
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
+
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == conversation
 
 
 def test_insert_or_append_existing_key(cache):
@@ -40,20 +40,26 @@ def test_insert_or_append_existing_key(cache):
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        ChatHistory.get_chat_message_history("user_message1", "ai_response1"),
+        [
+            {"type": "human", "content": "user_message1"},
+            {"type": "ai", "content": "ai_response1"},
+        ],
     )
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        ChatHistory.get_chat_message_history("user_message2", "ai_response2"),
+        [
+            {"type": "human", "content": "user_message2"},
+            {"type": "ai", "content": "ai_response2"},
+        ],
     )
     expected_cache = [
-        HumanMessage(content="user_message1"),
-        AIMessage(content="ai_response1"),
+        {"type": "human", "content": "user_message1"},
+        {"type": "ai", "content": "ai_response1"},
+        {"type": "human", "content": "user_message2"},
+        {"type": "ai", "content": "ai_response2"},
     ]
-    expected_cache.extend(
-        [HumanMessage(content="user_message2"), AIMessage(content="ai_response2")]
-    )
+
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
 
 
@@ -70,15 +76,18 @@ def test_insert_or_append_overflow(cache):
         cache.insert_or_append(
             user,
             conversation_id,
-            ChatHistory.get_chat_message_history(value, "ai_response"),
+            [
+                {"type": "human", "content": value},
+                {"type": "ai", "content": "ai_response"},
+            ],
         )
 
     # Ensure the oldest entry is evicted
     assert cache.get(f"{user_name_prefix}0", conversation_id) is None
     # Ensure the newest entry is still present
     expected_result = [
-        HumanMessage(content=f"value{capacity}"),
-        AIMessage(content="ai_response"),
+        {"type": "human", "content": f"value{capacity}"},
+        {"type": "ai", "content": "ai_response"},
     ]
     assert (
         cache.get(f"{user_name_prefix}{capacity}", conversation_id) == expected_result

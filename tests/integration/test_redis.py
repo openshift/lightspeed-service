@@ -1,7 +1,6 @@
 """Integration tests for real Redis behaviour."""
 
 import pytest
-from langchain.schema import AIMessage, HumanMessage
 
 from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
@@ -42,8 +41,8 @@ def test_conversation_in_redis():
 
     # insert some conversation
     conversation = [
-        HumanMessage(content="First human message"),
-        AIMessage(content="First AI response"),
+        {"type": "human", "content": "First human message"},
+        {"type": "ai", "content": "First AI response"},
     ]
     redis_cache.insert_or_append(user_id, conversation_id, conversation)
 
@@ -56,8 +55,8 @@ def test_conversation_in_redis():
 
     # append more conversation
     conversation2 = [
-        HumanMessage(content="Second human message"),
-        AIMessage(content="Second AI response"),
+        {"type": "human", "content": "Second human message"},
+        {"type": "ai", "content": "Second AI response"},
     ]
     redis_cache.insert_or_append(user_id, conversation_id, conversation2)
 
