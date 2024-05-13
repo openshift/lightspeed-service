@@ -337,7 +337,8 @@ def download_tarball(client, bucket_name: str, obj) -> None:
 
 def download_tarballs(args: argparse.Namespace) -> None:
     """Download all tarballs from Ceph."""
-    ignored_clusters = args.ignore.split(",")
+    # retrieve list of ignored clusters
+    ignored_clusters = set(map(str.strip, args.ignore.split(",")))
     client = connect(args)
     bucket_name = args.bucket
     try:
