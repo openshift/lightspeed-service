@@ -119,6 +119,7 @@ def get_cloud_openshift_pull_secret() -> str:
     """Get the pull secret token from the cluster."""
     kubernetes.config.load_incluster_config()
     v1 = kubernetes.client.CoreV1Api()
+    dockerconfig: Any = None
 
     try:
         secret = v1.read_namespaced_secret("pull-secret", "openshift-config")
