@@ -50,6 +50,17 @@ def mock_ingress_response(*args, **kwargs):
     return mock_response
 
 
+def create_file_with_size(filename, size):
+    """Create a file with a specific size.
+
+    Args:
+        filename: Name of the file to be created.
+        size: Size of the file in bytes.
+    """
+    with open(filename, "wb") as f:
+        f.write(os.urandom(size))
+
+
 def test_collect_ols_data_from(tmp_path):
     """Test the collect_ols_data_from function."""
     with open(tmp_path / "root.json", "w") as f:  # should be ignored
@@ -186,6 +197,48 @@ def test_gather_ols_user_data_full_flow(tmp_path, caplog):
         data_collector.gather_ols_user_data(tmp_path.as_posix())
 
     # assert correct logs and empty dir where data was
-    assert "collected 1 files from" in caplog.text
+    assert "collected 1 files (splitted to 1 chunks)" in caplog.text
     assert "uploaded data removed" in caplog.text
     assert len(list(feedback_dir.iterdir())) == 0
+
+
+def test_chunk_data(tmpdir):
+    """Test the chunk_data function."""
+    files = [pathlib.Path(f"{tmpdir.strpath}/{i}.json") for i in range(3)]
+    for file in files:
+        create_file_with_size(file.as_posix(), 20)
+
+    # file bigger than chunk size - file per chunk
+    chunks = data_collector.chunk_data(files, 19)
+    assert chunks == [[files[0]], [files[1]], [files[2]]]
+
+    # file equal to chunk size - file per chunk
+    chunks = data_collector.chunk_data(files, 20)
+    assert chunks == [[files[0]], [files[1]], [files[2]]]
+
+    # file smaller than chunk size, but chunk smaller than two files
+    chunks = data_collector.chunk_data(files, 25)
+    assert chunks == [[files[0]], [files[1]], [files[2]]]
+
+    # bigger chunk - two files fit in a chunk
+    chunks = data_collector.chunk_data(files, 45)
+    assert chunks == [[files[0], files[1]], [files[2]]]
+
+    # bigger chunk - everything fits into one
+    chunks = data_collector.chunk_data(files, 100)
+    assert chunks == [[files[0], files[1], files[2]]]
+
+
+def test_ensure_data_is_not_bigger_than_defined(tmpdir):
+    """Test the ensure_data_is_not_bigger_than_defined function."""
+    feedback_dir = tmpdir / "feedback"
+    feedback_dir.mkdir()
+    files = [pathlib.Path(f"{feedback_dir.strpath}/{i}.json") for i in range(3)]
+    for file in files:
+        create_file_with_size(file.as_posix(), 20)
+
+    assert len(feedback_dir.listdir()) == 3
+
+    data_collector.ensure_data_dir_is_not_bigger_than_defined(tmpdir.strpath, 50)
+
+    assert len(feedback_dir.listdir()) == 2

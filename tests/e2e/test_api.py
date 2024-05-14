@@ -1129,7 +1129,7 @@ def test_user_data_collection():
         pod_name, data_collection_container_name
     )
     logs = filter_logs(container_log, last_log_line)
-    assert "collected 1 files from" in logs
+    assert "collected 1 files (splitted to 1 chunks) from" in logs
     assert "data uploaded with request_id:" in logs
     assert "uploaded data removed" in logs
     assert "data upload failed with response:" not in logs
