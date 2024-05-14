@@ -23,8 +23,8 @@ class K8sClientSingleton:
 
     _instance = None
     _api_client = None
-    _authn_api: kubernetes.client.AuthenticationV1Api = None
-    _authz_api: kubernetes.client.AuthorizationV1Api = None
+    _authn_api: kubernetes.client.AuthenticationV1Api
+    _authz_api: kubernetes.client.AuthorizationV1Api
 
     def __new__(cls: type[Self]) -> Self:
         """Create a new instance of the singleton, or returns the existing instance.
