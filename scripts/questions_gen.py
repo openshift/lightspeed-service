@@ -245,6 +245,9 @@ async def questions_eval(
         res_row["passing"] = result.passing
         res_row["feedback"] = result.feedback
         res_row["score"] = result.score
+
+        # TODO: OLS-619 Evaluation model can return `None` instead of score, so
+        #               it is not possible to convert the value w/o checks
         total_correctness_score.append(float(result.score))
         res_table.append(res_row)
         results["correctness"] = res_table
