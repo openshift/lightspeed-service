@@ -4,8 +4,24 @@ import time
 from functools import wraps
 
 
-def retry(max_attempts=3, wait_between_runs=5):
-    """Construct decorator that allows to retry running selected test."""
+def retry(
+    max_attempts=3,
+    wait_between_runs=5,
+    on_error=AssertionError,
+    expected_error_message="",
+):
+    """Construct decorator that allows to retry running selected test.
+
+    Args:
+        max_attempts: how many times the test will be rerun in case of failure
+        wait_between_runs: time duration between consecutive test runs
+        on_error: expected error type (other errors will mark test failure immediatelly)
+        expected_error_message: text that must be contained in error message
+                                (if not, the test failure will be mark immediatelly)
+
+    Returns:
+        decorated test function
+    """
 
     def retry_test_decorator(test_function):
         @wraps(test_function)
@@ -17,9 +33,16 @@ def retry(max_attempts=3, wait_between_runs=5):
                     # try to run the test
                     return test_function(*args, **kwargs)
 
-                except AssertionError as e:
+                except Exception as e:
+                    if type(e) != on_error:
+                        raise e
+
                     # retrieve error message
-                    error_message, _ = e.__str__().split("\n")
+                    error_message = e.__str__().split("\n")[0]
+
+                    if expected_error_message not in error_message:
+                        raise e
+
                     print(
                         f'Retry error: "{test_function.__name__}": {error_message}. '
                         f"[{retry_count}/{max_attempts - 1}] "
