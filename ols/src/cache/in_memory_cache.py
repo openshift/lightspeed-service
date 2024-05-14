@@ -7,8 +7,6 @@ from collections import deque
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from langchain_core.messages.base import BaseMessage
-
     from ols.app.models.config import InMemoryCacheConfig
 from ols.src.cache.cache import Cache
 
@@ -31,9 +29,9 @@ class InMemoryCache(Cache):
         """Initialize the InMemoryCache."""
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()
-        self.cache: dict[str, list[BaseMessage]] = {}
+        self.cache: dict[str, list[dict]] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
         """Get the value associated with the given key.
 
         Args:
@@ -53,7 +51,7 @@ class InMemoryCache(Cache):
         return self.cache[key].copy()
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+        self, user_id: str, conversation_id: str, value: list[dict]
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 

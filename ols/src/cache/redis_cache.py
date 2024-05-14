@@ -5,7 +5,6 @@ import threading
 from typing import Any, Optional
 
 import redis
-from langchain_core.messages.base import BaseMessage
 from redis.backoff import ExponentialBackoff
 from redis.exceptions import (
     BusyLoadingError,
@@ -68,7 +67,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
         """Get the value associated with the given key.
 
         Args:
@@ -86,7 +85,7 @@ class RedisCache(Cache):
         return pickle.loads(value, errors="strict")  # noqa S301
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+        self, user_id: str, conversation_id: str, value: list[dict]
     ) -> None:
         """Set the value associated with the given key.
 

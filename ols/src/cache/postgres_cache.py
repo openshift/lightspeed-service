@@ -5,7 +5,6 @@ import pickle
 from typing import Any, Optional
 
 import psycopg2
-from langchain_core.messages.base import BaseMessage
 
 from ols.app.models.config import PostgresConfig
 from ols.src.cache.cache import Cache
@@ -105,7 +104,7 @@ class PostgresCache(Cache):
         cur.close()
         self.conn.commit()
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[BaseMessage]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
         """Get the value associated with the given key.
 
         Args:
@@ -123,7 +122,7 @@ class PostgresCache(Cache):
                 raise CacheError("PostgresCache.get", e)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[BaseMessage]
+        self, user_id: str, conversation_id: str, value: list[dict]
     ) -> None:
         """Set the value associated with the given key.
 

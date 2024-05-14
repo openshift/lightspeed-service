@@ -3,12 +3,11 @@
 from unittest.mock import patch
 
 import pytest
-from langchain.schema import AIMessage, HumanMessage
 
 from ols import constants
+from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import RedisConfig
 from ols.src.cache.redis_cache import RedisCache
-from ols.src.query_helpers.chat_history import ChatHistory
 from ols.utils import suid
 from tests.mock_classes.mock_redis_client import MockRedisClient
 
@@ -27,16 +26,18 @@ def cache():
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) is None
+    conversation = [
+        human_msg("user_message"),
+        ai_msg("ai_response"),
+    ]
+
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        ChatHistory.get_chat_message_history("user_message", "ai_response"),
+        conversation,
     )
-    expected_cache = [
-        HumanMessage(content="user_message"),
-        AIMessage(content="ai_response"),
-    ]
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
+
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == conversation
 
 
 def test_insert_or_append_existing_key(cache):
@@ -45,12 +46,14 @@ def test_insert_or_append_existing_key(cache):
     # this UUID is different from DEFAULT_USER_UID
     user_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert cache.get(user_uuid, conversation_id) is None
-    first_message = ChatHistory.get_chat_message_history(
-        "user_message1", "ai_response1"
-    )
-    second_message = ChatHistory.get_chat_message_history(
-        "user_message2", "ai_response2"
-    )
+    first_message = [
+        human_msg("user_message1"),
+        ai_msg("ai_response1"),
+    ]
+    second_message = [
+        human_msg("user_message2"),
+        ai_msg("ai_response2"),
+    ]
     cache.insert_or_append(user_uuid, conversation_id, first_message)
     cache.insert_or_append(user_uuid, conversation_id, second_message)
     first_message.extend(second_message)
