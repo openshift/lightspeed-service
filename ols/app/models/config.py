@@ -366,8 +366,8 @@ class RedisConfig(BaseModel):
             return
         self.host = data.get("host", constants.REDIS_CACHE_HOST)
 
+        yaml_port = data.get("port", constants.REDIS_CACHE_PORT)
         try:
-            yaml_port = data.get("port", constants.REDIS_CACHE_PORT)
             self.port = int(yaml_port)
             if not (0 < self.port < 65536):
                 raise ValueError
