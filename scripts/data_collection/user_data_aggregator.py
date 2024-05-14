@@ -68,6 +68,7 @@ import re
 import sys
 import tarfile
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Optional
 
 import boto3
@@ -443,6 +444,12 @@ def read_full_conversation_history(
     return output
 
 
+def format_timestamp(text: str) -> str:
+    """Format the timestamp into human readable format."""
+    timestamp = datetime.strptime(text, "%Y_%m_%d_%H_%M_%S")
+    return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+
 def aggregate_user_feedback_from_files(
     filewriter,
     directory_name: str,
@@ -457,12 +464,14 @@ def aggregate_user_feedback_from_files(
         filename = os.fsdecode(file)
         if filename.endswith(".tar.gz"):
             cluster_id = filename[:36]
+            timestamp = format_timestamp(filename[37:56])
             logger.info(f"Processing tarball {filename}")
             feedbacks = feedbacks_from_tarball(filename)
             for feedback in feedbacks:
                 user_id = feedback["user_id"]
                 conversation_id = feedback["conversation_id"]
                 rows = [
+                    timestamp,
                     cluster_id,
                     user_id,
                     conversation_id,
@@ -497,6 +506,7 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         )
         # column headers written as first row in CSV file
         column_headers = [
+            "Timestamp",
             "Cluster ID",
             "User ID",
             "Conversation ID",
