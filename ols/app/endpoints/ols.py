@@ -234,7 +234,7 @@ def store_conversation_history(
     History is stored as simple dictionaries in the following format:
     ```python
         [
-            {"type": "human/ai", "content"},
+            {"type": "human/ai", "content": "..."},
             ...
         ]
     ```
