@@ -11,9 +11,9 @@ from pydantic import AnyHttpUrl, BaseModel, FilePath, PositiveInt, model_validat
 from ols import constants
 
 
-def _is_valid_http_url(url: str) -> bool:
+def _is_valid_http_url(url: AnyHttpUrl) -> bool:
     """Check is a string is a well-formed http or https URL."""
-    result = urlparse(url)
+    result = urlparse(str(url))
     return all([result.scheme, result.netloc]) and result.scheme in {
         "http",
         "https",
