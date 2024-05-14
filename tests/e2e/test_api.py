@@ -1120,7 +1120,9 @@ def test_user_data_collection():
         timeout=BASIC_ENDPOINTS_TIMEOUT,
     )
     assert response.status_code == requests.codes.ok
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+    # ensure the script have enought time to send the payload before
+    # we pull its logs
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
 
     # check that data was packaged, sent and removed
     container_log = cluster_utils.get_container_log(
