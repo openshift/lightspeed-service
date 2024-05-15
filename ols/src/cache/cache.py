@@ -39,7 +39,7 @@ class Cache(ABC):
         return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
         """Abstract method to retrieve a value from the cache.
 
         Args:
@@ -52,7 +52,7 @@ class Cache(ABC):
 
     @abstractmethod
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict]
+        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
     ) -> None:
         """Abstract method to store a value in the cache.
 

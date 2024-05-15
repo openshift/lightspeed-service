@@ -29,9 +29,9 @@ class InMemoryCache(Cache):
         """Initialize the InMemoryCache."""
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()
-        self.cache: dict[str, list[dict]] = {}
+        self.cache: dict[str, list[dict[str, str]]] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -51,7 +51,7 @@ class InMemoryCache(Cache):
         return self.cache[key].copy()
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict]
+        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 

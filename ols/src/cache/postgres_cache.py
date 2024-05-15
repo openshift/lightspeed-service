@@ -104,7 +104,7 @@ class PostgresCache(Cache):
         cur.close()
         self.conn.commit()
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -122,7 +122,7 @@ class PostgresCache(Cache):
                 raise CacheError("PostgresCache.get", e)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict]
+        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
     ) -> None:
         """Set the value associated with the given key.
 

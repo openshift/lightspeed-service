@@ -146,10 +146,12 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[dict]:
+def retrieve_previous_input(
+    user_id: str, llm_request: LLMRequest
+) -> list[dict[str, str]]:
     """Retrieve previous user input, if exists."""
     try:
-        previous_input: list[dict] = []
+        previous_input: list[dict[str, str]] = []
         if llm_request.conversation_id:
             cache_content = config.conversation_cache.get(
                 user_id, llm_request.conversation_id
@@ -174,7 +176,7 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[dict]
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    previous_input: list[dict],
+    previous_input: list[dict[str, str]],
 ) -> tuple[str, list[ReferencedDocument], bool]:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
@@ -216,12 +218,12 @@ def generate_response(
         )
 
 
-def human_msg(content: str) -> dict:
+def human_msg(content: str) -> dict[str, str]:
     """Create a human message dictionary."""
     return {"type": "human", "content": content}
 
 
-def ai_msg(content: str) -> dict:
+def ai_msg(content: str) -> dict[str, str]:
     """Create an AI message dictionary."""
     return {"type": "ai", "content": content}
 
