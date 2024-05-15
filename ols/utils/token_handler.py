@@ -11,7 +11,7 @@ from ols.app.models.config import ModelConfig
 from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
     MINIMUM_CONTEXT_TOKEN_LIMIT,
-    RAG_SIMILARITY_CUTOFF_L2,
+    RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
 )
 
@@ -126,11 +126,10 @@ class TokenHandler:
         for node in retrieved_nodes:
 
             score = float(node.get_score(raise_error=False))
-            if score > RAG_SIMILARITY_CUTOFF_L2:
-                # L2 distance is checked here, lower score is better.
+            if score < RAG_SIMILARITY_CUTOFF:
                 logger.debug(
                     f"RAG content similarity score: {score} is "
-                    f"more than threshold {RAG_SIMILARITY_CUTOFF_L2}."
+                    f"less than threshold {RAG_SIMILARITY_CUTOFF}."
                 )
                 break
 
