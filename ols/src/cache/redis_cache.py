@@ -67,7 +67,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict]]:
+    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -85,7 +85,7 @@ class RedisCache(Cache):
         return pickle.loads(value, errors="strict")  # noqa S301
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict]
+        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
     ) -> None:
         """Set the value associated with the given key.
 
