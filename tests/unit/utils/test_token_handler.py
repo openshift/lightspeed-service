@@ -19,7 +19,7 @@ class TestTokenHandler(TestCase):
         node_data = [
             {
                 "text": "a text text text text",
-                "score": 0.4,
+                "score": 0.6,
                 "metadata": {"docs_url": "data/doc1.pdf", "title": "Doc1"},
             },
             {
@@ -34,7 +34,7 @@ class TestTokenHandler(TestCase):
             },
             {
                 "text": "d text text text text",
-                "score": 0.6,
+                "score": 0.4,
                 "metadata": {"docs_url": "data/doc4.pdf", "title": "Doc4"},
             },
         ]
@@ -122,7 +122,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == expected_value
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
@@ -141,7 +141,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == 482
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.5)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.6)
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
@@ -155,7 +155,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == 494
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
         context, available_tokens = self._token_handler_obj.truncate_rag_context(
@@ -171,7 +171,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""

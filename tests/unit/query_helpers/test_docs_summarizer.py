@@ -30,7 +30,7 @@ def check_summary_result(summary, question):
     assert not summary["history_truncated"]
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
@@ -43,7 +43,7 @@ def test_summarize_empty_history():
     check_summary_result(summary, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
@@ -56,7 +56,7 @@ def test_summarize_no_history():
     check_summary_result(summary, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
@@ -85,7 +85,7 @@ def test_summarize_history_provided():
         check_summary_result(summary2, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
