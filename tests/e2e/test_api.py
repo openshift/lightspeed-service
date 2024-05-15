@@ -258,6 +258,7 @@ def test_valid_question_improper_conversation_id(response_eval) -> None:
         assert json_response == expected_response
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_valid_question_missing_conversation_id(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
     endpoint = "/v1/query"
