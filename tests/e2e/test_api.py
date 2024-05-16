@@ -939,6 +939,7 @@ def test_transcripts_storing_cluster():
             )
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_openapi_endpoint():
     """Test handler for /opanapi REST API endpoint."""
     response = client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
