@@ -40,10 +40,10 @@ class K8sClientSingleton:
                 if config.ols_config.authentication_config.k8s_cluster_api not in {
                     None,
                     "",
-                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
+                } and config.config.dev_config.k8s_auth_token not in {None, "None", ""}:
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
-                        config.dev_config.k8s_auth_token
+                        config.config.dev_config.k8s_auth_token
                     )
                     configuration.api_key_prefix["authorization"] = "Bearer"
                 else:
@@ -181,7 +181,7 @@ class AuthDependency:
         Raises:
             HTTPException: If authentication fails or the user does not have access.
         """
-        if config.dev_config.disable_auth:
+        if config.config.dev_config.disable_auth:
             logger.warning("Auth checks disabled, skipping")
             # Use constant user ID and user name in case auth. is disabled
             # It will be needed for testing purposes because (for example)

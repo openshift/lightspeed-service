@@ -58,11 +58,15 @@ if __name__ == "__main__":
     config.init_query_filter()
     config.init_vector_index()
 
-    host = "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa S104
+    host = (
+        "localhost"
+        if config.config.dev_config.run_on_localhost
+        else "0.0.0.0"  # noqa: S104
+    )
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
     # use workers=1 so config loaded can be accessed from other modules
-    if config.dev_config.disable_tls:
+    if config.config.dev_config.disable_tls:
         # TLS is disabled, run without SSL configuration
         uvicorn.run(
             "ols.app.main:app",

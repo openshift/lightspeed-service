@@ -24,7 +24,7 @@ app = FastAPI(
 
 logger = logging.getLogger(__name__)
 
-if config.dev_config.enable_dev_ui:
+if config.config.dev_config.enable_dev_ui:
     app = GradioUI().mount_ui(app)
 else:
     logger.info(

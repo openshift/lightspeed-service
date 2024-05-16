@@ -246,10 +246,10 @@ class LLMProvider(AbstractLLMProvider):
         updated_params = {**self.default_params, **params}
 
         # config params overrides everything
-        if config.dev_config.llm_params:
+        if config.config.dev_config.llm_params:
             logger.debug(
-                f"overriding LLM params with debug options {config.dev_config.llm_params}"
+                f"overriding LLM params with debug options {config.config.dev_config.llm_params}"
             )
-            updated_params = {**updated_params, **config.dev_config.llm_params}
+            updated_params = {**updated_params, **config.config.dev_config.llm_params}
 
         return updated_params

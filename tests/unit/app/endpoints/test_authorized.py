@@ -26,15 +26,15 @@ def _setup():
 @pytest.fixture
 def _disabled_auth():
     """Fixture for tests that expect disabled auth."""
-    assert config.dev_config is not None
-    config.dev_config.disable_auth = True
+    assert config.config.dev_config is not None
+    config.config.dev_config.disable_auth = True
 
 
 @pytest.fixture
 def _enabled_auth():
     """Fixture for tests that expect enabled auth."""
-    assert config.dev_config is not None
-    config.dev_config.disable_auth = False
+    assert config.config.dev_config is not None
+    config.config.dev_config.disable_auth = False
 
 
 def test_is_user_authorized_auth_disabled(_setup, _disabled_auth):

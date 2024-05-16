@@ -23,7 +23,7 @@ def _setup():
     from ols.app.main import app
 
     client = TestClient(app)
-    config.dev_config.disable_auth = True
+    config.config.dev_config.disable_auth = True
 
 
 @pytest.fixture

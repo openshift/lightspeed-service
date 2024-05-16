@@ -823,7 +823,7 @@ class Config(BaseModel):
 
     llm_providers: Optional[LLMProviders] = None
     ols_config: Optional[OLSConfig] = None
-    dev_config: Optional[DevConfig] = None
+    dev_config: Optional[DevConfig] = DevConfig()
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
