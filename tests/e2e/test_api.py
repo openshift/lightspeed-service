@@ -119,9 +119,9 @@ def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
     return eval_query, eval_answer
 
 
-def check_content_type(response, content_type):
+def check_content_type(response, content_type, message=""):
     """Check if response content-type is set to defined value."""
-    assert response.headers["content-type"].startswith(content_type)
+    assert response.headers["content-type"].startswith(content_type), message
 
 
 def test_readiness():
@@ -502,13 +502,14 @@ def test_conversation_history() -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
-        assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        debug_msg = "First call to LLM without conversation history has failed"
+        assert response.status_code == requests.codes.ok, debug_msg
+        check_content_type(response, "application/json", debug_msg)
 
         print(vars(response))
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
         # get the conversation id so we can reuse it for the follow up question
         cid = json_response["conversation_id"]
@@ -518,10 +519,14 @@ def test_conversation_history() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
+
+        debug_msg = "Second call to LLM with conversation history has failed"
         assert response.status_code == requests.codes.ok
+        check_content_type(response, "application/json", debug_msg)
+
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
 
 def test_query_with_provider_but_not_model(response_eval) -> None:
