@@ -2,6 +2,7 @@
 
 import json
 from unittest.mock import patch
+from datetime import datetime
 
 import pytest
 
@@ -45,16 +46,19 @@ def test_get_feedback_status(feedback_location):
     assert not feedback.is_feedback_enabled()
 
 
-def test_store_feedback(feedback_location):
+@patch('ols.app.endpoints.feedback.datetime')
+def test_store_feedback(mocked_datetime, feedback_location):
     """Test store_feedback function."""
     user_id = "12345678-abcd-0000-0123-456789abcdef"
     feedback_data = {"testy": "test"}
 
+    mocked_datetime.utcnow = return_value=lambda: datetime(2000, 1, 1, 1, 23, 45)
     with patch("ols.app.endpoints.feedback.get_suid", return_value="fake-uuid"):
         feedback.store_feedback(user_id, feedback_data)
 
     stored_data = load_fake_feedback("fake-uuid")
     assert stored_data == {
         "user_id": "12345678-abcd-0000-0123-456789abcdef",
+        "timestamp": "2000-01-01 01:23:45",
         **feedback_data,
     }
