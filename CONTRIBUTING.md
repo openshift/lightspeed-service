@@ -247,6 +247,7 @@ export TEST_TAGS="not cluster and not rag"
 make test-e2e
 ```
 
+> E2E tests expects app running on http://localhost:8080 or whatever is defined through `OLS_URL` environment variable.
 
 ## Detecting which statements are called in real service
 
