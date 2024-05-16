@@ -964,6 +964,18 @@ def test_openapi_endpoint():
     for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
+    # retrieve pre-generated OpenAPI schema
+    with open("docs/openapi.json") as fin:
+        expected_schema = json.load(fin)
+
+    # remove node that is not included in pre-generated OpenAPI schema
+    del payload["info"]["license"]
+
+    # compare schemas (as dicts)
+    assert (
+        payload == expected_schema
+    ), "OpenAPI schema returned from service does not have expected content."
+
 
 def test_cache_existence(postgres_connection):
     """Test the cache existence."""
