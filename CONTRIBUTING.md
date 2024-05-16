@@ -227,6 +227,27 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
 ```
 
 
+## Tips and hints for developing e2e tests
+
+End to end tests can be run locally, but in this case, some tests that assume they run on cluster needs to be skipped.
+Set the `TEST_TAGS` environment variable before the tests are started:
+
+```
+export TEST_TAGS="not cluster"
+make test-e2e
+```
+
+It is also possible to skip tests marked by different test markers. The
+`TEST_TAGS` need to contain a "pytest mark expression" in this case. For
+example if it is needed to skip tests that assume that RAG is presented,
+do the following:
+
+```
+export TEST_TAGS="not cluster and not rag"
+make test-e2e
+```
+
+
 ## Detecting which statements are called in real service
 
 It is possible to start the service using the following command:
