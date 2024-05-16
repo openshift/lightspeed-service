@@ -2,21 +2,12 @@
 
 import json
 import os
-import pickle
-import re
 import sys
-import time
-from typing import Optional
 
 import pytest
 import requests
 from httpx import Client
 
-from ols.constants import (
-    HTTP_REQUEST_HEADERS_TO_REDACT,
-    INVALID_QUERY_RESP,
-)
-from ols.utils import suid
 from tests.e2e import (
     cluster_utils,
     helper_utils,
@@ -24,20 +15,12 @@ from tests.e2e import (
 )
 from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
-    CONVERSATION_ID,
-    EVAL_THRESHOLD,
-    LLM_REST_API_TIMEOUT,
-    NON_LLM_REST_API_TIMEOUT,
 )
 from tests.scripts.must_gather import must_gather
-from tests.scripts.validate_response import ResponseValidation
 
 from .postgres_utils import (
-    read_conversation_history,
-    read_conversation_history_count,
     retrieve_connection,
 )
-from .test_decorators import retry
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -171,5 +154,10 @@ def test_openapi_endpoint():
 
 
 def test_repeatedly():
+    """Repeatedly call openapi test."""
     for i in range(1000):
+        test_openapi_endpoint()
+        test_readiness()
+        test_openapi_endpoint()
+        test_liveness()
         test_openapi_endpoint()
