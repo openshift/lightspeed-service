@@ -2,7 +2,6 @@
 
 import json
 import os
-import pickle
 import re
 import sys
 import time
@@ -1021,18 +1020,18 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
 
-    # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    # deserialize conversation into list of messages
+    deserialized = json.loads(conversation)  # S301
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 2
+    assert len(deserialized) == 2
 
     # question check
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # trivial check for answer (exact check is done in different tests)
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
     _perform_query(client, cid, response_eval, "eval2")
@@ -1041,23 +1040,23 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     assert conversation is not None
 
     # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    deserialized = pickle.loads(conversation, errors="strict")  # noqa S301
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 4
+    assert len(deserialized) == 4
 
     # first question
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # first answer
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
-    assert "what is openshift virtualization?" in unpickled[2].content
+    assert "what is openshift virtualization?" in deserialized[2].content
 
     # second answer
-    assert "OpenShift" in unpickled[3].content
+    assert "OpenShift" in deserialized[3].content
 
 
 @pytest.mark.cluster()
