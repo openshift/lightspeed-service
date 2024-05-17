@@ -1,7 +1,7 @@
 """Cache that uses Postgres to store cached values."""
 
+import json
 import logging
-import pickle
 from typing import Any, Optional
 
 import psycopg2
@@ -141,14 +141,14 @@ class PostgresCache(Cache):
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps(old_value),
                     )
                 else:
                     PostgresCache._insert(
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps(value),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
@@ -176,7 +176,7 @@ class PostgresCache(Cache):
             raise ValueError("Invalid value read from cache:", value)
 
         # try to deserialize the value
-        return pickle.loads(value[0], errors="strict")  # noqa S301
+        return json.loads(value[0])
 
     @staticmethod
     def _update(

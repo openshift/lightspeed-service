@@ -1,6 +1,6 @@
 """Cache that uses Redis to store cached values."""
 
-import pickle
+import json
 import threading
 from typing import Any, Optional
 
@@ -82,7 +82,7 @@ class RedisCache(Cache):
         value = self.redis_client.get(key)
         if value is None:
             return None
-        return pickle.loads(value, errors="strict")  # noqa S301
+        return json.loads(value)
 
     def insert_or_append(
         self, user_id: str, conversation_id: str, value: list[dict[str, str]]
@@ -104,10 +104,6 @@ class RedisCache(Cache):
             old_value = self.get(user_id, conversation_id)
             if old_value:
                 old_value.extend(value)
-                self.redis_client.set(
-                    key, pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+                self.redis_client.set(key, json.dumps(old_value))
             else:
-                self.redis_client.set(
-                    key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+                self.redis_client.set(key, json.dumps(value))

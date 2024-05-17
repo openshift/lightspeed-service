@@ -1,6 +1,6 @@
 """Unit tests for PostgresCache class."""
 
-import pickle
+import json
 from unittest.mock import MagicMock, call, patch
 
 import psycopg2
@@ -87,7 +87,7 @@ def test_get_operation_valid_value(mock_connect):
         ai_msg("second answer from AI"),
     ]
 
-    conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
+    conversation = json.dumps(history)
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -99,7 +99,7 @@ def test_get_operation_valid_value(mock_connect):
     cache = PostgresCache(config)
 
     # call the "get" operation
-    # unpickled history should be returned
+    # unjsond history should be returned
     assert cache.get(user_id, conversation_id) == history
 
     # DB operation SELECT must be performed
@@ -137,7 +137,7 @@ def test_insert_or_append_operation_first_item(mock_connect):
         ai_msg("second answer from AI"),
     ]
 
-    conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
+    conversation = json.dumps(history)
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -175,17 +175,17 @@ def test_insert_or_append_operation_append_item(mock_connect):
         ai_msg("first answer from AI"),
     ]
 
-    old_conversation = pickle.dumps(stored_history, protocol=pickle.HIGHEST_PROTOCOL)
+    old_conversation = json.dumps(stored_history)
 
     appended_history = [
         human_msg("first message from human"),
         ai_msg("first answer from AI"),
     ]
 
-    # create pickled object in the exactly same format
-    whole_history = pickle.loads(old_conversation, errors="strict")  # noqa S301
+    # create jsond object in the exactly same format
+    whole_history = json.loads(old_conversation)
     whole_history.extend(appended_history)
-    new_conversation = pickle.dumps(whole_history, protocol=pickle.HIGHEST_PROTOCOL)
+    new_conversation = json.dumps(whole_history)
 
     # mock the query result
     mock_cursor = MagicMock()
