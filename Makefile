@@ -13,8 +13,11 @@ SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 images: ## Build container images
 	scripts/build-container.sh
 
-install-tools: ## Install required utilities/tools
+install-tools:	install-woke ## Install required utilities/tools
 	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+
+install-woke: ## Install woke, required for Inclusive Naming scan
+	@command -v ./woke > /dev/null || { echo >&2 "woke is not installed. Installing..."; curl -sSfL https://git.io/getwoke | bash -s -- -b ./; }
 
 pdm-lock-check: ## Check that the pdm.lock file is in a good shape
 	pdm lock --check
@@ -58,8 +61,8 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" --eval_model "${MODEL}"
 
-response-sanity-check: ## Checks response quality - requires running OLS server
-	@echo "Running response sanity check..."
+response-quality-check: ## Checks response quality - requires running OLS server
+	@echo "Running response quality check..."
 	python -m tests.scripts.validate_response -p ${PROVIDER} -m ${MODEL} -s ${SCENARIO} -o ${ARTIFACT_DIR}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
@@ -72,9 +75,10 @@ format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify: ## Verify the code using various linters
+verify:	install-woke ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	./woke . --exit-1-on-failure
 
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json

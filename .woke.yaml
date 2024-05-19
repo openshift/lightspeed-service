@@ -1,0 +1,116 @@
+default_severity: off
+
+ignore_files:
+  - '.venv/**/*'         # Exclude all files within .venv
+  - '**/*.cache'         # Exclude files ending with .cache
+  - '__pycache__/**/*'   # Exclude Python cache directories
+  - '.*'                 # Exclude all files starting with .
+  - 'ols/utils/keywords.py'
+
+rules:
+  - name: abort
+    terms:
+      - abort
+    alternatives:
+      - User-Initiated Termination
+      - Force quit
+      - Cancel
+      - System-Initiated Termination
+      - Fail
+      - Close (app, program, connection)
+      - End
+      - Halt
+      - Hard stop
+      - Stop (something you triggered)
+    severity: warning
+
+  - name: blackhat-whitehat
+    terms:
+      - blackhat-whitehat
+    alternatives:
+      - ethical hacker
+      - unethical hacker, attacker
+    severity: error
+
+  - name: cripple
+    terms:
+      - cripple
+    alternatives:
+      - Impacted
+      - Degraded
+      - Restricted
+      - Immobilized
+    severity: error
+
+  - name: hallucinate
+    terms:
+      - hallucinate
+    alternatives:
+      - inaccurate information (noun)
+      - "*create* or *generate* inaccurate information (verb)"
+    severity: warning
+
+  - name: man-in-the-middle
+    terms:
+      - man-in-the-middle
+    alternatives:
+      - Adversary-in-the-middle attack
+      - Interceptor attack
+      - Intermediary attack
+    severity: warning
+
+  - name: master
+    terms:
+      - master
+    alternatives:
+      - main
+      - original
+      - source
+      - control plane
+    severity: error
+
+  - name: master-slave
+    terms:
+      - master-slave
+    alternatives:
+      - Control plane/control plane node
+      - Controller/doer
+      - Primary/replica
+      - Primary/secondary
+      - Leader/follower
+      - Parent/child
+    severity: error
+
+  - name: sanity-check
+    terms:
+      - sanity-check
+    alternatives:
+      - confidence check
+      - coherence check
+      - test
+      - verification
+    severity: warning
+
+  - name: segregate
+    terms:
+      - Segregate
+    alternatives:
+      - Segment/segmentation
+      - Separate/separation
+    severity: warning
+
+  - name: tribe
+    terms:
+      - Tribe
+    alternatives:
+      - Squad of squads
+      - Team
+    severity: warning
+
+  - name: whitelist
+    terms:
+      - whitelist
+    alternatives:
+      - allowedNouns/deniedNouns (or other verbs)
+      - allowlist/denylist
+    severity: error
