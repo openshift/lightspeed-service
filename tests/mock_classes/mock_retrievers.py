@@ -1,6 +1,7 @@
 """Mocks for VectorStore and VectorStoreRetriever."""
 
 from langchain_core.documents import Document
+from langchain_core.vectorstores import VectorStore
 
 from tests import constants
 
@@ -34,16 +35,33 @@ class MockRetriever:
         ]
 
 
-class MockVectorStore:
+class MockVectorStore(VectorStore):
     """Mock for VectorStore."""
 
-    @staticmethod
-    def as_retriever():
-        """Pass."""
+    def as_retriever(self, **kwargs):
+        """Mock implementation of as_retriever method from base class."""
+        return MockVectorRetriever()
+
+    def add_texts(self, texts, metadatas=None, **kwargs):
+        """Mock implementation of add_texts method from base class."""
+        return []
+
+    @classmethod
+    def from_texts(cls, texts, embedding, metadatas=None, **kwargs):
+        """Mock implementation of from_texts method from base class."""
+        return None
+
+    def similarity_search(self, query, k=None, **kwargs):
+        """Mock implementation of similarity_search method from base class."""
+        return []
 
 
 class MockVectorRetriever:
     """Mock for VectorStoreRetriever."""
+
+    def __init__(self):
+        """Initialize mocked VectorRetriever."""
+        pass
 
     @staticmethod
     def get_relevant_documents(*args, **kwargs):
