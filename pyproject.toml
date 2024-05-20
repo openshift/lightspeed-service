@@ -47,7 +47,6 @@ version = "0.1.0"
 description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
-    "torch==2.2.2+cpu",
     "fastapi==0.111.0",
     "gradio==4.31.2",
     "langchain==0.1.16",
@@ -69,6 +68,7 @@ dependencies = [
     "kubernetes==29.0.0",
     "pytest-asyncio==0.23.6",
     "psycopg2-binary==2.9.9",
+    "torch>=2.3.0",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
