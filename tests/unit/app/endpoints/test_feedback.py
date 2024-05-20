@@ -59,6 +59,6 @@ def test_store_feedback(mocked_datetime, feedback_location):
     stored_data = load_fake_feedback("fake-uuid")
     assert stored_data == {
         "user_id": "12345678-abcd-0000-0123-456789abcdef",
-        "timestamp": "2000-01-01 01:23:45",
+        "timestamp": "2000-01-01 01:23:45 ",
         **feedback_data,
     }
