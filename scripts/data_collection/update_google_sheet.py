@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Script to update Google sheet containing user feedback and conversation history.
 
 In order to use this script, file with client secret to Google API must be present (symlinked etc.)
@@ -107,7 +109,7 @@ def main() -> None:
     upload_csv_files(
         args.spreadsheet,
         args.feedback_without_history,
-        args.feedback_without_history,
+        args.feedback_with_history,
         args.conversation_history,
     )
 
