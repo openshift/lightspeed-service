@@ -1021,7 +1021,7 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     assert conversation is not None
 
     # deserialize conversation into list of messages
-    deserialized = json.loads(conversation)  # S301
+    deserialized = json.loads(conversation)
     assert deserialized is not None
 
     # we expect one question + one answer
@@ -1040,7 +1040,7 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     assert conversation is not None
 
     # unpickle conversation into list of messages
-    deserialized = pickle.loads(conversation, errors="strict")  # noqa S301
+    deserialized = json.loads(conversation, errors="strict")
     assert deserialized is not None
 
     # we expect one question + one answer
