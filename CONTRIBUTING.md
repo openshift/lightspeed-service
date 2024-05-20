@@ -108,6 +108,20 @@ ruff linter
 Description of all rules are available on https://docs.astral.sh/ruff/rules/
 
 
+### Security checks
+
+Static security check is performed by _Bandit_ tool. The check can be started by using:
+
+```
+make security-check
+```
+
+or within PDM-controlled environment:
+
+```
+pdm run security-check
+```
+
 ## Testing
 
 Three group of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:

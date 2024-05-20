@@ -68,6 +68,9 @@ coverage-report:	test-unit ## Export unit test coverage report into interactive 
 check-types: ## Checks type hints in sources
 	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
+security-check: ## Check the project for security issues
+	bandit -r ols
+
 format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
