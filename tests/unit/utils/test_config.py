@@ -707,8 +707,8 @@ def test_valid_config_file():
                                 "name": "m1",
                                 "url": "https://murl1",
                                 "credentials_path": "tests/config/secret.txt",
-                                "context_window_size": 200,
-                                "response_token_limit": 50,
+                                "context_window_size": 400,
+                                "response_token_limit": 100,
                             },
                             {
                                 "name": "m2",
