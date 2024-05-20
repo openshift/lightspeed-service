@@ -141,4 +141,4 @@ def store_user_feedback(
             },
         )
 
-    return FeedbackResponse(response="feedback received ")
+    return FeedbackResponse(response="feedback received")
