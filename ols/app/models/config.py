@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Any, Optional, Self
+from typing import Any, Literal, Optional, Self
 from urllib.parse import urlparse
 
 from pydantic import AnyHttpUrl, BaseModel, FilePath, PositiveInt, model_validator
@@ -509,7 +509,13 @@ class QueryFilter(BaseModel):
 class ConversationCacheConfig(BaseModel):
     """Conversation cache configuration."""
 
-    type: Optional[str] = None
+    type: Optional[
+        Literal[
+            constants.CACHE_TYPE_MEMORY,
+            constants.CACHE_TYPE_POSTGRES,
+            constants.CACHE_TYPE_REDIS,
+        ]
+    ] = None
     redis: Optional[RedisConfig] = None
     memory: Optional[InMemoryCacheConfig] = None
     postgres: Optional[PostgresConfig] = None
