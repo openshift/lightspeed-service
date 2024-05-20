@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 if TYPE_CHECKING:
     from ols.app.models.config import InMemoryCacheConfig
@@ -29,9 +29,11 @@ class InMemoryCache(Cache):
         """Initialize the InMemoryCache."""
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()
-        self.cache: dict[str, list[dict[str, str]]] = {}
+        self.cache: dict[str, list[dict[Literal["type", "content"], str]]] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(
+        self, user_id: str, conversation_id: str
+    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -51,7 +53,10 @@ class InMemoryCache(Cache):
         return self.cache[key].copy()
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        value: list[dict[Literal["type", "content"], str]],
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 

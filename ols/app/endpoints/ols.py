@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -148,10 +148,10 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
 
 def retrieve_previous_input(
     user_id: str, llm_request: LLMRequest
-) -> list[dict[str, str]]:
+) -> list[dict[Literal["type", "content"], str]]:
     """Retrieve previous user input, if exists."""
     try:
-        previous_input: list[dict[str, str]] = []
+        previous_input: list[dict[Literal["type", "content"], str]] = []
         if llm_request.conversation_id:
             cache_content = config.conversation_cache.get(
                 user_id, llm_request.conversation_id
@@ -176,7 +176,7 @@ def retrieve_previous_input(
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    previous_input: list[dict[str, str]],
+    previous_input: list[dict[Literal["type", "content"], str]],
 ) -> tuple[str, list[ReferencedDocument], bool]:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
@@ -218,12 +218,12 @@ def generate_response(
         )
 
 
-def human_msg(content: str) -> dict[str, str]:
+def human_msg(content: str) -> dict[Literal["type", "content"], str]:
     """Create a human message dictionary."""
     return {"type": "human", "content": content}
 
 
-def ai_msg(content: str) -> dict[str, str]:
+def ai_msg(content: str) -> dict[Literal["type", "content"], str]:
     """Create an AI message dictionary."""
     return {"type": "ai", "content": content}
 
