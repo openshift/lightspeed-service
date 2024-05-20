@@ -5,16 +5,16 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import config
 from ols.app.models.config import ReferenceContent
 from ols.src.rag_index.index_loader import IndexLoader
-from ols.utils import config
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
 
 
 @pytest.fixture
 def ols_configuration():
     """Fixture with empty configuration."""
-    config.init_empty_config()
+    config.reload_empty()
     assert config.ols_config is not None
     return config.ols_config
 

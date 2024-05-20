@@ -5,12 +5,11 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException, Request
 
-from ols import constants
+from ols import config, constants
 from ols.app.endpoints.authorized import (
     is_user_authorized,
 )
 from ols.app.models.models import AuthorizationResponse
-from ols.utils import config
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -20,7 +19,7 @@ from tests.mock_classes.mock_k8s_api import (
 @pytest.fixture
 def _setup():
     """Fixture for environment setup."""
-    config.init_empty_config()
+    config.reload_empty()
 
 
 @pytest.fixture

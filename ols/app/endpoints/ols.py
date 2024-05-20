@@ -9,7 +9,7 @@ from typing import Any, Literal, Optional
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ols import constants
+from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
     ErrorResponse,
@@ -23,7 +23,7 @@ from ols.app.models.models import (
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.utils import config, suid
+from ols.utils import suid
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError

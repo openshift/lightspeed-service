@@ -8,8 +8,8 @@ from fastapi import HTTPException, Request
 from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
+from ols import config
 from ols.constants import DEFAULT_KUBEADMIN_UID, DEFAULT_USER_NAME, DEFAULT_USER_UID
-from ols.utils import config
 
 logger = logging.getLogger(__name__)
 

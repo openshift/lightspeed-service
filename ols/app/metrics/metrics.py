@@ -68,7 +68,7 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
 
 def setup_model_metrics(config: config_model.Config) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
-    for _, provider in config.llm_providers.providers.items():
+    for _, provider in config.llm_config.providers.items():
         for model_name, _ in provider.models.items():
             if (
                 provider.name == config.ols_config.default_provider

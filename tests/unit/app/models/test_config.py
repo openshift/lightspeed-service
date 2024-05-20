@@ -1257,44 +1257,6 @@ def test_config():
     )
 
 
-def test_config_no_llm_providers():
-    """Check if empty config is rejected as expected."""
-    with pytest.raises(
-        InvalidConfigurationError, match="no LLM providers config section found"
-    ):
-        Config().validate_yaml()
-
-
-def test_config_empty_llm_providers():
-    """Check if empty list of providers is rejected as expected."""
-    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
-        Config({"llm_providers": []}).validate_yaml()
-
-
-def test_config_without_ols_section():
-    """Test the Config model of the Global service configuration with missing OLS section."""
-    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
-        Config(
-            {
-                "llm_providers": [
-                    {
-                        "name": "test_provider_name",
-                        "type": "bam",
-                        "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
-                        "models": [
-                            {
-                                "name": "test_model_name",
-                                "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
-                            }
-                        ],
-                    }
-                ],
-            }
-        ).validate_yaml()
-
-
 def test_config_improper_missing_model():
     """Test the Config model of the Global service configuration when model is missing."""
     with pytest.raises(InvalidConfigurationError, match="default_model is missing"):

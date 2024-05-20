@@ -9,20 +9,20 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import HTTPException
 
-from ols import constants
+from ols import config, constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
 from ols.app.models.models import LLMRequest, ReferencedDocument
 from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import config, suid
-from ols.utils.query_filter import QueryFilter, RegexFilter
+from ols.utils import suid
+from ols.utils.query_filter import QueryFilters, RegexFilter
 from ols.utils.token_handler import PromptTooLongError
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def _load_config():
     """Load config before unit tests."""
-    config.init_config("tests/config/test_app_endpoints.yaml")
+    config.reload_from_yaml_file("tests/config/test_app_endpoints.yaml")
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def test_retrieve_previous_input_improper_user_id(_load_config):
         ols.retrieve_previous_input("improper_user_id", llm_request)
 
 
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_retrieve_previous_input_for_previous_history(get, _load_config):
     """Check how function to retrieve previous input handle existing history."""
     conversation_id = suid.get_suid()
@@ -92,7 +92,7 @@ def test_retrieve_previous_input_for_previous_history(get, _load_config):
     assert previous_input == "input"
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
+@patch("ols.config.conversation_cache.insert_or_append")
 def test_store_conversation_history(insert_or_append, _load_config):
     """Test if operation to store conversation history to cache is called."""
     conversation_id = suid.get_suid()
@@ -111,7 +111,7 @@ def test_store_conversation_history(insert_or_append, _load_config):
     )
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
+@patch("ols.config.conversation_cache.insert_or_append")
 def test_store_conversation_history_some_response(insert_or_append, _load_config):
     """Test if operation to store conversation history to cache is called."""
     user_id = "1234"
@@ -275,7 +275,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use one custom filter
-    q = QueryFilter()
+    q = QueryFilters(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -283,7 +283,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
             replace_with="FooBar",
         )
     ]
-    config.query_redactor = q
+    config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
@@ -297,7 +297,7 @@ def test_query_filter_with_two_redact_filters(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use two custom filters
-    q = QueryFilter()
+    q = QueryFilters(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -310,27 +310,28 @@ def test_query_filter_with_two_redact_filters(_load_config):
             replace_with="Baz",
         ),
     ]
-    config.query_redactor = q
+    config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
     assert result.query == "Tell me about Baz"
 
 
-@patch("ols.utils.config.query_redactor")
-def test_query_filter_on_redact_error(mock_redact_query, _load_config):
+def test_query_filter_on_redact_error(_load_config):
     """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    mock_redact_query.redact_query.side_effect = Exception
     with pytest.raises(HTTPException, match="Error while redacting query"):
-        ols.redact_query(conversation_id, llm_request)
+        with patch(
+            "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
+        ):
+            ols.redact_query(conversation_id, llm_request)
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_conversation_request(
     mock_conversation_cache_get,
     mock_summarize,
@@ -378,7 +379,7 @@ def test_conversation_request(
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_conversation_request_on_wrong_configuration(
     mock_conversation_cache_get,
     mock_validate_question,
@@ -530,7 +531,7 @@ def test_generate_response_unknown_validation_result(_load_config):
 @pytest.fixture
 def transcripts_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
-    config.init_empty_config()
+    config.reload_empty()
     config.ols_config.user_data_collection = UserDataCollection(
         transcripts_disabled=False, transcripts_storage=tmpdir.strpath
     )
@@ -551,6 +552,10 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         patch(
             "ols.app.endpoints.ols.generate_response",
             return_value=("something", [], False),
+        ),
+        patch(
+            "ols.app.endpoints.ols.store_conversation_history",
+            return_value=None,
         ),
     ):
         llm_request = LLMRequest(query="Tell me about Kubernetes")

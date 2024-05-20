@@ -6,11 +6,11 @@ from typing import Any
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
+from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.constants import SUBJECT_REJECTED, GenericLLMParameters
 from ols.src.prompts.prompts import QUESTION_VALIDATOR_PROMPT_TEMPLATE
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)

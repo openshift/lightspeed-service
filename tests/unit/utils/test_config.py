@@ -10,8 +10,8 @@ from unittest.mock import patch
 import pytest
 from yaml.parser import ParserError
 
+from ols import config
 from ols.app.models.config import Config, InvalidConfigurationError
-from ols.utils import config
 from ols.utils.query_filter import RegexFilter
 
 E = TypeVar("E", bound=Exception)
@@ -22,7 +22,7 @@ def check_expected_exception(
 ) -> None:
     """Check that an expected exception is raised."""
     with pytest.raises(expected_exception_type, match=expected_error_msg):
-        config.load_config_from_stream(io.StringIO(yaml_stream))
+        config._load_config_from_yaml_stream(io.StringIO(yaml_stream))
 
 
 def test_malformed_yaml():
@@ -49,44 +49,11 @@ def test_missing_config_file():
     with pytest.raises(Exception, match="Not a directory"):
         # /dev/null is special file so it can't be directory
         # at the same moment
-        config.init_config("/dev/null/non-existent")
+        config.reload_from_yaml_file("/dev/null/non-existent")
 
 
 def test_invalid_config():
     """Check that invalid configuration is handled gracefully."""
-    check_expected_exception(
-        """""", InvalidConfigurationError, "no LLM providers config section found"
-    )
-    check_expected_exception(
-        """{foo=123}""",
-        InvalidConfigurationError,
-        "no LLM providers config section found",
-    )
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'https://murl1'
-      - name: m2
-        url: 'https://murl2'
-  - name: p2
-    type: bam
-    url: 'https://url2'
-    models:
-      - name: m1
-        url: 'http://murl1'
-      - name: m2
-        url: 'http://murl2'
-""",
-        InvalidConfigurationError,
-        "no OLS config section found",
-    )
-
     check_expected_exception(
         """
 ---
@@ -643,7 +610,7 @@ dev_config:
 def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     try:
-        config.load_config_from_stream(
+        config._load_config_from_yaml_stream(
             io.StringIO(
                 """
 ---
@@ -692,7 +659,7 @@ dev_config:
 def test_valid_config_file():
     """Check if a valid configuration file is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
         expected_config = Config(
             {
@@ -761,7 +728,7 @@ def test_valid_config_file():
 def test_valid_config_file_with_postgres(patch):
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_postgres.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_postgres.yaml")
 
         expected_config = Config(
             {
@@ -814,7 +781,7 @@ def test_valid_config_file_with_postgres(patch):
 def test_valid_config_file_with_redis(patch):
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_redis.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_redis.yaml")
 
         expected_config = Config(
             {
@@ -867,7 +834,7 @@ def test_config_file_without_logging_config(patch):
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail
-    config.init_config("tests/config/config_without_logging.yaml")
+    config.reload_from_yaml_file("tests/config/config_without_logging.yaml")
 
     # test if default values have been set
     logging_config = config.ols_config.logging_config
@@ -878,21 +845,16 @@ def test_config_file_without_logging_config(patch):
 
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
-    config.query_redactor = None
-    config.init_empty_config()
-    config.init_config("tests/config/valid_config_without_query_filter.yaml")
-    assert config.query_redactor is None
-    print(config.query_redactor)
-    config.init_query_filter()
-    assert config.query_redactor is not None
+    config.reload_empty()
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
     assert config.query_redactor.regex_filters == []
 
 
 def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
-    config.query_redactor = None
-    config.init_config("tests/config/valid_config_with_query_filter.yaml")
-    config.init_query_filter()
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
     assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == [
         RegexFilter(
@@ -908,12 +870,10 @@ def test_valid_config_with_query_filter():
     ]
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai(patch):
+def test_valid_config_with_azure_openai():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config("tests/config/valid_config_with_azure_openai.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_with_azure_openai.yaml")
 
         expected_config = Config(
             {
@@ -956,12 +916,10 @@ def test_valid_config_with_azure_openai(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai_api_version(patch):
+def test_valid_config_with_azure_openai_api_version():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config(
+        config.reload_from_yaml_file(
             "tests/config/valid_config_with_azure_openai_api_version.yaml"
         )
 

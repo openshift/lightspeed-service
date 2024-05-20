@@ -4,7 +4,7 @@ import logging
 import os
 import pathlib
 import tarfile
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from requests.models import Response
@@ -21,11 +21,6 @@ def with_mocked_config():
     global data_collector
     global original_collect_ols_data_from
     with (
-        patch("ols.utils.config.init_config", new=Mock()),
-        patch(
-            "ols.utils.config.ols_config",
-            return_value=MagicMock(user_data_collection=MagicMock(feedback_storage="")),
-        ),
         patch.dict(
             os.environ,
             {

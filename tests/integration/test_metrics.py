@@ -8,17 +8,17 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import config
+from ols import config
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def _setup():
     """Setups the test client."""
     global client
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
     from ols.app.main import app
 
     client = TestClient(app)
