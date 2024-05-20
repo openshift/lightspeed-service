@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +65,8 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         logger.debug(f"creating feedback storage directories '{storage_path}'")
         storage_path.mkdir(parents=True)
 
-    data_to_store = {"user_id": user_id, **feedback}
+    current_time = str(datetime.utcnow())
+    data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
 
     # stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
