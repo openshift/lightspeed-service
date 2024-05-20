@@ -2,7 +2,7 @@
 
 import json
 import threading
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import redis
 from redis.backoff import ExponentialBackoff
@@ -67,7 +67,9 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(
+        self, user_id: str, conversation_id: str
+    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -85,7 +87,10 @@ class RedisCache(Cache):
         return json.loads(value)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        value: list[dict[Literal["type", "content"], str]],
     ) -> None:
         """Set the value associated with the given key.
 

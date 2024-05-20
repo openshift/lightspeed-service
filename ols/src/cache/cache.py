@@ -1,7 +1,7 @@
 """Abstract class that is parent for all cache implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Literal, Optional
 
 from ols.utils.suid import check_suid
 
@@ -39,7 +39,9 @@ class Cache(ABC):
         return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(
+        self, user_id: str, conversation_id: str
+    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
         """Abstract method to retrieve a value from the cache.
 
         Args:
@@ -52,7 +54,10 @@ class Cache(ABC):
 
     @abstractmethod
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        value: list[dict[Literal["type", "content"], str]],
     ) -> None:
         """Abstract method to store a value in the cache.
 
