@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Request
 
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authorized"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
-authorized_responses = {
+authorized_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "The user is logged-in and authorized to access OLS",
         "model": AuthorizationResponse,

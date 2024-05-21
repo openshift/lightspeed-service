@@ -88,7 +88,7 @@ def feedback_status() -> StatusResponse:
     return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
-post_feedback_responses = {
+post_feedback_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Feedback received and stored",
         "model": FeedbackResponse,

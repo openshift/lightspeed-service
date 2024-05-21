@@ -34,7 +34,7 @@ router = APIRouter(tags=["query"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-query_responses = {
+query_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Query is valid and correct response from LLM is returned",
         "model": LLMResponse,
