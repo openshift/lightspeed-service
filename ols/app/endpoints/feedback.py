@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from ols import config
 from ols.app.endpoints.ols import retrieve_user_id
 from ols.app.models.models import (
     ErrorResponse,
@@ -17,7 +18,6 @@ from ols.app.models.models import (
     StatusResponse,
     UnauthorizedResponse,
 )
-from ols.utils import config
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.suid import get_suid
 

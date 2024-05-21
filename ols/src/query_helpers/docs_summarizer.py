@@ -6,13 +6,13 @@ from typing import Any, Optional
 from langchain.chains import LLMChain
 from llama_index.core import VectorStoreIndex
 
+from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
 from ols.app.models.models import ReferencedDocument
 from ols.constants import RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)

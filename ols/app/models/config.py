@@ -755,8 +755,10 @@ class OLSConfig(BaseModel):
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
-        self.conversation_cache.validate_yaml()
-        self.logging_config.validate_yaml()
+        if self.conversation_cache is not None:
+            self.conversation_cache.validate_yaml()
+        if self.logging_config is not None:
+            self.logging_config.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
         if self.authentication_config:
@@ -821,9 +823,9 @@ class DevConfig(BaseModel):
 class Config(BaseModel):
     """Global service configuration."""
 
-    llm_providers: Optional[LLMProviders] = None
-    ols_config: Optional[OLSConfig] = None
-    dev_config: Optional[DevConfig] = None
+    llm_providers: Optional[LLMProviders] = LLMProviders()
+    ols_config: Optional[OLSConfig] = OLSConfig()
+    dev_config: Optional[DevConfig] = DevConfig()
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""

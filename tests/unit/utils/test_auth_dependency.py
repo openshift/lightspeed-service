@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException, Request
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 
-from ols.utils import config
+from ols import config
 from ols.utils.auth_dependency import AuthDependency, K8sClientSingleton
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
@@ -15,13 +15,11 @@ from tests.mock_classes.mock_k8s_api import (
 )
 
 
-@pytest.fixture(scope="module")
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/auth_config.yaml"})
+@pytest.fixture(scope="function")
 def _setup():
     """Setups and load config."""
     global auth_dependency
-    config.init_config("tests/config/auth_config.yaml")
-
+    config.reload_from_yaml_file("tests/config/auth_config.yaml")
     auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 

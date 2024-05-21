@@ -29,11 +29,11 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
 
+from ols import config
 from ols.src.llms.llm_loader import load_llm
-from ols.utils import config
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-config.init_config(cfg_file)
+config.reload_from_yaml_file(cfg_file)
 
 
 def dirs_all_files(folder):

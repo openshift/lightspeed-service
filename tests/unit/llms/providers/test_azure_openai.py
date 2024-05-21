@@ -5,7 +5,6 @@ from langchain_openai import AzureChatOpenAI
 
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.azure_openai import AzureOpenAI
-from ols.utils import config
 
 
 @pytest.fixture
@@ -29,8 +28,6 @@ def provider_config():
 
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     azure_openai = AzureOpenAI(
         model="uber-model", params={}, provider_config=provider_config
     )
@@ -46,8 +43,6 @@ def test_basic_interface(provider_config):
 
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
@@ -83,8 +78,6 @@ def test_params_handling(provider_config):
 
 def test_api_version_can_not_be_none(provider_config):
     """Test that api_version parameter can not be None."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     params = {
         "api_version": None,
     }
@@ -100,8 +93,6 @@ def test_api_version_can_not_be_none(provider_config):
 
 def test_none_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
