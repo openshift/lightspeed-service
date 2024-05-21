@@ -836,9 +836,9 @@ class DevConfig(BaseModel):
 class Config(BaseModel):
     """Global service configuration."""
 
-    llm_providers: Optional[LLMProviders] = LLMProviders()
-    ols_config: Optional[OLSConfig] = OLSConfig()
-    dev_config: Optional[DevConfig] = DevConfig()
+    llm_providers: LLMProviders = LLMProviders()
+    ols_config: OLSConfig = OLSConfig()
+    dev_config: DevConfig = DevConfig()
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
