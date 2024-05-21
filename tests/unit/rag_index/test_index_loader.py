@@ -3,20 +3,10 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from ols import config
 from ols.app.models.config import ReferenceContent
 from ols.src.rag_index.index_loader import IndexLoader
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
-
-
-@pytest.fixture
-def ols_configuration():
-    """Fixture with empty configuration."""
-    config.reload_empty()
-    assert config.ols_config is not None
-    return config.ols_config
 
 
 def test_index_loader_empty_config(caplog):
@@ -30,12 +20,12 @@ def test_index_loader_empty_config(caplog):
 
 
 @patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
-def test_index_loader_no_id(storage_context, ols_configuration):
+def test_index_loader_no_id(storage_context):
     """Test index loader without index id."""
-    ols_configuration.reference_content = ReferenceContent(None)
-    ols_configuration.reference_content.product_docs_index_path = Path("./some_dir")
+    config.ols_config.reference_content = ReferenceContent(None)
+    config.ols_config.reference_content.product_docs_index_path = Path("./some_dir")
 
-    index_loader_obj = IndexLoader(ols_configuration.reference_content)
+    index_loader_obj = IndexLoader(config.ols_config.reference_content)
     index = index_loader_obj.vector_index
 
     assert (
@@ -47,15 +37,15 @@ def test_index_loader_no_id(storage_context, ols_configuration):
 @patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
 @patch("llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir")
 @patch("ols.src.rag_index.index_loader.load_index_from_storage", new=MockLlamaIndex)
-def test_index_loader(storage_context, from_persist_dir, ols_configuration):
+def test_index_loader(storage_context, from_persist_dir):
     """Test index loader."""
-    ols_configuration.reference_content = ReferenceContent(None)
-    ols_configuration.reference_content.product_docs_index_path = Path("./some_dir")
-    ols_configuration.reference_content.product_docs_index_id = "./some_id"
+    config.ols_config.reference_content = ReferenceContent(None)
+    config.ols_config.reference_content.product_docs_index_path = Path("./some_dir")
+    config.ols_config.reference_content.product_docs_index_id = "./some_id"
 
     from_persist_dir.return_value = None
 
-    index_loader_obj = IndexLoader(ols_configuration.reference_content)
+    index_loader_obj = IndexLoader(config.ols_config.reference_content)
     index = index_loader_obj.vector_index
 
     assert isinstance(index, MockLlamaIndex)

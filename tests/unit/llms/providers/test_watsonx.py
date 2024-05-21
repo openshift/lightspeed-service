@@ -7,7 +7,6 @@ from ibm_watson_machine_learning.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 
-from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.constants import GenericLLMParameters
 from ols.src.llms.providers.watsonx import Watsonx
@@ -38,8 +37,6 @@ def provider_config():
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     llm = watsonx.load()
     assert isinstance(llm, WatsonxLLM)
@@ -49,8 +46,6 @@ def test_basic_interface(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # first two parameters should be removed before model init
     # rest need to stay
     params = {
@@ -84,8 +79,6 @@ def test_params_handling(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_handling_none_values(provider_config):
     """Test handling parameters with None values."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
@@ -122,8 +115,6 @@ def test_params_handling_none_values(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # provider initialization with empty set of params
     watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     watsonx.load()
@@ -148,8 +139,6 @@ def test_params_replace_default_values_with_none(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_generic_parameter_mappings(provider_config):
     """Test generic parameter mapping to provider parameter list."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # some non-default values for generic LLM parameters
     generic_llm_params = {
         GenericLLMParameters.MIN_NEW_TOKENS: 100,

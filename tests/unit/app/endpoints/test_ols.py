@@ -531,7 +531,6 @@ def test_generate_response_unknown_validation_result(_load_config):
 @pytest.fixture
 def transcripts_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
-    config.reload_empty()
     config.ols_config.user_data_collection = UserDataCollection(
         transcripts_disabled=False, transcripts_storage=tmpdir.strpath
     )

@@ -2,6 +2,8 @@
 
 from unittest.mock import ANY, patch
 
+import pytest
+
 from ols import config
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
 from ols.utils import suid
@@ -31,11 +33,16 @@ def check_summary_result(summary, question):
     assert not summary["history_truncated"]
 
 
+@pytest.fixture(scope="function", autouse=True)
+def _setup():
+    """Set up config for tests."""
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+
+
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -48,7 +55,6 @@ def test_summarize_empty_history():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -61,7 +67,6 @@ def test_summarize_no_history():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     history = ["What is Kubernetes?"]
@@ -90,7 +95,6 @@ def test_summarize_history_provided():
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()

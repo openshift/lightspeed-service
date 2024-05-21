@@ -3,7 +3,6 @@
 import pytest
 from langchain_openai.chat_models.base import ChatOpenAI
 
-from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.openai import OpenAI
 
@@ -30,8 +29,6 @@ def provider_config():
 
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     openai = OpenAI(model="uber-model", params={}, provider_config=provider_config)
     llm = openai.load()
     assert isinstance(llm, ChatOpenAI)
@@ -43,8 +40,6 @@ def test_basic_interface(provider_config):
 
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
@@ -75,8 +70,6 @@ def test_params_handling(provider_config):
 
 def test_none_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
@@ -107,8 +100,6 @@ def test_none_params_handling(provider_config):
 
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
-    config.reload_empty()  # needed for checking the config.dev_config.llm_params
-
     # provider initialization with empty set of params
     openai = OpenAI(model="uber-model", params={}, provider_config=provider_config)
     openai.load()

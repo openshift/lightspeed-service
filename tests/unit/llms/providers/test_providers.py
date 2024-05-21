@@ -53,7 +53,6 @@ def test_invalid_provider_is_not_registered():
 
 def test_llm_provider_params_order__inputs_overrides_defaults():
     """Test LLMProvider overrides default params."""
-    config.reload_empty()
 
     class MyProvider(LLMProvider):
         @property
@@ -73,7 +72,6 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
 
 def test_llm_provider_params_order__config_overrides_everything():
     """Test config params overrides llm params."""
-    config.reload_empty()
     config.dev_config.llm_params = {"provider-param": 3}
 
     class MyProvider(LLMProvider):
@@ -94,7 +92,6 @@ def test_llm_provider_params_order__config_overrides_everything():
 
 def test_llm_provider_params_order__no_provider_type():
     """Test how missing provider type is handled."""
-    config.reload_empty()
     config.dev_config.llm_params = {"provider-param": 3}
 
     class MyProvider(LLMProvider):

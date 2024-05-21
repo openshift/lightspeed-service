@@ -14,7 +14,6 @@ from tests.mock_classes.mock_llm_loader import mock_llm_loader
 @pytest.fixture
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
-    config.reload_empty()
     return QuestionValidator(llm_loader=mock_llm_loader(None))
 
 

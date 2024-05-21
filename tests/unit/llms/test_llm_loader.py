@@ -41,7 +41,6 @@ def test_errors_relationship():
 def test_unknown_provider_error():
     """Test raise when provider is not in configuration."""
     providers = LLMProviders()  # no providers
-    config.reload_empty()
     config.config.llm_providers = providers
 
     msg = "Provider 'unknown-provider' is not a valid provider"
@@ -52,7 +51,6 @@ def test_unknown_provider_error():
 def test_model_config_missing_error():
     """Test raise when model configuration is unknown."""
     providers = LLMProviders([{"name": "bam", "models": [{"name": "model"}]}])
-    config.reload_empty()
     config.config.llm_providers = providers
 
     message = "Model 'bla' is not a valid model for provider"
@@ -66,7 +64,6 @@ def test_unsupported_provider_error():
     providers = LLMProviders(
         [{"name": "some-provider", "type": "bam", "models": [{"name": "model"}]}]
     )
-    config.reload_empty()
     config.config.llm_providers = providers
 
     with pytest.raises(UnsupportedProviderError):
@@ -85,7 +82,6 @@ def test_load_llm(_registered_fake_provider):
             }
         ]
     )
-    config.reload_empty()
     config.config.llm_providers = providers
 
     llm = load_llm(provider="fake-provider", model="model")
@@ -94,7 +90,6 @@ def test_load_llm(_registered_fake_provider):
 
 def test_load_llm_no_provider_config():
     """Test load_llm function."""
-    config.reload_empty()
     config.config.llm_providers = None
 
     with pytest.raises(

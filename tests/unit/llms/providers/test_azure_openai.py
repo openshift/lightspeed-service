@@ -3,7 +3,6 @@
 import pytest
 from langchain_openai import AzureChatOpenAI
 
-from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.azure_openai import AzureOpenAI
 
@@ -25,11 +24,6 @@ def provider_config():
             ],
         }
     )
-
-
-def setup_module(module):
-    """Set up module."""
-    config.reload_empty()
 
 
 def test_basic_interface(provider_config):

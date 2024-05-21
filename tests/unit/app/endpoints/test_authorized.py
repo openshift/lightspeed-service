@@ -17,12 +17,6 @@ from tests.mock_classes.mock_k8s_api import (
 
 
 @pytest.fixture
-def _setup():
-    """Fixture for environment setup."""
-    config.reload_empty()
-
-
-@pytest.fixture
 def _disabled_auth():
     """Fixture for tests that expect disabled auth."""
     assert config.dev_config is not None
@@ -36,7 +30,7 @@ def _enabled_auth():
     config.dev_config.disable_auth = False
 
 
-def test_is_user_authorized_auth_disabled(_setup, _disabled_auth):
+def test_is_user_authorized_auth_disabled(_disabled_auth):
     """Test the is_user_authorized function when the authentication is disabled."""
     # the tested function returns constant right now
     request = Request(scope={"type": "http"})
@@ -46,7 +40,7 @@ def test_is_user_authorized_auth_disabled(_setup, _disabled_auth):
     )
 
 
-def test_is_user_authorized_false_no_bearer_token(_setup, _enabled_auth):
+def test_is_user_authorized_false_no_bearer_token(_enabled_auth):
     """Test the is_user_authorized function when its missing authorization header."""
     # the tested function returns constant right now
     request = Request(scope={"type": "http", "headers": []})
@@ -61,9 +55,7 @@ def test_is_user_authorized_false_no_bearer_token(_setup, _enabled_auth):
 
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(
-    mock_authz_api, mock_authn_api, _setup, _enabled_auth
-):
+def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api, _enabled_auth):
     """Tests the is_user_authorized function with a mocked valid-token."""
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -85,7 +77,7 @@ def test_is_user_authorized_valid_token(
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_invalid_token(
-    mock_authz_api, mock_authn_api, _setup, _enabled_auth
+    mock_authz_api, mock_authn_api, _enabled_auth
 ):
     """Test the is_user_authorized function with a mocked invalid-token."""
     # Setup mock responses for invalid token
