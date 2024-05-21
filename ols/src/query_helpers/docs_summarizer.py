@@ -73,15 +73,15 @@ class DocsSummarizer(QueryHelper):
         model_config = provider_config.models.get(self.model)
         model_options = self._get_model_options(provider_config)
 
-        # Use dummy text for context/history to get complete prompt instruction.
+        # Use sample text for context/history to get complete prompt instruction.
         # This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = generate_prompt(
             self.provider,
             self.model,
             model_options,
             query,
-            ["dummy"],
-            "dummy",
+            ["sample"],
+            "sample",
         )
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input), model_config

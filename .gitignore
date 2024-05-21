@@ -49,3 +49,6 @@ index/
 .idea
 
 dev/
+
+# ignore woke cli to be pushed to the repo
+woke
