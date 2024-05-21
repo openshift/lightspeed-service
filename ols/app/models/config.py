@@ -214,6 +214,31 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
+class OpenAIConfig(BaseModel):
+    """Configuration specific to OpenAI provider."""
+
+    url: AnyHttpUrl
+
+
+class AzureOpenAIConfig(BaseModel):
+    """Configuration specific to Azure OpenAI provider."""
+
+    url: AnyHttpUrl
+    api_key: str
+
+
+class WatsonxConfig(BaseModel):
+    """Configuration specific to Watsonx provider."""
+
+    url: AnyHttpUrl
+
+
+class BAMConfig(BaseModel):
+    """Configuration specific to BAM provider."""
+
+    url: AnyHttpUrl
+
+
 class ProviderConfig(BaseModel):
     """LLM provider configuration."""
 
@@ -224,6 +249,10 @@ class ProviderConfig(BaseModel):
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
     deployment_name: Optional[str] = None
+    openai_config: Optional[OpenAIConfig] = None
+    azure_config: Optional[AzureOpenAIConfig] = None
+    watsonx_config: Optional[WatsonxConfig] = None
+    bam_config: Optional[BAMConfig] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -242,6 +271,8 @@ class ProviderConfig(BaseModel):
             raise InvalidConfigurationError(
                 f"project_id is required for Watsonx provider {self.name}"
             )
+
+        self.set_provider_specific_configuration(data)
 
         self.setup_models_config(data)
 
@@ -277,6 +308,55 @@ class ProviderConfig(BaseModel):
             model = ModelConfig(m, self.type)
             self.models[m["name"]] = model
 
+    def set_provider_specific_configuration(self, data: dict) -> None:
+        """Set the provider-specific configuration."""
+        # compute how many provider-specific configurations are
+        # found in config file
+        found = 0
+        for provider_name in constants.SUPPORTED_PROVIDER_TYPES:
+            cfg_name = provider_name.lower() + "_config"
+            if data.get(cfg_name) is not None:
+                found += 1
+
+        # just none or one provider-specific configuration
+        # should available
+        if found > 1:
+            raise InvalidConfigurationError(
+                "multiple provider-specific configurations found, "
+                f"but just one is expected for provider {self.type}"
+            )
+
+        # If one provider-specific configuration is available
+        # it must match the selected provider type.
+        # It means, that if configuration for selected provider
+        # is not present the configuration must be wrong.
+        if found == 1:
+            match self.type:
+                case constants.PROVIDER_AZURE_OPENAI:
+                    self.azure_config = data.get("azure_openai_config", None)
+                    self.check_provider_config(self.azure_config)
+                case constants.PROVIDER_OPENAI:
+                    self.openai_config = data.get("openai_config", None)
+                    self.check_provider_config(self.openai_config)
+                case constants.PROVIDER_BAM:
+                    self.watsonx_config = data.get("bam_config", None)
+                    self.check_provider_config(self.bam_config)
+                case constants.PROVIDER_WATSONX:
+                    self.watsonx_config = data.get("watsonx_config", None)
+                    self.check_provider_config(self.watsonx_config)
+                case _:
+                    raise InvalidConfigurationError(
+                        f"Unsupported provider {self.type} configured"
+                    )
+
+    def check_provider_config(self, provider_config: Any) -> None:
+        """Check if configuration is presented for selected provider type."""
+        if provider_config is None:
+            raise InvalidConfigurationError(
+                f"provider type {self.type} selected, "
+                "but configuration is set for different provider"
+            )
+
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
         if isinstance(other, ProviderConfig):
@@ -287,6 +367,10 @@ class ProviderConfig(BaseModel):
                 and self.credentials == other.credentials
                 and self.project_id == other.project_id
                 and self.models == other.models
+                and self.azure_config == other.azure_config
+                and self.openai_config == other.openai_config
+                and self.watsonx_config == other.watsonx_config
+                and self.bam_config == other.bam_config
             )
         return False
 
