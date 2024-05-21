@@ -13,8 +13,8 @@ from prometheus_client import (
     generate_latest,
 )
 
-import ols.app.models.config as config_model
 from ols.utils.auth_dependency import AuthDependency
+from ols.utils.config import AppConfig
 
 router = APIRouter(tags=["metrics"])
 auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
@@ -66,7 +66,7 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
     return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-def setup_model_metrics(config: config_model.Config) -> None:
+def setup_model_metrics(config: AppConfig) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
     for _, provider in config.llm_config.providers.items():
         for model_name, _ in provider.models.items():
