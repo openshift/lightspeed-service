@@ -231,6 +231,31 @@ class ProviderConfig(BaseModel):
         if data is None:
             return
         self.name = data.get("name", None)
+
+        self.set_provider_type(data)
+        self.url = data.get("url", None)
+        self.credentials = _get_attribute_from_file(data, "credentials_path")
+
+        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
+        self.project_id = data.get("project_id", None)
+        if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
+            raise InvalidConfigurationError(
+                f"project_id is required for Watsonx provider {self.name}"
+            )
+
+        self.setup_models_config(data)
+
+        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
+        if self.type == constants.PROVIDER_AZURE_OPENAI:
+            # deployment_name only required when using Azure OpenAI
+            self.deployment_name = data.get("deployment_name", None)
+            if self.deployment_name is None:
+                raise InvalidConfigurationError(
+                    f"deployment_name is required for Azure OpenAI provider {self.name}"
+                )
+
+    def set_provider_type(self, data: dict) -> None:
+        """Set the provider type."""
         # Default provider type to be the provider name, unless
         # specified explicitly.
         self.type = str(data.get("type", self.name)).lower()
@@ -239,14 +264,9 @@ class ProviderConfig(BaseModel):
                 f"invalid provider type: {self.type}, supported types are"
                 f" {set(constants.SUPPORTED_PROVIDER_TYPES)}"
             )
-        self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
-        self.project_id = data.get("project_id", None)
-        if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
-            raise InvalidConfigurationError(
-                f"project_id is required for Watsonx provider {self.name}"
-            )
 
+    def setup_models_config(self, data: dict) -> None:
+        """Set up models configuration."""
         if "models" not in data or len(data["models"]) == 0:
             raise InvalidConfigurationError(
                 f"no models configured for provider {data['name']}"
@@ -256,13 +276,6 @@ class ProviderConfig(BaseModel):
                 raise InvalidConfigurationError("model name is missing")
             model = ModelConfig(m, self.type)
             self.models[m["name"]] = model
-        if self.type == constants.PROVIDER_AZURE_OPENAI:
-            # deployment_name only required when using Azure OpenAI
-            self.deployment_name = data.get("deployment_name", None)
-            if self.deployment_name is None:
-                raise InvalidConfigurationError(
-                    f"deployment_name is required for Azure OpenAI provider {self.name}"
-                )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
