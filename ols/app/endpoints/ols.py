@@ -77,8 +77,26 @@ def conversation_request(
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
+    if not suid.check_suid(user_id):
+        logger.error(f"Invalid user ID: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "response": "Invalid user ID",
+                "cause": "User ID must be a valid UUID",
+            },
+        )
 
     conversation_id = retrieve_conversation_id(llm_request)
+    if not suid.check_suid(conversation_id):
+        logger.error(f"Invalid conversation ID: {conversation_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "response": "Invalid conversation ID",
+                "cause": "Conversation ID must be a valid UUID",
+            },
+        )
     previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Log incoming request
