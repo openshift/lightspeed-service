@@ -20,6 +20,10 @@ fail_under = 90
 disable_error_code = ["union-attr", "return-value", "arg-type", "import-untyped"]
 ignore_missing_imports = true
 
+[tool.bandit]
+skips = ["B104"]
+exclude_dirs = ["tests", "scripts"]
+
 [tool.pdm]
 distribution = false
 
