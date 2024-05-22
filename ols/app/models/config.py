@@ -217,26 +217,32 @@ class AuthenticationConfig(BaseModel):
 class OpenAIConfig(BaseModel):
     """Configuration specific to OpenAI provider."""
 
-    url: AnyHttpUrl
+    url: AnyHttpUrl  # required attribute
 
 
 class AzureOpenAIConfig(BaseModel):
     """Configuration specific to Azure OpenAI provider."""
 
-    url: AnyHttpUrl
-    api_key: str
+    url: AnyHttpUrl  # required attribute
+    deployment_name: str  # required attribute
+    tenant_id: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret_path: Optional[str] = None
+    api_key_path: Optional[str] = None
+    client_secret: Optional[str] = None
+    api_key: Optional[str] = None
 
 
 class WatsonxConfig(BaseModel):
     """Configuration specific to Watsonx provider."""
 
-    url: AnyHttpUrl
+    url: AnyHttpUrl  # required attribute
 
 
 class BAMConfig(BaseModel):
     """Configuration specific to BAM provider."""
 
-    url: AnyHttpUrl
+    url: AnyHttpUrl  # required attribute
 
 
 class ProviderConfig(BaseModel):
@@ -333,17 +339,27 @@ class ProviderConfig(BaseModel):
         if found == 1:
             match self.type:
                 case constants.PROVIDER_AZURE_OPENAI:
-                    self.azure_config = data.get("azure_openai_config", None)
-                    self.check_provider_config(self.azure_config)
+                    azure_config = data.get("azure_openai_config", None)
+                    self.check_provider_config(azure_config)
+                    azure_config["client_secret"] = _get_attribute_from_file(
+                        azure_config, "client_secret_path"
+                    )
+                    azure_config["api_key"] = _get_attribute_from_file(
+                        azure_config, "api_key_path"
+                    )
+                    self.azure_config = AzureOpenAIConfig(**azure_config)
                 case constants.PROVIDER_OPENAI:
-                    self.openai_config = data.get("openai_config", None)
-                    self.check_provider_config(self.openai_config)
+                    openai_config = data.get("openai_config", None)
+                    self.check_provider_config(openai_config)
+                    self.openai_config = OpenAIConfig(**openai_config)
                 case constants.PROVIDER_BAM:
-                    self.watsonx_config = data.get("bam_config", None)
-                    self.check_provider_config(self.bam_config)
+                    bam_config = data.get("bam_config", None)
+                    self.check_provider_config(bam_config)
+                    self.bam_config = BAMConfig(**bam_config)
                 case constants.PROVIDER_WATSONX:
-                    self.watsonx_config = data.get("watsonx_config", None)
-                    self.check_provider_config(self.watsonx_config)
+                    watsonx_config = data.get("watsonx_config", None)
+                    self.check_provider_config(watsonx_config)
+                    self.watsonx_config = WatsonxConfig(**watsonx_config)
                 case _:
                     raise InvalidConfigurationError(
                         f"Unsupported provider {self.type} configured"

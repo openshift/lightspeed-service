@@ -886,6 +886,7 @@ def test_valid_config_with_azure_openai():
                         "deployment_name": "test",
                         "azure_openai_config": {
                             "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
                         },
                         "models": [
                             {
@@ -938,6 +939,107 @@ def test_valid_config_with_azure_openai_api_version():
                         "api_version": "2023-12-31",
                         "azure_openai_config": {
                             "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_bam():
+    """Check if a valid configuration file with BAM is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bam.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "credentials": "secret_key",
+                        "deployment_name": "test",
+                        "bam_config": {
+                            "url": "http://localhost:1234",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_watsonx():
+    """Check if a valid configuration file with Watsonx is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_watsonx.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "watsonx",
+                        "url": "https://url1",
+                        "credentials": "secret_key",
+                        "deployment_name": "test",
+                        "project_id": "project ID",
+                        "watsonx_config": {
+                            "url": "http://localhost:1234",
+                            "project_id": "project ID",
                         },
                         "models": [
                             {
