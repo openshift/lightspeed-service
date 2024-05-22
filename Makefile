@@ -72,7 +72,7 @@ check-types: ## Checks type hints in sources
 	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 security-check: ## Check the project for security issues
-	bandit -r ols
+	bandit -c pyproject.toml -r .
 
 format: ## Format the code into unified format
 	black .
