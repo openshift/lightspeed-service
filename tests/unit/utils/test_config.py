@@ -57,6 +57,44 @@ def test_invalid_config():
     check_expected_exception(
         """
 ---
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+""",
+        InvalidConfigurationError,
+        "no LLM providers config section found",
+    )
+
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - name: p1
+    type: bam
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'https://murl1'
+      - name: m2
+        url: 'https://murl2'
+  - name: p2
+    type: bam
+    url: 'https://url2'
+    models:
+      - name: m1
+        url: 'http://murl1'
+      - name: m2
+        url: 'http://murl2'
+""",
+        InvalidConfigurationError,
+        "no OLS config section found",
+    )
+
+    check_expected_exception(
+        """
+---
 llm_providers:
   - name: p1
     type: bam
@@ -74,6 +112,11 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "model URL is invalid",
@@ -99,6 +142,11 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
@@ -113,6 +161,11 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider name is missing",
@@ -128,6 +181,11 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
