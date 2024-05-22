@@ -24,12 +24,11 @@ from tests.e2e import (
 from tests.e2e.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
-    EVAL_THRESHOLD,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
 from tests.scripts.must_gather import must_gather
-from tests.scripts.validate_response import ResponseValidation
+from tests.scripts.validate_response import ResponseEvaluation
 
 from .postgres_utils import (
     read_conversation_history,
@@ -95,27 +94,6 @@ def teardown_module(module):
 def postgres_connection():
     """Fixture with Postgres connection."""
     return retrieve_connection()
-
-
-@pytest.fixture(scope="module")
-def response_eval(request):
-    """Set response evaluation fixture."""
-    with open("tests/test_data/question_answer_pair.json") as qna_f:
-        qa_pairs = json.load(qna_f)
-
-    eval_model = "gpt" if "gpt" in request.config.option.eval_model else "granite"
-    print(f"eval model: {eval_model}")
-
-    return qa_pairs[eval_model]
-
-
-def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
-    """Get Evaluation question answer."""
-    eval_query = qna_pair[scenario][qna_id]["question"]
-    eval_answer = qna_pair[scenario][qna_id]["answer"]
-    print(f"Evaluation question: {eval_query}")
-    print(f"Ground truth answer: {eval_answer}")
-    return eval_query, eval_answer
 
 
 def check_content_type(response, content_type, message=""):
@@ -231,17 +209,16 @@ def test_query_call_with_improper_payload():
         assert "missing" in response.text
 
 
-def test_valid_question_improper_conversation_id(response_eval) -> None:
+def test_valid_question_improper_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for improper conversation ID."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "with_rag")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.internal_server_error
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": "not-uuid", "query": eval_query},
+            json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.internal_server_error
@@ -258,17 +235,16 @@ def test_valid_question_improper_conversation_id(response_eval) -> None:
 
 
 @retry(max_attempts=3, wait_between_runs=10)
-def test_valid_question_missing_conversation_id(response_eval) -> None:
+def test_valid_question_missing_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": "", "query": eval_query},
+            json={"conversation_id": "", "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -285,12 +261,11 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         ), "Conversation ID is not in UUID format"
 
 
-def test_too_long_question(response_eval) -> None:
+def test_too_long_question() -> None:
     """Check the REST API /v1/query with too long question."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "without_rag")
     # let's make the query really large, larger that context window size
-    eval_query *= 10000
+    query = "what is kubernetes?" * 10000
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.request_entity_too_large
@@ -298,7 +273,7 @@ def test_too_long_question(response_eval) -> None:
         cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": eval_query},
+            json={"conversation_id": cid, "query": query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.request_entity_too_large
@@ -311,18 +286,15 @@ def test_too_long_question(response_eval) -> None:
 
 
 @pytest.mark.rag()
-def test_valid_question(response_eval) -> None:
+def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, "eval1", "with_rag"
-    )
 
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": eval_query},
+            json={"conversation_id": cid, "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -339,11 +311,6 @@ def test_valid_question(response_eval) -> None:
             json_response["response"],
             re.IGNORECASE,
         )
-
-        score = ResponseValidation().get_similarity_score(
-            json_response["response"], eval_answer
-        )
-        assert score <= EVAL_THRESHOLD
 
 
 def test_valid_question_tokens_counter() -> None:
@@ -434,17 +401,14 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
 
 
 @pytest.mark.rag()
-def test_rag_question(response_eval) -> None:
+def test_rag_question() -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, "eval2", "with_rag"
-    )
 
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
-            json={"query": eval_query},
+            json={"query": "what is openshift virtualization?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -457,11 +421,6 @@ def test_rag_question(response_eval) -> None:
         assert "virt" in json_response["referenced_documents"][0]["docs_url"]
         assert "https://" in json_response["referenced_documents"][0]["docs_url"]
         assert json_response["referenced_documents"][0]["title"]
-
-        score = ResponseValidation().get_similarity_score(
-            json_response["response"], eval_answer
-        )
-        assert score <= EVAL_THRESHOLD
 
 
 def test_query_filter() -> None:
@@ -528,10 +487,9 @@ def test_conversation_history() -> None:
         assert "ingress" in response_text, debug_msg
 
 
-def test_query_with_provider_but_not_model(response_eval) -> None:
+def test_query_with_provider_but_not_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for provider specified, but no model."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
@@ -539,7 +497,11 @@ def test_query_with_provider_but_not_model(response_eval) -> None:
         # just the provider is explicitly specified, but model selection is missing
         response = client.post(
             endpoint,
-            json={"conversation_id": "", "query": eval_query, "provider": "bam"},
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "provider": "bam",
+            },
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
@@ -554,10 +516,9 @@ def test_query_with_provider_but_not_model(response_eval) -> None:
         )
 
 
-def test_query_with_model_but_not_provider(response_eval) -> None:
+def test_query_with_model_but_not_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for model specified, but no provider."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
@@ -567,7 +528,7 @@ def test_query_with_model_but_not_provider(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "model": "ibm/granite-13b-chat-v2",
             },
             timeout=LLM_REST_API_TIMEOUT,
@@ -583,10 +544,9 @@ def test_query_with_model_but_not_provider(response_eval) -> None:
         )
 
 
-def test_query_with_unknown_provider(response_eval) -> None:
+def test_query_with_unknown_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown provider specified."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     # retrieve currently selected model
     model, _ = metrics_utils.get_enabled_model_and_provider(metrics_client)
@@ -599,7 +559,7 @@ def test_query_with_unknown_provider(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "provider": "foo",
                 "model": model,
             },
@@ -621,10 +581,9 @@ def test_query_with_unknown_provider(response_eval) -> None:
         )
 
 
-def test_query_with_unknown_model(response_eval) -> None:
+def test_query_with_unknown_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown model specified."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     # retrieve currently selected provider
     _, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
@@ -637,7 +596,7 @@ def test_query_with_unknown_model(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "provider": provider,
                 "model": "bar",
             },
@@ -996,29 +955,26 @@ def test_cache_existence(postgres_connection):
     assert value is not None
 
 
-def _perform_query(client, conversation_id, response_eval, qna_pair):
+def _perform_query(client, conversation_id, query):
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, qna_pair, "without_rag"
-    )
 
     response = client.post(
         endpoint,
-        json={"conversation_id": conversation_id, "query": eval_query},
+        json={"conversation_id": conversation_id, "query": query},
         timeout=LLM_REST_API_TIMEOUT,
     )
     check_content_type(response, "application/json")
     print(vars(response))
 
 
-def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
+def test_conversation_in_postgres_cache(postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
         pytest.skip("Postgres is not accessible.")
         return
 
     cid = suid.get_suid()
-    _perform_query(client, cid, response_eval, "eval1")
+    _perform_query(client, cid, "what is kubernetes?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
@@ -1037,7 +993,7 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     assert "Kubernetes" in deserialized[1].content
 
     # second question
-    _perform_query(client, cid, response_eval, "eval2")
+    _perform_query(client, cid, "what is openshift virtualization?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
@@ -1180,3 +1136,9 @@ def test_http_header_redaction():
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         assert f'"{header}":"XXXXX"' in container_log
         assert f'"{header}":"some_value"' not in container_log
+
+
+@pytest.mark.response_evaluation()
+def test_model_response(request) -> None:
+    """Evaluate model response."""
+    assert ResponseEvaluation(request.config.option, client).validate_response()
