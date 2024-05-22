@@ -884,6 +884,9 @@ def test_valid_config_with_azure_openai():
                         "url": "https://url1",
                         "credentials": "secret_key",
                         "deployment_name": "test",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                        },
                         "models": [
                             {
                                 "name": "m1",
@@ -933,6 +936,9 @@ def test_valid_config_with_azure_openai_api_version():
                         "credentials": "secret_key",
                         "deployment_name": "test",
                         "api_version": "2023-12-31",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                        },
                         "models": [
                             {
                                 "name": "m1",

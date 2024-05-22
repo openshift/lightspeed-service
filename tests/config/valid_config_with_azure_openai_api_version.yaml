@@ -6,6 +6,8 @@ llm_providers:
     deployment_name: "test"
     credentials_path": tests/config/secret.txt
     api_version: 2024-12-31
+    azure_openai_config:
+      url: "http://localhost:1234"
     models:
       - name: m1
         url: "https://murl1"
