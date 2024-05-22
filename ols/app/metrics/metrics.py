@@ -19,7 +19,7 @@ from ols.utils.config import AppConfig
 router = APIRouter(tags=["metrics"])
 auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
 
-disable_created_metrics()
+disable_created_metrics()  # type: ignore [no-untyped-call]
 
 rest_api_calls_total = Counter(
     "ols_rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
