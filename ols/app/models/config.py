@@ -78,7 +78,7 @@ class ModelConfig(BaseModel):
         default = constants.DEFAULT_CONTEXT_WINDOW_SIZE
         if provider in constants.CONTEXT_WINDOW_SIZES:
             default = constants.CONTEXT_WINDOW_SIZES.get(provider).get(
-                self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
+                self.name or "", constants.DEFAULT_CONTEXT_WINDOW_SIZE
             )
         self.context_window_size = self._validate_token_limit(
             data, "context_window_size", default
@@ -932,9 +932,13 @@ class Config(BaseModel):
         v = data.get("llm_providers")
         if v is not None:
             self.llm_providers = LLMProviders(v)
+        else:
+            raise InvalidConfigurationError("no LLM providers config section found")
         v = data.get("ols_config")
         if v is not None:
             self.ols_config = OLSConfig(v)
+        else:
+            raise InvalidConfigurationError("no OLS config section found")
         v = data.get("dev_config")
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
@@ -974,11 +978,7 @@ class Config(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""
-        if self.llm_providers is None:
-            raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()
         self.dev_config.validate_yaml()
-        if self.ols_config is None:
-            raise InvalidConfigurationError("no OLS config section found")
         self.ols_config.validate_yaml(self.dev_config.disable_tls)
         self._validate_default_provider_and_model()
