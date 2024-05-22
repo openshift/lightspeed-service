@@ -88,6 +88,7 @@ schema:	## Generate OpenAPI schema file
 
 get-rag: ## Download a copy of the RAG embedding model and vector database
 	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:8dd07db7cfe7cba0dcbfe8eb3c53a6f9bbca324bbd98cd78fa8ffe05294c5e84 true
+	rm -rf vector_db embeddings_model
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
 	podman rm tmp-rag-container
