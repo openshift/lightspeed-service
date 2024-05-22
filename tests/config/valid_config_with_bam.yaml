@@ -1,14 +1,12 @@
 ---
 llm_providers:
   - name: p1
-    type: azure_openai
+    type: bam
     url: "https://url1"
     deployment_name: "test"
     credentials_path": tests/config/secret.txt
-    api_version: 2024-12-31
-    azure_openai_config:
+    bam_config:
       url: "http://localhost:1234"
-      deployment_name: "*deployment name*"
     models:
       - name: m1
         url: "https://murl1"
