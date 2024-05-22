@@ -47,7 +47,7 @@ class RedisCache(Cache):
         # setup Redis retry logic
         retry: Optional[Retry] = None
         if config.number_of_retries is not None and config.number_of_retries > 0:
-            retry = Retry(ExponentialBackoff(), config.number_of_retries)
+            retry = Retry(ExponentialBackoff(), config.number_of_retries)  # type: ignore [no-untyped-call]
 
         retry_on_error: Optional[list[type[RedisError]]] = None
         if config.retry_on_error:
