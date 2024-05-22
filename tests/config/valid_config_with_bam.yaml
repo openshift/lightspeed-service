@@ -4,9 +4,10 @@ llm_providers:
     type: bam
     url: "https://url1"
     deployment_name: "test"
-    credentials_path": tests/config/secret.txt
+    credentials_path: tests/config/secret.txt
     bam_config:
       url: "http://localhost:1234"
+      credentials_path: tests/config/secret.txt
     models:
       - name: m1
         url: "https://murl1"
