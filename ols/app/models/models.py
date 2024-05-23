@@ -3,6 +3,7 @@
 from typing import Any, Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
+from pydantic.dataclasses import dataclass
 
 from ols.utils import suid
 
@@ -55,7 +56,8 @@ class LLMRequest(BaseModel):
         return self
 
 
-class ReferencedDocument(BaseModel):
+@dataclass
+class ReferencedDocument:
     """RAG referenced document.
 
     Attributes:
@@ -63,20 +65,8 @@ class ReferencedDocument(BaseModel):
     title: Title of the corresponding OCP documentation page
     """
 
-    docs_url: Optional[str] = None
-    title: Optional[str] = None
-
-    def __init__(self, docs_url: str, title: str) -> None:
-        """Initialize a ReferencedDocument."""
-        super().__init__()
-        self.docs_url = docs_url
-        self.title = title
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ReferencedDocument):
-            return self.docs_url == other.docs_url and self.title == other.title
-        return False
+    docs_url: str
+    title: str
 
     @staticmethod
     def json_decode_object_hook(dct: dict[str, Any]) -> Any:

@@ -653,29 +653,19 @@
             "ReferencedDocument": {
                 "properties": {
                     "docs_url": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Docs Url"
                     },
                     "title": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Title"
                     }
                 },
                 "type": "object",
+                "required": [
+                    "docs_url",
+                    "title"
+                ],
                 "title": "ReferencedDocument",
                 "description": "RAG referenced document.\n\nAttributes:\ndocs_url: URL of the corresponding OCP documentation page\ntitle: Title of the corresponding OCP documentation page"
             },
