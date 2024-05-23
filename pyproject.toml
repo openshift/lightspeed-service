@@ -54,6 +54,7 @@ dependencies = [
     "torch==2.2.2+cpu",
     "fastapi==0.111.0",
     "gradio==4.31.2",
+    # TODO: OLS-657 - Bump-up langchain to version 0.2.0 in OLS service
     "langchain==0.1.16",
     "langchain-ibm==0.1.7",
     "llama-index==0.10.38",
