@@ -1043,10 +1043,11 @@ def test_valid_config_with_bam():
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials": "secret_key",
+                        "credentials_path": "tests/config/secret.txt",
                         "deployment_name": "test",
                         "bam_config": {
                             "url": "http://localhost:1234",
+                            "credentials_path": "tests/config/secret.txt",
                         },
                         "models": [
                             {
@@ -1092,12 +1093,13 @@ def test_valid_config_with_watsonx():
                         "name": "p1",
                         "type": "watsonx",
                         "url": "https://url1",
-                        "credentials": "secret_key",
+                        "credentials_path": "tests/config/secret.txt",
                         "deployment_name": "test",
                         "project_id": "project ID",
                         "watsonx_config": {
                             "url": "http://localhost:1234",
                             "project_id": "project ID",
+                            "credentials_path": "tests/config/secret.txt",
                         },
                         "models": [
                             {

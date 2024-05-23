@@ -55,8 +55,11 @@ class ModelConfig(BaseModel):
     """Model configuration."""
 
     name: Optional[str] = None
+
+    # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
+
     context_window_size: int = -1  # need to be set later, based on model
     response_token_limit: int = -1  # need to be set later, based on model
     options: Optional[dict[str, Any]] = None
@@ -69,6 +72,8 @@ class ModelConfig(BaseModel):
         if data is None:
             return
         self.name = data.get("name", None)
+
+        # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
 
@@ -214,35 +219,42 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
-class OpenAIConfig(BaseModel):
-    """Configuration specific to OpenAI provider."""
+class ProviderSpecificConfig(BaseModel):
+    """Base class with common provider specific configurations."""
 
     url: AnyHttpUrl  # required attribute
-
-
-class AzureOpenAIConfig(BaseModel):
-    """Configuration specific to Azure OpenAI provider."""
-
-    url: AnyHttpUrl  # required attribute
-    deployment_name: str  # required attribute
-    tenant_id: Optional[str] = None
-    client_id: Optional[str] = None
-    client_secret_path: Optional[str] = None
-    api_key_path: Optional[str] = None
-    client_secret: Optional[str] = None
+    token: Optional[Any] = None
     api_key: Optional[str] = None
 
 
-class WatsonxConfig(BaseModel):
+class OpenAIConfig(ProviderSpecificConfig):
+    """Configuration specific to OpenAI provider."""
+
+    credentials_path: str  # required attribute
+
+
+class AzureOpenAIConfig(ProviderSpecificConfig):
+    """Configuration specific to Azure OpenAI provider."""
+
+    deployment_name: str  # required attribute
+    credentials_path: Optional[str] = None
+    tenant_id: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret_path: Optional[str] = None
+    client_secret: Optional[str] = None
+
+
+class WatsonxConfig(ProviderSpecificConfig):
     """Configuration specific to Watsonx provider."""
 
-    url: AnyHttpUrl  # required attribute
+    credentials_path: str  # required attribute
+    project_id: Optional[str] = None
 
 
-class BAMConfig(BaseModel):
+class BAMConfig(ProviderSpecificConfig):
     """Configuration specific to BAM provider."""
 
-    url: AnyHttpUrl  # required attribute
+    credentials_path: str  # required attribute
 
 
 class ProviderConfig(BaseModel):
@@ -344,26 +356,32 @@ class ProviderConfig(BaseModel):
                     azure_config["client_secret"] = _get_attribute_from_file(
                         azure_config, "client_secret_path"
                     )
-                    azure_config["api_key"] = _get_attribute_from_file(
-                        azure_config, "api_key_path"
-                    )
+                    self.read_api_key(azure_config)
                     self.azure_config = AzureOpenAIConfig(**azure_config)
                 case constants.PROVIDER_OPENAI:
                     openai_config = data.get("openai_config", None)
                     self.check_provider_config(openai_config)
+                    self.read_api_key(openai_config)
                     self.openai_config = OpenAIConfig(**openai_config)
                 case constants.PROVIDER_BAM:
                     bam_config = data.get("bam_config", None)
                     self.check_provider_config(bam_config)
+                    self.read_api_key(bam_config)
                     self.bam_config = BAMConfig(**bam_config)
                 case constants.PROVIDER_WATSONX:
                     watsonx_config = data.get("watsonx_config", None)
                     self.check_provider_config(watsonx_config)
+                    self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
                 case _:
                     raise InvalidConfigurationError(
                         f"Unsupported provider {self.type} configured"
                     )
+
+    @staticmethod
+    def read_api_key(config: dict) -> None:
+        """Read API key from file with secret."""
+        config["api_key"] = _get_attribute_from_file(config, "credentials_path")
 
     def check_provider_config(self, provider_config: Any) -> None:
         """Check if configuration is presented for selected provider type."""
