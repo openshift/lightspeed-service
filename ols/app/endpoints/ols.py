@@ -1,5 +1,6 @@
 """Handlers for all OLS-related REST API endpoints."""
 
+import dataclasses
 import json
 import logging
 from datetime import datetime
@@ -407,7 +408,9 @@ def store_transcript(
         "redacted_query": llm_request.query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": [doc.model_dump() for doc in referenced_documents],
+        "referenced_documents": [
+            dataclasses.asdict(doc) for doc in referenced_documents  # type: ignore
+        ],
         "truncated": truncated,
     }
 

@@ -100,7 +100,7 @@ class DocsSummarizer(QueryHelper):
 
         rag_context = "\n\n".join(rag_context_data.get("text", []))
         referenced_documents = [
-            ReferencedDocument(docs_url=docs_url, title=title)
+            ReferencedDocument(docs_url=docs_url, title=title)  # type: ignore
             for docs_url, title in zip(
                 rag_context_data.get("docs_url", []),
                 rag_context_data.get("title", []),
