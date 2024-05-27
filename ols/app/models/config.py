@@ -351,25 +351,26 @@ class ProviderConfig(BaseModel):
         if found == 1:
             match self.type:
                 case constants.PROVIDER_AZURE_OPENAI:
-                    azure_config = data.get("azure_openai_config", None)
+                    azure_config = data.get("azure_openai_config")
                     self.check_provider_config(azure_config)
-                    azure_config["client_secret"] = _get_attribute_from_file(
-                        azure_config, "client_secret_path"
-                    )
+                    if azure_config is not None:
+                        azure_config["client_secret"] = _get_attribute_from_file(
+                            azure_config, "client_secret_path"
+                        )
                     self.read_api_key(azure_config)
                     self.azure_config = AzureOpenAIConfig(**azure_config)
                 case constants.PROVIDER_OPENAI:
-                    openai_config = data.get("openai_config", None)
+                    openai_config = data.get("openai_config")
                     self.check_provider_config(openai_config)
                     self.read_api_key(openai_config)
                     self.openai_config = OpenAIConfig(**openai_config)
                 case constants.PROVIDER_BAM:
-                    bam_config = data.get("bam_config", None)
+                    bam_config = data.get("bam_config")
                     self.check_provider_config(bam_config)
                     self.read_api_key(bam_config)
                     self.bam_config = BAMConfig(**bam_config)
                 case constants.PROVIDER_WATSONX:
-                    watsonx_config = data.get("watsonx_config", None)
+                    watsonx_config = data.get("watsonx_config")
                     self.check_provider_config(watsonx_config)
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
