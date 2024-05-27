@@ -96,13 +96,14 @@ def conversation_request(
         valid = True
 
     if not valid:
-        response, referenced_documents, truncated = (
+        response, referenced_documents, truncated, rag_context = (
             constants.INVALID_QUERY_RESP,
             [],
             False,
+            "",
         )
     else:
-        response, referenced_documents, truncated = generate_response(
+        response, referenced_documents, truncated, rag_context = generate_response(
             conversation_id, llm_request, previous_input
         )
 
@@ -119,6 +120,7 @@ def conversation_request(
             response,
             referenced_documents,
             truncated,
+            rag_context,
         )
 
     return LLMResponse(
@@ -178,7 +180,7 @@ def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
     previous_input: list[dict[Literal["type", "content"], str]],
-) -> tuple[str, list[ReferencedDocument], bool]:
+) -> tuple[str, list[ReferencedDocument], bool, str]:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
     try:
@@ -197,6 +199,7 @@ def generate_response(
             llm_response["response"],
             llm_response["referenced_documents"],
             llm_response["history_truncated"],
+            llm_response["rag_context"],
         )
     except PromptTooLongError as summarizer_error:
         logger.error(f"Prompt is too long: {summarizer_error}")
@@ -375,6 +378,7 @@ def store_transcript(
     response: str,
     referenced_documents: list[ReferencedDocument],
     truncated: bool,
+    rag_context: str,
 ) -> None:
     """Store transcript in the local filesystem.
 
@@ -386,6 +390,7 @@ def store_transcript(
         response: The response to store.
         referenced_documents: The list of referenced documents.
         truncated: The flag indicating if the history was truncated.
+        rag_context: The RAG context.
     """
     # ensures storage path exists
     transcripts_path = Path(
@@ -412,6 +417,7 @@ def store_transcript(
             dataclasses.asdict(doc) for doc in referenced_documents  # type: ignore
         ],
         "truncated": truncated,
+        "rag_context": rag_context,
     }
 
     # stores feedback in a file under unique uuid

@@ -349,6 +349,7 @@ def test_conversation_request(
         "response": mock_response,
         "referenced_documents": [],
         "history_truncated": False,
+        "rag_context": "",
     }
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request, auth)
@@ -436,6 +437,7 @@ def test_no_question_validation_in_follow_up_conversation(
         "response": "some elaborate answer",
         "referenced_documents": [],
         "history_truncated": False,
+        "rag_context": "",
     }
     conversation_id = suid.get_suid()
     query = "some elaborate question"
@@ -470,6 +472,7 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
         "response": mock_response,
         "referenced_documents": [],
         "history_truncated": False,
+        "rag_context": "",
     }
 
     # prepare arguments for DocsSummarizer
@@ -478,7 +481,7 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     previous_input = []
 
     # try to get response
-    response, documents, truncated = ols.generate_response(
+    response, documents, truncated, rag_context = ols.generate_response(
         conversation_id, llm_request, previous_input
     )
 
@@ -486,6 +489,7 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     assert "Kubernetes" in response
     assert len(documents) == 0
     assert not truncated
+    assert rag_context == ""
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
@@ -550,7 +554,7 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         ),
         patch(
             "ols.app.endpoints.ols.generate_response",
-            return_value=("something", [], False),
+            return_value=("something", [], False, ""),
         ),
         patch(
             "ols.app.endpoints.ols.store_conversation_history",
@@ -579,6 +583,7 @@ def test_store_transcript(transcripts_location):
         ReferencedDocument("https://bar.baz", "Bar Baz"),
     ]
     truncated = True
+    rag_context = "texty text"
 
     ols.store_transcript(
         user_id,
@@ -588,6 +593,7 @@ def test_store_transcript(transcripts_location):
         response,
         ref_docs,
         truncated,
+        rag_context,
     )
 
     transcript_dir = Path(transcripts_location) / user_id / conversation_id
@@ -618,4 +624,5 @@ def test_store_transcript(transcripts_location):
         "llm_response": response,
         "referenced_documents": ref_docs,
         "truncated": truncated,
+        "rag_context": rag_context,
     }

@@ -51,6 +51,7 @@ class DocsSummarizer(QueryHelper):
             - referenced documents as a list of strings
             - flag indicating that conversation history has been truncated
               to fit within context window.
+            - rag context as a string
         """
         # if history is not provided, initialize to empty history
         if history is None:
@@ -156,4 +157,5 @@ class DocsSummarizer(QueryHelper):
             "response": response,
             "referenced_documents": referenced_documents,
             "history_truncated": truncated,
+            "rag_context": rag_context,
         }

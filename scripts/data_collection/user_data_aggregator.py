@@ -423,6 +423,7 @@ def read_full_conversation_history(
                     timestamp = conversation["metadata"]["timestamp"]
                     query = conversation["redacted_query"].strip()
                     response = conversation["llm_response"].strip()
+                    rag_context = conversation["rag_context"].strip()
                     conversation_record = f"\nQ:{query}\nA:{response}\n"
 
                     if referenced_documents:
@@ -430,6 +431,8 @@ def read_full_conversation_history(
                             conversation["referenced_documents"]
                         )
                         conversation_record += f"\nReferenced documents:\n{docs}\n"
+                    if rag_context:
+                        conversation_record += f"rag context:\n{rag_context}\n"
                     conversation_record += f"{separator}\n"
                     history[timestamp] = conversation_record
                     statistic.conversation_history_included += 1

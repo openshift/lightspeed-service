@@ -31,6 +31,7 @@ def check_summary_result(summary, question):
         in [documents[0].docs_url]
     )
     assert not summary["history_truncated"]
+    assert "rag_context" in summary
 
 
 @pytest.fixture(scope="function", autouse=True)
