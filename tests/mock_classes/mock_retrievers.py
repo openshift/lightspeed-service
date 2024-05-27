@@ -49,7 +49,7 @@ class MockVectorStore(VectorStore):
     @classmethod
     def from_texts(cls, texts, embedding, metadatas=None, **kwargs):
         """Mock implementation of from_texts method from base class."""
-        return None
+        return
 
     def similarity_search(self, query, k=None, **kwargs):
         """Mock implementation of similarity_search method from base class."""
@@ -61,7 +61,6 @@ class MockVectorRetriever:
 
     def __init__(self):
         """Initialize mocked VectorRetriever."""
-        pass
 
     @staticmethod
     def get_relevant_documents(*args, **kwargs):
