@@ -930,9 +930,12 @@ def test_transcripts_storing_cluster():
         # we don't want llm response influence this test
         assert "query_is_valid" in transcript
         assert "llm_response" in transcript
-        assert "referenced_documents" in transcript
-        assert transcript["referenced_documents"][0]["docs_url"]
-        assert transcript["referenced_documents"][0]["title"]
+        assert "rag_chunks" in transcript
+        assert isinstance(transcript["rag_chunks"], list)
+        assert len(transcript["rag_chunks"])
+        assert transcript["rag_chunks"][0]["text"]
+        assert transcript["rag_chunks"][0]["doc_url"]
+        assert transcript["rag_chunks"][0]["doc_title"]
         assert "truncated" in transcript
     finally:
         if pod_name is not None:

@@ -364,3 +364,33 @@ class AuthorizationResponse(BaseModel):
             ]
         }
     }
+
+
+@dataclass
+class RagChunk:
+    """Model representing a RAG chunk.
+
+    Attributes:
+        text: The text used as a RAG chunk.
+        doc_url: The URL of the doc from which the RAG chunk comes from.
+        doc_title: The title of the doc.
+    """
+
+    text: str
+    doc_url: str
+    doc_title: str
+
+
+@dataclass
+class SummarizerResponse:
+    """Model representing a response from the summarizer.
+
+    Attributes:
+        response: The response from the summarizer.
+        rag_chunks: The RAG chunks.
+        history_truncated: Whether the history was truncated.
+    """
+
+    response: str
+    rag_chunks: list[RagChunk]
+    history_truncated: bool

@@ -18,7 +18,9 @@ from ols.app.models.models import (
     LLMRequest,
     LLMResponse,
     PromptTooLongResponse,
+    RagChunk,
     ReferencedDocument,
+    SummarizerResponse,
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
@@ -74,7 +76,6 @@ def conversation_request(
     """
     # Initialize variables
     previous_input = []
-    referenced_documents: list[ReferencedDocument] = []
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
@@ -96,18 +97,19 @@ def conversation_request(
         valid = True
 
     if not valid:
-        response, referenced_documents, truncated, rag_context = (
+        summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
             [],
             False,
-            "",
-        )
+        )  # type: ignore
     else:
-        response, referenced_documents, truncated, rag_context = generate_response(
+        summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
         )
 
-    store_conversation_history(user_id, conversation_id, llm_request, response)
+    store_conversation_history(
+        user_id, conversation_id, llm_request, summarizer_response.response
+    )
 
     if config.ols_config.user_data_collection.transcripts_disabled:
         logger.debug("transcripts collections is disabled in configuration")
@@ -117,17 +119,24 @@ def conversation_request(
             conversation_id,
             valid,
             llm_request,
-            response,
-            referenced_documents,
-            truncated,
-            rag_context,
+            summarizer_response.response,
+            summarizer_response.rag_chunks,
+            summarizer_response.history_truncated,
         )
+
+    referenced_documents = [
+        ReferencedDocument(
+            rag_chunk.doc_url,
+            rag_chunk.doc_title,
+        )  # type: ignore
+        for rag_chunk in summarizer_response.rag_chunks
+    ]
 
     return LLMResponse(
         conversation_id=conversation_id,
-        response=response,
+        response=summarizer_response.response,
         referenced_documents=referenced_documents,
-        truncated=truncated,
+        truncated=summarizer_response.history_truncated,
     )
 
 
@@ -180,7 +189,7 @@ def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
     previous_input: list[dict[Literal["type", "content"], str]],
-) -> tuple[str, list[ReferencedDocument], bool, str]:
+) -> SummarizerResponse:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
     try:
@@ -192,15 +201,10 @@ def generate_response(
             for conversation in previous_input
             if conversation
         ]
-        llm_response = docs_summarizer.summarize(
+        summarizer_response = docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
         )
-        return (
-            llm_response["response"],
-            llm_response["referenced_documents"],
-            llm_response["history_truncated"],
-            llm_response["rag_context"],
-        )
+        return summarizer_response
     except PromptTooLongError as summarizer_error:
         logger.error(f"Prompt is too long: {summarizer_error}")
         raise HTTPException(
@@ -376,9 +380,8 @@ def store_transcript(
     query_is_valid: bool,
     llm_request: LLMRequest,
     response: str,
-    referenced_documents: list[ReferencedDocument],
+    rag_chunks: list[RagChunk],
     truncated: bool,
-    rag_context: str,
 ) -> None:
     """Store transcript in the local filesystem.
 
@@ -388,9 +391,8 @@ def store_transcript(
         query_is_valid: The result of the query validation.
         llm_request: The request containing a query.
         response: The response to store.
-        referenced_documents: The list of referenced documents.
+        rag_chunks: The list of `RagChunk` objects.
         truncated: The flag indicating if the history was truncated.
-        rag_context: The RAG context.
     """
     # ensures storage path exists
     transcripts_path = Path(
@@ -413,11 +415,8 @@ def store_transcript(
         "redacted_query": llm_request.query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": [
-            dataclasses.asdict(doc) for doc in referenced_documents  # type: ignore
-        ],
+        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],  # type: ignore
         "truncated": truncated,
-        "rag_context": rag_context,
     }
 
     # stores feedback in a file under unique uuid
