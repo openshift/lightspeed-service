@@ -1157,7 +1157,7 @@ def test_invalid_values():
 
 def test_postgres_config_default_values():
     """Test the PostgresConfig model."""
-    postgres_config = PostgresConfig(**{})
+    postgres_config = PostgresConfig()
     assert postgres_config.host == constants.POSTGRES_CACHE_HOST
     assert postgres_config.port == constants.POSTGRES_CACHE_PORT
     assert postgres_config.dbname == constants.POSTGRES_CACHE_DBNAME
@@ -1168,14 +1168,12 @@ def test_postgres_config_default_values():
 def test_postgres_config_correct_values():
     """Test the PostgresConfig model when correct values are used."""
     postgres_config = PostgresConfig(
-        **{
-            "host": "other_host",
-            "port": 1234,
-            "dbname": "my_database",
-            "user": "admin",
-            "ssl_mode": "allow",
-            "max_entries": 42,
-        }
+        host="other_host",
+        port=1234,
+        dbname="my_database",
+        user="admin",
+        ssl_mode="allow",
+        max_entries=42,
     )
 
     # explicitly set values
@@ -1193,13 +1191,11 @@ def test_postgres_config_wrong_port():
         ValidationError, match="The port needs to be between 0 and 65536"
     ):
         PostgresConfig(
-            **{
-                "host": "other_host",
-                "port": 9999999,
-                "dbname": "my_database",
-                "user": "admin",
-                "ssl_mode": "allow",
-            }
+            host="other_host",
+            port=9999999,
+            dbname="my_database",
+            user="admin",
+            ssl_mode="allow",
         )
 
 
@@ -1223,15 +1219,13 @@ def test_postgres_config_equality():
 def test_postgres_config_with_password():
     """Test the PostgresConfig model."""
     postgres_config = PostgresConfig(
-        **{
-            "host": "other_host",
-            "port": 1234,
-            "dbname": "my_database",
-            "user": "admin",
-            "password_path": "tests/config/postgres_password.txt",
-            "ssl_mode": "allow",
-            "max_entries": 42,
-        }
+        host="other_host",
+        port=1234,
+        dbname="my_database",
+        user="admin",
+        password_path="tests/config/postgres_password.txt",  # noqa: S106
+        ssl_mode="allow",
+        max_entries=42,
     )
     # check if password was read correctly from file
     assert postgres_config.password == "postgres_password"  # noqa: S105
