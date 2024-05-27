@@ -22,11 +22,22 @@ class AzureOpenAI(LLMProvider):
     @property
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
+        azure_endpoint = self.provider_config.url or self.url
+        credentials = self.provider_config.credentials
+        deployment_name = self.provider_config.deployment_name
+
+        # provider-specific configuration has precendence over regular configuration
+        if self.provider_config.azure_config is not None:
+            azure_config = self.provider_config.azure_config
+            azure_endpoint = str(azure_config.url)
+            deployment_name = azure_config.deployment_name
+            credentials = azure_config.api_key
+
         return {
-            "azure_endpoint": self.provider_config.url or self.url,
-            "api_key": self.provider_config.credentials,
+            "azure_endpoint": azure_endpoint,
+            "api_key": credentials,
             "api_version": "2024-02-01",
-            "deployment_name": self.provider_config.deployment_name,
+            "deployment_name": deployment_name,
             "model": self.model,
             "model_kwargs": {
                 "top_p": 0.95,

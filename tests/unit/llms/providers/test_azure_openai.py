@@ -9,7 +9,7 @@ from ols.src.llms.providers.azure_openai import AzureOpenAI
 
 @pytest.fixture
 def provider_config():
-    """Fixture with provider configuration for OpenAI."""
+    """Fixture with provider configuration for Azure OpenAI."""
     return ProviderConfig(
         {
             "name": "some_provider",
@@ -17,6 +17,33 @@ def provider_config():
             "url": "test_url",
             "credentials_path": "tests/config/secret.txt",
             "deployment_name": "test_deployment_name",
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_with_specific_parameters():
+    """Fixture with provider configuration for Azure OpenAI with specific parameters."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "deployment_name": "test_deployment_name",
+            "azure_openai_config": {
+                "url": "http://azure.com",
+                "deployment_name": "azure_deployment_name",
+                "credentials_path": "tests/config/secret2.txt",
+                "tenant_id": "00000000-0000-0000-0000-000000000001",
+                "client_id": "00000000-0000-0000-0000-000000000002",
+                "client_secret_path": "tests/config/secret.txt",
+            },
             "models": [
                 {
                     "name": "test_model_name",
@@ -34,11 +61,49 @@ def test_basic_interface(provider_config):
     llm = azure_openai.load()
     assert isinstance(llm, AzureChatOpenAI)
     assert azure_openai.default_params
+
+    # parameter presence test
     assert "model" in azure_openai.default_params
     assert "deployment_name" in azure_openai.default_params
+    assert "api_key" in azure_openai.default_params
     assert "azure_endpoint" in azure_openai.default_params
     assert "max_tokens" in azure_openai.default_params
     assert "api_version" in azure_openai.default_params
+
+    # test parameter values taken from config
+    assert azure_openai.default_params["deployment_name"] == "test_deployment_name"
+
+    # API key should be loaded from secret
+    assert azure_openai.default_params["api_key"] == "secret_key"
+
+    assert azure_openai.default_params["azure_endpoint"] == "test_url"
+
+
+def test_loading_provider_specific_parameters(provider_config_with_specific_parameters):
+    """Test if provider-specific parameters are loaded too."""
+    azure_openai = AzureOpenAI(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_with_specific_parameters,
+    )
+    llm = azure_openai.load()
+    assert isinstance(llm, AzureChatOpenAI)
+    assert azure_openai.default_params
+
+    # parameter presence test
+    assert "model" in azure_openai.default_params
+    assert "deployment_name" in azure_openai.default_params
+    assert "api_key" in azure_openai.default_params
+    assert "azure_endpoint" in azure_openai.default_params
+    assert "max_tokens" in azure_openai.default_params
+    assert "api_version" in azure_openai.default_params
+
+    # test parameter values taken from provide-specific config
+    assert azure_openai.default_params["deployment_name"] == "azure_deployment_name"
+    assert azure_openai.default_params["azure_endpoint"] == "http://azure.com/"
+
+    # API key should be loaded from secret
+    assert azure_openai.default_params["api_key"] == "secret_key_2"
 
 
 def test_params_handling(provider_config):
