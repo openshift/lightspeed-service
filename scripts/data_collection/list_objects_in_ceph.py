@@ -28,13 +28,13 @@ def list_bucket_content(client, bucket_name):
         response = client.list_objects_v2(Bucket=bucket_name)
         print("DEBUG: \n", response)
         if "Contents" in response:
-            print("Contents of bucket '{}':".format(bucket_name))
+            print(f"Contents of bucket '{bucket_name}':")
             for obj in response["Contents"]:
                 print(obj["Key"])
         else:
-            print("Bucket '{}' is empty.".format(bucket_name))
+            print(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
-        print("Failed to list contents of bucket '{}':".format(bucket_name), e)
+        print(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
 pprint(client.list_buckets())
