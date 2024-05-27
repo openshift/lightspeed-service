@@ -520,6 +520,37 @@ def test_provider_config_azure_openai_specific():
     assert provider_config.bam_config is None
 
 
+def test_provider_config_azure_openai_unknown_parameters():
+    """Test if unknown Azure OpenAI parameters are detected."""
+    # provider type is set to "azure_openai" and Azure OpenAI-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "azure_openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deploment-name",
+                "azure_openai_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret.txt",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
 def test_provider_config_openai_specific():
     """Test if OpenAI-specific config is loaded and validated."""
     # provider type is set to "openai" and OpenAI-specific configuration is there
@@ -552,6 +583,37 @@ def test_provider_config_openai_specific():
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
     assert provider_config.bam_config is None
+
+
+def test_provider_config_openai_unknown_parameters():
+    """Test if unknown OpenAI parameters are detected."""
+    # provider type is set to "openai" and OpenAI-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deploment-name",
+                "openai_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret.txt",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
 
 
 def test_provider_config_watsonx_specific():
@@ -590,6 +652,34 @@ def test_provider_config_watsonx_specific():
     assert provider_config.bam_config is None
 
 
+def test_provider_config_watsonx_unknown_parameters():
+    """Test if unknown Watsonx parameters are detected."""
+    # provider type is set to "watsonx" and Watsonx-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "watsonx",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "watsonx_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "credentials_path": "tests/config/secret.txt",
+                    "project_id": "*project id*",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
 def test_provider_config_bam_specific():
     """Test if BAM-specific config is loaded and validated."""
     # provider type is set to "bam" and BAM-specific configuration is there
@@ -622,6 +712,33 @@ def test_provider_config_bam_specific():
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
     assert provider_config.watsonx_config is None
+
+
+def test_provider_config_bam_unknown_parameters():
+    """Test if unknown BAM parameters are detected."""
+    # provider type is set to "bam" and BAM-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "bam_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "credentials_path": "tests/config/secret.txt",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
 
 
 def test_improper_provider_specific_config():
