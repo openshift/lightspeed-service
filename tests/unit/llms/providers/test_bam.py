@@ -27,6 +27,30 @@ def provider_config():
     )
 
 
+@pytest.fixture
+def provider_config_with_specific_params():
+    """Fixture with provider configuration for BAM."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "bam_config": {
+                "url": "http://bam.com",
+                "credentials_path": "tests/config/secret2.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+
 def test_basic_interface(provider_config):
     """Test basic interface."""
     bam = BAM(model="uber-model", params={}, provider_config=provider_config)
@@ -53,6 +77,10 @@ def test_params_handling(provider_config):
     assert bam.default_params
     assert bam.params
 
+    # taken from configuration
+    assert bam.url == "test_url"
+    assert bam.credentials == "secret_key"
+
     # known parameters should be there
     assert "min_new_tokens" in bam.params
     assert bam.params["min_new_tokens"] == 1
@@ -67,6 +95,24 @@ def test_params_handling(provider_config):
     assert "verbose" not in bam.params
 
     assert "unknown_parameter" not in bam.params
+
+
+def test_params_handling_specific_params(provider_config_with_specific_params):
+    """Test that provider-specific parameters take precedence."""
+    bam = BAM(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_with_specific_params,
+    )
+    llm = bam.load()
+    assert isinstance(llm, LangChainInterface)
+    assert bam.default_params
+    assert bam.params
+
+    # parameters taken from provier-specific configuration
+    # which takes precedence over regular configuration
+    assert bam.url == "http://bam.com/"
+    assert bam.credentials == "secret_key_2"
 
 
 def test_params_handling_none_values(provider_config):

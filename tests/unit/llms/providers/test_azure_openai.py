@@ -98,7 +98,7 @@ def test_loading_provider_specific_parameters(provider_config_with_specific_para
     assert "max_tokens" in azure_openai.default_params
     assert "api_version" in azure_openai.default_params
 
-    # test parameter values taken from provide-specific config
+    # test parameter values taken from provider-specific config
     assert azure_openai.default_params["deployment_name"] == "azure_deployment_name"
     assert azure_openai.default_params["azure_endpoint"] == "http://azure.com/"
 

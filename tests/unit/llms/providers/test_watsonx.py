@@ -34,6 +34,32 @@ def provider_config():
     )
 
 
+@pytest.fixture
+def provider_config_with_specific_params():
+    """Fixture with provider configuration for Watsonx with provider-specific parameters."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "credentials_path": "tests/config/secret.txt",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "watsonx_config": {
+                "url": "http://bam.com",
+                "credentials_path": "tests/config/secret2.txt",
+                "project_id": "ffffffff-89ab-cdef-0123-456789abcdef",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_basic_interface(provider_config):
     """Test basic interface."""
@@ -64,6 +90,11 @@ def test_params_handling(provider_config):
     assert watsonx.default_params
     assert watsonx.params
 
+    # taken from configuration
+    assert watsonx.url == "https://us-south.ml.cloud.ibm.com"
+    assert watsonx.credentials == "secret_key"
+    assert watsonx.project_id == "01234567-89ab-cdef-0123-456789abcdef"
+
     # known parameters should be there
     assert GenParams.DECODING_METHOD in watsonx.params
     assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
@@ -74,6 +105,26 @@ def test_params_handling(provider_config):
     # unknown parameters should be filtered out
     assert "unknown_parameter" not in watsonx.params
     assert "verbose" not in watsonx.params
+
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_params_handling_specific_params(provider_config_with_specific_params):
+    """Test that provider-specific parameters take precedence."""
+    watsonx = Watsonx(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_with_specific_params,
+    )
+    llm = watsonx.load()
+    assert isinstance(llm, WatsonxLLM)
+    assert watsonx.default_params
+    assert watsonx.params
+
+    # parameters taken from provier-specific configuration
+    # which takes precedence over regular configuration
+    assert watsonx.url == "http://bam.com/"
+    assert watsonx.credentials == "secret_key_2"
+    assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
 
 
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
