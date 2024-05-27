@@ -9,7 +9,7 @@ from llama_index.core import VectorStoreIndex
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
-from ols.app.models.models import ReferencedDocument
+from ols.app.models.models import SummarizerResponse
 from ols.constants import RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -35,7 +35,7 @@ class DocsSummarizer(QueryHelper):
         vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> SummarizerResponse:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -46,11 +46,7 @@ class DocsSummarizer(QueryHelper):
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-            A dictionary containing below property
-            - the summary as a string
-            - referenced documents as a list of strings
-            - flag indicating that conversation history has been truncated
-              to fit within context window.
+            A `SummarizerResponse` object.
         """
         # if history is not provided, initialize to empty history
         if history is None:
@@ -87,26 +83,16 @@ class DocsSummarizer(QueryHelper):
             temp_prompt.format(**temp_prompt_input), model_config
         )
 
-        # Get RAG context, truncate if applicable.
-        rag_context_data: dict[str, list[str]] = {}
-
         if vector_index is not None:
             retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
-            rag_context_data, available_tokens = token_handler.truncate_rag_context(
+            rag_chunks, available_tokens = token_handler.truncate_rag_context(
                 retriever.retrieve(query), available_tokens
             )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
+            rag_chunks = []
 
-        rag_context = "\n\n".join(rag_context_data.get("text", []))
-        referenced_documents = [
-            ReferencedDocument(docs_url=docs_url, title=title)  # type: ignore
-            for docs_url, title in zip(
-                rag_context_data.get("docs_url", []),
-                rag_context_data.get("title", []),
-                strict=True,
-            )
-        ]
+        rag_context = "\n\n".join([rag_chunk.text for rag_chunk in rag_chunks])
 
         # Truncate history, if applicable
         history, truncated = token_handler.limit_conversation_history(
@@ -150,10 +136,5 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
         logger.debug(f"{conversation_id} Summary response: {response}")
-        logger.debug(f"{conversation_id} Referenced documents: {referenced_documents}")
 
-        return {
-            "response": response,
-            "referenced_documents": referenced_documents,
-            "history_truncated": truncated,
-        }
+        return SummarizerResponse(response, rag_chunks, truncated)  # type: ignore

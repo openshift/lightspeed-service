@@ -126,17 +126,16 @@ class TestTokenHandler(TestCase):
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url", "title"))
-        assert len(context["text"]) == 3
-        for idx in range(3):
-            assert context["text"][idx] == self._mock_retrieved_obj[idx].get_text()
+        assert len(rag_chunks) == 3
+        for i in range(3):
+            assert rag_chunks[i].text == self._mock_retrieved_obj[i].get_text()
             assert (
-                context["docs_url"][idx]
-                == self._mock_retrieved_obj[idx].metadata["docs_url"]
+                rag_chunks[i].doc_url
+                == self._mock_retrieved_obj[i].metadata["docs_url"]
             )
         assert available_tokens == 482
 
@@ -145,29 +144,24 @@ class TestTokenHandler(TestCase):
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url", "title"))
-        assert len(context["text"]) == 1
-        assert context["text"][0] == self._mock_retrieved_obj[0].get_text()
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].text == self._mock_retrieved_obj[0].get_text()
         assert available_tokens == 494
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context) == 3
-        assert len(context["text"]) == 2
-        assert (
-            context["text"][1].split()
-            == self._mock_retrieved_obj[1].get_text().split()[:1]
-        )
+        assert len(rag_chunks) == 2
+        assert rag_chunks[1].text == self._mock_retrieved_obj[1].get_text()[:1]
         assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
@@ -175,19 +169,20 @@ class TestTokenHandler(TestCase):
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context["text"]) == 1
+        assert len(rag_chunks) == 1
         assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context([], 5)
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+            [], 5
+        )
 
-        assert len(context) == 0
-        assert isinstance(context, dict)
+        assert rag_chunks == []
         assert available_tokens == 5
 
     def test_limit_conversation_history_when_no_history_exists(self):

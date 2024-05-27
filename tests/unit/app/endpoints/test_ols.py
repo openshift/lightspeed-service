@@ -12,7 +12,12 @@ from fastapi import HTTPException
 from ols import config, constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
-from ols.app.models.models import LLMRequest, ReferencedDocument
+from ols.app.models.models import (
+    LLMRequest,
+    RagChunk,
+    ReferencedDocument,
+    SummarizerResponse,
+)
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import suid
 from ols.utils.query_filter import QueryFilters, RegexFilter
@@ -345,11 +350,11 @@ def test_conversation_request(
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = {
-        "response": mock_response,
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        response=mock_response,
+        rag_chunks=[],
+        history_truncated=False,
+    )
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request, auth)
     assert (
@@ -432,11 +437,11 @@ def test_no_question_validation_in_follow_up_conversation(
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # but as it is not the first question, it should proceed to summarization
-    mock_summarize.return_value = {
-        "response": "some elaborate answer",
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        "some elaborate answer",
+        [],
+        False,
+    )
     conversation_id = suid.get_suid()
     query = "some elaborate question"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -466,11 +471,11 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = {
-        "response": mock_response,
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        mock_response,
+        [],
+        False,
+    )
 
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
@@ -478,14 +483,14 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     previous_input = []
 
     # try to get response
-    response, documents, truncated = ols.generate_response(
+    summarizer_response = ols.generate_response(
         conversation_id, llm_request, previous_input
     )
 
     # check the response
-    assert "Kubernetes" in response
-    assert len(documents) == 0
-    assert not truncated
+    assert "Kubernetes" in summarizer_response.response
+    assert summarizer_response.rag_chunks == []
+    assert summarizer_response.history_truncated is False
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
@@ -550,7 +555,7 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         ),
         patch(
             "ols.app.endpoints.ols.generate_response",
-            return_value=("something", [], False),
+            return_value=SummarizerResponse("something", [], False),
         ),
         patch(
             "ols.app.endpoints.ols.store_conversation_history",
@@ -574,9 +579,9 @@ def test_store_transcript(transcripts_location):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     response = "Kubernetes is ..."
-    ref_docs = [
-        ReferencedDocument("https://foo.bar", "Foo Bar"),
-        ReferencedDocument("https://bar.baz", "Bar Baz"),
+    rag_chunks = [
+        RagChunk("text1", "url1", "title1"),
+        RagChunk("text2", "url2", "title2"),
     ]
     truncated = True
 
@@ -586,7 +591,7 @@ def test_store_transcript(transcripts_location):
         query_is_valid,
         llm_request,
         response,
-        ref_docs,
+        rag_chunks,
         truncated,
     )
 
@@ -616,6 +621,9 @@ def test_store_transcript(transcripts_location):
         "redacted_query": query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": ref_docs,
+        "rag_chunks": [
+            {"text": "text1", "doc_url": "url1", "doc_title": "title1"},
+            {"text": "text2", "doc_url": "url2", "doc_title": "title2"},
+        ],
         "truncated": truncated,
     }

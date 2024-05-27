@@ -1,13 +1,13 @@
 """Utility to handle tokens."""
 
 import logging
-from collections import defaultdict
 from math import ceil
 
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
 from ols.app.models.config import ModelConfig
+from ols.app.models.models import RagChunk
 from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
     MINIMUM_CONTEXT_TOKEN_LIMIT,
@@ -104,7 +104,7 @@ class TokenHandler:
 
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
-    ) -> tuple[dict[str, list[str]], int]:
+    ) -> tuple[list[RagChunk], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
@@ -112,16 +112,9 @@ class TokenHandler:
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
-            context_dict: A dictionary containing list of context & metadata
-            max_tokens: int, available tokens after context usage
-            Context Example:
-                {
-                    "text": ["This is my doc1", "This is my doc2"],
-                    "docs_url": ["https://doc_url1", "https://doc_url2"]
-                    "title": ["Title of doc 1", "Title of doc 2"]
-                }
+            list of `RagChunk` objects, available tokens after context usage
         """
-        context_dict = defaultdict(list)
+        rag_chunks = []
 
         for node in retrieved_nodes:
 
@@ -144,14 +137,17 @@ class TokenHandler:
                 logger.debug(f"{available_tokens} tokens are less than threshold.")
                 break
 
-            context_dict["text"].append(self.tokens_to_text(tokens[:available_tokens]))
-            # Add Metadata
-            context_dict["docs_url"].append(node.metadata.get("docs_url", None))
-            context_dict["title"].append(node.metadata.get("title", None))
+            rag_chunks.append(
+                RagChunk(
+                    text=self.tokens_to_text(tokens[:available_tokens]),
+                    doc_url=node.metadata.get("docs_url", ""),
+                    doc_title=node.metadata.get("title", ""),
+                )  # type: ignore
+            )
 
             max_tokens -= available_tokens
 
-        return context_dict, max_tokens
+        return rag_chunks, max_tokens
 
     def limit_conversation_history(
         self, history: list[str], limit: int = 0

@@ -211,11 +211,11 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         help="Include the whole conversation history in the generated output",
     )
     parser.add_argument(
-        "-rd",
-        "--referenced-documents",
+        "-wr",
+        "--with-rag-context",
         default=False,
         action="store_true",
-        help="Include referenced documents in the generated output",
+        help="Include RAG context in the generated output",
     )
     parser.add_argument(
         "-t",
@@ -394,18 +394,8 @@ def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
     return feedbacks
 
 
-def format_referenced_documents(docs: list[dict[str, str]]) -> str:
-    """Format referenced documents section in full conversation history for feedback."""
-    output = ""
-    for doc in docs:
-        title = doc["title"]
-        url = doc["docs_url"]
-        output += f"{title}: {url}\n"
-    return output or "[None]"
-
-
 def read_full_conversation_history(
-    tarball_name: str, user_id: str, history_id: str, referenced_documents: bool
+    tarball_name: str, user_id: str, history_id: str, with_rag_context: bool
 ) -> str:
     """Read full conversation history from tarball."""
     logger.info(f"Reading full conversation history from {tarball_name}")
@@ -423,20 +413,28 @@ def read_full_conversation_history(
                     timestamp = conversation["metadata"]["timestamp"]
                     query = conversation["redacted_query"].strip()
                     response = conversation["llm_response"].strip()
+                    rag_chunks = conversation["rag_chunks"]
                     conversation_record = f"\nQ:{query}\nA:{response}\n"
 
-                    if referenced_documents:
-                        docs = format_referenced_documents(
-                            conversation["referenced_documents"]
-                        )
-                        conversation_record += f"\nReferenced documents:\n{docs}\n"
+                    if with_rag_context:
+                        conversation_record += "RAG context part\n"
+                        for rag_chunk in rag_chunks:
+                            ref_doc = (
+                                f"{rag_chunk['doc_title']}: {rag_chunk['doc_url']}"
+                            )
+                            conversation_record += f"\nReferenced doc:\n{ref_doc}"
+                            conversation_record += (
+                                f"\nRAG context:\n{rag_chunk['text'].strip()}\n"
+                            )
                     conversation_record += f"{separator}\n"
                     history[timestamp] = conversation_record
                     statistic.conversation_history_included += 1
                 else:
                     logger.error(f"Nothing to extract from {filename}")
             except Exception as e:
-                logger.error(f"Unable to read conversation history: {e}")
+                logger.error(
+                    f"Unable to read conversation history: {type(e).__name__}: {e}"
+                )
 
     output = ""
     for timestamp in sorted(history):
@@ -453,7 +451,7 @@ def format_timestamp(text: str) -> str:
 def aggregate_user_feedback_from_files(
     filewriter,
     directory_name: str,
-    referenced_documents: bool,
+    with_rag_context: bool,
     conversation_history: bool,
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
@@ -485,7 +483,7 @@ def aggregate_user_feedback_from_files(
                         filename,
                         user_id,
                         conversation_id,
-                        referenced_documents,
+                        with_rag_context,
                     )
                     rows.append(full_history)
                 filewriter.writerow(rows)
@@ -525,13 +523,13 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         aggregate_user_feedback_from_files(
             filewriter,
             args.work_directory,
-            args.referenced_documents,
+            args.with_rag_context,
             args.conversation_history,
         )
 
 
 def read_full_conversation_history_for_all_users(
-    tarball_name: str, referenced_documents: bool
+    tarball_name: str, with_rag_context: bool
 ) -> list[tuple[str, str, str]]:
     """Read conversation history for all users and return it as list of conversations."""
     logger.info(f"Reading full conversation history from {tarball_name} for all users")
@@ -551,7 +549,7 @@ def read_full_conversation_history_for_all_users(
                 tarball_name,
                 user_id,
                 conversation_id,
-                referenced_documents,
+                with_rag_context,
             )
             history.append((user_id, conversation_id, conversation))
 
@@ -559,7 +557,7 @@ def read_full_conversation_history_for_all_users(
 
 
 def aggregate_conversation_history_from_files(
-    filewriter, directory_name: str, referenced_documents: bool
+    filewriter, directory_name: str, with_rag_context: bool
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
     logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
@@ -571,7 +569,7 @@ def aggregate_conversation_history_from_files(
             cluster_id = filename[:36]
             logger.info(f"Processing tarball {filename}")
             full_history = read_full_conversation_history_for_all_users(
-                filename, referenced_documents
+                filename, with_rag_context
             )
             for history in full_history:
                 row = [cluster_id, *history]
@@ -602,7 +600,7 @@ def aggregate_conversation_history(args: argparse.Namespace) -> None:
 
         # write conversation histories into CSV
         aggregate_conversation_history_from_files(
-            filewriter, args.work_directory, args.referenced_documents
+            filewriter, args.work_directory, args.with_rag_context
         )
 
 

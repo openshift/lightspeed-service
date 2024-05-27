@@ -23,14 +23,14 @@ def test_is_query_helper_subclass():
 
 def check_summary_result(summary, question):
     """Check result produced by DocsSummarizer.summary method."""
-    assert question in summary["response"]
-    documents = summary["referenced_documents"]
-    assert len(documents) > 0
+    assert question in summary.response
+    assert isinstance(summary.rag_chunks, list)
+    assert len(summary.rag_chunks) == 1
     assert (
         f"{constants.OCP_DOCS_ROOT_URL}/{constants.OCP_DOCS_VERSION}/docs/test.html"
-        in [documents[0].docs_url]
+        in summary.rag_chunks[0].doc_url
     )
-    assert not summary["history_truncated"]
+    assert summary.history_truncated is False
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -104,7 +104,7 @@ def test_summarize_truncation():
     summary = summarizer.summarize(conversation_id, question, rag_index, history)
 
     # truncation should be done
-    assert summary["history_truncated"]
+    assert summary.history_truncated
 
 
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
@@ -115,7 +115,6 @@ def test_summarize_no_reference_content():
     )
     question = "What's the ultimate question with answer 42?"
     summary = summarizer.summarize(conversation_id, question)
-    assert question in summary["response"]
-    documents = summary["referenced_documents"]
-    assert len(documents) == 0
-    assert not summary["history_truncated"]
+    assert question in summary.response
+    assert summary.rag_chunks == []
+    assert not summary.history_truncated
