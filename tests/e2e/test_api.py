@@ -187,9 +187,9 @@ def test_invalid_question_without_conversation_id():
         assert json_response["truncated"] is False
 
         # new conversation ID should be generated
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
 def test_query_call_without_payload():
@@ -280,9 +280,9 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         assert (
             "conversation_id" in json_response
         ), "New conversation ID was not generated"
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
 def test_too_long_question(response_eval) -> None:
@@ -985,7 +985,7 @@ def test_openapi_endpoint():
 def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
+        pytest.skip("Postgres is not accessible.")
         return
 
     value = read_conversation_history_count(postgres_connection)
@@ -1011,7 +1011,7 @@ def _perform_query(client, conversation_id, response_eval, qna_pair):
 def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
+        pytest.skip("Postgres is not accessible.")
         return
 
     cid = suid.get_suid()
