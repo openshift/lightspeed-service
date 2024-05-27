@@ -22,9 +22,17 @@ class OpenAI(LLMProvider):
     @property
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
+        openai_endpoint = self.provider_config.url or self.url
+        credentials = self.provider_config.credentials
+        # provider-specific configuration has precendence over regular configuration
+        if self.provider_config.openai_config is not None:
+            openai_config = self.provider_config.openai_config
+            openai_endpoint = str(openai_config.url)
+            credentials = openai_config.api_key
+
         return {
-            "base_url": self.provider_config.url or self.url,
-            "openai_api_key": self.provider_config.credentials,
+            "base_url": openai_endpoint,
+            "openai_api_key": credentials,
             "model": self.model,
             "model_kwargs": {
                 "top_p": 0.95,
