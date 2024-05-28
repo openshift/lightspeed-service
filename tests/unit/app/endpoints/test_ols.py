@@ -571,6 +571,15 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         assert list(transcript_dir.glob("*/*/*.json")) == []
 
 
+def test_construct_transcripts_path(transcripts_location):
+    """Test for the helper function construct_transcripts_path."""
+    user_id = "00000000-0000-0000-0000-000000000000"
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    path = ols.construct_transcripts_path(user_id, conversation_id)
+
+    assert str(path.resolve()).endswith(f"{user_id}/{conversation_id}")
+
+
 def test_store_transcript(transcripts_location):
     """Test transcript is successfully stored."""
     user_id = suid.get_suid()
