@@ -105,6 +105,11 @@ def test_loading_provider_specific_parameters(provider_config_with_specific_para
     # API key should be loaded from secret
     assert azure_openai.default_params["api_key"] == "secret_key_2"
 
+    # parameters taken from provier-specific configuration
+    # which takes precedence over regular configuration
+    assert azure_openai.url == "http://azure.com/"
+    assert azure_openai.credentials == "secret_key_2"
+
 
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
@@ -139,6 +144,10 @@ def test_params_handling(provider_config):
     assert "min_new_tokens" not in azure_openai.params
     assert "max_new_tokens" not in azure_openai.params
     assert "unknown_parameter" not in azure_openai.params
+
+    # taken from configuration
+    assert azure_openai.url == "test_url"
+    assert azure_openai.credentials == "secret_key"
 
 
 def test_api_version_can_not_be_none(provider_config):
