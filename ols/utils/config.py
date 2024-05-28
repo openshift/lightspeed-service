@@ -30,6 +30,7 @@ class AppConfig:
         self.config = config_model.Config()
         self._query_filters: Optional[QueryFilters] = None
         self._rag_index: Optional[BaseIndex] = None
+        self._conversation_cache: Optional[Cache] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -49,9 +50,11 @@ class AppConfig:
     @property
     def conversation_cache(self) -> Cache:
         """Return the conversation cache."""
-        if self.ols_config.conversation_cache is None:
-            raise ValueError("Conversation cache configuration is not set in config")
-        return CacheFactory.conversation_cache(self.ols_config.conversation_cache)
+        if self._conversation_cache is None:
+            self._conversation_cache = CacheFactory.conversation_cache(
+                self.ols_config.conversation_cache
+            )
+        return self._conversation_cache
 
     @property
     def query_redactor(self) -> Optional[QueryFilters]:
