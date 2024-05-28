@@ -236,14 +236,13 @@ def args_parser(args: list[str]) -> argparse.Namespace:
 
 def connect(args: argparse.Namespace):
     """Connect to Ceph."""
-    client = boto3.client(
+    return boto3.client(
         "s3",
         endpoint_url=args.endpoint,
         aws_access_key_id=args.access_key,
         aws_secret_access_key=args.secret_access_key,
         region_name=args.region,
     )
-    return client
 
 
 def ping_ceph(args: argparse.Namespace) -> None:
@@ -253,7 +252,7 @@ def ping_ceph(args: argparse.Namespace) -> None:
         client.head_bucket(Bucket=args.bucket)
         logger.info("Bucket is accessible")
     except Exception as e:
-        logger.error(f"Bucket is not accessible: {e}")
+        logger.exception(f"Bucket is not accessible: {e}")
 
 
 def list_objects(args: argparse.Namespace) -> None:
@@ -270,7 +269,7 @@ def list_objects(args: argparse.Namespace) -> None:
         else:
             logger.warning(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
-        logger.error(f"Failed to list contents of bucket '{bucket_name}':", e)
+        logger.exception(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
 def key_match(key: str) -> Optional[re.Match]:
@@ -332,7 +331,7 @@ def download_tarball(client, bucket_name: str, obj) -> None:
             logger.warning(f"Incorrect object key {key}, skipping")
             statistic.tarballs_with_incorrect_key += 1
     except Exception as e:
-        logger.error(f"Unable to download object: {e}")
+        logger.exception(f"Unable to download object: {e}")
         statistic.tarballs_not_downloaded += 1
 
 
@@ -353,7 +352,7 @@ def download_tarballs(args: argparse.Namespace) -> None:
         else:
             logger.warning(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
-        logger.error(f"Failed to list contents of bucket '{bucket_name}':", e)
+        logger.exception(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
 def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]]:
@@ -371,7 +370,7 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
                     logger.error(f"Nothing to extract from {filename}")
                     statistic.tarballs_without_feedback += 1
             except Exception as e:
-                logger.error(f"Unable to read feedback: {e}")
+                logger.exception(f"Unable to read feedback: {e}")
                 statistic.feedback_read_error += 1
     return feedbacks
 
@@ -432,7 +431,7 @@ def read_full_conversation_history(
                 else:
                     logger.error(f"Nothing to extract from {filename}")
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Unable to read conversation history: {type(e).__name__}: {e}"
                 )
 
@@ -610,7 +609,7 @@ def perform_cleanup(args: argparse.Namespace) -> None:
     filenames = os.listdir(args.work_directory)
 
     for filename in filenames:
-        if filename.endswith(".tgz") or filename.endswith(".tar.gz"):
+        if filename.endswith((".tgz", ".tar.gz")):
             logger.info(f"Removing {filename}")
             os.remove(os.path.join(args.work_directory, filename))
 
