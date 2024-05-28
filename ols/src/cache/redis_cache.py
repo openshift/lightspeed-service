@@ -112,3 +112,15 @@ class RedisCache(Cache):
                 self.redis_client.set(key, json.dumps(old_value))
             else:
                 self.redis_client.set(key, json.dumps(value))
+
+    def is_ready(self) -> bool:
+        """Check if the cache is ready.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """
+        try:
+            self.redis_client.ping()
+            return True
+        except RedisError:
+            return False

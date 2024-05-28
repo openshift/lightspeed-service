@@ -221,3 +221,17 @@ class PostgresCache(Cache):
                 cursor.execute(
                     f"{PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT} {count-capacity})"
                 )
+
+    def is_ready(self) -> bool:
+        """Check if the cache is ready.
+
+        Returns:
+            `True` if the cache is ready, `False` otherwise.
+        """
+        with self.conn.cursor() as cursor:
+            try:
+                cursor.execute("SELECT 1")
+                return True
+            except psycopg2.DatabaseError as e:
+                logger.error(f"failed to connect to database: {e}")
+                return False

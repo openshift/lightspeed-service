@@ -342,6 +342,35 @@ class HealthResponse(BaseModel):
     }
 
 
+class ReadinessResponse(BaseModel):
+    """Model representing a response to a readiness request.
+
+    Attributes:
+        ready: The readiness of the service.
+        reason: The reason for the readiness.
+
+    Example:
+        ```python
+        readiness_response = ReadinessResponse(ready=True, reason="service is ready")
+        ```
+    """
+
+    ready: bool
+    reason: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "ready": True,
+                    "reason": "service is ready",
+                }
+            ]
+        }
+    }
+
+
 class AuthorizationResponse(BaseModel):
     """Model representing a response to an authorization request.
 

@@ -7,40 +7,32 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 
 from fastapi import APIRouter
 
-from ols.app.models.models import HealthResponse
+from ols import config
+from ols.app.models.models import HealthResponse, ReadinessResponse
 
 router = APIRouter(tags=["health"])
 
 
-# TODO: OLS-488 Define behaviour of /readiness and /liveness endpoints in OLS service
-#
-# Example status response:
-# {
-#     "status": "unhealthy",
-#     "version": "1.0.0",
-#     "dependencies": {
-#         "database": "healthy",
-#         "externalApi": "unhealthy"
-#     }
-# }
+def cache_is_ready() -> bool:
+    """Check if the cache is ready."""
+    # NOTE: The `conversation_cache` in config is a (cached) instance of
+    # `Cache` class returned by the `CacheFactory`.
+    return config.conversation_cache.is_ready()
 
 
 @router.get("/readiness")
-def readiness_probe_get_method() -> HealthResponse:
+def readiness_probe_get_method() -> ReadinessResponse:
     """Ready status of service."""
-    return HealthResponse(status={"status": "healthy"})
+    if not cache_is_ready():
+        return ReadinessResponse(ready=False, reason="cache is not ready")
+    else:
+        return ReadinessResponse(ready=True, reason="service is ready")
 
 
 @router.get("/liveness")
 def liveness_probe_get_method() -> HealthResponse:
     """Live status of service."""
     return HealthResponse(status={"status": "healthy"})
-
-
-@router.head("/readiness")
-def readiness_probe_head_method() -> None:
-    """Ready status of service."""
-    return
 
 
 @router.head("/liveness")

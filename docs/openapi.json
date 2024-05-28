@@ -196,26 +196,8 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/HealthResponse"
+                                    "$ref": "#/components/schemas/ReadinessResponse"
                                 }
-                            }
-                        }
-                    }
-                }
-            },
-            "head": {
-                "tags": [
-                    "health"
-                ],
-                "summary": "Readiness Probe Head Method",
-                "description": "Ready status of service.",
-                "operationId": "readiness_probe_head_method_readiness_head",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
                             }
                         }
                     }
@@ -647,6 +629,31 @@
                             "cause": "Prompt length exceeds LLM context window limit (8000 tokens)",
                             "response": "Prompt is too long"
                         }
+                    }
+                ]
+            },
+            "ReadinessResponse": {
+                "properties": {
+                    "ready": {
+                        "type": "boolean",
+                        "title": "Ready"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ready",
+                    "reason"
+                ],
+                "title": "ReadinessResponse",
+                "description": "Model representing a response to a readiness request.\n\nAttributes:\n    ready: The readiness of the service.\n    reason: The reason for the readiness.\n\nExample:\n    ```python\n    readiness_response = ReadinessResponse(ready=True, reason=\"service is ready\")\n    ```",
+                "examples": [
+                    {
+                        "ready": true,
+                        "reason": "service is ready"
                     }
                 ]
             },

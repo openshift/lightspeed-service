@@ -130,7 +130,7 @@ def test_readiness():
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
 def test_liveness():
@@ -1180,3 +1180,11 @@ def test_http_header_redaction():
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         assert f'"{header}":"XXXXX"' in container_log
         assert f'"{header}":"some_value"' not in container_log
+
+
+def test_readiness_endpoint():
+    """Test the /readiness endpoint."""
+    response = client.get("/readiness", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    check_content_type(response, "application/json")
+    assert response.json() == {"ready": True, "reason": "service is ready"}

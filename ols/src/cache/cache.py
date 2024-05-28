@@ -66,3 +66,11 @@ class Cache(ABC):
             conversation_id: Conversation ID unique for given user.
             value: The value to be stored in the cache.
         """
+
+    @abstractmethod
+    def is_ready(self) -> bool:
+        """Check if the cache is ready.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """

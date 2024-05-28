@@ -36,18 +36,11 @@ def test_readiness(_setup):
     """Test handler for /readiness REST API endpoint."""
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": {"status": "healthy"}}
+    assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
 def test_liveness_head_http_method(_setup) -> None:
     """Test handler for /liveness REST API endpoint when HEAD HTTP method is used."""
     response = client.head("/liveness")
-    assert response.status_code == requests.codes.ok
-    assert response.text == ""
-
-
-def test_readiness_head_http_method(_setup) -> None:
-    """Test handler for /readiness REST API endpoint when HEAD HTTP method is used."""
-    response = client.head("/readiness")
     assert response.status_code == requests.codes.ok
     assert response.text == ""
