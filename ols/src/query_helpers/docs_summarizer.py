@@ -27,6 +27,7 @@ class DocsSummarizer(QueryHelper):
         if provider_config is not None:
             model_config = provider_config.models.get(self.model)
             return model_config.options
+        return None
 
     def summarize(
         self,
