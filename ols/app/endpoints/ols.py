@@ -3,6 +3,7 @@
 import dataclasses
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -395,11 +396,12 @@ def store_transcript(
         truncated: The flag indicating if the history was truncated.
     """
     # ensures storage path exists
-    transcripts_path = Path(
+    tp = Path(
         config.ols_config.user_data_collection.transcripts_storage,
         user_id,
         conversation_id,
     )
+    transcripts_path = os.path.normpath("/" + str(tp)).lstrip("/")
     if not transcripts_path.exists():
         logger.debug(f"creating transcript storage directory '{transcripts_path}'")
         transcripts_path.mkdir(parents=True)
