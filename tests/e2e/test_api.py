@@ -29,6 +29,7 @@ from tests.e2e.constants import (
     NON_LLM_REST_API_TIMEOUT,
 )
 from tests.scripts.must_gather import must_gather
+from tests.scripts.wait_for_ols import wait_for_ols, generate_junit_report
 from tests.scripts.validate_response import ResponseValidation
 
 from .postgres_utils import (
@@ -37,6 +38,8 @@ from .postgres_utils import (
     retrieve_connection,
 )
 from .test_decorators import retry
+
+from urllib3.exceptions import InsecureRequestWarning
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -80,10 +83,19 @@ def setup_module(module):
 
         client = helper_utils.get_http_client(ols_url, token)
         metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
+
+        # Wait for OLS to be ready
+        success = wait_for_ols(ols_url)
+        if not success:
+            generate_junit_report(os.getenv('SUITE_ID'), False)
+            artifact_dir = os.getenv("ARTIFACT_DIR", ".")
+            suite_id = os.getenv('SUITE_ID')
+            os.system(f"python tests/scripts/must_gather.py ARTIFACT_DIR={artifact_dir} SUITE_ID={suite_id}")
+            pytest.fail("OLS did not become available in time")
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
-
+        
 
 def teardown_module(module):
     """Clean up the environment after all tests are executed."""
