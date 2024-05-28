@@ -29,6 +29,7 @@ from tests.e2e.constants import (
     NON_LLM_REST_API_TIMEOUT,
 )
 from tests.scripts.must_gather import must_gather
+from tests.scripts.wait_for_ols import wait_for_ols, generate_junit_report
 from tests.scripts.validate_response import ResponseValidation
 
 from .postgres_utils import (
@@ -37,6 +38,8 @@ from .postgres_utils import (
     retrieve_connection,
 )
 from .test_decorators import retry
+
+from urllib3.exceptions import InsecureRequestWarning
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -80,10 +83,19 @@ def setup_module(module):
 
         client = helper_utils.get_http_client(ols_url, token)
         metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
+
+        # Wait for OLS to be ready
+        success = wait_for_ols(ols_url)
+        if not success:
+            generate_junit_report(os.getenv('SUITE_ID'), False)
+            artifact_dir = os.getenv("ARTIFACT_DIR", ".")
+            suite_id = os.getenv('SUITE_ID')
+            os.system(f"python tests/scripts/must_gather.py ARTIFACT_DIR={artifact_dir} SUITE_ID={suite_id}")
+            pytest.fail("OLS did not become available in time")
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
-
+        
 
 def teardown_module(module):
     """Clean up the environment after all tests are executed."""
@@ -187,9 +199,9 @@ def test_invalid_question_without_conversation_id():
         assert json_response["truncated"] is False
 
         # new conversation ID should be generated
-        assert suid.check_suid(
-            json_response["conversation_id"]
-        ), "Conversation ID is not in UUID format"
+        assert suid.check_suid(json_response["conversation_id"]), (
+            "Conversation ID is not in UUID format" ""
+        )
 
 
 def test_query_call_without_payload():
@@ -280,9 +292,9 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         assert (
             "conversation_id" in json_response
         ), "New conversation ID was not generated"
-        assert suid.check_suid(
-            json_response["conversation_id"]
-        ), "Conversation ID is not in UUID format"
+        assert suid.check_suid(json_response["conversation_id"]), (
+            "Conversation ID is not in UUID format" ""
+        )
 
 
 def test_too_long_question(response_eval) -> None:
@@ -930,12 +942,9 @@ def test_transcripts_storing_cluster():
         # we don't want llm response influence this test
         assert "query_is_valid" in transcript
         assert "llm_response" in transcript
-        assert "rag_chunks" in transcript
-        assert isinstance(transcript["rag_chunks"], list)
-        assert len(transcript["rag_chunks"])
-        assert transcript["rag_chunks"][0]["text"]
-        assert transcript["rag_chunks"][0]["doc_url"]
-        assert transcript["rag_chunks"][0]["doc_title"]
+        assert "referenced_documents" in transcript
+        assert transcript["referenced_documents"][0]["docs_url"]
+        assert transcript["referenced_documents"][0]["title"]
         assert "truncated" in transcript
     finally:
         if pod_name is not None:
@@ -988,7 +997,7 @@ def test_openapi_endpoint():
 def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible.")
+        pytest.skip("Postgres is not accessible." "")
         return
 
     value = read_conversation_history_count(postgres_connection)
@@ -1014,7 +1023,7 @@ def _perform_query(client, conversation_id, response_eval, qna_pair):
 def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible.")
+        pytest.skip("Postgres is not accessible." "")
         return
 
     cid = suid.get_suid()
