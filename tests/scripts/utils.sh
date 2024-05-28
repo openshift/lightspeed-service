@@ -101,4 +101,4 @@ function run_suite() {
   ARTIFACT_DIR=$ARTIFACT_DIR pytest tests/e2e/test_api.py --junitxml=$ARTIFACT_DIR/junit_setup_${1}.xml
   local rc=$?
   return $rc
-}
+}# Temporary change

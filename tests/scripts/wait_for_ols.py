@@ -47,4 +47,4 @@ if __name__ == "__main__":
     if not success:
         artifact_dir = os.getenv("ARTIFACT_DIR", ".")
         os.system(f"python tests/scripts/must_gather.py ARTIFACT_DIR={artifact_dir} SUITE_ID={suite_id}")
-    exit(0 if success else 1)
+    exit(0 if success else 1)# Temporary change

@@ -1188,4 +1188,4 @@ def test_http_header_redaction():
 
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         assert f'"{header}":"XXXXX"' in container_log
-        assert f'"{header}":"some_value"' not in container_log
+        assert f'"{header}":"some_value"' not in container_log# Temporary change
