@@ -91,6 +91,10 @@ def test_params_handling(provider_config):
     assert "max_new_tokens" not in openai.params
     assert "unknown_parameter" not in openai.params
 
+    # taken from configuration
+    assert openai.url == "test_url"
+    assert openai.credentials == "secret_key"
+
     # API key should be loaded from secret
     assert openai.default_params["openai_api_key"] == "secret_key"
 
@@ -113,8 +117,11 @@ def test_loading_provider_specific_parameters(provider_config_with_specific_para
     assert "model" in openai.default_params
     assert "max_tokens" in openai.default_params
 
-    # provider-specific configuration should take precedence
-    # API key should be loaded from secret
+    # parameters taken from provier-specific configuration
+    # which takes precedence over regular configuration
+    assert openai.url == "http://openai.com/"
+    assert openai.credentials == "secret_key_2"
+
     assert openai.default_params["openai_api_key"] == "secret_key_2"
     assert openai.default_params["base_url"] == "http://openai.com/"
 
