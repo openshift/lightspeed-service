@@ -35,6 +35,26 @@ def provider_config():
 
 
 @pytest.fixture
+def provider_config_without_credentials():
+    """Fixture with provider configuration for Watsonx without credentials."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
 def provider_config_with_specific_params():
     """Fixture with provider configuration for Watsonx with provider-specific parameters."""
     return ProviderConfig(
@@ -218,3 +238,14 @@ def test_generic_parameter_mappings(provider_config):
     assert watsonx.params[GenParams.TOP_K] == 10
     assert watsonx.params[GenParams.TOP_P] == 1.5
     assert watsonx.params[GenParams.TEMPERATURE] == 42.0
+
+
+def test_missing_credentials_check(provider_config_without_credentials):
+    """Test that check for missing credentials is in place ."""
+    watsonx = Watsonx(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_without_credentials,
+    )
+    with pytest.raises(ValueError, match="Credentials must be specified"):
+        watsonx.load()

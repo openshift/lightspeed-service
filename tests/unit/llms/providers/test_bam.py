@@ -28,6 +28,25 @@ def provider_config():
 
 
 @pytest.fixture
+def provider_config_without_credentials():
+    """Fixture with provider configuration for BAM without credentials."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bam",
+            "url": "test_url",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
 def provider_config_with_specific_params():
     """Fixture with provider configuration for BAM."""
     return ProviderConfig(
@@ -168,3 +187,14 @@ def test_params_replace_default_values_with_none(provider_config):
     # check default value overrided by None
     assert "decoding_method" in bam.params
     assert bam.params["decoding_method"] is None
+
+
+def test_missing_credentials_check(provider_config_without_credentials):
+    """Test that check for missing credentials is in place ."""
+    bam = BAM(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_without_credentials,
+    )
+    with pytest.raises(ValueError, match="Credentials must be specified"):
+        bam.load()

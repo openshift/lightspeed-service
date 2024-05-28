@@ -47,6 +47,9 @@ class BAM(LLMProvider):
             self.url = str(bam_config.url)
             self.credentials = bam_config.api_key
 
+        if self.credentials is None:
+            raise ValueError("Credentials must be specified")
+
         creds = Credentials(
             api_key=self.credentials,
             api_endpoint=self.url,
