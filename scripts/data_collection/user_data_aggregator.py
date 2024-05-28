@@ -103,6 +103,11 @@ class Statistic:
 statistic = Statistic()
 
 
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename."""
+    return os.path.normpath("/" + filename).lstrip("/")
+
+
 def args_parser(args: list[str]) -> argparse.Namespace:
     """Command line arguments parser."""
     parser = argparse.ArgumentParser(description="Feedback aggregator")
@@ -361,7 +366,8 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
     for filename in tarball.getnames():
         if filename.startswith(FEEDBACK_DIRECTORY):
             try:
-                f = tarball.extractfile(filename)
+                fname = sanitize_filename(filename)
+                f = tarball.extractfile(fname)
                 if f is not None:
                     data = f.read().decode("UTF-8")
                     feedbacks.append(json.loads(data))
@@ -405,7 +411,8 @@ def read_full_conversation_history(
     for filename in tarball.getnames():
         if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
             try:
-                f = tarball.extractfile(filename)
+                fname = sanitize_filename(filename)
+                f = tarball.extractfile(fname)
                 if f is not None:
                     data = f.read().decode("UTF-8")
                     conversation = json.loads(data)
@@ -603,15 +610,15 @@ def aggregate_conversation_history(args: argparse.Namespace) -> None:
         )
 
 
-def perform_cleanup(args: argparse.Namespace) -> None:
+def perform_cleanup(work_directory: str) -> None:
     """Cleanup downloaded files."""
     logger.info("Performing working directory cleanup")
-    filenames = os.listdir(args.work_directory)
+    filenames = os.listdir(work_directory)
 
     for filename in filenames:
         if filename.endswith((".tgz", ".tar.gz")):
             logger.info(f"Removing {filename}")
-            os.remove(os.path.join(args.work_directory, filename))
+            os.remove(os.path.join(work_directory, filename))
 
 
 def print_statistic(statistic: Statistic) -> None:
@@ -639,6 +646,11 @@ def main() -> None:
 
     logger.debug(f"Arguments passed: {args}")
 
+    # sanitize work directory
+    work_directory = os.path.normpath("/" + args.work_directory).lstrip("/")
+    if work_directory == "":
+        work_directory = "."
+
     if args.ping:
         ping_ceph(args)
         return
@@ -652,7 +664,7 @@ def main() -> None:
     aggregate_feedbacks(args)
     aggregate_conversation_history(args)
     if not args.keep:
-        perform_cleanup(args)
+        perform_cleanup(work_directory)
     if args.statistic:
         print_statistic(statistic)
 
