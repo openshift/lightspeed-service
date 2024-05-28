@@ -118,7 +118,7 @@ def test_liveness():
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        assert response.json() == {"alive": True}
 
 
 def test_invalid_question():
@@ -1127,7 +1127,7 @@ def test_http_header_redaction():
             )
             assert response.status_code == requests.codes.ok
             check_content_type(response, "application/json")
-            assert response.json() == {"status": {"status": "healthy"}}
+            assert response.json() == {"alive": True}
 
     container_log = cluster_utils.get_container_log(
         cluster_utils.get_single_existing_pod_name(), "ols"
@@ -1142,3 +1142,17 @@ def test_http_header_redaction():
 def test_model_response(request) -> None:
     """Evaluate model response."""
     assert ResponseEvaluation(request.config.option, client).validate_response()
+
+
+# TODO: OLS-663
+def test_liveness_endpoint():
+    """Test the liveness endpoint."""
+    # GET method
+    response = client.get("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    check_content_type(response, "application/json")
+    assert response.json() == {"alive": True}
+
+    # HEAD method
+    response = client.head("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
