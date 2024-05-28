@@ -37,6 +37,9 @@ tests/test_results/*
 htmlcov/
 .coverage
 
+# ignore cache files
+.dccache
+
 # ignore cache directories
 .mypy_cache
 .pytest_cache
