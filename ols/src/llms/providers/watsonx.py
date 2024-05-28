@@ -52,6 +52,12 @@ class Watsonx(LLMProvider):
             self.credentials = watsonx_config.api_key
             self.project_id = watsonx_config.project_id
 
+        if self.credentials is None:
+            raise ValueError("Credentials must be specified")
+
+        if self.project_id is None:
+            raise ValueError("Project ID must be specified")
+
         return WatsonxLLM(
             model_id=self.model,
             url=self.url,
