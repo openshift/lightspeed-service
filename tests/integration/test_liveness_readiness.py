@@ -29,7 +29,7 @@ def test_liveness(_setup):
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": {"status": "healthy"}}
+    assert response.json() == {"alive": True}
 
 
 def test_readiness(_setup):
