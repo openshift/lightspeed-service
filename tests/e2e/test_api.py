@@ -17,12 +17,10 @@ from ols.constants import (
     INVALID_QUERY_RESP,
 )
 from ols.utils import suid
-from tests.e2e import (
-    cluster_utils,
-    helper_utils,
-    metrics_utils,
-)
-from tests.e2e.constants import (
+from tests.e2e.utils import client as client_utils
+from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import metrics as metrics_utils
+from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
@@ -30,7 +28,6 @@ from tests.e2e.constants import (
 )
 from tests.scripts.must_gather import must_gather
 from tests.scripts.validate_response import ResponseEvaluation
-from tests.scripts.wait_for_ols import generate_junit_report, wait_for_ols
 
 from .postgres_utils import (
     read_conversation_history,
@@ -38,9 +35,6 @@ from .postgres_utils import (
     retrieve_connection,
 )
 from .test_decorators import retry
-
-sys.path.append(Path(__file__).parent.parent.parent.as_posix())
-
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -84,13 +78,6 @@ def setup_module(module):
 
         client = helper_utils.get_http_client(ols_url, token)
         metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
-
-        # Wait for OLS to be ready
-        success = wait_for_ols(ols_url)
-        if not success:
-            generate_junit_report(os.getenv("SUITE_ID"), False)
-            must_gather()
-            pytest.fail("OLS did not become available in time")
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
