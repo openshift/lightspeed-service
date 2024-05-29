@@ -379,6 +379,17 @@ class MockedCredential:
         return MockedAccessToken()
 
 
+class MockedCredentialThrowingException:
+    """Mock class representing Credential class that is used to retrieve access token."""
+
+    def __init__(self, *args, **kwargs):
+        """Construct mocked credential class."""
+
+    def get_token(self, url):
+        """Request an access token."""
+        raise Exception("Error getting token")
+
+
 @patch(
     "ols.src.llms.providers.azure_openai.ClientSecretCredential", new=MockedCredential
 )
@@ -394,3 +405,20 @@ def test_retrieve_access_token(provider_config_access_token_related_parameters):
         azure_openai.default_params["azure_ad_token"]
         == "this-is-access-token"  # noqa S105
     )
+
+
+@patch(
+    "ols.src.llms.providers.azure_openai.ClientSecretCredential",
+    new=MockedCredentialThrowingException,
+)
+def test_retrieve_access_token_on_error(
+    provider_config_access_token_related_parameters,
+):
+    """Test how error is handled during accessing token."""
+    azure_openai = AzureOpenAI(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_access_token_related_parameters,
+    )
+    assert "api_key" not in azure_openai.default_params
+    assert "azure_ad_token" not in azure_openai.default_params

@@ -62,7 +62,8 @@ class AzureOpenAI(LLMProvider):
             # -> it is needed to retrieve token first
             access_token = self.retrieve_access_token(azure_config)
             # set up active directory token to access Azure services, including OpenAI one
-            default_parameters["azure_ad_token"] = access_token.token
+            if access_token is not None:
+                default_parameters["azure_ad_token"] = access_token.token
 
         return default_parameters
 
