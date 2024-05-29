@@ -8,7 +8,6 @@ TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
-SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 
 images: ## Build container images
 	scripts/build-container.sh
@@ -59,11 +58,8 @@ check-coverage: test-unit test-integration  ## Unit tests and integration tests 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" --eval_model "${MODEL}"
-
-response-quality-check: ## Checks response quality - requires running OLS server
-	@echo "Running response quality check..."
-	python -m tests.scripts.validate_response -p ${PROVIDER} -m ${MODEL} -s ${SCENARIO} -o ${ARTIFACT_DIR}
+	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
