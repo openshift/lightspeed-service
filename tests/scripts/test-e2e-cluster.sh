@@ -12,6 +12,11 @@ set -eou pipefail
 # 3) Wait for the ols api server to be available
 # 4) Invoke the test-e2e Makefile target
 
+dnf install -y jq && \
+S3_UPLOADER_TAG=$(curl https://gitlab.cee.redhat.com/api/v4/projects/insights-qe%2Fupload-artifact-s3/repository/tags | jq '.[0].name' | tr -d '"') && \
+curl -L https://gitlab.cee.redhat.com/api/v4/projects/insights-qe%2Fupload-artifact-s3/jobs/artifacts/$S3_UPLOADER_TAG/raw/upload-artifact-s3-latest?job=build -o /usr/bin/upload-artifact-s3 && \
+chmod a+x /usr/bin/upload-artifact-s3
+
 make install-deps && make install-deps-test
 
 DIR="${BASH_SOURCE%/*}"
