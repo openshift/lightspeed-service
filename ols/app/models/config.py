@@ -226,7 +226,7 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
-class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore
+class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore [call-arg]
     """Base class with common provider specific configurations."""
 
     url: AnyHttpUrl  # required attribute
@@ -234,13 +234,13 @@ class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore
     api_key: Optional[str] = None
 
 
-class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to OpenAI provider."""
 
     credentials_path: str  # required attribute
 
 
-class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to Azure OpenAI provider."""
 
     deployment_name: str  # required attribute
@@ -251,14 +251,14 @@ class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ig
     client_secret: Optional[str] = None
 
 
-class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to Watsonx provider."""
 
     credentials_path: str  # required attribute
     project_id: Optional[str] = None
 
 
-class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to BAM provider."""
 
     credentials_path: str  # required attribute
