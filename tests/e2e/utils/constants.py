@@ -6,5 +6,5 @@ NON_LLM_REST_API_TIMEOUT = 20
 LLM_REST_API_TIMEOUT = 90
 CONVERSATION_ID = "12345678-abcd-0000-0123-456789abcdef"
 
-# TODO: OLS-492 Baseline evaluation threshold score
+# Cut-off similarity score used for response evaluation.
 EVAL_THRESHOLD = 0.3  # low score is better
