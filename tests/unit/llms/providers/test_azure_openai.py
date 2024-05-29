@@ -1,5 +1,7 @@
 """Unit tests for Azure OpenAI provider."""
 
+from unittest.mock import patch
+
 import pytest
 from langchain_openai import AzureChatOpenAI
 
@@ -40,6 +42,121 @@ def provider_config_with_specific_parameters():
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
                 "credentials_path": "tests/config/secret2.txt",
+                "tenant_id": "00000000-0000-0000-0000-000000000001",
+                "client_id": "00000000-0000-0000-0000-000000000002",
+                "client_secret_path": "tests/config/secret.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_without_credentials():
+    """Fixture with provider configuration for Azure OpenAI without credentials."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "deployment_name": "test_deployment_name",
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_without_tenant_id():
+    """Fixture with provider configuration for Azure OpenAI without tenant_id."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "deployment_name": "test_deployment_name",
+            "azure_openai_config": {
+                "url": "http://azure.com",
+                "deployment_name": "azure_deployment_name",
+                "client_id": "00000000-0000-0000-0000-000000000002",
+                "client_secret_path": "tests/config/secret.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_without_client_id():
+    """Fixture with provider configuration for Azure OpenAI without client_id."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "deployment_name": "test_deployment_name",
+            "azure_openai_config": {
+                "url": "http://azure.com",
+                "deployment_name": "azure_deployment_name",
+                "tenant_id": "00000000-0000-0000-0000-000000000001",
+                "client_secret_path": "tests/config/secret.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_without_client_secret():
+    """Fixture with provider configuration for Azure OpenAI without client_secret."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "deployment_name": "test_deployment_name",
+            "azure_openai_config": {
+                "url": "http://azure.com",
+                "deployment_name": "azure_deployment_name",
+                "tenant_id": "00000000-0000-0000-0000-000000000001",
+                "client_id": "00000000-0000-0000-0000-000000000002",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_access_token_related_parameters():
+    """Fixture with provider configuration for Azure OpenAI with parameters to get access token."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "deployment_name": "test_deployment_name",
+            "azure_openai_config": {
+                "url": "http://azure.com",
+                "deployment_name": "azure_deployment_name",
                 "tenant_id": "00000000-0000-0000-0000-000000000001",
                 "client_id": "00000000-0000-0000-0000-000000000002",
                 "client_secret_path": "tests/config/secret.txt",
@@ -195,3 +312,85 @@ def test_none_params_handling(provider_config):
     assert "min_new_tokens" not in azure_openai.params
     assert "max_new_tokens" not in azure_openai.params
     assert "unknown_parameter" not in azure_openai.params
+
+
+def test_missing_credentials_check(provider_config_without_credentials):
+    """Test that check for missing credentials is in place ."""
+    with pytest.raises(ValueError, match="Credentials for API token is not set"):
+        AzureOpenAI(
+            model="uber-model",
+            params={},
+            provider_config=provider_config_without_credentials,
+        )
+
+
+def test_missing_tenant_id(provider_config_without_tenant_id):
+    """Test that check for missing tenant_id is in place ."""
+    with pytest.raises(
+        ValueError, match="tenant_id should be set in azure_openai_config"
+    ):
+        AzureOpenAI(
+            model="uber-model",
+            params={},
+            provider_config=provider_config_without_tenant_id,
+        )
+
+
+def test_missing_client_id(provider_config_without_client_id):
+    """Test that check for missing client_id is in place ."""
+    with pytest.raises(
+        ValueError, match="client_id should be set in azure_openai_config"
+    ):
+        AzureOpenAI(
+            model="uber-model",
+            params={},
+            provider_config=provider_config_without_client_id,
+        )
+
+
+def test_missing_client_secret(provider_config_without_client_secret):
+    """Test that check for missing client_secret is in place ."""
+    with pytest.raises(
+        ValueError, match="client_secret should be set in azure_openai_config"
+    ):
+        AzureOpenAI(
+            model="uber-model",
+            params={},
+            provider_config=provider_config_without_client_secret,
+        )
+
+
+class MockedAccessToken:
+    """Mock class representing AccessToken that can be retrieved from Azure auth. mechanism."""
+
+    def __init__(self):
+        """Construct mocked access token class."""
+        self.token = "this-is-access-token"  # noqa S105
+
+
+class MockedCredential:
+    """Mock class representing Credential class that is used to retrieve access token."""
+
+    def __init__(self, *args, **kwargs):
+        """Construct mocked credential class."""
+
+    def get_token(self, url):
+        """Request an access token."""
+        return MockedAccessToken()
+
+
+@patch(
+    "ols.src.llms.providers.azure_openai.ClientSecretCredential", new=MockedCredential
+)
+def test_retrieve_access_token(provider_config_access_token_related_parameters):
+    """Test that access token is being retrieved."""
+    azure_openai = AzureOpenAI(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_access_token_related_parameters,
+    )
+    assert "api_key" not in azure_openai.default_params
+    assert (
+        azure_openai.default_params["azure_ad_token"]
+        == "this-is-access-token"  # noqa S105
+    )
