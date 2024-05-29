@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import config
 from ols.constants import GenericLLMParameters
 from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
-from ols.utils import config
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
@@ -14,7 +14,6 @@ from tests.mock_classes.mock_llm_loader import mock_llm_loader
 @pytest.fixture
 def question_validator():
     """Fixture containing constructed and initialized QuestionValidator."""
-    config.init_empty_config()
     return QuestionValidator(llm_loader=mock_llm_loader(None))
 
 
@@ -27,7 +26,7 @@ def test_passing_parameters():
     """Test that generic_llm_params is handled correctly and without runtime error."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
     question_validator = QuestionValidator()
     assert question_validator.generic_llm_params is not None
@@ -50,7 +49,7 @@ def test_validate_question_llm_loader():
     """Test that LLM is loaded within validate_question method with proper parameters."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
     # when the LLM will be initialized the check for provided parameters will
     # be performed

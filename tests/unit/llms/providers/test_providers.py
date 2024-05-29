@@ -2,14 +2,13 @@
 
 import pytest
 
-from ols import constants
+from ols import config, constants
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import (
     LLMProvidersRegistry,
     register_llm_provider_as,
 )
-from ols.utils import config
 
 
 def test_providers_are_registered():
@@ -54,7 +53,6 @@ def test_invalid_provider_is_not_registered():
 
 def test_llm_provider_params_order__inputs_overrides_defaults():
     """Test LLMProvider overrides default params."""
-    config.init_empty_config()
 
     class MyProvider(LLMProvider):
         @property
@@ -74,7 +72,6 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
 
 def test_llm_provider_params_order__config_overrides_everything():
     """Test config params overrides llm params."""
-    config.init_empty_config()
     config.dev_config.llm_params = {"provider-param": 3}
 
     class MyProvider(LLMProvider):
@@ -95,7 +92,6 @@ def test_llm_provider_params_order__config_overrides_everything():
 
 def test_llm_provider_params_order__no_provider_type():
     """Test how missing provider type is handled."""
-    config.init_empty_config()
     config.dev_config.llm_params = {"provider-param": 3}
 
     class MyProvider(LLMProvider):

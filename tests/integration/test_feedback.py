@@ -6,18 +6,19 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
+from ols import config
 from ols.app.models.config import UserDataCollection
-from ols.utils import config, suid
+from ols.utils import suid
 
 # use proper conversation ID
 CONVERSATION_ID = suid.get_suid()
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Setups the test client."""
     global client
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app

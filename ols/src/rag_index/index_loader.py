@@ -63,7 +63,7 @@ class IndexLoader:
         """Set storage/service context required for index load."""
         logger.debug(f"Using {self._embed_model!s} as embedding model for index.")
         logger.info("Setting up settings for index load...")
-        Settings.embed_model = self._embed_model
+        Settings.embed_model = self._embed_model  # type: ignore [assignment]
         Settings.llm = resolve_llm(None)
         logger.info("Setting up storage context for index load...")
         self._storage_context = StorageContext.from_defaults(

@@ -1,7 +1,7 @@
 """Azure OpenAI provider implementation."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from langchain.llms.base import LLM
 from langchain_openai import AzureChatOpenAI
@@ -18,15 +18,27 @@ class AzureOpenAI(LLMProvider):
     """Azure OpenAI provider."""
 
     url: str = "https://thiswillalwaysfail.openai.azure.com"
+    credentials: Optional[str] = None
 
     @property
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
+        self.url = self.provider_config.url or self.url
+        self.credentials = self.provider_config.credentials
+        deployment_name = self.provider_config.deployment_name
+
+        # provider-specific configuration has precendence over regular configuration
+        if self.provider_config.azure_config is not None:
+            azure_config = self.provider_config.azure_config
+            self.url = str(azure_config.url)
+            deployment_name = azure_config.deployment_name
+            self.credentials = azure_config.api_key
+
         return {
-            "azure_endpoint": self.provider_config.url or self.url,
-            "api_key": self.provider_config.credentials,
+            "azure_endpoint": self.url,
+            "api_key": self.credentials,
             "api_version": "2024-02-01",
-            "deployment_name": self.provider_config.deployment_name,
+            "deployment_name": deployment_name,
             "model": self.model,
             "model_kwargs": {
                 "top_p": 0.95,

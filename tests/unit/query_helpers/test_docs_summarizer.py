@@ -2,8 +2,11 @@
 
 from unittest.mock import ANY, patch
 
+import pytest
+
+from ols import config
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
-from ols.utils import config, suid
+from ols.utils import suid
 from tests import constants
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
@@ -20,21 +23,26 @@ def test_is_query_helper_subclass():
 
 def check_summary_result(summary, question):
     """Check result produced by DocsSummarizer.summary method."""
-    assert question in summary["response"]
-    documents = summary["referenced_documents"]
-    assert len(documents) > 0
+    assert question in summary.response
+    assert isinstance(summary.rag_chunks, list)
+    assert len(summary.rag_chunks) == 1
     assert (
         f"{constants.OCP_DOCS_ROOT_URL}/{constants.OCP_DOCS_VERSION}/docs/test.html"
-        in [documents[0].docs_url]
+        in summary.rag_chunks[0].doc_url
     )
-    assert not summary["history_truncated"]
+    assert summary.history_truncated is False
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@pytest.fixture(scope="function", autouse=True)
+def _setup():
+    """Set up config for tests."""
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+
+
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
-    config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -43,11 +51,10 @@ def test_summarize_empty_history():
     check_summary_result(summary, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
-    config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -56,11 +63,10 @@ def test_summarize_no_history():
     check_summary_result(summary, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
-    config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     history = ["What is Kubernetes?"]
@@ -85,11 +91,10 @@ def test_summarize_history_provided():
         check_summary_result(summary2, question)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.7)
+@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
-    config.init_config("tests/config/valid_config.yaml")
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
@@ -99,7 +104,7 @@ def test_summarize_truncation():
     summary = summarizer.summarize(conversation_id, question, rag_index, history)
 
     # truncation should be done
-    assert summary["history_truncated"]
+    assert summary.history_truncated
 
 
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
@@ -110,7 +115,6 @@ def test_summarize_no_reference_content():
     )
     question = "What's the ultimate question with answer 42?"
     summary = summarizer.summarize(conversation_id, question)
-    assert question in summary["response"]
-    documents = summary["referenced_documents"]
-    assert len(documents) == 0
-    assert not summary["history_truncated"]
+    assert question in summary.response
+    assert summary.rag_chunks == []
+    assert not summary.history_truncated

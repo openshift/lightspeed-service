@@ -9,20 +9,25 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import HTTPException
 
-from ols import constants
+from ols import config, constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
-from ols.app.models.models import LLMRequest, ReferencedDocument
+from ols.app.models.models import (
+    LLMRequest,
+    RagChunk,
+    ReferencedDocument,
+    SummarizerResponse,
+)
 from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import config, suid
-from ols.utils.query_filter import QueryFilter, RegexFilter
+from ols.utils import suid
+from ols.utils.query_filter import QueryFilters, RegexFilter
 from ols.utils.token_handler import PromptTooLongError
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def _load_config():
     """Load config before unit tests."""
-    config.init_config("tests/config/test_app_endpoints.yaml")
+    config.reload_from_yaml_file("tests/config/test_app_endpoints.yaml")
 
 
 @pytest.fixture
@@ -78,7 +83,7 @@ def test_retrieve_previous_input_improper_user_id(_load_config):
         ols.retrieve_previous_input("improper_user_id", llm_request)
 
 
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_retrieve_previous_input_for_previous_history(get, _load_config):
     """Check how function to retrieve previous input handle existing history."""
     conversation_id = suid.get_suid()
@@ -92,7 +97,7 @@ def test_retrieve_previous_input_for_previous_history(get, _load_config):
     assert previous_input == "input"
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
+@patch("ols.config.conversation_cache.insert_or_append")
 def test_store_conversation_history(insert_or_append, _load_config):
     """Test if operation to store conversation history to cache is called."""
     conversation_id = suid.get_suid()
@@ -111,7 +116,7 @@ def test_store_conversation_history(insert_or_append, _load_config):
     )
 
 
-@patch("ols.utils.config.conversation_cache.insert_or_append")
+@patch("ols.config.conversation_cache.insert_or_append")
 def test_store_conversation_history_some_response(insert_or_append, _load_config):
     """Test if operation to store conversation history to cache is called."""
     user_id = "1234"
@@ -275,7 +280,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use one custom filter
-    q = QueryFilter()
+    q = QueryFilters(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -283,7 +288,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
             replace_with="FooBar",
         )
     ]
-    config.query_redactor = q
+    config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
@@ -297,7 +302,7 @@ def test_query_filter_with_two_redact_filters(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use two custom filters
-    q = QueryFilter()
+    q = QueryFilters(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -310,27 +315,28 @@ def test_query_filter_with_two_redact_filters(_load_config):
             replace_with="Baz",
         ),
     ]
-    config.query_redactor = q
+    config._query_filters = q
 
     result = ols.redact_query(conversation_id, llm_request)
     assert result is not None
     assert result.query == "Tell me about Baz"
 
 
-@patch("ols.utils.config.query_redactor")
-def test_query_filter_on_redact_error(mock_redact_query, _load_config):
+def test_query_filter_on_redact_error(_load_config):
     """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    mock_redact_query.redact_query.side_effect = Exception
     with pytest.raises(HTTPException, match="Error while redacting query"):
-        ols.redact_query(conversation_id, llm_request)
+        with patch(
+            "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
+        ):
+            ols.redact_query(conversation_id, llm_request)
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_conversation_request(
     mock_conversation_cache_get,
     mock_summarize,
@@ -344,11 +350,11 @@ def test_conversation_request(
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = {
-        "response": mock_response,
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        response=mock_response,
+        rag_chunks=[],
+        history_truncated=False,
+    )
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request, auth)
     assert (
@@ -378,7 +384,7 @@ def test_conversation_request(
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.utils.config.conversation_cache.get")
+@patch("ols.config.conversation_cache.get")
 def test_conversation_request_on_wrong_configuration(
     mock_conversation_cache_get,
     mock_validate_question,
@@ -431,11 +437,11 @@ def test_no_question_validation_in_follow_up_conversation(
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # but as it is not the first question, it should proceed to summarization
-    mock_summarize.return_value = {
-        "response": "some elaborate answer",
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        "some elaborate answer",
+        [],
+        False,
+    )
     conversation_id = suid.get_suid()
     query = "some elaborate question"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -465,11 +471,11 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = {
-        "response": mock_response,
-        "referenced_documents": [],
-        "history_truncated": False,
-    }
+    mock_summarize.return_value = SummarizerResponse(
+        mock_response,
+        [],
+        False,
+    )
 
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
@@ -477,14 +483,14 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     previous_input = []
 
     # try to get response
-    response, documents, truncated = ols.generate_response(
+    summarizer_response = ols.generate_response(
         conversation_id, llm_request, previous_input
     )
 
     # check the response
-    assert "Kubernetes" in response
-    assert len(documents) == 0
-    assert not truncated
+    assert "Kubernetes" in summarizer_response.response
+    assert summarizer_response.rag_chunks == []
+    assert summarizer_response.history_truncated is False
 
 
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
@@ -530,7 +536,6 @@ def test_generate_response_unknown_validation_result(_load_config):
 @pytest.fixture
 def transcripts_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
-    config.init_empty_config()
     config.ols_config.user_data_collection = UserDataCollection(
         transcripts_disabled=False, transcripts_storage=tmpdir.strpath
     )
@@ -550,7 +555,11 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         ),
         patch(
             "ols.app.endpoints.ols.generate_response",
-            return_value=("something", [], False),
+            return_value=SummarizerResponse("something", [], False),
+        ),
+        patch(
+            "ols.app.endpoints.ols.store_conversation_history",
+            return_value=None,
         ),
     ):
         llm_request = LLMRequest(query="Tell me about Kubernetes")
@@ -562,6 +571,15 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         assert list(transcript_dir.glob("*/*/*.json")) == []
 
 
+def test_construct_transcripts_path(transcripts_location):
+    """Test for the helper function construct_transcripts_path."""
+    user_id = "00000000-0000-0000-0000-000000000000"
+    conversation_id = "11111111-1111-1111-1111-111111111111"
+    path = ols.construct_transcripts_path(user_id, conversation_id)
+
+    assert str(path.resolve()).endswith(f"{user_id}/{conversation_id}")
+
+
 def test_store_transcript(transcripts_location):
     """Test transcript is successfully stored."""
     user_id = suid.get_suid()
@@ -570,9 +588,9 @@ def test_store_transcript(transcripts_location):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     response = "Kubernetes is ..."
-    ref_docs = [
-        ReferencedDocument("https://foo.bar", "Foo Bar"),
-        ReferencedDocument("https://bar.baz", "Bar Baz"),
+    rag_chunks = [
+        RagChunk("text1", "url1", "title1"),
+        RagChunk("text2", "url2", "title2"),
     ]
     truncated = True
 
@@ -582,7 +600,7 @@ def test_store_transcript(transcripts_location):
         query_is_valid,
         llm_request,
         response,
-        ref_docs,
+        rag_chunks,
         truncated,
     )
 
@@ -612,6 +630,9 @@ def test_store_transcript(transcripts_location):
         "redacted_query": query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": ref_docs,
+        "rag_chunks": [
+            {"text": "text1", "doc_url": "url1", "doc_title": "title1"},
+            {"text": "text2", "doc_url": "url2", "doc_title": "title2"},
+        ],
         "truncated": truncated,
     }

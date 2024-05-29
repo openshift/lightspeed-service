@@ -1,8 +1,8 @@
 """Cache that uses Redis to store cached values."""
 
-import pickle
+import json
 import threading
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import redis
 from redis.backoff import ExponentialBackoff
@@ -47,7 +47,7 @@ class RedisCache(Cache):
         # setup Redis retry logic
         retry: Optional[Retry] = None
         if config.number_of_retries is not None and config.number_of_retries > 0:
-            retry = Retry(ExponentialBackoff(), config.number_of_retries)
+            retry = Retry(ExponentialBackoff(), config.number_of_retries)  # type: ignore [no-untyped-call]
 
         retry_on_error: Optional[list[type[RedisError]]] = None
         if config.retry_on_error:
@@ -67,7 +67,9 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(
+        self, user_id: str, conversation_id: str
+    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -82,10 +84,13 @@ class RedisCache(Cache):
         value = self.redis_client.get(key)
         if value is None:
             return None
-        return pickle.loads(value, errors="strict")  # noqa S301
+        return json.loads(value)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        value: list[dict[Literal["type", "content"], str]],
     ) -> None:
         """Set the value associated with the given key.
 
@@ -104,10 +109,6 @@ class RedisCache(Cache):
             old_value = self.get(user_id, conversation_id)
             if old_value:
                 old_value.extend(value)
-                self.redis_client.set(
-                    key, pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+                self.redis_client.set(key, json.dumps(old_value))
             else:
-                self.redis_client.set(
-                    key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+                self.redis_client.set(key, json.dumps(value))

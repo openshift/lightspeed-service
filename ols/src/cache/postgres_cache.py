@@ -1,8 +1,8 @@
 """Cache that uses Postgres to store cached values."""
 
+import json
 import logging
-import pickle
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import psycopg2
 
@@ -104,7 +104,9 @@ class PostgresCache(Cache):
         cur.close()
         self.conn.commit()
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(
+        self, user_id: str, conversation_id: str
+    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
         """Get the value associated with the given key.
 
         Args:
@@ -122,7 +124,10 @@ class PostgresCache(Cache):
                 raise CacheError("PostgresCache.get", e)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        value: list[dict[Literal["type", "content"], str]],
     ) -> None:
         """Set the value associated with the given key.
 
@@ -141,14 +146,14 @@ class PostgresCache(Cache):
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps(old_value),
                     )
                 else:
                     PostgresCache._insert(
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps(value),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
@@ -176,7 +181,7 @@ class PostgresCache(Cache):
             raise ValueError("Invalid value read from cache:", value)
 
         # try to deserialize the value
-        return pickle.loads(value[0], errors="strict")  # noqa S301
+        return json.loads(value[0])
 
     @staticmethod
     def _update(

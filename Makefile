@@ -13,8 +13,11 @@ SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 images: ## Build container images
 	scripts/build-container.sh
 
-install-tools: ## Install required utilities/tools
+install-tools:	install-woke ## Install required utilities/tools
 	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+
+install-woke: ## Install woke, required for Inclusive Naming scan
+	@command -v ./woke > /dev/null || { echo >&2 "woke is not installed. Installing..."; curl -sSfL https://git.io/getwoke | bash -s -- -b ./; }
 
 pdm-lock-check: ## Check that the pdm.lock file is in a good shape
 	pdm lock --check
@@ -58,8 +61,8 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" --eval_model "${MODEL}" --rp_enabled --rp_name=ols-e2e-tests
 
-response-sanity-check: ## Checks response quality - requires running OLS server
-	@echo "Running response sanity check..."
+response-quality-check: ## Checks response quality - requires running OLS server
+	@echo "Running response quality check..."
 	python -m tests.scripts.validate_response -p ${PROVIDER} -m ${MODEL} -s ${SCENARIO} -o ${ARTIFACT_DIR}
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
@@ -68,19 +71,24 @@ coverage-report:	test-unit ## Export unit test coverage report into interactive 
 check-types: ## Checks type hints in sources
 	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
+security-check: ## Check the project for security issues
+	bandit -c pyproject.toml -r .
+
 format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify: ## Verify the code using various linters
+verify:	install-woke ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	./woke . --exit-1-on-failure
 
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
 
 get-rag: ## Download a copy of the RAG embedding model and vector database
-	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:69a805043f61fc999fd190263646f9c3ef91f30f0d025574dd7ebc542f07a6c5 true
+	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:daaaf9e8e610f6cf33bcb714f1198a3c027b9a18b265853bc73b4142866deda0 true
+	rm -rf vector_db embeddings_model
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
 	podman rm tmp-rag-container

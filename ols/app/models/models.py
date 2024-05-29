@@ -1,8 +1,9 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Any, Dict, Optional, Self
+from typing import Any, Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
+from pydantic.dataclasses import dataclass
 
 from ols.utils import suid
 
@@ -55,7 +56,8 @@ class LLMRequest(BaseModel):
         return self
 
 
-class ReferencedDocument(BaseModel):
+@dataclass
+class ReferencedDocument:
     """RAG referenced document.
 
     Attributes:
@@ -63,23 +65,11 @@ class ReferencedDocument(BaseModel):
     title: Title of the corresponding OCP documentation page
     """
 
-    docs_url: Optional[str] = None
-    title: Optional[str] = None
-
-    def __init__(self, docs_url: str, title: str) -> None:
-        """Initialize a ReferencedDocument."""
-        super().__init__()
-        self.docs_url = docs_url
-        self.title = title
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ReferencedDocument):
-            return self.docs_url == other.docs_url and self.title == other.title
-        return False
+    docs_url: str
+    title: str
 
     @staticmethod
-    def json_decode_object_hook(dct: Dict[str, Any]) -> Any:
+    def json_decode_object_hook(dct: dict[str, Any]) -> Any:
         """Deserialize dict into ReferencedDocument if we can."""
         if "docs_url" in dct and "title" in dct:
             return ReferencedDocument(**dct)
@@ -374,3 +364,33 @@ class AuthorizationResponse(BaseModel):
             ]
         }
     }
+
+
+@dataclass
+class RagChunk:
+    """Model representing a RAG chunk.
+
+    Attributes:
+        text: The text used as a RAG chunk.
+        doc_url: The URL of the doc from which the RAG chunk comes from.
+        doc_title: The title of the doc.
+    """
+
+    text: str
+    doc_url: str
+    doc_title: str
+
+
+@dataclass
+class SummarizerResponse:
+    """Model representing a response from the summarizer.
+
+    Attributes:
+        response: The response from the summarizer.
+        rag_chunks: The RAG chunks.
+        history_truncated: Whether the history was truncated.
+    """
+
+    response: str
+    rag_chunks: list[RagChunk]
+    history_truncated: bool

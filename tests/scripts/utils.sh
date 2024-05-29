@@ -116,7 +116,7 @@ function run_suite() {
     SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
   else
     export SCENARIO="${SCENARIO:-with_rag}"
-    PROVIDER=$3 MODEL=$8 SCENARIO=$SCENARIO make response-sanity-check
+    PROVIDER=$3 MODEL=$8 SCENARIO=$SCENARIO make response-quality-check
   fi
 
   local rc=$?

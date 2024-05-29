@@ -108,6 +108,20 @@ ruff linter
 Description of all rules are available on https://docs.astral.sh/ruff/rules/
 
 
+### Security checks
+
+Static security check is performed by _Bandit_ tool. The check can be started by using:
+
+```
+make security-check
+```
+
+or within PDM-controlled environment:
+
+```
+pdm run security-check
+```
+
 ## Testing
 
 Three group of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:
@@ -226,6 +240,28 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
     assert captured_err == ""
 ```
 
+
+## Tips and hints for developing e2e tests
+
+End to end tests can be run locally, but in this case, some tests that assume they run on cluster needs to be skipped.
+Set the `TEST_TAGS` environment variable before the tests are started:
+
+```
+export TEST_TAGS="not cluster"
+make test-e2e
+```
+
+It is also possible to skip tests marked by different test markers. The
+`TEST_TAGS` need to contain a "pytest mark expression" in this case. For
+example if it is needed to skip tests that assume that RAG is presented,
+do the following:
+
+```
+export TEST_TAGS="not cluster and not rag"
+make test-e2e
+```
+
+> E2E tests expects app running on http://localhost:8080 or whatever is defined through `OLS_URL` environment variable.
 
 ## Detecting which statements are called in real service
 

@@ -6,19 +6,18 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols import constants
-from ols.utils import config
+from ols import config, constants
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
     global client
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app

@@ -1,6 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
 import logging
+from pathlib import Path
 from typing import Optional, Self
 
 import kubernetes.client
@@ -8,8 +9,8 @@ from fastapi import HTTPException, Request
 from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
+from ols import config
 from ols.constants import DEFAULT_KUBEADMIN_UID, DEFAULT_USER_NAME, DEFAULT_USER_UID
-from ols.utils import config
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class K8sClientSingleton:
             configuration = kubernetes.client.Configuration()
 
             try:
+                # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 if config.ols_config.authentication_config.k8s_cluster_api not in {
                     None,
                     "",
@@ -69,6 +71,7 @@ class K8sClientSingleton:
                                   and no override token was provided: {e}"
                             )
 
+                # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
                     if config.ols_config.authentication_config.k8s_cluster_api
@@ -81,7 +84,7 @@ class K8sClientSingleton:
                 configuration.ssl_ca_cert = (
                     config.ols_config.authentication_config.k8s_ca_cert_path
                     if config.ols_config.authentication_config.k8s_ca_cert_path
-                    not in {None, ""}
+                    not in {None, Path("")}
                     else configuration.ssl_ca_cert
                 )
                 api_client = kubernetes.client.ApiClient(configuration)

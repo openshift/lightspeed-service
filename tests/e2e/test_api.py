@@ -2,7 +2,6 @@
 
 import json
 import os
-import pickle
 import re
 import sys
 import time
@@ -119,9 +118,9 @@ def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
     return eval_query, eval_answer
 
 
-def check_content_type(response, content_type):
+def check_content_type(response, content_type, message=""):
     """Check if response content-type is set to defined value."""
-    assert response.headers["content-type"].startswith(content_type)
+    assert response.headers["content-type"].startswith(content_type), message
 
 
 def test_readiness():
@@ -188,9 +187,9 @@ def test_invalid_question_without_conversation_id():
         assert json_response["truncated"] is False
 
         # new conversation ID should be generated
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
 def test_query_call_without_payload():
@@ -258,6 +257,7 @@ def test_valid_question_improper_conversation_id(response_eval) -> None:
         assert json_response == expected_response
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_valid_question_missing_conversation_id(response_eval) -> None:
     """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
     endpoint = "/v1/query"
@@ -280,9 +280,9 @@ def test_valid_question_missing_conversation_id(response_eval) -> None:
         assert (
             "conversation_id" in json_response
         ), "New conversation ID was not generated"
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
 def test_too_long_question(response_eval) -> None:
@@ -501,13 +501,14 @@ def test_conversation_history() -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
-        assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        debug_msg = "First call to LLM without conversation history has failed"
+        assert response.status_code == requests.codes.ok, debug_msg
+        check_content_type(response, "application/json", debug_msg)
 
         print(vars(response))
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
         # get the conversation id so we can reuse it for the follow up question
         cid = json_response["conversation_id"]
@@ -517,10 +518,14 @@ def test_conversation_history() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
+
+        debug_msg = "Second call to LLM with conversation history has failed"
         assert response.status_code == requests.codes.ok
+        check_content_type(response, "application/json", debug_msg)
+
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
 
 def test_query_with_provider_but_not_model(response_eval) -> None:
@@ -925,9 +930,12 @@ def test_transcripts_storing_cluster():
         # we don't want llm response influence this test
         assert "query_is_valid" in transcript
         assert "llm_response" in transcript
-        assert "referenced_documents" in transcript
-        assert transcript["referenced_documents"][0]["docs_url"]
-        assert transcript["referenced_documents"][0]["title"]
+        assert "rag_chunks" in transcript
+        assert isinstance(transcript["rag_chunks"], list)
+        assert len(transcript["rag_chunks"])
+        assert transcript["rag_chunks"][0]["text"]
+        assert transcript["rag_chunks"][0]["doc_url"]
+        assert transcript["rag_chunks"][0]["doc_title"]
         assert "truncated" in transcript
     finally:
         if pod_name is not None:
@@ -938,6 +946,7 @@ def test_transcripts_storing_cluster():
             )
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_openapi_endpoint():
     """Test handler for /opanapi REST API endpoint."""
     response = client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
@@ -963,11 +972,23 @@ def test_openapi_endpoint():
     for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
+    # retrieve pre-generated OpenAPI schema
+    with open("docs/openapi.json") as fin:
+        expected_schema = json.load(fin)
+
+    # remove node that is not included in pre-generated OpenAPI schema
+    del payload["info"]["license"]
+
+    # compare schemas (as dicts)
+    assert (
+        payload == expected_schema
+    ), "OpenAPI schema returned from service does not have expected content."
+
 
 def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
+        pytest.skip("Postgres is not accessible.")
         return
 
     value = read_conversation_history_count(postgres_connection)
@@ -993,7 +1014,7 @@ def _perform_query(client, conversation_id, response_eval, qna_pair):
 def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
+        pytest.skip("Postgres is not accessible.")
         return
 
     cid = suid.get_suid()
@@ -1002,18 +1023,18 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
 
-    # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    # deserialize conversation into list of messages
+    deserialized = json.loads(conversation)
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 2
+    assert len(deserialized) == 2
 
     # question check
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # trivial check for answer (exact check is done in different tests)
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
     _perform_query(client, cid, response_eval, "eval2")
@@ -1022,23 +1043,23 @@ def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> N
     assert conversation is not None
 
     # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    deserialized = json.loads(conversation, errors="strict")
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 4
+    assert len(deserialized) == 4
 
     # first question
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # first answer
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
-    assert "what is openshift virtualization?" in unpickled[2].content
+    assert "what is openshift virtualization?" in deserialized[2].content
 
     # second answer
-    assert "OpenShift" in unpickled[3].content
+    assert "OpenShift" in deserialized[3].content
 
 
 @pytest.mark.cluster()

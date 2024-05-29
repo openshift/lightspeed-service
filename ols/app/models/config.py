@@ -6,7 +6,14 @@ import re
 from typing import Any, Optional, Self
 from urllib.parse import urlparse
 
-from pydantic import AnyHttpUrl, BaseModel, FilePath, PositiveInt, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    Extra,
+    FilePath,
+    PositiveInt,
+    model_validator,
+)
 
 from ols import constants
 
@@ -55,8 +62,11 @@ class ModelConfig(BaseModel):
     """Model configuration."""
 
     name: Optional[str] = None
+
+    # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
+
     context_window_size: int = -1  # need to be set later, based on model
     response_token_limit: int = -1  # need to be set later, based on model
     options: Optional[dict[str, Any]] = None
@@ -69,6 +79,8 @@ class ModelConfig(BaseModel):
         if data is None:
             return
         self.name = data.get("name", None)
+
+        # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
         self.url = data.get("url", None)
         self.credentials = _get_attribute_from_file(data, "credentials_path")
 
@@ -78,7 +90,7 @@ class ModelConfig(BaseModel):
         default = constants.DEFAULT_CONTEXT_WINDOW_SIZE
         if provider in constants.CONTEXT_WINDOW_SIZES:
             default = constants.CONTEXT_WINDOW_SIZES.get(provider).get(
-                self.name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
+                self.name or "", constants.DEFAULT_CONTEXT_WINDOW_SIZE
             )
         self.context_window_size = self._validate_token_limit(
             data, "context_window_size", default
@@ -214,6 +226,44 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
+class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore
+    """Base class with common provider specific configurations."""
+
+    url: AnyHttpUrl  # required attribute
+    token: Optional[Any] = None
+    api_key: Optional[str] = None
+
+
+class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+    """Configuration specific to OpenAI provider."""
+
+    credentials_path: str  # required attribute
+
+
+class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+    """Configuration specific to Azure OpenAI provider."""
+
+    deployment_name: str  # required attribute
+    credentials_path: Optional[str] = None
+    tenant_id: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret_path: Optional[str] = None
+    client_secret: Optional[str] = None
+
+
+class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+    """Configuration specific to Watsonx provider."""
+
+    credentials_path: str  # required attribute
+    project_id: Optional[str] = None
+
+
+class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
+    """Configuration specific to BAM provider."""
+
+    credentials_path: str  # required attribute
+
+
 class ProviderConfig(BaseModel):
     """LLM provider configuration."""
 
@@ -224,6 +274,10 @@ class ProviderConfig(BaseModel):
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
     deployment_name: Optional[str] = None
+    openai_config: Optional[OpenAIConfig] = None
+    azure_config: Optional[AzureOpenAIConfig] = None
+    watsonx_config: Optional[WatsonxConfig] = None
+    bam_config: Optional[BAMConfig] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -231,6 +285,33 @@ class ProviderConfig(BaseModel):
         if data is None:
             return
         self.name = data.get("name", None)
+
+        self.set_provider_type(data)
+        self.url = data.get("url", None)
+        self.credentials = _get_attribute_from_file(data, "credentials_path")
+
+        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
+        self.project_id = data.get("project_id", None)
+        if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
+            raise InvalidConfigurationError(
+                f"project_id is required for Watsonx provider {self.name}"
+            )
+
+        self.set_provider_specific_configuration(data)
+
+        self.setup_models_config(data)
+
+        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
+        if self.type == constants.PROVIDER_AZURE_OPENAI:
+            # deployment_name only required when using Azure OpenAI
+            self.deployment_name = data.get("deployment_name", None)
+            if self.deployment_name is None:
+                raise InvalidConfigurationError(
+                    f"deployment_name is required for Azure OpenAI provider {self.name}"
+                )
+
+    def set_provider_type(self, data: dict) -> None:
+        """Set the provider type."""
         # Default provider type to be the provider name, unless
         # specified explicitly.
         self.type = str(data.get("type", self.name)).lower()
@@ -239,14 +320,9 @@ class ProviderConfig(BaseModel):
                 f"invalid provider type: {self.type}, supported types are"
                 f" {set(constants.SUPPORTED_PROVIDER_TYPES)}"
             )
-        self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
-        self.project_id = data.get("project_id", None)
-        if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
-            raise InvalidConfigurationError(
-                f"project_id is required for Watsonx provider {self.name}"
-            )
 
+    def setup_models_config(self, data: dict) -> None:
+        """Set up models configuration."""
         if "models" not in data or len(data["models"]) == 0:
             raise InvalidConfigurationError(
                 f"no models configured for provider {data['name']}"
@@ -256,13 +332,72 @@ class ProviderConfig(BaseModel):
                 raise InvalidConfigurationError("model name is missing")
             model = ModelConfig(m, self.type)
             self.models[m["name"]] = model
-        if self.type == constants.PROVIDER_AZURE_OPENAI:
-            # deployment_name only required when using Azure OpenAI
-            self.deployment_name = data.get("deployment_name", None)
-            if self.deployment_name is None:
-                raise InvalidConfigurationError(
-                    f"deployment_name is required for Azure OpenAI provider {self.name}"
-                )
+
+    def set_provider_specific_configuration(self, data: dict) -> None:
+        """Set the provider-specific configuration."""
+        # compute how many provider-specific configurations are
+        # found in config file
+        found = 0
+        for provider_name in constants.SUPPORTED_PROVIDER_TYPES:
+            cfg_name = provider_name.lower() + "_config"
+            if data.get(cfg_name) is not None:
+                found += 1
+
+        # just none or one provider-specific configuration
+        # should available
+        if found > 1:
+            raise InvalidConfigurationError(
+                "multiple provider-specific configurations found, "
+                f"but just one is expected for provider {self.type}"
+            )
+
+        # If one provider-specific configuration is available
+        # it must match the selected provider type.
+        # It means, that if configuration for selected provider
+        # is not present the configuration must be wrong.
+        if found == 1:
+            match self.type:
+                case constants.PROVIDER_AZURE_OPENAI:
+                    azure_config = data.get("azure_openai_config")
+                    self.check_provider_config(azure_config)
+                    if azure_config is not None:
+                        azure_config["client_secret"] = _get_attribute_from_file(
+                            azure_config, "client_secret_path"
+                        )
+                    self.read_api_key(azure_config)
+                    self.azure_config = AzureOpenAIConfig(**azure_config)
+                case constants.PROVIDER_OPENAI:
+                    openai_config = data.get("openai_config")
+                    self.check_provider_config(openai_config)
+                    self.read_api_key(openai_config)
+                    self.openai_config = OpenAIConfig(**openai_config)
+                case constants.PROVIDER_BAM:
+                    bam_config = data.get("bam_config")
+                    self.check_provider_config(bam_config)
+                    self.read_api_key(bam_config)
+                    self.bam_config = BAMConfig(**bam_config)
+                case constants.PROVIDER_WATSONX:
+                    watsonx_config = data.get("watsonx_config")
+                    self.check_provider_config(watsonx_config)
+                    self.read_api_key(watsonx_config)
+                    self.watsonx_config = WatsonxConfig(**watsonx_config)
+                case _:
+                    raise InvalidConfigurationError(
+                        f"Unsupported provider {self.type} configured"
+                    )
+
+    @staticmethod
+    def read_api_key(config: dict) -> None:
+        """Read API key from file with secret."""
+        config["api_key"] = _get_attribute_from_file(config, "credentials_path")
+
+    def check_provider_config(self, provider_config: Any) -> None:
+        """Check if configuration is presented for selected provider type."""
+        if provider_config is None:
+            raise InvalidConfigurationError(
+                f"provider type {self.type} selected, "
+                "but configuration is set for different provider"
+            )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -274,6 +409,10 @@ class ProviderConfig(BaseModel):
                 and self.credentials == other.credentials
                 and self.project_id == other.project_id
                 and self.models == other.models
+                and self.azure_config == other.azure_config
+                and self.openai_config == other.openai_config
+                and self.watsonx_config == other.watsonx_config
+                and self.bam_config == other.bam_config
             )
         return False
 
@@ -755,8 +894,10 @@ class OLSConfig(BaseModel):
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
-        self.conversation_cache.validate_yaml()
-        self.logging_config.validate_yaml()
+        if self.conversation_cache is not None:
+            self.conversation_cache.validate_yaml()
+        if self.logging_config is not None:
+            self.logging_config.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
         if self.authentication_config:
@@ -821,9 +962,9 @@ class DevConfig(BaseModel):
 class Config(BaseModel):
     """Global service configuration."""
 
-    llm_providers: Optional[LLMProviders] = None
-    ols_config: Optional[OLSConfig] = None
-    dev_config: Optional[DevConfig] = None
+    llm_providers: LLMProviders = LLMProviders()
+    ols_config: OLSConfig = OLSConfig()
+    dev_config: DevConfig = DevConfig()
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -833,9 +974,13 @@ class Config(BaseModel):
         v = data.get("llm_providers")
         if v is not None:
             self.llm_providers = LLMProviders(v)
+        else:
+            raise InvalidConfigurationError("no LLM providers config section found")
         v = data.get("ols_config")
         if v is not None:
             self.ols_config = OLSConfig(v)
+        else:
+            raise InvalidConfigurationError("no OLS config section found")
         v = data.get("dev_config")
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(v)
@@ -875,11 +1020,7 @@ class Config(BaseModel):
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""
-        if self.llm_providers is None:
-            raise InvalidConfigurationError("no LLM providers config section found")
         self.llm_providers.validate_yaml()
         self.dev_config.validate_yaml()
-        if self.ols_config is None:
-            raise InvalidConfigurationError("no OLS config section found")
         self.ols_config.validate_yaml(self.dev_config.disable_tls)
         self._validate_default_provider_and_model()

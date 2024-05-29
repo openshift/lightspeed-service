@@ -12,11 +12,11 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
 
-from ols.utils import config
+from ols import config
 
 # it is needed to read proper configuration in order to start the app to generate schema
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-config.init_config(cfg_file)
+config.reload_from_yaml_file(cfg_file)
 
 from ols.app.main import app  # noqa: E402
 

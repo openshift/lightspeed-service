@@ -251,6 +251,10 @@ def test_provider_config():
         provider_config.models["test_model_name"].response_token_limit
         == constants.DEFAULT_RESPONSE_TOKEN_LIMIT
     )
+    assert provider_config.openai_config is None
+    assert provider_config.azure_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
 
     provider_config = ProviderConfig()
     assert provider_config.name is None
@@ -258,6 +262,11 @@ def test_provider_config():
     assert provider_config.credentials is None
     assert provider_config.project_id is None
     assert len(provider_config.models) == 0
+
+    assert provider_config.openai_config is None
+    assert provider_config.azure_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
@@ -301,6 +310,494 @@ def test_provider_config():
             }
         )
     assert "deployment_name is required" in str(excinfo.value)
+
+
+def test_that_url_is_required_provider_parameter():
+    """Test that provider-specific URL is required attribute."""
+    # provider type is set to "azure_openai"
+    with pytest.raises(ValidationError, match="url"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "azure_openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deploment-name",
+                "azure_openai_config": {
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret.txt",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+    # provider type is set to "openai"
+    with pytest.raises(ValidationError, match="url"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "openai_config": {
+                    "credentials_path": "tests/config/secret.txt",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+    # provider type is set to "bam"
+    with pytest.raises(ValidationError, match="url"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "bam_config": {
+                    "credentials_path": "tests/config/secret.txt",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+    # provider type is set to "watsonx"
+    with pytest.raises(ValidationError, match="url"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "watsonx",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "watsonx_config": {
+                    "credentials_path": "tests/config/secret.txt",
+                    "project_id": "*project id*",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_that_credentials_is_required_provider_parameter():
+    """Test that provider-specific credentials is required attribute for any provider but Azure."""
+    # provider type is set to "openai"
+    with pytest.raises(ValidationError, match="credentials"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "openai_config": {
+                    "url": "http://localhost",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+    # provider type is set to "bam"
+    with pytest.raises(ValidationError, match="credentials"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "bam_config": {
+                    "url": "http://localhost",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+    # provider type is set to "watsonx"
+    with pytest.raises(ValidationError, match="credentials"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "watsonx",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "watsonx_config": {
+                    "project_id": "*project id*",
+                    "url": "http://localhost",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_azure_openai_specific():
+    """Test if Azure OpenAI-specific config is loaded and validated."""
+    # provider type is set to "azure_openai" and Azure OpenAI-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "azure_openai",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "deployment_name": "deploment-name",
+            "azure_openai_config": {
+                "url": "http://localhost",
+                "tenant_id": "tenant-ID",
+                "client_id": "client-ID",
+                "client_secret_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deployment-name",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+    # Azure OpenAI-specific configuration must be present
+    assert provider_config.azure_config is not None
+    assert str(provider_config.azure_config.url) == "http://localhost/"
+    assert provider_config.azure_config.tenant_id == "tenant-ID"
+    assert provider_config.azure_config.client_id == "client-ID"
+    assert provider_config.azure_config.deployment_name == "deployment-name"
+    assert provider_config.azure_config.client_secret == "secret_key"  # noqa: S105
+    assert provider_config.azure_config.api_key == "secret_key"
+
+    # configuration for other providers must not be set
+    assert provider_config.openai_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
+
+
+def test_provider_config_azure_openai_unknown_parameters():
+    """Test if unknown Azure OpenAI parameters are detected."""
+    # provider type is set to "azure_openai" and Azure OpenAI-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "azure_openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deploment-name",
+                "azure_openai_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret.txt",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_openai_specific():
+    """Test if OpenAI-specific config is loaded and validated."""
+    # provider type is set to "openai" and OpenAI-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "openai",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "project_id": "test_project_id",
+            "openai_config": {
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+    # OpenAI-specific configuration must be present
+    assert provider_config.openai_config is not None
+    assert str(provider_config.openai_config.url) == "http://localhost/"
+    assert provider_config.openai_config.api_key == "secret_key"
+
+    # configuration for other providers must not be set
+    assert provider_config.azure_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
+
+
+def test_provider_config_openai_unknown_parameters():
+    """Test if unknown OpenAI parameters are detected."""
+    # provider type is set to "openai" and OpenAI-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "openai",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "deployment_name": "deploment-name",
+                "openai_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret.txt",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_watsonx_specific():
+    """Test if Watsonx-specific config is loaded and validated."""
+    # provider type is set to "watsonx" and Watsonx-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "watsonx",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "project_id": "test_project_id",
+            "watsonx_config": {
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "*project id*",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+    # Watsonx-specific configuration must be present
+    assert provider_config.watsonx_config is not None
+    assert str(provider_config.watsonx_config.url) == "http://localhost/"
+    assert provider_config.watsonx_config.project_id == "*project id*"
+    assert provider_config.watsonx_config.api_key == "secret_key"
+
+    # configuration for other providers must not be set
+    assert provider_config.azure_config is None
+    assert provider_config.openai_config is None
+    assert provider_config.bam_config is None
+
+
+def test_provider_config_watsonx_unknown_parameters():
+    """Test if unknown Watsonx parameters are detected."""
+    # provider type is set to "watsonx" and Watsonx-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "watsonx",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "watsonx_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "credentials_path": "tests/config/secret.txt",
+                    "project_id": "*project id*",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_bam_specific():
+    """Test if BAM-specific config is loaded and validated."""
+    # provider type is set to "bam" and BAM-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret.txt",
+            "project_id": "test_project_id",
+            "bam_config": {
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret.txt",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret.txt",
+                }
+            ],
+        }
+    )
+    # BAM-specific configuration must be present
+    assert provider_config.bam_config is not None
+    assert str(provider_config.bam_config.url) == "http://localhost/"
+    assert provider_config.bam_config.api_key == "secret_key"
+
+    # configuration for other providers must not be set
+    assert provider_config.azure_config is None
+    assert provider_config.openai_config is None
+    assert provider_config.watsonx_config is None
+
+
+def test_provider_config_bam_unknown_parameters():
+    """Test if unknown BAM parameters are detected."""
+    # provider type is set to "bam" and BAM-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "bam_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "credentials_path": "tests/config/secret.txt",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_improper_provider_specific_config():
+    """Test if check for improper provider-specific config is performed."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="provider type bam selected, but configuration is set for different provider",
+    ):
+        # provider type is set to "bam" but OpenAI-specific configuration is there
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "openai_config": {
+                    "url": "http://localhost",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
+
+
+def test_multiple_provider_specific_configs():
+    """Test if check for multiple provider-specific configs is performed."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="multiple provider-specific configurations found, but just one is expected for provider bam",  # noqa E501
+    ):
+        # two provider-specific configurations is in the configuration
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "bam",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret.txt",
+                "project_id": "test_project_id",
+                "openai_config": {
+                    "url": "http://localhost",
+                },
+                "watsonx_config": {
+                    "url": "http://localhost",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "test_model_url",
+                        "credentials_path": "tests/config/secret.txt",
+                    }
+                ],
+            }
+        )
 
 
 providers = (
@@ -777,7 +1274,7 @@ def test_invalid_values():
 
 def test_postgres_config_default_values():
     """Test the PostgresConfig model."""
-    postgres_config = PostgresConfig(**{})
+    postgres_config = PostgresConfig()
     assert postgres_config.host == constants.POSTGRES_CACHE_HOST
     assert postgres_config.port == constants.POSTGRES_CACHE_PORT
     assert postgres_config.dbname == constants.POSTGRES_CACHE_DBNAME
@@ -788,14 +1285,12 @@ def test_postgres_config_default_values():
 def test_postgres_config_correct_values():
     """Test the PostgresConfig model when correct values are used."""
     postgres_config = PostgresConfig(
-        **{
-            "host": "other_host",
-            "port": 1234,
-            "dbname": "my_database",
-            "user": "admin",
-            "ssl_mode": "allow",
-            "max_entries": 42,
-        }
+        host="other_host",
+        port=1234,
+        dbname="my_database",
+        user="admin",
+        ssl_mode="allow",
+        max_entries=42,
     )
 
     # explicitly set values
@@ -813,13 +1308,11 @@ def test_postgres_config_wrong_port():
         ValidationError, match="The port needs to be between 0 and 65536"
     ):
         PostgresConfig(
-            **{
-                "host": "other_host",
-                "port": 9999999,
-                "dbname": "my_database",
-                "user": "admin",
-                "ssl_mode": "allow",
-            }
+            host="other_host",
+            port=9999999,
+            dbname="my_database",
+            user="admin",
+            ssl_mode="allow",
         )
 
 
@@ -843,15 +1336,13 @@ def test_postgres_config_equality():
 def test_postgres_config_with_password():
     """Test the PostgresConfig model."""
     postgres_config = PostgresConfig(
-        **{
-            "host": "other_host",
-            "port": 1234,
-            "dbname": "my_database",
-            "user": "admin",
-            "password_path": "tests/config/postgres_password.txt",
-            "ssl_mode": "allow",
-            "max_entries": 42,
-        }
+        host="other_host",
+        port=1234,
+        dbname="my_database",
+        user="admin",
+        password_path="tests/config/postgres_password.txt",  # noqa: S106
+        ssl_mode="allow",
+        max_entries=42,
     )
     # check if password was read correctly from file
     assert postgres_config.password == "postgres_password"  # noqa: S105
@@ -1255,44 +1746,6 @@ def test_config():
         config.ols_config.query_validation_method
         == constants.QueryValidationMethod.DISABLED
     )
-
-
-def test_config_no_llm_providers():
-    """Check if empty config is rejected as expected."""
-    with pytest.raises(
-        InvalidConfigurationError, match="no LLM providers config section found"
-    ):
-        Config().validate_yaml()
-
-
-def test_config_empty_llm_providers():
-    """Check if empty list of providers is rejected as expected."""
-    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
-        Config({"llm_providers": []}).validate_yaml()
-
-
-def test_config_without_ols_section():
-    """Test the Config model of the Global service configuration with missing OLS section."""
-    with pytest.raises(InvalidConfigurationError, match="no OLS config section found"):
-        Config(
-            {
-                "llm_providers": [
-                    {
-                        "name": "test_provider_name",
-                        "type": "bam",
-                        "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
-                        "models": [
-                            {
-                                "name": "test_model_name",
-                                "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
-                            }
-                        ],
-                    }
-                ],
-            }
-        ).validate_yaml()
 
 
 def test_config_improper_missing_model():

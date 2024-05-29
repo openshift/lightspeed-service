@@ -105,16 +105,13 @@ RAG_CONTENT_LIMIT = 1
 
 # Once the chunk is retrived we need to check similarity score, so that we won't
 # pick any random matching chunk.
-# Currently we use L2/KNN based FAISS index. And this cutoff signifies distance
-# between chunk and query in vector space. Lower distance means query & chunk are
-# more similar. So lower cutoff value is better.
-
-# If we set a very high cutoff, then we may end up picking irrelevant chunks.
-# And if we set a very low value, then there is risk of discarding all the chunks,
-# as there won't be perfect matching chunk. This also depends on embedding model
-# used during index creation/retrieval.
-# Range: positive float value (can be > 1)
-RAG_SIMILARITY_CUTOFF_L2 = 1.4
+# Currently we use Inner product based FAISS index. Higher score means query & chunk
+# are more similar. Chunk node score should be greater than the cutoff value.
+# If we set a very low cutoff, then we may end up picking irrelevant chunks.
+# And if we set a very high value, then there is risk of discarding all the chunks,
+# as there won't be perfect matching chunk.
+# Range: 0 to 1
+RAG_SIMILARITY_CUTOFF = 0.3
 
 
 # cache constants

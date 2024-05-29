@@ -117,3 +117,30 @@ An example:
 python delete_ols_archive.py archives/compressed/b6/b6cf044a-4870-4a8c-a849-1b0016cc8171/202404/25/185345.tar.gz
 ```
 
+## `update_google_sheet.py`
+
+### Description
+
+Script to update Google sheet containing user feedback and conversation
+history.
+
+### Usage
+
+```
+usage: update_google_sheet.py [-h]
+                              [--feedback-without-history FEEDBACK_WITHOUT_HISTORY]
+                              [--feedback-with-history FEEDBACK_WITH_HISTORY]
+                              [--conversation-history CONVERSATION_HISTORY]
+                              [-s SPREADSHEET]
+
+options:
+  -h, --help            show this help message and exit
+  --feedback-without-history FEEDBACK_WITHOUT_HISTORY
+                        CSV file containing user feedbacks without conversation history
+  --feedback-with-history FEEDBACK_WITH_HISTORY
+                        CSV file containing user feedbacks with conversation history
+  --conversation-history CONVERSATION_HISTORY
+                        CSV file containing conversation history
+  -s SPREADSHEET, --spreadsheet SPREADSHEET
+                        Spreadsheed title as displayed on Google doc
+```

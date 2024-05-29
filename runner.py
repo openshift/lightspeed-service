@@ -7,7 +7,7 @@ from pathlib import Path
 
 import uvicorn
 
-from ols.utils import config
+from ols import config
 from ols.utils.logging import configure_logging
 
 
@@ -41,8 +41,7 @@ def configure_gradio_ui_envs() -> None:
 if __name__ == "__main__":
 
     cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-
-    config.init_config(cfg_file)
+    config.reload_from_yaml_file(cfg_file)
 
     configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger(__name__)
@@ -52,13 +51,17 @@ if __name__ == "__main__":
 
     # NOTE: We import config here to avoid triggering import of anything
     # else via our code before other envs are set (mainly the gradio).
-    from ols.utils import config
+    from ols import config
 
     configure_hugging_face_envs(config.ols_config)
-    config.init_query_filter()
-    config.init_vector_index()
 
-    host = "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa S104
+    # init loading of query redactor and rag index
+    config.query_redactor
+    config.rag_index
+
+    host = (
+        "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa: S104
+    )
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
     # use workers=1 so config loaded can be accessed from other modules

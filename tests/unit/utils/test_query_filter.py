@@ -3,8 +3,8 @@
 import re
 from unittest import TestCase
 
-from ols.utils import config
-from ols.utils.query_filter import QueryFilter, RegexFilter
+from ols.utils.config import AppConfig
+from ols.utils.query_filter import QueryFilters, RegexFilter
 
 
 class TestQueryFilter(TestCase):
@@ -12,10 +12,9 @@ class TestQueryFilter(TestCase):
 
     def setUp(self):
         """Set up the test."""
-        config.query_redactor = None
-        config.init_config("tests/config/valid_config_with_query_filter.yaml")
-        config.init_query_filter()
-        self.query_filter = QueryFilter()
+        config = AppConfig()
+        config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
+        self.query_filter = QueryFilters(config.ols_config.query_filters)
 
     def test_redact_question_image_ip(self):
         """Test redact question with perfect word  and ip."""

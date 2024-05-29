@@ -10,6 +10,7 @@ from ibm_watson_machine_learning.metanames import (
 )
 from langchain.llms.base import LLM
 
+from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
@@ -18,7 +19,6 @@ from ols.constants import (
     PROVIDER_WATSONX,
     GenericLLMParameters,
 )
-from ols.utils import config
 
 logger = logging.getLogger(__name__)
 

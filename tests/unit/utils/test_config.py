@@ -10,8 +10,8 @@ from unittest.mock import patch
 import pytest
 from yaml.parser import ParserError
 
+from ols import config
 from ols.app.models.config import Config, InvalidConfigurationError
-from ols.utils import config
 from ols.utils.query_filter import RegexFilter
 
 E = TypeVar("E", bound=Exception)
@@ -22,7 +22,7 @@ def check_expected_exception(
 ) -> None:
     """Check that an expected exception is raised."""
     with pytest.raises(expected_exception_type, match=expected_error_msg):
-        config.load_config_from_stream(io.StringIO(yaml_stream))
+        config._load_config_from_yaml_stream(io.StringIO(yaml_stream))
 
 
 def test_malformed_yaml():
@@ -49,19 +49,24 @@ def test_missing_config_file():
     with pytest.raises(Exception, match="Not a directory"):
         # /dev/null is special file so it can't be directory
         # at the same moment
-        config.init_config("/dev/null/non-existent")
+        config.reload_from_yaml_file("/dev/null/non-existent")
 
 
 def test_invalid_config():
     """Check that invalid configuration is handled gracefully."""
     check_expected_exception(
-        """""", InvalidConfigurationError, "no LLM providers config section found"
-    )
-    check_expected_exception(
-        """{foo=123}""",
+        """
+---
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+""",
         InvalidConfigurationError,
         "no LLM providers config section found",
     )
+
     check_expected_exception(
         """
 ---
@@ -107,6 +112,11 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "model URL is invalid",
@@ -132,6 +142,11 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
@@ -146,6 +161,11 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider name is missing",
@@ -161,6 +181,11 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
@@ -643,7 +668,7 @@ dev_config:
 def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     try:
-        config.load_config_from_stream(
+        config._load_config_from_yaml_stream(
             io.StringIO(
                 """
 ---
@@ -692,7 +717,7 @@ dev_config:
 def test_valid_config_file():
     """Check if a valid configuration file is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
         expected_config = Config(
             {
@@ -707,8 +732,8 @@ def test_valid_config_file():
                                 "name": "m1",
                                 "url": "https://murl1",
                                 "credentials_path": "tests/config/secret.txt",
-                                "context_window_size": 200,
-                                "response_token_limit": 50,
+                                "context_window_size": 400,
+                                "response_token_limit": 100,
                             },
                             {
                                 "name": "m2",
@@ -761,7 +786,7 @@ def test_valid_config_file():
 def test_valid_config_file_with_postgres(patch):
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_postgres.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_postgres.yaml")
 
         expected_config = Config(
             {
@@ -814,7 +839,7 @@ def test_valid_config_file_with_postgres(patch):
 def test_valid_config_file_with_redis(patch):
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_redis.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_redis.yaml")
 
         expected_config = Config(
             {
@@ -867,7 +892,7 @@ def test_config_file_without_logging_config(patch):
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail
-    config.init_config("tests/config/config_without_logging.yaml")
+    config.reload_from_yaml_file("tests/config/config_without_logging.yaml")
 
     # test if default values have been set
     logging_config = config.ols_config.logging_config
@@ -878,21 +903,16 @@ def test_config_file_without_logging_config(patch):
 
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
-    config.query_redactor = None
-    config.init_empty_config()
-    config.init_config("tests/config/valid_config_without_query_filter.yaml")
-    assert config.query_redactor is None
-    print(config.query_redactor)
-    config.init_query_filter()
-    assert config.query_redactor is not None
+    config.reload_empty()
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
     assert config.query_redactor.regex_filters == []
 
 
 def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
-    config.query_redactor = None
-    config.init_config("tests/config/valid_config_with_query_filter.yaml")
-    config.init_query_filter()
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
     assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == [
         RegexFilter(
@@ -908,12 +928,10 @@ def test_valid_config_with_query_filter():
     ]
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai(patch):
+def test_valid_config_with_azure_openai():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config("tests/config/valid_config_with_azure_openai.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_with_azure_openai.yaml")
 
         expected_config = Config(
             {
@@ -924,6 +942,10 @@ def test_valid_config_with_azure_openai(patch):
                         "url": "https://url1",
                         "credentials": "secret_key",
                         "deployment_name": "test",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                        },
                         "models": [
                             {
                                 "name": "m1",
@@ -956,12 +978,10 @@ def test_valid_config_with_azure_openai(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai_api_version(patch):
+def test_valid_config_with_azure_openai_api_version():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config(
+        config.reload_from_yaml_file(
             "tests/config/valid_config_with_azure_openai_api_version.yaml"
         )
 
@@ -975,6 +995,112 @@ def test_valid_config_with_azure_openai_api_version(patch):
                         "credentials": "secret_key",
                         "deployment_name": "test",
                         "api_version": "2023-12-31",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_bam():
+    """Check if a valid configuration file with BAM is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bam.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret.txt",
+                        "deployment_name": "test",
+                        "bam_config": {
+                            "url": "http://localhost:1234",
+                            "credentials_path": "tests/config/secret.txt",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_watsonx():
+    """Check if a valid configuration file with Watsonx is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_watsonx.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "watsonx",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret.txt",
+                        "deployment_name": "test",
+                        "project_id": "project ID",
+                        "watsonx_config": {
+                            "url": "http://localhost:1234",
+                            "project_id": "project ID",
+                            "credentials_path": "tests/config/secret.txt",
+                        },
                         "models": [
                             {
                                 "name": "m1",
