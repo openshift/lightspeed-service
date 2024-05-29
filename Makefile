@@ -8,13 +8,24 @@ TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
-SCENARIO := $(if $(SCENARIO),$(SCENARIO),"with_rag")
 
 images: ## Build container images
 	scripts/build-container.sh
 
-install-tools: ## Install required utilities/tools
+install-tools:	install-woke ## Install required utilities/tools
 	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
+	# CI job configuration would need to be updated in follow-up task
+	pip uninstall -y mypy 2> /dev/null || true
+	# display setuptools version
+	pip show setuptools
+	# install all dependencies, including devel ones
+	pdm install --dev
+	# check that correct mypy version is installed
+	mypy --version
+
+install-woke: ## Install woke, required for Inclusive Naming scan
+	@command -v ./woke > /dev/null || { echo >&2 "woke is not installed. Installing..."; curl -sSfL https://git.io/getwoke | bash -s -- -b ./; }
 
 pdm-lock-check: ## Check that the pdm.lock file is in a good shape
 	pdm lock --check
@@ -37,14 +48,14 @@ test: test-unit test-integration test-e2e ## Run all tests
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" python -m pytest tests/unit --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" python -m pytest tests/unit --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
 	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" python -m pytest -m 'not redis' tests/integration --cov=ols --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" python -m pytest -m 'not redis' tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
 	python scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
 
@@ -56,31 +67,44 @@ check-coverage: test-unit test-integration  ## Unit tests and integration tests 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" --eval_model "${MODEL}"
+	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR} --rp_enabled --rp_name=ols-e2e-tests
 
-response-sanity-check: ## Checks response quality - requires running OLS server
-	@echo "Running response sanity check..."
-	python -m tests.scripts.validate_response -p ${PROVIDER} -m ${MODEL} -s ${SCENARIO} -o ${ARTIFACT_DIR}
+coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
 
-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
+unit-tests-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
+	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit" -d htmlcov-unit
+
+integration-tests-coverage-report:	test-integration ## Export integration test coverage report into interactive HTML
+	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
 
 check-types: ## Checks type hints in sources
 	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+
+security-check: ## Check the project for security issues
+	bandit -c pyproject.toml -r .
 
 format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify: ## Verify the code using various linters
+verify:	install-woke install-deps-test ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	./woke . --exit-1-on-failure
 
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
 
+requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
+	pdm export --prod --format requirements --output requirements.txt
+
+verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
+	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
+
 get-rag: ## Download a copy of the RAG embedding model and vector database
-	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:69a805043f61fc999fd190263646f9c3ef91f30f0d025574dd7ebc542f07a6c5 true
+	podman create --replace --name tmp-rag-container $$(cat build.args | awk 'BEGIN{FS="="}{print $$2}') true
+	rm -rf vector_db embeddings_model
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
 	podman rm tmp-rag-container
@@ -90,6 +114,6 @@ help: ## Show this help screen
 	@echo ''
 	@echo 'Available targets are:'
 	@echo ''
-	@grep -E '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^[ a-zA-Z0-9_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 	@echo ''

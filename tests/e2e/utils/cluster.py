@@ -6,8 +6,8 @@ import subprocess
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
-    return subprocess.run(
-        ["oc", *args],  # noqa: S603, S607
+    return subprocess.run(  # noqa: S603
+        ["oc", *args],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,
@@ -26,6 +26,41 @@ def run_oc_and_store_stdout(
         return result
     except subprocess.CalledProcessError as e:
         raise Exception("Error running oc command") from e
+
+
+def get_cluster_id() -> str:
+    """Get the cluster ID."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "clusterversions",
+                "version",
+                "-o",
+                "jsonpath='{.spec.clusterID}'",
+            ]
+        )
+        return result.stdout.strip("'")
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting cluster ID") from e
+
+
+def get_cluster_version() -> tuple[str, str]:
+    """Get the cluster version: major and minor."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "clusterversions",
+                "version",
+                "-o",
+                "jsonpath='{.status.desired.version}'",
+            ]
+        )
+        major, minor, rest = result.stdout.strip("'").split(".", 2)
+        return major, minor
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting cluster version") from e
 
 
 def create_user(name: str) -> None:

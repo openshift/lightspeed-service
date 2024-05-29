@@ -1,20 +1,69 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Any, Dict, Optional, Self
+from typing import Any, Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
+from pydantic.dataclasses import dataclass
 
 from ols.utils import suid
 
 
+class Attachment(BaseModel):
+    """Model representing an attachment that can be send from UI as part of query.
+
+    List of attachments can be optional part of 'query' request.
+
+    Attributes:
+        attachment_type: The attachment type, like "log", "configuration" etc.
+        content_type: The content type as defined in MIME standard
+        content: The actual attachment content
+
+    YAML attachments with **kind** and **metadata/name** attributes will
+    be handled as resources with specified name:
+    ```
+    kind: Pod
+    metadata:
+        name: private-reg
+    ```
+    """
+
+    attachment_type: str
+    content_type: str
+    content: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "attachment_type": "log",
+                    "content_type": "text/plain",
+                    "content": "this is attachment",
+                },
+                {
+                    "attachment_type": "configuration",
+                    "content_type": "application/yaml",
+                    "content": "kind: Pod\n metadata:\n name:    private-reg",
+                },
+                {
+                    "attachment_type": "configuration",
+                    "content_type": "application/yaml",
+                    "content": "foo: bar",
+                },
+            ]
+        }
+    }
+
+
 class LLMRequest(BaseModel):
-    """Model representing a request for the LLM (Language Model).
+    """Model representing a request for the LLM (Language Model) send into OLS service.
 
     Attributes:
         query: The query string.
         conversation_id: The optional conversation ID (UUID).
         provider: The optional provider.
         model: The optional model.
+        attachments: The optional attachments.
 
     Example:
         ```python
@@ -26,9 +75,11 @@ class LLMRequest(BaseModel):
     conversation_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    attachments: Optional[list[Attachment]] = None
 
     # provides examples for /docs endpoint
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "examples": [
                 {
@@ -36,9 +87,26 @@ class LLMRequest(BaseModel):
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "provider": "openai",
                     "model": "gpt-3.5-turbo",
+                    "attachments": [
+                        {
+                            "attachment_type": "log",
+                            "content_type": "text/plain",
+                            "content": "this is attachment",
+                        },
+                        {
+                            "attachment_type": "configuration",
+                            "content_type": "application/yaml",
+                            "content": "kind: Pod\n metadata:\n    name: private-reg",
+                        },
+                        {
+                            "attachment_type": "configuration",
+                            "content_type": "application/yaml",
+                            "content": "foo: bar",
+                        },
+                    ],
                 }
             ]
-        }
+        },
     }
 
     @model_validator(mode="after")
@@ -55,7 +123,8 @@ class LLMRequest(BaseModel):
         return self
 
 
-class ReferencedDocument(BaseModel):
+@dataclass
+class ReferencedDocument:
     """RAG referenced document.
 
     Attributes:
@@ -63,23 +132,11 @@ class ReferencedDocument(BaseModel):
     title: Title of the corresponding OCP documentation page
     """
 
-    docs_url: Optional[str] = None
-    title: Optional[str] = None
-
-    def __init__(self, docs_url: str, title: str) -> None:
-        """Initialize a ReferencedDocument."""
-        super().__init__()
-        self.docs_url = docs_url
-        self.title = title
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ReferencedDocument):
-            return self.docs_url == other.docs_url and self.title == other.title
-        return False
+    docs_url: str
+    title: str
 
     @staticmethod
-    def json_decode_object_hook(dct: Dict[str, Any]) -> Any:
+    def json_decode_object_hook(dct: dict[str, Any]) -> Any:
         """Deserialize dict into ReferencedDocument if we can."""
         if "docs_url" in dct and "title" in dct:
             return ReferencedDocument(**dct)
@@ -293,7 +350,7 @@ class FeedbackRequest(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def check_sentiment_or_user_feedback_set(self) -> "FeedbackRequest":
+    def check_sentiment_or_user_feedback_set(self) -> Self:
         """Ensure that either 'sentiment' or 'user_feedback' is set."""
         if self.sentiment is None and self.user_feedback is None:
             raise ValueError("Either 'sentiment' or 'user_feedback' must be set")
@@ -326,26 +383,55 @@ class FeedbackResponse(BaseModel):
     }
 
 
-class HealthResponse(BaseModel):
-    """Model representing a response to a health request.
+class LivenessResponse(BaseModel):
+    """Model representing a response to a liveness request.
 
     Attributes:
-        status: The status of the app.
+        alive: If app is alive.
 
     Example:
         ```python
-        health_response = HealthResponse(status={"status": "healthy"})
+        liveness_response = LivenessResponse(alive=True)
         ```
     """
 
-    status: dict[str, str]
+    alive: bool
 
     # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "status": {"status": "healthy"},
+                    "alive": True,
+                }
+            ]
+        }
+    }
+
+
+class ReadinessResponse(BaseModel):
+    """Model representing a response to a readiness request.
+
+    Attributes:
+        ready: The readiness of the service.
+        reason: The reason for the readiness.
+
+    Example:
+        ```python
+        readiness_response = ReadinessResponse(ready=True, reason="service is ready")
+        ```
+    """
+
+    ready: bool
+    reason: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "ready": True,
+                    "reason": "service is ready",
                 }
             ]
         }
@@ -374,3 +460,84 @@ class AuthorizationResponse(BaseModel):
             ]
         }
     }
+
+
+@dataclass
+class RagChunk:
+    """Model representing a RAG chunk.
+
+    Attributes:
+        text: The text used as a RAG chunk.
+        doc_url: The URL of the doc from which the RAG chunk comes from.
+        doc_title: The title of the doc.
+    """
+
+    text: str
+    doc_url: str
+    doc_title: str
+
+
+@dataclass
+class SummarizerResponse:
+    """Model representing a response from the summarizer.
+
+    Attributes:
+        response: The response from the summarizer.
+        rag_chunks: The RAG chunks.
+        history_truncated: Whether the history was truncated.
+    """
+
+    response: str
+    rag_chunks: list[RagChunk]
+    history_truncated: bool
+
+
+class CacheEntry(BaseModel):
+    """Model representing a cache entry.
+
+    Attributes:
+        query: The query string.
+        response: The response string.
+    """
+
+    query: str
+    response: Optional[str] = ""
+    attachments: list[Attachment] = []
+
+    @field_validator("response")
+    @classmethod
+    def set_none_response_to_empty_string(cls, v: Optional[str]) -> str:
+        """Convert None response to an empty string."""
+        if v is None:
+            return ""
+        return v
+
+    def to_dict(self) -> dict:
+        """Convert the cache entry to a dictionary."""
+        return {
+            "human_query": self.query,
+            "ai_response": self.response,
+            "attachments": [attachment.model_dump() for attachment in self.attachments],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Self:
+        """Create a cache entry from a dictionary."""
+        return cls(
+            query=data["human_query"],
+            response=data["ai_response"],
+            attachments=[
+                Attachment(**attachment) for attachment in data["attachments"]
+            ],
+        )
+
+    @staticmethod
+    def cache_entries_to_history(cache_entries: list["CacheEntry"]) -> list[str]:
+        """Convert cache entries to a history."""
+        history = []
+        for entry in cache_entries:
+            history.append(f"human: {entry.query.strip()}")
+            # the real response or empty string when response is not recorded
+            history.append(f"ai: {str(entry.response).strip()}")
+
+        return history

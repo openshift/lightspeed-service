@@ -1,9 +1,9 @@
 """Watsonx provider implementation."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
-from ibm_watson_machine_learning.metanames import (
+from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
@@ -21,6 +21,8 @@ class Watsonx(LLMProvider):
     """Watsonx provider."""
 
     url: str = "https://us-south.ml.cloud.ibm.com"
+    credentials: Optional[str]
+    project_id: Optional[str]
 
     @property
     def default_params(self) -> dict[str, Any]:
@@ -39,10 +41,28 @@ class Watsonx(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
+        self.url = str(self.provider_config.url or self.url)
+        self.credentials = self.provider_config.credentials
+        self.project_id = self.provider_config.project_id
+
+        # provider-specific configuration has precendence over regular configuration
+        if self.provider_config.watsonx_config is not None:
+            watsonx_config = self.provider_config.watsonx_config
+            self.url = str(watsonx_config.url)
+            self.project_id = watsonx_config.project_id
+            if watsonx_config.api_key is not None:
+                self.credentials = watsonx_config.api_key
+
+        if self.credentials is None:
+            raise ValueError("Credentials must be specified")
+
+        if self.project_id is None:
+            raise ValueError("Project ID must be specified")
+
         return WatsonxLLM(
             model_id=self.model,
-            url=self.provider_config.url or self.url,
-            apikey=self.provider_config.credentials,
-            project_id=self.provider_config.project_id,
+            url=self.url,
+            apikey=self.credentials,
+            project_id=self.project_id,
             params=self.params,
         )

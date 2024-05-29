@@ -8,6 +8,7 @@
 4. Check the code with linters
 5. Submit PR from your fork to main branch of the project repo
 
+
 ## Setting up your development environment
 
 The development requires [Python 3.11](https://docs.python.org/3/whatsnew/3.11.html) due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous processing capabilities.
@@ -73,7 +74,7 @@ to enable it automatically).
 
 During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value stored in section `[tool.coverage.report]`), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
 
-Code coverage reports are generated in JSON and also in format compatible with _JUnit_. It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
+Code coverage reports are generated in JSON and also in format compatible with [_JUnit_ test automation framework](https://junit.org/junit5/). It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
 
 Overall code coverage measured for both unit tests and integration tests can be checked by following command:
 
@@ -107,6 +108,20 @@ ruff linter
 
 Description of all rules are available on https://docs.astral.sh/ruff/rules/
 
+
+### Security checks
+
+Static security check is performed by _Bandit_ tool. The check can be started by using:
+
+```
+make security-check
+```
+
+or within PDM-controlled environment:
+
+```
+pdm run security-check
+```
 
 ## Testing
 
@@ -226,6 +241,28 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
     assert captured_err == ""
 ```
 
+
+## Tips and hints for developing e2e tests
+
+End to end tests can be run locally, but in this case, some tests that assume they run on cluster needs to be skipped.
+Set the `TEST_TAGS` environment variable before the tests are started:
+
+```
+export TEST_TAGS="not cluster"
+make test-e2e
+```
+
+It is also possible to skip tests marked by different test markers. The
+`TEST_TAGS` need to contain a "pytest mark expression" in this case. For
+example if it is needed to skip tests that assume that RAG is presented,
+do the following:
+
+```
+export TEST_TAGS="not cluster and not rag"
+make test-e2e
+```
+
+> E2E tests expects app running on http://localhost:8080 or whatever is defined through `OLS_URL` environment variable.
 
 ## Detecting which statements are called in real service
 

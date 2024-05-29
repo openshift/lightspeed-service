@@ -1,7 +1,7 @@
 # vim: set filetype=dockerfile
-ARG LIGHTSPEED_RAG_CONTENT_DIGEST=sha256:69a805043f61fc999fd190263646f9c3ef91f30f0d025574dd7ebc542f07a6c5
+ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:e0db77d709914e677e34658e21b4300b20a9f125c4f27f88429304aa8ad2e276
 
-FROM quay.io/openshift-lightspeed/lightspeed-rag-content@${LIGHTSPEED_RAG_CONTENT_DIGEST} as lightspeed-rag-content
+FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 
@@ -9,7 +9,7 @@ ARG VERSION
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip jq shadow-utils \
+    python3.11 python3.11-devel python3.11-pip shadow-utils \
     && microdnf clean all --enablerepo='*'
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
@@ -38,6 +38,9 @@ RUN pip3.11 install --no-cache-dir --upgrade pip pdm \
 
 COPY ols ./ols
 
+# this directory is checked by ecosystem-cert-preflight-checks task in Konflux
+COPY LICENSE /licenses/
+
 # Run the application
 EXPOSE 8080
 EXPOSE 8443
@@ -45,4 +48,13 @@ CMD ["python3.11", "runner.py"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \
-      io.openshift.tags="openshift-lightspeed,ols"
+      io.openshift.tags="openshift-lightspeed,ols" \
+      description="Red Hat OpenShift Lightspeed Service" \
+      summary="Red Hat OpenShift Lightspeed Service" \
+      com.redhat.component=openshift-lightspeed-service \
+      name=openshift-lightspeed-service \
+      vendor="Red Hat, Inc."
+
+
+# no-root user is checked in Konflux 
+USER 1001

@@ -103,6 +103,11 @@ class Statistic:
 statistic = Statistic()
 
 
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename."""
+    return os.path.normpath("/" + filename).lstrip("/")
+
+
 def args_parser(args: list[str]) -> argparse.Namespace:
     """Command line arguments parser."""
     parser = argparse.ArgumentParser(description="Feedback aggregator")
@@ -152,7 +157,7 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         # cluster UUID used by CCX monitoring infrastructure
         default="00000000-1111-0000-1111-000000000001",
         help="Cluster IDs to ignore during processing splited by comma: "
-        + "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
     )
     parser.add_argument(
         "-k",
@@ -211,11 +216,11 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         help="Include the whole conversation history in the generated output",
     )
     parser.add_argument(
-        "-rd",
-        "--referenced-documents",
+        "-wr",
+        "--with-rag-context",
         default=False,
         action="store_true",
-        help="Include referenced documents in the generated output",
+        help="Include RAG context in the generated output",
     )
     parser.add_argument(
         "-t",
@@ -236,14 +241,13 @@ def args_parser(args: list[str]) -> argparse.Namespace:
 
 def connect(args: argparse.Namespace):
     """Connect to Ceph."""
-    client = boto3.client(
+    return boto3.client(
         "s3",
         endpoint_url=args.endpoint,
         aws_access_key_id=args.access_key,
         aws_secret_access_key=args.secret_access_key,
         region_name=args.region,
     )
-    return client
 
 
 def ping_ceph(args: argparse.Namespace) -> None:
@@ -253,7 +257,7 @@ def ping_ceph(args: argparse.Namespace) -> None:
         client.head_bucket(Bucket=args.bucket)
         logger.info("Bucket is accessible")
     except Exception as e:
-        logger.error(f"Bucket is not accessible: {e}")
+        logger.exception(f"Bucket is not accessible: {e}")
 
 
 def list_objects(args: argparse.Namespace) -> None:
@@ -270,7 +274,7 @@ def list_objects(args: argparse.Namespace) -> None:
         else:
             logger.warning(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
-        logger.error(f"Failed to list contents of bucket '{bucket_name}':", e)
+        logger.exception(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
 def key_match(key: str) -> Optional[re.Match]:
@@ -332,7 +336,7 @@ def download_tarball(client, bucket_name: str, obj) -> None:
             logger.warning(f"Incorrect object key {key}, skipping")
             statistic.tarballs_with_incorrect_key += 1
     except Exception as e:
-        logger.error(f"Unable to download object: {e}")
+        logger.exception(f"Unable to download object: {e}")
         statistic.tarballs_not_downloaded += 1
 
 
@@ -353,7 +357,7 @@ def download_tarballs(args: argparse.Namespace) -> None:
         else:
             logger.warning(f"Bucket '{bucket_name}' is empty.")
     except Exception as e:
-        logger.error(f"Failed to list contents of bucket '{bucket_name}':", e)
+        logger.exception(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
 def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]]:
@@ -362,7 +366,8 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
     for filename in tarball.getnames():
         if filename.startswith(FEEDBACK_DIRECTORY):
             try:
-                f = tarball.extractfile(filename)
+                fname = sanitize_filename(filename)
+                f = tarball.extractfile(fname)
                 if f is not None:
                     data = f.read().decode("UTF-8")
                     feedbacks.append(json.loads(data))
@@ -371,7 +376,7 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
                     logger.error(f"Nothing to extract from {filename}")
                     statistic.tarballs_without_feedback += 1
             except Exception as e:
-                logger.error(f"Unable to read feedback: {e}")
+                logger.exception(f"Unable to read feedback: {e}")
                 statistic.feedback_read_error += 1
     return feedbacks
 
@@ -394,18 +399,8 @@ def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
     return feedbacks
 
 
-def format_referenced_documents(docs: list[dict[str, str]]) -> str:
-    """Format referenced documents section in full conversation history for feedback."""
-    output = ""
-    for doc in docs:
-        title = doc["title"]
-        url = doc["docs_url"]
-        output += f"{title}: {url}\n"
-    return output or "[None]"
-
-
 def read_full_conversation_history(
-    tarball_name: str, user_id: str, history_id: str, referenced_documents: bool
+    tarball_name: str, user_id: str, history_id: str, with_rag_context: bool
 ) -> str:
     """Read full conversation history from tarball."""
     logger.info(f"Reading full conversation history from {tarball_name}")
@@ -416,27 +411,36 @@ def read_full_conversation_history(
     for filename in tarball.getnames():
         if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
             try:
-                f = tarball.extractfile(filename)
+                fname = sanitize_filename(filename)
+                f = tarball.extractfile(fname)
                 if f is not None:
                     data = f.read().decode("UTF-8")
                     conversation = json.loads(data)
                     timestamp = conversation["metadata"]["timestamp"]
                     query = conversation["redacted_query"].strip()
                     response = conversation["llm_response"].strip()
+                    rag_chunks = conversation["rag_chunks"]
                     conversation_record = f"\nQ:{query}\nA:{response}\n"
 
-                    if referenced_documents:
-                        docs = format_referenced_documents(
-                            conversation["referenced_documents"]
-                        )
-                        conversation_record += f"\nReferenced documents:\n{docs}\n"
+                    if with_rag_context:
+                        conversation_record += "RAG context part\n"
+                        for rag_chunk in rag_chunks:
+                            ref_doc = (
+                                f"{rag_chunk['doc_title']}: {rag_chunk['doc_url']}"
+                            )
+                            conversation_record += f"\nReferenced doc:\n{ref_doc}"
+                            conversation_record += (
+                                f"\nRAG context:\n{rag_chunk['text'].strip()}\n"
+                            )
                     conversation_record += f"{separator}\n"
                     history[timestamp] = conversation_record
                     statistic.conversation_history_included += 1
                 else:
                     logger.error(f"Nothing to extract from {filename}")
             except Exception as e:
-                logger.error(f"Unable to read conversation history: {e}")
+                logger.exception(
+                    f"Unable to read conversation history: {type(e).__name__}: {e}"
+                )
 
     output = ""
     for timestamp in sorted(history):
@@ -450,10 +454,25 @@ def format_timestamp(text: str) -> str:
     return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def all_attachments(attachments: list[dict[str, Any]]) -> str:
+    """Retrieve all attachments as one string."""
+    separator = 100 * "-" + "\n\n"
+    output = ""
+    for attachment in attachments:
+        attachment_type = attachment.get("attachment_type", "*Not specified*")
+        content_type = attachment.get("content_type", "*Not specified*")
+        content = attachment.get("content", "*Empty*")
+        output += f"Attachment type: {attachment_type}\n"
+        output += f"Content type: {content_type}\n"
+        output += f"Content:\n{content}\n"
+        output += separator
+    return output
+
+
 def aggregate_user_feedback_from_files(
     filewriter,
     directory_name: str,
-    referenced_documents: bool,
+    with_rag_context: bool,
     conversation_history: bool,
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
@@ -470,11 +489,13 @@ def aggregate_user_feedback_from_files(
             for feedback in feedbacks:
                 user_id = feedback["user_id"]
                 conversation_id = feedback["conversation_id"]
+                attachments = all_attachments(feedback.get("attachments", []))
                 rows = [
                     timestamp,
                     cluster_id,
                     user_id,
                     conversation_id,
+                    attachments,
                     feedback["user_question"].strip(),
                     feedback["llm_response"].strip(),
                     feedback["sentiment"],
@@ -485,7 +506,7 @@ def aggregate_user_feedback_from_files(
                         filename,
                         user_id,
                         conversation_id,
-                        referenced_documents,
+                        with_rag_context,
                     )
                     rows.append(full_history)
                 filewriter.writerow(rows)
@@ -511,6 +532,7 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
             "User ID",
             "Conversation ID",
             "Question",
+            "Attachments",
             "LLM response",
             "Sentiment",
             "Feedback",
@@ -525,13 +547,13 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
         aggregate_user_feedback_from_files(
             filewriter,
             args.work_directory,
-            args.referenced_documents,
+            args.with_rag_context,
             args.conversation_history,
         )
 
 
 def read_full_conversation_history_for_all_users(
-    tarball_name: str, referenced_documents: bool
+    tarball_name: str, with_rag_context: bool
 ) -> list[tuple[str, str, str]]:
     """Read conversation history for all users and return it as list of conversations."""
     logger.info(f"Reading full conversation history from {tarball_name} for all users")
@@ -551,7 +573,7 @@ def read_full_conversation_history_for_all_users(
                 tarball_name,
                 user_id,
                 conversation_id,
-                referenced_documents,
+                with_rag_context,
             )
             history.append((user_id, conversation_id, conversation))
 
@@ -559,7 +581,7 @@ def read_full_conversation_history_for_all_users(
 
 
 def aggregate_conversation_history_from_files(
-    filewriter, directory_name: str, referenced_documents: bool
+    filewriter, directory_name: str, with_rag_context: bool
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
     logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
@@ -571,7 +593,7 @@ def aggregate_conversation_history_from_files(
             cluster_id = filename[:36]
             logger.info(f"Processing tarball {filename}")
             full_history = read_full_conversation_history_for_all_users(
-                filename, referenced_documents
+                filename, with_rag_context
             )
             for history in full_history:
                 row = [cluster_id, *history]
@@ -602,19 +624,19 @@ def aggregate_conversation_history(args: argparse.Namespace) -> None:
 
         # write conversation histories into CSV
         aggregate_conversation_history_from_files(
-            filewriter, args.work_directory, args.referenced_documents
+            filewriter, args.work_directory, args.with_rag_context
         )
 
 
-def perform_cleanup(args: argparse.Namespace) -> None:
+def perform_cleanup(work_directory: str) -> None:
     """Cleanup downloaded files."""
     logger.info("Performing working directory cleanup")
-    filenames = os.listdir(args.work_directory)
+    filenames = os.listdir(work_directory)
 
     for filename in filenames:
-        if filename.endswith(".tgz") or filename.endswith(".tar.gz"):
+        if filename.endswith((".tgz", ".tar.gz")):
             logger.info(f"Removing {filename}")
-            os.remove(os.path.join(args.work_directory, filename))
+            os.remove(os.path.join(work_directory, filename))
 
 
 def print_statistic(statistic: Statistic) -> None:
@@ -642,6 +664,11 @@ def main() -> None:
 
     logger.debug(f"Arguments passed: {args}")
 
+    # sanitize work directory
+    work_directory = os.path.normpath("/" + args.work_directory).lstrip("/")
+    if work_directory == "":
+        work_directory = "."
+
     if args.ping:
         ping_ceph(args)
         return
@@ -655,7 +682,7 @@ def main() -> None:
     aggregate_feedbacks(args)
     aggregate_conversation_history(args)
     if not args.keep:
-        perform_cleanup(args)
+        perform_cleanup(work_directory)
     if args.statistic:
         print_statistic(statistic)
 
@@ -727,7 +754,7 @@ keys_filenames = (
 )
 
 
-@pytest.mark.parametrize("key, filename", keys_filenames)
+@pytest.mark.parametrize(("key", "filename"), keys_filenames)
 def test_construct_filename(key, filename):
     """Test the function construct_filename with valid keys provided at input."""
     assert construct_filename(key) == filename
@@ -738,6 +765,86 @@ def test_construct_filename_negative(key):
     """Test the function construct_filename - negative test cases with invalid keys."""
     with pytest.raises(Exception, match=f"Can not construct filename from key {key}"):
         construct_filename(key)
+
+
+def test_all_attachments_for_empty_input():
+    """Test the construction of string with all attachments."""
+    attachments = []
+    assert all_attachments(attachments) == ""
+
+
+def test_all_attachments_for_proper_attachments():
+    """Test the construction of string with all attachments."""
+    attachments = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment #1",
+        },
+        {
+            "attachment_type": "configuration",
+            "content_type": "text/plain",
+            "content": "this is attachment #2",
+        },
+    ]
+    expected = """Attachment type: log
+Content type: text/plain
+Content:
+this is attachment #1
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: text/plain
+Content:
+this is attachment #2
+----------------------------------------------------------------------------------------------------
+
+"""
+    assert all_attachments(attachments) == expected
+
+
+def test_all_attachments_for_improper_attachments():
+    """Test the construction of string with all attachments."""
+    attachments = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment #1",
+        },
+        {
+            "attachment_type": "configuration",
+            "content_type": "text/plain",
+            "content": "this is attachment #2",
+        },
+        {"content_type": "text/plain", "content": "this is attachment #3"},
+        {"attachment_type": "configuration", "content": "this is attachment #4"},
+    ]
+    expected = """Attachment type: log
+Content type: text/plain
+Content:
+this is attachment #1
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: text/plain
+Content:
+this is attachment #2
+----------------------------------------------------------------------------------------------------
+
+Attachment type: *Not specified*
+Content type: text/plain
+Content:
+this is attachment #3
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: *Not specified*
+Content:
+this is attachment #4
+----------------------------------------------------------------------------------------------------
+
+"""
+    assert all_attachments(attachments) == expected
 
 
 if __name__ == "__main__":

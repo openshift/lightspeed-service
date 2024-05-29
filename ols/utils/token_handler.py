@@ -1,17 +1,16 @@
 """Utility to handle tokens."""
 
 import logging
-from collections import defaultdict
 from math import ceil
 
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
-from ols.app.models.config import ModelConfig
+from ols.app.models.models import RagChunk
 from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
     MINIMUM_CONTEXT_TOKEN_LIMIT,
-    RAG_SIMILARITY_CUTOFF_L2,
+    RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
 )
 
@@ -67,34 +66,37 @@ class TokenHandler:
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
     def calculate_and_check_available_tokens(
-        self, prompt: str, model_config: ModelConfig
+        self, prompt: str, context_window_size: int, max_tokens_for_response: int
     ) -> int:
         """Get available tokens that can be used for prompt augmentation.
 
         Args:
             prompt: format prompt template to string before passing as arg
-            model_config: model config to get other tokens spec.
+            context_window_size: context window size of LLM
+            max_tokens_for_response: max tokens allowed for response (estimation)
 
         Returns:
             available_tokens: int, tokens that can be used for augmentation.
         """
-        # TODO: OLS-490 Sync Max response token for token handler with model parameter
-        context_window_size = model_config.context_window_size
-        response_token_limit = model_config.response_token_limit
         logger.debug(
             f"Context window size: {context_window_size}, "
-            f"Response token limit: {response_token_limit}"
+            f"Max generated tokens: {max_tokens_for_response}"
         )
 
         prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
         logger.debug(f"Prompt tokens: {prompt_token_count}")
 
+        # The context_window_size is the maximum number of tokens that
+        # can be used for a "conversation" in the LLM model. This
+        # includes prompt AND response. Hence we need to subtract the
+        # prompt tokens and max tokens for response from the context
+        # window size.
         available_tokens = (
-            context_window_size - response_token_limit - prompt_token_count
+            context_window_size - max_tokens_for_response - prompt_token_count
         )
 
         if available_tokens <= 0:
-            limit = context_window_size - response_token_limit
+            limit = context_window_size - max_tokens_for_response
             raise PromptTooLongError(
                 f"Prompt length {prompt_token_count} exceeds LLM "
                 f"available context window limit {limit} tokens"
@@ -104,7 +106,7 @@ class TokenHandler:
 
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
-    ) -> tuple[dict[str, list[str]], int]:
+    ) -> tuple[list[RagChunk], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
@@ -112,25 +114,17 @@ class TokenHandler:
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
-            context_dict: A dictionary containing list of context & metadata
-            max_tokens: int, available tokens after context usage
-            Context Example:
-                {
-                    "text": ["This is my doc1", "This is my doc2"],
-                    "docs_url": ["https://doc_url1", "https://doc_url2"]
-                    "title": ["Title of doc 1", "Title of doc 2"]
-                }
+            list of `RagChunk` objects, available tokens after context usage
         """
-        context_dict = defaultdict(list)
+        rag_chunks = []
 
         for node in retrieved_nodes:
 
             score = float(node.get_score(raise_error=False))
-            if score > RAG_SIMILARITY_CUTOFF_L2:
-                # L2 distance is checked here, lower score is better.
+            if score < RAG_SIMILARITY_CUTOFF:
                 logger.debug(
                     f"RAG content similarity score: {score} is "
-                    f"more than threshold {RAG_SIMILARITY_CUTOFF_L2}."
+                    f"less than threshold {RAG_SIMILARITY_CUTOFF}."
                 )
                 break
 
@@ -145,23 +139,25 @@ class TokenHandler:
                 logger.debug(f"{available_tokens} tokens are less than threshold.")
                 break
 
-            context_dict["text"].append(self.tokens_to_text(tokens[:available_tokens]))
-            # Add Metadata
-            context_dict["docs_url"].append(node.metadata.get("docs_url", None))
-            context_dict["title"].append(node.metadata.get("title", None))
+            rag_chunks.append(
+                RagChunk(
+                    text=self.tokens_to_text(tokens[:available_tokens]),
+                    doc_url=node.metadata.get("docs_url", ""),
+                    doc_title=node.metadata.get("title", ""),
+                )
+            )
 
             max_tokens -= available_tokens
 
-        return context_dict, max_tokens
+        return rag_chunks, max_tokens
 
     def limit_conversation_history(
         self, history: list[str], limit: int = 0
     ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        index = 0
 
-        for message in reversed(history):
+        for index, message in enumerate(reversed(history)):
             message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
             # if total length of already checked messages is higher than limit
@@ -169,7 +165,6 @@ class TokenHandler:
             if total_length > limit:
                 logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
-            index += 1
             total_length += 1  # Additional token for new-line.
 
         return history, False

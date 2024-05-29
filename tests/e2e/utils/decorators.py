@@ -34,14 +34,14 @@ def retry(
                     return test_function(*args, **kwargs)
 
                 except Exception as e:
-                    if type(e) != on_error:
-                        raise e
+                    if not isinstance(e, on_error):
+                        raise
 
                     # retrieve error message
                     error_message = e.__str__().split("\n")[0]
 
                     if expected_error_message not in error_message:
-                        raise e
+                        raise
 
                     print(
                         f'Retry error: "{test_function.__name__}": {error_message}. '

@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import time
+from enum import IntEnum
 
 import nest_asyncio
 from llama_index.core import (
@@ -29,11 +30,11 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
 
+from ols import config
 from ols.src.llms.llm_loader import load_llm
-from ols.utils import config
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-config.init_config(cfg_file)
+config.reload_from_yaml_file(cfg_file)
 
 
 def dirs_all_files(folder):
@@ -43,6 +44,15 @@ def dirs_all_files(folder):
         if files and not dirs:
             all_dirs.append(os.path.join(root))
     return all_dirs
+
+
+class EvalResponseLength(IntEnum):
+    """Enumeration for the possible lengths of the evaluation response."""
+
+    NO_DATA_LINES = 0
+    SINGLE_LINES = 1
+    DOUBLE_LINES = 2
+    TRIPLE_LINES = 3
 
 
 def eval_parser(eval_response: str):
@@ -60,18 +70,16 @@ def eval_parser(eval_response: str):
     eval_len = len(eval_response_parsed)
 
     match eval_len:
-        # TODO: OLS-606 Incorrect value is returned from eval_parser when the
-        #               response contains no data or just one line
-        case 0:
-            return 0, eval_response_parsed
-        case 1:
-            return 0, eval_response_parsed
-        case 2:
+        case EvalResponseLength.NO_DATA_LINES:
+            return 0, ""
+        case EvalResponseLength.SINGLE_LINES:
+            return 0, eval_response_parsed[0]
+        case EvalResponseLength.DOUBLE_LINES:
             score_str = eval_response_parsed[0]
             score = float(score_str) if score_str else 0
             reasoning = eval_response_parsed[1]
             return score, reasoning
-        case 3:
+        case EvalResponseLength.TRIPLE_LINES:
             score_str, reasoning_str = eval_response_parsed[1], eval_response_parsed[2]
             score = float(score_str) if score_str else 0
             reasoning = reasoning_str.lstrip("\n")
@@ -122,7 +130,21 @@ def generate_summary(
     execution_time_seconds = end_time - start_time
     print(f"** Total execution time in min: {execution_time_seconds/60}")
 
-    # creating metadata folder
+    metadata = create_metadata(
+        args,
+        execution_time_seconds,
+        product_index,
+        total_correctness_score,
+        full_results,
+    )
+    write_json_metadata(persist_folder, args, metadata)
+    write_markdown_metadata(persist_folder, args, metadata, full_results)
+
+
+def create_metadata(
+    args, execution_time_seconds, product_index, total_correctness_score, full_results
+):
+    """Create metadata for the summary."""
     metadata = {
         "execution-time-MIN": execution_time_seconds,
         "llm": args.provider,
@@ -134,44 +156,65 @@ def generate_summary(
             total_correctness_score
         )
     metadata["evaluation-results"] = full_results
-    json_metadata = json.dumps(metadata)
+    return metadata
 
+
+def write_json_metadata(persist_folder, args, metadata):
+    """Write the JSON metadata to a file."""
     if not os.path.exists(persist_folder):
         os.makedirs(persist_folder)
 
     model_name_formatted = args.model.replace("/", "_")
-
-    # Write the JSON data to a file
     file_path = (
         f"{persist_folder}/questions-{args.provider}-{model_name_formatted}.json"
     )
-    with open(file_path, "w") as file:
-        file.write(json_metadata)
 
+    with open(file_path, "w") as file:
+        json.dump(metadata, file)
+
+
+def write_markdown_metadata(persist_folder, args, metadata, full_results):
+    """Write the metadata to a markdown file."""
+    full_results_markdown_content = generate_full_results_markdown(full_results)
+    metadata["evaluation-results"] = full_results_markdown_content
+
+    markdown_content = convert_metadata_to_markdown(metadata)
+
+    model_name_formatted = args.model.replace("/", "_")
+    file_path = (
+        f"{persist_folder}/questions-{args.provider}-{model_name_formatted}_metadata.md"
+    )
+
+    with open(file_path, "w") as file:
+        file.write(markdown_content)
+
+
+def generate_full_results_markdown(full_results):
+    """Generate markdown content for full results."""
     full_results_markdown_content = "    \n"
     for res in full_results:
         for key, value in res.items():
-            if isinstance(value, list) and isinstance(value[0], dict):
+            if (
+                isinstance(value, list)
+                and len(value) > 0
+                and isinstance(value[0], dict)
+            ):
+                new = "\n"
                 for d in value:
-                    new = "\n"
                     for k, v in d.items():
                         new += f"   - {k}: {v}\n"
                 value = new
             full_results_markdown_content += f"    - {key}: {value}\n"
+    return full_results_markdown_content
 
-    metadata["evaluation-results"] = full_results_markdown_content
 
-    # Convert JSON data to markdown
+def convert_metadata_to_markdown(metadata):
+    """Convert metadata dictionary to markdown formatted string."""
     markdown_content = "```markdown\n"
     for key, value in metadata.items():
         markdown_content += f"- {key}: {value}\n"
     markdown_content += "```"
-
-    file_path = (
-        f"{persist_folder}/questions-{args.provider}-{model_name_formatted}_metadata.md"
-    )
-    with open(file_path, "w") as file:
-        file.write(markdown_content)
+    return markdown_content
 
 
 async def questions_eval(
@@ -185,12 +228,28 @@ async def questions_eval(
 ):
     """Evaluate questions."""
     print("*** start evaluation")
+
+    faithfulness_results, relevancy_results = await evaluate_faithfulness_relevancy(
+        index, similarity, eval_questions
+    )
+    results["faithfulness"] = faithfulness_results
+    results["relevancy"] = relevancy_results
+
+    print_evaluation_time("faithfulness, relevancy", start_time)
+
+    correctness_results = evaluate_correctness(
+        index, similarity, eval_questions, total_correctness_score, start_time
+    )
+    results["correctness"] = correctness_results
+
+    full_results.append(results)
+    print_evaluation_time("correctness", start_time)
+
+
+async def evaluate_faithfulness_relevancy(index, similarity, eval_questions):
+    """Evaluate faithfulness and relevancy."""
     faithfulness = FaithfulnessEvaluator()
     relevancy = RelevancyEvaluator()
-    correctness = CorrectnessEvaluator(
-        score_threshold=2.0,
-        parser_function=eval_parser,
-    )
 
     runner = BatchEvalRunner(
         {
@@ -206,58 +265,71 @@ async def questions_eval(
         queries=eval_questions,
     )
 
-    results["faithfulness"] = get_eval_breakdown("faithfulness", eval_results)
-    results["relevancy"] = get_eval_breakdown("relevancy", eval_results)
+    faithfulness_results = get_eval_breakdown("faithfulness", eval_results)
+    relevancy_results = get_eval_breakdown("relevancy", eval_results)
 
+    return faithfulness_results, relevancy_results
+
+
+def evaluate_correctness(
+    index, similarity, eval_questions, total_correctness_score, start_time
+):
+    """Evaluate correctness."""
+    correctness = CorrectnessEvaluator(
+        score_threshold=2.0,
+        parser_function=eval_parser,
+    )
+
+    engine = index.as_query_engine(similarity_top_k=similarity)
+    correctness_results = []
+
+    for query in eval_questions:
+        res_row = evaluate_single_query(
+            engine, query, correctness, total_correctness_score
+        )
+        correctness_results.append(res_row)
+
+    return correctness_results
+
+
+def evaluate_single_query(engine, query, correctness, total_correctness_score):
+    """Evaluate a single query for correctness."""
+    summary = engine.query(query)
+    referenced_documents = "\n".join(
+        [source_node.node.metadata["file_name"] for source_node in summary.source_nodes]
+    )
+
+    result = correctness.evaluate(
+        query=query,
+        response=summary.response,
+        reference=summary.source_nodes[0].text,
+    )
+
+    res_row = {
+        "query": query,
+        "response": summary.response,
+        "ref": referenced_documents,
+        "ref_doc": summary.source_nodes[0].text,
+        "ref_doc_score": summary.source_nodes[0].score,
+        "passing": result.passing,
+        "feedback": result.feedback,
+        "score": result.score,
+    }
+
+    #               it is not possible to convert the value w/o checks
+    if result.score is not None:
+        total_correctness_score.append(float(result.score))
+
+    return res_row
+
+
+def print_evaluation_time(stage, start_time):
+    """Print evaluation time for a specific stage."""
     end_time = time.time()
     execution_time_seconds = end_time - start_time
     print(
-        f"Completed faithfulness,relevancy evaluation:\
-        execution time in min:{execution_time_seconds/60}"
+        f"Completed {stage} evaluation: execution time in min:{execution_time_seconds/60}"
     )
-
-    # correctness
-
-    engine = index.as_query_engine(similarity_top_k=similarity)
-    res_table = []
-
-    for query in eval_questions:
-        res_row = {}
-        summary = engine.query(query)
-        referenced_documents = "\n".join(
-            [
-                source_node.node.metadata["file_name"]
-                for source_node in summary.source_nodes
-            ]
-        )
-
-        result = correctness.evaluate(
-            query=query,
-            response=summary.response,
-            reference=summary.source_nodes[0].text,
-        )
-
-        res_row["query"] = query
-        res_row["response"] = summary.response
-        res_row["ref"] = referenced_documents
-        res_row["ref_doc"] = summary.source_nodes[0].text
-        res_row["ref_doc_score"] = summary.source_nodes[0].score
-        res_row["passing"] = result.passing
-        res_row["feedback"] = result.feedback
-        res_row["score"] = result.score
-
-        # TODO: OLS-619 Evaluation model can return `None` instead of score, so
-        #               it is not possible to convert the value w/o checks
-        total_correctness_score.append(float(result.score))
-        res_table.append(res_row)
-        results["correctness"] = res_table
-
-        end_time = time.time()
-        execution_time_seconds = end_time - start_time
-        print(
-            f"Completed correctness evaluation: execution time in min:{execution_time_seconds/60}"
-        )
-        full_results.append(results)
 
 
 async def main():
@@ -297,7 +369,11 @@ async def main():
         "-s", "--similarity", type=int, default="5", help="similarity_top_k"
     )
     parser.add_argument(
-        "-e", "--include-evaluation", default="false", help="similarity_top_k"
+        "-e",
+        "--include-evaluation",
+        default=False,
+        action="store_true",
+        help="Include evaluation",
     )
     parser.add_argument(
         "-c", "--chunk", type=int, default="512", help="chunk size for embedding"

@@ -1,12 +1,13 @@
 """Cache that uses Postgres to store cached values."""
 
+import json
 import logging
-import pickle
-from typing import Any, Optional
+from typing import Any
 
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
 
@@ -93,7 +94,7 @@ class PostgresCache(Cache):
         except Exception as e:
             self.conn.close()
             logger.exception(f"Error initializing Postgres cache:\n{e}")
-            raise e
+            raise
         self.capacity = config.max_entries
 
     def initialize_cache(self) -> None:
@@ -104,7 +105,7 @@ class PostgresCache(Cache):
         cur.close()
         self.conn.commit()
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
@@ -116,39 +117,50 @@ class PostgresCache(Cache):
         """
         with self.conn.cursor() as cursor:
             try:
-                return PostgresCache._select(cursor, user_id, conversation_id)
+                value = PostgresCache._select(cursor, user_id, conversation_id)
+                if value is not None:
+                    cache_entry = [
+                        CacheEntry.from_dict(cache_entry) for cache_entry in value
+                    ]
+                    return cache_entry
+                else:
+                    return []
             except psycopg2.DatabaseError as e:
                 logger.error(f"PostgresCache.get {e}")
                 raise CacheError("PostgresCache.get", e)
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        cache_entry: CacheEntry,
     ) -> None:
         """Set the value associated with the given key.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
-            value: The value to set.
+            cache_entry: The `CacheEntry` object to store.
         """
+        value = cache_entry.to_dict()
         # the whole operation is run in one transaction
         with self.conn.cursor() as cursor:
             try:
                 old_value = self._select(cursor, user_id, conversation_id)
                 if old_value:
-                    old_value.extend(value)
+                    old_value.append(value)
                     PostgresCache._update(
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps(old_value),
                     )
                 else:
                     PostgresCache._insert(
                         cursor,
                         user_id,
                         conversation_id,
-                        pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL),
+                        json.dumps([value]),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
@@ -176,7 +188,7 @@ class PostgresCache(Cache):
             raise ValueError("Invalid value read from cache:", value)
 
         # try to deserialize the value
-        return pickle.loads(value[0], errors="strict")  # noqa S301
+        return json.loads(value[0])
 
     @staticmethod
     def _update(

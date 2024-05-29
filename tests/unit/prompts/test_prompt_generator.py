@@ -100,7 +100,7 @@ def test_generate_prompt_without_rag_context(
     assert "context" not in llm_input_values
     assert "query" in llm_input_values
     assert "chat_history" in llm_input_values
-    assert "First human message\nFirst AI response" == llm_input_values["chat_history"]
+    assert llm_input_values["chat_history"] == "First human message\nFirst AI response"
 
 
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)

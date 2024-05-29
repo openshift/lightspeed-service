@@ -1,19 +1,19 @@
 """Unit tests for feedback endpoint handlers."""
 
 import json
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 
+from ols import config
 from ols.app.endpoints import feedback
 from ols.app.models.config import UserDataCollection
-from ols.utils import config
 
 
-@pytest.fixture
+@pytest.fixture()
 def feedback_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
-    config.init_empty_config()
     full_path = (tmpdir / "feedback").strpath
     config.ols_config.user_data_collection = UserDataCollection(
         feedback_disabled=False, feedback_storage=full_path
@@ -32,8 +32,7 @@ def load_fake_feedback(filename):
     feedback_file = (
         f"{config.ols_config.user_data_collection.feedback_storage}/{filename}.json"
     )
-    stored_data = json.loads(open(feedback_file).read())
-    return stored_data
+    return json.loads(open(feedback_file).read())
 
 
 def test_get_feedback_status(feedback_location):
@@ -45,16 +44,19 @@ def test_get_feedback_status(feedback_location):
     assert not feedback.is_feedback_enabled()
 
 
-def test_store_feedback(feedback_location):
+@patch("ols.app.endpoints.feedback.datetime")
+def test_store_feedback(mocked_datetime, feedback_location):
     """Test store_feedback function."""
     user_id = "12345678-abcd-0000-0123-456789abcdef"
     feedback_data = {"testy": "test"}
 
+    mocked_datetime.utcnow = lambda: datetime(2000, 1, 1, 1, 23, 45)
     with patch("ols.app.endpoints.feedback.get_suid", return_value="fake-uuid"):
         feedback.store_feedback(user_id, feedback_data)
 
     stored_data = load_fake_feedback("fake-uuid")
     assert stored_data == {
         "user_id": "12345678-abcd-0000-0123-456789abcdef",
+        "timestamp": "2000-01-01 01:23:45",
         **feedback_data,
     }

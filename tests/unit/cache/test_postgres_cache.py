@@ -1,25 +1,27 @@
 """Unit tests for PostgresCache class."""
 
-import pickle
+import json
 from unittest.mock import MagicMock, call, patch
 
 import psycopg2
 import pytest
 
-from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import PostgresConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
 from ols.utils import suid
 
 user_id = suid.get_suid()
 conversation_id = suid.get_suid()
+cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
+cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
 
 
 @patch("psycopg2.connect")
 def test_init_cache_failure_detection(mock_connect):
     """Test the exception handling for Cache.initialize_cache operation."""
-    exception_message = "Exception during initializing the cache." ""
+    exception_message = "Exception during initializing the cache."
     mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
         exception_message
     )
@@ -47,7 +49,7 @@ def test_get_operation_on_empty_cache(mock_connect):
 
     # call the "get" operation
     conversation = cache.get(user_id, conversation_id)
-    assert conversation is None
+    assert conversation == []
     mock_cursor.execute.assert_called_once_with(
         PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT, (user_id, conversation_id)
     )
@@ -81,13 +83,10 @@ def test_get_operation_invalid_value(mock_connect):
 def test_get_operation_valid_value(mock_connect):
     """Test the Cache.get operation when valid value is returned from cache."""
     history = [
-        human_msg("first message from human"),
-        ai_msg("first answer from AI"),
-        human_msg("second message from human"),
-        ai_msg("second answer from AI"),
+        cache_entry_1,
+        cache_entry_2,
     ]
-
-    conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
+    conversation = json.dumps([ce.to_dict() for ce in history])
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -99,7 +98,7 @@ def test_get_operation_valid_value(mock_connect):
     cache = PostgresCache(config)
 
     # call the "get" operation
-    # unpickled history should be returned
+    # unjsond history should be returned
     assert cache.get(user_id, conversation_id) == history
 
     # DB operation SELECT must be performed
@@ -123,21 +122,14 @@ def test_get_operation_on_exception(mock_connect):
 
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
-        value = cache.get(user_id, conversation_id)
-        assert value is None
+        cache.get(user_id, conversation_id)
 
 
 @patch("psycopg2.connect")
-def test_insert_or_append_operation_first_item(mock_connect):
+def test_insert_or_append_operation(mock_connect):
     """Test the Cache.insert_or_append operation for first item to be inserted."""
-    history = [
-        human_msg("first message from human"),
-        ai_msg("first answer from AI"),
-        human_msg("second message from human"),
-        ai_msg("second answer from AI"),
-    ]
-
-    conversation = pickle.dumps(history, protocol=pickle.HIGHEST_PROTOCOL)
+    history = cache_entry_1
+    conversation = json.dumps([history.to_dict()])
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -170,22 +162,16 @@ def test_insert_or_append_operation_first_item(mock_connect):
 @patch("psycopg2.connect")
 def test_insert_or_append_operation_append_item(mock_connect):
     """Test the Cache.insert_or_append operation for more item to be inserted."""
-    stored_history = [
-        human_msg("first message from human"),
-        ai_msg("first answer from AI"),
-    ]
+    stored_history = cache_entry_1
 
-    old_conversation = pickle.dumps(stored_history, protocol=pickle.HIGHEST_PROTOCOL)
+    old_conversation = json.dumps([stored_history.to_dict()])
 
-    appended_history = [
-        human_msg("first message from human"),
-        ai_msg("first answer from AI"),
-    ]
+    appended_history = cache_entry_2
 
-    # create pickled object in the exactly same format
-    whole_history = pickle.loads(old_conversation, errors="strict")  # noqa S301
-    whole_history.extend(appended_history)
-    new_conversation = pickle.dumps(whole_history, protocol=pickle.HIGHEST_PROTOCOL)
+    # create json object in the exactly same format
+    whole_history = json.loads(old_conversation)
+    whole_history.append(appended_history.to_dict())
+    new_conversation = json.dumps(whole_history)
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -217,12 +203,7 @@ def test_insert_or_append_operation_append_item(mock_connect):
 @patch("psycopg2.connect")
 def test_insert_or_append_operation_on_exception(mock_connect):
     """Test the Cache.insert_or_append operation when exception is thrown."""
-    history = [
-        human_msg("first message from human"),
-        ai_msg("first answer from AI"),
-        human_msg("second message from human"),
-        ai_msg("second answer from AI"),
-    ]
+    history = cache_entry_1
 
     # mock the query result
     mock_cursor = MagicMock()

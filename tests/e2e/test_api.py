@@ -2,11 +2,8 @@
 
 import json
 import os
-import pickle
 import re
-import sys
 import time
-from typing import Optional
 
 import pytest
 import requests
@@ -17,27 +14,25 @@ from ols.constants import (
     INVALID_QUERY_RESP,
 )
 from ols.utils import suid
-from tests.e2e import (
-    cluster_utils,
-    helper_utils,
-    metrics_utils,
-)
-from tests.e2e.constants import (
+from scripts.evaluation.response_evaluation import ResponseEvaluation
+from tests.e2e.utils import client as client_utils
+from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import metrics as metrics_utils
+from tests.e2e.utils import response as response_utils
+from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
-    EVAL_THRESHOLD,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
-from tests.scripts.must_gather import must_gather
-from tests.scripts.validate_response import ResponseValidation
-
-from .postgres_utils import (
+from tests.e2e.utils.decorators import retry
+from tests.e2e.utils.postgres import (
     read_conversation_history,
     read_conversation_history_count,
     retrieve_connection,
 )
-from .test_decorators import retry
+from tests.e2e.utils.wait_for_ols import wait_for_ols
+from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -61,29 +56,55 @@ OLS_USER_DATA_COLLECTION_INTERVAL = 10
 OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
 
+OLS_READY = False
+
+
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    try:
-        global ols_url, client, metrics_client
-        token = None
-        metrics_token = None
-        if on_cluster:
-            print("Setting up for on cluster test execution\n")
-            ols_url = cluster_utils.get_ols_url("ols")
-            cluster_utils.create_user("test-user")
-            cluster_utils.create_user("metrics-test-user")
-            token = cluster_utils.get_user_token("test-user")
-            metrics_token = cluster_utils.get_user_token("metrics-test-user")
-            cluster_utils.grant_sa_user_access("test-user", "ols-user")
-            cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
-        else:
-            print("Setting up for standalone test execution\n")
+    global ols_url, client, metrics_client
+    token = None
+    metrics_token = None
+    provider = os.getenv("PROVIDER")
 
-        client = helper_utils.get_http_client(ols_url, token)
-        metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
-    except Exception as e:
-        print(f"Failed to setup ols access: {e}")
-        sys.exit(1)
+    global OLS_READY
+    if on_cluster:
+        print("Setting up for on cluster test execution\n")
+        ols_url = cluster_utils.get_ols_url("ols")
+        cluster_utils.create_user("test-user")
+        cluster_utils.create_user("metrics-test-user")
+        token = cluster_utils.get_user_token("test-user")
+        metrics_token = cluster_utils.get_user_token("metrics-test-user")
+        cluster_utils.grant_sa_user_access("test-user", "ols-user")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+
+        # Determine the hostname for the OLS route
+        result = cluster_utils.run_oc(
+            ["get", "route", "ols", "-o", "jsonpath={.spec.host}"]
+        )
+        ols_url = result.stdout.strip()
+    else:
+        print("Setting up for standalone test execution\n")
+
+    if not ols_url.startswith("http"):
+        ols_url = f"https://{ols_url}"
+
+    print(f"OLS_URL set to {ols_url}")
+    os.environ["OLS_URL"] = ols_url
+
+    client = client_utils.get_http_client(ols_url, token)
+    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+
+    # Wait for OLS to be ready
+    print(f"Waiting for OLS to be ready on provider: {provider}...")
+    OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {OLS_READY}")
+    if not OLS_READY:
+        must_gather()
+
+    # disable collector script by default to avoid running during all
+    # tests (collecting/sending data)
+    pod_name = cluster_utils.get_single_existing_pod_name()
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 def teardown_module(module):
@@ -98,40 +119,15 @@ def postgres_connection():
     return retrieve_connection()
 
 
-@pytest.fixture(scope="module")
-def response_eval(request):
-    """Set response evaluation fixture."""
-    with open("tests/test_data/question_answer_pair.json") as qna_f:
-        qa_pairs = json.load(qna_f)
-
-    eval_model = "gpt" if "gpt" in request.config.option.eval_model else "granite"
-    print(f"eval model: {eval_model}")
-
-    return qa_pairs[eval_model]
-
-
-def get_eval_question_answer(qna_pair, qna_id, scenario="without_rag"):
-    """Get Evaluation question answer."""
-    eval_query = qna_pair[scenario][qna_id]["question"]
-    eval_answer = qna_pair[scenario][qna_id]["answer"]
-    print(f"Evaluation question: {eval_query}")
-    print(f"Ground truth answer: {eval_answer}")
-    return eval_query, eval_answer
-
-
-def check_content_type(response, content_type):
-    """Check if response content-type is set to defined value."""
-    assert response.headers["content-type"].startswith(content_type)
-
-
+@retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
-        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+        response = client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        response_utils.check_content_type(response, "application/json")
+        assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
 def test_liveness():
@@ -140,8 +136,8 @@ def test_liveness():
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        response_utils.check_content_type(response, "application/json")
+        assert response.json() == {"alive": True}
 
 
 def test_invalid_question():
@@ -156,7 +152,7 @@ def test_invalid_question():
         )
         assert response.status_code == requests.codes.ok
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
 
         expected_json = {
@@ -179,7 +175,7 @@ def test_invalid_question_without_conversation_id():
         )
         assert response.status_code == requests.codes.ok
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
 
         json_response = response.json()
@@ -188,9 +184,9 @@ def test_invalid_question_without_conversation_id():
         assert json_response["truncated"] is False
 
         # new conversation ID should be generated
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
 def test_query_call_without_payload():
@@ -205,7 +201,7 @@ def test_query_call_without_payload():
         )
         assert response.status_code == requests.codes.unprocessable_entity
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
         # the actual response might differ when new Pydantic version will be used
         # so let's do just primitive check
@@ -225,29 +221,28 @@ def test_query_call_with_improper_payload():
         )
         assert response.status_code == requests.codes.unprocessable_entity
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
         # the actual response might differ when new Pydantic version will be used
         # so let's do just primitive check
         assert "missing" in response.text
 
 
-def test_valid_question_improper_conversation_id(response_eval) -> None:
+def test_valid_question_improper_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for improper conversation ID."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "with_rag")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.internal_server_error
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": "not-uuid", "query": eval_query},
+            json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.internal_server_error
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         json_response = response.json()
         expected_response = {
             "detail": {
@@ -258,39 +253,38 @@ def test_valid_question_improper_conversation_id(response_eval) -> None:
         assert json_response == expected_response
 
 
-def test_valid_question_missing_conversation_id(response_eval) -> None:
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_missing_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = client.post(
             endpoint,
-            json={"conversation_id": "", "query": eval_query},
+            json={"conversation_id": "", "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         json_response = response.json()
 
         # new conversation ID should be returned
         assert (
             "conversation_id" in json_response
         ), "New conversation ID was not generated"
-        assert suid.check_suid(json_response["conversation_id"]), (
-            "Conversation ID is not in UUID format" ""
-        )
+        assert suid.check_suid(
+            json_response["conversation_id"]
+        ), "Conversation ID is not in UUID format"
 
 
-def test_too_long_question(response_eval) -> None:
+def test_too_long_question() -> None:
     """Check the REST API /v1/query with too long question."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1", "without_rag")
     # let's make the query really large, larger that context window size
-    eval_query *= 10000
+    query = "what is kubernetes?" * 10000
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.request_entity_too_large
@@ -298,12 +292,12 @@ def test_too_long_question(response_eval) -> None:
         cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": eval_query},
+            json={"conversation_id": cid, "query": query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.request_entity_too_large
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
         json_response = response.json()
         assert "detail" in json_response
@@ -311,23 +305,20 @@ def test_too_long_question(response_eval) -> None:
 
 
 @pytest.mark.rag()
-def test_valid_question(response_eval) -> None:
+def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, "eval1", "with_rag"
-    )
 
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         cid = suid.get_suid()
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": eval_query},
+            json={"conversation_id": cid, "query": "what is kubernetes?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
         json_response = response.json()
 
@@ -340,10 +331,32 @@ def test_valid_question(response_eval) -> None:
             re.IGNORECASE,
         )
 
-        score = ResponseValidation().get_similarity_score(
-            json_response["response"], eval_answer
+
+@pytest.mark.rag()
+def test_ocp_docs_version_same_as_cluster_version() -> None:
+    """Check that the version of OCP docs matches the cluster we're on."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        cid = suid.get_suid()
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": cid,
+                "query": "welcome openshift container platform documentation",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
         )
-        assert score <= EVAL_THRESHOLD
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        major, minor = cluster_utils.get_cluster_version()
+
+        assert len(json_response["referenced_documents"]) > 1
+        assert f"{major}.{minor}" in json_response["referenced_documents"][0]["title"]
 
 
 def test_valid_question_tokens_counter() -> None:
@@ -361,7 +374,7 @@ def test_valid_question_tokens_counter() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
 
 def test_invalid_question_tokens_counter() -> None:
@@ -379,7 +392,7 @@ def test_invalid_question_tokens_counter() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
 
 def test_token_counters_for_query_call_without_payload() -> None:
@@ -404,7 +417,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
 
 def test_token_counters_for_query_call_with_improper_payload() -> None:
@@ -430,56 +443,52 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
 
 @pytest.mark.rag()
-def test_rag_question(response_eval) -> None:
+@retry(max_attempts=3, wait_between_runs=10)
+def test_rag_question() -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, "eval2", "with_rag"
-    )
 
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
         response = client.post(
             endpoint,
-            json={"query": eval_query},
+            json={"query": "what is openshift virtualization?"},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-        assert len(json_response["referenced_documents"]) > 0
+        assert len(json_response["referenced_documents"]) > 1
         assert "virt" in json_response["referenced_documents"][0]["docs_url"]
         assert "https://" in json_response["referenced_documents"][0]["docs_url"]
         assert json_response["referenced_documents"][0]["title"]
 
-        score = ResponseValidation().get_similarity_score(
-            json_response["response"], eval_answer
-        )
-        assert score <= EVAL_THRESHOLD
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["docs_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
 def test_query_filter() -> None:
-    """Ensure responses does not include filtered words."""
+    """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        query = "what is foo in bar?"
         response = client.post(
             endpoint,
-            json={"query": "what is foo in bar?"},
+            json={"query": query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
-
+        response_utils.check_content_type(response, "application/json")
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-
         # values to be filtered and replaced are defined in:
         # tests/config/singleprovider.e2e.template.config.yaml
         response_text = json_response["response"].lower()
@@ -487,6 +496,28 @@ def test_query_filter() -> None:
         assert "deploy" in response_text
         assert "foo" not in response_text
         assert "bar" not in response_text
+
+        # Retrieve the pod name
+        data_collection_container_name = "ols"
+        pod_name = cluster_utils.get_single_existing_pod_name()
+
+        # Check if filtered words are redacted in the logs
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+
+        # Ensure redacted patterns do not appear in the logs
+        unwanted_patterns = ["foo ", "what is foo in bar?"]
+        for line in container_log.splitlines():
+            # Only check lines that are not part of a query
+            if re.search(r'Body: \{"query":', line):
+                continue
+            # check that the pattern is indeed not found in logs
+            for pattern in unwanted_patterns:
+                assert pattern not in line.lower()
+
+        # Ensure the intended redaction has occurred
+        assert "what is deployment in openshift?" in container_log
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -501,13 +532,14 @@ def test_conversation_history() -> None:
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
-        assert response.status_code == requests.codes.ok
-        check_content_type(response, "application/json")
+        debug_msg = "First call to LLM without conversation history has failed"
+        assert response.status_code == requests.codes.ok, debug_msg
+        response_utils.check_content_type(response, "application/json", debug_msg)
 
         print(vars(response))
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
         # get the conversation id so we can reuse it for the follow up question
         cid = json_response["conversation_id"]
@@ -517,16 +549,19 @@ def test_conversation_history() -> None:
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
+
+        debug_msg = "Second call to LLM with conversation history has failed"
         assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, "application/json", debug_msg)
+
         json_response = response.json()
         response_text = json_response["response"].lower()
-        assert "ingress" in response_text
+        assert "ingress" in response_text, debug_msg
 
 
-def test_query_with_provider_but_not_model(response_eval) -> None:
+def test_query_with_provider_but_not_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for provider specified, but no model."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
@@ -534,11 +569,15 @@ def test_query_with_provider_but_not_model(response_eval) -> None:
         # just the provider is explicitly specified, but model selection is missing
         response = client.post(
             endpoint,
-            json={"conversation_id": "", "query": eval_query, "provider": "bam"},
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "provider": "bam",
+            },
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
         json_response = response.json()
 
@@ -549,10 +588,9 @@ def test_query_with_provider_but_not_model(response_eval) -> None:
         )
 
 
-def test_query_with_model_but_not_provider(response_eval) -> None:
+def test_query_with_model_but_not_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for model specified, but no provider."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
@@ -562,13 +600,13 @@ def test_query_with_model_but_not_provider(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "model": "ibm/granite-13b-chat-v2",
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
         json_response = response.json()
 
@@ -578,10 +616,9 @@ def test_query_with_model_but_not_provider(response_eval) -> None:
         )
 
 
-def test_query_with_unknown_provider(response_eval) -> None:
+def test_query_with_unknown_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown provider specified."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     # retrieve currently selected model
     model, _ = metrics_utils.get_enabled_model_and_provider(metrics_client)
@@ -594,14 +631,14 @@ def test_query_with_unknown_provider(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "provider": "foo",
                 "model": model,
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
         json_response = response.json()
 
@@ -616,10 +653,9 @@ def test_query_with_unknown_provider(response_eval) -> None:
         )
 
 
-def test_query_with_unknown_model(response_eval) -> None:
+def test_query_with_unknown_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown model specified."""
     endpoint = "/v1/query"
-    eval_query, _ = get_eval_question_answer(response_eval, "eval1")
 
     # retrieve currently selected provider
     _, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
@@ -632,14 +668,14 @@ def test_query_with_unknown_model(response_eval) -> None:
             endpoint,
             json={
                 "conversation_id": "",
-                "query": eval_query,
+                "query": "what is kubernetes?",
                 "provider": provider,
                 "model": "bar",
             },
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
-        check_content_type(response, "application/json")
+        response_utils.check_content_type(response, "application/json")
 
         json_response = response.json()
 
@@ -728,6 +764,23 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
+# TODO OLS-652: This test currently doesn't work in CI. We don't currently know
+# how to grant permissions to the service account in the test cluster
+# to access clusterversions resource.
+# @pytest.mark.cluster()
+# def test_get_cluster_id_function():
+#     """Test if the cluster ID is properly retrieved."""
+#     # During the test in cluster, there is no config initialized for the
+#     # tests run (these run against application), so we need to initialize
+#     # the config (with the fields auth needs) manually here.
+#     config.init_config("tests/config/auth_config.yaml")
+
+#     actual = K8sClientSingleton.get_cluster_id()
+#     expected = cluster_utils.get_cluster_id()
+
+#     assert actual == expected
+
+
 @pytest.mark.cluster()
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
@@ -748,70 +801,40 @@ def test_feedback_can_post_with_wrong_token():
 @pytest.mark.cluster()
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
-    pod_name: Optional[str] = None
-    try:
-        feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
-        pod_name = cluster_utils.get_single_existing_pod_name()
+    feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-        # disable collector script to avoid interference with the test
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # disable collector script to avoid interference with the test
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
-        # there are multiple tests running agains cluster, so transcripts
-        # can be already present - we need to ensure the storage is empty
-        # for this test
-        feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
-        if feedbacks:
-            cluster_utils.remove_dir(pod_name, feedbacks_path)
-            assert cluster_utils.list_path(pod_name, feedbacks_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
+    if feedbacks:
+        cluster_utils.remove_dir(pod_name, feedbacks_path)
+        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
 
-        response = client.post(
-            "/v1/feedback",
-            json={
-                "conversation_id": CONVERSATION_ID,
-                "user_question": "what is OCP4?",
-                "llm_response": "Openshift 4 is ...",
-                "sentiment": 1,
-            },
-            timeout=BASIC_ENDPOINTS_TIMEOUT,
-        )
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
 
-        assert response.status_code == requests.codes.ok
+    assert response.status_code == requests.codes.ok
 
-        feedback_data = cluster_utils.get_single_existing_feedback(
-            pod_name, feedbacks_path
-        )
+    feedback_data = cluster_utils.get_single_existing_feedback(pod_name, feedbacks_path)
 
-        assert feedback_data["user_id"]  # we don't care about actual value
-        assert feedback_data["conversation_id"] == CONVERSATION_ID
-        assert feedback_data["user_question"] == "what is OCP4?"
-        assert feedback_data["llm_response"] == "Openshift 4 is ..."
-        assert feedback_data["sentiment"] == 1
-
-    finally:
-        if pod_name is not None:
-            # ensure script is enabled again after test (succesfull or not)
-            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-            assert "disable_collector" not in cluster_utils.list_path(
-                pod_name, OLS_USER_DATA_PATH
-            )
-
-
-def check_missing_field_response(response, field_name):
-    """Check if 'Field required' error is returned by the service."""
-    # error should be detected on Pydantic level
-    assert response.status_code == requests.codes.unprocessable
-
-    # the resonse payload should be valid JSON
-    check_content_type(response, "application/json")
-    json_response = response.json()
-
-    # check payload details
-    assert (
-        "detail" in json_response
-    ), "Improper response format: 'detail' node is missing"
-    assert json_response["detail"][0]["msg"] == "Field required"
-    assert json_response["detail"][0]["loc"][0] == "body"
-    assert json_response["detail"][0]["loc"][1] == field_name
+    assert feedback_data["user_id"]  # we don't care about actual value
+    assert feedback_data["conversation_id"] == CONVERSATION_ID
+    assert feedback_data["user_question"] == "what is OCP4?"
+    assert feedback_data["llm_response"] == "Openshift 4 is ..."
+    assert feedback_data["sentiment"] == 1
 
 
 def test_feedback_missing_conversation_id():
@@ -826,7 +849,7 @@ def test_feedback_missing_conversation_id():
         timeout=BASIC_ENDPOINTS_TIMEOUT,
     )
 
-    check_missing_field_response(response, "conversation_id")
+    response_utils.check_missing_field_response(response, "conversation_id")
 
 
 def test_feedback_missing_user_question():
@@ -841,7 +864,7 @@ def test_feedback_missing_user_question():
         timeout=BASIC_ENDPOINTS_TIMEOUT,
     )
 
-    check_missing_field_response(response, "user_question")
+    response_utils.check_missing_field_response(response, "user_question")
 
 
 def test_feedback_missing_llm_response():
@@ -856,7 +879,7 @@ def test_feedback_missing_llm_response():
         timeout=BASIC_ENDPOINTS_TIMEOUT,
     )
 
-    check_missing_field_response(response, "llm_response")
+    response_utils.check_missing_field_response(response, "llm_response")
 
 
 def test_feedback_improper_conversation_id():
@@ -876,7 +899,7 @@ def test_feedback_improper_conversation_id():
     assert response.status_code == requests.codes.unprocessable
 
     # for incorrect conversation ID, the payload should be valid JSON
-    check_content_type(response, "application/json")
+    response_utils.check_content_type(response, "application/json")
     json_response = response.json()
 
     assert (
@@ -891,58 +914,75 @@ def test_feedback_improper_conversation_id():
 @pytest.mark.cluster()
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
-    pod_name: Optional[str] = None
-    try:
-        transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
-        pod_name = cluster_utils.get_single_existing_pod_name()
+    transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-        # disable collector script to avoid interference with the test
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # disable collector script to avoid interference with the test
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
-        # there are multiple tests running agains cluster, so transcripts
-        # can be already present - we need to ensure the storage is empty
-        # for this test
-        transcripts = cluster_utils.list_path(pod_name, transcripts_path)
-        if transcripts:
-            cluster_utils.remove_dir(pod_name, transcripts_path)
-            assert cluster_utils.list_path(pod_name, transcripts_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    transcripts = cluster_utils.list_path(pod_name, transcripts_path)
+    if transcripts:
+        cluster_utils.remove_dir(pod_name, transcripts_path)
+        assert cluster_utils.list_path(pod_name, transcripts_path) == []
 
-        response = client.post(
-            "/v1/query",
-            json={
-                "query": "what is kubernetes?",
-            },
-            timeout=LLM_REST_API_TIMEOUT,
-        )
-        assert response.status_code == requests.codes.ok
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+            "attachments": [
+                {
+                    "attachment_type": "log",
+                    "content_type": "text/plain",
+                    # Sample content
+                    "content": "Kubernetes is a core component of OpenShift.",
+                }
+            ],
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
 
-        transcript = cluster_utils.get_single_existing_transcript(
-            pod_name, transcripts_path
-        )
+    transcript = cluster_utils.get_single_existing_transcript(
+        pod_name, transcripts_path
+    )
 
-        assert transcript["metadata"]  # just check if it is not empty
-        assert transcript["redacted_query"] == "what is kubernetes?"
-        # we don't want llm response influence this test
-        assert "query_is_valid" in transcript
-        assert "llm_response" in transcript
-        assert "referenced_documents" in transcript
-        assert transcript["referenced_documents"][0]["docs_url"]
-        assert transcript["referenced_documents"][0]["title"]
-        assert "truncated" in transcript
-    finally:
-        if pod_name is not None:
-            # ensure script is enabled again after test (succesfull or not)
-            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-            assert "disable_collector" not in cluster_utils.list_path(
-                pod_name, OLS_USER_DATA_PATH
-            )
+    assert transcript["metadata"]  # just check if it is not empty
+    assert transcript["redacted_query"] == "what is kubernetes?"
+    # we don't want llm response influence this test
+    assert "query_is_valid" in transcript
+    assert "llm_response" in transcript
+    assert "rag_chunks" in transcript
+
+    assert transcript["query_is_valid"]
+    assert isinstance(transcript["rag_chunks"], list)
+    assert len(transcript["rag_chunks"])
+    assert transcript["rag_chunks"][0]["text"]
+    assert transcript["rag_chunks"][0]["doc_url"]
+    assert transcript["rag_chunks"][0]["doc_title"]
+    assert "truncated" in transcript
+
+    # check the attachment node existence and its content
+    assert "attachments" in transcript
+
+    expected_attachment_node = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "Kubernetes is a core component of OpenShift.",
+        }
+    ]
+    assert transcript["attachments"] == expected_attachment_node
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_openapi_endpoint():
     """Test handler for /opanapi REST API endpoint."""
     response = client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
-    check_content_type(response, "application/json")
+    response_utils.check_content_type(response, "application/json")
 
     payload = response.json()
     assert payload is not None, "Incorrect response"
@@ -963,82 +1003,336 @@ def test_openapi_endpoint():
     for endpoint in ("/readiness", "/liveness", "/v1/query", "/v1/feedback"):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
+    # retrieve pre-generated OpenAPI schema
+    with open("docs/openapi.json") as fin:
+        expected_schema = json.load(fin)
+
+    # remove node that is not included in pre-generated OpenAPI schema
+    del payload["info"]["license"]
+
+    # compare schemas (as dicts)
+    assert (
+        payload == expected_schema
+    ), "OpenAPI schema returned from service does not have expected content."
+
 
 def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
-        return
+        pytest.skip("Postgres is not accessible.")
 
     value = read_conversation_history_count(postgres_connection)
     # check if history exists at all
     assert value is not None
 
 
-def _perform_query(client, conversation_id, response_eval, qna_pair):
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_empty_attachment_list() -> None:
+    """Check the REST API /v1/query with POST HTTP method using empty attachment list."""
     endpoint = "/v1/query"
-    eval_query, eval_answer = get_eval_question_answer(
-        response_eval, qna_pair, "without_rag"
-    )
 
-    response = client.post(
-        endpoint,
-        json={"conversation_id": conversation_id, "query": eval_query},
-        timeout=LLM_REST_API_TIMEOUT,
-    )
-    check_content_type(response, "application/json")
-    print(vars(response))
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.ok
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # HTTP OK should be returned
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
 
 
-def test_conversation_in_postgres_cache(response_eval, postgres_connection) -> None:
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_one_attachment() -> None:
+    """Check the REST API /v1/query with POST HTTP method using one attachment."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.ok
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "log",
+                        "content_type": "text/plain",
+                        "content": "Kubernetes is a core component of OpenShift.",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # HTTP OK should be returned
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_more_attachments() -> None:
+    """Check the REST API /v1/query with POST HTTP method using two attachments."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.ok
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "log",
+                        "content_type": "text/plain",
+                        "content": "Kubernetes is a core component of OpenShift.",
+                    },
+                    {
+                        "attachment_type": "configuration",
+                        "content_type": "application/json",
+                        "content": "{'foo': 'bar'}",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # HTTP OK should be returned
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_unknown_field() -> None:
+    """Check the REST API /v1/query with POST HTTP method using attachment with wrong format."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "xyzzy": "log",  # unknown field
+                        "content_type": "text/plain",
+                        "content": "this is attachment",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Field required"
+        assert details["type"] == "missing"
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
+    """Check the REST API /v1/query with POST HTTP method using attachment with wrong format."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [  # missing fields
+                    {},
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Field required"
+        assert details["type"] == "missing"
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_field_of_different_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method using attachment with wrong value type."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": 42,  # not a string
+                        "content_type": "application/json",
+                        "content": "{'foo': 'bar'}",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Input should be a valid string"
+        assert details["type"] == "string_type"
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method using attachment with wrong type."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "unknown_type",
+                        "content_type": "text/plain",
+                        "content": "this is attachment",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        expected_response = {
+            "detail": {
+                "response": "Unable to process this request",
+                "cause": "Attachment with improper type unknown_type detected",
+            }
+        }
+        assert json_response == expected_response
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method: attachment with wrong content type."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "log",
+                        "content_type": "unknown/type",
+                        "content": "this is attachment",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        expected_response = {
+            "detail": {
+                "response": "Unable to process this request",
+                "cause": "Attachment with improper content type unknown/type detected",
+            }
+        }
+        assert json_response == expected_response
+
+
+def test_conversation_in_postgres_cache(postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
-        pytest.skip("Postgres is not accessible." "")
-        return
+        pytest.skip("Postgres is not accessible.")
 
     cid = suid.get_suid()
-    _perform_query(client, cid, response_eval, "eval1")
+    client_utils.perform_query(client, cid, "what is kubernetes?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
+    assert updated_at is not None
 
-    # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    # deserialize conversation into list of messages
+    deserialized = json.loads(conversation)
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 2
+    assert len(deserialized) == 2
 
     # question check
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # trivial check for answer (exact check is done in different tests)
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
-    _perform_query(client, cid, response_eval, "eval2")
+    client_utils.perform_query(client, cid, "what is openshift virtualization?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
 
     # unpickle conversation into list of messages
-    unpickled = pickle.loads(conversation, errors="strict")  # noqa S301
-    assert unpickled is not None
+    deserialized = json.loads(conversation, errors="strict")
+    assert deserialized is not None
 
     # we expect one question + one answer
-    assert len(unpickled) == 4
+    assert len(deserialized) == 4
 
     # first question
-    assert "what is kubernetes?" in unpickled[0].content
+    assert "what is kubernetes?" in deserialized[0].content
 
     # first answer
-    assert "Kubernetes" in unpickled[1].content
+    assert "Kubernetes" in deserialized[1].content
 
     # second question
-    assert "what is openshift virtualization?" in unpickled[2].content
+    assert "what is openshift virtualization?" in deserialized[2].content
 
     # second answer
-    assert "OpenShift" in unpickled[3].content
+    assert "OpenShift" in deserialized[3].content
 
 
 @pytest.mark.cluster()
@@ -1050,91 +1344,105 @@ def test_user_data_collection():
     A bit of trick is required to check just the logs since the last
     action (as container logs can be influenced by other tests).
     """
+    pod_name = None
+    try:
+        pod_name = cluster_utils.get_single_existing_pod_name()
 
-    def filter_logs(logs: str, last_log_line: str) -> str:
-        filtered_logs = []
-        new_logs = False
-        for line in logs.split("\n"):
-            if line == last_log_line:
-                new_logs = True
-                continue
-            if new_logs:
-                filtered_logs.append(line)
-        return "\n".join(filtered_logs)
+        # enable collector script
+        if pod_name is not None:
+            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
+            assert "disable_collector" not in cluster_utils.list_path(
+                pod_name, OLS_USER_DATA_PATH
+            )
 
-    def get_last_log_line(logs: str) -> str:
-        return [line for line in logs.split("\n") if line][-1]
+        def filter_logs(logs: str, last_log_line: str) -> str:
+            filtered_logs = []
+            new_logs = False
+            for line in logs.split("\n"):
+                if line == last_log_line:
+                    new_logs = True
+                    continue
+                if new_logs:
+                    filtered_logs.append(line)
+            return "\n".join(filtered_logs)
 
-    # constants from tests/config/cluster_install/ols_manifests.yaml
-    data_collection_container_name = "ols-sidecar-user-data-collector"
-    pod_name = cluster_utils.get_single_existing_pod_name()
+        def get_last_log_line(logs: str) -> str:
+            return [line for line in logs.split("\n") if line][-1]
 
-    # there are multiple tests running agains cluster, so user data
-    # can be already present - we need to ensure the storage is empty
-    # for this test
-    user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
-    if user_data:
-        cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
-        cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
-        assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
+        # constants from tests/config/cluster_install/ols_manifests.yaml
+        data_collection_container_name = "ols-sidecar-user-data-collector"
 
-    # safety wait for the script to start after being disabled by other
-    # tests
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+        # there are multiple tests running agains cluster, so user data
+        # can be already present - we need to ensure the storage is empty
+        # for this test
+        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
+        if user_data:
+            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
+            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
+            assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
 
-    # data shoud be pruned now and this is the point from which we want
-    # to check the logs
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    last_log_line = get_last_log_line(container_log)
+        # safety wait for the script to start after being disabled by other
+        # tests
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
 
-    # wait the collection period for some extra to give the script a
-    # chance to log what we want to check
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+        # data shoud be pruned now and this is the point from which we want
+        # to check the logs
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        last_log_line = get_last_log_line(container_log)
 
-    # we just check that there are no data and the script is working
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    logs = filter_logs(container_log, last_log_line)
+        # wait the collection period for some extra to give the script a
+        # chance to log what we want to check
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
 
-    assert "collected" not in logs
-    assert "data uploaded with request_id:" not in logs
-    assert "uploaded data removed" not in logs
-    assert "data upload failed with response:" not in logs
-    assert "contains no data, nothing to do..." in logs
+        # we just check that there are no data and the script is working
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        logs = filter_logs(container_log, last_log_line)
 
-    # get the log point for the next check
-    last_log_line = get_last_log_line(container_log)
+        assert "collected" not in logs
+        assert "data uploaded with request_id:" not in logs
+        assert "uploaded data removed" not in logs
+        assert "data upload failed with response:" not in logs
+        assert "contains no data, nothing to do..." in logs
 
-    # create a new data via feedback endpoint
-    response = client.post(
-        "/v1/feedback",
-        json={
-            "conversation_id": CONVERSATION_ID,
-            "user_question": "what is OCP4?",
-            "llm_response": "Openshift 4 is ...",
-            "sentiment": 1,
-        },
-        timeout=BASIC_ENDPOINTS_TIMEOUT,
-    )
-    assert response.status_code == requests.codes.ok
-    # ensure the script have enought time to send the payload before
-    # we pull its logs
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+        # get the log point for the next check
+        last_log_line = get_last_log_line(container_log)
 
-    # check that data was packaged, sent and removed
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    logs = filter_logs(container_log, last_log_line)
-    assert "collected 1 files (splitted to 1 chunks) from" in logs
-    assert "data uploaded with request_id:" in logs
-    assert "uploaded data removed" in logs
-    assert "data upload failed with response:" not in logs
-    user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
-    assert user_data == []
+        # create a new data via feedback endpoint
+        response = client.post(
+            "/v1/feedback",
+            json={
+                "conversation_id": CONVERSATION_ID,
+                "user_question": "what is OCP4?",
+                "llm_response": "Openshift 4 is ...",
+                "sentiment": 1,
+            },
+            timeout=BASIC_ENDPOINTS_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        # ensure the script have enought time to send the payload before
+        # we pull its logs
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+
+        # check that data was packaged, sent and removed
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        logs = filter_logs(container_log, last_log_line)
+        assert "collected 1 files (splitted to 1 chunks) from" in logs
+        assert "data uploaded with request_id:" in logs
+        assert "uploaded data removed" in logs
+        assert "data upload failed with response:" not in logs
+        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
+        assert user_data == []
+
+    finally:
+        # disable collector script after test/on failure
+        if pod_name is not None:
+            cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 @pytest.mark.cluster()
@@ -1149,8 +1457,8 @@ def test_http_header_redaction():
                 timeout=BASIC_ENDPOINTS_TIMEOUT,
             )
             assert response.status_code == requests.codes.ok
-            check_content_type(response, "application/json")
-            assert response.json() == {"status": {"status": "healthy"}}
+            response_utils.check_content_type(response, "application/json")
+            assert response.json() == {"alive": True}
 
     container_log = cluster_utils.get_container_log(
         cluster_utils.get_single_existing_pod_name(), "ols"
@@ -1159,3 +1467,16 @@ def test_http_header_redaction():
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         assert f'"{header}":"XXXXX"' in container_log
         assert f'"{header}":"some_value"' not in container_log
+
+
+@pytest.mark.response_evaluation()
+def test_model_response(request) -> None:
+    """Evaluate model response."""
+    assert ResponseEvaluation(request.config.option, client).validate_response()
+
+
+@pytest.mark.model_evaluation()
+def test_model_evaluation(request) -> None:
+    """Evaluate model."""
+    # TODO: Use this to assert.
+    ResponseEvaluation(request.config.option, client).evaluate_models()

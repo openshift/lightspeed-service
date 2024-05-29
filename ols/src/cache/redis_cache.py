@@ -1,6 +1,6 @@
 """Cache that uses Redis to store cached values."""
 
-import pickle
+import json
 import threading
 from typing import Any, Optional
 
@@ -14,6 +14,7 @@ from redis.exceptions import (
 from redis.retry import Retry
 
 from ols.app.models.config import RedisConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.cache import Cache
 
 
@@ -47,7 +48,7 @@ class RedisCache(Cache):
         # setup Redis retry logic
         retry: Optional[Retry] = None
         if config.number_of_retries is not None and config.number_of_retries > 0:
-            retry = Retry(ExponentialBackoff(), config.number_of_retries)
+            retry = Retry(ExponentialBackoff(), config.number_of_retries)  # type: ignore [no-untyped-call]
 
         retry_on_error: Optional[list[type[RedisError]]] = None
         if config.retry_on_error:
@@ -67,7 +68,7 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> Optional[list[dict[str, str]]]:
+    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
@@ -82,17 +83,21 @@ class RedisCache(Cache):
         value = self.redis_client.get(key)
         if value is None:
             return None
-        return pickle.loads(value, errors="strict")  # noqa S301
+
+        return [CacheEntry.from_dict(cache_entry) for cache_entry in json.loads(value)]
 
     def insert_or_append(
-        self, user_id: str, conversation_id: str, value: list[dict[str, str]]
+        self,
+        user_id: str,
+        conversation_id: str,
+        cache_entry: CacheEntry,
     ) -> None:
         """Set the value associated with the given key.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
-            value: The value to set.
+            cache_entry: The `CacheEntry` object to store.
 
         Raises:
             OutOfMemoryError: If item is evicted when Redis allocated
@@ -103,11 +108,9 @@ class RedisCache(Cache):
         with self._lock:
             old_value = self.get(user_id, conversation_id)
             if old_value:
-                old_value.extend(value)
+                old_value.append(cache_entry)
                 self.redis_client.set(
-                    key, pickle.dumps(old_value, protocol=pickle.HIGHEST_PROTOCOL)
+                    key, json.dumps(old_value, default=lambda o: o.to_dict())
                 )
             else:
-                self.redis_client.set(
-                    key, pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
-                )
+                self.redis_client.set(key, json.dumps([cache_entry.to_dict()]))

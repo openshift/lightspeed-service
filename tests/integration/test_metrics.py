@@ -8,17 +8,19 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-from ols.utils import config
+from ols import config
 
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="module")
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+@pytest.fixture(scope="function", autouse=True)
+@patch.dict(
+    os.environ, {"OLS_CONFIG_FILE": "tests/config/config_for_integration_tests.yaml"}
+)
 def _setup():
     """Setups the test client."""
     global client
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
     from ols.app.main import app
 
     client = TestClient(app)
@@ -37,7 +39,7 @@ def retrieve_metrics(client):
     return response.text
 
 
-def test_metrics(_setup):
+def test_metrics():
     """Check if service provides metrics endpoint with some expected counters."""
     response_text = retrieve_metrics(client)
 
@@ -77,7 +79,7 @@ def get_counter_value(client, counter_name, path, status_code):
     raise Exception(f"Counter {counter_name} was not found in metrics")
 
 
-def test_rest_api_call_counter_ok_status(_setup):
+def test_rest_api_call_counter_ok_status():
     """Check if REST API call counter works as expected, label with 200 OK status."""
     endpoint = "/readiness"
 
@@ -93,7 +95,7 @@ def test_rest_api_call_counter_ok_status(_setup):
     assert new == old + 1, "Counter has not been updated properly"
 
 
-def test_rest_api_call_counter_not_found_status(_setup):
+def test_rest_api_call_counter_not_found_status():
     """Check if REST API call counter works as expected, label with 404 NotFound status."""
     endpoint = "/this-does-not-exists"
 
@@ -110,7 +112,7 @@ def test_rest_api_call_counter_not_found_status(_setup):
     assert new == old + 1, "Counter for 404 NotFound  has not been updated properly"
 
 
-def test_metrics_duration(_setup):
+def test_metrics_duration():
     """Check if service provides metrics for durations."""
     response_text = retrieve_metrics(client)
 
@@ -132,7 +134,7 @@ def test_metrics_duration(_setup):
     assert re.findall(pattern, response_text)
 
 
-def test_provider_model_configuration_metrics(_setup):
+def test_provider_model_configuration_metrics():
     """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(client)
     print(response_text)

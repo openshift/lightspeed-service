@@ -13,13 +13,13 @@ from prometheus_client import (
     generate_latest,
 )
 
-import ols.app.models.config as config_model
 from ols.utils.auth_dependency import AuthDependency
+from ols.utils.config import AppConfig
 
 router = APIRouter(tags=["metrics"])
 auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
 
-disable_created_metrics()
+disable_created_metrics()  # type: ignore [no-untyped-call]
 
 rest_api_calls_total = Counter(
     "ols_rest_api_calls_total", "REST API calls counter", ["path", "status_code"]
@@ -66,10 +66,10 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
     return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-def setup_model_metrics(config: config_model.Config) -> None:
+def setup_model_metrics(config: AppConfig) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
-    for _, provider in config.llm_providers.providers.items():
-        for model_name, _ in provider.models.items():
+    for provider in config.llm_config.providers.values():
+        for model_name in provider.models.keys():
             if (
                 provider.name == config.ols_config.default_provider
                 and model_name == config.ols_config.default_model

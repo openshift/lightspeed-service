@@ -11,9 +11,7 @@ from ols.utils.logging import LoggingConfig, configure_logging
 
 def setup_logging(caplog):
     """Set up logging and capturing log messsages."""
-    logging_config = LoggingConfig(
-        {"app_log_level": "info"},
-    )
+    logging_config = LoggingConfig(app_log_level="info")
     configure_logging(logging_config)
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
@@ -40,7 +38,7 @@ def test_chat_ui_handler_ok_response(caplog):
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, False)
+        ret = ui.chat_ui("prompt", [], False)
         assert ret == "this is response"
 
     captured_out = caplog.text
@@ -58,7 +56,7 @@ def test_chat_ui_handler_use_history_enabled(caplog):
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, True)
+        ret = ui.chat_ui("prompt", [], True)
         assert ret == "this is response"
 
     captured_out = caplog.text
@@ -75,7 +73,7 @@ def test_chat_ui_handler_use_with_conversation_id(caplog):
     conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
         ui = GradioUI(conversation_id=conversation_id)
-        ret = ui.chat_ui("prompt", None, True)
+        ret = ui.chat_ui("prompt", [], True)
         assert ret == "this is response"
 
     captured_out = caplog.text
@@ -91,7 +89,7 @@ def test_chat_ui_handler_use_with_provider(caplog):
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, True, provider="PROVIDER")
+        ret = ui.chat_ui("prompt", [], True, provider="PROVIDER")
         assert ret == "this is response"
 
     captured_out = caplog.text
@@ -106,7 +104,7 @@ def test_chat_ui_handler_use_with_model(caplog):
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, True, model="MODEL")
+        ret = ui.chat_ui("prompt", [], True, model="MODEL")
         assert ret == "this is response"
 
     captured_out = caplog.text
@@ -120,7 +118,7 @@ def test_chat_ui_handler_bad_http_code():
 
     with patch("ols.src.ui.gradio_ui.requests.post", return_value=bad_response):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, False)
+        ret = ui.chat_ui("prompt", [], False)
         assert "Sorry, an error occurred" in ret
 
 
@@ -130,5 +128,5 @@ def test_chat_ui_handler_error_handling():
         "ols.src.ui.gradio_ui.requests.post", side_effect=requests.exceptions.HTTPError
     ):
         ui = GradioUI()
-        ret = ui.chat_ui("prompt", None, False)
+        ret = ui.chat_ui("prompt", [], False)
         assert "An error occurred" in ret

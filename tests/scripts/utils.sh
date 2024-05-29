@@ -10,21 +10,6 @@ JUNIT_SETUP_TEMPLATE=$(cat << EOF
 EOF
 )
 
-
-# Wait for the ols api server to respond 200 on the readiness endpoint
-# $1 - url of the ols server to poll
-function wait_for_ols() {
-  for i in {1..60}; do
-    echo Checking OLS readiness, attempt "$i" of 60
-    curl -sk --fail "$1/readiness"
-    if [ $? -eq 0 ]; then
-      return 0
-    fi  
-    sleep 6
-  done
-  return 1
-}
-
 # no arguments
 function cleanup_ols() {
     # Deletes may fail if this is the first time running against
@@ -55,6 +40,12 @@ function install_ols() {
     export PROVIDER_DEPLOYMENT_NAME=$6
     export MODEL=$7
     export OLS_IMAGE=$8
+
+    # get and export cluster version
+    local lines
+    mapfile -t lines <<< "$(oc version | grep Server | awk '{print $3}' | awk 'BEGIN{FS="."}{printf("%s\n%s\n", $1, $2)}')"
+    export CLUSTER_VERSION_MAJOR="${lines[0]}"
+    export CLUSTER_VERSION_MINOR="${lines[1]}"
 
     oc create ns openshift-lightspeed
     oc project openshift-lightspeed
@@ -100,24 +91,8 @@ function run_suite() {
   
   install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 
-  # wait for the ols api server to come up
-  wait_for_ols "$OLS_URL"
-  if [ $? -ne 0 ]; then
-    echo "Timed out waiting for OLS to become available"
-    echo "${JUNIT_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
-
-    ARTIFACT_DIR=$ARTIFACT_DIR SUITE_ID=$1 python tests/scripts/must_gather.py
-    return 1
-  fi
-
-  # run response evaluation when env variable is set,
-  # otherwise run e2e tests.
-  if [ -z ${RESPONSE_EVALUATION:-} ]; then  
-    SUITE_ID=$1 TEST_TAGS=$2 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
-  else
-    export SCENARIO="${SCENARIO:-with_rag}"
-    PROVIDER=$3 MODEL=$8 SCENARIO=$SCENARIO make response-sanity-check
-  fi
+  # Run e2e tests with response evaluation.
+  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
 
   local rc=$?
   return $rc

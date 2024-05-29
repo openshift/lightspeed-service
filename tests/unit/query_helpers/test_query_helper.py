@@ -1,13 +1,13 @@
 """Unit tests for query helper class."""
 
+from ols import config
 from ols.src.llms.llm_loader import load_llm
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 
 
 def test_defaults_used():
     """Test that the defaults are used when no inputs are provided."""
-    config.init_config("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
     qh = QueryHelper()
 

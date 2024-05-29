@@ -3,14 +3,13 @@
 from unittest.mock import patch
 
 import pytest
-from ibm_watson_machine_learning.metanames import (
+from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 
 from ols.app.models.config import ProviderConfig
 from ols.constants import GenericLLMParameters
 from ols.src.llms.providers.watsonx import Watsonx
-from ols.utils import config
 from tests.mock_classes.mock_watsonxllm import WatsonxLLM
 
 
@@ -22,13 +21,80 @@ def provider_config():
             "name": "some_provider",
             "type": "watsonx",
             "url": "https://us-south.ml.cloud.ibm.com",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "url": "http://test_model_url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for Watsonx."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "credentials_path": "tests/config/secret",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test_model_url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_without_credentials():
+    """Fixture with provider configuration for Watsonx without credentials."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test_model_url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_with_specific_params():
+    """Fixture with provider configuration for Watsonx with provider-specific parameters."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "credentials_path": "tests/config/secret/apitoken",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "watsonx_config": {
+                "url": "http://bam.com",
+                "credentials_path": "tests/config/secret2/apitoken",
+                "project_id": "ffffffff-89ab-cdef-0123-456789abcdef",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test_model_url/",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -38,8 +104,6 @@ def provider_config():
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     llm = watsonx.load()
     assert isinstance(llm, WatsonxLLM)
@@ -49,8 +113,6 @@ def test_basic_interface(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # first two parameters should be removed before model init
     # rest need to stay
     params = {
@@ -69,6 +131,11 @@ def test_params_handling(provider_config):
     assert watsonx.default_params
     assert watsonx.params
 
+    # taken from configuration
+    assert watsonx.url == "https://us-south.ml.cloud.ibm.com"
+    assert watsonx.credentials == "secret_key"
+    assert watsonx.project_id == "01234567-89ab-cdef-0123-456789abcdef"
+
     # known parameters should be there
     assert GenParams.DECODING_METHOD in watsonx.params
     assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
@@ -82,10 +149,45 @@ def test_params_handling(provider_config):
 
 
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_credentials_key_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    params = {}
+
+    watsonx = Watsonx(
+        model="uber-model",
+        params=params,
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = watsonx.load()
+    assert isinstance(llm, WatsonxLLM)
+
+    # taken from configuration
+    assert watsonx.credentials == "secret_key"
+
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_params_handling_specific_params(provider_config_with_specific_params):
+    """Test that provider-specific parameters take precedence."""
+    watsonx = Watsonx(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_with_specific_params,
+    )
+    llm = watsonx.load()
+    assert isinstance(llm, WatsonxLLM)
+    assert watsonx.default_params
+    assert watsonx.params
+
+    # parameters taken from provier-specific configuration
+    # which takes precedence over regular configuration
+    assert watsonx.url == "http://bam.com/"
+    assert watsonx.credentials == "secret_key_2"
+    assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
+
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_handling_none_values(provider_config):
     """Test handling parameters with None values."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # first three parameters should be removed before model init
     # rest need to stay
     params = {
@@ -122,8 +224,6 @@ def test_params_handling_none_values(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # provider initialization with empty set of params
     watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
     watsonx.load()
@@ -148,12 +248,10 @@ def test_params_replace_default_values_with_none(provider_config):
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
 def test_generic_parameter_mappings(provider_config):
     """Test generic parameter mapping to provider parameter list."""
-    config.init_empty_config()  # needed for checking the config.dev_config.llm_params
-
     # some non-default values for generic LLM parameters
     generic_llm_params = {
-        GenericLLMParameters.MIN_NEW_TOKENS: 100,
-        GenericLLMParameters.MAX_NEW_TOKENS: 200,
+        GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: 100,
+        GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 200,
         GenericLLMParameters.TOP_K: 10,
         GenericLLMParameters.TOP_P: 1.5,
         GenericLLMParameters.TEMPERATURE: 42.0,
@@ -178,3 +276,14 @@ def test_generic_parameter_mappings(provider_config):
     assert watsonx.params[GenParams.TOP_K] == 10
     assert watsonx.params[GenParams.TOP_P] == 1.5
     assert watsonx.params[GenParams.TEMPERATURE] == 42.0
+
+
+def test_missing_credentials_check(provider_config_without_credentials):
+    """Test that check for missing credentials is in place ."""
+    watsonx = Watsonx(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_without_credentials,
+    )
+    with pytest.raises(ValueError, match="Credentials must be specified"):
+        watsonx.load()

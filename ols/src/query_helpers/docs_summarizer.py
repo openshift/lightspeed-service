@@ -6,13 +6,13 @@ from typing import Any, Optional
 from langchain.chains import LLMChain
 from llama_index.core import VectorStoreIndex
 
+from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
-from ols.app.models.models import ReferencedDocument
-from ols.constants import RAG_CONTENT_LIMIT
+from ols.app.models.models import SummarizerResponse
+from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.utils import config
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -21,12 +21,22 @@ logger = logging.getLogger(__name__)
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the QuestionValidator."""
+        super().__init__(*args, **kwargs)
+        provider_config = config.llm_config.providers.get(self.provider)
+        model_config = provider_config.models.get(self.model)
+        self.generic_llm_params = {
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.parameters.max_tokens_for_response  # noqa: E501
+        }
+
     def _get_model_options(
         self, provider_config: ProviderConfig
     ) -> Optional[dict[str, Any]]:
         if provider_config is not None:
             model_config = provider_config.models.get(self.model)
             return model_config.options
+        return None
 
     def summarize(
         self,
@@ -35,7 +45,7 @@ class DocsSummarizer(QueryHelper):
         vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> SummarizerResponse:
         """Summarize the given query based on the provided conversation context.
 
         Args:
@@ -46,11 +56,7 @@ class DocsSummarizer(QueryHelper):
             kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
-            A dictionary containing below property
-            - the summary as a string
-            - referenced documents as a list of strings
-            - flag indicating that conversation history has been truncated
-              to fit within context window.
+            A `SummarizerResponse` object.
         """
         # if history is not provided, initialize to empty history
         if history is None:
@@ -68,45 +74,36 @@ class DocsSummarizer(QueryHelper):
 
         token_handler = TokenHandler()
         bare_llm = self.llm_loader(self.provider, self.model, self.generic_llm_params)
-
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
         model_options = self._get_model_options(provider_config)
 
-        # Use dummy text for context/history to get complete prompt instruction.
+        # Use sample text for context/history to get complete prompt instruction.
         # This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = generate_prompt(
             self.provider,
             self.model,
             model_options,
             query,
-            ["dummy"],
-            "dummy",
+            ["sample"],
+            "sample",
         )
         available_tokens = token_handler.calculate_and_check_available_tokens(
-            temp_prompt.format(**temp_prompt_input), model_config
+            temp_prompt.format(**temp_prompt_input),
+            model_config.context_window_size,
+            model_config.parameters.max_tokens_for_response,
         )
-
-        # Get RAG context, truncate if applicable.
-        rag_context_data: dict[str, list[str]] = {}
 
         if vector_index is not None:
             retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
-            rag_context_data, available_tokens = token_handler.truncate_rag_context(
+            rag_chunks, available_tokens = token_handler.truncate_rag_context(
                 retriever.retrieve(query), available_tokens
             )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
+            rag_chunks = []
 
-        rag_context = "\n\n".join(rag_context_data.get("text", []))
-        referenced_documents = [
-            ReferencedDocument(docs_url=docs_url, title=title)
-            for docs_url, title in zip(
-                rag_context_data.get("docs_url", []),
-                rag_context_data.get("title", []),
-                strict=True,
-            )
-        ]
+        rag_context = "\n\n".join([rag_chunk.text for rag_chunk in rag_chunks])
 
         # Truncate history, if applicable
         history, truncated = token_handler.limit_conversation_history(
@@ -122,10 +119,13 @@ class DocsSummarizer(QueryHelper):
             rag_context,
         )
 
-        # Final check if we don't use more tokens than permitted by provider+model
-        # Handles: OLS-538
+        # Tokens-check: We trigger the computation of the token count
+        # without care about the return value. This is to ensure that
+        # the query is within the token limit.
         token_handler.calculate_and_check_available_tokens(
-            final_prompt.format(**llm_input_values), model_config
+            final_prompt.format(**llm_input_values),
+            model_config.context_window_size,
+            model_config.parameters.max_tokens_for_response,
         )
 
         chat_engine = LLMChain(
@@ -136,7 +136,7 @@ class DocsSummarizer(QueryHelper):
 
         with TokenMetricUpdater(
             llm=bare_llm,
-            provider=self.provider,
+            provider=provider_config.type,
             model=self.model,
         ) as token_counter:
             summary = chat_engine.invoke(
@@ -150,10 +150,5 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
         logger.debug(f"{conversation_id} Summary response: {response}")
-        logger.debug(f"{conversation_id} Referenced documents: {referenced_documents}")
 
-        return {
-            "response": response,
-            "referenced_documents": referenced_documents,
-            "history_truncated": truncated,
-        }
+        return SummarizerResponse(response, rag_chunks, truncated)

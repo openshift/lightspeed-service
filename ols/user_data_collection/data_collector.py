@@ -16,10 +16,21 @@ import pathlib
 import sys
 import tarfile
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import kubernetes
 import requests
+
+# we need to add the root directory to the path to import from ols
+sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
+
+# initialize config with default values
+from ols import config
+
+config.reload_empty()
+
+from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
 
 OLS_USER_DATA_PATH = os.environ["OLS_USER_DATA_PATH"]
 OLS_USER_DATA_COLLECTION_INTERVAL = int(
@@ -137,27 +148,6 @@ def get_cloud_openshift_pull_secret() -> str:
     raise ClusterPullSecretNotFoundError
 
 
-def get_cluster_id() -> str:
-    """Get the cluster_id from the cluster."""
-    kubernetes.config.load_incluster_config()
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-
-    try:
-        version_data = custom_objects_api.get_cluster_custom_object(
-            "config.openshift.io", "v1", "clusterversions", "version"
-        )
-        return version_data["spec"]["clusterID"]
-    except KeyError:
-        logger.error(
-            "failed to get cluster_id from cluster, missing keys in version object"
-        )
-    except TypeError:
-        logger.error(f"failed to get cluster_id, version object is: {version_data}")
-    except kubernetes.client.exceptions.ApiException as e:
-        logger.error(f"failed to get version object, body: {e.body}")
-    raise ClusterIDNotFoundError
-
-
 def collect_ols_data_from(location: str) -> list[pathlib.Path]:
     """Collect files from a given location.
 
@@ -267,7 +257,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         headers = {"Authorization": f"Bearer {token}"}
     else:
         logger.debug("using cluster pull secret to authenticate")
-        cluster_id = get_cluster_id()
+        cluster_id = K8sClientSingleton.get_cluster_id()
         token = get_cloud_openshift_pull_secret()
         headers = {
             "User-Agent": USER_AGENT.format(cluster_id=cluster_id),
@@ -283,9 +273,10 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
             timeout=INGRESS_TIMEOUT,
         )
 
-    if response.status_code != 202:
+    if response.status_code != requests.codes.accepted:
+        logger.error(f"posting payload failed, full response: {response}")
         raise requests.exceptions.HTTPError(
-            f"data upload failed with response: {response.json()}"
+            f"data upload failed with response code: {response.status_code}"
         )
 
     request_id = response.json()["request_id"]
@@ -359,6 +350,9 @@ def gather_ols_user_data(data_path: str) -> None:
                 logger.error(
                     f"{e.__class__.__name__} - upload and data removal canceled"
                 )
+
+            # close the tarball to release mem
+            tarball.close()
     else:
         logger.info(f"'{data_path}' contains no data, nothing to do...")
 
@@ -403,7 +397,8 @@ def disabled_by_file() -> bool:
 if __name__ == "__main__":
     if not RUN_WITHOUT_INITIAL_WAIT:
         logger.info(
-            "collection script started, waiting 5 minutes before first collection"
+            f"collection script started, waiting {INITIAL_WAIT} seconds "
+            "before first collection"
         )
         time.sleep(INITIAL_WAIT)
     while True:

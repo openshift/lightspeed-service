@@ -3,19 +3,18 @@
 import re
 from unittest import TestCase
 
-from ols.utils import config
-from ols.utils.query_filter import QueryFilter, RegexFilter
+from ols.utils.config import AppConfig
+from ols.utils.redactor import Redactor, RegexFilter
 
 
-class TestQueryFilter(TestCase):
-    """Test the question filter class."""
+class TestRedactor(TestCase):
+    """Test the filter class."""
 
     def setUp(self):
         """Set up the test."""
-        config.query_redactor = None
-        config.init_config("tests/config/valid_config_with_query_filter.yaml")
-        config.init_query_filter()
-        self.query_filter = QueryFilter()
+        config = AppConfig()
+        config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
+        self.query_filter = Redactor(config.ols_config.query_filters)
 
     def test_redact_question_image_ip(self):
         """Test redact question with perfect word  and ip."""
@@ -30,10 +29,10 @@ class TestQueryFilter(TestCase):
         query = (
             "write a deployment yaml for the mongodb image with nodeip as 1.123.0.99"
         )
-        redacted_question = self.query_filter.redact_query("test_id", query)
+        redacted_question = self.query_filter.redact("test_id", query)
         expected_output = (
             "write a deployment yaml for the mongodb REDACTED_image with nodeip "
-            + "as REDACTED_IP"
+            "as REDACTED_IP"
         )
         assert redacted_question == expected_output
 
@@ -54,7 +53,7 @@ class TestQueryFilter(TestCase):
         ]
         query = "write a deployment yaml for\
         the mongodb image from www.mongodb.com and call me at 123-456-7890"
-        redacted_question = self.query_filter.redact_query("test_id", query)
+        redacted_question = self.query_filter.redact("test_id", query)
         expected_output = "write a deployment yaml for\
         the REDACTED_MONGOdb image from  and call me at REDACTED_PHONE_NUMBER"
         assert redacted_question == expected_output
@@ -63,5 +62,5 @@ class TestQueryFilter(TestCase):
         """Test redact query with empty filters."""
         query = "write a deployment yaml for the mongodb image"
         self.query_filter.regex_filters = []
-        redacted_query = self.query_filter.redact_query("test_id", query)
+        redacted_query = self.query_filter.redact("test_id", query)
         assert redacted_query == query

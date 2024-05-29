@@ -61,6 +61,8 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    points to file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to
    reference the selected provider and model.
 
+   Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
+
 6. Configure OLS Authentication
 
    This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
@@ -160,29 +162,40 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 9.  (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
-   1. Cache stored in memory:
+   
+      1. Cache stored in memory:
+         ```yaml
+         ols_config:
+            conversation_cache:
+               type: memory
+               memory:
+               max_entries: 1000
+         ```
+      2. Cache stored in PostgreSQL:
+         ```yaml
+         conversation_cache:
+            type: postgres
+            postgres:
+               host: "foobar.com"
+               port: "1234"
+               dbname: "test"
+               user: "user"
+               password_path: postgres_password.txt
+               ca_cert_path: postgres_cert.crt
+               ssl_mode: "require"
+         ```
+         In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
+
+10. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
+
       ```yaml
       ols_config:
-        conversation_cache:
-          type: memory
-          memory:
-            max_entries: 1000
+         extra_ca:
+            - "path/to/cert_1.crt"
+            - "path/to/cert_2.crt"
       ```
-   2. Cache stored in PostgreSQL:
-      ```yaml
-      conversation_cache:
-        type: postgres
-        postgres:
-          host: "foobar.com"
-          port: "1234"
-          dbname: "test"
-          user: "user"
-          password_path: postgres_password.txt
-          ca_cert_path: postgres_cert.crt
-          ssl_mode: "require"
-      ```
-      In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
+      > This action may be required for self-hosted LLMs.
 
 # Usage
 

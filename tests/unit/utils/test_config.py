@@ -8,11 +8,12 @@ from typing import TypeVar
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 from yaml.parser import ParserError
 
+from ols import config
 from ols.app.models.config import Config, InvalidConfigurationError
-from ols.utils import config
-from ols.utils.query_filter import RegexFilter
+from ols.utils.redactor import RegexFilter
 
 E = TypeVar("E", bound=Exception)
 
@@ -22,7 +23,7 @@ def check_expected_exception(
 ) -> None:
     """Check that an expected exception is raised."""
     with pytest.raises(expected_exception_type, match=expected_error_msg):
-        config.load_config_from_stream(io.StringIO(yaml_stream))
+        config._load_config_from_yaml_stream(io.StringIO(yaml_stream))
 
 
 def test_malformed_yaml():
@@ -49,19 +50,53 @@ def test_missing_config_file():
     with pytest.raises(Exception, match="Not a directory"):
         # /dev/null is special file so it can't be directory
         # at the same moment
-        config.init_config("/dev/null/non-existent")
+        config.reload_from_yaml_file("/dev/null/non-existent")
 
 
-def test_invalid_config():
+def test_invalid_dev_config():
     """Check that invalid configuration is handled gracefully."""
     check_expected_exception(
-        """""", InvalidConfigurationError, "no LLM providers config section found"
+        """
+---
+llm_providers:
+  - name: p1
+    type: bam
+    credentials_path: tests/config/secret/apitoken
+    models:
+      - name: m1
+        credentials_path: tests/config/secret/apitoken
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_params:
+     - something: 0
+""",
+        ValidationError,
+        "Input should be a valid dictionary",
     )
+
+
+def test_invalid_config_missing_llm_providers_section():
+    """Check handling invalid configuration without LLM providers section."""
     check_expected_exception(
-        """{foo=123}""",
+        """
+---
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+""",
         InvalidConfigurationError,
         "no LLM providers config section found",
     )
+
+
+def test_invalid_config_missing_ols_config_section():
+    """Check handling invalid configuration without OLS section."""
     check_expected_exception(
         """
 ---
@@ -87,6 +122,9 @@ llm_providers:
         "no OLS config section found",
     )
 
+
+def test_invalid_config_invalid_model_url():
+    """Check handling invalid configuration containing invalid model URL."""
     check_expected_exception(
         """
 ---
@@ -107,11 +145,19 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
-        InvalidConfigurationError,
-        "model URL is invalid",
+        ValidationError,
+        "Input should be a valid URL, relative URL without a base",
     )
 
+
+def test_invalid_config_invalid_provider_url():
+    """Check handling invalid configuration containing invalid provider URL."""
     check_expected_exception(
         """
 ---
@@ -132,23 +178,14 @@ llm_providers:
         url: 'http://murl1'
       - name: m2
         url: 'http://murl2'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
-    )
-    check_expected_exception(
-        """
----
-llm_providers:
-  - foo: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'http://murl1'
-""",
-        InvalidConfigurationError,
-        "provider name is missing",
     )
 
     check_expected_exception(
@@ -161,11 +198,42 @@ llm_providers:
     models:
       - name: m1
         url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         InvalidConfigurationError,
         "provider URL is invalid",
     )
 
+
+def test_invalid_config_missing_provider_name():
+    """Check handling invalid configuration without provider name."""
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - foo: p1
+    type: bam
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+""",
+        InvalidConfigurationError,
+        "provider name is missing",
+    )
+
+
+def test_invalid_config_unknown_provider_name():
+    """Check handling invalid configuration having unknown provider name."""
     check_expected_exception(
         """
 ---
@@ -190,6 +258,9 @@ ols_config:
         "default_provider specifies an unknown provider no_such_provider",
     )
 
+
+def test_invalid_config_unknown_model_name():
+    """Check handling invalid configuration having unknown model name."""
     check_expected_exception(
         """
 ---
@@ -214,6 +285,9 @@ ols_config:
         "default_model specifies an unknown model no_such_model",
     )
 
+
+def test_invalid_config_missing_default_model():
+    """Check handling invalid configuration without default model."""
     check_expected_exception(
         """
 ---
@@ -237,6 +311,9 @@ ols_config:
         "default_model is missing",
     )
 
+
+def test_invalid_config_missing_default_provider():
+    """Check handling invalid configuration without default provider."""
     check_expected_exception(
         """
 ---
@@ -260,6 +337,9 @@ ols_config:
         "default_provider is missing",
     )
 
+
+def test_invalid_config_missing_conversation_cache_type():
+    """Check handling invalid configuration without conversation cache type."""
     check_expected_exception(
         """
 ---
@@ -280,6 +360,9 @@ ols_config:
         "missing conversation cache type",
     )
 
+
+def test_invalid_config_unknown_conversation_cache_type():
+    """Check handling invalid configuration with unknown conversation cache type."""
     check_expected_exception(
         """
 ---
@@ -303,6 +386,9 @@ ols_config:
         "unknown conversation cache type: foobar",
     )
 
+
+def test_invalid_config_for_memory_cache():
+    """Check handling invalid memory cache configuration."""
     check_expected_exception(
         """
 ---
@@ -342,15 +428,18 @@ dev_config:
   disable_tls: true
 ols_config:
   conversation_cache:
-    type: redis
+    type: memory
     memory:
-      max_entries: 1000
+      max_entries: foo
 """,
         InvalidConfigurationError,
-        "redis conversation cache type is specified,"
-        " but redis configuration is missing",
+        "invalid max_entries for memory conversation cache,"
+        " max_entries needs to be a non-negative integer",
     )
 
+
+def test_invalid_config_for_redis_cache():
+    """Check handling invalid Redis cache configuration."""
     check_expected_exception(
         """
 ---
@@ -365,13 +454,13 @@ dev_config:
   disable_tls: true
 ols_config:
   conversation_cache:
-    type: memory
+    type: redis
     memory:
-      max_entries: foo
+      max_entries: 1000
 """,
         InvalidConfigurationError,
-        "invalid max_entries for memory conversation cache,"
-        " max_entries needs to be a non-negative integer",
+        "redis conversation cache type is specified,"
+        " but redis configuration is missing",
     )
 
     check_expected_exception(
@@ -421,6 +510,9 @@ ols_config:
             ),
         )
 
+
+def test_invalid_config_improper_credentials():
+    """Test invalid config with improper credentials."""
     check_expected_exception(
         """
 ---
@@ -428,10 +520,10 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: no_such_file_provider
+    credentials_path: no_such_file
 """,
         FileNotFoundError,
-        "No such file or directory: 'no_such_file_provider'",
+        "No such file or directory: 'no_such_file'",
     )
 
     check_expected_exception(
@@ -441,49 +533,29 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: 'https://murl1'
-        credentials_path: no_such_file_model
+        credentials_path: no_such_file
 """,
         FileNotFoundError,
-        "No such file or directory: 'no_such_file_model'",
+        "No such file or directory: 'no_such_file'",
     )
 
+
+def test_invalid_config_improper_reference_content():
+    """Test invalid config with improper reference content."""
     check_expected_exception(
         """
 ---
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
-ols_config:
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_params:
-     - something: 0
-""",
-        InvalidConfigurationError,
-        "llm_params needs to be defined as a dict",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    credentials_path: tests/config/secret.txt
-    models:
-      - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_path: "./invalid_dir"
@@ -507,10 +579,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     embeddings_model_path: ./invalid_dir
@@ -534,10 +606,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_path: "/tmp"
@@ -561,10 +633,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_id: "product"
@@ -587,13 +659,13 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config/secret.txt"
+    product_docs_index_path: "tests/config/secret/apitoken"
   conversation_cache:
     type: memory
     memory:
@@ -604,7 +676,7 @@ dev_config:
 
 """,
         InvalidConfigurationError,
-        "Reference content path 'tests/config/secret.txt' is not a directory",
+        "Reference content path 'tests/config/secret/apitoken' is not a directory",
     )
 
 
@@ -617,10 +689,10 @@ def test_unreadable_directory(mock_access):
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     embeddings_model_path: tests/config
@@ -643,7 +715,7 @@ dev_config:
 def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     try:
-        config.load_config_from_stream(
+        config._load_config_from_yaml_stream(
             io.StringIO(
                 """
 ---
@@ -651,11 +723,11 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: 'http://murl1'
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
       - name: m2
         url: 'https://murl2'
   - name: p2
@@ -692,7 +764,7 @@ dev_config:
 def test_valid_config_file():
     """Check if a valid configuration file is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
         expected_config = Config(
             {
@@ -701,14 +773,14 @@ def test_valid_config_file():
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
                                 "url": "https://murl1",
-                                "credentials_path": "tests/config/secret.txt",
-                                "context_window_size": 200,
-                                "response_token_limit": 50,
+                                "credentials_path": "tests/config/secret/apitoken",
+                                "context_window_size": 450,
+                                "parameters": {"max_tokens_for_response": 100},
                             },
                             {
                                 "name": "m2",
@@ -757,11 +829,10 @@ def test_valid_config_file():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_file_with_postgres(patch):
+def test_valid_config_file_with_postgres():
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_postgres.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_postgres.yaml")
 
         expected_config = Config(
             {
@@ -770,7 +841,7 @@ def test_valid_config_file_with_postgres(patch):
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
@@ -810,11 +881,10 @@ def test_valid_config_file_with_postgres(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_file_with_redis(patch):
+def test_valid_config_file_with_redis():
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
-        config.init_config("tests/config/valid_config_redis.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_redis.yaml")
 
         expected_config = Config(
             {
@@ -823,7 +893,7 @@ def test_valid_config_file_with_redis(patch):
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
@@ -862,12 +932,11 @@ def test_valid_config_file_with_redis(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_config_file_without_logging_config(patch):
+def test_config_file_without_logging_config():
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail
-    config.init_config("tests/config/config_without_logging.yaml")
+    config.reload_from_yaml_file("tests/config/config_without_logging.yaml")
 
     # test if default values have been set
     logging_config = config.ols_config.logging_config
@@ -878,21 +947,19 @@ def test_config_file_without_logging_config(patch):
 
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
-    config.query_redactor = None
-    config.init_empty_config()
-    config.init_config("tests/config/valid_config_without_query_filter.yaml")
-    assert config.query_redactor is None
-    print(config.query_redactor)
-    config.init_query_filter()
+    config.reload_empty()
     assert config.query_redactor is not None
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
     assert config.query_redactor.regex_filters == []
 
 
 def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
-    config.query_redactor = None
-    config.init_config("tests/config/valid_config_with_query_filter.yaml")
-    config.init_query_filter()
+    config.reload_empty()
+    assert config.query_redactor is not None
+    assert config.query_redactor.regex_filters == []
+    config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
     assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == [
         RegexFilter(
@@ -908,12 +975,10 @@ def test_valid_config_with_query_filter():
     ]
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai(patch):
+def test_valid_config_with_azure_openai():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config("tests/config/valid_config_with_azure_openai.yaml")
+        config.reload_from_yaml_file("tests/config/valid_config_with_azure_openai.yaml")
 
         expected_config = Config(
             {
@@ -924,6 +989,10 @@ def test_valid_config_with_azure_openai(patch):
                         "url": "https://url1",
                         "credentials": "secret_key",
                         "deployment_name": "test",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                        },
                         "models": [
                             {
                                 "name": "m1",
@@ -956,12 +1025,64 @@ def test_valid_config_with_azure_openai(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_with_azure_openai_api_version(patch):
+def test_valid_config_with_azure_openai_credentials_path_only_in_provider_config():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
-    config.query_redactor = None
     try:
-        config.init_config(
+        config.reload_from_yaml_file(
+            "tests/config/valid_config_with_azure_openai_2.yaml"
+        )
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "azure_openai",
+                        "url": "https://url1",
+                        "api_key": "secret_key",
+                        "deployment_name": "test",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                            "api_key": "secret_key",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_azure_openai_api_version():
+    """Check if a valid configuration file with Azure OpenAI is handled correctly."""
+    try:
+        config.reload_from_yaml_file(
             "tests/config/valid_config_with_azure_openai_api_version.yaml"
         )
 
@@ -975,6 +1096,212 @@ def test_valid_config_with_azure_openai_api_version(patch):
                         "credentials": "secret_key",
                         "deployment_name": "test",
                         "api_version": "2023-12-31",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_bam():
+    """Check if a valid configuration file with BAM is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bam.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret/apitoken",
+                        "deployment_name": "test",
+                        "bam_config": {
+                            "url": "http://localhost:1234",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_bam_credentials_path_only_in_provider_config():
+    """Check if a valid configuration file with BAM is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bam_2.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "deployment_name": "test",
+                        "bam_config": {
+                            "url": "http://localhost:1234",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_watsonx():
+    """Check if a valid configuration file with Watsonx is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_watsonx.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "watsonx",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret/apitoken",
+                        "deployment_name": "test",
+                        "project_id": "project ID",
+                        "watsonx_config": {
+                            "url": "http://localhost:1234",
+                            "project_id": "project ID",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
+    """Check if a valid configuration file with Watsonx is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_watsonx_2.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "watsonx",
+                        "url": "https://url1",
+                        "deployment_name": "test",
+                        "project_id": "project ID",
+                        "watsonx_config": {
+                            "url": "http://localhost:1234",
+                            "project_id": "project ID",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        },
                         "models": [
                             {
                                 "name": "m1",

@@ -1,7 +1,7 @@
 """OpenAI provider implementation."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from langchain.llms.base import LLM
 from langchain_openai import ChatOpenAI
@@ -18,13 +18,23 @@ class OpenAI(LLMProvider):
     """OpenAI provider."""
 
     url: str = "https://api.openai.com/v1"
+    credentials: Optional[str] = None
 
     @property
     def default_params(self) -> dict[str, Any]:
         """Default LLM params."""
+        self.url = str(self.provider_config.url or self.url)
+        self.credentials = self.provider_config.credentials
+        # provider-specific configuration has precendence over regular configuration
+        if self.provider_config.openai_config is not None:
+            openai_config = self.provider_config.openai_config
+            self.url = str(openai_config.url)
+            if openai_config.api_key is not None:
+                self.credentials = openai_config.api_key
+
         return {
-            "base_url": self.provider_config.url or self.url,
-            "openai_api_key": self.provider_config.credentials,
+            "base_url": self.url,
+            "openai_api_key": self.credentials,
             "model": self.model,
             "model_kwargs": {
                 "top_p": 0.95,
@@ -40,4 +50,4 @@ class OpenAI(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
-        return ChatOpenAI(**self.params)  # type: ignore [return-value]
+        return ChatOpenAI(**self.params)

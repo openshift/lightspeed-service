@@ -1,7 +1,9 @@
 """Handlers for all OLS-related REST API endpoints."""
 
+import dataclasses
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -9,21 +11,26 @@ from typing import Any, Optional
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ols import constants
+from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
+    Attachment,
+    CacheEntry,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
     LLMResponse,
     PromptTooLongResponse,
+    RagChunk,
     ReferencedDocument,
+    SummarizerResponse,
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
+from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.utils import config, suid
+from ols.utils import errors_parsing, suid
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
@@ -34,7 +41,7 @@ router = APIRouter(tags=["query"])
 auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-query_responses = {
+query_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Query is valid and correct response from LLM is returned",
         "model": LLMResponse,
@@ -65,7 +72,7 @@ def conversation_request(
     """Handle conversation requests for the OLS endpoint.
 
     Args:
-        llm_request: The request containing a query and conversation ID.
+        llm_request: The request containing a query, conversation ID, and optional attachments.
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
@@ -73,19 +80,33 @@ def conversation_request(
     """
     # Initialize variables
     previous_input = []
-    referenced_documents: list[ReferencedDocument] = []
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
 
     conversation_id = retrieve_conversation_id(llm_request)
-    previous_input = retrieve_previous_input(user_id, llm_request)
 
-    # Log incoming request
-    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
+    # Important note: Redact the query before attempting to do any
+    # logging of the query to avoid leaking PII into logs.
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
+
+    # Log incoming request (after redaction)
+    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
+
+    previous_input = retrieve_previous_input(user_id, llm_request)
+
+    # Retrieve attachments from the request
+    attachments = retrieve_attachments(llm_request)
+
+    # Redact all attachments
+    attachments = redact_attachments(conversation_id, attachments)
+
+    # All attachments should be appended to query - but store original
+    # query for later use in transcript storage
+    query_without_attachments = llm_request.query
+    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
 
     # Validate the query
     if not previous_input:
@@ -95,17 +116,19 @@ def conversation_request(
         valid = True
 
     if not valid:
-        response, referenced_documents, truncated = (
+        summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
             [],
             False,
         )
     else:
-        response, referenced_documents, truncated = generate_response(
+        summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
         )
 
-    store_conversation_history(user_id, conversation_id, llm_request, response)
+    store_conversation_history(
+        user_id, conversation_id, llm_request, summarizer_response.response, attachments
+    )
 
     if config.ols_config.user_data_collection.transcripts_disabled:
         logger.debug("transcripts collections is disabled in configuration")
@@ -114,17 +137,30 @@ def conversation_request(
             user_id,
             conversation_id,
             valid,
+            query_without_attachments,
             llm_request,
-            response,
-            referenced_documents,
-            truncated,
+            summarizer_response.response,
+            summarizer_response.rag_chunks,
+            summarizer_response.history_truncated,
+            attachments,
         )
+
+    # De-dup & retain order to create list of referenced documents
+    referenced_documents = list(
+        {
+            rag_chunk.doc_url: ReferencedDocument(
+                rag_chunk.doc_url,
+                rag_chunk.doc_title,
+            )
+            for rag_chunk in summarizer_response.rag_chunks
+        }.values()
+    )
 
     return LLMResponse(
         conversation_id=conversation_id,
-        response=response,
+        response=summarizer_response.response,
         referenced_documents=referenced_documents,
-        truncated=truncated,
+        truncated=summarizer_response.history_truncated,
     )
 
 
@@ -146,12 +182,10 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(
-    user_id: str, llm_request: LLMRequest
-) -> list[dict[str, str]]:
+def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[CacheEntry]:
     """Retrieve previous user input, if exists."""
     try:
-        previous_input: list[dict[str, str]] = []
+        previous_input = []
         if llm_request.conversation_id:
             cache_content = config.conversation_cache.get(
                 user_id, llm_request.conversation_id
@@ -173,29 +207,50 @@ def retrieve_previous_input(
         )
 
 
+def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
+    """Retrieve attachments from the request."""
+    attachments = llm_request.attachments
+
+    # it is perfectly ok not to send any attachments
+    if attachments is None:
+        return []
+
+    # some attachments were send to the service, time to check its metadata
+    for attachment in attachments:
+        if attachment.attachment_type not in constants.ATTACHMENT_TYPES:
+            message = (
+                f"Attachment with improper type {attachment.attachment_type} detected"
+            )
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+        if attachment.content_type not in constants.ATTACHMENT_CONTENT_TYPES:
+            message = f"Attachment with improper content type {attachment.content_type} detected"
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+
+    return attachments
+
+
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    previous_input: list[dict[str, str]],
-) -> tuple[str, list[ReferencedDocument], bool]:
+    previous_input: list[CacheEntry],
+) -> SummarizerResponse:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
     try:
         docs_summarizer = DocsSummarizer(
             provider=llm_request.provider, model=llm_request.model
         )
-        history = [
-            conversation["type"] + ": " + conversation["content"].strip()
-            for conversation in previous_input
-            if conversation
-        ]
-        llm_response = docs_summarizer.summarize(
+        history = CacheEntry.cache_entries_to_history(previous_input)
+        return docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
-        )
-        return (
-            llm_response["response"],
-            llm_response["referenced_documents"],
-            llm_response["history_truncated"],
         )
     except PromptTooLongError as summarizer_error:
         logger.error(f"Prompt is too long: {summarizer_error}")
@@ -209,49 +264,44 @@ def generate_response(
     except Exception as summarizer_error:
         logger.error("Error while obtaining answer for user question")
         logger.exception(summarizer_error)
+        status_code, response, cause = errors_parsing.parse_generic_llm_error(
+            summarizer_error
+        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status_code,
             detail={
-                "response": "Error while obtaining answer for user question",
-                "cause": str(summarizer_error),
+                "response": response,
+                "cause": cause,
             },
         )
 
 
-def human_msg(content: str) -> dict[str, str]:
-    """Create a human message dictionary."""
-    return {"type": "human", "content": content}
-
-
-def ai_msg(content: str) -> dict[str, str]:
-    """Create an AI message dictionary."""
-    return {"type": "ai", "content": content}
-
-
 def store_conversation_history(
-    user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
+    user_id: str,
+    conversation_id: str,
+    llm_request: LLMRequest,
+    response: Optional[str],
+    attachments: list[Attachment],
 ) -> None:
     """Store conversation history into selected cache.
 
     History is stored as simple dictionaries in the following format:
     ```python
-        [
-            {"type": "human/ai", "content": "..."},
-            ...
-        ]
+    {"human_query": "texty", "ai_response": "text"},
     ```
     """
     try:
         if config.conversation_cache is not None:
             logger.info(f"{conversation_id} Storing conversation history.")
-            chat_message_history = [
-                human_msg(llm_request.query),
-                ai_msg(response or ""),
-            ]
+            cache_entry = CacheEntry(
+                query=llm_request.query,
+                response=response,
+                attachments=attachments,
+            )
             config.conversation_cache.insert_or_append(
                 user_id,
                 conversation_id,
-                chat_message_history,
+                cache_entry,
             )
     except Exception as e:
         logger.error(
@@ -275,7 +325,7 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         if not config.query_redactor:
             logger.debug("query_redactor not found")
             return llm_request
-        llm_request.query = config.query_redactor.redact_query(
+        llm_request.query = config.query_redactor.redact(
             conversation_id, llm_request.query
         )
         return llm_request
@@ -287,6 +337,44 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error while redacting query",
+                "cause": str(redactor_error),
+            },
+        )
+
+
+def redact_attachments(
+    conversation_id: str, attachments: list[Attachment]
+) -> list[Attachment]:
+    """Redact all attachments using query_redactor, raise HTTPException in case of any problem."""
+    logger.debug(f"Redacting attachments for conversation {conversation_id}")
+    if not config.query_redactor:
+        logger.debug("query_redactor not found, attachments remain as is")
+        return attachments
+
+    try:
+        redacted_attachments = []
+        for attachment in attachments:
+            # might be possible to change attachments "in situ" but it might
+            # confuse developers
+            redacted_content = config.query_redactor.redact(
+                conversation_id, attachment.content
+            )
+            redacted_attachment = Attachment(
+                attachment_type=attachment.attachment_type,
+                content_type=attachment.content_type,
+                content=redacted_content,
+            )
+            redacted_attachments.append(redacted_attachment)
+        return redacted_attachments
+
+    except Exception as redactor_error:
+        logger.error(
+            f"Error while redacting attachment {redactor_error} for conversation {conversation_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error while redacting attachment",
                 "cause": str(redactor_error),
             },
         )
@@ -366,14 +454,29 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
             return _validate_question_llm(conversation_id, llm_request)
 
 
+def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
+    """Construct path to transcripts."""
+    # these two normalizations are required by Snyk as it detects
+    # this Path sanitization pattern
+    uid = os.path.normpath("/" + user_id).lstrip("/")
+    cid = os.path.normpath("/" + conversation_id).lstrip("/")
+    return Path(
+        config.ols_config.user_data_collection.transcripts_storage,
+        uid,
+        cid,
+    )
+
+
 def store_transcript(
     user_id: str,
     conversation_id: str,
     query_is_valid: bool,
+    redacted_query: str,
     llm_request: LLMRequest,
     response: str,
-    referenced_documents: list[ReferencedDocument],
+    rag_chunks: list[RagChunk],
     truncated: bool,
+    attachments: list[Attachment],
 ) -> None:
     """Store transcript in the local filesystem.
 
@@ -381,17 +484,15 @@ def store_transcript(
         user_id: The user ID (UUID).
         conversation_id: The conversation ID (UUID).
         query_is_valid: The result of the query validation.
+        redacted_query: The redacted query (without attachments).
         llm_request: The request containing a query.
         response: The response to store.
-        referenced_documents: The list of referenced documents.
+        rag_chunks: The list of `RagChunk` objects.
         truncated: The flag indicating if the history was truncated.
+        attachments: The list of `Attachment` objects.
     """
     # ensures storage path exists
-    transcripts_path = Path(
-        config.ols_config.user_data_collection.transcripts_storage,
-        user_id,
-        conversation_id,
-    )
+    transcripts_path = construct_transcripts_path(user_id, conversation_id)
     if not transcripts_path.exists():
         logger.debug(f"creating transcript storage directory '{transcripts_path}'")
         transcripts_path.mkdir(parents=True)
@@ -404,11 +505,12 @@ def store_transcript(
             "conversation_id": conversation_id,
             "timestamp": datetime.now(pytz.UTC).isoformat(),
         },
-        "redacted_query": llm_request.query,
+        "redacted_query": redacted_query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "referenced_documents": [doc.model_dump() for doc in referenced_documents],
+        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
         "truncated": truncated,
+        "attachments": [attachment.model_dump() for attachment in attachments],
     }
 
     # stores feedback in a file under unique uuid

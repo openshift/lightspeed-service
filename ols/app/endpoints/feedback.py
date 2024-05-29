@@ -2,11 +2,13 @@
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from ols import config
 from ols.app.endpoints.ols import retrieve_user_id
 from ols.app.models.models import (
     ErrorResponse,
@@ -16,7 +18,6 @@ from ols.app.models.models import (
     StatusResponse,
     UnauthorizedResponse,
 )
-from ols.utils import config
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.suid import get_suid
 
@@ -38,7 +39,7 @@ async def ensure_feedback_enabled(request: Request) -> None:
     if not feedback_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Feedback is currently disabled.",
+            detail="Forbidden: Feedback is currently disabled.",
         )
 
 
@@ -64,7 +65,8 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         logger.debug(f"creating feedback storage directories '{storage_path}'")
         storage_path.mkdir(parents=True)
 
-    data_to_store = {"user_id": user_id, **feedback}
+    current_time = str(datetime.utcnow())
+    data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
 
     # stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
@@ -86,7 +88,7 @@ def feedback_status() -> StatusResponse:
     return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
 
 
-post_feedback_responses = {
+post_feedback_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Feedback received and stored",
         "model": FeedbackResponse,

@@ -2,8 +2,8 @@
 
 import pytest
 
-from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import RedisConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.redis_cache import RedisCache
 
 user_id = "00000000-0000-0000-0000-000000000001"
@@ -41,29 +41,26 @@ def test_conversation_in_redis():
     assert retrieved is None
 
     # insert some conversation
-    conversation = [
-        human_msg("First human message"),
-        ai_msg("First AI response"),
-    ]
-    redis_cache.insert_or_append(user_id, conversation_id, conversation)
+    cache_entry = CacheEntry(query="First human message", response="First AI response")
+    redis_cache.insert_or_append(user_id, conversation_id, cache_entry)
 
     # check what is stored in conversation cache
     retrieved = redis_cache.get(user_id, conversation_id)
     assert retrieved is not None
 
-    # just the initial conversation should be stored
-    assert retrieved == conversation
+    # just the initial cache_entry should be stored
+    assert retrieved == cache_entry
 
     # append more conversation
-    conversation2 = [
-        human_msg("Second human message"),
-        ai_msg("Second AI response"),
-    ]
-    redis_cache.insert_or_append(user_id, conversation_id, conversation2)
+    cache_entry_2 = CacheEntry(
+        query="Second human message", response="Second AI response"
+    )
+
+    redis_cache.insert_or_append(user_id, conversation_id, cache_entry_2)
 
     # check what is stored in conversation cache
     retrieved = redis_cache.get(user_id, conversation_id)
     assert retrieved is not None
 
     # now both conversations should be stored
-    assert retrieved == conversation + conversation2
+    assert retrieved == [cache_entry, cache_entry_2]

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(Path(__file__).parent.parent.parent.as_posix())
-from tests.e2e import cluster_utils
+from tests.e2e.utils import cluster as cluster_utils
 
 
 def must_gather():

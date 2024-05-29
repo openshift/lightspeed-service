@@ -5,7 +5,6 @@ from unittest import TestCase, mock
 
 import pytest
 
-from ols.app.models.config import ModelConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
@@ -19,7 +18,7 @@ class TestTokenHandler(TestCase):
         node_data = [
             {
                 "text": "a text text text text",
-                "score": 0.4,
+                "score": 0.6,
                 "metadata": {"docs_url": "data/doc1.pdf", "title": "Doc1"},
             },
             {
@@ -34,7 +33,7 @@ class TestTokenHandler(TestCase):
             },
             {
                 "text": "d text text text text",
-                "score": 0.6,
+                "score": 0.4,
                 "metadata": {"docs_url": "data/doc4.pdf", "title": "Doc4"},
             },
         ]
@@ -42,45 +41,40 @@ class TestTokenHandler(TestCase):
         self._token_handler_obj = TokenHandler()
 
     def test_available_tokens_for_empty_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = ""
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
-        assert (
-            available_tokens
-            == model_config.context_window_size - model_config.response_token_limit
-        )
+        assert available_tokens == context_window_size - max_tokens_for_response
 
     def test_available_tokens_for_regular_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
         expected_value = (
-            model_config.context_window_size
-            - model_config.response_token_limit
+            context_window_size
+            - max_tokens_for_response
             - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value
 
     def test_available_tokens_for_large_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
-        context_limit = (
-            model_config.context_window_size - model_config.response_token_limit
-        )
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
+        context_window_size = 500
+        max_tokens_for_response = 20
+        context_limit = context_window_size - max_tokens_for_response
 
         # this prompt will surely exceeds context window size
         prompt = "What is Kubernetes?" * 10000
@@ -93,101 +87,89 @@ class TestTokenHandler(TestCase):
         )
         with pytest.raises(PromptTooLongError, match=expected_error_messge):
             self._token_handler_obj.calculate_and_check_available_tokens(
-                prompt, model_config
+                prompt, context_window_size, max_tokens_for_response
             )
 
-    def test_available_tokens_specific_model_config(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa E501
-        # use specific model config
-        model_config = ModelConfig(
-            {
-                "name": "test_name",
-                "url": "test_url",
-                "context_window_size": 100,
-                "response_token_limit": 50,
-            },
-        )
+    def test_available_tokens_with_buffer_weight(self):
+        """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa: E501
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
         expected_value = (
-            model_config.context_window_size
-            - model_config.response_token_limit
+            context_window_size
+            - max_tokens_for_response
             - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url", "title"))
-        assert len(context["text"]) == 3
-        for idx in range(3):
-            assert context["text"][idx] == self._mock_retrieved_obj[idx].get_text()
+        assert len(rag_chunks) == 3
+        for i in range(3):
+            assert rag_chunks[i].text == self._mock_retrieved_obj[i].get_text()
             assert (
-                context["docs_url"][idx]
-                == self._mock_retrieved_obj[idx].metadata["docs_url"]
+                rag_chunks[i].doc_url
+                == self._mock_retrieved_obj[i].metadata["docs_url"]
             )
         assert available_tokens == 482
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.5)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.6)
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             retrieved_nodes
         )
 
-        assert len(context) == len(("text", "docs_url", "title"))
-        assert len(context["text"]) == 1
-        assert context["text"][0] == self._mock_retrieved_obj[0].get_text()
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].text == self._mock_retrieved_obj[0].get_text()
         assert available_tokens == 494
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context) == 3
-        assert len(context["text"]) == 2
-        assert (
-            context["text"][1].split()
-            == self._mock_retrieved_obj[1].get_text().split()[:1]
-        )
+        assert len(rag_chunks) == 2
+        assert rag_chunks[1].text == self._mock_retrieved_obj[1].get_text()[:1]
         assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
-    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF_L2", 0.9)
+    @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 7
         )
 
-        assert len(context["text"]) == 1
+        assert len(rag_chunks) == 1
         assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
-        context, available_tokens = self._token_handler_obj.truncate_rag_context([], 5)
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+            [], 5
+        )
 
-        assert len(context) == 0
-        assert isinstance(context, dict)
+        assert rag_chunks == []
         assert available_tokens == 5
 
     def test_limit_conversation_history_when_no_history_exists(self):

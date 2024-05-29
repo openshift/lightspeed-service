@@ -5,9 +5,9 @@ from typing import Optional
 
 from langchain.llms.base import LLM
 
+from ols import config
 from ols.app.models.config import LLMProviders, ProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
-from ols.utils import config
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def _resolve_provider_config(
             f"Valid models are: {list(provider_config.models.keys())}"
         )
 
-    return provider_config  # type: ignore [return-value]
+    return provider_config
 
 
 def load_llm(

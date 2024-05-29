@@ -23,8 +23,8 @@ data:
           - name: "$MODEL"
     ols_config:
       reference_content:
-        product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
-        product_docs_index_id: ocp-product-docs-4_15
+        product_docs_index_path: "./vector_db/ocp_product_docs/${CLUSTER_VERSION_MAJOR}.${CLUSTER_VERSION_MINOR}"
+        product_docs_index_id: ocp-product-docs-${CLUSTER_VERSION_MAJOR}_${CLUSTER_VERSION_MINOR}
         embeddings_model_path: "./embeddings_model"
       conversation_cache:
         type: memory
@@ -50,7 +50,3 @@ data:
         feedback_storage: "/app-root/ols-user-data/feedback"
         transcripts_disabled: false
         transcripts_storage: "/app-root/ols-user-data/transcripts"
-    dev_config:
-      enable_dev_ui: true
-      disable_auth: false
-      disable_tls: false
