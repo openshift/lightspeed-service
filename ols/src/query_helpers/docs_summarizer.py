@@ -138,4 +138,4 @@ class DocsSummarizer(QueryHelper):
             logger.debug("Using llm to answer the query without reference content")
         logger.debug(f"{conversation_id} Summary response: {response}")
 
-        return SummarizerResponse(response, rag_chunks, truncated)  # type: ignore
+        return SummarizerResponse(response, rag_chunks, truncated)  # type: ignore [call-arg]
