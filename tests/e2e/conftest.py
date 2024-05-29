@@ -108,15 +108,6 @@ def get_secret_value(env: str) -> str:
 
 def pytest_sessionfinish(session):
     """Creates datarouter compatible archive to upload into report portal."""
-    try:
-        os.system(
-            f"cp --verbose {os.getcwd()}/test-report.xml "
-            f"{os.environ['ARTIFACT_DIR']}/test-report.xml"
-        )
-        logging.info("copying report to artifacts")
-    except KeyError:
-        logging.info("Did not find ARTIFACT_DIR, skipping copying report to artifacts")
-        pass
 
     # Sending reports to report portal
     if session.config.option.rp_enabled:
