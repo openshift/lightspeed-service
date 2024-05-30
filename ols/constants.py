@@ -1,5 +1,6 @@
 """Constants used in business logic."""
 
+import os
 from enum import StrEnum
 
 
@@ -144,9 +145,6 @@ POSTGRES_CACHE_SSL_MODE = "prefer"
 DEFAULT_USER_UID = "00000000-0000-0000-0000-000000000000"
 DEFAULT_USER_NAME = "OLS"
 
-# TODO: OLS-546 make default Kubeadmin UUID dynamic per cluster
-# (dynamic uuid for each cluster)
-DEFAULT_KUBEADMIN_UID = "b6553200-0f7b-4c82-b1c5-9303ff18e5f0"
 
 # HTTP headers to redact from FastAPI HTTP logs
 HTTP_REQUEST_HEADERS_TO_REDACT = frozenset(
@@ -154,4 +152,11 @@ HTTP_REQUEST_HEADERS_TO_REDACT = frozenset(
 )
 HTTP_RESPONSE_HEADERS_TO_REDACT = frozenset(
     {"www-authenticate", "proxy-authenticate", "set-cookie"}
+)
+
+
+# Tells if the code is running in a cluster or not. It depends on
+# specific envs that k8s/ocp sets to pod.
+RUNNING_IN_CLUSTER = (
+    "KUBERNETES_SERVICE_HOST" in os.environ and "KUBERNETES_SERVICE_PORT" in os.environ
 )
