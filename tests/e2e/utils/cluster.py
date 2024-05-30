@@ -28,6 +28,23 @@ def run_oc_and_store_stdout(
         raise Exception("Error running oc command") from e
 
 
+def get_cluster_id() -> str:
+    """Get the cluster ID."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "clusterversions",
+                "version",
+                "-o",
+                "jsonpath='{.spec.clusterID}'",
+            ]
+        )
+        return result.stdout.strip("'")
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting cluster ID") from e
+
+
 def create_user(name: str) -> None:
     """Create a service account user for testing."""
     try:

@@ -187,3 +187,30 @@ rules:
     - "/ols-metrics-access"
   verbs:
     - "get"
+---
+# permissions to access the clusterversions object
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: clusterversion-viewer
+  labels:
+    app: ols
+rules:
+- apiGroups: ["config.openshift.io"]
+  resources: ["clusterversions"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: clusterversion-viewer
+  labels:
+    app: ols
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: clusterversion-viewer
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: openshift-lightspeed
