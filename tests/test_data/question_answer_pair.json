@@ -14,8 +14,32 @@
                 "answer": "The purpose of the imagePullPolicy in Red Hat OpenShift Container Platform is to determine if the container image should be pulled prior to starting the container. The imagePullPolicy setting helps control when and how often the platform fetches the container image from a registry."
             },
             "eval4": {
-                "question": "What is the purpose of customizing source-to-image builder images?",
-                "answer": "The purpose of customizing source-to-image builder images is to tailor the build process to specific requirements or preferences. By writing custom S2I scripts, developers can define how the application source code is handled, built, and deployed within the container image. This customization allows for greater flexibility and control over the container image creation process, ensuring that it meets the desired specifications and functionality."
+                "question": "What is the purpose of the APIRequestCount object?",
+                "answer": "The APIRequestCount object is used to track and monitor the number of API requests made within a specific timeframe in OpenShift. It provides detailed information on the number of requests made by different nodes, users, and verbs within the cluster."
+            },
+            "eval5": {
+                "question": "What is the purpose of the ClusterVersion object in OpenShift updates?",
+                "answer": "The purpose of the ClusterVersion object in OpenShift updates is to declare the desired state of the Cluster Version Operator (CVO) and reflect the current state of the CVO. Administrators and OpenShift components can communicate or interact with the CVO through this object, which helps in orchestrating and facilitating the update process by reconciling discrepancies between desired and actual states of resources within the cluster. It is important not to directly modify the ClusterVersion object but instead use interfaces like oc CLI or web console to declare update targets."
+            },
+            "eval6": {
+                "question": "How does Red Hat OpenShift Pipelines automate deployments?",
+                "answer": "Red Hat OpenShift Pipelines automates deployments using Tekton building blocks to abstract away the underlying implementation details. It introduces standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions."
+            },
+            "eval7": {
+                "question": "What is the purpose of the Vertical Pod Autoscaler Operator in Openshift?",
+                "answer": "The purpose of the Vertical Pod Autoscaler Operator in OpenShift is to automatically adjust pod resource levels based on historic and current CPU and memory usage. It helps optimize CPU and memory resources for pods associated with workload objects like Deployments, StatefulSets, Jobs, DaemonSets, ReplicaSets, or ReplicationControllers. The VPA can update resource limits and requests to ensure efficient operation of pods throughout their lifecycle."
+            },
+            "eval8": {
+                "question": "what is a limitrange?",
+                "answer": "A LimitRange in OpenShift is an object that specifies constraints on resource consumption within a namespace. It defines minimum and maximum limits for resources like CPU and memory that can be allocated to containers running in that namespace."
+            },
+            "eval9": {
+                "question": "Is there a doc on updating clusters?",
+                "answer": "Yes, the document provided contains information on updating clusters in OpenShift. It discusses the rolling update process, creating custom machine config pools, labeling nodes for updates, pausing and unpausing MCPs, testing applications after updates, and more. If you have specific questions or need further details on updating clusters in OpenShift, feel free to ask."
+            },
+            "eval10": {
+                "question": "Can you tell me how to install OpenShift in FIPS mode?",
+                "answer": "To install OpenShift in FIPS mode, you must follow specific steps outlined in the documentation. Here is a summary of the process:\n\n1. Run the installation program from a RHEL 8 computer configured to operate in FIPS mode.\n2. Set fips: true in the install-config.yaml file before deploying your cluster.\n3. Ensure that Red Hat Enterprise Linux (RHEL) or Red Hat Enterprise Linux CoreOS (RHCOS) is booted in FIPS mode.\n4. For RHCOS machines, apply changes based on an option in the install-config.yaml file during deployment.\n5. Enable FIPS mode when installing the operating system on RHEL worker machines.\n\nRemember that enabling FIPS must be done before booting the operating system for the first time, as it cannot be enabled after deploying a cluster.\n\nFor more detailed instructions and considerations, refer to \"Installing a cluster in FIPS mode\" section of the provided document."
             }
         },
         "without_rag": {
@@ -40,8 +64,32 @@
                 "answer": "The imagePullPolicy in Red Hat OpenShift Container Platform determines whether a container image should be pulled before starting the container. It has three possible values: Always, IfNotPresent, and Never.\n\nIf a container imagePullPolicy parameter is not specified, Red Hat OpenShift Container Platform sets it based on the image tag. If the tag is \"latest\", it defaults imagePullPolicy to \"Always\". Otherwise, it defaults imagePullPolicy to \"IfNotPresent\".\n\nThe \"Always\" value ensures that the container image is always pulled before starting the container. The \"IfNotPresent\" value ensures that the container image is only pulled if it does not already exist in the container registry. The \"Never\" value ensures that the container image is never pulled, and the container will use the cached image if available.\n\nIn summary, the imagePullPolicy is used to control the behavior of container image pulling in Red Hat OpenShift Container Platform, allowing for efficient resource utilization and reduced latency."
             },
             "eval4": {
-                "question": "What is the purpose of customizing source-to-image builder images?",
-                "answer": "The purpose of customizing source-to-image (S2I) builder images is to tailor the build process and scripts to specific application requirements, such as installing additional dependencies or modifying the application environment. By modifying the builder image, you can control the build environment and ensure that the resulting container image is optimized for your application."
+                "question": "How can you configure the web terminal timeout for your current session?",
+                "answer": "Click the web terminal icon () in the OpenShift web console.\nSelect \"Set the web terminal timeout for the current session\".\nChoose a custom timeout setting from the provided options (Seconds, Minutes, Hours, or Milliseconds).\nClick \"Start\" to apply the changes."
+            },
+            "eval5": {
+                "question": "What is the difference between a Liveness Probe and a Readiness Probe?",
+                "answer": "A Liveness Probe and a Readiness Probe are both types of health checks used in OpenShift to monitor the status of a container. However, they serve different purposes.\n\nA Liveness Probe is designed to determine if a container is still running and healthy. It does this by periodically executing a diagnostic test inside the container. If the test fails, the container is killed, and the pod is marked as unschedulable. This helps prevent a failing container from causing issues for the entire pod.\n\nOn the other hand, a Readiness Probe determines if a container is ready to accept service requests. It does this by periodically sending a request to the container and checking the response. If the response is not received within a specified time period, the container is removed from the list of available service endpoints. This helps ensure that the container is properly configured and can handle incoming requests.\n\nIn summary, a Liveness Probe focuses on the health of the container, while a Readiness Probe focuses on the readiness of the container to handle service requests."
+            },
+            "eval6": {
+                "question": "How does Red Hat OpenShift Pipelines automate deployments?",
+                "answer": "Red Hat OpenShift Pipelines automates deployments using Tekton building blocks, which abstract away the underlying implementation details. It introduces a number of standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows users to define and manage their CI/CD workflows in a consistent and standardized way, regardless of the target platform."
+            },
+            "eval7": {
+                "question": "What is the purpose of the Vertical Pod Autoscaler Operator in Openshift?",
+                "answer": "The Vertical Pod Autoscaler Operator (VPA) in OpenShift is designed to automatically adjust pod resource levels based on the historic and current CPU and memory resources for containers in pods. It uses individual custom resources (CR) to update all of the pods associated with a workload object, such as a Deployment, DeploymentConfig, StatefulSet, Job, DaemonSet, ReplicaSet, or ReplicationController, in a project. The VPA helps maintain optimal CPU and memory usage for your pods and can automatically maintain pod resources through the pod lifecycle."
+            },
+            "eval8": {
+                "question": "what is a limitrange?",
+                "answer": "A LimitRange is a feature in OpenShift that allows you to define and enforce limits on the usage of CPU, memory, and storage resources for different namespaces and pods. It helps ensure fair resource allocation and prevent overloading of the system."
+            },
+            "eval9": {
+                "question": "Is there a doc on updating clusters?",
+                "answer": "Yes, there is a document on updating clusters. It covers various topics related to updating OpenShift clusters, including the rolling update process, canary rollout update process, and updating single-node Red Hat OpenShift Container Platform clusters. The document also provides important considerations and limitations when updating clusters.\n\nTo access the document, follow the link provided in the original response or search for \"Red Hat OpenShift Cluster Upgrades\" in the Red Hat documentation portal."
+            },
+            "eval10": {
+                "question": "Can you tell me how to install OpenShift in FIPS mode?",
+                "answer": "To install OpenShift in FIPS mode, follow these steps:\n\n1. Set `fips: true` in the `install-config.yaml` file before deploying the cluster.\n2. Run the installation program from a RHEL computer that is configured to operate in FIPS mode.\n3. Ensure that the systems that support your OpenShift cluster use FIPS validated or Modules In Process modules for cryptography.\n4. For local storage, use RHEL-provided disk encryption or Container Native Storage that uses RHEL-provided disk encryption.\n5. To ensure that containers know that they are running on a host that is using FIPS validated or Modules In Process cryptography modules, use CRI-O to manage your runtimes.\n\nKeep in mind that FIPS mode must be enabled before the operating system that your cluster uses boots for the first time, so it cannot be enabled after the cluster has been deployed. Additionally, if you are using Azure File storage, you cannot enable FIPS mode."
             }
         },
         "without_rag": {
