@@ -236,7 +236,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/HealthResponse"
+                                    "$ref": "#/components/schemas/LivenessResponse"
                                 }
                             }
                         }
@@ -622,6 +622,25 @@
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install...",
                         "truncated": false
+                    }
+                ]
+            },
+            "LivenessResponse": {
+                "properties": {
+                    "alive": {
+                        "type": "boolean",
+                        "title": "Alive"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alive"
+                ],
+                "title": "LivenessResponse",
+                "description": "Model representing a response to a liveness request.\n\nAttributes:\n    alive: If app is alive.\n\nExample:\n    ```python\n    liveness_response = LivenessResponse(alive=True)\n    ```",
+                "examples": [
+                    {
+                        "alive": true
                     }
                 ]
             },
