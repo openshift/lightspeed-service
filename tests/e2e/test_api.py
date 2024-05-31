@@ -105,7 +105,7 @@ def test_readiness():
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
 def test_liveness():
@@ -1170,3 +1170,11 @@ def test_liveness_endpoint():
     # HEAD method
     response = client.head("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
+
+
+def test_readiness_endpoint():
+    """Test the /readiness endpoint."""
+    response = client.get("/readiness", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    assert response.status_code == requests.codes.ok
+    check_content_type(response, "application/json")
+    assert response.json() == {"ready": True, "reason": "service is ready"}

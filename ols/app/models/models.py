@@ -364,32 +364,6 @@ class FeedbackResponse(BaseModel):
     }
 
 
-class HealthResponse(BaseModel):
-    """Model representing a response to a health request.
-
-    Attributes:
-        status: The status of the app.
-
-    Example:
-        ```python
-        health_response = HealthResponse(status={"status": "healthy"})
-        ```
-    """
-
-    status: dict[str, str]
-
-    # provides examples for /docs endpoint
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "status": {"status": "healthy"},
-                }
-            ]
-        }
-    }
-
-
 class LivenessResponse(BaseModel):
     """Model representing a response to a liveness request.
 
@@ -410,6 +384,35 @@ class LivenessResponse(BaseModel):
             "examples": [
                 {
                     "alive": True,
+                }
+            ]
+        }
+    }
+
+
+class ReadinessResponse(BaseModel):
+    """Model representing a response to a readiness request.
+
+    Attributes:
+        ready: The readiness of the service.
+        reason: The reason for the readiness.
+
+    Example:
+        ```python
+        readiness_response = ReadinessResponse(ready=True, reason="service is ready")
+        ```
+    """
+
+    ready: bool
+    reason: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "ready": True,
+                    "reason": "service is ready",
                 }
             ]
         }
