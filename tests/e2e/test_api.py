@@ -1161,15 +1161,10 @@ def test_model_response(request) -> None:
 # TODO: OLS-663
 def test_liveness_endpoint():
     """Test the liveness endpoint."""
-    # GET method
     response = client.get("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     check_content_type(response, "application/json")
     assert response.json() == {"alive": True}
-
-    # HEAD method
-    response = client.head("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert response.status_code == requests.codes.ok
 
 
 def test_readiness_endpoint():

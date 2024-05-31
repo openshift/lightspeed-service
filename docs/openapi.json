@@ -224,24 +224,6 @@
                         }
                     }
                 }
-            },
-            "head": {
-                "tags": [
-                    "health"
-                ],
-                "summary": "Liveness Probe Head Method",
-                "description": "Live status of service.",
-                "operationId": "liveness_probe_head_method_liveness_head",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    }
-                }
             }
         },
         "/metrics": {
