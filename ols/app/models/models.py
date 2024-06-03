@@ -1,9 +1,14 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Any, Optional, Self
+from typing import TYPE_CHECKING, Any, Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
-from pydantic.dataclasses import dataclass
+
+# fixes OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
 
 from ols.utils import suid
 

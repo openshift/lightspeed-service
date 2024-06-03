@@ -102,7 +102,7 @@ def conversation_request(
             constants.INVALID_QUERY_RESP,
             [],
             False,
-        )  # type: ignore [call-arg]
+        )
     else:
         summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
