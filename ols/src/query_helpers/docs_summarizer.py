@@ -138,4 +138,5 @@ class DocsSummarizer(QueryHelper):
             logger.debug("Using llm to answer the query without reference content")
         logger.debug(f"{conversation_id} Summary response: {response}")
 
+        # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
         return SummarizerResponse(response, rag_chunks, truncated)  # type: ignore [call-arg]

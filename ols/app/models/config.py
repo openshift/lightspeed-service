@@ -226,6 +226,7 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
+# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
 class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore [call-arg]
     """Base class with common provider specific configurations."""
 
@@ -234,12 +235,14 @@ class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore [ca
     api_key: Optional[str] = None
 
 
+# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
 class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to OpenAI provider."""
 
     credentials_path: str  # required attribute
 
 
+# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
 class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to Azure OpenAI provider."""
 
@@ -251,6 +254,7 @@ class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ig
     client_secret: Optional[str] = None
 
 
+# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
 class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to Watsonx provider."""
 
@@ -258,6 +262,7 @@ class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore
     project_id: Optional[str] = None
 
 
+# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
 class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
     """Configuration specific to BAM provider."""
 
