@@ -194,7 +194,11 @@ def generate_full_results_markdown(full_results):
     full_results_markdown_content = "    \n"
     for res in full_results:
         for key, value in res.items():
-            if isinstance(value, list) and isinstance(value[0], dict):
+            if (
+                isinstance(value, list)
+                and len(value) > 0
+                and isinstance(value[0], dict)
+            ):
                 new = "\n"
                 for d in value:
                     for k, v in d.items():
