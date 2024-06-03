@@ -37,7 +37,8 @@ dev = [
     "pytest-asyncio==0.23.6",
     "ruff==0.4.6",
     "bandit==1.7.8",
-    "types-requests==2.31.0"
+    "types-requests==2.31.0",
+     "pytest-reportportal==5.4.1",
 ]
 
 [[tool.pdm.source]]
@@ -74,7 +75,6 @@ dependencies = [
     "kubernetes==29.0.0",
     "pytest-asyncio==0.23.6",
     "psycopg2-binary==2.9.9",
-    "pytest-reportportal==5.4.1",
     "azure-identity==1.16.0",
 ]
 requires-python = "==3.11.*"
