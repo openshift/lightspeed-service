@@ -74,7 +74,7 @@ format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify:	install-woke ## Verify the code using various linters
+verify:	install-woke install-deps-test ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 	./woke . --exit-1-on-failure
