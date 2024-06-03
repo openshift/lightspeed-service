@@ -98,6 +98,7 @@ def conversation_request(
         valid = True
 
     if not valid:
+        # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
         summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
             [],
@@ -126,6 +127,7 @@ def conversation_request(
         )
 
     referenced_documents = [
+        # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
         ReferencedDocument(
             rag_chunk.doc_url,
             rag_chunk.doc_title,

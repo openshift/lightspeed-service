@@ -137,6 +137,7 @@ class TokenHandler:
                 logger.debug(f"{available_tokens} tokens are less than threshold.")
                 break
 
+            # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
             rag_chunks.append(
                 RagChunk(
                     text=self.tokens_to_text(tokens[:available_tokens]),
