@@ -1031,6 +1031,63 @@ def test_valid_config_with_azure_openai_api_version():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
+def test_valid_config_with_azure_openai_tenant_and_client_settings():
+    """Check if a valid configuration file with Azure OpenAI is handled correctly."""
+    try:
+        config.reload_from_yaml_file(
+            "tests/config/valid_config_with_azure_openai_tenant_and_client_id.yaml"
+        )
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "azure_openai",
+                        "url": "https://url1",
+                        "credentials": "secret_key",
+                        "deployment_name": "test",
+                        "api_version": "2023-12-31",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                            "tenant_id": "00000000-0000-0000-0000-000000000001",
+                            "client_id": "00000000-0000-0000-0000-000000000002",
+                            "client_secret_path": "tests/config/secret.txt",
+                            "client_secret": "secret_key",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
 def test_valid_config_with_bam():
     """Check if a valid configuration file with BAM is handled correctly."""
     try:
