@@ -16,26 +16,23 @@ from ols.constants import (
     INVALID_QUERY_RESP,
 )
 from ols.utils import suid
-from tests.e2e import (
-    cluster_utils,
-    helper_utils,
-    metrics_utils,
-)
-from tests.e2e.constants import (
+from tests.e2e.utils import client as client_utils
+from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import metrics as metrics_utils
+from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
-from tests.scripts.must_gather import must_gather
-from tests.scripts.validate_response import ResponseEvaluation
-
-from .postgres_utils import (
+from tests.e2e.utils.decorators import retry
+from tests.e2e.utils.postgres import (
     read_conversation_history,
     read_conversation_history_count,
     retrieve_connection,
 )
-from .test_decorators import retry
+from tests.e2e.utils.response_evaluation import ResponseEvaluation
+from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -77,8 +74,8 @@ def setup_module(module):
         else:
             print("Setting up for standalone test execution\n")
 
-        client = helper_utils.get_http_client(ols_url, token)
-        metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
+        client = client_utils.get_http_client(ols_url, token)
+        metrics_client = client_utils.get_http_client(ols_url, metrics_token)
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
