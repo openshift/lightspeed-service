@@ -978,6 +978,60 @@ def test_valid_config_with_azure_openai():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
+def test_valid_config_with_azure_openai_credentials_path_only_in_provider_config():
+    """Check if a valid configuration file with Azure OpenAI is handled correctly."""
+    try:
+        config.reload_from_yaml_file(
+            "tests/config/valid_config_with_azure_openai_2.yaml"
+        )
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "azure_openai",
+                        "url": "https://url1",
+                        "api_key": "secret_key",
+                        "deployment_name": "test",
+                        "azure_openai_config": {
+                            "url": "http://localhost:1234",
+                            "deployment_name": "*deployment name*",
+                            "api_key": "secret_key",
+                            "credentials_path": "tests/config/secret.txt",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
 def test_valid_config_with_azure_openai_api_version():
     """Check if a valid configuration file with Azure OpenAI is handled correctly."""
     try:
@@ -1081,6 +1135,55 @@ def test_valid_config_with_bam():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
+def test_valid_config_with_bam_credentials_path_only_in_provider_config():
+    """Check if a valid configuration file with BAM is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bam_2.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "deployment_name": "test",
+                        "bam_config": {
+                            "url": "http://localhost:1234",
+                            "credentials_path": "tests/config/secret.txt",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
 def test_valid_config_with_watsonx():
     """Check if a valid configuration file with Watsonx is handled correctly."""
     try:
@@ -1094,6 +1197,57 @@ def test_valid_config_with_watsonx():
                         "type": "watsonx",
                         "url": "https://url1",
                         "credentials_path": "tests/config/secret.txt",
+                        "deployment_name": "test",
+                        "project_id": "project ID",
+                        "watsonx_config": {
+                            "url": "http://localhost:1234",
+                            "project_id": "project ID",
+                            "credentials_path": "tests/config/secret.txt",
+                        },
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "postgres",
+                        "postgres": {
+                            "host": "foobar.com",
+                            "port": "1234",
+                            "dbname": "test",
+                            "user": "user",
+                            "password_path": "tests/config/postgres_password.txt",
+                            "ca_cert_path": "tests/config/postgres_cert.crt",
+                            "ssl_mode": "require",
+                        },
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
+    """Check if a valid configuration file with Watsonx is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_watsonx_2.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "watsonx",
+                        "url": "https://url1",
                         "deployment_name": "test",
                         "project_id": "project ID",
                         "watsonx_config": {
