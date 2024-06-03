@@ -1,0 +1,31 @@
+---
+llm_providers:
+  - name: p1
+    type: azure_openai
+    url: "https://url1"
+    deployment_name: "test"
+    azure_openai_config:
+      url: "http://localhost:1234"
+      deployment_name: "*deployment name*"
+      tenant_id: "00000000-0000-0000-0000-000000000001"
+      client_id: "00000000-0000-0000-0000-000000000002"
+      client_secret_path: "tests/config/secret.txt"
+    models:
+      - name: m1
+        url: "https://murl1"
+ols_config:
+  conversation_cache:
+    type: postgres
+    postgres:
+      host: "foobar.com"
+      port: "1234"
+      dbname: "test"
+      user: "user"
+      password_path: tests/config/postgres_password.txt
+      ca_cert_path: tests/config/postgres_cert.crt
+      ssl_mode: "require"
+  default_provider: p1
+  default_model: m1
+dev_config:
+  disable_auth: true
+  disable_tls: true
