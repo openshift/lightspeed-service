@@ -8,6 +8,7 @@ from pathlib import Path
 import uvicorn
 
 from ols import config
+from ols.utils.auth_dependency import K8sClientSingleton
 from ols.utils.logging import configure_logging
 
 
@@ -58,6 +59,11 @@ if __name__ == "__main__":
     # init loading of query redactor and rag index
     config.query_redactor
     config.rag_index
+
+    # Initialize the K8sClientSingleton with cluster id during module load.
+    # We want the application to fail early if the cluster ID is not available.
+    cluster_id = K8sClientSingleton.get_cluster_id()
+    logger.info(f"running on cluster with ID '{cluster_id}'")
 
     host = (
         "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa: S104

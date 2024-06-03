@@ -79,7 +79,7 @@ def mock_subject_access_review_response(sar):
     Returns:
         A MockK8sResponse object with authorization status.
     """
-    if sar.spec.user == "valid-user":
+    if sar.spec.user in {"valid-user", "kube:admin"}:
         return MockK8sResponse(allowed=True)
     else:
         return MockK8sResponse(allowed=False)
