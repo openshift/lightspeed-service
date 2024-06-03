@@ -1071,7 +1071,7 @@ def test_user_data_collection():
 
     # safety wait for the script to start after being disabled by other
     # tests
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
 
     # data shoud be pruned now and this is the point from which we want
     # to check the logs
