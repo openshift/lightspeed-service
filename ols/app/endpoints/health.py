@@ -7,7 +7,7 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 
 from fastapi import APIRouter
 
-from ols.app.models.models import HealthResponse
+from ols.app.models.models import HealthResponse, LivenessResponse
 
 router = APIRouter(tags=["health"])
 
@@ -32,9 +32,9 @@ def readiness_probe_get_method() -> HealthResponse:
 
 
 @router.get("/liveness")
-def liveness_probe_get_method() -> HealthResponse:
+def liveness_probe_get_method() -> LivenessResponse:
     """Live status of service."""
-    return HealthResponse(status={"status": "healthy"})
+    return LivenessResponse(alive=True)
 
 
 @router.head("/readiness")

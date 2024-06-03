@@ -142,7 +142,7 @@ class TokenHandler:
                     text=self.tokens_to_text(tokens[:available_tokens]),
                     doc_url=node.metadata.get("docs_url", ""),
                     doc_title=node.metadata.get("title", ""),
-                )  # type: ignore
+                )  # type: ignore [call-arg]
             )
 
             max_tokens -= available_tokens

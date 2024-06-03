@@ -6,7 +6,7 @@ from ols.app.endpoints.health import (
     readiness_probe_get_method,
     readiness_probe_head_method,
 )
-from ols.app.models.models import HealthResponse
+from ols.app.models.models import HealthResponse, LivenessResponse
 
 
 def test_readiness_probe_get_method():
@@ -22,7 +22,7 @@ def test_liveness_probe_get_method():
     # the tested function returns constant right now
     # i.e. it does not depend on application state
     response = liveness_probe_get_method()
-    assert response == HealthResponse(status={"status": "healthy"})
+    assert response == LivenessResponse(alive=True)
 
 
 def test_readiness_probe_head_method():

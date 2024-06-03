@@ -1,9 +1,8 @@
-"""Response validation using pre-defined question/answer pair."""
+"""Response evaluation using pre-defined question/answer pair."""
 
-import argparse
+# TODO: Rename the file as response_evaluation.py and move to tests/e2e/
 import json
 import os
-import sys
 from collections import defaultdict
 
 import requests
@@ -11,74 +10,27 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
-from tests.e2e.cluster_utils import (
-    create_user,
-    get_user_token,
-    grant_sa_user_access,
-)
-from tests.e2e.constants import LLM_REST_API_TIMEOUT
-from tests.e2e.helper_utils import get_http_client
+from tests.e2e.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
 
 
 # TODO: OLS-491 Generate QnA for each model/scenario for evaluation
-def _args_parser(args):
-    """Arguments parser."""
-    parser = argparse.ArgumentParser(description="Response validation module.")
-    parser.add_argument(
-        "-s",
-        "--scenario",
-        choices=["with_rag", "without_rag"],
-        default="with_rag",
-        type=str,
-        help="Scenario for which responses will be evaluated.",
-    )
-    parser.add_argument(
-        "-p",
-        "--provider",
-        default="openai",
-        help="Provider name, currently used only to form output file name.",
-    )
-    parser.add_argument(
-        "-m",
-        "--model",
-        choices=["gpt", "granite"],
-        default="gpt",
-        type=lambda v: "gpt" if "gpt" in v else "granite",
-        help="Model for which responses will be evaluated.",
-    )
-    parser.add_argument(
-        "-t",
-        "--threshold",
-        type=float,
-        default=0.7,
-        help="Threshold value to be used for similarity score.",
-    )
-    parser.add_argument(
-        "-q",
-        "--query_ids",
-        nargs="+",
-        default=None,
-        help="Ids of questions to be validated. Check json file for valid ids.",
-    )
-    parser.add_argument(
-        "-o",
-        "--out_dir",
-        default="tests/test_results",
-        help="Result destination.",
-    )
-    return parser.parse_args(args)
+class ResponseEvaluation:
+    """Evaluate LLM response."""
 
-
-class ResponseValidation:
-    """Validate LLM response."""
-
-    def __init__(self):
+    def __init__(self, eval_args, api_client):
         """Initialize."""
+        print(f"Response evaluation arguments: {eval_args}")
+        self._args = eval_args
+        self._args.eval_model = "gpt" if "gpt" in self._args.eval_model else "granite"
+        self._args.eval_threshold = self._args.eval_threshold or EVAL_THRESHOLD
+
+        self._api_client = api_client
+
         self._embedding_model = HuggingFaceEmbedding(
             "sentence-transformers/all-mpnet-base-v2"
         )
 
-    def get_similarity_score(self, response, answer):
+    def _similarity_score(self, response, answer):
         """Calculate similarity score between two strings."""
         res_vec = self._embedding_model.get_text_embedding(response)
         ans_vec = self._embedding_model.get_text_embedding(answer)
@@ -102,11 +54,11 @@ class ResponseValidation:
         )
         return score
 
-    def get_response_quality(self, args, qa_pairs, api_client):
-        """Get response quality."""
+    def _get_evaluation_score(self, qa_pairs):
+        """Get response evaluation score."""
         result_dict = defaultdict(list)
 
-        query_ids = args.query_ids
+        query_ids = self._args.eval_query_ids
         if not query_ids:
             query_ids = qa_pairs.keys()
 
@@ -114,7 +66,7 @@ class ResponseValidation:
             question = qa_pairs[query_id]["question"]
             answer = qa_pairs[query_id]["answer"]
 
-            response = api_client.post(
+            response = self._api_client.post(
                 "/v1/query",
                 json={"query": question},
                 timeout=LLM_REST_API_TIMEOUT,
@@ -122,13 +74,16 @@ class ResponseValidation:
             if response.status_code != requests.codes.ok:
                 raise Exception(response)
 
-            response = response.json()["response"]
+            response = response.json()["response"].strip()
 
             print(f"Calculating score for query: {question}")
-            score = self.get_similarity_score(response, answer)
+            score = self._similarity_score(response, answer)
 
-            if score > args.threshold:
-                print(f"Response is not as expected for question: {question}")
+            if score > self._args.eval_threshold:
+                print(
+                    f"Response is not as expected for question: {question}\n"
+                    f"Score: {score} is above cut-off value: {self._args.eval_threshold}"
+                )
 
             result_dict["question"].append(question)
             result_dict["answer"].append(answer)
@@ -136,47 +91,39 @@ class ResponseValidation:
             result_dict["recent_score"].append(score)
 
         result_df = DataFrame.from_dict(result_dict)
-        result_df["threshold"] = args.threshold
+        result_df["threshold"] = self._args.eval_threshold
         return result_df
 
-
-def main():
-    """Validate LLM response."""
-    args = _args_parser(sys.argv[1:])
-    print(f"Arguments passed: {args}")
-
-    with open("tests/test_data/question_answer_pair.json") as qna_f:
-        qa_pairs = json.load(qna_f)
-        qa_pairs = qa_pairs.get(args.model, {}).get(args.scenario, [])
-
-    ols_url = os.getenv("OLS_URL", "http://localhost:8080")
-    token = None
-    if "localhost" not in ols_url:
-        create_user("test-user")
-        token = get_user_token("test-user")
-        grant_sa_user_access("test-user", "ols-user")
-    api_client = get_http_client(ols_url, token)
-
-    result_df = ResponseValidation().get_response_quality(args, qa_pairs, api_client)
-
-    if len(result_df) > 0:
-        result_dir = args.out_dir
-        os.makedirs(result_dir, exist_ok=True)
-        result_file = (
-            f"{result_dir}/question_answer_result_"
-            f"{args.provider}_{args.model}_{args.scenario}.csv"
-        )
-        result_df.to_csv(result_file, index=False)
-        print(f"Result is saved to {result_file}")
-
-        if result_df.recent_score.max() > args.threshold:
-            raise Exception(
-                "Response is not matching for question(s):\n"
-                f"Please check result in {result_file}."
+    def validate_response(self):
+        """Validate LLM response."""
+        with open("tests/test_data/question_answer_pair.json") as qna_f:
+            qa_pairs = json.load(qna_f)
+            qa_pairs = qa_pairs.get(self._args.eval_model, {}).get(
+                self._args.eval_scenario, []
             )
-    else:
-        print("No result. Nothing to process.")
 
+        result_df = self._get_evaluation_score(qa_pairs)
 
-if __name__ == "__main__":
-    main()
+        if len(result_df) > 0:
+            result_dir = self._args.eval_out_dir
+            os.makedirs(result_dir, exist_ok=True)
+            result_file = (
+                f"{result_dir}/response_evaluation_result-"
+                f"{self._args.eval_provider}-{self._args.eval_model}-"
+                f"{self._args.eval_scenario}.csv"
+            )
+            result_df.to_csv(result_file, index=False)
+            print(f"Result is saved to {result_file}")
+
+            if result_df.recent_score.max() > self._args.eval_threshold:
+                # If one of the score is more than threshold,
+                # then return False (Failed validation scenario)
+                print(
+                    "Response is not matching for question(s):\n"
+                    f"Please check result in {result_file}."
+                )
+                return False
+        else:
+            print("No result. Nothing to process.")
+
+        return True

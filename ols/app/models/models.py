@@ -342,6 +342,32 @@ class HealthResponse(BaseModel):
     }
 
 
+class LivenessResponse(BaseModel):
+    """Model representing a response to a liveness request.
+
+    Attributes:
+        alive: If app is alive.
+
+    Example:
+        ```python
+        liveness_response = LivenessResponse(alive=True)
+        ```
+    """
+
+    alive: bool
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "alive": True,
+                }
+            ]
+        }
+    }
+
+
 class AuthorizationResponse(BaseModel):
     """Model representing a response to an authorization request.
 

@@ -12,6 +12,7 @@
 - [ ] Documentation Update
 - [ ] Configuration Update
 - [ ] Bump-up dependent library
+- [ ] Bump-up library or tool used for development (does not change the final image)
 
 ## Related Tickets & Documents
 

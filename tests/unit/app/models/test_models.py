@@ -7,6 +7,7 @@ from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
     HealthResponse,
+    LivenessResponse,
     LLMRequest,
     LLMResponse,
     ReferencedDocument,
@@ -294,3 +295,16 @@ class TestHealth:
         health_request = HealthResponse(status=health_response)
 
         assert health_request.status == health_response
+
+
+class TestLiveness:
+    """Unit test for the LivenessResponse model."""
+
+    @staticmethod
+    def test_liveness_response():
+        """Test the LivenessResponse model."""
+        liveness_response = True
+
+        liveness_request = LivenessResponse(alive=liveness_response)
+
+        assert liveness_request.alive == liveness_response

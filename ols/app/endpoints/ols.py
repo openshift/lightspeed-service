@@ -102,7 +102,7 @@ def conversation_request(
             constants.INVALID_QUERY_RESP,
             [],
             False,
-        )  # type: ignore
+        )  # type: ignore [call-arg]
     else:
         summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
@@ -129,7 +129,7 @@ def conversation_request(
         ReferencedDocument(
             rag_chunk.doc_url,
             rag_chunk.doc_title,
-        )  # type: ignore
+        )  # type: ignore [call-arg]
         for rag_chunk in summarizer_response.rag_chunks
     ]
 
@@ -426,7 +426,7 @@ def store_transcript(
         "redacted_query": llm_request.query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],  # type: ignore
+        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],  # type: ignore [call-overload]
         "truncated": truncated,
     }
 
