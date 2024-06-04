@@ -615,6 +615,7 @@
                         "title": "Attachments"
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "query"

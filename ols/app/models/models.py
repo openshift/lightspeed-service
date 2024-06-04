@@ -66,6 +66,7 @@ class LLMRequest(BaseModel):
 
     # provides examples for /docs endpoint
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "examples": [
                 {
@@ -87,7 +88,7 @@ class LLMRequest(BaseModel):
                     ],
                 }
             ]
-        }
+        },
     }
 
     @model_validator(mode="after")
