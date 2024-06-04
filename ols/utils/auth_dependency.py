@@ -50,7 +50,11 @@ class K8sClientSingleton:
                 if config.ols_config.authentication_config.k8s_cluster_api not in {
                     None,
                     "",
-                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
+                } and config.dev_config.k8s_auth_token not in {
+                    None,
+                    "None",
+                    "",
+                }:  # type: ignore
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
@@ -82,7 +86,7 @@ class K8sClientSingleton:
                 # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api
+                    if config.ols_config.authentication_config.k8s_cluster_api  # type: ignore
                     not in {None, ""}
                     else configuration.host
                 )
