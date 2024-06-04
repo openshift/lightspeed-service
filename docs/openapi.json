@@ -339,6 +339,42 @@
     },
     "components": {
         "schemas": {
+            "Attachment": {
+                "properties": {
+                    "attachment_type": {
+                        "type": "string",
+                        "title": "Attachment Type"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "title": "Content Type"
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "attachment_type",
+                    "content_type",
+                    "content"
+                ],
+                "title": "Attachment",
+                "description": "Model representing an attachment that can be send from UI as part of query.\n\nList of attachments can be optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content",
+                "examples": [
+                    {
+                        "attachment_type": "log",
+                        "content": "this is attachment",
+                        "content_type": "text/plain"
+                    },
+                    {
+                        "attachment_type": "configuration",
+                        "content": "foo: bar",
+                        "content_type": "application/yaml"
+                    }
+                ]
+            },
             "AuthorizationResponse": {
                 "properties": {
                     "user_id": {
@@ -563,6 +599,20 @@
                             }
                         ],
                         "title": "Model"
+                    },
+                    "attachments": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/Attachment"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attachments"
                     }
                 },
                 "type": "object",
@@ -570,9 +620,21 @@
                     "query"
                 ],
                 "title": "LLMRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
+                        "attachments": [
+                            {
+                                "attachment_type": "log",
+                                "content": "this is attachment",
+                                "content_type": "text/plain"
+                            },
+                            {
+                                "attachment_type": "configuration",
+                                "content": "foo: bar",
+                                "content_type": "application/yaml"
+                            }
+                        ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "model": "gpt-3.5-turbo",
                         "provider": "openai",
