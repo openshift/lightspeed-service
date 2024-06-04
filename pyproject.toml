@@ -61,8 +61,7 @@ dependencies = [
     "torch==2.2.2+cpu",
     "fastapi==0.111.0",
     "gradio==4.31.2",
-    # TODO: OLS-657 - Bump-up langchain to version 0.2.0 in OLS service
-    "langchain==0.1.16",
+    "langchain==0.2.1",
     "langchain-ibm==0.1.7",
     "llama-index==0.10.38",
     "llama-index-vector-stores-faiss==0.1.2",
@@ -82,6 +81,7 @@ dependencies = [
     "pytest-asyncio==0.23.6",
     "psycopg2-binary==2.9.9",
     "azure-identity==1.16.0",
+    "langchain-community==0.2.0",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
