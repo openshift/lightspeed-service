@@ -226,8 +226,7 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
-# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
-class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore [call-arg]
+class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):
     """Base class with common provider specific configurations."""
 
     url: AnyHttpUrl  # required attribute
@@ -235,15 +234,13 @@ class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):  # type: ignore [ca
     api_key: Optional[str] = None
 
 
-# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
-class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
+class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
     """Configuration specific to OpenAI provider."""
 
     credentials_path: str  # required attribute
 
 
-# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
-class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
+class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
     """Configuration specific to Azure OpenAI provider."""
 
     deployment_name: str  # required attribute
@@ -254,16 +251,14 @@ class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ig
     client_secret: Optional[str] = None
 
 
-# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
-class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
+class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):
     """Configuration specific to Watsonx provider."""
 
     credentials_path: str  # required attribute
     project_id: Optional[str] = None
 
 
-# TODO: OLS-673: Type checker reports "too many arguments" when the dataclass is constructed
-class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):  # type: ignore [call-arg]
+class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):
     """Configuration specific to BAM provider."""
 
     credentials_path: str  # required attribute
