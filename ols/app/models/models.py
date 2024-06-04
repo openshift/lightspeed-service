@@ -8,14 +8,49 @@ from pydantic.dataclasses import dataclass
 from ols.utils import suid
 
 
+class Attachment(BaseModel):
+    """Model representing an attachment that can be send from UI as part of query.
+
+    List of attachments can be optional part of 'query' request.
+
+    Attributes:
+        attachment_type: The attachment type, like "log", "configuration" etc.
+        content_type: The content type as defined in MIME standard
+        content: The actual attachment content
+    """
+
+    attachment_type: str
+    content_type: str
+    content: str
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "attachment_type": "log",
+                    "content_type": "text/plain",
+                    "content": "this is attachment",
+                },
+                {
+                    "attachment_type": "configuration",
+                    "content_type": "application/yaml",
+                    "content": "foo: bar",
+                },
+            ]
+        }
+    }
+
+
 class LLMRequest(BaseModel):
-    """Model representing a request for the LLM (Language Model).
+    """Model representing a request for the LLM (Language Model) send into OLS service.
 
     Attributes:
         query: The query string.
         conversation_id: The optional conversation ID (UUID).
         provider: The optional provider.
         model: The optional model.
+        attachments: The optional attachments.
 
     Example:
         ```python
@@ -27,6 +62,7 @@ class LLMRequest(BaseModel):
     conversation_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    attachments: Optional[list[Attachment]] = None
 
     # provides examples for /docs endpoint
     model_config = {
@@ -37,6 +73,18 @@ class LLMRequest(BaseModel):
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "provider": "openai",
                     "model": "gpt-3.5-turbo",
+                    "attachments": [
+                        {
+                            "attachment_type": "log",
+                            "content_type": "text/plain",
+                            "content": "this is attachment",
+                        },
+                        {
+                            "attachment_type": "configuration",
+                            "content_type": "application/yaml",
+                            "content": "foo: bar",
+                        },
+                    ],
                 }
             ]
         }
