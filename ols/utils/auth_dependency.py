@@ -22,6 +22,8 @@ class ClusterIDUnavailableError(Exception):
     """Cluster ID is not available."""
 
 
+# mypy: ignore-errors
+# TODO: remove in OLS-648
 class K8sClientSingleton:
     """Return the Kubernetes client instances.
 
@@ -54,7 +56,7 @@ class K8sClientSingleton:
                     None,
                     "None",
                     "",
-                }:  # type: ignore
+                }:
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
