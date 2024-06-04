@@ -54,6 +54,7 @@ class AzureOpenAI(LLMProvider):
             "verbose": False,
         }
 
+        # TODO: OLS-679 Azure AD token can be reused w/o the need to refresh it for each request
         if self.credentials is not None:
             # if credentials with API key is set, use it to call Azure OpenAI endpoints
             default_parameters["api_key"] = self.credentials
