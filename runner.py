@@ -3,6 +3,7 @@
 import logging
 import os
 import tempfile
+import threading
 from pathlib import Path
 
 import uvicorn
@@ -39,38 +40,21 @@ def configure_gradio_ui_envs() -> None:
     os.environ["MPLCONFIGDIR"] = tempdir
 
 
-if __name__ == "__main__":
-
-    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
-    config.reload_from_yaml_file(cfg_file)
-
-    configure_logging(config.ols_config.logging_config)
-    logger = logging.getLogger(__name__)
-    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
-
-    configure_gradio_ui_envs()
-
-    # NOTE: We import config here to avoid triggering import of anything
-    # else via our code before other envs are set (mainly the gradio).
-    from ols import config
-
-    configure_hugging_face_envs(config.ols_config)
-
-    # init loading of query redactor and rag index
-    config.query_redactor
+def load_index():
+    """Load the index."""
+    # accessing the config's rag_index property will trigger the loading
+    # of the index
     config.rag_index
 
-    # Initialize the K8sClientSingleton with cluster id during module load.
-    # We want the application to fail early if the cluster ID is not available.
-    cluster_id = K8sClientSingleton.get_cluster_id()
-    logger.info(f"running on cluster with ID '{cluster_id}'")
 
+def start_uvicorn():
+    """Start Uvicorn-based REST API service."""
+    # use workers=1 so config loaded can be accessed from other modules
     host = (
         "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa: S104
     )
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
-    # use workers=1 so config loaded can be accessed from other modules
     if config.dev_config.disable_tls:
         # TLS is disabled, run without SSL configuration
         uvicorn.run(
@@ -93,3 +77,37 @@ if __name__ == "__main__":
             ssl_keyfile_password=config.ols_config.tls_config.tls_key_password,
             access_log=log_level < logging.INFO,
         )
+
+
+if __name__ == "__main__":
+
+    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+    config.reload_from_yaml_file(cfg_file)
+
+    configure_logging(config.ols_config.logging_config)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
+
+    configure_gradio_ui_envs()
+
+    # NOTE: We import config here to avoid triggering import of anything
+    # else via our code before other envs are set (mainly the gradio).
+    from ols import config
+
+    configure_hugging_face_envs(config.ols_config)
+
+    # Initialize the K8sClientSingleton with cluster id during module load.
+    # We want the application to fail early if the cluster ID is not available.
+    cluster_id = K8sClientSingleton.get_cluster_id()
+    logger.info(f"running on cluster with ID '{cluster_id}'")
+
+    # init loading of query redactor
+    config.query_redactor
+
+    # create and start the rag_index_thread - allows loading index in
+    # parallel with starting the Uvicorn server
+    rag_index_thread = threading.Thread(target=load_index)
+    rag_index_thread.start()
+
+    # start the Uvicorn server
+    start_uvicorn()

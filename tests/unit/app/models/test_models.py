@@ -6,10 +6,10 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     FeedbackRequest,
     FeedbackResponse,
-    HealthResponse,
     LivenessResponse,
     LLMRequest,
     LLMResponse,
+    ReadinessResponse,
     ReferencedDocument,
     StatusResponse,
 )
@@ -284,19 +284,6 @@ class TestFeedback:
         assert feedback_request.response == feedback_response
 
 
-class TestHealth:
-    """Unit test for the HealthResponse model."""
-
-    @staticmethod
-    def test_health_response():
-        """Test the HealthResponse model."""
-        health_response = {"status": "healthy"}
-
-        health_request = HealthResponse(status=health_response)
-
-        assert health_request.status == health_response
-
-
 class TestLiveness:
     """Unit test for the LivenessResponse model."""
 
@@ -308,3 +295,18 @@ class TestLiveness:
         liveness_request = LivenessResponse(alive=liveness_response)
 
         assert liveness_request.alive == liveness_response
+
+
+class TestReadiness:
+    """Unit test for the ReadinessResponse model."""
+
+    @staticmethod
+    def test_readiness_response():
+        """Test the ReadinessResponse model."""
+        ready = True
+        reason = "service is ready"
+
+        readiness_request = ReadinessResponse(ready=ready, reason=reason)
+
+        assert readiness_request.ready == ready
+        assert readiness_request.reason == reason
