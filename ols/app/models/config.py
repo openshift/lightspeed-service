@@ -859,7 +859,8 @@ class OLSConfig(BaseModel):
             data.get("conversation_cache", None)
         )
         self.logging_config = LoggingConfig(data.get("logging_config", None))
-        self.reference_content = ReferenceContent(data.get("reference_content", None))
+        if data.get("reference_content") is not None:
+            self.reference_content = ReferenceContent(data.get("reference_content"))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
         self.authentication_config = AuthenticationConfig(
