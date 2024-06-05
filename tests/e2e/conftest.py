@@ -60,12 +60,17 @@ def pytest_addoption(parser):
         help="Scenario for which responses will be evaluated.",
     )
     parser.addoption(
-        "--rp_enabled", action="store_true", default=False, help="Enable report portal upload"
+        "--rp_enabled",
+        action="store_true",
+        default=False,
+        type=bool,
+        help="Enable report portal upload",
     )
     parser.addoption(
         "--rp_name",
         action="store",
         default="e2e-ols-cluster",
+        trype=str,
         help="Enable report portal upload",
     )
 
@@ -143,10 +148,12 @@ def pytest_sessionfinish(session):
     if session.config.option.rp_enabled:
         try:
             datarouter_config = create_datarouter_config_file(session)
-            archive_path = os.path.join(os.getcwd(), f"reportportal-{uuid.uuid4()}.tar.gz")
-            with tarfile.open(archive_path, "w:gz") as tar:
+            archive_path = os.path.join(
+                os.getcwd(), f"reportportal-{uuid.uuid4()}.tar.gz"
+            )
+            with tarfile.open(archive_pgiath, "w:gz") as tar:
                 tar.add(datarouter_config, arcname="data_router.json")
-                for file in os.listdir(os.environ['ARTIFACT_DIR']):
+                for file in os.listdir(os.environ["ARTIFACT_DIR"]):
                     if file.endswith(".xml"):
                         logging.info(f"Found xml to add in archive {file}.")
                         tar.add(file, arcname=os.path.join("data", "results", file))
