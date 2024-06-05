@@ -1849,6 +1849,53 @@ def test_config_improper_provider():
         ).validate_yaml()
 
 
+def test_config_with_fake_default_provider():
+    """Test the config when fake provider is set as default."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "fake_provider",
+                    "type": "fake_provider",
+                    "models": [
+                        {
+                            "name": "fake_model",
+                        }
+                    ],
+                },
+            ],
+            "ols_config": {
+                "default_provider": "fake_provider",
+                "default_model": "fake_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+                "query_validation_method": "disabled",
+            },
+        }
+    )
+    assert len(config.llm_providers.providers) == 1
+    assert config.llm_providers.providers["fake_provider"].name == "fake_provider"
+    assert len(config.llm_providers.providers["fake_provider"].models) == 1
+    assert (
+        config.llm_providers.providers["fake_provider"].models["fake_model"].name
+        == "fake_model"
+    )
+    assert config.ols_config.default_provider == "fake_provider"
+    assert config.ols_config.default_model == "fake_model"
+    assert config.ols_config.logging_config.app_log_level == logging.ERROR
+    assert (
+        config.ols_config.query_validation_method
+        == constants.QueryValidationMethod.DISABLED
+    )
+
+
 def test_config_improper_model():
     """Test the Config model of the Global service configuration when improper model is set."""
     with pytest.raises(

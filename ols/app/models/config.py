@@ -1001,13 +1001,27 @@ class Config(BaseModel):
 
     def _validate_default_provider_and_model(self) -> None:
         selected_default_provider = self.ols_config.default_provider
-        selected_default_model = self.ols_config.default_model
-
         provider_specified = selected_default_provider is not None
-        model_specified = selected_default_model is not None
 
         if not provider_specified:
             raise InvalidConfigurationError("default_provider is missing")
+
+        provider_config: Optional[ProviderConfig] = None
+        model_config: Optional[ModelConfig] = None
+        if selected_default_provider == constants.PROVIDER_FAKE:
+            model_config = ModelConfig()
+            model_config.name = constants.FAKE_MODEL
+            model_config.context_window_size = constants.DEFAULT_CONTEXT_WINDOW_SIZE
+            provider_config = ProviderConfig()
+            provider_config.name = constants.PROVIDER_FAKE
+            provider_config.type = constants.PROVIDER_FAKE
+            provider_config.models[constants.FAKE_MODEL] = model_config
+            self.ols_config.default_model = constants.FAKE_MODEL
+            self.llm_providers.providers[constants.PROVIDER_FAKE] = provider_config
+
+        selected_default_model = self.ols_config.default_model
+        model_specified = selected_default_model is not None
+
         if not model_specified:
             raise InvalidConfigurationError("default_model is missing")
 

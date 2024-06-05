@@ -5,7 +5,7 @@ from typing import Optional
 
 from langchain.llms.base import LLM
 
-from ols import config
+from ols import config, constants
 from ols.app.models.config import LLMProviders, ProviderConfig
 from ols.src.llms.providers.registry import LLMProvidersRegistry
 
@@ -43,7 +43,7 @@ def _resolve_provider_config(
 
     provider_config = providers_config.providers.get(provider)
 
-    if model not in provider_config.models:
+    if provider != constants.PROVIDER_FAKE and model not in provider_config.models:
         raise ModelConfigMissingError(
             f"Model '{model}' is not a valid model for provider '{provider}'. "
             f"Valid models are: {list(provider_config.models.keys())}"
