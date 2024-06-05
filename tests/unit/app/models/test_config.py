@@ -1669,6 +1669,7 @@ def test_ols_config(tmpdir):
     assert ols_config.query_validation_method == constants.QueryValidationMethod.LLM
     assert ols_config.user_data_collection.feedback_disabled is False
     assert ols_config.user_data_collection.feedback_storage == tmpdir.strpath
+    assert ols_config.reference_content is None
 
 
 def test_config():
