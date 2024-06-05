@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
+    Attachment,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
@@ -83,6 +84,9 @@ def conversation_request(
 
     conversation_id = retrieve_conversation_id(llm_request)
     previous_input = retrieve_previous_input(user_id, llm_request)
+
+    # Retrieve attachments from the request
+    retrieve_attachments(llm_request)
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
@@ -184,6 +188,36 @@ def retrieve_previous_input(
                 "cause": str(e),
             },
         )
+
+
+def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
+    """Retrieve attachments from the request."""
+    attachments = llm_request.attachments
+
+    # it is perfectly ok not to send any attachments
+    if attachments is None:
+        return []
+
+    # some attachments were send to the service, time to check its metadata
+    for attachment in attachments:
+        if attachment.attachment_type not in constants.ATTACHMENT_TYPES:
+            message = (
+                f"Attachment with improper type {attachment.attachment_type} detected"
+            )
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+        if attachment.content_type not in constants.ATTACHMENT_CONTENT_TYPES:
+            message = f"Attachment with improper content type {attachment.content_type} detected"
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+
+    return attachments
 
 
 def generate_response(

@@ -13,6 +13,7 @@ from ols import config, constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
 from ols.app.models.models import (
+    Attachment,
     LLMRequest,
     RagChunk,
     ReferencedDocument,
@@ -95,6 +96,101 @@ def test_retrieve_previous_input_for_previous_history(get, _load_config):
         constants.DEFAULT_USER_UID, llm_request
     )
     assert previous_input == "input"
+
+
+def test_retrieve_attachments_on_no_input(_load_config):
+    """Check the function to retrieve attachments from payload when attachments are not send."""
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(
+        query="Tell me about Kubernetes", conversation_id=conversation_id
+    )
+    attachments = ols.retrieve_attachments(llm_request)
+    # empty list should be returned
+    assert attachments is not None
+    assert len(attachments) == 0
+
+
+def test_retrieve_attachments_on_empty_list(_load_config):
+    """Check the function to retrieve attachments from payload when list of attachments is empty."""
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(
+        query="Tell me about Kubernetes",
+        conversation_id=conversation_id,
+        attachments=[],
+    )
+    attachments = ols.retrieve_attachments(llm_request)
+    # empty list should be returned
+    assert attachments is not None
+    assert len(attachments) == 0
+
+
+def test_retrieve_attachments_on_proper_input(_load_config):
+    """Check the function to retrieve attachments from payload."""
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(
+        query="Tell me about Kubernetes",
+        conversation_id=conversation_id,
+        attachments=[
+            {
+                "attachment_type": "log",
+                "content_type": "text/plain",
+                "content": "this is attachment",
+            },
+        ],
+    )
+    attachments = ols.retrieve_attachments(llm_request)
+    # empty list should be returned
+    assert attachments is not None
+    assert len(attachments) == 1
+
+    expected = Attachment(
+        **{
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment",
+        }
+    )
+    assert attachments[0] == expected
+
+
+def test_retrieve_attachments_on_improper_attachment_type(_load_config):
+    """Check the function to retrieve attachments from payload."""
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(
+        query="Tell me about Kubernetes",
+        conversation_id=conversation_id,
+        attachments=[
+            {
+                "attachment_type": "not-correct-one",
+                "content_type": "text/plain",
+                "content": "this is attachment",
+            },
+        ],
+    )
+    with pytest.raises(
+        HTTPException, match="Attachment with improper type not-correct-one detected"
+    ):
+        ols.retrieve_attachments(llm_request)
+
+
+def test_retrieve_attachments_on_improper_content_type(_load_config):
+    """Check the function to retrieve attachments from payload."""
+    conversation_id = suid.get_suid()
+    llm_request = LLMRequest(
+        query="Tell me about Kubernetes",
+        conversation_id=conversation_id,
+        attachments=[
+            {
+                "attachment_type": "log",
+                "content_type": "not/known",
+                "content": "this is attachment",
+            },
+        ],
+    )
+    with pytest.raises(
+        HTTPException, match="Attachment with improper content type not/known detected"
+    ):
+        ols.retrieve_attachments(llm_request)
 
 
 @patch("ols.config.conversation_cache.insert_or_append")

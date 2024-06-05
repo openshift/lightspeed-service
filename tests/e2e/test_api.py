@@ -1097,6 +1097,11 @@ def test_valid_question_with_wrong_attachment_format_unknown_field() -> None:
         # the attachment should not be processed correctly
         assert response.status_code == requests.codes.unprocessable_entity
 
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Field required"
+        assert details["type"] == "missing"
+
 
 @retry(max_attempts=3, wait_between_runs=10)
 def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
@@ -1120,6 +1125,11 @@ def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
 
         # the attachment should not be processed correctly
         assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Field required"
+        assert details["type"] == "missing"
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -1148,6 +1158,85 @@ def test_valid_question_with_wrong_attachment_format_field_of_different_type() -
 
         # the attachment should not be processed correctly
         assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        details = json_response["detail"][0]
+        assert details["msg"] == "Input should be a valid string"
+        assert details["type"] == "string_type"
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method using attachment with wrong type."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "unknown_type",
+                        "content_type": "text/plain",
+                        "content": "this is attachment",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        expected_response = {
+            "detail": {
+                "response": "Unable to process this request",
+                "cause": "Attachment with improper type unknown_type detected",
+            }
+        }
+        assert json_response == expected_response
+
+
+@retry(max_attempts=3, wait_between_runs=10)
+def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> None:
+    """Check the REST API /v1/query with POST HTTP method: attachment with wrong content type."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(
+        metrics_client, endpoint, status_code=requests.codes.unprocessable_entity
+    ):
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": "",
+                "query": "what is kubernetes?",
+                "attachments": [
+                    {
+                        "attachment_type": "log",
+                        "content_type": "unknown/type",
+                        "content": "this is attachment",
+                    },
+                ],
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+
+        # the attachment should not be processed correctly
+        assert response.status_code == requests.codes.unprocessable_entity
+
+        json_response = response.json()
+        expected_response = {
+            "detail": {
+                "response": "Unable to process this request",
+                "cause": "Attachment with improper content type unknown/type detected",
+            }
+        }
+        assert json_response == expected_response
 
 
 def test_conversation_in_postgres_cache(postgres_connection) -> None:
