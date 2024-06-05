@@ -10,11 +10,20 @@ from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
 from ols import config
-from ols.constants import DEFAULT_KUBEADMIN_UID, DEFAULT_USER_NAME, DEFAULT_USER_UID
+from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, RUNNING_IN_CLUSTER
 
 logger = logging.getLogger(__name__)
 
 
+CLUSTER_ID_LOCAL = "local"
+
+
+class ClusterIDUnavailableError(Exception):
+    """Cluster ID is not available."""
+
+
+# mypy: ignore-errors
+# TODO: remove in OLS-648
 class K8sClientSingleton:
     """Return the Kubernetes client instances.
 
@@ -26,6 +35,7 @@ class K8sClientSingleton:
     _api_client = None
     _authn_api: kubernetes.client.AuthenticationV1Api
     _authz_api: kubernetes.client.AuthorizationV1Api
+    _cluster_id = None
 
     def __new__(cls: type[Self]) -> Self:
         """Create a new instance of the singleton, or returns the existing instance.
@@ -42,7 +52,11 @@ class K8sClientSingleton:
                 if config.ols_config.authentication_config.k8s_cluster_api not in {
                     None,
                     "",
-                } and config.dev_config.k8s_auth_token not in {None, "None", ""}:
+                } and config.dev_config.k8s_auth_token not in {
+                    None,
+                    "None",
+                    "",
+                }:
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
@@ -74,7 +88,7 @@ class K8sClientSingleton:
                 # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api
+                    if config.ols_config.authentication_config.k8s_cluster_api  # type: ignore
                     not in {None, ""}
                     else configuration.host
                 )
@@ -89,6 +103,7 @@ class K8sClientSingleton:
                 )
                 api_client = kubernetes.client.ApiClient(configuration)
                 cls._api_client = api_client
+                cls._custom_objects_api = kubernetes.client.CustomObjectsApi(api_client)
                 cls._authn_api = kubernetes.client.AuthenticationV1Api(api_client)
                 cls._authz_api = kubernetes.client.AuthorizationV1Api(api_client)
             except Exception as e:
@@ -115,6 +130,54 @@ class K8sClientSingleton:
         if cls._instance is None or cls._authz_api is None:
             cls()
         return cls._authz_api
+
+    @classmethod
+    def get_custom_objects_api(cls) -> kubernetes.client.CustomObjectsApi:
+        """Return the custom objects API instance.
+
+        Ensures the singleton is initialized before returning the Authorization API client.
+        """
+        if cls._instance is None or cls._custom_objects_api is None:
+            cls()
+        return cls._custom_objects_api
+
+    @classmethod
+    def _get_cluster_id(cls) -> str:
+        try:
+            custom_objects_api = cls.get_custom_objects_api()
+            version_data = custom_objects_api.get_cluster_custom_object(
+                "config.openshift.io", "v1", "clusterversions", "version"
+            )
+            cluster_id = version_data["spec"]["clusterID"]
+            cls._cluster_id = cluster_id
+            return cluster_id
+        except KeyError:
+            logger.error(
+                "Failed to get cluster_id from cluster, missing keys in version object"
+            )
+            raise ClusterIDUnavailableError("Failed to get cluster ID")
+        except TypeError:
+            logger.error(f"Failed to get cluster_id, version object is: {version_data}")
+            raise ClusterIDUnavailableError("Failed to get cluster ID")
+        except ApiException as e:
+            logger.error(f"API exception during ClusterInfo: {e}")
+            raise ClusterIDUnavailableError("Failed to get cluster ID")
+        except Exception as e:
+            logger.error(f"Unexpected error during getting cluster ID: {e}")
+            raise ClusterIDUnavailableError("Failed to get cluster ID")
+
+    @classmethod
+    def get_cluster_id(cls) -> str:
+        """Return the cluster ID."""
+        if cls._instance is None:
+            cls()
+        if cls._cluster_id is None:
+            if RUNNING_IN_CLUSTER:
+                cls._cluster_id = cls._get_cluster_id()
+            else:
+                logger.debug("Not running in cluster, setting cluster_id to 'local'")
+                cls._cluster_id = CLUSTER_ID_LOCAL
+        return cls._cluster_id
 
 
 def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
@@ -208,7 +271,7 @@ class AuthDependency:
                 status_code=403, detail="Forbidden: Invalid or expired token"
             )
         if user_info.user.username == "kube:admin":
-            user_info.user.uid = DEFAULT_KUBEADMIN_UID
+            user_info.user.uid = K8sClientSingleton.get_cluster_id()
         authorization_api = K8sClientSingleton.get_authz_api()
 
         sar = kubernetes.client.V1SubjectAccessReview(

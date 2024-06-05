@@ -7,43 +7,30 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 
 from fastapi import APIRouter
 
-from ols.app.models.models import HealthResponse, LivenessResponse
+from ols import config
+from ols.app.models.models import LivenessResponse, ReadinessResponse
 
 router = APIRouter(tags=["health"])
 
 
-# TODO: OLS-488 Define behaviour of /readiness and /liveness endpoints in OLS service
-#
-# Example status response:
-# {
-#     "status": "unhealthy",
-#     "version": "1.0.0",
-#     "dependencies": {
-#         "database": "healthy",
-#         "externalApi": "unhealthy"
-#     }
-# }
+def index_is_ready() -> bool:
+    """Check if the index is loaded."""
+    if config._rag_index is None and config.ols_config.reference_content is not None:
+        return False
+    else:
+        return True
 
 
 @router.get("/readiness")
-def readiness_probe_get_method() -> HealthResponse:
+def readiness_probe_get_method() -> ReadinessResponse:
     """Ready status of service."""
-    return HealthResponse(status={"status": "healthy"})
+    if not index_is_ready():
+        return ReadinessResponse(ready=False, reason="index is not ready")
+    else:
+        return ReadinessResponse(ready=True, reason="service is ready")
 
 
 @router.get("/liveness")
 def liveness_probe_get_method() -> LivenessResponse:
     """Live status of service."""
     return LivenessResponse(alive=True)
-
-
-@router.head("/readiness")
-def readiness_probe_head_method() -> None:
-    """Ready status of service."""
-    return
-
-
-@router.head("/liveness")
-def liveness_probe_head_method() -> None:
-    """Live status of service."""
-    return

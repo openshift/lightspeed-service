@@ -1,6 +1,5 @@
 """Response evaluation using pre-defined question/answer pair."""
 
-# TODO: Rename the file as response_evaluation.py and move to tests/e2e/
 import json
 import os
 from collections import defaultdict
@@ -10,7 +9,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pandas import DataFrame
 from scipy.spatial.distance import cosine, euclidean
 
-from tests.e2e.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
+from tests.e2e.utils.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
 
 
 # TODO: OLS-491 Generate QnA for each model/scenario for evaluation

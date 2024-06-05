@@ -21,6 +21,10 @@ from typing import Any, Callable
 import kubernetes
 import requests
 
+# we need to add the root directory to the path to import from ols
+sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
+from ols.utils.auth_dependency import K8sClientSingleton
+
 OLS_USER_DATA_PATH = os.environ["OLS_USER_DATA_PATH"]
 OLS_USER_DATA_COLLECTION_INTERVAL = int(
     os.environ.get("OLS_USER_DATA_COLLECTION_INTERVAL", 2 * 60 * 60)
@@ -137,27 +141,6 @@ def get_cloud_openshift_pull_secret() -> str:
     raise ClusterPullSecretNotFoundError
 
 
-def get_cluster_id() -> str:
-    """Get the cluster_id from the cluster."""
-    kubernetes.config.load_incluster_config()
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-
-    try:
-        version_data = custom_objects_api.get_cluster_custom_object(
-            "config.openshift.io", "v1", "clusterversions", "version"
-        )
-        return version_data["spec"]["clusterID"]
-    except KeyError:
-        logger.error(
-            "failed to get cluster_id from cluster, missing keys in version object"
-        )
-    except TypeError:
-        logger.error(f"failed to get cluster_id, version object is: {version_data}")
-    except kubernetes.client.exceptions.ApiException as e:
-        logger.error(f"failed to get version object, body: {e.body}")
-    raise ClusterIDNotFoundError
-
-
 def collect_ols_data_from(location: str) -> list[pathlib.Path]:
     """Collect files from a given location.
 
@@ -267,7 +250,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         headers = {"Authorization": f"Bearer {token}"}
     else:
         logger.debug("using cluster pull secret to authenticate")
-        cluster_id = get_cluster_id()
+        cluster_id = K8sClientSingleton.get_cluster_id()
         token = get_cloud_openshift_pull_secret()
         headers = {
             "User-Agent": USER_AGENT.format(cluster_id=cluster_id),

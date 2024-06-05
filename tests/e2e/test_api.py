@@ -16,26 +16,23 @@ from ols.constants import (
     INVALID_QUERY_RESP,
 )
 from ols.utils import suid
-from tests.e2e import (
-    cluster_utils,
-    helper_utils,
-    metrics_utils,
-)
-from tests.e2e.constants import (
+from tests.e2e.utils import client as client_utils
+from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils import metrics as metrics_utils
+from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
 )
-from tests.scripts.must_gather import must_gather
-from tests.scripts.validate_response import ResponseEvaluation
-
-from .postgres_utils import (
+from tests.e2e.utils.decorators import retry
+from tests.e2e.utils.postgres import (
     read_conversation_history,
     read_conversation_history_count,
     retrieve_connection,
 )
-from .test_decorators import retry
+from tests.e2e.utils.response_evaluation import ResponseEvaluation
+from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
@@ -77,8 +74,8 @@ def setup_module(module):
         else:
             print("Setting up for standalone test execution\n")
 
-        client = helper_utils.get_http_client(ols_url, token)
-        metrics_client = helper_utils.get_http_client(ols_url, metrics_token)
+        client = client_utils.get_http_client(ols_url, token)
+        metrics_client = client_utils.get_http_client(ols_url, metrics_token)
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         sys.exit(1)
@@ -108,7 +105,7 @@ def test_readiness():
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
-        assert response.json() == {"status": {"status": "healthy"}}
+        assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
 def test_liveness():
@@ -692,6 +689,23 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
+# TODO OLS-652: This test currently doesn't work in CI. We don't currently know
+# how to grant permissions to the service account in the test cluster
+# to access clusterversions resource.
+# @pytest.mark.cluster()
+# def test_get_cluster_id_function():
+#     """Test if the cluster ID is properly retrieved."""
+#     # During the test in cluster, there is no config initialized for the
+#     # tests run (these run against application), so we need to initialize
+#     # the config (with the fields auth needs) manually here.
+#     config.init_config("tests/config/auth_config.yaml")
+
+#     actual = K8sClientSingleton.get_cluster_id()
+#     expected = cluster_utils.get_cluster_id()
+
+#     assert actual == expected
+
+
 @pytest.mark.cluster()
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
@@ -1057,7 +1071,7 @@ def test_user_data_collection():
 
     # safety wait for the script to start after being disabled by other
     # tests
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
 
     # data shoud be pruned now and this is the point from which we want
     # to check the logs
@@ -1147,12 +1161,15 @@ def test_model_response(request) -> None:
 # TODO: OLS-663
 def test_liveness_endpoint():
     """Test the liveness endpoint."""
-    # GET method
     response = client.get("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     check_content_type(response, "application/json")
     assert response.json() == {"alive": True}
 
-    # HEAD method
-    response = client.head("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
+
+def test_readiness_endpoint():
+    """Test the /readiness endpoint."""
+    response = client.get("/readiness", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
+    check_content_type(response, "application/json")
+    assert response.json() == {"ready": True, "reason": "service is ready"}
