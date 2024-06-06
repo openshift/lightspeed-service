@@ -4,7 +4,7 @@ llm_providers:
     type: azure_openai
     url: "https://url1"
     deployment_name: "test"
-    credentials_path": tests/config/secret.txt
+    credentials_path": tests/config/secret/apitoken
     azure_openai_config:
       url: "http://localhost:1234"
       deployment_name: "*deployment name*"

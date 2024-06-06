@@ -21,13 +21,13 @@ def provider_config():
             "name": "some_provider",
             "type": "watsonx",
             "url": "https://us-south.ml.cloud.ibm.com",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -47,7 +47,7 @@ def provider_config_without_credentials():
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -62,18 +62,18 @@ def provider_config_with_specific_params():
             "name": "some_provider",
             "type": "watsonx",
             "url": "https://us-south.ml.cloud.ibm.com",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "watsonx_config": {
                 "url": "http://bam.com",
-                "credentials_path": "tests/config/secret2.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
                 "project_id": "ffffffff-89ab-cdef-0123-456789abcdef",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }

@@ -466,7 +466,7 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: 'https://murl1'
@@ -482,10 +482,10 @@ llm_providers:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   conversation_cache:
     type: memory
@@ -505,10 +505,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_path: "./invalid_dir"
@@ -532,10 +532,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     embeddings_model_path: ./invalid_dir
@@ -559,10 +559,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_path: "/tmp"
@@ -586,10 +586,10 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     product_docs_index_id: "product"
@@ -612,13 +612,13 @@ dev_config:
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config/secret.txt"
+    product_docs_index_path: "tests/config/secret/apitoken"
   conversation_cache:
     type: memory
     memory:
@@ -629,7 +629,7 @@ dev_config:
 
 """,
         InvalidConfigurationError,
-        "Reference content path 'tests/config/secret.txt' is not a directory",
+        "Reference content path 'tests/config/secret/apitoken' is not a directory",
     )
 
 
@@ -642,10 +642,10 @@ def test_unreadable_directory(mock_access):
 llm_providers:
   - name: p1
     type: bam
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
     embeddings_model_path: tests/config
@@ -676,11 +676,11 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: 'http://murl1'
-        credentials_path: tests/config/secret.txt
+        credentials_path: tests/config/secret/apitoken
       - name: m2
         url: 'https://murl2'
   - name: p2
@@ -726,12 +726,12 @@ def test_valid_config_file():
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
                                 "url": "https://murl1",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                                 "context_window_size": 400,
                                 "response_token_limit": 100,
                             },
@@ -795,7 +795,7 @@ def test_valid_config_file_with_postgres(patch):
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
@@ -848,7 +848,7 @@ def test_valid_config_file_with_redis(patch):
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "m1",
@@ -998,7 +998,7 @@ def test_valid_config_with_azure_openai_credentials_path_only_in_provider_config
                             "url": "http://localhost:1234",
                             "deployment_name": "*deployment name*",
                             "api_key": "secret_key",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         },
                         "models": [
                             {
@@ -1107,7 +1107,7 @@ def test_valid_config_with_azure_openai_tenant_and_client_settings():
                             "deployment_name": "*deployment name*",
                             "tenant_id": "00000000-0000-0000-0000-000000000001",
                             "client_id": "00000000-0000-0000-0000-000000000002",
-                            "client_secret_path": "tests/config/secret.txt",
+                            "client_secret_path": "tests/config/secret/apitoken",
                             "client_secret": "secret_key",
                         },
                         "models": [
@@ -1154,11 +1154,11 @@ def test_valid_config_with_bam():
                         "name": "p1",
                         "type": "bam",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "deployment_name": "test",
                         "bam_config": {
                             "url": "http://localhost:1234",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         },
                         "models": [
                             {
@@ -1207,7 +1207,7 @@ def test_valid_config_with_bam_credentials_path_only_in_provider_config():
                         "deployment_name": "test",
                         "bam_config": {
                             "url": "http://localhost:1234",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         },
                         "models": [
                             {
@@ -1253,13 +1253,13 @@ def test_valid_config_with_watsonx():
                         "name": "p1",
                         "type": "watsonx",
                         "url": "https://url1",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "deployment_name": "test",
                         "project_id": "project ID",
                         "watsonx_config": {
                             "url": "http://localhost:1234",
                             "project_id": "project ID",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         },
                         "models": [
                             {
@@ -1310,7 +1310,7 @@ def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
                         "watsonx_config": {
                             "url": "http://localhost:1234",
                             "project_id": "project ID",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         },
                         "models": [
                             {
