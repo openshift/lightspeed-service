@@ -3,7 +3,7 @@ llm_providers:
   - name: p1
     type: bam
     url: "https://url1"
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: "https://murl1"

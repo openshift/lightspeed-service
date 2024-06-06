@@ -15,12 +15,12 @@ def provider_config():
             "name": "some_provider",
             "type": "openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -35,16 +35,16 @@ def provider_config_with_specific_parameters():
             "name": "some_provider",
             "type": "openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "openai_config": {
                 "url": "http://openai.com",
-                "credentials_path": "tests/config/secret2.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }

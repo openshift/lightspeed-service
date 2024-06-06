@@ -17,7 +17,7 @@ def provider_config():
             "name": "some_provider",
             "type": "azure_openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "deployment_name": "test_deployment_name",
             "models": [
                 {
@@ -36,15 +36,15 @@ def provider_config_with_specific_parameters():
             "name": "some_provider",
             "type": "azure_openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "deployment_name": "test_deployment_name",
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "credentials_path": "tests/config/secret2.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
                 "tenant_id": "00000000-0000-0000-0000-000000000001",
                 "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "client_secret_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {
@@ -86,7 +86,7 @@ def provider_config_without_tenant_id():
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
                 "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "client_secret_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {
@@ -110,7 +110,7 @@ def provider_config_without_client_id():
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
                 "tenant_id": "00000000-0000-0000-0000-000000000001",
-                "client_secret_path": "tests/config/secret.txt",
+                "client_secret_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {
@@ -159,7 +159,7 @@ def provider_config_access_token_related_parameters():
                 "deployment_name": "azure_deployment_name",
                 "tenant_id": "00000000-0000-0000-0000-000000000001",
                 "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "client_secret_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {

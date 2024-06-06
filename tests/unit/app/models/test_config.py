@@ -31,7 +31,7 @@ def test_model_config():
         {
             "name": "test_name",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "options": {
                 "foo": 1,
                 "bar": 2,
@@ -77,7 +77,7 @@ def test_model_config_validation_proper_config():
         {
             "name": "test_name",
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "options": {
                 "foo": 1,
                 "bar": 2,
@@ -94,7 +94,7 @@ def test_model_config_no_options():
         {
             "name": "test_name",
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
         }
     )
     # validation should not fail because model options are fully optional
@@ -130,7 +130,7 @@ def test_model_config_wrong_options():
         {
             "name": "test_name",
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "options": "not-dictionary",
         }
     )
@@ -148,7 +148,7 @@ def test_model_config_wrong_option_key():
         {
             "name": "test_name",
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "options": {
                 42: "answer",
             },
@@ -168,7 +168,7 @@ def test_model_config_validation_missing_name():
         {
             "name": None,
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
         }
     )
 
@@ -183,7 +183,7 @@ def test_model_config_validation_improper_url():
         {
             "name": "test_name",
             "url": "httpXXX://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
         }
     )
 
@@ -223,13 +223,13 @@ def test_provider_config():
             "name": "test_name",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -273,7 +273,7 @@ def test_provider_config():
             {
                 "name": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "models": [],
             }
         )
@@ -284,11 +284,11 @@ def test_provider_config():
             {
                 "name": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "models": [
                     {
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -301,7 +301,7 @@ def test_provider_config():
                 "name": "azure_openai",
                 "type": "azure_openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "models": [
                     {
                         "name": "test_model",
@@ -321,20 +321,20 @@ def test_that_url_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "azure_openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "deployment_name": "deploment-name",
                 "azure_openai_config": {
                     "tenant_id": "tenant-ID",
                     "client_id": "client-ID",
-                    "client_secret_path": "tests/config/secret.txt",
-                    "credentials_path": "tests/config/secret.txt",
+                    "client_secret_path": "tests/config/secret/apitoken",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "deployment_name": "deployment-name",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -347,16 +347,16 @@ def test_that_url_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "openai_config": {
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -369,16 +369,16 @@ def test_that_url_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "bam_config": {
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -391,17 +391,17 @@ def test_that_url_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "watsonx",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "watsonx_config": {
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "project_id": "*project id*",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -417,7 +417,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "openai_config": {
                     "url": "http://localhost",
@@ -426,7 +426,7 @@ def test_that_credentials_is_required_provider_parameter():
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -439,7 +439,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "bam_config": {
                     "url": "http://localhost",
@@ -448,7 +448,7 @@ def test_that_credentials_is_required_provider_parameter():
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -461,7 +461,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "name": "test_name",
                 "type": "watsonx",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "watsonx_config": {
                     "project_id": "*project id*",
@@ -471,7 +471,7 @@ def test_that_credentials_is_required_provider_parameter():
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -486,21 +486,21 @@ def test_provider_config_azure_openai_specific():
             "name": "test_name",
             "type": "azure_openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "deployment_name": "deploment-name",
             "azure_openai_config": {
                 "url": "http://localhost",
                 "tenant_id": "tenant-ID",
                 "client_id": "client-ID",
-                "client_secret_path": "tests/config/secret.txt",
-                "credentials_path": "tests/config/secret.txt",
+                "client_secret_path": "tests/config/secret/apitoken",
+                "credentials_path": "tests/config/secret/apitoken",
                 "deployment_name": "deployment-name",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -529,22 +529,22 @@ def test_provider_config_azure_openai_unknown_parameters():
                 "name": "test_name",
                 "type": "azure_openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "deployment_name": "deploment-name",
                 "azure_openai_config": {
                     "unknown_parameter": "unknown value",
                     "url": "http://localhost",
                     "tenant_id": "tenant-ID",
                     "client_id": "client-ID",
-                    "client_secret_path": "tests/config/secret.txt",
-                    "credentials_path": "tests/config/secret.txt",
+                    "client_secret_path": "tests/config/secret/apitoken",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "deployment_name": "deployment-name",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -559,17 +559,17 @@ def test_provider_config_openai_specific():
             "name": "test_name",
             "type": "openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
             "openai_config": {
                 "url": "http://localhost",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -594,22 +594,22 @@ def test_provider_config_openai_unknown_parameters():
                 "name": "test_name",
                 "type": "openai",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "deployment_name": "deploment-name",
                 "openai_config": {
                     "unknown_parameter": "unknown value",
                     "url": "http://localhost",
                     "tenant_id": "tenant-ID",
                     "client_id": "client-ID",
-                    "client_secret_path": "tests/config/secret.txt",
-                    "credentials_path": "tests/config/secret.txt",
+                    "client_secret_path": "tests/config/secret/apitoken",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "deployment_name": "deployment-name",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -624,18 +624,18 @@ def test_provider_config_watsonx_specific():
             "name": "test_name",
             "type": "watsonx",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
             "watsonx_config": {
                 "url": "http://localhost",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "*project id*",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -661,19 +661,19 @@ def test_provider_config_watsonx_unknown_parameters():
                 "name": "test_name",
                 "type": "watsonx",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "watsonx_config": {
                     "unknown_parameter": "unknown value",
                     "url": "http://localhost",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "project_id": "*project id*",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -688,17 +688,17 @@ def test_provider_config_bam_specific():
             "name": "test_name",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
             "bam_config": {
                 "url": "http://localhost",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -723,18 +723,18 @@ def test_provider_config_bam_unknown_parameters():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "bam_config": {
                     "unknown_parameter": "unknown value",
                     "url": "http://localhost",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 },
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -753,7 +753,7 @@ def test_improper_provider_specific_config():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "openai_config": {
                     "url": "http://localhost",
@@ -762,7 +762,7 @@ def test_improper_provider_specific_config():
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -781,7 +781,7 @@ def test_multiple_provider_specific_configs():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "openai_config": {
                     "url": "http://localhost",
@@ -793,7 +793,7 @@ def test_multiple_provider_specific_configs():
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             }
@@ -862,13 +862,13 @@ def test_provider_config_explicit_tokens(model_name):
             "name": "test_name",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
             "models": [
                 {
                     "name": model_name,
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "context_window_size": context_window_size,
                     "response_token_limit": response_token_limit,
                 }
@@ -892,13 +892,13 @@ def test_provider_config_improper_context_window_size_value():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "context_window_size": -1,
                     }
                 ],
@@ -917,13 +917,13 @@ def test_provider_config_improper_context_window_size_type():
                 "name": "test_name",
                 "type": "bam",
                 "url": "test_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "context_window_size": "not-a-number",
                     }
                 ],
@@ -954,12 +954,12 @@ def test_provider_config_validation_proper_config():
         {
             "name": "bam",
             "url": "http://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "http://test.model.url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -974,12 +974,12 @@ def test_provider_config_validation_improper_url():
         {
             "name": "bam",
             "url": "httpXXX://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "http://test.model.url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -995,12 +995,12 @@ def test_provider_config_validation_missing_name():
         {
             "type": "bam",
             "url": "httpXXX://test.url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "http://test.model.url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -1021,7 +1021,7 @@ def test_provider_config_validation_no_credentials_path():
                 {
                     "name": "test_model_name",
                     "url": "http://test.model.url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -1039,12 +1039,12 @@ def test_llm_providers():
                 "name": "test_provider_name",
                 "type": "bam",
                 "url": "test_provider_url",
-                "credentials_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret/apitoken",
                 "models": [
                     {
                         "name": "test_model_name",
                         "url": "test_model_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
             },
@@ -1079,7 +1079,7 @@ def test_llm_providers():
             [
                 {
                     "url": "test_provider_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "models": [],
                 },
             ]
@@ -1681,12 +1681,12 @@ def test_config():
                     "name": "test_provider_name",
                     "type": "bam",
                     "url": "test_provider_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "models": [
                         {
                             "name": "test_model_name",
                             "url": "test_model_url",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         }
                     ],
                 },
@@ -1759,12 +1759,12 @@ def test_config_improper_missing_model():
                         "name": "test_provider_name",
                         "type": "bam",
                         "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "test_model_name",
                                 "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                             }
                         ],
                     }
@@ -1793,12 +1793,12 @@ def test_config_improper_missing_provider():
                         "name": "test_provider_name",
                         "type": "bam",
                         "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "test_model_name",
                                 "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                             }
                         ],
                     }
@@ -1863,12 +1863,12 @@ def test_config_improper_model():
                         "name": "test_provider_name",
                         "type": "bam",
                         "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "test_model_name",
                                 "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                             }
                         ],
                     }
@@ -1958,12 +1958,12 @@ def test_config_no_query_filter_node():
                 {
                     "name": "openai",
                     "url": "http://test_provider_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "models": [
                         {
                             "name": "test_model_name",
                             "url": "http://test_model_url",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         }
                     ],
                 }
@@ -2003,12 +2003,12 @@ def test_config_no_query_filter():
                 {
                     "name": "openai",
                     "url": "http://test_provider_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "models": [
                         {
                             "name": "test_model_name",
                             "url": "http://test_model_url",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         }
                     ],
                 }
@@ -2053,12 +2053,12 @@ def test_config_improper_query_filter():
                     {
                         "name": "openai",
                         "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "test_model_name",
                                 "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                             }
                         ],
                     }
@@ -2103,12 +2103,12 @@ def test_config_with_multiple_query_filter():
                 {
                     "name": "openai",
                     "url": "http://test_provider_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                     "models": [
                         {
                             "name": "test_model_name",
                             "url": "http://test.io",
-                            "credentials_path": "tests/config/secret.txt",
+                            "credentials_path": "tests/config/secret/apitoken",
                         }
                     ],
                 },
@@ -2169,12 +2169,12 @@ def test_config_invalid_regex_query_filter():
                     {
                         "name": "openai",
                         "url": "http://test_provider_url",
-                        "credentials_path": "tests/config/secret.txt",
+                        "credentials_path": "tests/config/secret/apitoken",
                         "models": [
                             {
                                 "name": "test_model_name",
                                 "url": "http://test_model_url",
-                                "credentials_path": "tests/config/secret.txt",
+                                "credentials_path": "tests/config/secret/apitoken",
                             }
                         ],
                     }

@@ -9,7 +9,7 @@ llm_providers:
       deployment_name: "*deployment name*"
       tenant_id: "00000000-0000-0000-0000-000000000001"
       client_id: "00000000-0000-0000-0000-000000000002"
-      client_secret_path: "tests/config/secret.txt"
+      client_secret_path: "tests/config/secret/apitoken"
     models:
       - name: m1
         url: "https://murl1"

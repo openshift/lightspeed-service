@@ -15,12 +15,12 @@ def provider_config():
             "name": "some_provider",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -39,7 +39,7 @@ def provider_config_without_credentials():
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -54,16 +54,16 @@ def provider_config_with_specific_params():
             "name": "some_provider",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "bam_config": {
                 "url": "http://bam.com",
-                "credentials_path": "tests/config/secret2.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
