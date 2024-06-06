@@ -285,7 +285,7 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         if not config.query_redactor:
             logger.debug("query_redactor not found")
             return llm_request
-        llm_request.query = config.query_redactor.redact_query(
+        llm_request.query = config.query_redactor.redact(
             conversation_id, llm_request.query
         )
         return llm_request
@@ -316,7 +316,7 @@ def redact_attachments(
         for attachment in attachments:
             # might be possible to change attachments "in situ" but it might
             # confuse developers
-            redacted_content = config.query_redactor.redact_query(
+            redacted_content = config.query_redactor.redact(
                 conversation_id, attachment.content
             )
             redacted_attachment = Attachment(

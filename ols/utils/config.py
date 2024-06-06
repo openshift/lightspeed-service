@@ -11,7 +11,7 @@ import ols.app.models.config as config_model
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
 from ols.src.rag_index.index_loader import IndexLoader
-from ols.utils.query_filter import QueryFilters
+from ols.utils.redactor import Redactor
 
 
 class AppConfig:
@@ -28,7 +28,7 @@ class AppConfig:
     def __init__(self) -> None:
         """Initialize the class instance."""
         self.config = config_model.Config()
-        self._query_filters: Optional[QueryFilters] = None
+        self._query_filters: Optional[Redactor] = None
         self._rag_index: Optional[BaseIndex] = None
         self._conversation_cache: Optional[Cache] = None
 
@@ -57,11 +57,11 @@ class AppConfig:
         return self._conversation_cache
 
     @property
-    def query_redactor(self) -> Optional[QueryFilters]:
+    def query_redactor(self) -> Optional[Redactor]:
         """Return the query redactor."""
         # TODO: OLS-380 Config object mirrors configuration
         if self._query_filters is None:
-            self._query_filters = QueryFilters(self.ols_config.query_filters)
+            self._query_filters = Redactor(self.ols_config.query_filters)
         return self._query_filters
 
     @property

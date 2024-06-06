@@ -21,7 +21,7 @@ from ols.app.models.models import (
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import suid
-from ols.utils.query_filter import QueryFilters, RegexFilter
+from ols.utils.redactor import Redactor, RegexFilter
 from ols.utils.token_handler import PromptTooLongError
 
 
@@ -281,7 +281,7 @@ def test_query_filter_with_one_redact_filter(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use one custom filter
-    q = QueryFilters(config.ols_config.query_filters)
+    q = Redactor(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -303,7 +303,7 @@ def test_query_filter_with_two_redact_filters(_load_config):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
     # use two custom filters
-    q = QueryFilters(config.ols_config.query_filters)
+    q = Redactor(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -329,9 +329,7 @@ def test_query_filter_on_redact_error(_load_config):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     with pytest.raises(HTTPException, match="Error while redacting query"):
-        with patch(
-            "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
-        ):
+        with patch("ols.utils.redactor.Redactor.redact", side_effect=Exception):
             ols.redact_query(conversation_id, llm_request)
 
 
@@ -376,7 +374,7 @@ def test_attachments_redact_with_one_filter_defined(_load_config):
     ]
 
     # use two custom filters
-    q = QueryFilters(config.ols_config.query_filters)
+    q = Redactor(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -421,7 +419,7 @@ def test_attachments_redact_with_two_filters_defined(_load_config):
     ]
 
     # use two custom filters
-    q = QueryFilters(config.ols_config.query_filters)
+    q = Redactor(config.ols_config.query_filters)
     q.regex_filters = [
         RegexFilter(
             pattern=re.compile(r"Kubernetes"),
@@ -472,9 +470,7 @@ def test_attachments_redact_on_redact_error(_load_config):
 
     # try to redact all attachments
     with pytest.raises(HTTPException, match="Error while redacting attachment"):
-        with patch(
-            "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
-        ):
+        with patch("ols.utils.redactor.Redactor.redact", side_effect=Exception):
             ols.redact_attachments(conversation_id, attachments)
 
 
