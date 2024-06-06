@@ -1,26 +1,15 @@
 """Additional arguments for pytest."""
 
 import json
-import uuid
-import tempfile
-import os
 import logging
-import tarfile
-from typing import Dict
+import os
 import subprocess
-import pytest
-from reportportal_client import RPLogger
+import tarfile
+import tempfile
+import uuid
+from typing import Dict
 
 aws_env: Dict[str, str] = {}
-
-
-@pytest.fixture(scope="session")
-def rp_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    logging.setLoggerClass(RPLogger)
-    return logger
-
 
 def pytest_addoption(parser):
     """Argument parser for pytest."""
@@ -144,7 +133,6 @@ def get_secret_value(env: str) -> str:
 
 def pytest_sessionfinish(session):
     """Creates datarouter compatible archive to upload into report portal."""
-
     # Sending reports to report portal
     if session.config.option.rp_enabled:
         try:
