@@ -60,7 +60,7 @@ def pytest_addoption(parser):
         "--rp_name",
         action="store",
         default="e2e-ols-cluster",
-        trype=str,
+        type=str,
         help="Enable report portal upload",
     )
 
