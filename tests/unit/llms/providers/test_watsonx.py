@@ -35,6 +35,27 @@ def provider_config():
 
 
 @pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for Watsonx."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "watsonx",
+            "url": "https://us-south.ml.cloud.ibm.com",
+            "credentials_path": "tests/config/secret",
+            "project_id": "01234567-89ab-cdef-0123-456789abcdef",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
 def provider_config_without_credentials():
     """Fixture with provider configuration for Watsonx without credentials."""
     return ProviderConfig(
@@ -125,6 +146,23 @@ def test_params_handling(provider_config):
     # unknown parameters should be filtered out
     assert "unknown_parameter" not in watsonx.params
     assert "verbose" not in watsonx.params
+
+
+@patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())
+def test_credentials_key_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    params = {}
+
+    watsonx = Watsonx(
+        model="uber-model",
+        params=params,
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = watsonx.load()
+    assert isinstance(llm, WatsonxLLM)
+
+    # taken from configuration
+    assert watsonx.credentials == "secret_key"
 
 
 @patch("ols.src.llms.providers.watsonx.WatsonxLLM", new=WatsonxLLM())

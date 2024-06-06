@@ -54,6 +54,23 @@ def test_model_config():
     assert model_config.options is None
 
 
+def test_model_config_path_to_secret_directory():
+    """Test the ModelConfig model."""
+    model_config = ModelConfig(
+        {
+            "name": "test_name",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret",
+            "options": {
+                "foo": 1,
+                "bar": 2,
+            },
+        }
+    )
+
+    assert model_config.credentials == "secret_key"
+
+
 def test_model_config_equality():
     """Test the ModelConfig equality check."""
     model_config_1 = ModelConfig()
@@ -490,10 +507,7 @@ def test_provider_config_azure_openai_specific():
             "deployment_name": "deploment-name",
             "azure_openai_config": {
                 "url": "http://localhost",
-                "tenant_id": "tenant-ID",
-                "client_id": "client-ID",
-                "client_secret_path": "tests/config/secret/apitoken",
-                "credentials_path": "tests/config/secret/apitoken",
+                "credentials_path": "tests/config/secret_azure_tenant_id_client_id_client_secret",
                 "deployment_name": "deployment-name",
             },
             "models": [
@@ -508,11 +522,15 @@ def test_provider_config_azure_openai_specific():
     # Azure OpenAI-specific configuration must be present
     assert provider_config.azure_config is not None
     assert str(provider_config.azure_config.url) == "http://localhost/"
-    assert provider_config.azure_config.tenant_id == "tenant-ID"
-    assert provider_config.azure_config.client_id == "client-ID"
+    assert (
+        provider_config.azure_config.tenant_id == "00000000-0000-0000-0000-000000000001"
+    )
+    assert (
+        provider_config.azure_config.client_id == "00000000-0000-0000-0000-000000000002"
+    )
     assert provider_config.azure_config.deployment_name == "deployment-name"
-    assert provider_config.azure_config.client_secret == "secret_key"  # noqa: S105
-    assert provider_config.azure_config.api_key == "secret_key"
+    assert provider_config.azure_config.client_secret == "client secret"  # noqa: S105
+    assert provider_config.azure_config.api_key is None
 
     # configuration for other providers must not be set
     assert provider_config.openai_config is None

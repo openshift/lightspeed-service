@@ -36,6 +36,41 @@ def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
     return None
 
 
+def _read_secret(
+    data: dict,
+    path_key: str,
+    default_filename: str,
+    raise_on_error: bool = True,
+    directory_name_expected: bool = False,
+) -> Optional[str]:
+    """Read secret from file on given path or from filename if path points to directory."""
+    path = data.get(path_key)
+
+    if path is None:
+        return None
+
+    filename = path
+    if os.path.isdir(path):
+        filename = os.path.join(path, default_filename)
+    elif directory_name_expected:
+        msg = "Improper credentials_path specified: it must contain path to directory with secrets."
+        # no logging configured yet
+        print(msg)
+
+    try:
+        with open(filename, mode="r", encoding="utf-8") as f:
+            return f.read().rstrip()
+    except IOError as e:
+        # some files with secret must exist, so for such cases it is time
+        # to inform about improper configuration
+        if raise_on_error:
+            raise
+        # no logging configured yet
+        print("Problem reading secret from file {filename}:", e)
+        print(f"Verify the provider secret contains {default_filename}")
+        return None
+
+
 def _dir_check(path: FilePath, desc: str) -> None:
     """Check that path is a readable directory."""
     if not os.path.exists(path):
@@ -82,7 +117,9 @@ class ModelConfig(BaseModel):
 
         # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
         self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
+        self.credentials = _read_secret(
+            data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
+        )
 
         # if the context window size is not set explicitly, use value
         # set for given provider + model, or default value for model without
@@ -288,7 +325,9 @@ class ProviderConfig(BaseModel):
 
         self.set_provider_type(data)
         self.url = data.get("url", None)
-        self.credentials = _get_attribute_from_file(data, "credentials_path")
+        self.credentials = _read_secret(
+            data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
+        )
 
         # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
         self.project_id = data.get("project_id", None)
@@ -361,8 +400,26 @@ class ProviderConfig(BaseModel):
                     azure_config = data.get("azure_openai_config")
                     self.check_provider_config(azure_config)
                     if azure_config is not None:
-                        azure_config["client_secret"] = _get_attribute_from_file(
-                            azure_config, "client_secret_path"
+                        azure_config["tenant_id"] = _read_secret(
+                            azure_config,
+                            constants.CREDENTIALS_PATH_SELECTOR,
+                            constants.AZURE_TENANT_ID_FILENAME,
+                            directory_name_expected=True,
+                            raise_on_error=False,
+                        )
+                        azure_config["client_id"] = _read_secret(
+                            azure_config,
+                            constants.CREDENTIALS_PATH_SELECTOR,
+                            constants.AZURE_CLIENT_ID_FILENAME,
+                            directory_name_expected=True,
+                            raise_on_error=False,
+                        )
+                        azure_config["client_secret"] = _read_secret(
+                            azure_config,
+                            constants.CREDENTIALS_PATH_SELECTOR,
+                            constants.AZURE_CLIENT_SECRET_FILENAME,
+                            directory_name_expected=True,
+                            raise_on_error=False,
                         )
                     self.read_api_key(azure_config)
                     self.azure_config = AzureOpenAIConfig(**azure_config)
@@ -389,7 +446,12 @@ class ProviderConfig(BaseModel):
     @staticmethod
     def read_api_key(config: dict) -> None:
         """Read API key from file with secret."""
-        config["api_key"] = _get_attribute_from_file(config, "credentials_path")
+        config["api_key"] = _read_secret(
+            config,
+            constants.CREDENTIALS_PATH_SELECTOR,
+            constants.API_TOKEN_FILENAME,
+            raise_on_error=False,
+        )
 
     def check_provider_config(self, provider_config: Any) -> None:
         """Check if configuration is presented for selected provider type."""
