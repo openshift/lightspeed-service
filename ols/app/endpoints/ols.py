@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
+    Attachment,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
@@ -296,6 +297,44 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error while redacting query",
+                "cause": str(redactor_error),
+            },
+        )
+
+
+def redact_attachments(
+    conversation_id: str, attachments: list[Attachment]
+) -> list[Attachment]:
+    """Redact all attachments using query_redactor, raise HTTPException in case of any problem."""
+    logger.debug(f"Redacting attachments for conversation {conversation_id}")
+    if not config.query_redactor:
+        logger.debug("query_redactor not found, attachments remain as is")
+        return attachments
+
+    try:
+        redacted_attachments = []
+        for attachment in attachments:
+            # might be possible to change attachments "in situ" but it might
+            # confuse developers
+            redacted_content = config.query_redactor.redact_query(
+                conversation_id, attachment.content
+            )
+            redacted_attachment = Attachment(
+                attachment_type=attachment.attachment_type,
+                content_type=attachment.content_type,
+                content=redacted_content,
+            )
+            redacted_attachments.append(redacted_attachment)
+        return redacted_attachments
+
+    except Exception as redactor_error:
+        logger.error(
+            f"Error while redacting attachment {redactor_error} for conversation {conversation_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error while redacting attachment",
                 "cause": str(redactor_error),
             },
         )

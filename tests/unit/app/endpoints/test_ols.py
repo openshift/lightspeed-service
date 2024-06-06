@@ -13,6 +13,7 @@ from ols import config, constants
 from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
 from ols.app.models.models import (
+    Attachment,
     LLMRequest,
     RagChunk,
     ReferencedDocument,
@@ -332,6 +333,149 @@ def test_query_filter_on_redact_error(_load_config):
             "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
         ):
             ols.redact_query(conversation_id, llm_request)
+
+
+def test_attachments_redact_on_no_filters_defined(_load_config):
+    """Test the function to redact attachments when no filters are setup."""
+    conversation_id = suid.get_suid()
+    attachments = [
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by Kubernetes",
+        ),
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by OpenShift",
+        ),
+    ]
+    # try to redact all attachments
+    redacted = ols.redact_attachments(conversation_id, attachments)
+    assert redacted is not None
+
+    # no filters are set up, so the redacted attachments must
+    # be the same as original ones
+    assert redacted == attachments
+
+
+def test_attachments_redact_with_one_filter_defined(_load_config):
+    """Test the function to redact attachments when one filter is setup."""
+    conversation_id = suid.get_suid()
+    attachments = [
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by Kubernetes",
+        ),
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by OpenShift",
+        ),
+    ]
+
+    # use two custom filters
+    q = QueryFilters(config.ols_config.query_filters)
+    q.regex_filters = [
+        RegexFilter(
+            pattern=re.compile(r"Kubernetes"),
+            name="kubernetes-filter",
+            replace_with="FooBar",
+        ),
+    ]
+    config._query_filters = q
+
+    # try to redact all attachments
+    redacted = ols.redact_attachments(conversation_id, attachments)
+    assert redacted is not None
+
+    # one filter must be applied
+    assert redacted[0] == Attachment(
+        attachment_type="log",
+        content_type="text/plain",
+        content="Log created by FooBar",
+    )
+    # no filters should be applied
+    assert redacted[1] == Attachment(
+        attachment_type="log",
+        content_type="text/plain",
+        content="Log created by OpenShift",
+    )
+
+
+def test_attachments_redact_with_two_filters_defined(_load_config):
+    """Test the function to redact attachments when two filters are setup."""
+    conversation_id = suid.get_suid()
+    attachments = [
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by Kubernetes",
+        ),
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by OpenShift",
+        ),
+    ]
+
+    # use two custom filters
+    q = QueryFilters(config.ols_config.query_filters)
+    q.regex_filters = [
+        RegexFilter(
+            pattern=re.compile(r"Kubernetes"),
+            name="kubernetes-filter",
+            replace_with="FooBar",
+        ),
+        RegexFilter(
+            pattern=re.compile(r"FooBar"),
+            name="FooBar-filter",
+            replace_with="Baz",
+        ),
+    ]
+    config._query_filters = q
+
+    # try to redact all attachments
+    redacted = ols.redact_attachments(conversation_id, attachments)
+    assert redacted is not None
+
+    # both filters must be applied
+    assert redacted[0] == Attachment(
+        attachment_type="log",
+        content_type="text/plain",
+        content="Log created by Baz",
+    )
+    # no filters should be applied
+    assert redacted[1] == Attachment(
+        attachment_type="log",
+        content_type="text/plain",
+        content="Log created by OpenShift",
+    )
+
+
+def test_attachments_redact_on_redact_error(_load_config):
+    """Test the function to redact attachments when redactor raises an error."""
+    conversation_id = suid.get_suid()
+    attachments = [
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by Kubernetes",
+        ),
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="Log created by OpenShift",
+        ),
+    ]
+
+    # try to redact all attachments
+    with pytest.raises(HTTPException, match="Error while redacting attachment"):
+        with patch(
+            "ols.utils.query_filter.QueryFilters.redact_query", side_effect=Exception
+        ):
+            ols.redact_attachments(conversation_id, attachments)
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
