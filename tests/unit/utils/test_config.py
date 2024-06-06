@@ -12,7 +12,7 @@ from yaml.parser import ParserError
 
 from ols import config
 from ols.app.models.config import Config, InvalidConfigurationError
-from ols.utils.query_filter import RegexFilter
+from ols.utils.redactor import RegexFilter
 
 E = TypeVar("E", bound=Exception)
 
