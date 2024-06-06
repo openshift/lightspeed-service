@@ -53,14 +53,12 @@ def pytest_addoption(parser):
         "--rp_enabled",
         action="store_true",
         default=False,
-        type=bool,
         help="Enable report portal upload",
     )
     parser.addoption(
         "--rp_name",
         action="store",
         default="e2e-ols-cluster",
-        type=str,
         help="Enable report portal upload",
     )
 
