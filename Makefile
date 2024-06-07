@@ -58,8 +58,9 @@ check-coverage: test-unit test-integration  ## Unit tests and integration tests 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
+
 	python -m pytest tests/e2e --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR}
+	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR} --rp_enabled --rp_name=ols-e2e-tests
 
 coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"

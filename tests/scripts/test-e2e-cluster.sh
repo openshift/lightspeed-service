@@ -12,6 +12,7 @@ set -eou pipefail
 # 3) Wait for the ols api server to be available
 # 4) Invoke the test-e2e Makefile target
 
+
 make install-deps && make install-deps-test
 
 DIR="${BASH_SOURCE%/*}"
