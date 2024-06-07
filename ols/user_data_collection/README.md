@@ -57,7 +57,7 @@ For staging: https://sso.stage.redhat.com
 > In CI, we are proving in  `CP_OFFLINE_TOKEN` which was manually generated via https://access.redhat.com/management/api and stored into our secrets/vault.
 
 ## Data flow diagram
-![Sequence diagram](docs/user_data_flow.png)
+![Sequence diagram](../../docs/user_data_flow.png)
 
 
 ## How to test locally
