@@ -60,7 +60,7 @@ authors = []
 dependencies = [
     "torch==2.2.2+cpu",
     "fastapi==0.111.0",
-    "gradio==4.31.2",
+    "gradio==4.33.0",
     "langchain==0.2.1",
     "langchain-ibm==0.1.7",
     "llama-index==0.10.38",
