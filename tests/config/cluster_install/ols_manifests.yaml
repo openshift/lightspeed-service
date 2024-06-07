@@ -1,5 +1,6 @@
 # Env vars for use w/ envsubst:
 # $OLS_IMAGE - the pullspec for the OLS container image to deploy
+# We use resources as defined by lightspeed-operator
 
 ---
 apiVersion: apps/v1
@@ -48,7 +49,13 @@ spec:
         ports:
         - containerPort: 8443
           protocol: TCP
-        resources: {}
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 100m
+            memory: 1Gi
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -77,6 +84,13 @@ spec:
           - name: LOG_LEVEL
             value: "DEBUG"
         command: ["python3.11", "/app-root/ols/user_data_collection/data_collector.py"]
+        resources:
+        limits:
+          cpu: 100m
+          memory: 512Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
         volumeMounts:
           - name: ols-user-data
             mountPath: /app-root/ols-user-data
