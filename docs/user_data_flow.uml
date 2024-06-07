@@ -1,0 +1,45 @@
+@startuml
+
+header Sequence diagram for User Data Collection System
+footer Copyright © 2024 Red Hat Inc. Author: Ondrej Metelka
+
+box "OpenShift Cluster"
+  participant "User" as user
+  participant "OLS Service" as ols
+  participant "Local Disk" as disk
+  participant "Sidecar Container" as sidecar
+end box
+box "cloud.redhat.com"
+  database "Ingress Endpoint" as ingress
+  participant "Customer Services" as cs
+  database "AWS S3 Bucket" as aws
+end box
+box "RH VPN"
+  participant "Internal Data Pipeline" as ccx
+  database "Ceph S3 Bucket" as ceph
+end box
+
+== User Interaction ==
+
+user -> ols: Interaction
+ols -> disk: Store transcript as JSON
+
+== User Feedback ==
+
+user -> ols: Feedback
+ols -> disk: Store feedback as JSON
+
+== Data Packaging and Upload ==
+
+sidecar -> disk: Scan for new JSON files
+disk -> sidecar: New JSON files
+sidecar -> sidecar: Package data into tar.gz
+sidecar -> ingress: Upload ols.tgz
+
+== Data Processing ==
+ingress -> cs: Forward data
+cs -> aws: Validate and store into
+aws -> ccx: Notify
+ccx -> ceph: Process and store
+
+@enduml
