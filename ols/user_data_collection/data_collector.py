@@ -386,7 +386,8 @@ def disabled_by_file() -> bool:
 if __name__ == "__main__":
     if not RUN_WITHOUT_INITIAL_WAIT:
         logger.info(
-            "collection script started, waiting 5 minutes before first collection"
+            f"collection script started, waiting {INITIAL_WAIT} seconds "
+            "before first collection"
         )
         time.sleep(INITIAL_WAIT)
     while True:
