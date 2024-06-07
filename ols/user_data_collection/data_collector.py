@@ -342,6 +342,9 @@ def gather_ols_user_data(data_path: str) -> None:
                 logger.error(
                     f"{e.__class__.__name__} - upload and data removal canceled"
                 )
+
+            # close the tarball to release mem
+            tarball.close()
     else:
         logger.info(f"'{data_path}' contains no data, nothing to do...")
 
