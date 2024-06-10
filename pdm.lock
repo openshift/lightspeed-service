@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:18c029abd95bc38664caf5e20a58149e22e14ca19af230a0583c3e5366bc2aad"
+content_hash = "sha256:a7a9ad35a5e407c89f0818b9f10522667685b22e0989a9e662caec10f2cdc8d1"
 
 [[package]]
 name = "aiofiles"
@@ -681,7 +681,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.33.0"
+version = "4.36.1"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -690,7 +690,7 @@ dependencies = [
     "altair<6.0,>=4.2.0",
     "fastapi",
     "ffmpy",
-    "gradio-client==0.17.0",
+    "gradio-client==1.0.1",
     "httpx>=0.24.1",
     "huggingface-hub>=0.19.3",
     "importlib-resources<7.0,>=1.3",
@@ -715,13 +715,13 @@ dependencies = [
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.33.0-py3-none-any.whl", hash = "sha256:5d9a9c414927cb6cb535e0f4c64b735622859d1d1eb226a2ba39729a04e2c941"},
-    {file = "gradio-4.33.0.tar.gz", hash = "sha256:ccf0535001e93ef354cdbfb632d76a12f200454e9fd6bf4fa593944d74016562"},
+    {file = "gradio-4.36.1-py3-none-any.whl", hash = "sha256:31edb504c88c1db06c08daf750dcdaa072087ada59aa4ff83c1a3f4c2075912d"},
+    {file = "gradio-4.36.1.tar.gz", hash = "sha256:72b2d21156d3467123bae6f30f463f002ef06e272766274308f5ed3cac37563b"},
 ]
 
 [[package]]
 name = "gradio-client"
-version = "0.17.0"
+version = "1.0.1"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["default"]
@@ -734,8 +734,8 @@ dependencies = [
     "websockets<12.0,>=10.0",
 ]
 files = [
-    {file = "gradio_client-0.17.0-py3-none-any.whl", hash = "sha256:dcacfb0be428144c7d9e84eae8f3c2375beb6852627bfaa22d84b52ec3f53193"},
-    {file = "gradio_client-0.17.0.tar.gz", hash = "sha256:ca7d952ff7943ccf0c376ce60e03a87968489845de4b8a9e45888db1c5378512"},
+    {file = "gradio_client-1.0.1-py3-none-any.whl", hash = "sha256:fe3f527349ac38cbc5deb6d629a15c06fa3b4a68d1e04dc5ca9fbb1896318629"},
+    {file = "gradio_client-1.0.1.tar.gz", hash = "sha256:b3fa4d1c626067cc866d6172caa75d373e114bacfba650e49e293646d786646a"},
 ]
 
 [[package]]
