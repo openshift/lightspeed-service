@@ -24,22 +24,24 @@ class Redactor:
         logger.debug(f"Filters : {filters}")
         if not filters:
             return
-        for filter in filters:
-            pattern = re.compile(str(filter.pattern))
+        for regex_filter in filters:
+            pattern = re.compile(str(regex_filter.pattern))
             regex_filters.append(
                 RegexFilter(
                     pattern=pattern,
-                    name=filter.name,
-                    replace_with=filter.replace_with,
+                    name=regex_filter.name,
+                    replace_with=regex_filter.replace_with,
                 )
             )
         self.regex_filters = regex_filters
 
-    def redact(self, conversation_id: str, input: str) -> str:
+    def redact(self, conversation_id: str, text_input: str) -> str:
         """Redact the input using regex built."""
-        logger.debug(f"Redacting conversation {conversation_id} input: {input}")
-        for filter in self.regex_filters:
-            input, count = filter.pattern.subn(filter.replace_with, input)
-            logger.debug(f"Replaced: {count} matched with filter : {filter.name}")
-        logger.debug(f"Redacted conversation {conversation_id} input: {input}")
-        return input
+        logger.debug(f"Redacting conversation {conversation_id} input: {text_input}")
+        for regex_filter in self.regex_filters:
+            text_input, count = regex_filter.pattern.subn(
+                regex_filter.replace_with, text_input
+            )
+            logger.debug(f"Replaced: {count} matched with filter : {regex_filter.name}")
+        logger.debug(f"Redacted conversation {conversation_id} input: {text_input}")
+        return text_input
