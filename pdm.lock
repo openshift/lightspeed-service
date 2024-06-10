@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:a7a9ad35a5e407c89f0818b9f10522667685b22e0989a9e662caec10f2cdc8d1"
+content_hash = "sha256:35068042edf306c9eff88e93fa764cfbe8fea0b2af99591caabdd55bfa4d26c7"
 
 [[package]]
 name = "aiofiles"
@@ -1176,7 +1176,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.2.1"
+version = "0.2.2"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1193,8 +1193,8 @@ dependencies = [
     "tenacity<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.2.1-py3-none-any.whl", hash = "sha256:3e13bf97c5717bce2c281f5117e8778823e8ccf62d949e73d3869448962b1c97"},
-    {file = "langchain-0.2.1.tar.gz", hash = "sha256:5758a315e1ac92eb26dafec5ad0fafa03cafa686aba197d5bb0b1dd28cc03ebe"},
+    {file = "langchain-0.2.2-py3-none-any.whl", hash = "sha256:58ca0c47bcdd156da66f50a0a4fcedc49bf6950827f4a6b06c8c4842d55805f3"},
+    {file = "langchain-0.2.2.tar.gz", hash = "sha256:9d61e50e9cdc2bea659bc5e6c03650ba048fda63a307490ae368e539f61a0d3a"},
 ]
 
 [[package]]
