@@ -26,6 +26,7 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
+from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import suid
@@ -86,13 +87,19 @@ def conversation_request(
     previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Retrieve attachments from the request
-    retrieve_attachments(llm_request)
+    attachments = retrieve_attachments(llm_request)
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
+
+    # Redact all attachments
+    attachments = redact_attachments(conversation_id, attachments)
+
+    # All attachments should be appended to query
+    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
 
     # Validate the query
     if not previous_input:
