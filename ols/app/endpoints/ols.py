@@ -141,13 +141,16 @@ def conversation_request(
             summarizer_response.history_truncated,
         )
 
-    referenced_documents = [
-        ReferencedDocument(
-            rag_chunk.doc_url,
-            rag_chunk.doc_title,
-        )
-        for rag_chunk in summarizer_response.rag_chunks
-    ]
+    # De-dup & retain order to create list of referenced documents
+    referenced_documents = list(
+        {
+            rag_chunk.doc_url: ReferencedDocument(
+                rag_chunk.doc_url,
+                rag_chunk.doc_title,
+            )
+            for rag_chunk in summarizer_response.rag_chunks
+        }.values()
+    )
 
     return LLMResponse(
         conversation_id=conversation_id,
