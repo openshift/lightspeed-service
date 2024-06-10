@@ -160,3 +160,13 @@ HTTP_RESPONSE_HEADERS_TO_REDACT = frozenset(
 RUNNING_IN_CLUSTER = (
     "KUBERNETES_SERVICE_HOST" in os.environ and "KUBERNETES_SERVICE_PORT" in os.environ
 )
+
+# Supported attachment types
+ATTACHMENT_TYPES = frozenset(
+    {"log", "configuration", "error message", "stack trace", "api object"}
+)
+
+# Supported attachment content types
+ATTACHMENT_CONTENT_TYPES = frozenset(
+    {"text/plain", "application/json", "application/yaml", "application/xml"}
+)
