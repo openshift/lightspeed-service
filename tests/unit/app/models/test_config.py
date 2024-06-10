@@ -1829,12 +1829,6 @@ def test_config_improper_provider():
                 "ols_config": {
                     "default_provider": "test_default_provider",
                     "default_model": "test_default_model",
-                    "classifier_provider": "test_classifer_provider",
-                    "classifier_model": "test_classifier_model",
-                    "summarizer_provider": "test_summarizer_provider",
-                    "summarizer_model": "test_summarizer_model",
-                    "validator_provider": "test_validator_provider",
-                    "validator_model": "test_validator_model",
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -1876,12 +1870,6 @@ def test_config_improper_model():
                 "ols_config": {
                     "default_provider": "test_provider_name",
                     "default_model": "test_default_model",
-                    "classifier_provider": "test_classifer_provider",
-                    "classifier_model": "test_classifier_model",
-                    "summarizer_provider": "test_summarizer_provider",
-                    "summarizer_model": "test_summarizer_model",
-                    "validator_provider": "test_validator_provider",
-                    "validator_model": "test_validator_model",
                     "conversation_cache": {
                         "type": "memory",
                         "memory": {
@@ -1971,12 +1959,6 @@ def test_config_no_query_filter_node():
             "ols_config": {
                 "default_provider": "openai",
                 "default_model": "test_default_model",
-                "classifier_provider": "test_classifer_provider",
-                "classifier_model": "test_classifier_model",
-                "summarizer_provider": "test_summarizer_provider",
-                "summarizer_model": "test_summarizer_model",
-                "validator_provider": "test_validator_provider",
-                "validator_model": "test_validator_model",
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -2016,12 +1998,6 @@ def test_config_no_query_filter():
             "ols_config": {
                 "default_provider": "openai",
                 "default_model": "test_default_model",
-                "classifier_provider": "test_classifer_provider",
-                "classifier_model": "test_classifier_model",
-                "summarizer_provider": "test_summarizer_provider",
-                "summarizer_model": "test_summarizer_model",
-                "validator_provider": "test_validator_provider",
-                "validator_model": "test_validator_model",
                 "conversation_cache": {
                     "type": "memory",
                     "memory": {
@@ -2066,12 +2042,6 @@ def test_config_improper_query_filter():
                 "ols_config": {
                     "default_provider": "openai",
                     "default_model": "test_default_model",
-                    "classifier_provider": "test_classifer_provider",
-                    "classifier_model": "test_classifier_model",
-                    "summarizer_provider": "test_summarizer_provider",
-                    "summarizer_model": "test_summarizer_model",
-                    "validator_provider": "test_validator_provider",
-                    "validator_model": "test_validator_model",
                     "query_filters": [
                         {
                             "pattern": "test_regular_expression",
@@ -2182,12 +2152,6 @@ def test_config_invalid_regex_query_filter():
                 "ols_config": {
                     "default_provider": "openai",
                     "default_model": "test_default_model",
-                    "classifier_provider": "test_classifer_provider",
-                    "classifier_model": "test_classifier_model",
-                    "summarizer_provider": "test_summarizer_provider",
-                    "summarizer_model": "test_summarizer_model",
-                    "validator_provider": "test_validator_provider",
-                    "validator_model": "test_validator_model",
                     "query_filters": [
                         {
                             "name": "test_name",
