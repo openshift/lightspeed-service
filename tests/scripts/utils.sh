@@ -104,7 +104,7 @@ function run_suite() {
   wait_for_ols "$OLS_URL"
   if [ $? -ne 0 ]; then
     echo "Timed out waiting for OLS to become available"
-    echo "${JUNIT_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
+    echo "${JUNIT_SETUP_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
 
     ARTIFACT_DIR=$ARTIFACT_DIR SUITE_ID=$1 python tests/scripts/must_gather.py
     return 1
