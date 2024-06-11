@@ -163,7 +163,15 @@ RUNNING_IN_CLUSTER = (
 
 # Supported attachment types
 ATTACHMENT_TYPES = frozenset(
-    {"log", "configuration", "error message", "stack trace", "api object"}
+    {
+        "alert",
+        "api object",
+        "configuration",
+        "error message",
+        "event",
+        "log",
+        "stack trace",
+    }
 )
 
 # Supported attachment content types
