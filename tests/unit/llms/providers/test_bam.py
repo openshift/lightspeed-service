@@ -28,6 +28,26 @@ def provider_config():
 
 
 @pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for BAM."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
 def provider_config_without_credentials():
     """Fixture with provider configuration for BAM without credentials."""
     return ProviderConfig(
@@ -114,6 +134,22 @@ def test_params_handling(provider_config):
     assert "verbose" not in bam.params
 
     assert "unknown_parameter" not in bam.params
+
+
+def test_credentials_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    params = {}
+
+    bam = BAM(
+        model="uber-model",
+        params=params,
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = bam.load()
+    assert isinstance(llm, LangChainInterface)
+
+    # taken from configuration
+    assert bam.credentials == "secret_key"
 
 
 def test_params_handling_specific_params(provider_config_with_specific_params):

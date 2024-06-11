@@ -28,6 +28,26 @@ def provider_config():
 
 
 @pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for OpenAI."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "openai",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
 def provider_config_with_specific_parameters():
     """Fixture with provider configuration for OpenAI with specific parameters."""
     return ProviderConfig(
@@ -99,6 +119,21 @@ def test_params_handling(provider_config):
     assert openai.default_params["openai_api_key"] == "secret_key"
 
     assert openai.default_params["base_url"] == "test_url"
+
+
+def test_credentials_key_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    params = {}
+
+    openai = OpenAI(
+        model="uber-model",
+        params=params,
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = openai.load()
+    assert isinstance(llm, ChatOpenAI)
+
+    assert openai.credentials == "secret_key"
 
 
 def test_loading_provider_specific_parameters(provider_config_with_specific_parameters):
