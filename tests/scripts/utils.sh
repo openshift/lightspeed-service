@@ -10,21 +10,6 @@ JUNIT_SETUP_TEMPLATE=$(cat << EOF
 EOF
 )
 
-
-# Wait for the ols api server to respond 200 on the readiness endpoint
-# $1 - url of the ols server to poll
-function wait_for_ols() {
-  for i in {1..60}; do
-    echo Checking OLS readiness, attempt "$i" of 60
-    curl -sk --fail "$1/readiness"
-    if [ $? -eq 0 ]; then
-      return 0
-    fi  
-    sleep 6
-  done
-  return 1
-}
-
 # no arguments
 function cleanup_ols() {
     # Deletes may fail if this is the first time running against
@@ -106,6 +91,7 @@ function run_suite() {
   
   install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 
+<<<<<<< HEAD
   # wait for the ols api server to come up
   wait_for_ols "$OLS_URL"
   if [ $? -ne 0 ]; then
@@ -115,6 +101,12 @@ function run_suite() {
     ARTIFACT_DIR=$ARTIFACT_DIR SUITE_ID=$1 python tests/scripts/must_gather.py
     return 1
   fi
+=======
+  # Determine the hostname for the ols route
+  #export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
+  #echo "OLS_URL set to $OLS_URL"
+  export SUITE_ID=$1
+>>>>>>> 1c21899 (OLS581)
 
   # Run e2e tests with response evaluation.
   SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e

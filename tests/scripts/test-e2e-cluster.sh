@@ -25,15 +25,19 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath provider_url provider_project_id provider provider_deployment_name llm_model ols_image
   # empty test_tags means run all tests
+  export PROVIDER="azure_openai"
   run_suite "azure_openai" "" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "https://ols-test.openai.azure.com/" "" "0301-dep" "gpt-3.5-turbo" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
+  export PROVIDER="bam"
   run_suite "bam" "" "bam" "$BAM_PROVIDER_KEY_PATH" "" "" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
+  export PROVIDER="openai"
   run_suite "openai" "" "openai" "$OPENAI_PROVIDER_KEY_PATH" "" "" "" "gpt-3.5-turbo" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
+  export PROVIDER="watsonx"
   run_suite "watsonx" "" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "" "ad629765-c373-4731-9d69-dc701724c081" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
   (( rc = rc || $? ))
   set -e

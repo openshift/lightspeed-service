@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import sys
 import time
 from typing import Optional
 
@@ -32,11 +31,13 @@ from tests.e2e.utils.postgres import (
     retrieve_connection,
 )
 from tests.e2e.utils.response_evaluation import ResponseEvaluation
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
 on_cluster = False
+
 
 # OLS_URL env only needs to be set when running against a local ols instance,
 # when ols is run against a cluster the url is retrieved from the cluster.
@@ -56,12 +57,14 @@ OLS_USER_DATA_COLLECTION_INTERVAL = 10
 OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
 
+# ruff: noqa: S605, S607
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
     try:
         global ols_url, client, metrics_client
         token = None
         metrics_token = None
+        provider = os.getenv("PROVIDER")
         if on_cluster:
             print("Setting up for on cluster test execution\n")
             ols_url = cluster_utils.get_ols_url("ols")
@@ -74,11 +77,30 @@ def setup_module(module):
         else:
             print("Setting up for standalone test execution\n")
 
+        # Determine the hostname for the OLS route
+        ols_url = os.popen("oc get route ols -o jsonpath='{.spec.host}'").read().strip()
+        if not ols_url.startswith("http"):
+            ols_url = f"https://{ols_url}"
+
+        print(f"OLS_URL set to {ols_url}")
+        os.environ["OLS_URL"] = ols_url
+
         client = client_utils.get_http_client(ols_url, token)
         metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+
+        # Wait for OLS to be ready
+        print(f"Waiting for OLS to be ready on provider: {provider}...")
+        success = wait_for_ols(ols_url)
+        if not success:
+            print(f"OLS did not become available in time on provider: {provider}")
+            must_gather()
+            pytest.fail(f"OLS did not become available in time on provider: {provider}")
+        print("OLS is ready")
+
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
-        sys.exit(1)
+        must_gather()
+        pytest.fail(f"Failed to setup ols access: {e}")
 
 
 def teardown_module(module):
