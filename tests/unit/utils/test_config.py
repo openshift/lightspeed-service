@@ -57,6 +57,32 @@ def test_invalid_config():
     check_expected_exception(
         """
 ---
+llm_providers:
+  - name: p1
+    type: bam
+    credentials_path: tests/config/secret/apitoken
+    models:
+      - name: m1
+        credentials_path: tests/config/secret/apitoken
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+dev_config:
+  llm_params:
+     - something: 0
+""",
+        InvalidConfigurationError,
+        "llm_params needs to be defined as a dict",
+    )
+
+
+def test_invalid_config_missing_llm_providers_section():
+    """Check handling invalid configuration without LLM providers section."""
+    check_expected_exception(
+        """
+---
 ols_config:
   conversation_cache:
     type: memory
@@ -67,6 +93,9 @@ ols_config:
         "no LLM providers config section found",
     )
 
+
+def test_invalid_config_missing_ols_config_section():
+    """Check handling invalid configuration without OLS section."""
     check_expected_exception(
         """
 ---
@@ -92,6 +121,9 @@ llm_providers:
         "no OLS config section found",
     )
 
+
+def test_invalid_config_invalid_model_url():
+    """Check handling invalid configuration containing invalid model URL."""
     check_expected_exception(
         """
 ---
@@ -122,6 +154,9 @@ ols_config:
         "model URL is invalid",
     )
 
+
+def test_invalid_config_invalid_provider_url():
+    """Check handling invalid configuration containing invalid provider URL."""
     check_expected_exception(
         """
 ---
@@ -151,25 +186,6 @@ ols_config:
         InvalidConfigurationError,
         "provider URL is invalid",
     )
-    check_expected_exception(
-        """
----
-llm_providers:
-  - foo: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'http://murl1'
-ols_config:
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-""",
-        InvalidConfigurationError,
-        "provider name is missing",
-    )
 
     check_expected_exception(
         """
@@ -191,6 +207,32 @@ ols_config:
         "provider URL is invalid",
     )
 
+
+def test_invalid_config_missing_provider_name():
+    """Check handling invalid configuration without provider name."""
+    check_expected_exception(
+        """
+---
+llm_providers:
+  - foo: p1
+    type: bam
+    url: 'http://url1'
+    models:
+      - name: m1
+        url: 'http://murl1'
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+""",
+        InvalidConfigurationError,
+        "provider name is missing",
+    )
+
+
+def test_invalid_config_unknown_provider_name():
+    """Check handling invalid configuration having unknown provider name."""
     check_expected_exception(
         """
 ---
@@ -215,6 +257,9 @@ ols_config:
         "default_provider specifies an unknown provider no_such_provider",
     )
 
+
+def test_invalid_config_unknown_model_name():
+    """Check handling invalid configuration having unknown model name."""
     check_expected_exception(
         """
 ---
@@ -239,6 +284,9 @@ ols_config:
         "default_model specifies an unknown model no_such_model",
     )
 
+
+def test_invalid_config_missing_default_model():
+    """Check handling invalid configuration without default model."""
     check_expected_exception(
         """
 ---
@@ -262,6 +310,9 @@ ols_config:
         "default_model is missing",
     )
 
+
+def test_invalid_config_missing_default_provider():
+    """Check handling invalid configuration without default provider."""
     check_expected_exception(
         """
 ---
@@ -285,6 +336,9 @@ ols_config:
         "default_provider is missing",
     )
 
+
+def test_invalid_config_missing_conversation_cache_type():
+    """Check handling invalid configuration without conversation cache type."""
     check_expected_exception(
         """
 ---
@@ -305,6 +359,9 @@ ols_config:
         "missing conversation cache type",
     )
 
+
+def test_invalid_config_unknown_conversation_cache_type():
+    """Check handling invalid configuration with unknown conversation cache type."""
     check_expected_exception(
         """
 ---
@@ -328,6 +385,9 @@ ols_config:
         "unknown conversation cache type: foobar",
     )
 
+
+def test_invalid_config_for_memory_cache():
+    """Check handling invalid memory cache configuration."""
     check_expected_exception(
         """
 ---
@@ -367,15 +427,18 @@ dev_config:
   disable_tls: true
 ols_config:
   conversation_cache:
-    type: redis
+    type: memory
     memory:
-      max_entries: 1000
+      max_entries: foo
 """,
         InvalidConfigurationError,
-        "redis conversation cache type is specified,"
-        " but redis configuration is missing",
+        "invalid max_entries for memory conversation cache,"
+        " max_entries needs to be a non-negative integer",
     )
 
+
+def test_invalid_config_for_redis_cache():
+    """Check handling invalid Redis cache configuration."""
     check_expected_exception(
         """
 ---
@@ -390,13 +453,13 @@ dev_config:
   disable_tls: true
 ols_config:
   conversation_cache:
-    type: memory
+    type: redis
     memory:
-      max_entries: foo
+      max_entries: 1000
 """,
         InvalidConfigurationError,
-        "invalid max_entries for memory conversation cache,"
-        " max_entries needs to be a non-negative integer",
+        "redis conversation cache type is specified,"
+        " but redis configuration is missing",
     )
 
     check_expected_exception(
@@ -446,6 +509,9 @@ ols_config:
             ),
         )
 
+
+def test_invalid_config_improper_credentials():
+    """Test invalid config with improper credentials."""
     check_expected_exception(
         """
 ---
@@ -453,10 +519,10 @@ llm_providers:
   - name: p1
     type: bam
     url: 'http://url1'
-    credentials_path: no_such_file_provider
+    credentials_path: no_such_file
 """,
         FileNotFoundError,
-        "No such file or directory: 'no_such_file_provider'",
+        "No such file or directory: 'no_such_file'",
     )
 
     check_expected_exception(
@@ -470,35 +536,15 @@ llm_providers:
     models:
       - name: m1
         url: 'https://murl1'
-        credentials_path: no_such_file_model
+        credentials_path: no_such_file
 """,
         FileNotFoundError,
-        "No such file or directory: 'no_such_file_model'",
+        "No such file or directory: 'no_such_file'",
     )
 
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    credentials_path: tests/config/secret/apitoken
-    models:
-      - name: m1
-        credentials_path: tests/config/secret/apitoken
-ols_config:
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_params:
-     - something: 0
-""",
-        InvalidConfigurationError,
-        "llm_params needs to be defined as a dict",
-    )
 
+def test_invalid_config_improper_reference_content():
+    """Test invalid config with improper reference content."""
     check_expected_exception(
         """
 ---
