@@ -38,12 +38,6 @@ ols_config:
 
   default_provider: p1
   default_model: m1
-  classifier_provider: p1
-  classifier_model: m2
-  summarizer_provider: p1
-  summarizer_model: m1
-  validator_provider: p1
-  validator_model: m1
 dev_config:
   disable_tls: true
   disable_auth: true
