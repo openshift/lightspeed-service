@@ -84,6 +84,9 @@ def conversation_request(
     logger.info(f"User ID {user_id}")
 
     conversation_id = retrieve_conversation_id(llm_request)
+
+    # TODO OLS-697: Store attachments send to OLS service in structured format into
+    # conversation cache
     previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Retrieve attachments from the request
@@ -119,6 +122,8 @@ def conversation_request(
             conversation_id, llm_request, previous_input
         )
 
+    # TODO OLS-697: Store attachments send to OLS service in structured format into
+    # conversation cache
     store_conversation_history(
         user_id, conversation_id, llm_request, summarizer_response.response
     )
