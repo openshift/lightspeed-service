@@ -91,22 +91,10 @@ function run_suite() {
   
   install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 
-<<<<<<< HEAD
-  # wait for the ols api server to come up
-  wait_for_ols "$OLS_URL"
-  if [ $? -ne 0 ]; then
-    echo "Timed out waiting for OLS to become available"
-    echo "${JUNIT_SETUP_TEMPLATE}" | sed "s/SUITE_ID/${1}/g" > $ARTIFACT_DIR/junit_setup_${1}.xml
-
-    ARTIFACT_DIR=$ARTIFACT_DIR SUITE_ID=$1 python tests/scripts/must_gather.py
-    return 1
-  fi
-=======
   # Determine the hostname for the ols route
   #export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
   #echo "OLS_URL set to $OLS_URL"
   export SUITE_ID=$1
->>>>>>> 1c21899 (OLS581)
 
   # Run e2e tests with response evaluation.
   SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
