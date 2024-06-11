@@ -266,7 +266,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
             timeout=INGRESS_TIMEOUT,
         )
 
-    if response.status_code != 202:
+    if response.status_code != requests.codes.accepted:
         raise requests.exceptions.HTTPError(
             f"data upload failed with response: {response.json()}"
         )
