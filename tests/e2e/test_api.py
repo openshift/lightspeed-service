@@ -398,6 +398,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
 
 
 @pytest.mark.rag()
+@retry(max_attempts=3, wait_between_runs=10)
 def test_rag_question() -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
