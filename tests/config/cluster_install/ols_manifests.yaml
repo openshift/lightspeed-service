@@ -87,10 +87,10 @@ spec:
         resources:
         limits:
           cpu: 100m
-          memory: 512Mi
+          memory: 128Mi
         requests:
           cpu: 50m
-          memory: 128Mi
+          memory: 64Mi
         volumeMounts:
           - name: ols-user-data
             mountPath: /app-root/ols-user-data
