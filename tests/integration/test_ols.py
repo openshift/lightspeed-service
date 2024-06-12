@@ -439,6 +439,7 @@ def test_post_question_without_attachments(_setup) -> None:
     query_passed = None
 
     def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
         return answer
@@ -472,12 +473,14 @@ def test_post_question_without_attachments(_setup) -> None:
     assert query_passed == "test query"
 
 
+@pytest.mark.attachment()
 def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with empty list of attachments."""
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
     def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
         return answer
@@ -512,12 +515,14 @@ def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     assert query_passed == "test query"
 
 
+@pytest.mark.attachment()
 def test_post_question_with_one_plaintext_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with one attachment."""
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
     def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
         return answer
@@ -565,12 +570,14 @@ this is attachment
     assert query_passed == expected
 
 
+@pytest.mark.attachment()
 def test_post_question_with_one_yaml_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with YAML attachment."""
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
     def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
         return answer
@@ -627,12 +634,14 @@ metadata:
     assert query_passed == expected
 
 
+@pytest.mark.attachment()
 def test_post_question_with_two_yaml_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with two YAML attachments."""
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
     def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
         return answer
