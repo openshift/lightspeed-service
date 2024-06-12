@@ -80,7 +80,7 @@ dependencies = [
     "kubernetes==29.0.0",
     "pytest-asyncio==0.23.7",
     "psycopg2-binary==2.9.9",
-    "azure-identity==1.16.0",
+    "azure-identity==1.16.1",
     "langchain-community==0.2.0",
 ]
 requires-python = "==3.11.*"
