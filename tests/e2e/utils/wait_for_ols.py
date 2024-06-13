@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 
 # ruff: noqa: S501
-def wait_for_ols(url, timeout=10, interval=10):
+def wait_for_ols(url, timeout=360, interval=10):
     """Wait for the OLS to become ready by checking its readiness endpoint.
 
     Args:

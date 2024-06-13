@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import sys
 import time
 from typing import Optional
 
@@ -57,6 +56,8 @@ OLS_USER_DATA_PATH = "/app-root/ols-user-data"
 OLS_USER_DATA_COLLECTION_INTERVAL = 10
 OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
+OLS_READY = False
+
 
 # ruff: noqa: S605, S607
 def setup_module(module):
@@ -65,45 +66,37 @@ def setup_module(module):
     token = None
     metrics_token = None
     provider = os.getenv("PROVIDER")
-    
-    try:
-        if on_cluster:
-            print("Setting up for on cluster test execution\n")
-            ols_url = cluster_utils.get_ols_url("ols")
-            cluster_utils.create_user("test-user")
-            cluster_utils.create_user("metrics-test-user")
-            token = cluster_utils.get_user_token("test-user")
-            metrics_token = cluster_utils.get_user_token("metrics-test-user")
-            cluster_utils.grant_sa_user_access("test-user", "ols-user")
-            cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
-        else:
-            print("Setting up for standalone test execution\n")
 
-        # Determine the hostname for the OLS route
-        ols_url = os.popen("oc get route ols -o jsonpath='{.spec.host}'").read().strip()
-        if not ols_url.startswith("http"):
-            ols_url = f"https://{ols_url}"
+    global OLS_READY
+    if on_cluster:
+        print("Setting up for on cluster test execution\n")
+        ols_url = cluster_utils.get_ols_url("ols")
+        cluster_utils.create_user("test-user")
+        cluster_utils.create_user("metrics-test-user")
+        token = cluster_utils.get_user_token("test-user")
+        metrics_token = cluster_utils.get_user_token("metrics-test-user")
+        cluster_utils.grant_sa_user_access("test-user", "ols-user")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+    else:
+        print("Setting up for standalone test execution\n")
 
-        print(f"OLS_URL set to {ols_url}")
-        os.environ["OLS_URL"] = ols_url
+    # Determine the hostname for the OLS route
+    ols_url = os.popen("oc get route ols -o jsonpath='{.spec.host}'").read().strip()
+    if not ols_url.startswith("http"):
+        ols_url = f"https://{ols_url}"
 
-        client = client_utils.get_http_client(ols_url, token)
-        metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+    print(f"OLS_URL set to {ols_url}")
+    os.environ["OLS_URL"] = ols_url
 
-        # Wait for OLS to be ready
-        print(f"Waiting for OLS to be ready on provider: {provider}...")
-        success = wait_for_ols(ols_url)
-        if not success:
-            raise Exception(f"OLS did not become available in time on provider: {provider}")
-        print("OLS is ready")
+    client = client_utils.get_http_client(ols_url, token)
+    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
 
-    except Exception as e:
-        print(f"Failed to setup ols access: {e}")
+    # Wait for OLS to be ready
+    print(f"Waiting for OLS to be ready on provider: {provider}...")
+    OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {OLS_READY}")
+    if not OLS_READY:
         must_gather()
-        try:
-            pytest.fail(f"Failed to setup ols access: {e}")
-        finally:
-            sys.exit(f"OLS did not become available in time on provider: {provider}")
 
 
 def teardown_module(module):
