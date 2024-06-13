@@ -15,6 +15,7 @@ from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
+    PROVIDER_FAKE,
     PROVIDER_OPENAI,
     PROVIDER_WATSONX,
     GenericLLMParameters,
@@ -85,12 +86,15 @@ WatsonxParameters = {
     ProviderParameter(GenParams.REPETITION_PENALTY, float),
 }
 
+FakeProviderParameters: set[ProviderParameter] = set()
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
     PROVIDER_OPENAI: OpenAIParameters,
     PROVIDER_BAM: BAMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
+    PROVIDER_FAKE: FakeProviderParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
@@ -111,12 +115,16 @@ WatsonxParametersMapping: dict[str, str] = {
     GenericLLMParameters.TEMPERATURE: GenParams.TEMPERATURE,
 }
 
+# Generic to fake parameter mapping
+FakeProviderParametersMapping: dict[str, str] = {}
+
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
     PROVIDER_OPENAI: OpenAIParametersMapping,
     PROVIDER_BAM: BAMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
+    PROVIDER_FAKE: FakeProviderParametersMapping,
 }
 
 
