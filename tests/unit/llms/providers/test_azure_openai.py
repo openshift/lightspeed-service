@@ -17,7 +17,26 @@ def provider_config():
             "name": "some_provider",
             "type": "azure_openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
+            "deployment_name": "test_deployment_name",
+            "models": [
+                {
+                    "name": "test_model_name",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for Azure OpenAI."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "azure_openai",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret",
             "deployment_name": "test_deployment_name",
             "models": [
                 {
@@ -36,15 +55,12 @@ def provider_config_with_specific_parameters():
             "name": "some_provider",
             "type": "azure_openai",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "deployment_name": "test_deployment_name",
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "credentials_path": "tests/config/secret2.txt",
-                "tenant_id": "00000000-0000-0000-0000-000000000001",
-                "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
             },
             "models": [
                 {
@@ -85,8 +101,7 @@ def provider_config_without_tenant_id():
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret_azure_no_tenant_id",
             },
             "models": [
                 {
@@ -109,8 +124,7 @@ def provider_config_without_client_id():
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "tenant_id": "00000000-0000-0000-0000-000000000001",
-                "client_secret_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret_azure_no_client_id",
             },
             "models": [
                 {
@@ -133,8 +147,7 @@ def provider_config_without_client_secret():
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "tenant_id": "00000000-0000-0000-0000-000000000001",
-                "client_id": "00000000-0000-0000-0000-000000000002",
+                "credentials_path": "tests/config/secret_azure_no_client_secret",
             },
             "models": [
                 {
@@ -157,9 +170,7 @@ def provider_config_access_token_related_parameters():
             "azure_openai_config": {
                 "url": "http://azure.com",
                 "deployment_name": "azure_deployment_name",
-                "tenant_id": "00000000-0000-0000-0000-000000000001",
-                "client_id": "00000000-0000-0000-0000-000000000002",
-                "client_secret_path": "tests/config/secret.txt",
+                "credentials_path": "tests/config/secret_azure_tenant_id_client_id_client_secret",
             },
             "models": [
                 {
@@ -194,6 +205,20 @@ def test_basic_interface(provider_config):
     assert azure_openai.default_params["api_key"] == "secret_key"
 
     assert azure_openai.default_params["azure_endpoint"] == "test_url"
+
+
+def test_credentials_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    azure_openai = AzureOpenAI(
+        model="uber-model",
+        params={},
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = azure_openai.load()
+    assert isinstance(llm, AzureChatOpenAI)
+    assert azure_openai.default_params
+
+    assert azure_openai.default_params["api_key"] == "secret_key"
 
 
 def test_loading_provider_specific_parameters(provider_config_with_specific_parameters):
@@ -349,7 +374,7 @@ def test_missing_client_id(provider_config_without_client_id):
 
 
 def test_missing_client_secret(provider_config_without_client_secret):
-    """Test that check for missing client_secret is in place ."""
+    """Test that check for missing credentials_path is in place ."""
     with pytest.raises(
         ValueError, match="client_secret should be set in azure_openai_config"
     ):

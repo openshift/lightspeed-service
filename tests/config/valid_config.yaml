@@ -3,12 +3,12 @@ llm_providers:
   - name: p1
     type: bam
     url: "https://url1"
-    credentials_path: tests/config/secret.txt
+    credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
         url: "https://murl1"
-        credentials_path: tests/config/secret.txt
-        context_window_size: 400
+        credentials_path: tests/config/secret/apitoken
+        context_window_size: 450
         response_token_limit: 100
       - name: m2
         url: "https://murl2"
@@ -32,12 +32,6 @@ ols_config:
     logging_level: INFO
   default_provider: p1
   default_model: m1
-  classifier_provider: p1
-  classifier_model: m2
-  summarizer_provider: p1
-  summarizer_model: m1
-  validator_provider: p1
-  validator_model: m1
   user_data_collection:
     transcripts_disabled: true
 dev_config:

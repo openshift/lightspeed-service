@@ -5,13 +5,21 @@ from io import TextIOBase
 from typing import Any, Optional
 
 import yaml
-from llama_index.core.indices.base import BaseIndex
 
 import ols.app.models.config as config_model
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
-from ols.src.rag_index.index_loader import IndexLoader
-from ols.utils.query_filter import QueryFilters
+
+# as we the index_loader.py is excluded from type checks, it confuses
+# mypy a bit, hence the [attr-defined] bellow
+from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
+from ols.utils.redactor import Redactor
+
+# NOTE: Loading/importing something from llama_index bumps memory
+# consumption up to ~400MiB.
+# from llama_index.core.indices.base import BaseIndex
+# Here, we need it just for typing, so we use Any instead.
+BaseIndex = Any
 
 
 class AppConfig:
@@ -28,7 +36,7 @@ class AppConfig:
     def __init__(self) -> None:
         """Initialize the class instance."""
         self.config = config_model.Config()
-        self._query_filters: Optional[QueryFilters] = None
+        self._query_filters: Optional[Redactor] = None
         self._rag_index: Optional[BaseIndex] = None
         self._conversation_cache: Optional[Cache] = None
 
@@ -57,15 +65,15 @@ class AppConfig:
         return self._conversation_cache
 
     @property
-    def query_redactor(self) -> Optional[QueryFilters]:
+    def query_redactor(self) -> Optional[Redactor]:
         """Return the query redactor."""
         # TODO: OLS-380 Config object mirrors configuration
         if self._query_filters is None:
-            self._query_filters = QueryFilters(self.ols_config.query_filters)
+            self._query_filters = Redactor(self.ols_config.query_filters)
         return self._query_filters
 
     @property
-    def rag_index(self) -> Optional[BaseIndex[Any]]:
+    def rag_index(self) -> Optional[BaseIndex]:
         """Return the RAG index."""
         # TODO: OLS-380 Config object mirrors configuration
         if self._rag_index is None:
@@ -98,7 +106,7 @@ class AppConfig:
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
-            raise e
+            raise
 
 
 config: AppConfig = AppConfig()

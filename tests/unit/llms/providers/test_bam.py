@@ -15,12 +15,32 @@ def provider_config():
             "name": "some_provider",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def provider_config_credentials_directory():
+    """Fixture with provider configuration for BAM."""
+    return ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "test_model_url",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -39,7 +59,7 @@ def provider_config_without_credentials():
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -54,16 +74,16 @@ def provider_config_with_specific_params():
             "name": "some_provider",
             "type": "bam",
             "url": "test_url",
-            "credentials_path": "tests/config/secret.txt",
+            "credentials_path": "tests/config/secret/apitoken",
             "bam_config": {
                 "url": "http://bam.com",
-                "credentials_path": "tests/config/secret2.txt",
+                "credentials_path": "tests/config/secret2/apitoken",
             },
             "models": [
                 {
                     "name": "test_model_name",
                     "url": "test_model_url",
-                    "credentials_path": "tests/config/secret.txt",
+                    "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
         }
@@ -114,6 +134,22 @@ def test_params_handling(provider_config):
     assert "verbose" not in bam.params
 
     assert "unknown_parameter" not in bam.params
+
+
+def test_credentials_in_directory_handling(provider_config_credentials_directory):
+    """Test that credentials in directory is handled as expected."""
+    params = {}
+
+    bam = BAM(
+        model="uber-model",
+        params=params,
+        provider_config=provider_config_credentials_directory,
+    )
+    llm = bam.load()
+    assert isinstance(llm, LangChainInterface)
+
+    # taken from configuration
+    assert bam.credentials == "secret_key"
 
 
 def test_params_handling_specific_params(provider_config_with_specific_params):

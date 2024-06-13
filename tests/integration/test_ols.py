@@ -431,3 +431,288 @@ def test_post_query_for_conversation_history(_setup) -> None:
                 },
                 config={"callbacks": [token_counter.return_value]},
             )
+
+
+def test_post_question_without_attachments(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method without attachments."""
+    answer = constants.SUBJECT_ALLOWED
+    query_passed = None
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        nonlocal query_passed
+        query_passed = query
+        return answer
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                },
+            )
+            assert response.status_code == requests.codes.ok
+    assert query_passed == "test query"
+
+
+@pytest.mark.attachment()
+def test_post_question_with_empty_list_of_attachments(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with empty list of attachments."""
+    answer = constants.SUBJECT_ALLOWED
+    query_passed = None
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        nonlocal query_passed
+        query_passed = query
+        return answer
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                    "attachments": [],
+                },
+            )
+            assert response.status_code == requests.codes.ok
+    assert query_passed == "test query"
+
+
+@pytest.mark.attachment()
+def test_post_question_with_one_plaintext_attachment(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with one attachment."""
+    answer = constants.SUBJECT_ALLOWED
+    query_passed = None
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        nonlocal query_passed
+        query_passed = query
+        return answer
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                    "attachments": [
+                        {
+                            "attachment_type": "log",
+                            "content": "this is attachment",
+                            "content_type": "text/plain",
+                        },
+                    ],
+                },
+            )
+            assert response.status_code == requests.codes.ok
+    expected = """test query
+
+
+```
+this is attachment
+```
+"""
+    assert query_passed == expected
+
+
+@pytest.mark.attachment()
+def test_post_question_with_one_yaml_attachment(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with YAML attachment."""
+    answer = constants.SUBJECT_ALLOWED
+    query_passed = None
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        nonlocal query_passed
+        query_passed = query
+        return answer
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            yaml = """
+kind: Pod
+metadata:
+     name: private-reg
+"""
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                    "attachments": [
+                        {
+                            "attachment_type": "configuration",
+                            "content": yaml,
+                            "content_type": "application/yaml",
+                        },
+                    ],
+                },
+            )
+            assert response.status_code == requests.codes.ok
+    expected = """test query
+
+For reference, here is the full resource YAML for Pod 'private-reg':
+```yaml
+
+kind: Pod
+metadata:
+     name: private-reg
+
+```
+"""
+    assert query_passed == expected
+
+
+@pytest.mark.attachment()
+def test_post_question_with_two_yaml_attachments(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with two YAML attachments."""
+    answer = constants.SUBJECT_ALLOWED
+    query_passed = None
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        nonlocal query_passed
+        query_passed = query
+        return answer
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            yaml1 = """
+kind: Pod
+metadata:
+     name: private-reg
+"""
+            yaml2 = """
+kind: Deployment
+metadata:
+     name: foobar-deployment
+"""
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                    "attachments": [
+                        {
+                            "attachment_type": "configuration",
+                            "content": yaml1,
+                            "content_type": "application/yaml",
+                        },
+                        {
+                            "attachment_type": "configuration",
+                            "content": yaml2,
+                            "content_type": "application/yaml",
+                        },
+                    ],
+                },
+            )
+            assert response.status_code == requests.codes.ok
+    expected = """test query
+
+For reference, here is the full resource YAML for Pod 'private-reg':
+```yaml
+
+kind: Pod
+metadata:
+     name: private-reg
+
+```
+
+
+For reference, here is the full resource YAML for Deployment 'foobar-deployment':
+```yaml
+
+kind: Deployment
+metadata:
+     name: foobar-deployment
+
+```
+"""
+    assert query_passed == expected

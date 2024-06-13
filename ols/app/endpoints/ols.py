@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
+    Attachment,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
@@ -25,6 +26,7 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
+from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import suid
@@ -82,13 +84,25 @@ def conversation_request(
     logger.info(f"User ID {user_id}")
 
     conversation_id = retrieve_conversation_id(llm_request)
+
+    # TODO OLS-697: Store attachments send to OLS service in structured format into
+    # conversation cache
     previous_input = retrieve_previous_input(user_id, llm_request)
+
+    # Retrieve attachments from the request
+    attachments = retrieve_attachments(llm_request)
 
     # Log incoming request
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
+
+    # Redact all attachments
+    attachments = redact_attachments(conversation_id, attachments)
+
+    # All attachments should be appended to query
+    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
 
     # Validate the query
     if not previous_input:
@@ -98,17 +112,18 @@ def conversation_request(
         valid = True
 
     if not valid:
-        # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
         summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
             [],
             False,
-        )  # type: ignore [call-arg]
+        )
     else:
         summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
         )
 
+    # TODO OLS-697: Store attachments send to OLS service in structured format into
+    # conversation cache
     store_conversation_history(
         user_id, conversation_id, llm_request, summarizer_response.response
     )
@@ -127,11 +142,10 @@ def conversation_request(
         )
 
     referenced_documents = [
-        # TODO: OLS-673: Type checker reports "too many arguments" when dataclass is constructed
         ReferencedDocument(
             rag_chunk.doc_url,
             rag_chunk.doc_title,
-        )  # type: ignore [call-arg]
+        )
         for rag_chunk in summarizer_response.rag_chunks
     ]
 
@@ -186,6 +200,36 @@ def retrieve_previous_input(
                 "cause": str(e),
             },
         )
+
+
+def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
+    """Retrieve attachments from the request."""
+    attachments = llm_request.attachments
+
+    # it is perfectly ok not to send any attachments
+    if attachments is None:
+        return []
+
+    # some attachments were send to the service, time to check its metadata
+    for attachment in attachments:
+        if attachment.attachment_type not in constants.ATTACHMENT_TYPES:
+            message = (
+                f"Attachment with improper type {attachment.attachment_type} detected"
+            )
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+        if attachment.content_type not in constants.ATTACHMENT_CONTENT_TYPES:
+            message = f"Attachment with improper content type {attachment.content_type} detected"
+            logger.error(message)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"response": "Unable to process this request", "cause": message},
+            )
+
+    return attachments
 
 
 def generate_response(
@@ -286,7 +330,7 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
         if not config.query_redactor:
             logger.debug("query_redactor not found")
             return llm_request
-        llm_request.query = config.query_redactor.redact_query(
+        llm_request.query = config.query_redactor.redact(
             conversation_id, llm_request.query
         )
         return llm_request
@@ -298,6 +342,44 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error while redacting query",
+                "cause": str(redactor_error),
+            },
+        )
+
+
+def redact_attachments(
+    conversation_id: str, attachments: list[Attachment]
+) -> list[Attachment]:
+    """Redact all attachments using query_redactor, raise HTTPException in case of any problem."""
+    logger.debug(f"Redacting attachments for conversation {conversation_id}")
+    if not config.query_redactor:
+        logger.debug("query_redactor not found, attachments remain as is")
+        return attachments
+
+    try:
+        redacted_attachments = []
+        for attachment in attachments:
+            # might be possible to change attachments "in situ" but it might
+            # confuse developers
+            redacted_content = config.query_redactor.redact(
+                conversation_id, attachment.content
+            )
+            redacted_attachment = Attachment(
+                attachment_type=attachment.attachment_type,
+                content_type=attachment.content_type,
+                content=redacted_content,
+            )
+            redacted_attachments.append(redacted_attachment)
+        return redacted_attachments
+
+    except Exception as redactor_error:
+        logger.error(
+            f"Error while redacting attachment {redactor_error} for conversation {conversation_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error while redacting attachment",
                 "cause": str(redactor_error),
             },
         )

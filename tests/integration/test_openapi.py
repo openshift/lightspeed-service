@@ -52,13 +52,6 @@ def test_openapi_endpoint(_setup):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
 
-def test_openapi_endpoint_head_method(_setup):
-    """Check if REST API allows HEAD HTTP method for endpoint with OpenAPI specification."""
-    response = client.head("/openapi.json")
-    assert response.status_code == requests.codes.ok
-    assert response.text == ""
-
-
 def test_openapi_content(_setup):
     """Check if the pre-generated OpenAPI schema is up-to date."""
     # retrieve pre-generated OpenAPI schema

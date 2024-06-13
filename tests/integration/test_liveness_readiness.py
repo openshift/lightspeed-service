@@ -34,20 +34,24 @@ def test_liveness(_setup):
 
 def test_readiness(_setup):
     """Test handler for /readiness REST API endpoint."""
+    # index is not loaded, but there is reference content in config
+    # - service should not be ready
+    config._rag_index = None
+    assert config.ols_config.reference_content is not None
     response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
-    assert response.json() == {"status": {"status": "healthy"}}
+    assert response.json() == {"ready": False, "reason": "index is not ready"}
 
-
-def test_liveness_head_http_method(_setup) -> None:
-    """Test handler for /liveness REST API endpoint when HEAD HTTP method is used."""
-    response = client.head("/liveness")
+    # index is not loaded, but it shouldn't as there is no reference
+    # content in config - service should be ready
+    config.ols_config.reference_content = None
+    config._rag_index = None
+    response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
-    assert response.text == ""
+    assert response.json() == {"ready": True, "reason": "service is ready"}
 
-
-def test_readiness_head_http_method(_setup) -> None:
-    """Test handler for /readiness REST API endpoint when HEAD HTTP method is used."""
-    response = client.head("/readiness")
+    # index is loaded - service should be ready
+    config._rag_index = "something else than None"
+    response = client.get("/readiness")
     assert response.status_code == requests.codes.ok
-    assert response.text == ""
+    assert response.json() == {"ready": True, "reason": "service is ready"}

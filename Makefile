@@ -74,7 +74,7 @@ format: ## Format the code into unified format
 	black .
 	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify:	install-woke ## Verify the code using various linters
+verify:	install-woke install-deps-test ## Verify the code using various linters
 	black . --check
 	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 	./woke . --exit-1-on-failure
@@ -83,7 +83,7 @@ schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
 
 get-rag: ## Download a copy of the RAG embedding model and vector database
-	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:daaaf9e8e610f6cf33bcb714f1198a3c027b9a18b265853bc73b4142866deda0 true
+	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:5d84e1c11b79848d9ca4e74de59c3536f340f53b0fb2acf77f303b9d3c4efac8 true
 	rm -rf vector_db embeddings_model
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model

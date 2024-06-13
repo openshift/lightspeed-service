@@ -266,7 +266,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
             timeout=INGRESS_TIMEOUT,
         )
 
-    if response.status_code != 202:
+    if response.status_code != requests.codes.accepted:
         raise requests.exceptions.HTTPError(
             f"data upload failed with response: {response.json()}"
         )
@@ -342,6 +342,9 @@ def gather_ols_user_data(data_path: str) -> None:
                 logger.error(
                     f"{e.__class__.__name__} - upload and data removal canceled"
                 )
+
+            # close the tarball to release mem
+            tarball.close()
     else:
         logger.info(f"'{data_path}' contains no data, nothing to do...")
 
@@ -386,7 +389,8 @@ def disabled_by_file() -> bool:
 if __name__ == "__main__":
     if not RUN_WITHOUT_INITIAL_WAIT:
         logger.info(
-            "collection script started, waiting 5 minutes before first collection"
+            f"collection script started, waiting {INITIAL_WAIT} seconds "
+            "before first collection"
         )
         time.sleep(INITIAL_WAIT)
     while True:

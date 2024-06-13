@@ -93,7 +93,7 @@ class PostgresCache(Cache):
         except Exception as e:
             self.conn.close()
             logger.exception(f"Error initializing Postgres cache:\n{e}")
-            raise e
+            raise
         self.capacity = config.max_entries
 
     def initialize_cache(self) -> None:

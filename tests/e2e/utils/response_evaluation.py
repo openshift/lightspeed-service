@@ -12,7 +12,7 @@ from scipy.spatial.distance import cosine, euclidean
 from tests.e2e.utils.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
 
 
-# TODO: OLS-491 Generate QnA for each model/scenario for evaluation
+# TODO: OLS-712 Enrichment of Q+A pairs to contain questions with attachments
 class ResponseEvaluation:
     """Evaluate LLM response."""
 

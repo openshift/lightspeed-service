@@ -19,7 +19,7 @@ def test_index_loader_empty_config(caplog):
     assert index is None
 
 
-@patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
+@patch("llama_index.core.StorageContext.from_defaults")
 def test_index_loader_no_id(storage_context):
     """Test index loader without index id."""
     config.ols_config.reference_content = ReferenceContent(None)
@@ -34,9 +34,9 @@ def test_index_loader_no_id(storage_context):
     assert index is None
 
 
-@patch("ols.src.rag_index.index_loader.StorageContext.from_defaults")
+@patch("llama_index.core.StorageContext.from_defaults")
 @patch("llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir")
-@patch("ols.src.rag_index.index_loader.load_index_from_storage", new=MockLlamaIndex)
+@patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex)
 def test_index_loader(storage_context, from_persist_dir):
     """Test index loader."""
     config.ols_config.reference_content = ReferenceContent(None)

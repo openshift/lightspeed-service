@@ -171,3 +171,36 @@ HTTP_RESPONSE_HEADERS_TO_REDACT = frozenset(
 RUNNING_IN_CLUSTER = (
     "KUBERNETES_SERVICE_HOST" in os.environ and "KUBERNETES_SERVICE_PORT" in os.environ
 )
+
+# Supported attachment types
+ATTACHMENT_TYPES = frozenset(
+    {
+        "alert",
+        "api object",
+        "configuration",
+        "error message",
+        "event",
+        "log",
+        "stack trace",
+    }
+)
+
+# Supported attachment content types
+ATTACHMENT_CONTENT_TYPES = frozenset(
+    {"text/plain", "application/json", "application/yaml", "application/xml"}
+)
+
+# Default name of file containing API token
+API_TOKEN_FILENAME = "apitoken"  # noqa S105
+
+# Default name of file containing client ID to Azure OpenAI
+AZURE_CLIENT_ID_FILENAME = "client_id"
+
+# Default name of file containing tenant ID to Azure OpenAI
+AZURE_TENANT_ID_FILENAME = "tenant_id"
+
+# Default name of file containing client secret to Azure OpenAI
+AZURE_CLIENT_SECRET_FILENAME = "client_secret"  # noqa S105
+
+# Selectors for fields from configuration structure
+CREDENTIALS_PATH_SELECTOR = "credentials_path"
