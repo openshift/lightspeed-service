@@ -1609,17 +1609,23 @@ def test_conversation_cache_config():
     assert conversation_cache_config.memory is None
     assert conversation_cache_config.postgres is None
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="redis conversation cache type is specified, but redis configuration is missing",
+    ):
         ConversationCacheConfig({"type": "redis"})
-    assert "redis configuration is missing" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="memory conversation cache type is specified, but memory configuration is missing",
+    ):
         ConversationCacheConfig({"type": "memory"})
-    assert "memory configuration is missing" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Postgres conversation cache type is specified, but Postgres configuration is missing",  # noqa E101
+    ):
         ConversationCacheConfig({"type": "postgres"})
-    assert "Postgres configuration is missing" in str(excinfo.value)
 
 
 def test_conversation_cache_config_validation():
