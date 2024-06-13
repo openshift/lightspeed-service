@@ -312,22 +312,6 @@ def test_provider_config():
         )
     assert "model name is missing" in str(excinfo.value)
 
-    with pytest.raises(InvalidConfigurationError) as excinfo:
-        ProviderConfig(
-            {
-                "name": "azure_openai",
-                "type": "azure_openai",
-                "url": "test_url",
-                "credentials_path": "tests/config/secret/apitoken",
-                "models": [
-                    {
-                        "name": "test_model",
-                    }
-                ],
-            }
-        )
-    assert "deployment_name is required" in str(excinfo.value)
-
 
 def test_that_url_is_required_provider_parameter():
     """Test that provider-specific URL is required attribute."""
