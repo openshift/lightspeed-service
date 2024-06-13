@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import sys
 import time
 from typing import Optional
 
@@ -101,6 +102,10 @@ def setup_module(module):
         print(f"Failed to setup ols access: {e}")
         must_gather()
         pytest.fail(f"Failed to setup ols access: {e}")
+
+    finally:
+        must_gather()
+        sys.exit(f"OLS did not become available in time on provider: {provider}")
 
 
 def teardown_module(module):
