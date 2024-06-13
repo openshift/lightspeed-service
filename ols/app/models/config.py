@@ -66,7 +66,7 @@ def _read_secret(
         if raise_on_error:
             raise
         # no logging configured yet
-        print("Problem reading secret from file {filename}:", e)
+        print(f"Problem reading secret from file {filename}:", e)
         print(f"Verify the provider secret contains {default_filename}")
         return None
 
