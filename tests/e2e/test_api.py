@@ -61,11 +61,12 @@ OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 # ruff: noqa: S605, S607
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
+    global ols_url, client, metrics_client
+    token = None
+    metrics_token = None
+    provider = os.getenv("PROVIDER")
+    
     try:
-        global ols_url, client, metrics_client
-        token = None
-        metrics_token = None
-        provider = os.getenv("PROVIDER")
         if on_cluster:
             print("Setting up for on cluster test execution\n")
             ols_url = cluster_utils.get_ols_url("ols")
@@ -93,19 +94,16 @@ def setup_module(module):
         print(f"Waiting for OLS to be ready on provider: {provider}...")
         success = wait_for_ols(ols_url)
         if not success:
-            print(f"OLS did not become available in time on provider: {provider}")
-            must_gather()
-            pytest.fail(f"OLS did not become available in time on provider: {provider}")
+            raise Exception(f"OLS did not become available in time on provider: {provider}")
         print("OLS is ready")
 
     except Exception as e:
         print(f"Failed to setup ols access: {e}")
         must_gather()
-        pytest.fail(f"Failed to setup ols access: {e}")
-
-    finally:
-        must_gather()
-        sys.exit(f"OLS did not become available in time on provider: {provider}")
+        try:
+            pytest.fail(f"Failed to setup ols access: {e}")
+        finally:
+            sys.exit(f"OLS did not become available in time on provider: {provider}")
 
 
 def teardown_module(module):
