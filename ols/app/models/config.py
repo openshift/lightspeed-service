@@ -340,14 +340,10 @@ class ProviderConfig(BaseModel):
 
         self.setup_models_config(data)
 
-        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
         if self.type == constants.PROVIDER_AZURE_OPENAI:
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
-            if self.deployment_name is None:
-                raise InvalidConfigurationError(
-                    f"deployment_name is required for Azure OpenAI provider {self.name}"
-                )
+            # note: it can be overwritten in azure_config
 
     def set_provider_type(self, data: dict) -> None:
         """Set the provider type."""
