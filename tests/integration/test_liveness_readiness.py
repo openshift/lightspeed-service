@@ -34,24 +34,29 @@ def test_liveness(_setup):
 
 def test_readiness(_setup):
     """Test handler for /readiness REST API endpoint."""
-    # index is not loaded, but there is reference content in config
-    # - service should not be ready
-    config._rag_index = None
-    assert config.ols_config.reference_content is not None
-    response = client.get("/readiness")
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"ready": False, "reason": "index is not ready"}
+    # index is not ready
+    with (
+        patch("ols.app.endpoints.health.llm_is_ready", return_value=True),
+        patch("ols.app.endpoints.health.index_is_ready", return_value=False),
+    ):
+        response = client.get("/readiness")
+        assert response.status_code == requests.codes.ok
+        assert response.json() == {"ready": False, "reason": "index is not ready"}
 
-    # index is not loaded, but it shouldn't as there is no reference
-    # content in config - service should be ready
-    config.ols_config.reference_content = None
-    config._rag_index = None
-    response = client.get("/readiness")
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"ready": True, "reason": "service is ready"}
+    # llm is not ready
+    with (
+        patch("ols.app.endpoints.health.llm_is_ready", return_value=False),
+        patch("ols.app.endpoints.health.index_is_ready", return_value=True),
+    ):
+        response = client.get("/readiness")
+        assert response.status_code == requests.codes.ok
+        assert response.json() == {"ready": False, "reason": "LLM is not ready"}
 
-    # index is loaded - service should be ready
-    config._rag_index = "something else than None"
-    response = client.get("/readiness")
-    assert response.status_code == requests.codes.ok
-    assert response.json() == {"ready": True, "reason": "service is ready"}
+    # everything is ready
+    with (
+        patch("ols.app.endpoints.health.llm_is_ready", return_value=True),
+        patch("ols.app.endpoints.health.index_is_ready", return_value=True),
+    ):
+        response = client.get("/readiness")
+        assert response.status_code == requests.codes.ok
+        assert response.json() == {"ready": True, "reason": "service is ready"}
