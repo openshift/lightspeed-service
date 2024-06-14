@@ -57,16 +57,18 @@ ols_config:
     skip_tls_verification: false
   user_data_collection:
     feedback_disabled: false
-    feedback_storage: "/app-root/data/feedback"
+    feedback_storage: "/tmp/data/feedback"
     transcripts_disabled: false
-    transcripts_storage: "/app-root/data/transcripts"
+    transcripts_storage: "/tmp/data/transcripts"
   tls_config:
     tls_certificate_path: /app-root/certs/certificate.crt
     tls_key_path: /app-root/certs/private.key
     tls_key_password_path: /app-root/certs/password.txt
 dev_config:
+  # config options specific to dev environment - launching OLS in local
   enable_dev_ui: true
+  disable_auth: true
+  disable_tls: true
   # llm_params:
   #   temperature_override: 0
-  # disable_auth: false
   # k8s_auth_token: optional_token_when_no_available_kube_config
