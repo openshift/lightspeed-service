@@ -414,10 +414,14 @@ def test_rag_question() -> None:
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-        assert len(json_response["referenced_documents"]) > 0
+        assert len(json_response["referenced_documents"]) > 1
         assert "virt" in json_response["referenced_documents"][0]["docs_url"]
         assert "https://" in json_response["referenced_documents"][0]["docs_url"]
         assert json_response["referenced_documents"][0]["title"]
+
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["docs_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
 def test_query_filter() -> None:

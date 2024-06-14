@@ -106,14 +106,12 @@ TOKEN_BUFFER_WEIGHT = 1.1
 
 # This is used to decide how many matching chunks we want to retrieve as context.
 # (in descending order of similarity between query & chunk)
-# Currently we want to fetch best matching chunk, hence the value is set to 1.
-# If we want to fetch multiple chunks, then this value will increase accordingly.
 
 # This also depends on chunk_size used during index creation,
 # if chunk_size is small, we need to set a higher value, so that we will get
 # more context. If chunk_size is more, then we need to set a low value as we may
 # end up using too much context. Precise context will get us better response.
-RAG_CONTENT_LIMIT = 1
+RAG_CONTENT_LIMIT = 5
 
 # Once the chunk is retrived we need to check similarity score, so that we won't
 # pick any random matching chunk.
