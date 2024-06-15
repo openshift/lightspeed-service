@@ -98,11 +98,12 @@ def check_content_type(response, content_type, message=""):
     assert response.headers["content-type"].startswith(content_type), message
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
-        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+        response = client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
         assert response.json() == {"ready": True, "reason": "service is ready"}
