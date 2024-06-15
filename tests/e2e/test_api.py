@@ -310,6 +310,33 @@ def test_valid_question() -> None:
         )
 
 
+@pytest.mark.rag()
+def test_ocp_docs_version_same_as_cluster_version() -> None:
+    """Check that the version of OCP docs matches the cluster we're on."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        cid = suid.get_suid()
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": cid,
+                "query": "welcome openshift container platform documentation",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        major, minor = cluster_utils.get_cluster_version()
+
+        assert len(json_response["referenced_documents"]) > 1
+        assert f"{major}.{minor}" in json_response["referenced_documents"][0]["title"]
+
+
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)

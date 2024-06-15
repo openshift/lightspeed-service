@@ -56,6 +56,12 @@ function install_ols() {
     export MODEL=$7
     export OLS_IMAGE=$8
 
+    # get and export cluster version
+    local lines
+    mapfile -t lines <<< "$(oc version | grep Server | awk '{print $3}' | awk 'BEGIN{FS="."}{printf("%s\n%s\n", $1, $2)}')"
+    export CLUSTER_VERSION_MAJOR="${lines[0]}"
+    export CLUSTER_VERSION_MINOR="${lines[1]}"
+
     oc create ns openshift-lightspeed
     oc project openshift-lightspeed
 

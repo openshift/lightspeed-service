@@ -45,6 +45,24 @@ def get_cluster_id() -> str:
         raise Exception("Error getting cluster ID") from e
 
 
+def get_cluster_version() -> tuple[str, str]:
+    """Get the cluster version: major and minor."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "clusterversions",
+                "version",
+                "-o",
+                "jsonpath='{.status.desired.version}'",
+            ]
+        )
+        major, minor, rest = result.stdout.strip("'").split(".", 2)
+        return major, minor
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting cluster version") from e
+
+
 def create_user(name: str) -> None:
     """Create a service account user for testing."""
     try:
