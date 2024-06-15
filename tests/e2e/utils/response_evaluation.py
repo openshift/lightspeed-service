@@ -20,14 +20,14 @@ class ResponseEvaluation:
         """Initialize."""
         print(f"Response evaluation arguments: {eval_args}")
         self._args = eval_args
-        self._args.eval_model = "gpt" if "gpt" in self._args.eval_model else "granite"
-        self._args.eval_threshold = self._args.eval_threshold or EVAL_THRESHOLD
-
         self._api_client = api_client
 
         self._embedding_model = HuggingFaceEmbedding(
             "sentence-transformers/all-mpnet-base-v2"
         )
+
+        with open("tests/test_data/question_answer_pair.json") as qna_f:
+            self._qa_pairs = json.load(qna_f)["evaluation"]
 
     def _similarity_score(self, response, answer):
         """Calculate similarity score between two strings."""
@@ -53,21 +53,30 @@ class ResponseEvaluation:
         )
         return score
 
-    def _get_evaluation_score(self, qa_pairs):
+    def _get_evaluation_score(self, answer_id):
         """Get response evaluation score."""
         result_dict = defaultdict(list)
 
         query_ids = self._args.eval_query_ids
         if not query_ids:
-            query_ids = qa_pairs.keys()
+            query_ids = self._qa_pairs.keys()
 
         for query_id in query_ids:
-            question = qa_pairs[query_id]["question"]
-            answer = qa_pairs[query_id]["answer"]
+            answer_data = self._qa_pairs[query_id]["answer"][answer_id]
+            if not answer_data.get("in_use", True):
+                continue
+
+            question = self._qa_pairs[query_id]["question"]
+            answer = answer_data["text"]
+            eval_threshold = answer_data.get("cutoff_score", EVAL_THRESHOLD)
 
             response = self._api_client.post(
                 "/v1/query",
-                json={"query": question},
+                json={
+                    "query": question,
+                    "provider": self._args.eval_provider,
+                    "model": self._args.eval_model,
+                },
                 timeout=LLM_REST_API_TIMEOUT,
             )
             if response.status_code != requests.codes.ok:
@@ -78,43 +87,45 @@ class ResponseEvaluation:
             print(f"Calculating score for query: {question}")
             score = self._similarity_score(response, answer)
 
-            if score > self._args.eval_threshold:
+            if score > eval_threshold:
                 print(
                     f"Response is not as expected for question: {question}\n"
-                    f"Score: {score} is above cut-off value: {self._args.eval_threshold}"
+                    f"Score: {score} is above cut-off value: {eval_threshold}"
                 )
 
+            result_dict["eval_id"].append(query_id)
             result_dict["question"].append(question)
             result_dict["answer"].append(answer)
             result_dict["llm_response"].append(response)
-            result_dict["recent_score"].append(score)
+            result_dict["consistency_score"].append(score)
+            result_dict["cutoff_score"].append(eval_threshold)
 
         result_df = DataFrame.from_dict(result_dict)
-        result_df["threshold"] = self._args.eval_threshold
         return result_df
 
     def validate_response(self):
         """Validate LLM response."""
-        with open("tests/test_data/question_answer_pair.json") as qna_f:
-            qa_pairs = json.load(qna_f)
-            qa_pairs = qa_pairs.get(self._args.eval_model, {}).get(
-                self._args.eval_scenario, []
-            )
-
-        result_df = self._get_evaluation_score(qa_pairs)
+        answer_id = (
+            f"{self._args.eval_provider}+"
+            f"{self._args.eval_model}+"
+            f"{self._args.eval_scenario}"
+        )
+        result_df = self._get_evaluation_score(answer_id)
 
         if len(result_df) > 0:
             result_dir = self._args.eval_out_dir
             os.makedirs(result_dir, exist_ok=True)
             result_file = (
                 f"{result_dir}/response_evaluation_result-"
-                f"{self._args.eval_provider}-{self._args.eval_model}-"
-                f"{self._args.eval_scenario}.csv"
+                f"{answer_id.replace('/', '-')}.csv"
             )
             result_df.to_csv(result_file, index=False)
             print(f"Result is saved to {result_file}")
 
-            if result_df.recent_score.max() > self._args.eval_threshold:
+            result_df["eval_fail_flag"] = (
+                result_df.consistency_score > result_df.cutoff_score
+            )
+            if result_df.eval_fail_flag.max() == 1:
                 # If one of the score is more than threshold,
                 # then return False (Failed validation scenario)
                 print(

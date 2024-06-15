@@ -5,13 +5,13 @@ def pytest_addoption(parser):
     """Argument parser for pytest."""
     parser.addoption(
         "--eval_provider",
-        default="openai",
+        default="watsonx",
         type=str,
         help="Provider name, currently used only to form output file name.",
     )
     parser.addoption(
         "--eval_model",
-        default="gpt",
+        default="ibm/granite-13b-chat-v2",
         type=str,
         help="Model for which responses will be evaluated.",
     )
@@ -25,12 +25,6 @@ def pytest_addoption(parser):
         nargs="+",
         default=None,
         help="Ids of questions to be validated. Check json file for valid ids.",
-    )
-    parser.addoption(
-        "--eval_threshold",
-        type=float,
-        default=None,
-        help="Threshold value to be used for similarity score.",
     )
     parser.addoption(
         "--eval_scenario",
