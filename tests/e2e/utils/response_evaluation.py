@@ -67,7 +67,7 @@ class ResponseEvaluation:
                 continue
 
             question = self._qa_pairs[query_id]["question"]
-            answer = answer_data["text"]
+            answers = answer_data["text"]
             eval_threshold = answer_data.get("cutoff_score", EVAL_THRESHOLD)
 
             response = self._api_client.post(
@@ -85,20 +85,21 @@ class ResponseEvaluation:
             response = response.json()["response"].strip()
 
             print(f"Calculating score for query: {question}")
-            score = self._similarity_score(response, answer)
+            for answer in answers:
+                score = self._similarity_score(response, answer)
 
-            if score > eval_threshold:
-                print(
-                    f"Response is not as expected for question: {question}\n"
-                    f"Score: {score} is above cut-off value: {eval_threshold}"
-                )
+                if score > eval_threshold:
+                    print(
+                        f"Response is not as expected for question: {question}\n"
+                        f"Score: {score} is above cut-off value: {eval_threshold}"
+                    )
 
-            result_dict["eval_id"].append(query_id)
-            result_dict["question"].append(question)
-            result_dict["answer"].append(answer)
-            result_dict["llm_response"].append(response)
-            result_dict["consistency_score"].append(score)
-            result_dict["cutoff_score"].append(eval_threshold)
+                result_dict["eval_id"].append(query_id)
+                result_dict["question"].append(question)
+                result_dict["answer"].append(answer)
+                result_dict["llm_response"].append(response)
+                result_dict["consistency_score"].append(score)
+                result_dict["cutoff_score"].append(eval_threshold)
 
         result_df = DataFrame.from_dict(result_dict)
         return result_df
@@ -113,6 +114,15 @@ class ResponseEvaluation:
         result_df = self._get_evaluation_score(answer_id)
 
         if len(result_df) > 0:
+            result_df["answer_eval_fail_flag"] = (
+                result_df.consistency_score > result_df.cutoff_score
+            )
+            # If none of the answer for any question has score below threshold,
+            # then mark as evaluation failure.
+            result_df["question_eval_fail_flag"] = result_df.groupby(
+                "eval_id"
+            ).answer_eval_fail_flag.transform("min")
+
             result_dir = self._args.eval_out_dir
             os.makedirs(result_dir, exist_ok=True)
             result_file = (
@@ -122,11 +132,8 @@ class ResponseEvaluation:
             result_df.to_csv(result_file, index=False)
             print(f"Result is saved to {result_file}")
 
-            result_df["eval_fail_flag"] = (
-                result_df.consistency_score > result_df.cutoff_score
-            )
-            if result_df.eval_fail_flag.max() == 1:
-                # If one of the score is more than threshold,
+            if result_df.question_eval_fail_flag.max() == 1:
+                # If evaluation has failed for any question,
                 # then return False (Failed validation scenario)
                 print(
                     "Response is not matching for question(s):\n"
