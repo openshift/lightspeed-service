@@ -85,6 +85,9 @@ schema:	## Generate OpenAPI schema file
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
 	pdm export --prod --format requirements --output requirements.txt
 
+verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
+	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
+
 get-rag: ## Download a copy of the RAG embedding model and vector database
 	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:6a238245ec7da232bf64af0be95b8f5a3eede8127f4f49a123d5271e35667fc9 true
 	rm -rf vector_db embeddings_model
