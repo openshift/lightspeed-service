@@ -82,6 +82,8 @@ dependencies = [
     "psycopg2-binary==2.9.9",
     "azure-identity==1.16.1",
     "langchain-community==0.2.5",
+    "SQLAlchemy==2.0.30",
+    "huggingface_hub==0.23.4",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
