@@ -906,3 +906,24 @@ kind: Pod
 ```
 """
     assert query_passed == expected
+
+
+def test_post_too_long_query(_setup):
+    """Check the REST API /v1/query with POST HTTP method for query that is too long."""
+    query = "test query" * 1000
+    conversation_id = suid.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={"conversation_id": conversation_id, "query": query},
+    )
+
+    # error should be returned
+    assert response.status_code == requests.codes.request_entity_too_large
+    expected_details = {
+        "detail": {
+            "cause": "Prompt length 2200 exceeds LLM available context window limit 350 "
+            "tokens",
+            "response": "Prompt is too long",
+        }
+    }
+    assert response.json() == expected_details
