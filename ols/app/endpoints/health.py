@@ -34,7 +34,7 @@ def llm_is_ready() -> bool:
         )
         response = bare_llm.invoke(input="Hello there!")
         # BAM and Watsonx replies as str and not as `AIMessage`
-        if isinstance(response, str) or isinstance(response, AIMessage):
+        if isinstance(response, (str, AIMessage)):
             logger.info("LLM connection checked - LLM is ready")
             llm_is_ready_persistent_state = True
             return True
