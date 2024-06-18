@@ -47,10 +47,11 @@ dev = [
     "types-requests==2.31.0"
 ]
 
-[[tool.pdm.source]]
-type = "find_links"
-url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
-name = "torch"
+# needed only for torch-cpu
+# [[tool.pdm.source]]
+# type = "find_links"
+# url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
+# name = "torch"
 
 [build-system]
 requires = ["pdm-backend"]
@@ -62,7 +63,7 @@ version = "0.1.0"
 description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
-    "torch==2.2.2+cpu",
+    "torch==2.2.2",
     "fastapi==0.111.0",
     "gradio==4.36.1",
     "langchain==0.2.5",
