@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:75c8580e92bca42da69762e65555026537ac2e40b61109fbd52d2219e19d2d1c"
+content_hash = "sha256:b7a2e72580195e89efc3f308aed2fa9c5fe04923cc6b364d188256c2e7cce950"
 
 [[package]]
 name = "aiofiles"
@@ -930,7 +930,7 @@ files = [
 
 [[package]]
 name = "ibm-watson-machine-learning"
-version = "1.0.357"
+version = "1.0.359"
 requires_python = ">=3.10"
 summary = "IBM Watson Machine Learning API Client"
 groups = ["default"]
@@ -946,8 +946,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watson_machine_learning-1.0.357-py3-none-any.whl", hash = "sha256:f541cc85c4801eb16ddc2a470318bffb795b3f74b4c18400f4ef8fcd4ab56763"},
-    {file = "ibm_watson_machine_learning-1.0.357.tar.gz", hash = "sha256:3863dfc29431d3a33aa38bf02c4542b1733ca3b5a3c33b63ee11bd7f9f33c259"},
+    {file = "ibm_watson_machine_learning-1.0.359-py3-none-any.whl", hash = "sha256:782aacfbe2fcc58eccaf11645bf4e7facd300441874c1e7c7efa886fe9191e43"},
+    {file = "ibm_watson_machine_learning-1.0.359.tar.gz", hash = "sha256:79eba9709a215df83264a749db4d60872b7711e13f71eeacf4602cb6bd0a1d6f"},
 ]
 
 [[package]]
@@ -1256,18 +1256,18 @@ files = [
 
 [[package]]
 name = "langchain-openai"
-version = "0.1.7"
+version = "0.1.8"
 requires_python = "<4.0,>=3.8.1"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.3,>=0.1.46",
-    "openai<2.0.0,>=1.24.0",
+    "langchain-core<0.3,>=0.2.2",
+    "openai<2.0.0,>=1.26.0",
     "tiktoken<1,>=0.7",
 ]
 files = [
-    {file = "langchain_openai-0.1.7-py3-none-any.whl", hash = "sha256:39c3cb22bb739900ae8294d4d9939a6138c0ca7ad11198e57038eb14c08d04ec"},
-    {file = "langchain_openai-0.1.7.tar.gz", hash = "sha256:fd7e1c33ba8e2cab4b2154f3a2fd4a0d9cc6518b41cf49bb87255f9f732a4896"},
+    {file = "langchain_openai-0.1.8-py3-none-any.whl", hash = "sha256:8125c84223e9f43b05defbca64eedbcf362fd78a680de6c25e64f973b34a8063"},
+    {file = "langchain_openai-0.1.8.tar.gz", hash = "sha256:a11fcce15def7917c44232abda6baaa63dfc79fe44be1531eea650d39a44cd95"},
 ]
 
 [[package]]
