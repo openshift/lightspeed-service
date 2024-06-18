@@ -50,7 +50,7 @@ def test_retrieve_conversation_id_existing_id(_load_config):
     old_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=old_id)
     new_id = ols.retrieve_conversation_id(llm_request)
-    assert new_id == old_id, "Old (existing) ID should be retrieved." ""
+    assert new_id == old_id, "Old (existing) ID should be retrieved."
 
 
 def test_retrieve_previous_input_no_previous_history(_load_config):
