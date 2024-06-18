@@ -17,6 +17,14 @@ class Attachment(BaseModel):
         attachment_type: The attachment type, like "log", "configuration" etc.
         content_type: The content type as defined in MIME standard
         content: The actual attachment content
+
+    YAML attachments with **kind** and **metadata/name** attributes will
+    be handled as resources with specified name:
+    ```
+    kind: Pod
+    metadata:
+        name: private-reg
+    ```
     """
 
     attachment_type: str
@@ -31,6 +39,11 @@ class Attachment(BaseModel):
                     "attachment_type": "log",
                     "content_type": "text/plain",
                     "content": "this is attachment",
+                },
+                {
+                    "attachment_type": "configuration",
+                    "content_type": "application/yaml",
+                    "content": "kind: Pod\n metadata:\n name:    private-reg",
                 },
                 {
                     "attachment_type": "configuration",
@@ -79,6 +92,11 @@ class LLMRequest(BaseModel):
                             "attachment_type": "log",
                             "content_type": "text/plain",
                             "content": "this is attachment",
+                        },
+                        {
+                            "attachment_type": "configuration",
+                            "content_type": "application/yaml",
+                            "content": "kind: Pod\n metadata:\n    name: private-reg",
                         },
                         {
                             "attachment_type": "configuration",

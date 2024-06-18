@@ -71,7 +71,7 @@ def conversation_request(
     """Handle conversation requests for the OLS endpoint.
 
     Args:
-        llm_request: The request containing a query and conversation ID.
+        llm_request: The request containing a query, conversation ID, and optional attachments.
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
