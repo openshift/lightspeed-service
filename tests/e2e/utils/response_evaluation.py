@@ -101,8 +101,7 @@ class ResponseEvaluation:
                 result_dict["consistency_score"].append(score)
                 result_dict["cutoff_score"].append(eval_threshold)
 
-        result_df = DataFrame.from_dict(result_dict)
-        return result_df
+        return DataFrame.from_dict(result_dict)
 
     def validate_response(self):
         """Validate LLM response."""

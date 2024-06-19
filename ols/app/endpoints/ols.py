@@ -251,10 +251,9 @@ def generate_response(
             for conversation in previous_input
             if conversation
         ]
-        summarizer_response = docs_summarizer.summarize(
+        return docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
         )
-        return summarizer_response
     except PromptTooLongError as summarizer_error:
         logger.error(f"Prompt is too long: {summarizer_error}")
         raise HTTPException(
@@ -468,12 +467,11 @@ def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
     # this Path sanitization pattern
     uid = os.path.normpath("/" + user_id).lstrip("/")
     cid = os.path.normpath("/" + conversation_id).lstrip("/")
-    path = Path(
+    return Path(
         config.ols_config.user_data_collection.transcripts_storage,
         uid,
         cid,
     )
-    return path
 
 
 def store_transcript(
