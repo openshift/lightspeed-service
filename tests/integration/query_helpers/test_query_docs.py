@@ -23,8 +23,7 @@ def setup_faiss():
     ]
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    db = FAISS.from_documents(list_of_documents, embeddings)
-    return db
+    return FAISS.from_documents(list_of_documents, embeddings)
 
 
 def test_retrieve_top_k_similarity_search(setup_faiss):
