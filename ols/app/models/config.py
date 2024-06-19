@@ -60,7 +60,7 @@ def _read_secret(
     try:
         with open(filename, mode="r", encoding="utf-8") as f:
             return f.read().rstrip()
-    except IOError as e:
+    except OSError as e:
         # some files with secret must exist, so for such cases it is time
         # to inform about improper configuration
         if raise_on_error:
