@@ -154,9 +154,8 @@ class TokenHandler:
     ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        index = 0
 
-        for message in reversed(history):
+        for index, message in enumerate(reversed(history)):
             message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
             # if total length of already checked messages is higher than limit
@@ -164,7 +163,6 @@ class TokenHandler:
             if total_length > limit:
                 logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
-            index += 1
             total_length += 1  # Additional token for new-line.
 
         return history, False
