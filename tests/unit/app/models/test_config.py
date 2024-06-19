@@ -209,26 +209,17 @@ def test_model_config_validation_improper_url():
         model_config.validate_yaml()
 
 
-def test_model_config_invalid_response_token():
-    """Test the model config with invalid response token limit."""
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="invalid response_token_limit = 0, positive value expected",
-    ):
-        ModelConfig({"name": "test_model_name", "response_token_limit": 0})
-
-
 def test_model_config_higher_response_token():
     """Test the model config with response token >= context window."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="Context window size 2, should be greater than response token limit 2",
+        match="Context window size 2, should be greater than max_tokens_for_response 2",
     ):
         ModelConfig(
             {
                 "name": "test_model_name",
                 "context_window_size": 2,
-                "response_token_limit": 2,
+                "max_tokens_for_response": 2,
             }
         )
 
@@ -265,8 +256,8 @@ def test_provider_config():
         == constants.DEFAULT_CONTEXT_WINDOW_SIZE
     )
     assert (
-        provider_config.models["test_model_name"].response_token_limit
-        == constants.DEFAULT_RESPONSE_TOKEN_LIMIT
+        provider_config.models["test_model_name"].max_tokens_for_response
+        == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
@@ -856,8 +847,7 @@ def test_provider_model_specific_tokens_limit(provider_name, model_name):
 @pytest.mark.parametrize("model_name", models)
 def test_provider_config_explicit_tokens(model_name):
     """Test the ProviderConfig model when explicit tokens are specified."""
-    context_window_size = 500
-    response_token_limit = 100
+    context_window_size = 550
 
     provider_config = ProviderConfig(
         {
@@ -872,15 +862,11 @@ def test_provider_config_explicit_tokens(model_name):
                     "url": "test_model_url",
                     "credentials_path": "tests/config/secret/apitoken",
                     "context_window_size": context_window_size,
-                    "response_token_limit": response_token_limit,
                 }
             ],
         }
     )
     assert provider_config.models[model_name].context_window_size == context_window_size
-    assert (
-        provider_config.models[model_name].response_token_limit == response_token_limit
-    )
 
 
 def test_provider_config_improper_context_window_size_value():

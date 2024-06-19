@@ -10,7 +10,7 @@ from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.config import ProviderConfig
 from ols.app.models.models import SummarizerResponse
-from ols.constants import RAG_CONTENT_LIMIT
+from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import generate_prompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils.token_handler import TokenHandler
@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the QuestionValidator."""
+        super().__init__(*args, **kwargs)
+        provider_config = config.llm_config.providers.get(self.provider)
+        model_config = provider_config.models.get(self.model)
+        self.generic_llm_params = {
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.max_tokens_for_response
+        }
 
     def _get_model_options(
         self, provider_config: ProviderConfig
@@ -65,7 +74,6 @@ class DocsSummarizer(QueryHelper):
 
         token_handler = TokenHandler()
         bare_llm = self.llm_loader(self.provider, self.model, self.generic_llm_params)
-
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
         model_options = self._get_model_options(provider_config)
@@ -81,7 +89,9 @@ class DocsSummarizer(QueryHelper):
             "sample",
         )
         available_tokens = token_handler.calculate_and_check_available_tokens(
-            temp_prompt.format(**temp_prompt_input), model_config
+            temp_prompt.format(**temp_prompt_input),
+            model_config.context_window_size,
+            model_config.max_tokens_for_response,
         )
 
         if vector_index is not None:
@@ -109,10 +119,13 @@ class DocsSummarizer(QueryHelper):
             rag_context,
         )
 
-        # Final check if we don't use more tokens than permitted by provider+model
-        # Handles: OLS-538
+        # Tokens-check: We trigger the computation of the token count
+        # without care about the return value. This is to ensure that
+        # the query is within the token limit.
         token_handler.calculate_and_check_available_tokens(
-            final_prompt.format(**llm_input_values), model_config
+            final_prompt.format(**llm_input_values),
+            model_config.context_window_size,
+            model_config.max_tokens_for_response,
         )
 
         chat_engine = LLMChain(
