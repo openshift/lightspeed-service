@@ -30,17 +30,29 @@ def test_passing_parameters():
 
     question_validator = QuestionValidator()
     assert question_validator.generic_llm_params is not None
-    assert GenericLLMParameters.MAX_NEW_TOKENS in question_validator.generic_llm_params
     assert (
-        question_validator.generic_llm_params[GenericLLMParameters.MAX_NEW_TOKENS] == 4
+        GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE
+        in question_validator.generic_llm_params
+    )
+    assert (
+        question_validator.generic_llm_params[
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE
+        ]
+        == 4
     )
 
     question_validator = QuestionValidator(generic_llm_params={})
     # the generic_llm_params should be rewritten in constructor
     assert question_validator.generic_llm_params is not None
-    assert GenericLLMParameters.MAX_NEW_TOKENS in question_validator.generic_llm_params
     assert (
-        question_validator.generic_llm_params[GenericLLMParameters.MAX_NEW_TOKENS] == 4
+        GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE
+        in question_validator.generic_llm_params
+    )
+    assert (
+        question_validator.generic_llm_params[
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE
+        ]
+        == 4
     )
 
 
@@ -54,7 +66,8 @@ def test_validate_question_llm_loader():
     # when the LLM will be initialized the check for provided parameters will
     # be performed
     llm_loader = mock_llm_loader(
-        None, expected_params=("p1", "m1", {GenericLLMParameters.MAX_NEW_TOKENS: 4})
+        None,
+        expected_params=("p1", "m1", {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4}),
     )
 
     # check that LLM loader was called with expected parameters

@@ -921,7 +921,7 @@ def test_post_too_long_query(_setup):
     assert response.status_code == requests.codes.request_entity_too_large
     expected_details = {
         "detail": {
-            "cause": "Prompt length 2200 exceeds LLM available context window limit 350 "
+            "cause": "Prompt length 2200 exceeds LLM available context window limit 446 "
             "tokens",
             "response": "Prompt is too long",
         }

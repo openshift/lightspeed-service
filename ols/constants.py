@@ -59,8 +59,8 @@ FAKE_MODEL = "fake_model"
 class GenericLLMParameters:
     """Generic LLM parameters that can be mapped into LLM provider-specific parameters."""
 
-    MIN_NEW_TOKENS = "min_new_tokens"
-    MAX_NEW_TOKENS = "max_new_tokens"
+    MIN_TOKENS_FOR_RESPONSE = "min_tokens_for_response"
+    MAX_TOKENS_FOR_RESPONSE = "max_tokens_for_response"
     TOP_K = "top_k"
     TOP_P = "top_p"
     TEMPERATURE = "temperature"
@@ -68,8 +68,10 @@ class GenericLLMParameters:
 
 # Token related constants
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
-DEFAULT_RESPONSE_TOKEN_LIMIT = 512
+DEFAULT_MIN_TOKENS_FOR_RESPONSE = 1
+DEFAULT_MAX_TOKENS_FOR_RESPONSE = 512
 MINIMUM_CONTEXT_TOKEN_LIMIT = 1
+
 
 # Provider and Model-specific context window size
 # see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4

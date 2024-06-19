@@ -103,7 +103,8 @@ class ModelConfig(BaseModel):
     credentials: Optional[str] = None
 
     context_window_size: int = -1  # need to be set later, based on model
-    response_token_limit: int = -1  # need to be set later, based on model
+    max_tokens_for_response: int = -1  # need to be set later, based on model
+
     options: Optional[dict[str, Any]] = None
 
     def __init__(
@@ -132,14 +133,14 @@ class ModelConfig(BaseModel):
         self.context_window_size = self._validate_token_limit(
             data, "context_window_size", default
         )
-        default = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
-        self.response_token_limit = self._validate_token_limit(
-            data, "response_token_limit", default
+        default = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+        self.max_tokens_for_response = self._validate_token_limit(
+            data, "max_tokens_for_response", default
         )
-        if self.context_window_size <= self.response_token_limit:
+        if self.context_window_size <= self.max_tokens_for_response:
             raise InvalidConfigurationError(
                 f"Context window size {self.context_window_size}, "
-                f"should be greater than response token limit {self.response_token_limit}"
+                f"should be greater than max_tokens_for_response {self.max_tokens_for_response}"
             )
         # fully optional model-specific options
         self.options = data.get("options", None)
@@ -152,7 +153,7 @@ class ModelConfig(BaseModel):
                 and self.url == other.url
                 and self.credentials == other.credentials
                 and self.context_window_size == other.context_window_size
-                and self.response_token_limit == other.response_token_limit
+                and self.max_tokens_for_response == other.max_tokens_for_response
                 and self.options == other.options
             )
         return False
