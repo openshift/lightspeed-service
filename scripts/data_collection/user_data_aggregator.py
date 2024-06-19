@@ -736,7 +736,7 @@ keys_filenames = (
 )
 
 
-@pytest.mark.parametrize("key, filename", keys_filenames)
+@pytest.mark.parametrize(("key", "filename"), keys_filenames)
 def test_construct_filename(key, filename):
     """Test the function construct_filename with valid keys provided at input."""
     assert construct_filename(key) == filename
