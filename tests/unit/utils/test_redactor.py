@@ -32,7 +32,7 @@ class TestRedactor(TestCase):
         redacted_question = self.query_filter.redact("test_id", query)
         expected_output = (
             "write a deployment yaml for the mongodb REDACTED_image with nodeip "
-            + "as REDACTED_IP"
+            "as REDACTED_IP"
         )
         assert redacted_question == expected_output
 
