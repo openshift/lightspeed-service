@@ -103,10 +103,8 @@ class ModelConfig(BaseModel):
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
 
-    context_window_size: Optional[PositiveInt] = None
-    max_tokens_for_response: Optional[PositiveInt] = (
-        constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
-    )
+    context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
+    max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
 
     options: Optional[dict[str, Any]] = None
 
