@@ -421,21 +421,20 @@ def test_rag_question() -> None:
 
 
 def test_query_filter() -> None:
-    """Ensure responses does not include filtered words."""
+    """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        query = "what is foo in bar?"
         response = client.post(
             endpoint,
-            json={"query": "what is foo in bar?"},
+            json={"query": query},
             timeout=LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
-
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-
         # values to be filtered and replaced are defined in:
         # tests/config/singleprovider.e2e.template.config.yaml
         response_text = json_response["response"].lower()
@@ -443,6 +442,27 @@ def test_query_filter() -> None:
         assert "deploy" in response_text
         assert "foo" not in response_text
         assert "bar" not in response_text
+
+        # Retrieve the pod name
+        data_collection_container_name = "ols"
+        pod_name = cluster_utils.get_single_existing_pod_name()
+
+        # Check if filtered words are redacted in the logs
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+
+        # Ensure redacted patterns do not appear in the logs
+        unwanted_patterns = ["what is foo in bar?"]
+        for line in container_log.splitlines():
+            # Only check lines that are not part of a query
+            if re.search(r'Body: \{"query":', line):
+                continue
+            for pattern in unwanted_patterns:
+                assert not re.search(pattern, line, re.IGNORECASE)
+
+        # Ensure the intended redaction has occurred
+        assert "what is deployment in openshift?" in container_log
 
 
 @retry(max_attempts=3, wait_between_runs=10)

@@ -37,7 +37,7 @@ class Redactor:
 
     def redact(self, conversation_id: str, text_input: str) -> str:
         """Redact the input using regex built."""
-        logger.debug(f"Redacting conversation {conversation_id} input: {text_input}")
+        logger.debug(f"Redacting conversation {conversation_id}")
         for regex_filter in self.regex_filters:
             text_input, count = regex_filter.pattern.subn(
                 regex_filter.replace_with, text_input

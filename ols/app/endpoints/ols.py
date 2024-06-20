@@ -85,18 +85,20 @@ def conversation_request(
 
     conversation_id = retrieve_conversation_id(llm_request)
 
+    # Redacts the Query then logs
+
+    # Redact the query
+    llm_request = redact_query(conversation_id, llm_request)
+
+    # Log incoming request (after redaction)
+    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
+
     # TODO OLS-697: Store attachments send to OLS service in structured format into
     # conversation cache
     previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Retrieve attachments from the request
     attachments = retrieve_attachments(llm_request)
-
-    # Log incoming request
-    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
-
-    # Redact the query
-    llm_request = redact_query(conversation_id, llm_request)
 
     # Redact all attachments
     attachments = redact_attachments(conversation_id, attachments)
