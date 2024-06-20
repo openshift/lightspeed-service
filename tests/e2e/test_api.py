@@ -3,7 +3,7 @@
 import json
 import os
 import re
-import sys
+import subprocess
 import time
 from typing import Optional
 
@@ -32,6 +32,7 @@ from tests.e2e.utils.postgres import (
     retrieve_connection,
 )
 from tests.e2e.utils.response_evaluation import ResponseEvaluation
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
@@ -56,29 +57,53 @@ OLS_USER_DATA_COLLECTION_INTERVAL = 10
 OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
 
+OLS_READY = False
+
+
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    try:
-        global ols_url, client, metrics_client
-        token = None
-        metrics_token = None
-        if on_cluster:
-            print("Setting up for on cluster test execution\n")
-            ols_url = cluster_utils.get_ols_url("ols")
-            cluster_utils.create_user("test-user")
-            cluster_utils.create_user("metrics-test-user")
-            token = cluster_utils.get_user_token("test-user")
-            metrics_token = cluster_utils.get_user_token("metrics-test-user")
-            cluster_utils.grant_sa_user_access("test-user", "ols-user")
-            cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
-        else:
-            print("Setting up for standalone test execution\n")
+    global ols_url, client, metrics_client
+    token = None
+    metrics_token = None
+    provider = os.getenv("PROVIDER")
 
-        client = client_utils.get_http_client(ols_url, token)
-        metrics_client = client_utils.get_http_client(ols_url, metrics_token)
-    except Exception as e:
-        print(f"Failed to setup ols access: {e}")
-        sys.exit(1)
+    global OLS_READY
+    if on_cluster:
+        print("Setting up for on cluster test execution\n")
+        ols_url = cluster_utils.get_ols_url("ols")
+        cluster_utils.create_user("test-user")
+        cluster_utils.create_user("metrics-test-user")
+        token = cluster_utils.get_user_token("test-user")
+        metrics_token = cluster_utils.get_user_token("metrics-test-user")
+        cluster_utils.grant_sa_user_access("test-user", "ols-user")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+    else:
+        print("Setting up for standalone test execution\n")
+
+    # ruff: noqa: S603, S607
+    # Determine the hostname for the OLS route
+    result = subprocess.run(
+        ["oc", "get", "route", "ols", "-o", "jsonpath={.spec.host}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    ols_url = result.stdout.strip()
+    if not ols_url.startswith("http"):
+        ols_url = f"https://{ols_url}"
+
+    print(f"OLS_URL set to {ols_url}")
+    os.environ["OLS_URL"] = ols_url
+
+    client = client_utils.get_http_client(ols_url, token)
+    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+
+    # Wait for OLS to be ready
+    print(f"Waiting for OLS to be ready on provider: {provider}...")
+    OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {OLS_READY}")
+    if not OLS_READY:
+        must_gather()
 
 
 def teardown_module(module):
