@@ -5,7 +5,6 @@ from unittest import TestCase, mock
 
 import pytest
 
-from ols.app.models.config import ModelConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
@@ -43,44 +42,39 @@ class TestTokenHandler(TestCase):
 
     def test_available_tokens_for_empty_prompt(self):
         """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = ""
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
-        assert (
-            available_tokens
-            == model_config.context_window_size - model_config.response_token_limit
-        )
+        assert available_tokens == context_window_size - max_tokens_for_response
 
     def test_available_tokens_for_regular_prompt(self):
         """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
         expected_value = (
-            model_config.context_window_size
-            - model_config.response_token_limit
+            context_window_size
+            - max_tokens_for_response
             - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value
 
     def test_available_tokens_for_large_prompt(self):
         """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
-        # use default model config
-        model_config = ModelConfig({})
-        context_limit = (
-            model_config.context_window_size - model_config.response_token_limit
-        )
+        context_window_size = 500
+        max_tokens_for_response = 20
+        context_limit = context_window_size - max_tokens_for_response
 
         # this prompt will surely exceeds context window size
         prompt = "What is Kubernetes?" * 10000
@@ -93,30 +87,23 @@ class TestTokenHandler(TestCase):
         )
         with pytest.raises(PromptTooLongError, match=expected_error_messge):
             self._token_handler_obj.calculate_and_check_available_tokens(
-                prompt, model_config
+                prompt, context_window_size, max_tokens_for_response
             )
 
-    def test_available_tokens_specific_model_config(self):
+    def test_available_tokens_with_buffer_weight(self):
         """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa E501
-        # use specific model config
-        model_config = ModelConfig(
-            {
-                "name": "test_name",
-                "url": "test_url",
-                "context_window_size": 100,
-                "response_token_limit": 50,
-            },
-        )
+        context_window_size = 500
+        max_tokens_for_response = 20
 
         prompt = "What is Kubernetes?"
         prompt_length = len(self._token_handler_obj.text_to_tokens(prompt))
 
         available_tokens = self._token_handler_obj.calculate_and_check_available_tokens(
-            prompt, model_config
+            prompt, context_window_size, max_tokens_for_response
         )
         expected_value = (
-            model_config.context_window_size
-            - model_config.response_token_limit
+            context_window_size
+            - max_tokens_for_response
             - ceil(prompt_length * TOKEN_BUFFER_WEIGHT)
         )
         assert available_tokens == expected_value

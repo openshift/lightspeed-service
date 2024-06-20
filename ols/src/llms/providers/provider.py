@@ -15,6 +15,7 @@ from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
+    PROVIDER_FAKE,
     PROVIDER_OPENAI,
     PROVIDER_WATSONX,
     GenericLLMParameters,
@@ -85,31 +86,44 @@ WatsonxParameters = {
     ProviderParameter(GenParams.REPETITION_PENALTY, float),
 }
 
+FakeProviderParameters: set[ProviderParameter] = set()
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
     PROVIDER_OPENAI: OpenAIParameters,
     PROVIDER_BAM: BAMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
+    PROVIDER_FAKE: FakeProviderParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
-AzureOpenAIParametersMapping: dict[str, str] = {}
+AzureOpenAIParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+}
 
 # Generic to OpenAI parameters mapping
-OpenAIParametersMapping: dict[str, str] = {}
+OpenAIParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+}
 
 # Generic to BAM parameters mapping
-BAMParametersMapping: dict[str, str] = {}
+BAMParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: "min_new_tokens",
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_new_tokens",
+}
 
 # Generic to Watsonx parameters mapping
 WatsonxParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MIN_NEW_TOKENS: GenParams.MIN_NEW_TOKENS,
-    GenericLLMParameters.MAX_NEW_TOKENS: GenParams.MAX_NEW_TOKENS,
+    GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: GenParams.MIN_NEW_TOKENS,
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: GenParams.MAX_NEW_TOKENS,
     GenericLLMParameters.TOP_K: GenParams.TOP_K,
     GenericLLMParameters.TOP_P: GenParams.TOP_P,
     GenericLLMParameters.TEMPERATURE: GenParams.TEMPERATURE,
 }
+
+# Generic to fake parameter mapping
+FakeProviderParametersMapping: dict[str, str] = {}
 
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
@@ -117,6 +131,7 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_OPENAI: OpenAIParametersMapping,
     PROVIDER_BAM: BAMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
+    PROVIDER_FAKE: FakeProviderParametersMapping,
 }
 
 

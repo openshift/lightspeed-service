@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
-    Extra,
     FilePath,
     PositiveInt,
     model_validator,
@@ -60,13 +59,13 @@ def _read_secret(
     try:
         with open(filename, mode="r", encoding="utf-8") as f:
             return f.read().rstrip()
-    except IOError as e:
+    except OSError as e:
         # some files with secret must exist, so for such cases it is time
         # to inform about improper configuration
         if raise_on_error:
             raise
         # no logging configured yet
-        print("Problem reading secret from file {filename}:", e)
+        print(f"Problem reading secret from file {filename}:", e)
         print(f"Verify the provider secret contains {default_filename}")
         return None
 
@@ -103,7 +102,8 @@ class ModelConfig(BaseModel):
     credentials: Optional[str] = None
 
     context_window_size: int = -1  # need to be set later, based on model
-    response_token_limit: int = -1  # need to be set later, based on model
+    max_tokens_for_response: int = -1  # need to be set later, based on model
+
     options: Optional[dict[str, Any]] = None
 
     def __init__(
@@ -132,14 +132,14 @@ class ModelConfig(BaseModel):
         self.context_window_size = self._validate_token_limit(
             data, "context_window_size", default
         )
-        default = constants.DEFAULT_RESPONSE_TOKEN_LIMIT
-        self.response_token_limit = self._validate_token_limit(
-            data, "response_token_limit", default
+        default = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+        self.max_tokens_for_response = self._validate_token_limit(
+            data, "max_tokens_for_response", default
         )
-        if self.context_window_size <= self.response_token_limit:
+        if self.context_window_size <= self.max_tokens_for_response:
             raise InvalidConfigurationError(
                 f"Context window size {self.context_window_size}, "
-                f"should be greater than response token limit {self.response_token_limit}"
+                f"should be greater than max_tokens_for_response {self.max_tokens_for_response}"
             )
         # fully optional model-specific options
         self.options = data.get("options", None)
@@ -152,7 +152,7 @@ class ModelConfig(BaseModel):
                 and self.url == other.url
                 and self.credentials == other.credentials
                 and self.context_window_size == other.context_window_size
-                and self.response_token_limit == other.response_token_limit
+                and self.max_tokens_for_response == other.max_tokens_for_response
                 and self.options == other.options
             )
         return False
@@ -263,7 +263,7 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
-class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):
+class ProviderSpecificConfig(BaseModel, extra="forbid"):
     """Base class with common provider specific configurations."""
 
     url: AnyHttpUrl  # required attribute
@@ -271,13 +271,13 @@ class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):
     api_key: Optional[str] = None
 
 
-class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class OpenAIConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to OpenAI provider."""
 
     credentials_path: str  # required attribute
 
 
-class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class AzureOpenAIConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to Azure OpenAI provider."""
 
     deployment_name: str  # required attribute
@@ -288,14 +288,14 @@ class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
     client_secret: Optional[str] = None
 
 
-class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class WatsonxConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to Watsonx provider."""
 
     credentials_path: str  # required attribute
     project_id: Optional[str] = None
 
 
-class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class BAMConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to BAM provider."""
 
     credentials_path: str  # required attribute
@@ -340,14 +340,10 @@ class ProviderConfig(BaseModel):
 
         self.setup_models_config(data)
 
-        # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
         if self.type == constants.PROVIDER_AZURE_OPENAI:
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
-            if self.deployment_name is None:
-                raise InvalidConfigurationError(
-                    f"deployment_name is required for Azure OpenAI provider {self.name}"
-                )
+            # note: it can be overwritten in azure_config
 
     def set_provider_type(self, data: dict) -> None:
         """Set the provider type."""

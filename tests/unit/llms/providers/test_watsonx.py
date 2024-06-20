@@ -250,8 +250,8 @@ def test_generic_parameter_mappings(provider_config):
     """Test generic parameter mapping to provider parameter list."""
     # some non-default values for generic LLM parameters
     generic_llm_params = {
-        GenericLLMParameters.MIN_NEW_TOKENS: 100,
-        GenericLLMParameters.MAX_NEW_TOKENS: 200,
+        GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: 100,
+        GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 200,
         GenericLLMParameters.TOP_K: 10,
         GenericLLMParameters.TOP_P: 1.5,
         GenericLLMParameters.TEMPERATURE: 42.0,

@@ -3,7 +3,7 @@
 import json
 import os
 import re
-import sys
+import subprocess
 import time
 from typing import Optional
 
@@ -32,11 +32,13 @@ from tests.e2e.utils.postgres import (
     retrieve_connection,
 )
 from tests.e2e.utils.response_evaluation import ResponseEvaluation
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
 # on_cluster is set to true when the tests are being run
 # against ols running on a cluster
 on_cluster = False
+
 
 # OLS_URL env only needs to be set when running against a local ols instance,
 # when ols is run against a cluster the url is retrieved from the cluster.
@@ -55,30 +57,53 @@ OLS_USER_DATA_PATH = "/app-root/ols-user-data"
 OLS_USER_DATA_COLLECTION_INTERVAL = 10
 OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
+OLS_READY = False
+
 
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    try:
-        global ols_url, client, metrics_client
-        token = None
-        metrics_token = None
-        if on_cluster:
-            print("Setting up for on cluster test execution\n")
-            ols_url = cluster_utils.get_ols_url("ols")
-            cluster_utils.create_user("test-user")
-            cluster_utils.create_user("metrics-test-user")
-            token = cluster_utils.get_user_token("test-user")
-            metrics_token = cluster_utils.get_user_token("metrics-test-user")
-            cluster_utils.grant_sa_user_access("test-user", "ols-user")
-            cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
-        else:
-            print("Setting up for standalone test execution\n")
+    global ols_url, client, metrics_client
+    token = None
+    metrics_token = None
+    provider = os.getenv("PROVIDER")
 
-        client = client_utils.get_http_client(ols_url, token)
-        metrics_client = client_utils.get_http_client(ols_url, metrics_token)
-    except Exception as e:
-        print(f"Failed to setup ols access: {e}")
-        sys.exit(1)
+    global OLS_READY
+    if on_cluster:
+        print("Setting up for on cluster test execution\n")
+        ols_url = cluster_utils.get_ols_url("ols")
+        cluster_utils.create_user("test-user")
+        cluster_utils.create_user("metrics-test-user")
+        token = cluster_utils.get_user_token("test-user")
+        metrics_token = cluster_utils.get_user_token("metrics-test-user")
+        cluster_utils.grant_sa_user_access("test-user", "ols-user")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+    else:
+        print("Setting up for standalone test execution\n")
+
+    # ruff: noqa: S603, S607
+    # Determine the hostname for the OLS route
+    result = subprocess.run(
+        ["oc", "get", "route", "ols", "-o", "jsonpath={.spec.host}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    ols_url = result.stdout.strip()
+    if not ols_url.startswith("http"):
+        ols_url = f"https://{ols_url}"
+
+    print(f"OLS_URL set to {ols_url}")
+    os.environ["OLS_URL"] = ols_url
+
+    client = client_utils.get_http_client(ols_url, token)
+    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+
+    # Wait for OLS to be ready
+    print(f"Waiting for OLS to be ready on provider: {provider}...")
+    OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {OLS_READY}")
+    if not OLS_READY:
+        must_gather()
 
 
 def teardown_module(module):
@@ -98,11 +123,12 @@ def check_content_type(response, content_type, message=""):
     assert response.headers["content-type"].startswith(content_type), message
 
 
+@retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
-        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+        response = client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         check_content_type(response, "application/json")
         assert response.json() == {"ready": True, "reason": "service is ready"}
@@ -310,6 +336,33 @@ def test_valid_question() -> None:
         )
 
 
+@pytest.mark.rag()
+def test_ocp_docs_version_same_as_cluster_version() -> None:
+    """Check that the version of OCP docs matches the cluster we're on."""
+    endpoint = "/v1/query"
+
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        cid = suid.get_suid()
+        response = client.post(
+            endpoint,
+            json={
+                "conversation_id": cid,
+                "query": "welcome openshift container platform documentation",
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        major, minor = cluster_utils.get_cluster_version()
+
+        assert len(json_response["referenced_documents"]) > 1
+        assert f"{major}.{minor}" in json_response["referenced_documents"][0]["title"]
+
+
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
@@ -414,10 +467,14 @@ def test_rag_question() -> None:
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-        assert len(json_response["referenced_documents"]) > 0
+        assert len(json_response["referenced_documents"]) > 1
         assert "virt" in json_response["referenced_documents"][0]["docs_url"]
         assert "https://" in json_response["referenced_documents"][0]["docs_url"]
         assert json_response["referenced_documents"][0]["title"]
+
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["docs_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
 def test_query_filter() -> None:

@@ -42,7 +42,7 @@ dev = [
     "pytest-cov==5.0.0",
     "pytest-asyncio==0.23.7",
     "pydantic==2.7.3",
-    "ruff==0.4.6",
+    "ruff==0.4.9",
     "bandit==1.7.8",
     "types-requests==2.31.0"
 ]
@@ -51,6 +51,10 @@ dev = [
 type = "find_links"
 url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
 name = "torch"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [project]
 name = "ols"
@@ -61,19 +65,19 @@ dependencies = [
     "torch==2.2.2+cpu",
     "fastapi==0.111.0",
     "gradio==4.36.1",
-    "langchain==0.2.2",
+    "langchain==0.2.5",
     "langchain-ibm==0.1.7",
     "llama-index==0.10.38",
     "llama-index-vector-stores-faiss==0.1.2",
     "llama-index-embeddings-huggingface==0.2.0",
-    "uvicorn==0.29.0",
+    "uvicorn==0.30.1",
     "redis==5.0.4",
     "faiss-cpu==1.8.0",
     "sentence-transformers==2.7.0",
     "openai==1.30.1",
-    "ibm-watson-machine-learning==1.0.357",
+    "ibm-watson-machine-learning==1.0.359",
     "ibm-generative-ai==3.0.0",
-    "langchain-openai==0.1.7",
+    "langchain-openai==0.1.8",
     "pydantic==2.7.3",
     "setuptools==69.5.1",
     "prometheus-client==0.20.0",
@@ -81,11 +85,13 @@ dependencies = [
     "pytest-asyncio==0.23.7",
     "psycopg2-binary==2.9.9",
     "azure-identity==1.16.1",
-    "langchain-community==0.2.0",
+    "langchain-community==0.2.5",
+    "SQLAlchemy==2.0.30",
+    "huggingface_hub==0.23.4",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
-license = "LICENSE"
+license = {file = "LICENSE"}
 
 [tool.pdm.scripts]
 start = "pdm run make run"
@@ -97,3 +103,6 @@ coverage-report = "pdm run make coverage-report"
 check-types = "pdm run make check-types"
 generate-schema = "pdm run make schema"
 security-check = "pdm run make security-check"
+
+[tool.setuptools]
+packages = ["ols"]

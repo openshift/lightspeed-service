@@ -32,8 +32,7 @@ def load_fake_feedback(filename):
     feedback_file = (
         f"{config.ols_config.user_data_collection.feedback_storage}/{filename}.json"
     )
-    stored_data = json.loads(open(feedback_file).read())
-    return stored_data
+    return json.loads(open(feedback_file).read())
 
 
 def test_get_feedback_status(feedback_location):

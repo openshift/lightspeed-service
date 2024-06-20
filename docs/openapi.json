@@ -12,7 +12,7 @@
                     "query"
                 ],
                 "summary": "Conversation Request",
-                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query and conversation ID.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the processed information.",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query, conversation ID, and optional attachments.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n\nReturns:\n    Response containing the processed information.",
                 "operationId": "conversation_request_v1_query_post",
                 "requestBody": {
                     "content": {
@@ -325,12 +325,17 @@
                     "content"
                 ],
                 "title": "Attachment",
-                "description": "Model representing an attachment that can be send from UI as part of query.\n\nList of attachments can be optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content",
+                "description": "Model representing an attachment that can be send from UI as part of query.\n\nList of attachments can be optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
                 "examples": [
                     {
                         "attachment_type": "log",
                         "content": "this is attachment",
                         "content_type": "text/plain"
+                    },
+                    {
+                        "attachment_type": "configuration",
+                        "content": "kind: Pod\n metadata:\n name:    private-reg",
+                        "content_type": "application/yaml"
                     },
                     {
                         "attachment_type": "configuration",
@@ -569,6 +574,11 @@
                                 "attachment_type": "log",
                                 "content": "this is attachment",
                                 "content_type": "text/plain"
+                            },
+                            {
+                                "attachment_type": "configuration",
+                                "content": "kind: Pod\n metadata:\n    name: private-reg",
+                                "content_type": "application/yaml"
                             },
                             {
                                 "attachment_type": "configuration",

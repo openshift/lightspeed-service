@@ -6,7 +6,6 @@ from math import ceil
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
-from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk
 from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
@@ -67,34 +66,37 @@ class TokenHandler:
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
     def calculate_and_check_available_tokens(
-        self, prompt: str, model_config: ModelConfig
+        self, prompt: str, context_window_size: int, max_tokens_for_response: int
     ) -> int:
         """Get available tokens that can be used for prompt augmentation.
 
         Args:
             prompt: format prompt template to string before passing as arg
-            model_config: model config to get other tokens spec.
+            context_window_size: context window size of LLM
+            max_tokens_for_response: max tokens allowed for response (estimation)
 
         Returns:
             available_tokens: int, tokens that can be used for augmentation.
         """
-        # TODO: OLS-490 Sync Max response token for token handler with model parameter
-        context_window_size = model_config.context_window_size
-        response_token_limit = model_config.response_token_limit
         logger.debug(
             f"Context window size: {context_window_size}, "
-            f"Response token limit: {response_token_limit}"
+            f"Max generated tokens: {max_tokens_for_response}"
         )
 
         prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
         logger.debug(f"Prompt tokens: {prompt_token_count}")
 
+        # The context_window_size is the maximum number of tokens that
+        # can be used for a "conversation" in the LLM model. This
+        # includes prompt AND response. Hence we need to subtract the
+        # prompt tokens and max tokens for response from the context
+        # window size.
         available_tokens = (
-            context_window_size - response_token_limit - prompt_token_count
+            context_window_size - max_tokens_for_response - prompt_token_count
         )
 
         if available_tokens <= 0:
-            limit = context_window_size - response_token_limit
+            limit = context_window_size - max_tokens_for_response
             raise PromptTooLongError(
                 f"Prompt length {prompt_token_count} exceeds LLM "
                 f"available context window limit {limit} tokens"
@@ -154,9 +156,8 @@ class TokenHandler:
     ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        index = 0
 
-        for message in reversed(history):
+        for index, message in enumerate(reversed(history)):
             message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
             # if total length of already checked messages is higher than limit
@@ -164,7 +165,6 @@ class TokenHandler:
             if total_length > limit:
                 logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
-            index += 1
             total_length += 1  # Additional token for new-line.
 
         return history, False

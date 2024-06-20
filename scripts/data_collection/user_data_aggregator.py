@@ -157,7 +157,7 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         # cluster UUID used by CCX monitoring infrastructure
         default="00000000-1111-0000-1111-000000000001",
         help="Cluster IDs to ignore during processing splited by comma: "
-        + "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
     )
     parser.add_argument(
         "-k",
@@ -736,7 +736,7 @@ keys_filenames = (
 )
 
 
-@pytest.mark.parametrize("key, filename", keys_filenames)
+@pytest.mark.parametrize(("key", "filename"), keys_filenames)
 def test_construct_filename(key, filename):
     """Test the function construct_filename with valid keys provided at input."""
     assert construct_filename(key) == filename

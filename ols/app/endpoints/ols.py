@@ -71,7 +71,7 @@ def conversation_request(
     """Handle conversation requests for the OLS endpoint.
 
     Args:
-        llm_request: The request containing a query and conversation ID.
+        llm_request: The request containing a query, conversation ID, and optional attachments.
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
 
     Returns:
@@ -143,13 +143,16 @@ def conversation_request(
             summarizer_response.history_truncated,
         )
 
-    referenced_documents = [
-        ReferencedDocument(
-            rag_chunk.doc_url,
-            rag_chunk.doc_title,
-        )
-        for rag_chunk in summarizer_response.rag_chunks
-    ]
+    # De-dup & retain order to create list of referenced documents
+    referenced_documents = list(
+        {
+            rag_chunk.doc_url: ReferencedDocument(
+                rag_chunk.doc_url,
+                rag_chunk.doc_title,
+            )
+            for rag_chunk in summarizer_response.rag_chunks
+        }.values()
+    )
 
     return LLMResponse(
         conversation_id=conversation_id,
@@ -250,10 +253,9 @@ def generate_response(
             for conversation in previous_input
             if conversation
         ]
-        summarizer_response = docs_summarizer.summarize(
+        return docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
         )
-        return summarizer_response
     except PromptTooLongError as summarizer_error:
         logger.error(f"Prompt is too long: {summarizer_error}")
         raise HTTPException(
@@ -467,12 +469,11 @@ def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
     # this Path sanitization pattern
     uid = os.path.normpath("/" + user_id).lstrip("/")
     cid = os.path.normpath("/" + conversation_id).lstrip("/")
-    path = Path(
+    return Path(
         config.ols_config.user_data_collection.transcripts_storage,
         uid,
         cid,
     )
-    return path
 
 
 def store_transcript(

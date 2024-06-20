@@ -50,7 +50,7 @@ def test_retrieve_conversation_id_existing_id(_load_config):
     old_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=old_id)
     new_id = ols.retrieve_conversation_id(llm_request)
-    assert new_id == old_id, "Old (existing) ID should be retrieved." ""
+    assert new_id == old_id, "Old (existing) ID should be retrieved."
 
 
 def test_retrieve_previous_input_no_previous_history(_load_config):
@@ -616,6 +616,38 @@ def test_conversation_request(
         response = ols.conversation_request(llm_request, auth)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         assert len(response.conversation_id) == 0
+
+
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.config.conversation_cache.get")
+def test_conversation_request_dedup_ref_docs(
+    mock_conversation_cache_get,
+    mock_summarize,
+    mock_validate_question,
+    _load_config,
+    auth,
+):
+    """Test deduplication of referenced docs."""
+    mock_rag_chunk = [
+        RagChunk("text1", "url-b", "title-b"),
+        RagChunk("text2", "url-b", "title-b"),  # duplicate doc
+        RagChunk("text3", "url-a", "title-a"),
+    ]
+    mock_validate_question.return_value = True
+    mock_summarize.return_value = SummarizerResponse(
+        response="some response",
+        rag_chunks=mock_rag_chunk,
+        history_truncated=False,
+    )
+    llm_request = LLMRequest(query="some query")
+    response = ols.conversation_request(llm_request, auth)
+
+    assert len(response.referenced_documents) == 2
+    assert response.referenced_documents[0].docs_url == "url-b"
+    assert response.referenced_documents[0].title == "title-b"
+    assert response.referenced_documents[1].docs_url == "url-a"
+    assert response.referenced_documents[1].title == "title-a"
 
 
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")

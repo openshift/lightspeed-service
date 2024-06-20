@@ -19,7 +19,7 @@ conversation_id = suid.get_suid()
 @patch("psycopg2.connect")
 def test_init_cache_failure_detection(mock_connect):
     """Test the exception handling for Cache.initialize_cache operation."""
-    exception_message = "Exception during initializing the cache." ""
+    exception_message = "Exception during initializing the cache."
     mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
         exception_message
     )

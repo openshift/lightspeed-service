@@ -30,8 +30,15 @@ PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
 PROVIDER_AZURE_OPENAI = "azure_openai"
 PROVIDER_WATSONX = "watsonx"
+PROVIDER_FAKE = "fake_provider"
 SUPPORTED_PROVIDER_TYPES = frozenset(
-    {PROVIDER_BAM, PROVIDER_OPENAI, PROVIDER_AZURE_OPENAI, PROVIDER_WATSONX}
+    {
+        PROVIDER_BAM,
+        PROVIDER_OPENAI,
+        PROVIDER_AZURE_OPENAI,
+        PROVIDER_WATSONX,
+        PROVIDER_FAKE,
+    }
 )
 
 # models
@@ -46,13 +53,14 @@ GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
 GPT4_TURBO = "gpt-4-turbo"
+FAKE_MODEL = "fake_model"
 
 
 class GenericLLMParameters:
     """Generic LLM parameters that can be mapped into LLM provider-specific parameters."""
 
-    MIN_NEW_TOKENS = "min_new_tokens"
-    MAX_NEW_TOKENS = "max_new_tokens"
+    MIN_TOKENS_FOR_RESPONSE = "min_tokens_for_response"
+    MAX_TOKENS_FOR_RESPONSE = "max_tokens_for_response"
     TOP_K = "top_k"
     TOP_P = "top_p"
     TEMPERATURE = "temperature"
@@ -60,8 +68,10 @@ class GenericLLMParameters:
 
 # Token related constants
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
-DEFAULT_RESPONSE_TOKEN_LIMIT = 512
+DEFAULT_MIN_TOKENS_FOR_RESPONSE = 1
+DEFAULT_MAX_TOKENS_FOR_RESPONSE = 512
 MINIMUM_CONTEXT_TOKEN_LIMIT = 1
+
 
 # Provider and Model-specific context window size
 # see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4
@@ -83,6 +93,9 @@ CONTEXT_WINDOW_SIZES = {
         GPT4_TURBO: 128000,
         GPT35_TURBO: 16384,
     },
+    PROVIDER_FAKE: {
+        FAKE_MODEL: DEFAULT_CONTEXT_WINDOW_SIZE,
+    },
 }
 
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
@@ -95,14 +108,12 @@ TOKEN_BUFFER_WEIGHT = 1.1
 
 # This is used to decide how many matching chunks we want to retrieve as context.
 # (in descending order of similarity between query & chunk)
-# Currently we want to fetch best matching chunk, hence the value is set to 1.
-# If we want to fetch multiple chunks, then this value will increase accordingly.
 
 # This also depends on chunk_size used during index creation,
 # if chunk_size is small, we need to set a higher value, so that we will get
 # more context. If chunk_size is more, then we need to set a low value as we may
 # end up using too much context. Precise context will get us better response.
-RAG_CONTENT_LIMIT = 1
+RAG_CONTENT_LIMIT = 5
 
 # Once the chunk is retrived we need to check similarity score, so that we won't
 # pick any random matching chunk.
