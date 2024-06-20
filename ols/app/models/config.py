@@ -12,6 +12,7 @@ from pydantic import (
     Extra,
     FilePath,
     PositiveInt,
+    field_validator,
     model_validator,
 )
 
@@ -96,29 +97,27 @@ class InvalidConfigurationError(Exception):
 class ModelConfig(BaseModel):
     """Model configuration."""
 
-    name: Optional[str] = None
+    name: str
 
     # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
 
-    context_window_size: int = -1  # need to be set later, based on model
-    max_tokens_for_response: int = -1  # need to be set later, based on model
+    context_window_size: Optional[PositiveInt] = None
+    max_tokens_for_response: Optional[PositiveInt] = (
+        constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+    )
 
     options: Optional[dict[str, Any]] = None
 
-    def __init__(
-        self, data: Optional[dict] = None, provider: Optional[str] = None
-    ) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        self.name = data.get("name", None)
+    @model_validator(mode="before")
+    @classmethod
+    def validate_inputs(cls, data: Any) -> None:
+        """Validate model inputs."""
+        if data.get("name") is None:
+            raise InvalidConfigurationError("model name is missing")
 
-        # TODO: OLS-656 Switch OLS operator to use provider-specific configuration parameters
-        self.url = data.get("url", None)
-        self.credentials = _read_secret(
+        data["credentials"] = _read_secret(
             data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
         )
 
@@ -126,74 +125,33 @@ class ModelConfig(BaseModel):
         # set for given provider + model, or default value for model without
         # size setup (note that at this stage, provider is always correct)
         default = constants.DEFAULT_CONTEXT_WINDOW_SIZE
-        if provider in constants.CONTEXT_WINDOW_SIZES:
-            default = constants.CONTEXT_WINDOW_SIZES.get(provider).get(
-                self.name or "", constants.DEFAULT_CONTEXT_WINDOW_SIZE
+        if data.get("provider") in constants.CONTEXT_WINDOW_SIZES:
+            default = constants.CONTEXT_WINDOW_SIZES.get(data["provider"]).get(
+                data["name"] or "", constants.DEFAULT_CONTEXT_WINDOW_SIZE
             )
-        self.context_window_size = self._validate_token_limit(
-            data, "context_window_size", default
-        )
-        default = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
-        self.max_tokens_for_response = self._validate_token_limit(
-            data, "max_tokens_for_response", default
-        )
-        if self.context_window_size <= self.max_tokens_for_response:
-            raise InvalidConfigurationError(
-                f"Context window size {self.context_window_size}, "
-                f"should be greater than max_tokens_for_response {self.max_tokens_for_response}"
-            )
-        # fully optional model-specific options
-        self.options = data.get("options", None)
+        data["context_window_size"] = data.get("context_window_size", default)
+        return data
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ModelConfig):
-            return (
-                self.name == other.name
-                and self.url == other.url
-                and self.credentials == other.credentials
-                and self.context_window_size == other.context_window_size
-                and self.max_tokens_for_response == other.max_tokens_for_response
-                and self.options == other.options
-            )
-        return False
-
-    @staticmethod
-    def _validate_token_limit(data: dict, token_type: str, default: int) -> int:
-        """Validate token limit."""
-        if token_type in data:
-            value = data[token_type]
-            try:
-                value = int(value)
-                if value <= 0:
-                    raise ValueError
-                return value
-            except (ValueError, TypeError):
-                raise InvalidConfigurationError(
-                    f"invalid {token_type} = {value}, positive value expected"
-                )
-        return default
-
-    @staticmethod
-    def _validate_model_options(options: dict) -> None:
+    @field_validator("options")
+    @classmethod
+    def validate_options(cls, options: dict) -> None:
         """Validate model options which must be dict[str, Any]."""
         if not isinstance(options, dict):
             raise InvalidConfigurationError("model options must be dictionary")
         for key in options:
             if not isinstance(key, str):
                 raise InvalidConfigurationError("key for model option must be string")
+        return options
 
-    def validate_yaml(self) -> None:
-        """Validate model config."""
-        if self.name is None:
-            raise InvalidConfigurationError("model name is missing")
-        if self.url is not None and not _is_valid_http_url(self.url):
+    @model_validator(mode="after")
+    def validate_context_window_and_max_tokens(self) -> Self:
+        """Validate context window size and max tokens for response."""
+        if self.context_window_size <= self.max_tokens_for_response:  # type: ignore [operator]
             raise InvalidConfigurationError(
-                "model URL is invalid, only http:// and https:// URLs are supported"
+                f"Context window size {self.context_window_size}, "
+                f"should be greater than max_tokens_for_response {self.max_tokens_for_response}"
             )
-        # model options can be None
-        if self.options is not None:
-            ModelConfig._validate_model_options(self.options)
+        return self
 
 
 class TLSConfig(BaseModel):
@@ -366,7 +324,10 @@ class ProviderConfig(BaseModel):
         for m in data["models"]:
             if "name" not in m:
                 raise InvalidConfigurationError("model name is missing")
-            model = ModelConfig(m, self.type)
+            # add provider to model data - needed for some constants
+            # resolution based on the specific provider
+            m["provider"] = self.type
+            model = ModelConfig(**m)
             self.models[m["name"]] = model
 
     def set_provider_specific_configuration(self, data: dict) -> None:
@@ -483,8 +444,6 @@ class ProviderConfig(BaseModel):
             raise InvalidConfigurationError(
                 "provider URL is invalid, only http:// and https:// URLs are supported"
             )
-        for v in self.models.values():
-            v.validate_yaml()
 
 
 class LLMProviders(BaseModel):

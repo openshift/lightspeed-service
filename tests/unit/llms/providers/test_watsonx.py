@@ -26,7 +26,7 @@ def provider_config():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_model_url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -47,7 +47,7 @@ def provider_config_credentials_directory():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_model_url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -67,7 +67,7 @@ def provider_config_without_credentials():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_model_url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -93,7 +93,7 @@ def provider_config_with_specific_params():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test_model_url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],

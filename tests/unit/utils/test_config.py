@@ -8,6 +8,7 @@ from typing import TypeVar
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 from yaml.parser import ParserError
 
 from ols import config
@@ -150,8 +151,8 @@ ols_config:
     memory:
       max_entries: 1000
 """,
-        InvalidConfigurationError,
-        "model URL is invalid",
+        ValidationError,
+        "Input should be a valid URL, relative URL without a base",
     )
 
 
