@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
-    Extra,
     FilePath,
     PositiveInt,
     model_validator,
@@ -264,7 +263,7 @@ class AuthenticationConfig(BaseModel):
                 )
 
 
-class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):
+class ProviderSpecificConfig(BaseModel, extra="forbid"):
     """Base class with common provider specific configurations."""
 
     url: AnyHttpUrl  # required attribute
@@ -272,13 +271,13 @@ class ProviderSpecificConfig(BaseModel, extra=Extra.forbid):
     api_key: Optional[str] = None
 
 
-class OpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class OpenAIConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to OpenAI provider."""
 
     credentials_path: str  # required attribute
 
 
-class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class AzureOpenAIConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to Azure OpenAI provider."""
 
     deployment_name: str  # required attribute
@@ -289,14 +288,14 @@ class AzureOpenAIConfig(ProviderSpecificConfig, extra=Extra.forbid):
     client_secret: Optional[str] = None
 
 
-class WatsonxConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class WatsonxConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to Watsonx provider."""
 
     credentials_path: str  # required attribute
     project_id: Optional[str] = None
 
 
-class BAMConfig(ProviderSpecificConfig, extra=Extra.forbid):
+class BAMConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to BAM provider."""
 
     credentials_path: str  # required attribute
