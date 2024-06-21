@@ -9,8 +9,9 @@ from ols.app.endpoints.health import (
     index_is_ready,
     liveness_probe_get_method,
     llm_is_ready,
+    readiness_probe_get_method,
 )
-from ols.app.models.models import LivenessResponse
+from ols.app.models.models import LivenessResponse, ReadinessResponse
 
 
 class MockedLLM:
@@ -57,6 +58,9 @@ def test_readiness_probe_llm_check__state_cache(mocked_load_llm):
     assert llm_is_ready()
     assert mocked_load_llm.call_count == 1
 
+    response = readiness_probe_get_method()
+    assert response == ReadinessResponse(ready=True, reason="service is ready")
+
     # try again and check if the llm function was invoked again - it shoudn't
     llm_is_ready()
     assert mocked_load_llm.call_count == 1
@@ -70,17 +74,31 @@ def test_readiness_probe_llm_check__llm_raise(mocked_load_llm):
     assert not llm_is_ready()
 
 
+@patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
+@patch("ols.app.endpoints.health.load_llm")
+def test_readiness_probe_get_method_service_is_ready(mocked_load_llm):
+    """Test the readiness_probe function when the service is ready."""
+    mocked_load_llm.return_value = MockedLLM(invoke_return="message")
+
+    response = readiness_probe_get_method()
+    assert response == ReadinessResponse(ready=True, reason="service is ready")
+
+
 def test_readiness_probe_get_method_index_is_ready():
     """Test the readiness_probe function when index is loaded."""
     # simulate that the index is loaded
     config._rag_index = True
     assert index_is_ready()
+    response = readiness_probe_get_method()
+    assert response == ReadinessResponse(ready=False, reason="LLM is not ready")
 
     # simulate that the index is not loaded, but it shouldn't as there
     # is no reference content in config
     config._rag_index = None
     config.ols_config.reference_content = None
     assert index_is_ready()
+    response = readiness_probe_get_method()
+    assert response == ReadinessResponse(ready=False, reason="LLM is not ready")
 
 
 def test_readiness_probe_get_method_index_not_ready():
@@ -90,6 +108,8 @@ def test_readiness_probe_get_method_index_not_ready():
     config.ols_config.reference_content = "something else than None"
 
     assert not index_is_ready()
+    response = readiness_probe_get_method()
+    assert response == ReadinessResponse(ready=False, reason="index is not ready")
 
 
 def test_liveness_probe_get_method():
