@@ -28,27 +28,25 @@ from ols.app.models.config import (
 def test_model_config():
     """Test the ModelConfig model."""
     model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "test_url",
-            "credentials_path": "tests/config/secret/apitoken",
-            "options": {
-                "foo": 1,
-                "bar": 2,
-            },
-        }
+        name="test_name",
+        url="http://test_url/",
+        credentials_path="tests/config/secret/apitoken",
+        options={
+            "foo": 1,
+            "bar": 2,
+        },
     )
 
     assert model_config.name == "test_name"
-    assert model_config.url == "test_url"
+    assert str(model_config.url) == "http://test_url/"
     assert model_config.credentials == "secret_key"
     assert model_config.options == {
         "foo": 1,
         "bar": 2,
     }
 
-    model_config = ModelConfig()
-    assert model_config.name is None
+    model_config = ModelConfig(name="a")
+    assert model_config.name == "a"
     assert model_config.url is None
     assert model_config.credentials is None
     assert model_config.options is None
@@ -57,15 +55,13 @@ def test_model_config():
 def test_model_config_path_to_secret_directory():
     """Test the ModelConfig model."""
     model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "test_url",
-            "credentials_path": "tests/config/secret",
-            "options": {
-                "foo": 1,
-                "bar": 2,
-            },
-        }
+        name="test_name",
+        url="http://test_url/",
+        credentials_path="tests/config/secret",
+        options={
+            "foo": 1,
+            "bar": 2,
+        },
     )
 
     assert model_config.credentials == "secret_key"
@@ -73,8 +69,8 @@ def test_model_config_path_to_secret_directory():
 
 def test_model_config_equality():
     """Test the ModelConfig equality check."""
-    model_config_1 = ModelConfig()
-    model_config_2 = ModelConfig()
+    model_config_1 = ModelConfig(name="a")
+    model_config_2 = ModelConfig(name="a")
 
     # compare the same model configs
     assert model_config_1 == model_config_2
@@ -88,125 +84,63 @@ def test_model_config_equality():
     assert model_config_1 != other_value
 
 
-def test_model_config_validation_proper_config():
-    """Test the ModelConfig model validation."""
-    model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "http://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-            "options": {
-                "foo": 1,
-                "bar": 2,
-            },
-        }
-    )
-    # validation should not fail
-    model_config.validate_yaml()
-
-
 def test_model_config_no_options():
-    """Test the ModelConfig model validation."""
-    model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "http://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-        }
+    """Test the ModelConfig without options."""
+    ModelConfig(
+        name="test_name",
+        url="http://test.url",
+        credentials_path="tests/config/secret/apitoken",
     )
-    # validation should not fail because model options are fully optional
-    model_config.validate_yaml()
 
 
 def test_model_config_validation_no_credentials_path():
     """Test the ModelConfig model validation when path to credentials is not provided."""
     model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "http://test.url",
-            "credentials_path": None,
-        }
+        name="test_name",
+        url="http://test.url",
+        credentials_path=None,
     )
-    # validation should not fail
-    model_config.validate_yaml()
     assert model_config.credentials is None
 
 
 def test_model_config_validation_empty_model():
     """Test the ModelConfig model validation when model is empty."""
-    model_config = ModelConfig()
-
-    # validation should fail
     with pytest.raises(InvalidConfigurationError, match="model name is missing"):
-        model_config.validate_yaml()
+        ModelConfig()
 
 
 def test_model_config_wrong_options():
     """Test the ModelConfig model validation."""
-    model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "http://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-            "options": "not-dictionary",
-        }
-    )
-
-    # validation should fail
-    with pytest.raises(
-        InvalidConfigurationError, match="model options must be dictionary"
-    ):
-        model_config.validate_yaml()
+    with pytest.raises(ValidationError, match="Input should be a valid dictionary"):
+        ModelConfig(
+            name="test_name",
+            url="http://test.url",
+            credentials_path="tests/config/secret/apitoken",
+            options="not-dictionary",
+        )
 
 
 def test_model_config_wrong_option_key():
     """Test the ModelConfig model validation."""
-    model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "http://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-            "options": {
+    with pytest.raises(ValidationError, match="Input should be a valid string"):
+        ModelConfig(
+            name="test_name",
+            url="http://test.url",
+            credentials_path="tests/config/secret/apitoken",
+            options={
                 42: "answer",
             },
-        }
-    )
-
-    # validation should fail
-    with pytest.raises(
-        InvalidConfigurationError, match="key for model option must be string"
-    ):
-        model_config.validate_yaml()
-
-
-def test_model_config_validation_missing_name():
-    """Test the ModelConfig model validation when model name is missing."""
-    model_config = ModelConfig(
-        {
-            "name": None,
-            "url": "http://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-        }
-    )
-
-    # validation should fail
-    with pytest.raises(InvalidConfigurationError, match="model name is missing"):
-        model_config.validate_yaml()
+        )
 
 
 def test_model_config_validation_improper_url():
     """Test the ModelConfig model validation when URL is incorrect."""
-    model_config = ModelConfig(
-        {
-            "name": "test_name",
-            "url": "httpXXX://test.url",
-            "credentials_path": "tests/config/secret/apitoken",
-        }
-    )
-
-    # validation should fail
-    with pytest.raises(InvalidConfigurationError, match="model URL is invalid"):
-        model_config.validate_yaml()
+    with pytest.raises(ValidationError, match="URL scheme should be 'http' or 'https'"):
+        ModelConfig(
+            name="test_name",
+            url="httpXXX://test.url",
+            credentials_path="tests/config/secret/apitoken",
+        )
 
 
 def test_model_config_higher_response_token():
@@ -216,11 +150,9 @@ def test_model_config_higher_response_token():
         match="Context window size 2, should be greater than max_tokens_for_response 2",
     ):
         ModelConfig(
-            {
-                "name": "test_model_name",
-                "context_window_size": 2,
-                "max_tokens_for_response": 2,
-            }
+            name="test_model_name",
+            context_window_size=2,
+            max_tokens_for_response=2,
         )
 
 
@@ -236,7 +168,7 @@ def test_provider_config():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -249,7 +181,7 @@ def test_provider_config():
     assert provider_config.project_id == "test_project_id"
     assert len(provider_config.models) == 1
     assert provider_config.models["test_model_name"].name == "test_model_name"
-    assert provider_config.models["test_model_name"].url == "test_model_url"
+    assert str(provider_config.models["test_model_name"].url) == "http://test.url/"
     assert provider_config.models["test_model_name"].credentials == "secret_key"
     assert (
         provider_config.models["test_model_name"].context_window_size
@@ -295,7 +227,7 @@ def test_provider_config():
                 "credentials_path": "tests/config/secret/apitoken",
                 "models": [
                     {
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -325,7 +257,7 @@ def test_that_url_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -347,7 +279,7 @@ def test_that_url_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -369,7 +301,7 @@ def test_that_url_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -392,7 +324,7 @@ def test_that_url_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -417,7 +349,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -439,7 +371,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -462,7 +394,7 @@ def test_that_credentials_is_required_provider_parameter():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -488,7 +420,7 @@ def test_provider_config_azure_openai_specific():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -536,7 +468,7 @@ def test_provider_config_azure_openai_unknown_parameters():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -561,7 +493,7 @@ def test_provider_config_openai_specific():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -601,7 +533,7 @@ def test_provider_config_openai_unknown_parameters():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -627,7 +559,7 @@ def test_provider_config_watsonx_specific():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -665,7 +597,7 @@ def test_provider_config_watsonx_unknown_parameters():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -690,7 +622,7 @@ def test_provider_config_bam_specific():
             "models": [
                 {
                     "name": "test_model_name",
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                 }
             ],
@@ -726,7 +658,7 @@ def test_provider_config_bam_unknown_parameters():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -754,7 +686,7 @@ def test_improper_provider_specific_config():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -785,7 +717,7 @@ def test_multiple_provider_specific_configs():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -859,7 +791,7 @@ def test_provider_config_explicit_tokens(model_name):
             "models": [
                 {
                     "name": model_name,
-                    "url": "test_model_url",
+                    "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                     "context_window_size": context_window_size,
                 }
@@ -872,8 +804,8 @@ def test_provider_config_explicit_tokens(model_name):
 def test_provider_config_improper_context_window_size_value():
     """Test the ProviderConfig model when improper context window size is specified."""
     with pytest.raises(
-        InvalidConfigurationError,
-        match="invalid context_window_size = -1, positive value expected",
+        ValidationError,
+        match="Input should be greater than 0",
     ):
         ProviderConfig(
             {
@@ -885,7 +817,7 @@ def test_provider_config_improper_context_window_size_value():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                         "context_window_size": -1,
                     }
@@ -897,8 +829,8 @@ def test_provider_config_improper_context_window_size_value():
 def test_provider_config_improper_context_window_size_type():
     """Test the ProviderConfig model when improper context window size is specified."""
     with pytest.raises(
-        InvalidConfigurationError,
-        match="invalid context_window_size = not-a-number, positive value expected",
+        ValidationError,
+        match="Input should be a valid integer, unable to parse string as an integer",
     ):
         ProviderConfig(
             {
@@ -910,7 +842,7 @@ def test_provider_config_improper_context_window_size_type():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                         "context_window_size": "not-a-number",
                     }
@@ -1031,7 +963,7 @@ def test_llm_providers():
                 "models": [
                     {
                         "name": "test_model_name",
-                        "url": "test_model_url",
+                        "url": "http://test.url/",
                         "credentials_path": "tests/config/secret/apitoken",
                     }
                 ],
@@ -1049,8 +981,8 @@ def test_llm_providers():
         == "test_model_name"
     )
     assert (
-        llm_providers.providers["test_provider_name"].models["test_model_name"].url
-        == "test_model_url"
+        str(llm_providers.providers["test_provider_name"].models["test_model_name"].url)
+        == "http://test.url/"
     )
     assert (
         llm_providers.providers["test_provider_name"]
@@ -1185,7 +1117,9 @@ def test_llm_providers_watsonx_required_projectid():
                 "name": "test_provider",
                 "type": "watsonx",
                 "project_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
-                "models": [{"name": "test_model_name", "url": "test_model_url"}],
+                "models": [
+                    {"name": "test_model_name", "url": "http://test_model_url/"}
+                ],
             },
         ]
     )
@@ -1679,7 +1613,7 @@ def test_config():
                     "models": [
                         {
                             "name": "test_model_name",
-                            "url": "test_model_url",
+                            "url": "http://test_model_url/",
                             "credentials_path": "tests/config/secret/apitoken",
                         }
                     ],
@@ -1721,10 +1655,12 @@ def test_config():
         == "test_model_name"
     )
     assert (
-        config.llm_providers.providers["test_provider_name"]
-        .models["test_model_name"]
-        .url
-        == "test_model_url"
+        str(
+            config.llm_providers.providers["test_provider_name"]
+            .models["test_model_name"]
+            .url
+        )
+        == "http://test_model_url/"
     )
     assert (
         config.llm_providers.providers["test_provider_name"]
