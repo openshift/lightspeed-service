@@ -27,7 +27,7 @@ class DocsSummarizer(QueryHelper):
         provider_config = config.llm_config.providers.get(self.provider)
         model_config = provider_config.models.get(self.model)
         self.generic_llm_params = {
-            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.max_tokens_for_response
+            GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.model_parameters.max_tokens_for_response  # noqa: E501
         }
 
     def _get_model_options(
@@ -91,7 +91,7 @@ class DocsSummarizer(QueryHelper):
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
             model_config.context_window_size,
-            model_config.max_tokens_for_response,
+            model_config.model_parameters.max_tokens_for_response,
         )
 
         if vector_index is not None:
@@ -125,7 +125,7 @@ class DocsSummarizer(QueryHelper):
         token_handler.calculate_and_check_available_tokens(
             final_prompt.format(**llm_input_values),
             model_config.context_window_size,
-            model_config.max_tokens_for_response,
+            model_config.model_parameters.max_tokens_for_response,
         )
 
         chat_engine = LLMChain(

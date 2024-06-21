@@ -6,7 +6,8 @@ llm_providers:
     models:
       - name: ibm/granite-13b-chat-v2
         context_window_size: 8000
-        max_tokens_for_response: 500
+        model_parameters:
+          max_tokens_for_response: 500
   - name: my_openai
     type: openai
     url: "https://api.openai.com/v1"
