@@ -416,9 +416,9 @@ dnspython==2.6.1 \
     --hash=sha256:5ef3b9680161f6fa89daf8ad451b5f1a33b18ae8a1c6778cdf4b43f08c0a6e50 \
     --hash=sha256:e8f0f9c23a7b7cb99ded64e6c3a6f3e701d78f50c55e002b839dea7225cff7cc
     # via email-validator
-email-validator==2.1.2 \
-    --hash=sha256:14c0f3d343c4beda37400421b39fa411bbe33a75df20825df73ad53e06a9f04c \
-    --hash=sha256:d89f6324e13b1e39889eab7f9ca2f91dc9aebb6fa50a6d8bd4329ab50f251115
+email-validator==2.2.0 \
+    --hash=sha256:561977c2d73ce3611850a06fa56b414621e0c8faa9d66f2611407d87465da631 \
+    --hash=sha256:cb690f344c617a714f22e66ae771445a1ceb46821152df8e165c5f9a364582b7
     # via fastapi
 faiss-cpu==1.8.0 \
     --hash=sha256:06e7add0c8a06ce8fb0443c38fcaf49c45fb74527ea633b819e56452608e64f5 \
@@ -461,9 +461,9 @@ fastapi-cli==0.0.4 \
 ffmpy==0.3.2 \
     --hash=sha256:475ebfff1044661b8d969349dbcd2db9bf56d3ee78c0627e324769b49a27a78f
     # via gradio
-filelock==3.15.1 \
-    --hash=sha256:58a2549afdf9e02e10720eaa4d4470f56386d7a6f72edd7d0596337af8ed7ad8 \
-    --hash=sha256:71b3102950e91dfc1bb4209b64be4dc8854f40e5f534428d8684f953ac847fac
+filelock==3.15.3 \
+    --hash=sha256:0151273e5b5d6cf753a61ec83b3a9b7d8821c39ae9af9d7ecf2f9e2f17404103 \
+    --hash=sha256:e1199bf5194a2277273dacd50269f0d87d0682088a3c561c15674ea9005d8635
     # via
     #   huggingface-hub
     #   torch
@@ -784,9 +784,9 @@ idna==3.7 \
     #   httpx
     #   requests
     #   yarl
-importlib-metadata==7.1.0 \
-    --hash=sha256:30962b96c0c223483ed6cc7280e7f0199feb01a0e40cfae4d4450fc6fab1f570 \
-    --hash=sha256:b78938b926ee8d5f020fc4772d487045805a55ddbad2ecf21c6d60938dc7fcd2
+importlib-metadata==7.2.0 \
+    --hash=sha256:04e4aad329b8b948a5711d394fa8759cb80f009225441b4f2a02bd4d8e5f426c \
+    --hash=sha256:3ff4519071ed42740522d494d04819b666541b9752c43012f85afb2cc220fcc6
     # via
     #   ibm-watson-machine-learning
     #   ibm-watsonx-ai
@@ -954,9 +954,9 @@ langchain-community==0.2.5 \
     --hash=sha256:476787b8c8c213b67e7b0eceb53346e787f00fbae12d8e680985bd4f93b0bf64 \
     --hash=sha256:bf37a334952e42c7676d083cf2d2c4cbfbb7de1949c4149fe19913e2b06c485f
     # via ols (pyproject.toml)
-langchain-core==0.2.8 \
-    --hash=sha256:172c81c858dc1f3123cc72b7e44e10f44c92f8a761cae18c364081f6c208e9f6 \
-    --hash=sha256:2db866a4514672c4875b69d5590aa2ed50aa0d144874268bef68d74b5e7f33f9
+langchain-core==0.2.9 \
+    --hash=sha256:426a5a4fea95a5db995ba5ab560b76edd4998fb6fe52ccc28ac987092a4cbfcd \
+    --hash=sha256:f1c59082642921727844e1cd0eb36d451edd1872c20e193aa3142aac03495986
     # via
     #   langchain
     #   langchain-community
@@ -975,9 +975,9 @@ langchain-text-splitters==0.2.1 \
     --hash=sha256:06853d17d7241ecf5c97c7b6ef01f600f9b0fb953dd997838142a527a4f32ea4 \
     --hash=sha256:c2774a85f17189eaca50339629d2316d13130d4a8d9f1a1a96f3a03670c4a138
     # via langchain
-langsmith==0.1.79 \
-    --hash=sha256:c7f2c23981917713b5515b773f37c84ff68a7adf803476e2ebb5adcb36a04202 \
-    --hash=sha256:d215718cfdcdf4a011126b7a3d4a37eee96d887e59ac1e628a57e24b2bfa3163
+langsmith==0.1.81 \
+    --hash=sha256:3251d823225eef23ee541980b9d9e506367eabbb7f985a086b5d09e8f78ba7e9 \
+    --hash=sha256:585ef3a2251380bd2843a664c9a28da4a7d28432e3ee8bcebf291ffb8e1f0af0
     # via
     #   langchain
     #   langchain-community
@@ -996,9 +996,9 @@ llama-index-cli==0.1.12 \
     --hash=sha256:3cf1f706c3c69c6b1aab07fca7faad3959db1709808efd50491b669d38b0b580 \
     --hash=sha256:d80d546786f02d3f16f6183b8e86b22b8b5c33a1500923659f2ccbff8d5df634
     # via llama-index
-llama-index-core==0.10.46 \
-    --hash=sha256:403acc4a6139a8228b686a3a5051bdc09699243c1689668a5755e2be7affda5c \
-    --hash=sha256:6c38467fc6974d316a22afa4214e610636cbec16fcb7b065e3f011fef35bb75f
+llama-index-core==0.10.47 \
+    --hash=sha256:9d9f7d0f4861832386bb21326e67277c13aa7472af1dfdef53e8910309c9f569 \
+    --hash=sha256:a76b6029552e281c2cbc67bcbb2639e4ee9e864d30df78bde24945ddb8ab6422
     # via
     #   llama-index
     #   llama-index-agent-openai
@@ -2108,24 +2108,24 @@ rsa==4.9 \
     --hash=sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7 \
     --hash=sha256:e38464a49c6c85d7f1351b0126661487a7e0a14a50f1675ec50eb34d4f20ef21
     # via google-auth
-ruff==0.4.9 \
-    --hash=sha256:06b60f91bfa5514bb689b500a25ba48e897d18fea14dce14b48a0c40d1635893 \
-    --hash=sha256:0e8e7b95673f22e0efd3571fb5b0cf71a5eaaa3cc8a776584f3b2cc878e46bff \
-    --hash=sha256:2d45ddc6d82e1190ea737341326ecbc9a61447ba331b0a8962869fcada758505 \
-    --hash=sha256:4555056049d46d8a381f746680db1c46e67ac3b00d714606304077682832998e \
-    --hash=sha256:5d5460f789ccf4efd43f265a58538a2c24dbce15dbf560676e430375f20a8198 \
-    --hash=sha256:673bddb893f21ab47a8334c8e0ea7fd6598ecc8e698da75bcd12a7b9d0a3206e \
-    --hash=sha256:732dd550bfa5d85af8c3c6cbc47ba5b67c6aed8a89e2f011b908fc88f87649db \
-    --hash=sha256:784d3ec9bd6493c3b720a0b76f741e6c2d7d44f6b2be87f5eef1ae8cc1d54c84 \
-    --hash=sha256:78de3fdb95c4af084087628132336772b1c5044f6e710739d440fc0bccf4d321 \
-    --hash=sha256:8064590fd1a50dcf4909c268b0e7c2498253273309ad3d97e4a752bb9df4f521 \
-    --hash=sha256:88bffe9c6a454bf8529f9ab9091c99490578a593cc9f9822b7fc065ee0712a06 \
-    --hash=sha256:8c1aff58c31948cc66d0b22951aa19edb5af0a3af40c936340cd32a8b1ab7438 \
-    --hash=sha256:98ec2775fd2d856dc405635e5ee4ff177920f2141b8e2d9eb5bd6efd50e80317 \
-    --hash=sha256:b262ed08d036ebe162123170b35703aaf9daffecb698cd367a8d585157732991 \
-    --hash=sha256:e0a22c4157e53d006530c902107c7f550b9233e9706313ab57b892d7197d8e52 \
-    --hash=sha256:e91175fbe48f8a2174c9aad70438fe9cb0a5732c4159b2a10a3565fea2d94cde \
-    --hash=sha256:f1cb0828ac9533ba0135d148d214e284711ede33640465e706772645483427e3
+ruff==0.4.10 \
+    --hash=sha256:0f54c481b39a762d48f64d97351048e842861c6662d63ec599f67d515cb417f6 \
+    --hash=sha256:18238c80ee3d9100d3535d8eb15a59c4a0753b45cc55f8bf38f38d6a597b9739 \
+    --hash=sha256:330421543bd3222cdfec481e8ff3460e8702ed1e58b494cf9d9e4bf90db52b9d \
+    --hash=sha256:338a64ef0748f8c3a80d7f05785930f7965d71ca260904a9321d13be24b79695 \
+    --hash=sha256:3aa4f2bc388a30d346c56524f7cacca85945ba124945fe489952aadb6b5cd804 \
+    --hash=sha256:3cea07079962b2941244191569cf3a05541477286f5cafea638cd3aa94b56815 \
+    --hash=sha256:5c2c4d0859305ac5a16310eec40e4e9a9dec5dcdfbe92697acd99624e8638dac \
+    --hash=sha256:67f67cef43c55ffc8cc59e8e0b97e9e60b4837c8f21e8ab5ffd5d66e196e25f7 \
+    --hash=sha256:67fe086b433b965c22de0b4259ddfe6fa541c95bf418499bedb9ad5fb8d1c631 \
+    --hash=sha256:9e9b6fb3a37b772628415b00c4fc892f97954275394ed611056a4b8a2631365e \
+    --hash=sha256:a79489607d1495685cdd911a323a35871abfb7a95d4f98fc6f85e799227ac46e \
+    --hash=sha256:acfaaab59543382085f9eb51f8e87bac26bf96b164839955f244d07125a982ef \
+    --hash=sha256:b1dd1681dfa90a41b8376a61af05cc4dc5ff32c8f14f5fe20dba9ff5deb80cd6 \
+    --hash=sha256:c75c53bb79d71310dc79fb69eb4902fba804a81f374bc86a9b117a8d077a1784 \
+    --hash=sha256:d8f71885bce242da344989cae08e263de29752f094233f932d4f5cfb4ef36a81 \
+    --hash=sha256:dd1fcee327c20addac7916ca4e2653fbbf2e8388d8a6477ce5b4e986b68ae6c0 \
+    --hash=sha256:ffe3cd2f89cb54561c62e5fa20e8f182c0a444934bf430515a4b422f1ab7b7ca
     # via gradio
 safetensors==0.4.3 \
     --hash=sha256:018b691383026a2436a22b648873ed11444a364324e7088b99cd2503dd828400 \
@@ -2388,9 +2388,9 @@ tabulate==0.9.0 \
     # via
     #   ibm-watson-machine-learning
     #   ibm-watsonx-ai
-tenacity==8.3.0 \
-    --hash=sha256:3649f6443dbc0d9b01b9d8020a9c4ec7a1ff5f6f3c6c8a036ef371f573fe9185 \
-    --hash=sha256:953d4e6ad24357bceffbc9707bc74349aca9d245f68eb65419cf0c249a1949a2
+tenacity==8.4.1 \
+    --hash=sha256:28522e692eda3e1b8f5e99c51464efcc0b9fc86933da92415168bc1c4e2308fa \
+    --hash=sha256:54b1412b878ddf7e1f1577cd49527bad8cdef32421bd599beac0c6c3f10582fd
     # via
     #   langchain
     #   langchain-community
@@ -3064,11 +3064,10 @@ zipp==3.19.2 \
     --hash=sha256:bf1dcf6450f873a13e952a29504887c89e6de7506209e5b1bcc3460135d4de19 \
     --hash=sha256:f091755f667055f2d02b32c53771a7a6c8b47e1fdbc4b72a8b9072b3eef8015c
     # via importlib-metadata
-torch @ https://download.pytorch.org/whl/cpu/torch-2.2.2%2Bcpu-cp311-cp311-linux_x86_64.whl \
-    --hash=sha256:90089cae572672fb449c8ff1dc1b29daaffa117bf97ede7463dcd2fd1b991e4c
-
 
 # WARNING: The following packages were not pinned, but pip requires them to be
 # pinned when the requirements file includes hashes and the requirement is not
 # satisfied by a package already installed. Consider using the --allow-unsafe flag.
 # setuptools
+torch @ https://download.pytorch.org/whl/cpu/torch-2.2.2%2Bcpu-cp311-cp311-linux_x86_64.whl \
+    --hash=sha256:90089cae572672fb449c8ff1dc1b29daaffa117bf97ede7463dcd2fd1b991e4c
