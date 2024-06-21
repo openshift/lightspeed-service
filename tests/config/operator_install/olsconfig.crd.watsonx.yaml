@@ -1,0 +1,28 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        projectID: ad629765-c373-4731-9d69-dc701724c081
+        models:
+          - name: ibm/granite-13b-chat-v2
+        name: watsonx
+        type: watsonx
+        url: 'https://ols-test.openai.azure.com/'
+  ols:
+    defaultModel: ibm/granite-13b-chat-v2
+    defaultProvider: watsonx
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG

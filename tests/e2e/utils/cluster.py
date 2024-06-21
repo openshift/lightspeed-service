@@ -141,12 +141,14 @@ def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
         raise Exception("Error getting pods") from e
 
 
-def get_single_existing_pod_name(namespace: str = "openshift-lightspeed") -> str:
+def get_ols_pod_name(namespace: str = "openshift-lightspeed") -> str:
     """Return name of the single pod that is in the cluster."""
     try:
         result = get_pods(namespace)
-        assert len(result) == 1
-        return result[0]
+        for pod in result:
+            if "lightspeed-app-server-" in pod:
+                return pod
+        assert False, f"No OLS api server pod found in list pods: {result}"
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting pod name") from e
 

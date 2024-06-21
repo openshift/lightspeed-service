@@ -68,27 +68,16 @@ def setup_module(module):
     global OLS_READY
     if on_cluster:
         print("Setting up for on cluster test execution\n")
-        ols_url = cluster_utils.get_ols_url("ols")
         cluster_utils.create_user("test-user")
         cluster_utils.create_user("metrics-test-user")
         token = cluster_utils.get_user_token("test-user")
         metrics_token = cluster_utils.get_user_token("metrics-test-user")
-        cluster_utils.grant_sa_user_access("test-user", "ols-user")
-        cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+        cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "lightspeed-operator-ols-metrics-reader")
 
-        # Determine the hostname for the OLS route
-        result = cluster_utils.run_oc(
-            ["get", "route", "ols", "-o", "jsonpath={.spec.host}"]
-        )
-        ols_url = result.stdout.strip()
     else:
         print("Setting up for standalone test execution\n")
 
-    if not ols_url.startswith("http"):
-        ols_url = f"https://{ols_url}"
-
-    print(f"OLS_URL set to {ols_url}")
-    os.environ["OLS_URL"] = ols_url
 
     client = client_utils.get_http_client(ols_url, token)
     metrics_client = client_utils.get_http_client(ols_url, metrics_token)
@@ -502,7 +491,7 @@ def test_query_filter() -> None:
 
         # Retrieve the pod name
         data_collection_container_name = "ols"
-        pod_name = cluster_utils.get_single_existing_pod_name()
+        pod_name = cluster_utils.get_ols_pod_name()
 
         # Check if filtered words are redacted in the logs
         container_log = cluster_utils.get_container_log(
@@ -805,7 +794,7 @@ def test_feedback_can_post_with_wrong_token():
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
     feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
-    pod_name = cluster_utils.get_single_existing_pod_name()
+    pod_name = cluster_utils.get_ols_pod_name()
 
     # disable collector script to avoid interference with the test
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
@@ -936,7 +925,7 @@ def test_feedback_improper_conversation_id():
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
-    pod_name = cluster_utils.get_single_existing_pod_name()
+    pod_name = cluster_utils.get_ols_pod_name()
 
     # disable collector script to avoid interference with the test
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
@@ -1401,6 +1390,7 @@ def test_user_data_collection():
 
         # constants from tests/config/cluster_install/ols_manifests.yaml
         data_collection_container_name = "ols-sidecar-user-data-collector"
+        pod_name = cluster_utils.get_ols_pod_name()
 
         # there are multiple tests running agains cluster, so user data
         # can be already present - we need to ensure the storage is empty
@@ -1491,7 +1481,7 @@ def test_http_header_redaction():
             assert response.json() == {"alive": True}
 
     container_log = cluster_utils.get_container_log(
-        cluster_utils.get_single_existing_pod_name(), "ols"
+        cluster_utils.get_ols_pod_name(), "ols"
     )
 
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
