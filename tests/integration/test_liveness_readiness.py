@@ -12,7 +12,7 @@ from ols import config
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def _setup():
     """Setups the test client."""
@@ -25,14 +25,14 @@ def _setup():
     client = TestClient(app)
 
 
-def test_liveness(_setup):
+def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     response = client.get("/liveness")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"alive": True}
 
 
-def test_readiness(_setup):
+def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     # index is not ready
     with (
