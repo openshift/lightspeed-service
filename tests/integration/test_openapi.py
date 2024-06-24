@@ -13,7 +13,7 @@ from ols import config
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 @patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
 def _setup():
     """Setups the test client."""
@@ -26,7 +26,7 @@ def _setup():
     client = TestClient(app)
 
 
-def test_openapi_endpoint(_setup):
+def test_openapi_endpoint():
     """Check if REST API provides endpoint with OpenAPI specification."""
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
@@ -52,7 +52,7 @@ def test_openapi_endpoint(_setup):
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
 
-def test_openapi_content(_setup):
+def test_openapi_content():
     """Check if the pre-generated OpenAPI schema is up-to date."""
     # retrieve pre-generated OpenAPI schema
     with open("docs/openapi.json") as fin:
