@@ -38,6 +38,9 @@ RUN pip3.11 install --no-cache-dir --upgrade pip pdm \
 
 COPY ols ./ols
 
+# this directory is checked by ecosystem-cert-preflight-checks task in Konflux
+COPY LICENSE /licenses/
+
 # Run the application
 EXPOSE 8080
 EXPOSE 8443
