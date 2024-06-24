@@ -510,13 +510,14 @@ def test_query_filter() -> None:
         )
 
         # Ensure redacted patterns do not appear in the logs
-        unwanted_patterns = ["what is foo in bar?"]
+        unwanted_patterns = ["foo ", "what is foo in bar?"]
         for line in container_log.splitlines():
             # Only check lines that are not part of a query
             if re.search(r'Body: \{"query":', line):
                 continue
+            # check that the pattern is indeed not found in logs
             for pattern in unwanted_patterns:
-                assert not re.search(pattern, line, re.IGNORECASE)
+                assert pattern not in line.lower()
 
         # Ensure the intended redaction has occurred
         assert "what is deployment in openshift?" in container_log
