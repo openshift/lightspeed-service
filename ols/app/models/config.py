@@ -93,6 +93,12 @@ class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
 
 
+class ModelParameters(BaseModel):
+    """Model parameters."""
+
+    max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+
+
 class ModelConfig(BaseModel):
     """Model configuration."""
 
@@ -103,7 +109,7 @@ class ModelConfig(BaseModel):
     credentials: Optional[str] = None
 
     context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
-    max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+    model_parameters: ModelParameters = ModelParameters()
 
     options: Optional[dict[str, Any]] = None
 
@@ -143,10 +149,11 @@ class ModelConfig(BaseModel):
     @model_validator(mode="after")
     def validate_context_window_and_max_tokens(self) -> Self:
         """Validate context window size and max tokens for response."""
-        if self.context_window_size <= self.max_tokens_for_response:  # type: ignore [operator]
+        if self.context_window_size <= self.model_parameters.max_tokens_for_response:  # type: ignore [operator]
             raise InvalidConfigurationError(
                 f"Context window size {self.context_window_size}, "
-                f"should be greater than max_tokens_for_response {self.max_tokens_for_response}"
+                "should be greater than max_tokens_for_response "
+                f"{self.model_parameters.max_tokens_for_response}"
             )
         return self
 
