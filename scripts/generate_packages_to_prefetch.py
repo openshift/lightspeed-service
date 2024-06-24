@@ -7,6 +7,13 @@ This script performs several steps:
     4. downloads torch+cpu wheel
     5. computes hashes for this wheel
     6. adds the URL to wheel + hash to resulting requirements.txt file
+    7. downloads script pip_find_builddeps from the Cachito project
+    8. generated requirements-build.in file
+    9. compiles requirements-build.in file into requirements-build.txt file
+
+Please note that this script depends on tool that is downloaded from repository containing
+Cachito system. This tool is run locally w/o any additional security checks etc. so some
+care is needed (run this script from within containerized environment etc.).
 """
 
 import shutil
@@ -22,6 +29,16 @@ PROJECT_FILES = ("pyproject.toml", "pdm.lock", "LICENSE", "README.md")
 TORCH_REGISTRY = "https://download.pytorch.org/whl/cpu"
 TORCH_VERSION = "2.2.2"
 TORCH_WHEEL = f"torch-{TORCH_VERSION}%2Bcpu-cp311-cp311-linux_x86_64.whl"
+
+# URL to static content of repository containing Cachito system
+CACHITO_URL = "https://raw.githubusercontent.com/containerbuildsystem/cachito"
+
+# path to helper script to generate list of packages that will need to be build
+# This script is part of Cachito system (predecedor of Cachi2) and have to be user
+BUILDDEPS_SCRIPT_PATH = "master/bin"  # wokeignore:rule=master
+
+# name of path to helper script to generate list of packages that will need to be build
+BUILDDEPS_SCRIPT_NAME = "pip_find_builddeps.py"
 
 
 def shell(command, directory):
@@ -95,11 +112,8 @@ def generate_hash(directory, registry, wheel, target):
         fout.write(f"    {hash_line}\n")
 
 
-def generate_list_of_packages():
+def generate_list_of_packages(work_directory):
     """Generate list of packages, take care of unwanted packages and wheel with Torch package."""
-    work_directory = tempfile.mkdtemp()
-    print(f"Work directory {work_directory}")
-
     copy_project_stub(work_directory)
     remove_torch_dependency(work_directory)
     generate_requirements_file(work_directory)
@@ -112,10 +126,39 @@ def generate_list_of_packages():
     shell("cat step2.txt hash.txt > step3.txt", work_directory)
     shutil.copy(join(work_directory, "step3.txt"), "requirements.txt")
 
-    # optional cleanup step
-    # (for now it might be better to see 'steps' files to check if everything's ok
-    # shutil.rmtree(work_directory)
+
+def generate_packages_to_be_build(work_directory):
+    """Generate list of packages that will need to be build."""
+    # download helper script to generate list of packages
+    url = f"{CACHITO_URL}/{BUILDDEPS_SCRIPT_PATH}/{BUILDDEPS_SCRIPT_NAME}"
+    into = join(work_directory, BUILDDEPS_SCRIPT_NAME)
+    urlretrieve(url, into)  # noqa S310
+
+    infile = "requirements-build.in"
+    outfile = "requirements-build.txt"
+
+    # generate file requirements-build.in
+    command = (
+        "python pip_find_builddeps.py requirements.txt --append "
+        + f"--only-write-on-update --ignore-errors --allow-binary -o {outfile}"
+    )
+    shell(command, work_directory)
+
+    # generate requirements-build.txt file
+    command = f"pip-compile {infile} --allow-unsafe --generate-hashes -o {outfile}"
+    shell(command, work_directory)
+
+    # copy everything back to project
+    shutil.copy(join(work_directory, infile), infile)
+    shutil.copy(join(work_directory, outfile), outfile)
 
 
 if __name__ == "__main__":
-    generate_list_of_packages()
+    work_directory = tempfile.mkdtemp()
+    print(f"Work directory {work_directory}")
+    generate_list_of_packages(work_directory)
+    generate_packages_to_be_build(work_directory)
+
+    # optional cleanup step
+    # (for now it might be better to see 'steps' files to check if everything's ok
+    # shutil.rmtree(work_directory)
