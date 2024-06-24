@@ -41,9 +41,7 @@ def _with_enabled_feedback(tmpdir):
     )
 
 
-def test_feedback_endpoints_disabled_when_set_in_config(
-    _setup, _with_disabled_feedback
-):
+def test_feedback_endpoints_disabled_when_set_in_config(_with_disabled_feedback):
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
     response = client.get("/v1/feedback/status")
