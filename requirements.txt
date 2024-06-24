@@ -126,9 +126,9 @@ azure-core==1.30.2 \
     --hash=sha256:a14dc210efcd608821aa472d9fb8e8d035d29b68993819147bc290a8ac224472 \
     --hash=sha256:cf019c1ca832e96274ae85abd3d9f752397194d9fea3b41487290562ac8abe4a
     # via azure-identity
-azure-identity==1.16.1 \
-    --hash=sha256:6d93f04468f240d59246d8afde3091494a5040d4f141cad0f49fc0c399d0d91e \
-    --hash=sha256:8fb07c25642cd4ac422559a8b50d3e77f73dcc2bbfaba419d06d6c9d7cff6726
+azure-identity==1.17.1 \
+    --hash=sha256:32ecc67cc73f4bd0595e4f64b1ca65cd05186f4fe6f98ed2ae9f1aa32646efea \
+    --hash=sha256:db8d59c183b680e763722bfe8ebc45930e6c57df510620985939f7f3191e0382
     # via ols (pyproject.toml)
 beautifulsoup4==4.12.3 \
     --hash=sha256:74e3d1928edc070d21748185c46e3fb33490f22f52a3addee9aee0f4f7781051 \
