@@ -13,7 +13,7 @@ from tests.mock_classes.mock_k8s_api import (
 )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Setups the test client."""
     global client
@@ -39,7 +39,7 @@ def _enabled_auth():
     config.dev_config.disable_auth = False
 
 
-def test_post_authorized_disabled(_setup, _disabled_auth):
+def test_post_authorized_disabled(_disabled_auth):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request with authentication disabled
     response = client.post("/authorized")
@@ -52,7 +52,7 @@ def test_post_authorized_disabled(_setup, _disabled_auth):
     }
 
 
-def test_post_authorized_no_token(_setup, _enabled_auth):
+def test_post_authorized_no_token(_enabled_auth):
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
     response = client.post("/authorized")
@@ -61,9 +61,7 @@ def test_post_authorized_no_token(_setup, _enabled_auth):
 
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(
-    mock_authz_api, mock_authn_api, _setup, _enabled_auth
-):
+def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api, _enabled_auth):
     """Tests the is_user_authorized function with a mocked valid-token."""
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -86,7 +84,7 @@ def test_is_user_authorized_valid_token(
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_invalid_token(
-    mock_authz_api, mock_authn_api, _setup, _enabled_auth
+    mock_authz_api, mock_authn_api, _enabled_auth
 ):
     """Test the is_user_authorized function with a mocked invalid-token."""
     # Setup mock responses for invalid token
