@@ -745,45 +745,31 @@ class ConversationCacheConfig(BaseModel):
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
-    app_log_level: Optional[int] = None
-    lib_log_level: Optional[int] = None
-    uvicorn_log_level: Optional[int] = None
+    app_log_level: int = logging.INFO
+    lib_log_level: int = logging.WARNING
+    uvicorn_log_level: int = logging.WARNING
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(self, **data: Optional[dict]) -> None:
         """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            data = {}
+        # convert input strings (level names, eg. debug/info,...) to
+        # logging level names (integer values) for defined model fields
+        for field in self.model_fields:
+            if field in data:
+                data[field] = self._get_log_level(data[field])  # type: ignore
+        super().__init__(**data)
 
-        self.app_log_level = self._get_log_level(data, "app_log_level", "info")
-        self.lib_log_level = self._get_log_level(data, "lib_log_level", "warning")
-        self.uvicorn_log_level = self._get_log_level(
-            data, "uvicorn_log_level", "warning"
-        )
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, LoggingConfig):
-            return (
-                self.app_log_level == other.app_log_level
-                and self.lib_log_level == other.lib_log_level
-                and self.uvicorn_log_level == other.uvicorn_log_level
+    def _get_log_level(self, value: str) -> int:
+        if not isinstance(value, str):
+            raise InvalidConfigurationError(
+                f"'{value}' log level must be string, got {type(value)}"
             )
-        return False
-
-    def _get_log_level(self, data: dict, key: str, default: str) -> int:
-        log_level = data.get(key, default)
-        if not isinstance(log_level, str):
-            raise InvalidConfigurationError(f"invalid log level for {log_level}")
-        log_level = logging.getLevelName(log_level.upper())
+        log_level = logging.getLevelName(value.upper())
         if not isinstance(log_level, int):
             raise InvalidConfigurationError(
-                f"invalid log level for {key}: {data.get(key)}"
+                f"'{value}' is not valid log level, valid levels are "
+                f"{[k.lower() for k in logging.getLevelNamesMapping()]}"
             )
         return log_level
-
-    def validate_yaml(self) -> None:
-        """Validate logger config."""
 
 
 class ReferenceContent(BaseModel):
@@ -880,7 +866,7 @@ class OLSConfig(BaseModel):
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
-        self.logging_config = LoggingConfig(data.get("logging_config", None))
+        self.logging_config = LoggingConfig(**data.get("logging_config", {}))
         if data.get("reference_content") is not None:
             self.reference_content = ReferenceContent(data.get("reference_content"))
         self.default_provider = data.get("default_provider", None)
@@ -919,8 +905,6 @@ class OLSConfig(BaseModel):
         """Validate OLS config."""
         if self.conversation_cache is not None:
             self.conversation_cache.validate_yaml()
-        if self.logging_config is not None:
-            self.logging_config.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
         if self.authentication_config:
