@@ -1,12 +1,17 @@
 """Unit tests for Azure OpenAI provider."""
 
+import time
 from unittest.mock import patch
 
 import pytest
+from azure.core.credentials import AccessToken
 from langchain_openai import AzureChatOpenAI
 
 from ols.app.models.config import ProviderConfig
-from ols.src.llms.providers.azure_openai import AzureOpenAI
+from ols.src.llms.providers.azure_openai import (
+    AzureOpenAI,
+    token_is_expired,
+)
 
 
 @pytest.fixture
@@ -391,6 +396,7 @@ class MockedAccessToken:
     def __init__(self):
         """Construct mocked access token class."""
         self.token = "this-is-access-token"  # noqa S105
+        self.expires_on = 3600  # random value
 
 
 class MockedCredential:
@@ -415,6 +421,17 @@ class MockedCredentialThrowingException:
         raise Exception("Error getting token")
 
 
+@pytest.fixture()
+def mocked_token_cache():
+    """Fake token cache."""
+
+    class MockedTokenCache:
+        access_token = "cached_token"  # noqa S105
+        expires_on = 0
+
+    return MockedTokenCache
+
+
 @patch(
     "ols.src.llms.providers.azure_openai.ClientSecretCredential", new=MockedCredential
 )
@@ -436,6 +453,7 @@ def test_retrieve_access_token(provider_config_access_token_related_parameters):
     "ols.src.llms.providers.azure_openai.ClientSecretCredential",
     new=MockedCredentialThrowingException,
 )
+@patch("ols.src.llms.providers.azure_openai.TokenCache.expires_on", new=0)
 def test_retrieve_access_token_on_error(
     provider_config_access_token_related_parameters,
 ):
@@ -446,4 +464,69 @@ def test_retrieve_access_token_on_error(
         provider_config=provider_config_access_token_related_parameters,
     )
     assert "api_key" not in azure_openai.default_params
-    assert "azure_ad_token" not in azure_openai.default_params
+    assert azure_openai.default_params["azure_ad_token"] is None
+
+
+def test_token_is_expired():
+    """Test token expiration check."""
+    # expires_on is 0 - means it is not set
+    with patch("ols.src.llms.providers.azure_openai.TokenCache.expires_on", new=0):
+        assert token_is_expired()
+
+    # expires_on is in history - means it is expired
+    history_unix_time = time.time() - 100
+    with patch(
+        "ols.src.llms.providers.azure_openai.TokenCache.expires_on",
+        new=history_unix_time,
+    ):
+        assert token_is_expired()
+
+    # expires_on is in future - means it is not expired
+    future_unix_time = time.time() + 100
+    with patch(
+        "ols.src.llms.providers.azure_openai.TokenCache.expires_on",
+        new=future_unix_time,
+    ):
+        assert not token_is_expired()
+
+
+def test_token_is_not_reused(provider_config, mocked_token_cache):
+    """Test that token is not reused if it is expired."""
+    retrieved_access_token = AccessToken(token="new_token", expires_on=0)  # noqa: S106
+
+    with (
+        patch(
+            "ols.src.llms.providers.azure_openai.AzureOpenAI.retrieve_access_token",
+            return_value=retrieved_access_token,
+        ),
+        patch(
+            "ols.src.llms.providers.azure_openai.token_is_expired", return_value=True
+        ),
+        patch("ols.src.llms.providers.azure_openai.TokenCache", new=mocked_token_cache),
+    ):
+        access_token = AzureOpenAI(
+            model="irrelevant value", provider_config=provider_config
+        ).resolve_access_token("irrelevant value")
+        assert access_token == "new_token"  # noqa: S105
+        assert access_token == mocked_token_cache.access_token  # cache is updated
+
+
+def test_token_is_reused(provider_config, mocked_token_cache):
+    """Test that token is reused if it is not expired."""
+    retrieved_access_token = AccessToken(token="new_token", expires_on=0)  # noqa: S106
+
+    with (
+        patch(
+            "ols.src.llms.providers.azure_openai.AzureOpenAI.retrieve_access_token",
+            return_value=retrieved_access_token,
+        ),
+        patch(
+            "ols.src.llms.providers.azure_openai.token_is_expired", return_value=False
+        ),
+        patch("ols.src.llms.providers.azure_openai.TokenCache", new=mocked_token_cache),
+    ):
+        access_token = AzureOpenAI(
+            model="irrelevant value", provider_config=provider_config
+        ).resolve_access_token("irrelevant value")
+        assert access_token == "cached_token"  # noqa: S105 old value
+        assert access_token == mocked_token_cache.access_token  # cache is not updated
