@@ -490,7 +490,7 @@ def test_query_filter() -> None:
         assert "bar" not in response_text
 
         # Retrieve the pod name
-        data_collection_container_name = "ols"
+        data_collection_container_name = "lightspeed-service-api"
         pod_name = cluster_utils.get_ols_pod_name()
 
         # Check if filtered words are redacted in the logs
@@ -1389,7 +1389,7 @@ def test_user_data_collection():
             return [line for line in logs.split("\n") if line][-1]
 
         # constants from tests/config/cluster_install/ols_manifests.yaml
-        data_collection_container_name = "ols-sidecar-user-data-collector"
+        data_collection_container_name = "lightspeed-service-user-data-collector"
         pod_name = cluster_utils.get_ols_pod_name()
 
         # there are multiple tests running agains cluster, so user data
@@ -1481,7 +1481,7 @@ def test_http_header_redaction():
             assert response.json() == {"alive": True}
 
     container_log = cluster_utils.get_container_log(
-        cluster_utils.get_ols_pod_name(), "ols"
+        cluster_utils.get_ols_pod_name(), "lightspeed-service-api"
     )
 
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:

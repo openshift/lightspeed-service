@@ -152,7 +152,10 @@ function install_ols_operator() {
     csv=$(oc get clusterserviceversion -o name)
     oc get ${csv} -o yaml > /tmp/csv_original.yaml
     oc get ${csv} -o yaml > /tmp/csv.yaml
-    sed -i "s#\(lightspeed-service=\)quay.io/openshift-lightspeed/lightspeed-service-api@sha256:.*\(,console-plugin\)#\1${OLS_IMAGE}\2#g" /tmp/csv.yaml
+#    sed -i "s#\(lightspeed-service=\)quay.io/openshift-lightspeed/lightspeed-service-api@sha256:.*\(,console-plugin\)#\1${OLS_IMAGE}\2#g" /tmp/csv.yaml
+
+    sed -i "s#\(lightspeed-service=\)quay.io/openshift-lightspeed/lightspeed-service-api:.*#\1${OLS_IMAGE}#g" /tmp/csv.yaml
+
     oc apply -f /tmp/csv.yaml
     updated=0
     for i in {1..30}; do

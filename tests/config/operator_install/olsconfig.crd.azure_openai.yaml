@@ -16,13 +16,20 @@ spec:
         deploymentName: gpt-35-turbo-16k
         models:
           - name: gpt-3.5-turbo
-        name: Azure
+        name: azure_openai
         type: azure_openai
         url: 'https://ols-test.openai.azure.com/'
   ols:
     defaultModel: gpt-3.5-turbo
-    defaultProvider: Azure
+    defaultProvider: azure_openai
     deployment:
       replicas: 1
     disableAuth: false
     logLevel: DEBUG
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"
