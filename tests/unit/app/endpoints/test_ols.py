@@ -38,14 +38,16 @@ def auth():
     return ("2a3dfd17-1f42-4831-aaa6-e28e7cb8e26b", "name")
 
 
-def test_retrieve_conversation_new_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_conversation_new_id():
     """Check the function to retrieve conversation ID."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
     new_id = ols.retrieve_conversation_id(llm_request)
     assert suid.check_suid(new_id), "Improper conversation ID generated"
 
 
-def test_retrieve_conversation_id_existing_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_conversation_id_existing_id():
     """Check the function to retrieve conversation ID when one already exists."""
     old_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=old_id)
@@ -53,14 +55,16 @@ def test_retrieve_conversation_id_existing_id(_load_config):
     assert new_id == old_id, "Old (existing) ID should be retrieved."
 
 
-def test_retrieve_previous_input_no_previous_history(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_previous_input_no_previous_history():
     """Check how function to retrieve previous input handle empty history."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
     llm_input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
     assert llm_input == []
 
 
-def test_retrieve_previous_input_empty_user_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_previous_input_empty_user_id():
     """Check how function to retrieve previous input handle empty user ID."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -73,7 +77,8 @@ def test_retrieve_previous_input_empty_user_id(_load_config):
         ols.retrieve_previous_input(None, llm_request)
 
 
-def test_retrieve_previous_input_improper_user_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_previous_input_improper_user_id():
     """Check how function to retrieve previous input handle improper user ID."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -84,8 +89,9 @@ def test_retrieve_previous_input_improper_user_id(_load_config):
         ols.retrieve_previous_input("improper_user_id", llm_request)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.config.conversation_cache.get")
-def test_retrieve_previous_input_for_previous_history(get, _load_config):
+def test_retrieve_previous_input_for_previous_history(get):
     """Check how function to retrieve previous input handle existing history."""
     conversation_id = suid.get_suid()
     get.return_value = "input"
@@ -98,7 +104,8 @@ def test_retrieve_previous_input_for_previous_history(get, _load_config):
     assert previous_input == "input"
 
 
-def test_retrieve_attachments_on_no_input(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_attachments_on_no_input():
     """Check the function to retrieve attachments from payload when attachments are not send."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -110,7 +117,8 @@ def test_retrieve_attachments_on_no_input(_load_config):
     assert len(attachments) == 0
 
 
-def test_retrieve_attachments_on_empty_list(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_attachments_on_empty_list():
     """Check the function to retrieve attachments from payload when list of attachments is empty."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -124,7 +132,8 @@ def test_retrieve_attachments_on_empty_list(_load_config):
     assert len(attachments) == 0
 
 
-def test_retrieve_attachments_on_proper_input(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_attachments_on_proper_input():
     """Check the function to retrieve attachments from payload."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -153,7 +162,8 @@ def test_retrieve_attachments_on_proper_input(_load_config):
     assert attachments[0] == expected
 
 
-def test_retrieve_attachments_on_improper_attachment_type(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_attachments_on_improper_attachment_type():
     """Check the function to retrieve attachments from payload."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -173,7 +183,8 @@ def test_retrieve_attachments_on_improper_attachment_type(_load_config):
         ols.retrieve_attachments(llm_request)
 
 
-def test_retrieve_attachments_on_improper_content_type(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_retrieve_attachments_on_improper_content_type():
     """Check the function to retrieve attachments from payload."""
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(
@@ -193,8 +204,9 @@ def test_retrieve_attachments_on_improper_content_type(_load_config):
         ols.retrieve_attachments(llm_request)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.config.conversation_cache.insert_or_append")
-def test_store_conversation_history(insert_or_append, _load_config):
+def test_store_conversation_history(insert_or_append):
     """Test if operation to store conversation history to cache is called."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -212,8 +224,9 @@ def test_store_conversation_history(insert_or_append, _load_config):
     )
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.config.conversation_cache.insert_or_append")
-def test_store_conversation_history_some_response(insert_or_append, _load_config):
+def test_store_conversation_history_some_response(insert_or_append):
     """Test if operation to store conversation history to cache is called."""
     user_id = "1234"
     conversation_id = suid.get_suid()
@@ -228,7 +241,8 @@ def test_store_conversation_history_some_response(insert_or_append, _load_config
     insert_or_append.assert_called_with(user_id, conversation_id, expected_history)
 
 
-def test_store_conversation_history_empty_user_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_store_conversation_history_empty_user_id():
     """Test if basic input verification is done during history store operation."""
     user_id = ""
     conversation_id = suid.get_suid()
@@ -239,7 +253,8 @@ def test_store_conversation_history_empty_user_id(_load_config):
         ols.store_conversation_history(user_id, conversation_id, llm_request, None)
 
 
-def test_store_conversation_history_improper_user_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_store_conversation_history_improper_user_id():
     """Test if basic input verification is done during history store operation."""
     user_id = "::::"
     conversation_id = suid.get_suid()
@@ -248,7 +263,8 @@ def test_store_conversation_history_improper_user_id(_load_config):
         ols.store_conversation_history(user_id, conversation_id, llm_request, "")
 
 
-def test_store_conversation_history_improper_conversation_id(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_store_conversation_history_improper_conversation_id():
     """Test if basic input verification is done during history store operation."""
     conversation_id = "::::"
     llm_request = LLMRequest(query="Tell me about Kubernetes")
@@ -258,12 +274,13 @@ def test_store_conversation_history_improper_conversation_id(_load_config):
         )
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.KEYWORD,
 )
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_valid_kw(llm_validate_question_mock, _load_config):
+def test_validate_question_valid_kw(llm_validate_question_mock):
     """Check the behaviour of validate_question function using valid keyword."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
@@ -274,11 +291,12 @@ def test_validate_question_valid_kw(llm_validate_question_mock, _load_config):
     assert llm_validate_question_mock.call_count == 0
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
     side_effect=PromptTooLongError("Prompt length 10000 exceeds LLM"),
 )
-def test_validate_question_too_long_query(llm_validate_question_mock, _load_config):
+def test_validate_question_too_long_query(llm_validate_question_mock):
     """Check the behaviour of validate_question function with too long query."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
@@ -288,11 +306,12 @@ def test_validate_question_too_long_query(llm_validate_question_mock, _load_conf
         ols.validate_question(conversation_id, llm_request)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.KEYWORD,
 )
-def test_validate_question_invalid_kw(_load_config):
+def test_validate_question_invalid_kw():
     """Check the behaviour of validate_question function using invalid keyword."""
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
@@ -301,8 +320,9 @@ def test_validate_question_invalid_kw(_load_config):
     assert not resp
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question(validate_question_mock, _load_config):
+def test_validate_question(validate_question_mock):
     """Check the behaviour of validate_question function."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -311,8 +331,9 @@ def test_validate_question(validate_question_mock, _load_config):
     validate_question_mock.assert_called_with(conversation_id, query)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_on_configuration_error(validate_question_mock, _load_config):
+def test_validate_question_on_configuration_error(validate_question_mock):
     """Check the behaviour of validate_question function when wrong configuration is detected."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -324,8 +345,9 @@ def test_validate_question_on_configuration_error(validate_question_mock, _load_
         ols.validate_question(conversation_id, llm_request)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_on_validation_error(validate_question_mock, _load_config):
+def test_validate_question_on_validation_error(validate_question_mock):
     """Check the behaviour of validate_question function when query is not validated properly."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -359,7 +381,8 @@ def test_validate_question_disabled(
     assert resp
 
 
-def test_query_filter_no_redact_filters(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_query_filter_no_redact_filters():
     """Test the function to redact query when no filters are setup."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -369,7 +392,8 @@ def test_query_filter_no_redact_filters(_load_config):
     assert result.query == query
 
 
-def test_query_filter_with_one_redact_filter(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_query_filter_with_one_redact_filter():
     """Test the function to redact query when filter is setup."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -391,7 +415,8 @@ def test_query_filter_with_one_redact_filter(_load_config):
     assert result.query == "Tell me about FooBar"
 
 
-def test_query_filter_with_two_redact_filters(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_query_filter_with_two_redact_filters():
     """Test the function to redact query when multiple filters are setup."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -418,7 +443,8 @@ def test_query_filter_with_two_redact_filters(_load_config):
     assert result.query == "Tell me about Baz"
 
 
-def test_query_filter_on_redact_error(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_query_filter_on_redact_error():
     """Test the function to redact query when redactor raises an error."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
@@ -428,7 +454,8 @@ def test_query_filter_on_redact_error(_load_config):
             ols.redact_query(conversation_id, llm_request)
 
 
-def test_attachments_redact_on_no_filters_defined(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_attachments_redact_on_no_filters_defined():
     """Test the function to redact attachments when no filters are setup."""
     conversation_id = suid.get_suid()
     attachments = [
@@ -452,7 +479,8 @@ def test_attachments_redact_on_no_filters_defined(_load_config):
     assert redacted == attachments
 
 
-def test_attachments_redact_with_one_filter_defined(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_attachments_redact_with_one_filter_defined():
     """Test the function to redact attachments when one filter is setup."""
     conversation_id = suid.get_suid()
     attachments = [
@@ -497,7 +525,8 @@ def test_attachments_redact_with_one_filter_defined(_load_config):
     )
 
 
-def test_attachments_redact_with_two_filters_defined(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_attachments_redact_with_two_filters_defined():
     """Test the function to redact attachments when two filters are setup."""
     conversation_id = suid.get_suid()
     attachments = [
@@ -547,7 +576,8 @@ def test_attachments_redact_with_two_filters_defined(_load_config):
     )
 
 
-def test_attachments_redact_on_redact_error(_load_config):
+@pytest.mark.usefixtures("_load_config")
+def test_attachments_redact_on_redact_error():
     """Test the function to redact attachments when redactor raises an error."""
     conversation_id = suid.get_suid()
     attachments = [
@@ -569,6 +599,7 @@ def test_attachments_redact_on_redact_error(_load_config):
             ols.redact_attachments(conversation_id, attachments)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 @patch("ols.config.conversation_cache.get")
@@ -576,7 +607,6 @@ def test_conversation_request(
     mock_conversation_cache_get,
     mock_summarize,
     mock_validate_question,
-    _load_config,
     auth,
 ):
     """Test conversation request API endpoint."""
@@ -618,6 +648,7 @@ def test_conversation_request(
         assert len(response.conversation_id) == 0
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 @patch("ols.config.conversation_cache.get")
@@ -625,7 +656,6 @@ def test_conversation_request_dedup_ref_docs(
     mock_conversation_cache_get,
     mock_summarize,
     mock_validate_question,
-    _load_config,
     auth,
 ):
     """Test deduplication of referenced docs."""
@@ -650,12 +680,12 @@ def test_conversation_request_dedup_ref_docs(
     assert response.referenced_documents[1].title == "title-a"
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.config.conversation_cache.get")
 def test_conversation_request_on_wrong_configuration(
     mock_conversation_cache_get,
     mock_validate_question,
-    _load_config,
     auth,
 ):
     """Test conversation request API endpoint."""
@@ -671,12 +701,13 @@ def test_conversation_request_on_wrong_configuration(
         ols.conversation_request(llm_request, auth)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=None))
 @patch(
     "ols.app.endpoints.ols.validate_question",
     new=Mock(return_value=False),
 )
-def test_question_validation_in_conversation_start(_load_config, auth):
+def test_question_validation_in_conversation_start(auth):
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # this should resolve in rejection in summarization
@@ -689,6 +720,7 @@ def test_question_validation_in_conversation_start(_load_config, auth):
     assert response.response.startswith(constants.INVALID_QUERY_RESP)
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.app.endpoints.ols.retrieve_previous_input",
     new=Mock(return_value=[{"type": "human", "content": "something"}]),
@@ -698,9 +730,7 @@ def test_question_validation_in_conversation_start(_load_config, auth):
     new=Mock(return_value=constants.SUBJECT_REJECTED),
 )
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-def test_no_question_validation_in_follow_up_conversation(
-    mock_summarize, _load_config, auth
-):
+def test_no_question_validation_in_follow_up_conversation(mock_summarize, auth):
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
     # but as it is not the first question, it should proceed to summarization
@@ -718,8 +748,9 @@ def test_no_question_validation_in_follow_up_conversation(
     assert response.response == "some elaborate answer"
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.app.endpoints.ols.validate_question")
-def test_conversation_request_invalid_subject(mock_validate, _load_config, auth):
+def test_conversation_request_invalid_subject(mock_validate, auth):
     """Test how generate_response function checks validation results."""
     # prepare arguments for DocsSummarizer
     llm_request = LLMRequest(query="Tell me about Kubernetes")
@@ -731,8 +762,9 @@ def test_conversation_request_invalid_subject(mock_validate, _load_config, auth)
     assert not response.truncated
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-def test_generate_response_valid_subject(mock_summarize, _load_config):
+def test_generate_response_valid_subject(mock_summarize):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
     mock_response = (
@@ -760,8 +792,9 @@ def test_generate_response_valid_subject(mock_summarize, _load_config):
     assert summarizer_response.history_truncated is False
 
 
+@pytest.mark.usefixtures("_load_config")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
-def test_generate_response_on_summarizer_error(mock_summarize, _load_config):
+def test_generate_response_on_summarizer_error(mock_summarize):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
     mock_response = Mock()
@@ -786,7 +819,7 @@ def test_generate_response_on_summarizer_error(mock_summarize, _load_config):
     "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
     side_effect=Exception("mocked exception"),
 )
-def test_generate_response_unknown_validation_result(_load_config):
+def test_generate_response_unknown_validation_result(exc):
     """Test how generate_response function checks validation results."""
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()

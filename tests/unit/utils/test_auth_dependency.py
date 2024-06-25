@@ -30,17 +30,19 @@ def _setup():
     auth_dependency = AuthDependency(virtual_path="/ols-access")
 
 
-def test_singleton_pattern(_setup):
+@pytest.mark.usefixtures("_setup")
+def test_singleton_pattern():
     """Test if K8sClientSingleton is really a singleton."""
     k1 = K8sClientSingleton()
     k2 = K8sClientSingleton()
     assert k1 is k2
 
 
+@pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api, _setup):
+async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
     """Tests the auth dependency with a mocked valid-token."""
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -62,10 +64,11 @@ async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api, _setu
     assert username == "valid-user"
 
 
+@pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api, _setup):
+async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
     """Test the auth dependency with a mocked invalid-token."""
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -88,9 +91,10 @@ async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api, _se
     assert exc_info.value.status_code == 403
 
 
+@pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-async def test_cluster_id_is_used_for_kube_admin(mock_authz_api, _setup):
+async def test_cluster_id_is_used_for_kube_admin(mock_authz_api):
     """Test the cluster id is used as user_id when user is kube:admin."""
     mock_authz_api.return_value.create_subject_access_review.side_effect = (
         mock_subject_access_review_response
@@ -120,8 +124,9 @@ async def test_cluster_id_is_used_for_kube_admin(mock_authz_api, _setup):
     assert username == "kube:admin"
 
 
+@pytest.mark.usefixtures("_setup")
 @patch.dict(os.environ, {"KUBECONFIG": "tests/config/kubeconfig"})
-def test_auth_dependency_config(_setup):
+def test_auth_dependency_config():
     """Test the auth dependency can load kubeconfig file."""
     from ols.utils.auth_dependency import K8sClientSingleton
 

@@ -30,7 +30,8 @@ def _enabled_auth():
     config.dev_config.disable_auth = False
 
 
-def test_is_user_authorized_auth_disabled(_disabled_auth):
+@pytest.mark.usefixtures("_disabled_auth")
+def test_is_user_authorized_auth_disabled():
     """Test the is_user_authorized function when the authentication is disabled."""
     # the tested function returns constant right now
     request = Request(scope={"type": "http"})
@@ -40,7 +41,8 @@ def test_is_user_authorized_auth_disabled(_disabled_auth):
     )
 
 
-def test_is_user_authorized_false_no_bearer_token(_enabled_auth):
+@pytest.mark.usefixtures("_enabled_auth")
+def test_is_user_authorized_false_no_bearer_token():
     """Test the is_user_authorized function when its missing authorization header."""
     # the tested function returns constant right now
     request = Request(scope={"type": "http", "headers": []})
@@ -53,9 +55,10 @@ def test_is_user_authorized_false_no_bearer_token(_enabled_auth):
     assert exc_info.value.status_code == 401
 
 
+@pytest.mark.usefixtures("_enabled_auth")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api, _enabled_auth):
+def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
     """Tests the is_user_authorized function with a mocked valid-token."""
     # Setup mock responses for valid token
     mock_authn_api.return_value.create_token_review.side_effect = (
@@ -74,11 +77,10 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api, _enabled
     assert response == AuthorizationResponse(user_id="valid-uid", username="valid-user")
 
 
+@pytest.mark.usefixtures("_enabled_auth")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
 @patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_invalid_token(
-    mock_authz_api, mock_authn_api, _enabled_auth
-):
+def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
     """Test the is_user_authorized function with a mocked invalid-token."""
     # Setup mock responses for invalid token
     mock_authn_api.return_value.create_token_review.side_effect = (
