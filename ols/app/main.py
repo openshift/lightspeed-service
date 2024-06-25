@@ -1,6 +1,7 @@
 """Entry point to FastAPI-based web service."""
 
 import logging
+import subprocess
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
@@ -10,6 +11,11 @@ from starlette.responses import StreamingResponse
 from ols import config, constants
 from ols.app import metrics, routers
 from ols.src.ui.gradio_ui import GradioUI
+
+
+def run_command(command: str) -> None:
+    subprocess.call(command, shell=True)
+
 
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
