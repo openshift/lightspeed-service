@@ -109,7 +109,7 @@ class ModelConfig(BaseModel):
     credentials: Optional[str] = None
 
     context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
-    model_parameters: ModelParameters = ModelParameters()
+    parameters: ModelParameters = ModelParameters()
 
     options: Optional[dict[str, Any]] = None
 
@@ -149,11 +149,11 @@ class ModelConfig(BaseModel):
     @model_validator(mode="after")
     def validate_context_window_and_max_tokens(self) -> Self:
         """Validate context window size and max tokens for response."""
-        if self.context_window_size <= self.model_parameters.max_tokens_for_response:  # type: ignore [operator]
+        if self.context_window_size <= self.parameters.max_tokens_for_response:  # type: ignore [operator]
             raise InvalidConfigurationError(
                 f"Context window size {self.context_window_size}, "
                 "should be greater than max_tokens_for_response "
-                f"{self.model_parameters.max_tokens_for_response}"
+                f"{self.parameters.max_tokens_for_response}"
             )
         return self
 

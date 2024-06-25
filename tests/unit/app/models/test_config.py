@@ -34,12 +34,10 @@ def test_model_parameters():
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
 
-    model_parameters = ModelParameters(
-        max_tokens_for_response=10, unknown_param="hello"
-    )
+    parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
-    assert model_parameters.max_tokens_for_response == 10
-    assert not hasattr(model_parameters, "unknown_param")
+    assert parameters.max_tokens_for_response == 10
+    assert not hasattr(parameters, "unknown_param")
 
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
@@ -173,7 +171,7 @@ def test_model_config_higher_response_token():
         ModelConfig(
             name="test_model_name",
             context_window_size=2,
-            model_parameters=ModelParameters(max_tokens_for_response=2),
+            parameters=ModelParameters(max_tokens_for_response=2),
         )
 
 
@@ -209,9 +207,7 @@ def test_provider_config():
         == constants.DEFAULT_CONTEXT_WINDOW_SIZE
     )
     assert (
-        provider_config.models[
-            "test_model_name"
-        ].model_parameters.max_tokens_for_response
+        provider_config.models["test_model_name"].parameters.max_tokens_for_response
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
     assert provider_config.openai_config is None
