@@ -9,7 +9,7 @@ ARG VERSION
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip jq shadow-utils \
+    python3.11 python3.11-devel python3.11-pip shadow-utils \
     && microdnf clean all --enablerepo='*'
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
