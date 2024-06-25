@@ -41,7 +41,8 @@ def _with_enabled_feedback(tmpdir):
     )
 
 
-def test_feedback_endpoints_disabled_when_set_in_config(_with_disabled_feedback):
+@pytest.mark.usefixtures("_with_disabled_feedback")
+def test_feedback_endpoints_disabled_when_set_in_config():
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
     response = client.get("/v1/feedback/status")
@@ -51,14 +52,16 @@ def test_feedback_endpoints_disabled_when_set_in_config(_with_disabled_feedback)
     assert response.status_code == requests.codes.forbidden
 
 
-def test_feedback_status(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_status():
     """Check if feedback status is returned."""
     response = client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"functionality": "feedback", "status": {"enabled": True}}
 
 
-def test_feedback(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback():
     """Check if feedback with correct format is accepted by the service."""
     response = client.post(
         "/v1/feedback",
@@ -73,7 +76,8 @@ def test_feedback(_with_enabled_feedback):
     assert response.json() == {"response": "feedback received"}
 
 
-def test_feedback_improper_conversation_id(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_improper_conversation_id():
     """Check if feedback with improper conversation ID is rejected."""
     response = client.post(
         "/v1/feedback",
@@ -87,7 +91,8 @@ def test_feedback_improper_conversation_id(_with_enabled_feedback):
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_improper_sentiment(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_improper_sentiment():
     """Check if feedback with improper sentiment value is rejected."""
     response = client.post(
         "/v1/feedback",
@@ -112,7 +117,8 @@ def test_feedback_improper_sentiment(_with_enabled_feedback):
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_wrong_request(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_wrong_request():
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
     response = client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
@@ -120,9 +126,8 @@ def test_feedback_wrong_request(_with_enabled_feedback):
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_mandatory_fields_not_provided_filled_in_request(
-    _with_enabled_feedback,
-):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_mandatory_fields_not_provided_filled_in_request():
     """Check if feedback without mandatory fields is not accepted by the service."""
     response = client.post(
         "/v1/feedback",
@@ -137,7 +142,8 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request(
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_no_payload_send(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_no_payload_send():
     """Check if feedback without feedback payload."""
     response = client.post("/v1/feedback")
     # for the request send w/o payload, the server
@@ -145,7 +151,8 @@ def test_feedback_no_payload_send(_with_enabled_feedback):
     assert response.status_code == requests.codes.unprocessable_entity
 
 
-def test_feedback_error_raised(_with_enabled_feedback):
+@pytest.mark.usefixtures("_with_enabled_feedback")
+def test_feedback_error_raised():
     """Check if feedback endpoint raises an exception when storing feedback fails."""
     with patch(
         "ols.app.endpoints.feedback.store_feedback",
