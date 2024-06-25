@@ -153,11 +153,7 @@ def test_retrieve_attachments_on_proper_input():
     assert len(attachments) == 1
 
     expected = Attachment(
-        **{
-            "attachment_type": "log",
-            "content_type": "text/plain",
-            "content": "this is attachment",
-        }
+        attachment_type="log", content_type="text/plain", content="this is attachment"
     )
     assert attachments[0] == expected
 

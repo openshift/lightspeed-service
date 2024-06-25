@@ -10,7 +10,7 @@ import ols.app.models.config as config_model
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
 
-# as we the index_loader.py is excluded from type checks, it confuses
+# as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
 from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
 from ols.utils.redactor import Redactor

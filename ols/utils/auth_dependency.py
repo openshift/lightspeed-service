@@ -98,7 +98,7 @@ class K8sClientSingleton:
                 configuration.ssl_ca_cert = (
                     config.ols_config.authentication_config.k8s_ca_cert_path
                     if config.ols_config.authentication_config.k8s_ca_cert_path
-                    not in {None, Path("")}
+                    not in {None, Path()}
                     else configuration.ssl_ca_cert
                 )
                 api_client = kubernetes.client.ApiClient(configuration)
