@@ -70,8 +70,9 @@ def test_unsupported_provider_error():
         load_llm(provider="some-provider", model="model")
 
 
+@pytest.mark.usefixtures("_registered_fake_provider")
 @patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"])
-def test_load_llm(_registered_fake_provider):
+def test_load_llm():
     """Test load_llm function."""
     providers = LLMProviders(
         [
