@@ -72,12 +72,15 @@ def setup_module(module):
         cluster_utils.create_user("metrics-test-user")
         token = cluster_utils.get_user_token("test-user")
         metrics_token = cluster_utils.get_user_token("metrics-test-user")
-        cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
-        cluster_utils.grant_sa_user_access("metrics-test-user", "lightspeed-operator-ols-metrics-reader")
+        cluster_utils.grant_sa_user_access(
+            "test-user", "lightspeed-operator-query-access"
+        )
+        cluster_utils.grant_sa_user_access(
+            "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
+        )
 
     else:
         print("Setting up for standalone test execution\n")
-
 
     client = client_utils.get_http_client(ols_url, token)
     metrics_client = client_utils.get_http_client(ols_url, metrics_token)
@@ -91,7 +94,7 @@ def setup_module(module):
 
     # disable collector script by default to avoid running during all
     # tests (collecting/sending data)
-    pod_name = cluster_utils.get_single_existing_pod_name()
+    pod_name = cluster_utils.get_ols_pod_name()
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
@@ -490,13 +493,11 @@ def test_query_filter() -> None:
         assert "bar" not in response_text
 
         # Retrieve the pod name
-        data_collection_container_name = "lightspeed-service-api"
+        ols_container_name = "lightspeed-service-api"
         pod_name = cluster_utils.get_ols_pod_name()
 
         # Check if filtered words are redacted in the logs
-        container_log = cluster_utils.get_container_log(
-            pod_name, data_collection_container_name
-        )
+        container_log = cluster_utils.get_container_log(pod_name, ols_container_name)
 
         # Ensure redacted patterns do not appear in the logs
         unwanted_patterns = ["foo ", "what is foo in bar?"]
@@ -1365,7 +1366,7 @@ def test_user_data_collection():
     """
     pod_name = None
     try:
-        pod_name = cluster_utils.get_single_existing_pod_name()
+        pod_name = cluster_utils.get_ols_pod_name()
 
         # enable collector script
         if pod_name is not None:

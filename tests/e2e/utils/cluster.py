@@ -130,6 +130,7 @@ def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
             [
                 "get",
                 "pods",
+                "--field-selector=status.phase=Running",
                 "-n",
                 namespace,
                 "-o",
@@ -186,7 +187,8 @@ def list_path(pod_name: str, path: str) -> list[str]:
         # files are returned as 'file1\nfile2\n'
         return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
-        if e.returncode == 2 and "No such file or directory" in e.stderr:
+        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
+        if e.returncode == 2 and "No such file or directory" in e.stdout:
             return []
         raise Exception("Error listing pod path") from e
 
