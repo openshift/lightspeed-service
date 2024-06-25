@@ -953,6 +953,13 @@ def test_transcripts_storing_cluster():
         "/v1/query",
         json={
             "query": "what is kubernetes?",
+            "attachments": [
+                {
+                    "attachment_type": "log",
+                    "content_type": "text/plain",
+                    "content": "this is attachment",
+                }
+            ],
         },
         timeout=LLM_REST_API_TIMEOUT,
     )
@@ -974,6 +981,12 @@ def test_transcripts_storing_cluster():
     assert transcript["rag_chunks"][0]["doc_url"]
     assert transcript["rag_chunks"][0]["doc_title"]
     assert "truncated" in transcript
+    assert "attachments" in transcript
+    assert isinstance(transcript["attachments"], list)
+    assert len(transcript["attachments"])
+    assert transcript["attachments"][0]["attachment_type"]
+    assert transcript["attachments"][0]["content_type"]
+    assert transcript["attachments"][0]["content"]
 
 
 @retry(max_attempts=3, wait_between_runs=10)

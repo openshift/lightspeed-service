@@ -103,7 +103,9 @@ def conversation_request(
     # Redact all attachments
     attachments = redact_attachments(conversation_id, attachments)
 
-    # All attachments should be appended to query
+    # All attachments should be appended to query - but store original
+    # query for later use in transcript storage
+    query_without_attachments = llm_request.query
     llm_request.query = append_attachments_to_query(llm_request.query, attachments)
 
     # Validate the query
@@ -137,10 +139,12 @@ def conversation_request(
             user_id,
             conversation_id,
             valid,
+            query_without_attachments,
             llm_request,
             summarizer_response.response,
             summarizer_response.rag_chunks,
             summarizer_response.history_truncated,
+            attachments,
         )
 
     # De-dup & retain order to create list of referenced documents
@@ -480,10 +484,12 @@ def store_transcript(
     user_id: str,
     conversation_id: str,
     query_is_valid: bool,
+    redacted_query: str,
     llm_request: LLMRequest,
     response: str,
     rag_chunks: list[RagChunk],
     truncated: bool,
+    attachments: list[Attachment],
 ) -> None:
     """Store transcript in the local filesystem.
 
@@ -491,10 +497,12 @@ def store_transcript(
         user_id: The user ID (UUID).
         conversation_id: The conversation ID (UUID).
         query_is_valid: The result of the query validation.
+        redacted_query: The redacted query (without attachments).
         llm_request: The request containing a query.
         response: The response to store.
         rag_chunks: The list of `RagChunk` objects.
         truncated: The flag indicating if the history was truncated.
+        attachments: The list of `Attachment` objects.
     """
     # ensures storage path exists
     transcripts_path = construct_transcripts_path(user_id, conversation_id)
@@ -510,11 +518,12 @@ def store_transcript(
             "conversation_id": conversation_id,
             "timestamp": datetime.now(pytz.UTC).isoformat(),
         },
-        "redacted_query": llm_request.query,
+        "redacted_query": redacted_query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
         "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],  # type: ignore [call-overload]
         "truncated": truncated,
+        "attachments": [attachment.model_dump() for attachment in attachments],
     }
 
     # stores feedback in a file under unique uuid
