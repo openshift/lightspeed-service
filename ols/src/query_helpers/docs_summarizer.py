@@ -136,7 +136,7 @@ class DocsSummarizer(QueryHelper):
 
         with TokenMetricUpdater(
             llm=bare_llm,
-            provider=self.provider,
+            provider=provider_config.type,
             model=self.model,
         ) as token_counter:
             summary = chat_engine.invoke(
