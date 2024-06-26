@@ -44,7 +44,7 @@ dev = [
     "pydantic==2.7.3",
     "ruff==0.4.10",
     "bandit==1.7.9",
-    "types-requests==2.31.0"
+    "types-requests==2.32.0.20240622"
 ]
 
 [[tool.pdm.source]]
