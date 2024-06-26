@@ -454,6 +454,21 @@ def format_timestamp(text: str) -> str:
     return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def all_attachments(attachments: list[str, Any]) -> str:
+    """Retrieve all attachments as one string."""
+    separator = 100 * "-" + "\n\n"
+    output = ""
+    for attachment in attachments:
+        attachment_type = attachment.get("attachment_type", "*Not specified*")
+        content_type = attachment.get("content_type", "*Not specified*")
+        content = attachment.get("content", "*Empty*")
+        output += f"Attachment type: {attachment_type}\n"
+        output += f"Content type: {content_type}\n"
+        output += f"Content:\n{content}\n"
+        output += separator
+    return output
+
+
 def aggregate_user_feedback_from_files(
     filewriter,
     directory_name: str,
@@ -474,11 +489,13 @@ def aggregate_user_feedback_from_files(
             for feedback in feedbacks:
                 user_id = feedback["user_id"]
                 conversation_id = feedback["conversation_id"]
+                attachments = all_attachments(feedback.get("attachments", []))
                 rows = [
                     timestamp,
                     cluster_id,
                     user_id,
                     conversation_id,
+                    attachments,
                     feedback["user_question"].strip(),
                     feedback["llm_response"].strip(),
                     feedback["sentiment"],
@@ -515,6 +532,7 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
             "User ID",
             "Conversation ID",
             "Question",
+            "Attachments",
             "LLM response",
             "Sentiment",
             "Feedback",
@@ -747,6 +765,86 @@ def test_construct_filename_negative(key):
     """Test the function construct_filename - negative test cases with invalid keys."""
     with pytest.raises(Exception, match=f"Can not construct filename from key {key}"):
         construct_filename(key)
+
+
+def test_all_attachments_for_empty_input():
+    """Test the construction of string with all attachments."""
+    attachments = []
+    assert all_attachments(attachments) == ""
+
+
+def test_all_attachments_for_proper_attachments():
+    """Test the construction of string with all attachments."""
+    attachments = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment #1",
+        },
+        {
+            "attachment_type": "configuration",
+            "content_type": "text/plain",
+            "content": "this is attachment #2",
+        },
+    ]
+    expected = """Attachment type: log
+Content type: text/plain
+Content:
+this is attachment #1
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: text/plain
+Content:
+this is attachment #2
+----------------------------------------------------------------------------------------------------
+
+"""
+    assert all_attachments(attachments) == expected
+
+
+def test_all_attachments_for_improper_attachments():
+    """Test the construction of string with all attachments."""
+    attachments = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment #1",
+        },
+        {
+            "attachment_type": "configuration",
+            "content_type": "text/plain",
+            "content": "this is attachment #2",
+        },
+        {"content_type": "text/plain", "content": "this is attachment #3"},
+        {"attachment_type": "configuration", "content": "this is attachment #4"},
+    ]
+    expected = """Attachment type: log
+Content type: text/plain
+Content:
+this is attachment #1
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: text/plain
+Content:
+this is attachment #2
+----------------------------------------------------------------------------------------------------
+
+Attachment type: *Not specified*
+Content type: text/plain
+Content:
+this is attachment #3
+----------------------------------------------------------------------------------------------------
+
+Attachment type: configuration
+Content type: *Not specified*
+Content:
+this is attachment #4
+----------------------------------------------------------------------------------------------------
+
+"""
+    assert all_attachments(attachments) == expected
 
 
 if __name__ == "__main__":
