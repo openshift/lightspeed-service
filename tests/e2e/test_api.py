@@ -77,18 +77,19 @@ def setup_module(module):
         metrics_token = cluster_utils.get_user_token("metrics-test-user")
         cluster_utils.grant_sa_user_access("test-user", "ols-user")
         cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
+
+        # ruff: noqa: S603, S607
+        # Determine the hostname for the OLS route
+        result = subprocess.run(
+            ["oc", "get", "route", "ols", "-o", "jsonpath={.spec.host}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        ols_url = result.stdout.strip()
     else:
         print("Setting up for standalone test execution\n")
 
-    # ruff: noqa: S603, S607
-    # Determine the hostname for the OLS route
-    result = subprocess.run(
-        ["oc", "get", "route", "ols", "-o", "jsonpath={.spec.host}"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    ols_url = result.stdout.strip()
     if not ols_url.startswith("http"):
         ols_url = f"https://{ols_url}"
 
