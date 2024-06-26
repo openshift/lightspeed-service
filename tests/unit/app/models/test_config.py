@@ -1406,7 +1406,7 @@ def test_redis_config_with_no_password():
 
 def test_redis_config_with_invalid_password_path():
     """Test the RedisConfig model with invalid password path."""
-    with pytest.raises(Exception):
+    with pytest.raises(NotADirectoryError, match="Not a directory"):
         RedisConfig(
             {
                 "host": "localhost",
