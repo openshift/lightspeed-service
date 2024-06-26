@@ -3,10 +3,11 @@
 import json
 import os
 from collections import defaultdict
+from datetime import UTC, datetime
 
 import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from scipy.spatial.distance import cosine, euclidean
 
 from tests.e2e.utils.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
@@ -28,6 +29,38 @@ class ResponseEvaluation:
 
         with open("tests/test_data/question_answer_pair.json") as qna_f:
             self._qa_pairs = json.load(qna_f)["evaluation"]
+
+    def _get_api_response(self, question, provider, model):
+        """Get api response for a question/query."""
+        response = self._api_client.post(
+            "/v1/query",
+            json={
+                "query": question,
+                "provider": provider,
+                "model": model,
+            },
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        if response.status_code != requests.codes.ok:
+            raise Exception(response)
+
+        print(f"API request is successful for {provider}+{model}; Query: {question}")
+        return response.json()["response"].strip()
+
+    def _get_recent_response(self, recent_resp_df, question, provider, model):
+        """Get llm response from the stored data, if available."""
+        if recent_resp_df is not None:
+            try:
+                return recent_resp_df[recent_resp_df.question == question][
+                    "llm_response"
+                ].iloc[0]
+            except IndexError:
+                print(
+                    "Recent response for query is not found in the file. "
+                    "Separate api call is required to get response."
+                )
+        # Recent response is not found, call api to get response
+        return self._get_api_response(question, provider, model)
 
     def _similarity_score(self, response, answer):
         """Calculate similarity score between two strings."""
@@ -70,19 +103,9 @@ class ResponseEvaluation:
             answers = answer_data["text"]
             eval_threshold = answer_data.get("cutoff_score", EVAL_THRESHOLD)
 
-            response = self._api_client.post(
-                "/v1/query",
-                json={
-                    "query": question,
-                    "provider": self._args.eval_provider,
-                    "model": self._args.eval_model,
-                },
-                timeout=LLM_REST_API_TIMEOUT,
+            response = self._get_api_response(
+                question, self._args.eval_provider, self._args.eval_model
             )
-            if response.status_code != requests.codes.ok:
-                raise Exception(response)
-
-            response = response.json()["response"].strip()
 
             print(f"Calculating score for query: {question}")
             for answer in answers:
@@ -143,3 +166,68 @@ class ResponseEvaluation:
             print("No result. Nothing to process.")
 
         return True
+
+    def evaluate_models(self):
+        """Evaluate models against groundtruth answer."""
+        print("Running model evaluation using groundtruth...")
+        inscope_models = [
+            ("bam", "ibm/granite-13b-chat-v2"),
+            ("watsonx", "ibm/granite-13b-chat-v2"),
+            ("openai", "gpt-3.5-turbo"),
+            ("azure_openai", "gpt-3.5-turbo"),
+        ]
+        answer_id = "ground_truth+with_rag"
+
+        result_df = DataFrame(columns=["eval_id", "question", answer_id])
+        for p_m in inscope_models:
+            provider_model = "+".join(p_m)
+            provider, model = p_m
+            result_dict = defaultdict(list)
+            print(f"Model evaluation for {provider_model}")
+            try:
+                recent_resp_df = read_csv(
+                    f"{self._args.eval_out_dir}/response_evaluation_result-"
+                    f"{provider_model.replace('/', '-')}+with_rag.csv"
+                )
+            except FileNotFoundError:
+                print(
+                    "File with recent model response not found. "
+                    "Separate api calls are required to get the response."
+                )
+                recent_resp_df = None
+
+            for query_id in self._qa_pairs.keys():
+                question = self._qa_pairs[query_id]["question"]
+                answer_data = self._qa_pairs[query_id]["answer"][answer_id]
+                answer = answer_data["text"][0]
+
+                response = self._get_recent_response(
+                    recent_resp_df, question, provider, model
+                )
+                score = self._similarity_score(response, answer)
+
+                result_dict["eval_id"].append(query_id)
+                result_dict["question"].append(question)
+                result_dict[answer_id].append(answer)
+                result_dict[f"{provider_model}_response"].append(response)
+                result_dict[f"{provider_model}_score"].append(score)
+
+            model_result_df = DataFrame.from_dict(result_dict)
+            result_df = result_df.merge(
+                model_result_df, on=["eval_id", "question", answer_id], how="outer"
+            )
+
+        result_df.to_csv(
+            f"{self._args.eval_out_dir}/model_evaluation_result.csv", index=False
+        )
+        summary_dict = {}
+        for p_m in inscope_models:
+            provider_model = "+".join(p_m)
+            summary_dict[provider_model] = result_df[f"{provider_model}_score"].mean()
+        summary_dict = {
+            "timestamp": str(datetime.now(UTC)),
+            "eval_set": result_df.eval_id.unique().tolist(),
+            "avg_similarity_score": summary_dict,
+        }
+        with open(f"{self._args.eval_out_dir}/model_evaluation_summary.json", "w") as f:
+            json.dump(summary_dict, f)

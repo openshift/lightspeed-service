@@ -1494,6 +1494,13 @@ def test_model_response(request) -> None:
     assert ResponseEvaluation(request.config.option, client).validate_response()
 
 
+@pytest.mark.model_evaluation()
+def test_model_evaluation(request) -> None:
+    """Evaluate model."""
+    # TODO: Use this to assert.
+    ResponseEvaluation(request.config.option, client).evaluate_models()
+
+
 # TODO: OLS-663
 def test_liveness_endpoint():
     """Test the liveness endpoint."""
