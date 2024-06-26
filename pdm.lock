@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:a64bceecfbc1e3a02e91d45c36ceb709c589430ed80ee749aacca44af9025c28"
+content_hash = "sha256:8066595c174cb9082daf0298d7470baea54a0c26a6699ca6aca2f3c39b08dc81"
 
 [[package]]
 name = "aiofiles"
@@ -3056,25 +3056,16 @@ files = [
 
 [[package]]
 name = "types-requests"
-version = "2.31.0.0"
+version = "2.32.0.20240622"
+requires_python = ">=3.8"
 summary = "Typing stubs for requests"
 groups = ["dev"]
 dependencies = [
-    "types-urllib3",
+    "urllib3>=2",
 ]
 files = [
-    {file = "types-requests-2.31.0.0.tar.gz", hash = "sha256:c1c29d20ab8d84dff468d7febfe8e0cb0b4664543221b386605e14672b44ea25"},
-    {file = "types_requests-2.31.0.0-py3-none-any.whl", hash = "sha256:7c5cea7940f8e92ec560bbc468f65bf684aa3dcf0554a6f8c4710f5f708dc598"},
-]
-
-[[package]]
-name = "types-urllib3"
-version = "1.26.25.14"
-summary = "Typing stubs for urllib3"
-groups = ["dev"]
-files = [
-    {file = "types-urllib3-1.26.25.14.tar.gz", hash = "sha256:229b7f577c951b8c1b92c1bc2b2fdb0b49847bd2af6d1cc2a2e3dd340f3bda8f"},
-    {file = "types_urllib3-1.26.25.14-py3-none-any.whl", hash = "sha256:9683bbb7fb72e32bfe9d2be6e04875fbe1b3eeec3cbb4ea231435aa7fd6b4f0e"},
+    {file = "types-requests-2.32.0.20240622.tar.gz", hash = "sha256:ed5e8a412fcc39159d6319385c009d642845f250c63902718f605cd90faade31"},
+    {file = "types_requests-2.32.0.20240622-py3-none-any.whl", hash = "sha256:97bac6b54b5bd4cf91d407e62f0932a74821bc2211f22116d9ee1dd643826caf"},
 ]
 
 [[package]]
@@ -3155,7 +3146,7 @@ name = "urllib3"
 version = "2.1.0"
 requires_python = ">=3.8"
 summary = "HTTP library with thread-safe connection pooling, file post, and more."
-groups = ["default"]
+groups = ["default", "dev"]
 files = [
     {file = "urllib3-2.1.0-py3-none-any.whl", hash = "sha256:55901e917a5896a349ff771be919f8bd99aff50b79fe58fec595eb37bbc56bb3"},
     {file = "urllib3-2.1.0.tar.gz", hash = "sha256:df7aa8afb0148fa78488e7899b2c59b5f4ffcfa82e6c54ccb9dd37c1d7b52d54"},
