@@ -5,7 +5,6 @@ import os
 import re
 import subprocess
 import time
-from typing import Optional
 
 import pytest
 import requests
@@ -104,6 +103,11 @@ def setup_module(module):
     print(f"OLS is ready: {OLS_READY}")
     if not OLS_READY:
         must_gather()
+
+    # disable collector script by default to avoid running during all
+    # tests (collecting/sending data)
+    pod_name = cluster_utils.get_single_existing_pod_name()
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 def teardown_module(module):
@@ -804,52 +808,40 @@ def test_feedback_can_post_with_wrong_token():
 @pytest.mark.cluster()
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
-    pod_name: Optional[str] = None
-    try:
-        feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
-        pod_name = cluster_utils.get_single_existing_pod_name()
+    feedbacks_path = OLS_USER_DATA_PATH + "/feedback"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-        # disable collector script to avoid interference with the test
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # disable collector script to avoid interference with the test
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
-        # there are multiple tests running agains cluster, so transcripts
-        # can be already present - we need to ensure the storage is empty
-        # for this test
-        feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
-        if feedbacks:
-            cluster_utils.remove_dir(pod_name, feedbacks_path)
-            assert cluster_utils.list_path(pod_name, feedbacks_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
+    if feedbacks:
+        cluster_utils.remove_dir(pod_name, feedbacks_path)
+        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
 
-        response = client.post(
-            "/v1/feedback",
-            json={
-                "conversation_id": CONVERSATION_ID,
-                "user_question": "what is OCP4?",
-                "llm_response": "Openshift 4 is ...",
-                "sentiment": 1,
-            },
-            timeout=BASIC_ENDPOINTS_TIMEOUT,
-        )
+    response = client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
 
-        assert response.status_code == requests.codes.ok
+    assert response.status_code == requests.codes.ok
 
-        feedback_data = cluster_utils.get_single_existing_feedback(
-            pod_name, feedbacks_path
-        )
+    feedback_data = cluster_utils.get_single_existing_feedback(pod_name, feedbacks_path)
 
-        assert feedback_data["user_id"]  # we don't care about actual value
-        assert feedback_data["conversation_id"] == CONVERSATION_ID
-        assert feedback_data["user_question"] == "what is OCP4?"
-        assert feedback_data["llm_response"] == "Openshift 4 is ..."
-        assert feedback_data["sentiment"] == 1
-
-    finally:
-        if pod_name is not None:
-            # ensure script is enabled again after test (succesfull or not)
-            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-            assert "disable_collector" not in cluster_utils.list_path(
-                pod_name, OLS_USER_DATA_PATH
-            )
+    assert feedback_data["user_id"]  # we don't care about actual value
+    assert feedback_data["conversation_id"] == CONVERSATION_ID
+    assert feedback_data["user_question"] == "what is OCP4?"
+    assert feedback_data["llm_response"] == "Openshift 4 is ..."
+    assert feedback_data["sentiment"] == 1
 
 
 def check_missing_field_response(response, field_name):
@@ -947,54 +939,45 @@ def test_feedback_improper_conversation_id():
 @pytest.mark.cluster()
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
-    pod_name: Optional[str] = None
-    try:
-        transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
-        pod_name = cluster_utils.get_single_existing_pod_name()
+    transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
+    pod_name = cluster_utils.get_single_existing_pod_name()
 
-        # disable collector script to avoid interference with the test
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # disable collector script to avoid interference with the test
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
-        # there are multiple tests running agains cluster, so transcripts
-        # can be already present - we need to ensure the storage is empty
-        # for this test
-        transcripts = cluster_utils.list_path(pod_name, transcripts_path)
-        if transcripts:
-            cluster_utils.remove_dir(pod_name, transcripts_path)
-            assert cluster_utils.list_path(pod_name, transcripts_path) == []
+    # there are multiple tests running agains cluster, so transcripts
+    # can be already present - we need to ensure the storage is empty
+    # for this test
+    transcripts = cluster_utils.list_path(pod_name, transcripts_path)
+    if transcripts:
+        cluster_utils.remove_dir(pod_name, transcripts_path)
+        assert cluster_utils.list_path(pod_name, transcripts_path) == []
 
-        response = client.post(
-            "/v1/query",
-            json={
-                "query": "what is kubernetes?",
-            },
-            timeout=LLM_REST_API_TIMEOUT,
-        )
-        assert response.status_code == requests.codes.ok
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
 
-        transcript = cluster_utils.get_single_existing_transcript(
-            pod_name, transcripts_path
-        )
+    transcript = cluster_utils.get_single_existing_transcript(
+        pod_name, transcripts_path
+    )
 
-        assert transcript["metadata"]  # just check if it is not empty
-        assert transcript["redacted_query"] == "what is kubernetes?"
-        # we don't want llm response influence this test
-        assert "query_is_valid" in transcript
-        assert "llm_response" in transcript
-        assert "rag_chunks" in transcript
-        assert isinstance(transcript["rag_chunks"], list)
-        assert len(transcript["rag_chunks"])
-        assert transcript["rag_chunks"][0]["text"]
-        assert transcript["rag_chunks"][0]["doc_url"]
-        assert transcript["rag_chunks"][0]["doc_title"]
-        assert "truncated" in transcript
-    finally:
-        if pod_name is not None:
-            # ensure script is enabled again after test (succesfull or not)
-            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-            assert "disable_collector" not in cluster_utils.list_path(
-                pod_name, OLS_USER_DATA_PATH
-            )
+    assert transcript["metadata"]  # just check if it is not empty
+    assert transcript["redacted_query"] == "what is kubernetes?"
+    # we don't want llm response influence this test
+    assert "query_is_valid" in transcript
+    assert "llm_response" in transcript
+    assert "rag_chunks" in transcript
+    assert isinstance(transcript["rag_chunks"], list)
+    assert len(transcript["rag_chunks"])
+    assert transcript["rag_chunks"][0]["text"]
+    assert transcript["rag_chunks"][0]["doc_url"]
+    assert transcript["rag_chunks"][0]["doc_title"]
+    assert "truncated" in transcript
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -1377,91 +1360,103 @@ def test_user_data_collection():
     A bit of trick is required to check just the logs since the last
     action (as container logs can be influenced by other tests).
     """
+    try:
+        pod_name = cluster_utils.get_single_existing_pod_name()
 
-    def filter_logs(logs: str, last_log_line: str) -> str:
-        filtered_logs = []
-        new_logs = False
-        for line in logs.split("\n"):
-            if line == last_log_line:
-                new_logs = True
-                continue
-            if new_logs:
-                filtered_logs.append(line)
-        return "\n".join(filtered_logs)
+        # enable collector script
+        if pod_name is not None:
+            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
+            assert "disable_collector" not in cluster_utils.list_path(
+                pod_name, OLS_USER_DATA_PATH
+            )
 
-    def get_last_log_line(logs: str) -> str:
-        return [line for line in logs.split("\n") if line][-1]
+        def filter_logs(logs: str, last_log_line: str) -> str:
+            filtered_logs = []
+            new_logs = False
+            for line in logs.split("\n"):
+                if line == last_log_line:
+                    new_logs = True
+                    continue
+                if new_logs:
+                    filtered_logs.append(line)
+            return "\n".join(filtered_logs)
 
-    # constants from tests/config/cluster_install/ols_manifests.yaml
-    data_collection_container_name = "ols-sidecar-user-data-collector"
-    pod_name = cluster_utils.get_single_existing_pod_name()
+        def get_last_log_line(logs: str) -> str:
+            return [line for line in logs.split("\n") if line][-1]
 
-    # there are multiple tests running agains cluster, so user data
-    # can be already present - we need to ensure the storage is empty
-    # for this test
-    user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
-    if user_data:
-        cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
-        cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
-        assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
+        # constants from tests/config/cluster_install/ols_manifests.yaml
+        data_collection_container_name = "ols-sidecar-user-data-collector"
 
-    # safety wait for the script to start after being disabled by other
-    # tests
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+        # there are multiple tests running agains cluster, so user data
+        # can be already present - we need to ensure the storage is empty
+        # for this test
+        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
+        if user_data:
+            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
+            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
+            assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
 
-    # data shoud be pruned now and this is the point from which we want
-    # to check the logs
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    last_log_line = get_last_log_line(container_log)
+        # safety wait for the script to start after being disabled by other
+        # tests
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
 
-    # wait the collection period for some extra to give the script a
-    # chance to log what we want to check
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+        # data shoud be pruned now and this is the point from which we want
+        # to check the logs
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        last_log_line = get_last_log_line(container_log)
 
-    # we just check that there are no data and the script is working
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    logs = filter_logs(container_log, last_log_line)
+        # wait the collection period for some extra to give the script a
+        # chance to log what we want to check
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
 
-    assert "collected" not in logs
-    assert "data uploaded with request_id:" not in logs
-    assert "uploaded data removed" not in logs
-    assert "data upload failed with response:" not in logs
-    assert "contains no data, nothing to do..." in logs
+        # we just check that there are no data and the script is working
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        logs = filter_logs(container_log, last_log_line)
 
-    # get the log point for the next check
-    last_log_line = get_last_log_line(container_log)
+        assert "collected" not in logs
+        assert "data uploaded with request_id:" not in logs
+        assert "uploaded data removed" not in logs
+        assert "data upload failed with response:" not in logs
+        assert "contains no data, nothing to do..." in logs
 
-    # create a new data via feedback endpoint
-    response = client.post(
-        "/v1/feedback",
-        json={
-            "conversation_id": CONVERSATION_ID,
-            "user_question": "what is OCP4?",
-            "llm_response": "Openshift 4 is ...",
-            "sentiment": 1,
-        },
-        timeout=BASIC_ENDPOINTS_TIMEOUT,
-    )
-    assert response.status_code == requests.codes.ok
-    # ensure the script have enought time to send the payload before
-    # we pull its logs
-    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+        # get the log point for the next check
+        last_log_line = get_last_log_line(container_log)
 
-    # check that data was packaged, sent and removed
-    container_log = cluster_utils.get_container_log(
-        pod_name, data_collection_container_name
-    )
-    logs = filter_logs(container_log, last_log_line)
-    assert "collected 1 files (splitted to 1 chunks) from" in logs
-    assert "data uploaded with request_id:" in logs
-    assert "uploaded data removed" in logs
-    assert "data upload failed with response:" not in logs
-    user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
-    assert user_data == []
+        # create a new data via feedback endpoint
+        response = client.post(
+            "/v1/feedback",
+            json={
+                "conversation_id": CONVERSATION_ID,
+                "user_question": "what is OCP4?",
+                "llm_response": "Openshift 4 is ...",
+                "sentiment": 1,
+            },
+            timeout=BASIC_ENDPOINTS_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        # ensure the script have enought time to send the payload before
+        # we pull its logs
+        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+
+        # check that data was packaged, sent and removed
+        container_log = cluster_utils.get_container_log(
+            pod_name, data_collection_container_name
+        )
+        logs = filter_logs(container_log, last_log_line)
+        assert "collected 1 files (splitted to 1 chunks) from" in logs
+        assert "data uploaded with request_id:" in logs
+        assert "uploaded data removed" in logs
+        assert "data upload failed with response:" not in logs
+        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
+        assert user_data == []
+
+    finally:
+        # disable collector script after test/on failure
+        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 @pytest.mark.cluster()
