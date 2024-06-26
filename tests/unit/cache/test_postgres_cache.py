@@ -123,8 +123,7 @@ def test_get_operation_on_exception(mock_connect):
 
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
-        value = cache.get(user_id, conversation_id)
-        assert value is None
+        cache.get(user_id, conversation_id)
 
 
 @patch("psycopg2.connect")
