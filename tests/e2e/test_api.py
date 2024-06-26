@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import subprocess
 import time
 from typing import Optional
 
@@ -78,13 +77,9 @@ def setup_module(module):
         cluster_utils.grant_sa_user_access("test-user", "ols-user")
         cluster_utils.grant_sa_user_access("metrics-test-user", "ols-metrics-user")
 
-        # ruff: noqa: S603, S607
         # Determine the hostname for the OLS route
-        result = subprocess.run(
-            ["oc", "get", "route", "ols", "-o", "jsonpath={.spec.host}"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        result = cluster_utils.run_oc(
+            ["get", "route", "ols", "-o", "jsonpath={.spec.host}"]
         )
         ols_url = result.stdout.strip()
     else:
