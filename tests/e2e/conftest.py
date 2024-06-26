@@ -21,8 +21,8 @@ def pytest_runtest_makereport(item, call) -> TestReport:
         makereport_called = True
         return TestReport(
             "test_wait_for_ols",
-            ["", 0, ""],
-            None,
+            ("", 0, ""),
+            {},
             "failed",
             "wait for OLS to startup before running tests",
             "call",
