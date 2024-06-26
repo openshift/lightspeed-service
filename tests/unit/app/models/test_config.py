@@ -1171,18 +1171,16 @@ def test_llm_providers_equality():
 def test_valid_values():
     """Test valid values."""
     # test default values
-    logging_config = LoggingConfig({})
+    logging_config = LoggingConfig(**{})
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
     assert logging_config.uvicorn_log_level == logging.WARNING
 
     # test custom values
     logging_config = LoggingConfig(
-        {
-            "app_log_level": "debug",
-            "lib_log_level": "debug",
-            "uvicorn_log_level": "debug",
-        }
+        app_log_level="debug",
+        lib_log_level="debug",
+        uvicorn_log_level="debug",
     )
     assert logging_config.app_log_level == logging.DEBUG
     assert logging_config.lib_log_level == logging.DEBUG
@@ -1195,22 +1193,25 @@ def test_valid_values():
 def test_invalid_values():
     """Test invalid values."""
     # value is not string
-    with pytest.raises(InvalidConfigurationError, match="invalid log level for 5"):
-        LoggingConfig({"app_log_level": 5})
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="'5' log level must be string, got <class 'int'>",
+    ):
+        LoggingConfig(app_log_level=5)
 
     # value is not valid log level
     with pytest.raises(
         InvalidConfigurationError,
-        match="invalid log level for app_log_level: dingdong",
+        match="'dingdong' is not valid log level, valid levels are",
     ):
-        LoggingConfig({"app_log_level": "dingdong"})
+        LoggingConfig(app_log_level="dingdong")
 
     # value is not valid log level
     with pytest.raises(
         InvalidConfigurationError,
-        match="invalid log level for uvicorn_log_level: foo",
+        match="'foo' is not valid log level, valid levels are",
     ):
-        LoggingConfig({"uvicorn_log_level": "foo"})
+        LoggingConfig(uvicorn_log_level="foo")
 
 
 def test_postgres_config_default_values():

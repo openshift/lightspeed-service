@@ -11,9 +11,7 @@ from ols.utils.logging import LoggingConfig, configure_logging
 
 def setup_logging(caplog):
     """Set up logging and capturing log messsages."""
-    logging_config = LoggingConfig(
-        {"app_log_level": "info"},
-    )
+    logging_config = LoggingConfig(app_log_level="info")
     configure_logging(logging_config)
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
