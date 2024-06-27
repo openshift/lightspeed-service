@@ -829,8 +829,7 @@ def test_valid_config_file():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_file_with_postgres(patch):
+def test_valid_config_file_with_postgres():
     """Check if a valid configuration file with Postgres conversation cache is handled correctly."""
     try:
         config.reload_from_yaml_file("tests/config/valid_config_postgres.yaml")
@@ -882,8 +881,7 @@ def test_valid_config_file_with_postgres(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_valid_config_file_with_redis(patch):
+def test_valid_config_file_with_redis():
     """Check if a valid configuration file with Redis conversation cache is handled correctly."""
     try:
         config.reload_from_yaml_file("tests/config/valid_config_redis.yaml")
@@ -934,8 +932,7 @@ def test_valid_config_file_with_redis(patch):
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-@patch("ols.src.cache.cache_factory.CacheFactory.conversation_cache", return_value=None)
-def test_config_file_without_logging_config(patch):
+def test_config_file_without_logging_config():
     """Check how a configuration file without logging config is correctly initialized."""
     # when logging configuration is not provided, default values will be used
     # it means the following call should not fail
@@ -951,6 +948,7 @@ def test_config_file_without_logging_config(patch):
 def test_valid_config_without_query_filter():
     """Check if a valid configuration file without query filter creates empty regex filters."""
     config.reload_empty()
+    assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == []
     config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
     assert config.query_redactor.regex_filters == []
@@ -958,6 +956,8 @@ def test_valid_config_without_query_filter():
 
 def test_valid_config_with_query_filter():
     """Check if a valid configuration file with query filter is handled correctly."""
+    config.reload_empty()
+    assert config.query_redactor is not None
     assert config.query_redactor.regex_filters == []
     config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
     assert config.query_redactor is not None
