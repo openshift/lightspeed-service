@@ -179,38 +179,8 @@ class ResponseEvaluation:
         answer_id = "ground_truth+with_rag"
 
         result_df = DataFrame(columns=["eval_id", "question", answer_id])
-        for p_m in inscope_models:
-            provider_model = "+".join(p_m)
-            provider, model = p_m
-            result_dict = defaultdict(list)
-            print(f"Model evaluation for {provider_model}")
-            try:
-                recent_resp_df = read_csv(
-                    f"{self._args.eval_out_dir}/response_evaluation_result-"
-                    f"{provider_model.replace('/', '-')}+with_rag.csv"
-                )
-            except FileNotFoundError:
-                print(
-                    "File with recent model response not found. "
-                    "Separate api calls are required to get the response."
-                )
-                recent_resp_df = None
-
-            for query_id in self._qa_pairs.keys():
-                question = self._qa_pairs[query_id]["question"]
-                answer_data = self._qa_pairs[query_id]["answer"][answer_id]
-                answer = answer_data["text"][0]
-
-                response = self._get_recent_response(
-                    recent_resp_df, question, provider, model
-                )
-                score = self._similarity_score(response, answer)
-
-                result_dict["eval_id"].append(query_id)
-                result_dict["question"].append(question)
-                result_dict[answer_id].append(answer)
-                result_dict[f"{provider_model}_response"].append(response)
-                result_dict[f"{provider_model}_score"].append(score)
+        for provider_model in inscope_models:
+            result_dict = self.evaluate_model(provider_model, answer_id)
 
             model_result_df = DataFrame.from_dict(result_dict)
             result_df = result_df.merge(
@@ -220,14 +190,53 @@ class ResponseEvaluation:
         result_df.to_csv(
             f"{self._args.eval_out_dir}/model_evaluation_result.csv", index=False
         )
-        summary_dict = {}
+
+        average_scores = {}
         for p_m in inscope_models:
             provider_model = "+".join(p_m)
-            summary_dict[provider_model] = result_df[f"{provider_model}_score"].mean()
+            average_scores[provider_model] = result_df[f"{provider_model}_score"].mean()
+
         summary_dict = {
             "timestamp": str(datetime.now(UTC)),
             "eval_set": result_df.eval_id.unique().tolist(),
-            "avg_similarity_score": summary_dict,
+            "avg_similarity_score": average_scores,
         }
+
         with open(f"{self._args.eval_out_dir}/model_evaluation_summary.json", "w") as f:
             json.dump(summary_dict, f)
+
+    def evaluate_model(self, provider_and_model, answer_id):
+        """Evaluate selected provider + model using groundtruth."""
+        provider_model = "+".join(provider_and_model)
+        provider, model = provider_and_model
+        result_dict = defaultdict(list)
+        print(f"Model evaluation for {provider_model}")
+        try:
+            recent_resp_df = read_csv(
+                f"{self._args.eval_out_dir}/response_evaluation_result-"
+                f"{provider_model.replace('/', '-')}+with_rag.csv"
+            )
+        except FileNotFoundError:
+            print(
+                "File with recent model response not found. "
+                "Separate api calls are required to get the response."
+            )
+            recent_resp_df = None
+
+        for query_id in self._qa_pairs.keys():
+            question = self._qa_pairs[query_id]["question"]
+            answer_data = self._qa_pairs[query_id]["answer"][answer_id]
+            answer = answer_data["text"][0]
+
+            response = self._get_recent_response(
+                recent_resp_df, question, provider, model
+            )
+            score = self._similarity_score(response, answer)
+
+            result_dict["eval_id"].append(query_id)
+            result_dict["question"].append(question)
+            result_dict[answer_id].append(answer)
+            result_dict[f"{provider_model}_response"].append(response)
+            result_dict[f"{provider_model}_score"].append(score)
+
+        return result_dict
