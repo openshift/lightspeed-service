@@ -454,7 +454,7 @@ def format_timestamp(text: str) -> str:
     return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def all_attachments(attachments: list[str, Any]) -> str:
+def all_attachments(attachments: list[dict[str, Any]]) -> str:
     """Retrieve all attachments as one string."""
     separator = 100 * "-" + "\n\n"
     output = ""
