@@ -9,7 +9,6 @@ from starlette.responses import StreamingResponse
 
 from ols import config, constants
 from ols.app import metrics, routers
-from ols.src.ui.gradio_ui import GradioUI
 
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
@@ -24,6 +23,11 @@ app = FastAPI(
 logger = logging.getLogger(__name__)
 
 if config.dev_config.enable_dev_ui:
+    # Gradio depends on many packages like Matplotlib, Pillow etc.
+    # it does not make much sense to import all these packages for
+    # regular deployment
+    from ols.src.ui.gradio_ui import GradioUI
+
     app = GradioUI().mount_ui(app)
 else:
     logger.info(
