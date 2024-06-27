@@ -889,15 +889,24 @@ def test_store_transcript(transcripts_location):
         RagChunk("text2", "url2", "title2"),
     ]
     truncated = True
+    attachments = [
+        Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="this is attachment",
+        )
+    ]
 
     ols.store_transcript(
         user_id,
         conversation_id,
         query_is_valid,
+        query,
         llm_request,
         response,
         rag_chunks,
         truncated,
+        attachments,
     )
 
     transcript_dir = Path(transcripts_location) / user_id / conversation_id
@@ -931,4 +940,11 @@ def test_store_transcript(transcripts_location):
             {"text": "text2", "doc_url": "url2", "doc_title": "title2"},
         ],
         "truncated": truncated,
+        "attachments": [
+            {
+                "attachment_type": "log",
+                "content_type": "text/plain",
+                "content": "this is attachment",
+            }
+        ],
     }
