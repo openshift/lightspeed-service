@@ -1019,7 +1019,6 @@ def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
         pytest.skip("Postgres is not accessible.")
-        return
 
     value = read_conversation_history_count(postgres_connection)
     # check if history exists at all
@@ -1300,13 +1299,13 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     """Check how/if the conversation is stored in cache."""
     if postgres_connection is None:
         pytest.skip("Postgres is not accessible.")
-        return
 
     cid = suid.get_suid()
     _perform_query(client, cid, "what is kubernetes?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
+    assert updated_at is not None
 
     # deserialize conversation into list of messages
     deserialized = json.loads(conversation)
@@ -1356,6 +1355,7 @@ def test_user_data_collection():
     A bit of trick is required to check just the logs since the last
     action (as container logs can be influenced by other tests).
     """
+    pod_name = None
     try:
         pod_name = cluster_utils.get_single_existing_pod_name()
 
@@ -1452,7 +1452,8 @@ def test_user_data_collection():
 
     finally:
         # disable collector script after test/on failure
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+        if pod_name is not None:
+            cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 @pytest.mark.cluster()
