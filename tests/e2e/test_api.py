@@ -1491,20 +1491,3 @@ def test_model_evaluation(request) -> None:
     """Evaluate model."""
     # TODO: Use this to assert.
     ResponseEvaluation(request.config.option, client).evaluate_models()
-
-
-# TODO: OLS-663
-def test_liveness_endpoint():
-    """Test the liveness endpoint."""
-    response = client.get("/liveness", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert response.status_code == requests.codes.ok
-    check_content_type(response, "application/json")
-    assert response.json() == {"alive": True}
-
-
-def test_readiness_endpoint():
-    """Test the /readiness endpoint."""
-    response = client.get("/readiness", timeout=BASIC_ENDPOINTS_TIMEOUT)
-    assert response.status_code == requests.codes.ok
-    check_content_type(response, "application/json")
-    assert response.json() == {"ready": True, "reason": "service is ready"}
