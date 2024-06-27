@@ -54,7 +54,7 @@
                         "azure_openai+gpt-3.5-turbo+with_rag": 0.2
                     },
                     "text": [
-                        "Kubernetes is an open-source container orchestration engine for automating deployment, scaling, and management of containerized applications. It uses a declarative model, meaning it defines a desired state and automatically works towards achieving that state. Kubernetes was originally developed by Google and has since become widely adopted in the industry for its ability to manage large-scale container deployments. It provides features such as self-healing, automated rollouts, and service discovery, making it easier to manage and scale complex applications."
+                        "Kubernetes is an open source container orchestration tool developed by Google. It allows you to run and manage container-based workloads, and is commonly used to deploy interconnected microservices in a cloud-native way. Kubernetes clusters can span hosts across various environments, including on-premise, public, private, and hybrid clouds. It provides features such as sharing resources, orchestrating containers across multiple hosts, installing new hardware configurations, running health checks and self-healing applications, and scaling containerized applications."
                     ]
                 },
                 "ground_truth+without_rag": {
@@ -93,7 +93,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through a variety of consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, live migrating virtual machines between nodes, and providing an enhanced web console for managing these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
+                        "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your OpenShift cluster using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads together in a cluster, connecting to virtual machines through consoles and CLI tools, importing and cloning existing VMs, managing network interface controllers and storage disks attached to VMs, and live migrating VMs between nodes. It also provides an enhanced web console for managing these virtualized resources alongside the OpenShift cluster containers and infrastructure."
                     ]
                 }
             }
@@ -123,7 +123,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "The imagePullPolicy in Red Hat OpenShift Container Platform determines whether a container image should be pulled prior to starting the container. It has three possible values: Always, IfNotPresent, and Never."
+                        "The imagePullPolicy in Red Hat OpenShift Container Platform determines whether a container image should be pulled before starting the container. It has three possible values: Always, IfNotPresent, and Never.\n\nIf a container imagePullPolicy parameter is not specified, Red Hat OpenShift Container Platform sets it based on the image tag. If the tag is \"latest\", it defaults imagePullPolicy to \"Always\". Otherwise, it defaults imagePullPolicy to \"IfNotPresent\".\n\nThe \"Always\" value ensures that the container image is always pulled before starting the container. The \"IfNotPresent\" value ensures that the container image is only pulled if it does not already exist in the container registry. The \"Never\" value ensures that the container image is never pulled, and the container will use the cached image if available.\n\nIn summary, the imagePullPolicy is used to control the behavior of container image pulling in Red Hat OpenShift Container Platform, allowing for efficient resource utilization and reduced latency."
                     ]
                 }
             }
@@ -154,7 +154,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "Red Hat OpenShift Pipelines automates deployments using Tekton building blocks, which introduce standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows for the abstraction of underlying implementation details and the creation of serverless, cloud-native, continuous integration and continuous delivery (CI/CD) systems that run in isolated containers. These pipelines are designed for decentralized teams working on microservices-based architecture and can be triggered by various events, such as code changes or vulnerability discoveries, to rebuild and replace images ensuring the immutable containers process."
+                        "Red Hat OpenShift Pipelines automates deployments by using Tekton building blocks to abstract away the underlying implementation details. It introduces standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. These pipelines are serverless, cloud-native, continuous integration, and continuous deployment systems that run in isolated containers. They use standard Tekton custom resources to automate deployments and are designed for decentralized teams working on microservices-based architecture."
                     ]
                 }
             }
@@ -184,7 +184,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "A LimitRange is a feature in OpenShift that sets resource usage limits for each kind of resource in a Namespace. It is used to define the minimum and maximum usage limits for resources that match on kind."
+                        "A LimitRange is a feature in OpenShift (and Kubernetes) that allows you to set resource usage limits for each kind of resource in a Namespace. It defines a minimum and maximum usage limit for resources that match a specific kind, such as CPU, memory, or storage. By setting these limits, you can ensure that the resources are being used efficiently and prevent any single resource-intensive application from consuming disproportionate amounts of the shared resources.\n\nIn OpenShift, a LimitRange object has several parameters, including:\n\n1. `type`: This parameter specifies the type of resource that the LimitRange applies to. Common types include \"cpu\", \"memory\", and \"storage\".\n2. `limits`: This parameter is an array of `LimitRangeItem` objects that define the minimum and maximum usage limits for the resources.\n3. `defaultRequest`: This parameter specifies the default amount of CPU and memory that a container can request if not specified in the Pod spec.\n4. `defaultLimit`: This parameter specifies the default limit-to-request ratio for a container.\n\nBy using LimitRanges, you can manage and control the resource usage in your OpenShift cluster, ensuring that each application gets the resources it needs while preventing any single application from consuming excessive resources."
                     ]
                 }
             }
@@ -214,7 +214,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "The Vertical Pod Autoscaler Operator (VPA) in Openshift is responsible for managing and scaling the vertical dimensions of applications, such as the number of replicas per container, based on resource utilization metrics. It helps to ensure that the resources are efficiently utilized and prevents overprovisioning or underutilization of resources. The VPA Operator can be installed using the Red Hat OpenShift Container Platform web console or the command line interface."
+                        "The Vertical Pod Autoscaler Operator (VPA) in OpenShift is responsible for monitoring the resource consumption of pods and determining the optimal CPU and memory resources for them. It consists of three components: a recommender, an updater, and an admission controller. The recommender determines the optimal resources, the updater checks if the pods have the correct resources and recreates them if not, and the admission controller sets the correct resource requests on each new pod. The VPA can be used with a default recommender or with an alternative recommender based on user's requirements."
                     ]
                 }
             }
@@ -246,7 +246,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "Yes, the Red Hat OpenShift Container Platform documentation covers updating clusters. You can find the relevant information in the \"Updating Clusters\" section of the documentation."
+                        "Yes, there is a document on updating clusters in Red Hat OpenShift Container Platform. The document provides best practices for cluster updates and describes the major aspects of the update process. It also includes information on using the Topology Aware Lifecycle Manager (TALM) to manage software lifecycle, performing canary rollout updates, and ensuring proper configuration of PodDisruptionBudget for minimizing disruptions during maintenance tasks."
                     ]
                 }
             }
@@ -276,7 +276,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "You can find your clusterID in the Red Hat OpenShift Container Platform web console by navigating to Home -> Overview. The value is available in the Cluster ID field of the Details section."
+                        "To find your clusterID, you can follow these steps:\n\n1. Navigate to Home -> Overview in the Red Hat OpenShift Container Platform web console.\n2. Look for the Cluster ID field in the Details section to find your cluster's unique identifier.\n\nAlternatively, you can use the OpenShift CLI (oc) and run the following command:\n```terminal\n$ oc get clusterversion -o jsonpath='{.items[].spec.clusterID}{\"\n\"}'\n```\n\nThese methods will help you obtain your clusterID for reference or when providing information to Red Hat Support."
                     ]
                 }
             }
@@ -341,7 +341,7 @@
                 },
                 "ground_truth+with_rag": {
                     "text": [
-                        "Here is an example of a YAML file that uses the MongoDB image and deploys a simple application:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: quay.io/centos7/mongodb-36-centos7:latest\n        ports:\n        - containerPort: 27017\n```\n\nThis YAML file creates a Deployment object that deploys a MongoDB container with a replica count of 3. The container image is pulled from the Quay registry and exposes port 27017 for communication.\n\nTo create this YAML file, follow these steps:\n\n1. Open a terminal and navigate to the directory where you want to create the YAML file.\n2. Run the following command to create the YAML file:\n\n```bash\noc create -f mongodb-nationalparks.yaml\n```\n\nThis command creates the Deployment object for the MongoDB application.\n\n3. After the YAML file is created, you can verify its existence by running the following command:\n\n```bash\noc get deployments\n```\n\nThis command lists all the deployments in the project, including the MongoDB deployment.\n\n4. You can also verify the status of the deployment by running the following command:\n\n```bash\noc rollout status deployment/mongodb-nationalparks\n```\n\nThis command displays the current status of the MongoDB deployment, including the number of replicas and the last observed status."
+                        "Here is a sample deployment YAML that uses the MongoDB image:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n        - name: mongodb-nationalparks-container\n          image: quay.io/centos7/mongodb-36-centos7\n          env:\n            - name: MONGODB_USER\n              value: \"mongodb\"\n            - name: MONGODB_PASSWORD \n              valueFrom :\n                secretKeyRef :\n                  key : MONGODB_PASSWORD \n                  name : nationalparks-mongodb-parameters \n            - name : MONGODB_DATABASE \n              valueFrom :\n                secretKeyRef :\n                  key : MONGODB_DATABASE \n                  name : nationalparks-mongodb-parameters  \n            - name : MONGODB_ADMIN_PASSWORD  \n              valueFrom :\n                secretKeyRef :\n                  key : MONGODB_ADMIN_PASSWORD  \n                  name : nationalparks-mongodb-parameters   \n```\n\nThis YAML file defines a Deployment resource that deploys a single replica of the MongoDB image \"quay.io/centos7/mongodb-36-centos7\" with environment variables sourced from the \"nationalparks-mongodb-parameters\" secret."
                     ]
                 }
             }
