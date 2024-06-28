@@ -1603,10 +1603,6 @@ def test_ols_config(tmpdir):
             "logging_config": {
                 "logging_level": "INFO",
             },
-            "user_data_collection": {
-                "feedback_disabled": False,
-                "feedback_storage": tmpdir.strpath,
-            },
         }
     )
     assert ols_config.default_provider == "test_default_provider"
@@ -1615,9 +1611,9 @@ def test_ols_config(tmpdir):
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
     assert ols_config.query_validation_method == constants.QueryValidationMethod.LLM
-    assert ols_config.user_data_collection.feedback_disabled is False
-    assert ols_config.user_data_collection.feedback_storage == tmpdir.strpath
+    assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
+    assert ols_config.authentication_config == AuthenticationConfig()
 
 
 def test_config():

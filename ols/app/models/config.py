@@ -847,7 +847,7 @@ class OLSConfig(BaseModel):
     conversation_cache: Optional[ConversationCacheConfig] = None
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
-    authentication_config: Optional[AuthenticationConfig] = None
+    authentication_config: AuthenticationConfig = AuthenticationConfig()
     tls_config: Optional[TLSConfig] = None
 
     default_provider: Optional[str] = None
@@ -855,7 +855,7 @@ class OLSConfig(BaseModel):
     query_filters: Optional[list[QueryFilter]] = None
     query_validation_method: Optional[str] = constants.QueryValidationMethod.LLM
 
-    user_data_collection: Optional[UserDataCollection] = None
+    user_data_collection: UserDataCollection = UserDataCollection()
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
