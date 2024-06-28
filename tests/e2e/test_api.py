@@ -981,12 +981,18 @@ def test_transcripts_storing_cluster():
     assert transcript["rag_chunks"][0]["doc_url"]
     assert transcript["rag_chunks"][0]["doc_title"]
     assert "truncated" in transcript
+
+    # check the attachment node existence and its content
     assert "attachments" in transcript
-    assert isinstance(transcript["attachments"], list)
-    assert len(transcript["attachments"])
-    assert transcript["attachments"][0]["attachment_type"]
-    assert transcript["attachments"][0]["content_type"]
-    assert transcript["attachments"][0]["content"]
+
+    expected_attachment_node = [
+        {
+            "attachment_type": "log",
+            "content_type": "text/plain",
+            "content": "this is attachment",
+        }
+    ]
+    assert transcript["attachments"] == expected_attachment_node
 
 
 @retry(max_attempts=3, wait_between_runs=10)
