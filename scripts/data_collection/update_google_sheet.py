@@ -93,7 +93,7 @@ def upload_csv_files(
     sheet = gc.open(spreadsheet_title)
     logger.info(f"ID={sheet.id}")
     logger.info(f"Title={sheet.title}")
-    logger.info(f"URL={sheet.id}")
+    logger.info(f"URL={sheet.url}")
 
     upload_csv_file(sheet[0], feedback)
     upload_csv_file(sheet[1], feedback_with_history)
