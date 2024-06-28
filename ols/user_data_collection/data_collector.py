@@ -24,7 +24,13 @@ import requests
 
 # we need to add the root directory to the path to import from ols
 sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
-from ols.utils.auth_dependency import K8sClientSingleton
+
+# initialize config with default values
+from ols import config
+
+config.reload_empty()
+
+from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
 
 OLS_USER_DATA_PATH = os.environ["OLS_USER_DATA_PATH"]
 OLS_USER_DATA_COLLECTION_INTERVAL = int(
