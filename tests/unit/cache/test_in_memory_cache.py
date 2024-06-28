@@ -3,12 +3,14 @@
 import pytest
 
 from ols import constants
-from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import InMemoryCacheConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
 
 conversation_id = suid.get_suid()
+cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
+cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
 
 
 @pytest.fixture
@@ -22,18 +24,13 @@ def cache():
 
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
-    conversation = [
-        human_msg("user_message"),
-        ai_msg("ai_response"),
-    ]
-
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        conversation,
+        cache_entry_1,
     )
 
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == conversation
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == [cache_entry_1]
 
 
 def test_insert_or_append_existing_key(cache):
@@ -41,24 +38,16 @@ def test_insert_or_append_existing_key(cache):
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        [
-            human_msg("user_message1"),
-            ai_msg("ai_response1"),
-        ],
+        cache_entry_1,
     )
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        [
-            human_msg("user_message2"),
-            ai_msg("ai_response2"),
-        ],
+        cache_entry_2,
     )
     expected_cache = [
-        human_msg("user_message1"),
-        ai_msg("ai_response1"),
-        human_msg("user_message2"),
-        ai_msg("ai_response2"),
+        cache_entry_1,
+        cache_entry_2,
     ]
 
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
@@ -73,23 +62,17 @@ def test_insert_or_append_overflow(cache):
     cache.capacity = capacity
     for i in range(capacity + 1):
         user = f"{user_name_prefix}{i}"
-        value = f"value{i}"
+        value = CacheEntry(query=f"user query {i}")
         cache.insert_or_append(
             user,
             conversation_id,
-            [
-                human_msg(value),
-                ai_msg("ai_response"),
-            ],
+            value,
         )
 
     # Ensure the oldest entry is evicted
     assert cache.get(f"{user_name_prefix}0", conversation_id) is None
     # Ensure the newest entry is still present
-    expected_result = [
-        human_msg(f"value{capacity}"),
-        ai_msg("ai_response"),
-    ]
+    expected_result = [CacheEntry(query=f"user query {i}")]
     assert (
         cache.get(f"{user_name_prefix}{capacity}", conversation_id) == expected_result
     )

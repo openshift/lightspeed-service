@@ -490,3 +490,49 @@ class SummarizerResponse:
     response: str
     rag_chunks: list[RagChunk]
     history_truncated: bool
+
+
+class CacheEntry(BaseModel):
+    """Model representing a cache entry.
+
+    Attributes:
+        query: The query string.
+        response: The response string.
+    """
+
+    query: str
+    response: Optional[str] = ""
+
+    @field_validator("response")
+    @classmethod
+    def set_none_response_to_empty_string(cls, v: Optional[str]) -> str:
+        """Convert None response to an empty string."""
+        if v is None:
+            return ""
+        return v
+
+    def to_dict(self) -> dict:
+        """Convert the cache entry to a dictionary."""
+        return {
+            "human_query": self.query,
+            "ai_response": self.response,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Self:
+        """Create a cache entry from a dictionary."""
+        return cls(
+            query=data["human_query"],
+            response=data["ai_response"],
+        )
+
+    @staticmethod
+    def cache_entries_to_history(cache_entries: list["CacheEntry"]) -> list[str]:
+        """Convert cache entries to a history."""
+        history = []
+        for entry in cache_entries:
+            history.append(f"human: {entry.query}")
+            if entry.response != "":
+                history.append(f"ai: {entry.response}")
+
+        return history
