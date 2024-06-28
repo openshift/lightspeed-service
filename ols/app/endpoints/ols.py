@@ -85,7 +85,8 @@ def conversation_request(
 
     conversation_id = retrieve_conversation_id(llm_request)
 
-    # Redacts the Query then logs
+    # Important note: Redact the query before attempting to do any
+    # logging of the query to avoid leaking PII into logs.
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
