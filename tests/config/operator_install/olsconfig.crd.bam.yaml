@@ -24,3 +24,10 @@ spec:
       replicas: 1
     disableAuth: false
     logLevel: DEBUG
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"

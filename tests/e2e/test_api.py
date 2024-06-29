@@ -37,11 +37,6 @@ from tests.scripts.must_gather import must_gather
 # against ols running on a cluster
 on_cluster = False
 
-# OLS_URL env only needs to be set when running against a local ols instance,
-# when ols is run against a cluster the url is retrieved from the cluster.
-ols_url = os.getenv("OLS_URL", "http://localhost:8080")
-if "localhost" not in ols_url:
-    on_cluster = True
 
 # generic http client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
@@ -58,27 +53,234 @@ OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 OLS_READY = False
 
 
+def retry_until_timeout_or_success(attempts, interval, func):
+    """Retry the function until timeout or success."""
+    for attempt in range(1, attempts + 1):
+        print(f"Attempt {attempt} of {attempts}")
+        try:
+            if func():
+                return True
+        except Exception as e:
+            print(f"Attempt {attempt} failed with exception {e}")
+        time.sleep(interval)
+    return False
+
+
+def install_ols() -> tuple[str, str, str]:
+    """Install OLS onto an OCP cluster using the OLS operator."""
+    print("Setting up for on cluster test execution")
+    # setup the lightspeed namespace
+    cluster_utils.run_oc(["create", "ns", "openshift-lightspeed"])
+    cluster_utils.run_oc(["project", "openshift-lightspeed"])
+    print("created OLS project")
+
+    cluster_utils.create_user("test-user")
+    cluster_utils.create_user("metrics-test-user")
+    token = cluster_utils.get_user_token("test-user")
+    metrics_token = cluster_utils.get_user_token("metrics-test-user")
+    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
+    cluster_utils.grant_sa_user_access(
+        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
+    )
+    print("created users and granted permissions")
+
+    # install the operator catalog
+    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/catalog.yaml"])
+    cluster_utils.run_oc(
+        ["create", "-f", "tests/config/operator_install/operatorgroup.yaml"]
+    )
+    cluster_utils.run_oc(
+        ["create", "-f", "tests/config/operator_install/subscription.yaml"]
+    )
+
+    print("Created catalog+subscription")
+
+    r = retry_until_timeout_or_success(
+        30,
+        6,
+        lambda: cluster_utils.run_oc(
+            [
+                "get",
+                "clusterserviceversion",
+                "-o",
+                "jsonpath={.items[0].status.phase}",
+            ]
+        ).stdout
+        == "Succeeded",
+    )
+    if not r:
+        print("Timed out waiting for OLS operator to install successfully")
+        return None
+
+    print("Operator installed successfully")
+    # create the llm api key secret ols will mount
+    keypath = os.getenv("PROVIDER_KEY_PATH")
+    cluster_utils.run_oc(
+        [
+            "create",
+            "secret",
+            "generic",
+            "llmcreds",
+            f"--from-file=apitoken={keypath}",
+        ]
+    )
+
+    # create the olsconfig operand
+    provider = os.getenv("PROVIDER")
+    cluster_utils.run_oc(
+        [
+            "create",
+            "-f",
+            f"tests/config/operator_install/olsconfig.crd.{provider}.yaml",
+        ]
+    )
+
+    r = retry_until_timeout_or_success(
+        30,
+        6,
+        lambda: cluster_utils.run_oc(
+            [
+                "get",
+                "deployment",
+                "lightspeed-app-server",
+                "--ignore-not-found",
+                "-o",
+                "name",
+            ]
+        ).stdout
+        == "deployment.apps/lightspeed-app-server\n",
+    )
+
+    if not r:
+        print("Timed out waiting for OLS deployment to be created")
+        return None
+
+    print("OLS deployment created")
+
+    ols_image = os.getenv("OLS_IMAGE", "")
+    print(f"Updating deployment to use OLS image {ols_image}")
+
+    # wait for the ols pod to be created
+    time.sleep(60)
+    pod = cluster_utils.get_ols_pod_name()
+
+    # scale down the operator controller manager to avoid it interfering with the tests
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "0",
+            "--timeout",
+            "1m",
+        ]
+    )
+
+    # scale down the ols api server
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "0",
+            "--timeout",
+            "1m",
+        ]
+    )
+
+    # wait for the old ols api pod to go away
+    cluster_utils.run_oc(["wait", f"pod/{pod}", "--for=delete", "--timeout=180s"])
+
+    # update the OLS deployment to use the new image
+    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
+    cluster_utils.run_oc(
+        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    )
+
+    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
+    cluster_utils.run_oc(
+        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    )
+
+    offline_token = os.getenv("CP_OFFLINE_TOKEN", "")
+    cluster_utils.run_oc(
+        [
+            "set",
+            "env",
+            "deployment/lightspeed-app-server",
+            "-c",
+            "lightspeed-service-user-data-collector",
+            "OLS_USER_DATA_COLLECTION_INTERVAL=10",
+            "RUN_WITHOUT_INITIAL_WAIT=true",
+            "INGRESS_ENV=stage",
+            f"CP_OFFLINE_TOKEN={offline_token}",
+            "LOG_LEVEL=DEBUG",
+        ]
+    )
+
+    # scale the ols app server up
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "1",
+            "--timeout",
+            "1m",
+        ]
+    )
+
+    print("Deployment updated, waiting for new pod to be ready")
+
+    # wait for new ols app pod to exist
+    time.sleep(60)
+
+    pod = cluster_utils.get_ols_pod_name()
+
+    cluster_utils.run_oc(
+        [
+            "wait",
+            f"pod/{pod}",
+            "--for=condition=Ready=true",
+            "--timeout=180s",
+        ]
+    )
+
+    print("OLS deployment updated")
+
+    # disable collector script by default to avoid running during all
+    # tests (collecting/sending data)
+    pod_name = cluster_utils.get_ols_pod_name()
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+
+    # create a route so tests can access OLS directly
+    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"])
+
+    url = cluster_utils.run_oc(
+        ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
+    ).stdout.strip("'")
+    ols_url = f"https://{url}"
+    return ols_url, token, metrics_token
+
+
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    global ols_url, client, metrics_client
-    token = None
-    metrics_token = None
+    global client, metrics_client, OLS_READY, on_cluster
     provider = os.getenv("PROVIDER")
 
-    global OLS_READY
-    if on_cluster:
-        print("Setting up for on cluster test execution\n")
-        cluster_utils.create_user("test-user")
-        cluster_utils.create_user("metrics-test-user")
-        token = cluster_utils.get_user_token("test-user")
-        metrics_token = cluster_utils.get_user_token("metrics-test-user")
-        cluster_utils.grant_sa_user_access(
-            "test-user", "lightspeed-operator-query-access"
-        )
-        cluster_utils.grant_sa_user_access(
-            "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
-        )
+    # OLS_URL env only needs to be set when running against a local ols instance,
+    # when ols is run against a cluster the url is retrieved from the cluster.
+    ols_url = os.getenv("OLS_URL", "")
+    if "localhost" not in ols_url:
+        on_cluster = True
 
+    if on_cluster:
+        try:
+            ols_url, token, metrics_token = install_ols()
+        except Exception as e:
+            print(f"Error setting up OLS on cluster: {e}")
+            must_gather()
+            raise e
     else:
         print("Setting up for standalone test execution\n")
 
@@ -86,16 +288,11 @@ def setup_module(module):
     metrics_client = client_utils.get_http_client(ols_url, metrics_token)
 
     # Wait for OLS to be ready
-    print(f"Waiting for OLS to be ready on provider: {provider}...")
+    print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
     OLS_READY = wait_for_ols(ols_url)
     print(f"OLS is ready: {OLS_READY}")
     if not OLS_READY:
         must_gather()
-
-    # disable collector script by default to avoid running during all
-    # tests (collecting/sending data)
-    pod_name = cluster_utils.get_ols_pod_name()
-    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 def teardown_module(module):
@@ -806,7 +1003,7 @@ def test_feedback_storing_cluster():
     feedbacks = cluster_utils.list_path(pod_name, feedbacks_path)
     if feedbacks:
         cluster_utils.remove_dir(pod_name, feedbacks_path)
-        assert cluster_utils.list_path(pod_name, feedbacks_path) == []
+        assert cluster_utils.list_path(pod_name, feedbacks_path) is None
 
     response = client.post(
         "/v1/feedback",
@@ -937,7 +1134,7 @@ def test_transcripts_storing_cluster():
     transcripts = cluster_utils.list_path(pod_name, transcripts_path)
     if transcripts:
         cluster_utils.remove_dir(pod_name, transcripts_path)
-        assert cluster_utils.list_path(pod_name, transcripts_path) == []
+        assert cluster_utils.list_path(pod_name, transcripts_path) is None
 
     response = client.post(
         "/v1/query",

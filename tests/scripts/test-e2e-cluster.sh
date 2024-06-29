@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xeou pipefail
+set -eou pipefail
 
 # Input env variables:
 # - [PROVIDERNAME]_PROVIDER_KEY_PATH - path to a file containing the credentials to be used with the llm provider
@@ -23,20 +23,20 @@ function run_suites() {
 
   set +e
   # runsuite arguments:
-  # suiteid test_tags provider provider_keypath provider_url provider_project_id provider provider_deployment_name llm_model ols_image
+  # suiteid test_tags provider provider_keypath ols_image
   # empty test_tags means run all tests
-  run_suite "azure_openai" "not model_evaluation" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "https://ols-test.openai.azure.com/" "" "0301-dep" "gpt-3.5-turbo" "$OLS_IMAGE"
+  run_suite "azure_openai" "not model_evaluation" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
-  # run_suite "bam" "not model_evaluation" "bam" "$BAM_PROVIDER_KEY_PATH" "" "" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
-  # (( rc = rc || $? ))
+  run_suite "bam" "not model_evaluation" "bam" "$BAM_PROVIDER_KEY_PATH" "$OLS_IMAGE"
+  (( rc = rc || $? ))
 
-  # run_suite "openai" "not model_evaluation" "openai" "$OPENAI_PROVIDER_KEY_PATH" "" "" "" "gpt-3.5-turbo" "$OLS_IMAGE"
-  # (( rc = rc || $? ))
+  run_suite "openai" "not model_evaluation" "openai" "$OPENAI_PROVIDER_KEY_PATH" "$OLS_IMAGE"
+  (( rc = rc || $? ))
 
-  # run_suite "watsonx" "" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "" "ad629765-c373-4731-9d69-dc701724c081" "" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
-  # (( rc = rc || $? ))
-  # set -e
+  run_suite "watsonx" "" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "$OLS_IMAGE"
+  (( rc = rc || $? ))
+  set -e
 
   return $rc
 }

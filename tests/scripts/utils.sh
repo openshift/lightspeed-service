@@ -116,134 +116,89 @@ function install_ols_operator() {
     export OLS_IMAGE=$8
 
     # get and export cluster version
-    local lines
-    mapfile -t lines <<< "$(oc version | grep Server | awk '{print $3}' | awk 'BEGIN{FS="."}{printf("%s\n%s\n", $1, $2)}')"
-    export CLUSTER_VERSION_MAJOR="${lines[0]}"
-    export CLUSTER_VERSION_MINOR="${lines[1]}"
+    # local lines
+    # mapfile -t lines <<< "$(oc version | grep Server | awk '{print $3}' | awk 'BEGIN{FS="."}{printf("%s\n%s\n", $1, $2)}')"
+    # export CLUSTER_VERSION_MAJOR="${lines[0]}"
+    # export CLUSTER_VERSION_MINOR="${lines[1]}"
 
-    oc create ns openshift-lightspeed
-    oc project openshift-lightspeed
-
-
-    # install the operator catalog
-    oc create -f tests/config/operator_install/catalog.yaml
-    oc create -f tests/config/operator_install/operatorgroup.yaml
-    oc create -f tests/config/operator_install/subscription.yaml
-
-    installed=0
-    for i in {1..30}; do
-      echo "Checking install state... attempt $i of 30"
-      oc get clusterserviceversion
-      oc get clusterserviceversion | grep Succeeded
-      if [[ $? -eq 0 ]]; then
-        installed=1
-        break
-      fi
-      sleep 6
-    done
-
-    if [[ $installed -eq 0 ]]; then
-      echo "Failed to install OLS operator"
-      echo "Current operator install state:"
-      oc get clusterserviceversion
-      exit 1;
-    fi
+    # oc create ns openshift-lightspeed
+    # oc project openshift-lightspeed
 
 
+    # # install the operator catalog
+    # oc create -f tests/config/operator_install/catalog.yaml
+    # oc create -f tests/config/operator_install/operatorgroup.yaml
+    # oc create -f tests/config/operator_install/subscription.yaml
 
-    # csv=$(oc get clusterserviceversion -o name)
-    # oc get ${csv} -o yaml > /tmp/csv_original.yaml
-    # oc get ${csv} -o yaml > /tmp/csv.yaml
-
-    # sed -i "s#\(lightspeed-service=\)quay.io/openshift-lightspeed/lightspeed-service-api:.*#\1${OLS_IMAGE}#g" /tmp/csv.yaml
-
-    # oc apply -f /tmp/csv.yaml
-    # updated=0
+    # installed=0
     # for i in {1..30}; do
-    #   echo "Waiting for OLS operator deployment to update... attempt $i of 30"
-    #   oc get deployment/lightspeed-operator-controller-manager -o jsonpath={.spec.template.spec.containers[0].args} | grep ${OLS_IMAGE}
+    #   echo "Checking install state... attempt $i of 30"
+    #   oc get clusterserviceversion
+    #   oc get clusterserviceversion | grep Succeeded
     #   if [[ $? -eq 0 ]]; then
-    #     updated=1
+    #     installed=1
     #     break
     #   fi
     #   sleep 6
     # done
 
-    # if [[ $updated -eq 0 ]]; then
-    #   echo "Deployment failed to update operator to use built operand image ${OLS_IMAGE}"
+    # if [[ $installed -eq 0 ]]; then
+    #   echo "Failed to install OLS operator"
+    #   echo "Current operator install state:"
+    #   oc get clusterserviceversion
+    #   exit 1;
+    # fi
+   
+    # # create the llm api key secret ols will mount
+    # oc create secret generic llmcreds --from-file=apitoken="$PROVIDER_KEY_PATH"
+    # # create the olsconfig operand
+    # oc create -f tests/config/operator_install/olsconfig.crd.${PROVIDER}.yaml
+
+    # created=0
+    # for i in {1..10}; do
+    #     oc get deployment/lightspeed-app-server
+    #     if [[ $? -eq 0 ]]; then
+    #       created=1
+    #       break
+    #     fi
+    #     sleep 6
+    # done
+    # if [[ $created -eq 0 ]]; then
+    #   echo "OLS deployment was not created by operator"
     #   exit 1
     # fi
 
 
-    # create the ols config yaml definition
-    mkdir -p "$ARTIFACT_DIR/$SUITE_ID"
+    # # Shutdown the OLS operator so we can directly control the operand
+    # oc scale deployment/lightspeed-operator-controller-manager --replicas 0
+
+    # oc patch deployment lightspeed-app-server --type='json' -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value':${OLS_IMAGE}}]"
+    # oc patch deployment lightspeed-app-server --type='json' -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/1/image', 'value':${OLS_IMAGE}}]"
+
+    # oc set env deployment/lightspeed-app-server -c lightspeed-service-user-data-collector OLS_USER_DATA_COLLECTION_INTERVAL=10 RUN_WITHOUT_INITIAL_WAIT=true \
+    #     INGRESS_ENV=stage CP_OFFLINE_TOKEN=${CP_OFFLINE_TOKEN} LOG_LEVEL=DEBUG
+
+    # oc wait deployment/lightspeed-app-server --for=condition=Available=true --timeout=180s
     
-    # envsubst < tests/config/operator_install/olsconfig.crd.${PROVIDER}.yaml > "$ARTIFACT_DIR/$SUITE_ID/olsconfig.yaml.tmp"
-    # # If no provider url is being specified, remove the url field from the config yaml
-    # # so we use the default provider url values.
-    # if [ -z ${PROVIDER_URL:-} ]; then
-    #     grep -v url: "${ARTIFACT_DIR}/$SUITE_ID/olsconfig.yaml.tmp" > "${ARTIFACT_DIR}/$SUITE_ID/olsconfig.crd.${PROVIDER}.yaml"
-    #     rm "${ARTIFACT_DIR}/$SUITE_ID/olsconfig.yaml.tmp"
-    # else
-    #     mv "${ARTIFACT_DIR}/$SUITE_ID/olsconfig.yaml.tmp" "${ARTIFACT_DIR}/$SUITE_ID/olsconfig.crd.${PROVIDER}.yaml"
-    # fi
-
-    # create the llm api key secret ols will mount
-    oc create secret generic llmcreds --from-file=apitoken="$PROVIDER_KEY_PATH"
-    # create the olsconfig operand
-    oc create -f tests/config/operator_install/olsconfig.crd.${PROVIDER}.yaml
-
-    created=0
-    for i in {1..10}; do
-        oc get deployment/lightspeed-app-server
-        if [[ $? -eq 0 ]]; then
-          created=1
-          break
-        fi
-        sleep 6
-    done
-    if [[ $created -eq 0 ]]; then
-      echo "OLS deployment was not created by operator"
-      exit 1
-    fi
-
-
-    # Shutdown the OLS operator so we can directly control the operand
-    oc scale deployment/lightspeed-operator-controller-manager --replicas 0
-
-    oc patch deployment lightspeed-app-server --type='json' -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/0/image', 'value':${OLS_IMAGE}}]"
-    oc patch deployment lightspeed-app-server --type='json' -p="[{'op': 'replace', 'path': '/spec/template/spec/containers/1/image', 'value':${OLS_IMAGE}}]"
-
-    oc set env deployment/lightspeed-app-server -c lightspeed-service-user-data-collector OLS_USER_DATA_COLLECTION_INTERVAL=10 RUN_WITHOUT_INITIAL_WAIT=true \
-        INGRESS_ENV=stage CP_OFFLINE_TOKEN=${CP_OFFLINE_TOKEN} LOG_LEVEL=DEBUG
-
-    oc wait deployment/lightspeed-app-server --for=condition=Available=true --timeout=180s
+    # # create a route so tests can access OLS directly
+    # oc create -f tests/config/operator_install/route.yaml
     
-    # create a route so tests can access OLS directly
-    oc create -f tests/config/operator_install/route.yaml
-    
-    # determine the hostname for the ols route
-    export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
+    # # determine the hostname for the ols route
+    # export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
 
 }
 # $1 suite id
 # $2 which test tags to include
 # $3 PROVIDER
 # $4 PROVIDER_KEY_PATH
-# $5 PROVIDER_URL
-# $6 PROVIDER_PROJECT_ID
-# $7 PROVIDER_DEPLOYMENT_NAME
-# $8 MODEL
-# $9 OLS_IMAGE
+# $5 OLS_IMAGE
 function run_suite() {
   echo "Preparing to run suite $1"
 
   cleanup_ols_operator
   
-  install_ols_operator "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
-
   # Run e2e tests with response evaluation.
-  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
+  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 OLS_IMAGE=$5 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
 
   local rc=$?
   return $rc

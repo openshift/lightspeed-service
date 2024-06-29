@@ -189,7 +189,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
     except subprocess.CalledProcessError as e:
         print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
         if e.returncode == 2 and "No such file or directory" in e.stdout:
-            return []
+            return None
         raise Exception("Error listing pod path") from e
 
 

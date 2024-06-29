@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 
 # ruff: noqa: S501
-def wait_for_ols(url, timeout=600, interval=10):
+def wait_for_ols(url, timeout=300, interval=10):
     """Wait for the OLS to become ready by checking its readiness endpoint.
 
     Args:
@@ -25,7 +25,7 @@ def wait_for_ols(url, timeout=600, interval=10):
     Returns:
         bool: True if OLS becomes ready within the timeout, False otherwise.
     """
-    print("Starting wait_for_ols")
+    print(f"Starting wait_for_ols at url {url}")
     attempts = int(timeout / interval)
     for attempt in range(1, attempts + 1):
         print(f"Checking OLS readiness, attempt {attempt} of {attempts}")

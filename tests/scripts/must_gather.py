@@ -20,6 +20,8 @@ def must_gather():
     suite_id = os.environ.get("SUITE_ID", "nosuite")
     cluster_dir = Path(artifact_dir) / suite_id / "cluster"
     cluster_dir.mkdir(parents=True, exist_ok=True)
+
+    # pods, services, deployments, replica sets, routes.
     cluster_utils.run_oc_and_store_stdout(
         [
             "get",
@@ -31,6 +33,47 @@ def must_gather():
         ],
         f"{cluster_dir.as_posix()}/resources.yaml",
     )
+
+    # olsconfig CR
+    cluster_utils.run_oc_and_store_stdout(
+        [
+            "get",
+            "olsconfig",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "yaml",
+        ],
+        f"{cluster_dir.as_posix()}/olsconfig.yaml",
+    )
+
+    # clusterserviceversion
+    cluster_utils.run_oc_and_store_stdout(
+        [
+            "get",
+            "clusterserviceversion",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "yaml",
+        ],
+        f"{cluster_dir.as_posix()}/clusterserviceversion.yaml",
+    )
+
+    # installplan
+    cluster_utils.run_oc_and_store_stdout(
+        [
+            "get",
+            "installplan",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "yaml",
+        ],
+        f"{cluster_dir.as_posix()}/installplan.yaml",
+    )
+
+    # pod logs
     pod_logs_dir = cluster_dir / "podlogs"
     pod_logs_dir.mkdir(exist_ok=True)
     for pod in cluster_utils.get_pods():
