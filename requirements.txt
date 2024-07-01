@@ -607,9 +607,9 @@ google-auth==2.30.0 \
     --hash=sha256:8df7da660f62757388b8a7f249df13549b3373f24388cb5d2f1dd91cc18180b5 \
     --hash=sha256:ab630a1320f6720909ad76a7dbdb6841cdf5c66b328d690027e4867bdfb16688
     # via kubernetes
-gradio==4.36.1 \
-    --hash=sha256:31edb504c88c1db06c08daf750dcdaa072087ada59aa4ff83c1a3f4c2075912d \
-    --hash=sha256:72b2d21156d3467123bae6f30f463f002ef06e272766274308f5ed3cac37563b
+gradio==4.37.2 \
+    --hash=sha256:94132754ad402c91fd12367c5a57fcced34004ba7b4b256cef96457968346a08 \
+    --hash=sha256:dede8c9429fe9d543f3516b0bb1fc3efa4c34a6ef34635cf8adf3f524a5d615a
     # via ols (pyproject.toml)
 gradio-client==1.0.1 \
     --hash=sha256:b3fa4d1c626067cc866d6172caa75d373e114bacfba650e49e293646d786646a \
