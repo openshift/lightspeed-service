@@ -36,6 +36,7 @@ AzureOpenAIParameters = {
     ProviderParameter("azure_endpoint", str),
     ProviderParameter("api_key", str),
     ProviderParameter("api_version", str),
+    ProviderParameter("azure_ad_token", str),
     ProviderParameter("base_url", str),
     ProviderParameter("deployment_name", str),
     ProviderParameter("model", str),
