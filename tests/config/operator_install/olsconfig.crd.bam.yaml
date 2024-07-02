@@ -1,0 +1,33 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: ibm/granite-13b-chat-v2
+        name: bam
+        type: bam
+  ols:
+    defaultModel: ibm/granite-13b-chat-v2
+    defaultProvider: bam
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"

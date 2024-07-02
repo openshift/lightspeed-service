@@ -130,6 +130,7 @@ def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
             [
                 "get",
                 "pods",
+                "--field-selector=status.phase=Running",
                 "-n",
                 namespace,
                 "-o",
@@ -141,12 +142,14 @@ def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
         raise Exception("Error getting pods") from e
 
 
-def get_single_existing_pod_name(namespace: str = "openshift-lightspeed") -> str:
+def get_ols_pod_name(namespace: str = "openshift-lightspeed") -> str:
     """Return name of the single pod that is in the cluster."""
     try:
         result = get_pods(namespace)
-        assert len(result) == 1
-        return result[0]
+        for pod in result:
+            if "lightspeed-app-server-" in pod:
+                return pod
+        assert False, f"No OLS api server pod found in list pods: {result}"
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting pod name") from e
 
@@ -184,8 +187,9 @@ def list_path(pod_name: str, path: str) -> list[str]:
         # files are returned as 'file1\nfile2\n'
         return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
-        if e.returncode == 2 and "No such file or directory" in e.stderr:
-            return []
+        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
+        if e.returncode == 2 and "No such file or directory" in e.stdout:
+            return None
         raise Exception("Error listing pod path") from e
 
 

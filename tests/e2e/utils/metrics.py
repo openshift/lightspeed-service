@@ -28,7 +28,7 @@ def get_rest_api_counter_value(
     # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
     prefix = f'{counter_name}{{path="{path}",status_code="{status_code}"}} '
 
-    return get_counter_value(counter_name, prefix, response, default)
+    return get_counter_value(prefix, response, default)
 
 
 def get_response_duration_seconds_value(client, path, default=None):
@@ -40,7 +40,7 @@ def get_response_duration_seconds_value(client, path, default=None):
     # response_duration_seconds_sum{path="/v1/query"} 0.123
     prefix = f'{counter_name}{{path="{path}"}} '
 
-    return get_counter_value(counter_name, prefix, response, default, to_int=False)
+    return get_counter_value(prefix, response, default, to_int=False)
 
 
 def get_model_provider_counter_value(
@@ -54,7 +54,7 @@ def get_model_provider_counter_value(
     # llm_token_received_total{model="ibm/granite-13b-chat-v2",provider="bam"} 2465.0
     prefix = f'{counter_name}{{model="{model}",provider="{provider}"}} '
 
-    return get_counter_value(counter_name, prefix, response, default)
+    return get_counter_value(prefix, response, default)
 
 
 def get_all_metric_counters(response, metric_name) -> list[float]:
@@ -109,14 +109,14 @@ def get_enable_status_for_all_models(client):
     return [counter == 1.0 for counter in counters]
 
 
-def get_counter_value(counter_name, prefix, response, default=None, to_int=True):
+def get_counter_value(counter_name, response, default=None, to_int=True):
     """Try to retrieve counter value from response with all metrics."""
     lines = [line.strip() for line in response.split("\n")]
 
     # try to find the given counter
     for line in lines:
-        if line.startswith(prefix):
-            without_prefix = line[len(prefix) :]
+        if line.startswith(counter_name):
+            without_prefix = line[len(counter_name) :]
             # parse counter value as float
             value = float(without_prefix)
             # convert that float to integer if needed
@@ -128,6 +128,7 @@ def get_counter_value(counter_name, prefix, response, default=None, to_int=True)
     if default is not None:
         return default
 
+    print(f"Counter {counter_name} was not found in metrics: {response}")
     raise Exception(f"Counter {counter_name} was not found in metrics")
 
 
