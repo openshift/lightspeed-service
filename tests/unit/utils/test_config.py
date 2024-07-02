@@ -779,7 +779,7 @@ def test_valid_config_file():
                                 "name": "m1",
                                 "url": "https://murl1",
                                 "credentials_path": "tests/config/secret/apitoken",
-                                "context_window_size": 450,
+                                "context_window_size": 475,
                                 "parameters": {"max_tokens_for_response": 100},
                             },
                             {
