@@ -5,13 +5,15 @@ from unittest.mock import patch
 import pytest
 
 from ols import constants
-from ols.app.endpoints.ols import ai_msg, human_msg
 from ols.app.models.config import RedisConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.redis_cache import RedisCache
 from ols.utils import suid
 from tests.mock_classes.mock_redis_client import MockRedisClient
 
 conversation_id = suid.get_suid()
+cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
+cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
 
 
 @pytest.fixture
@@ -26,18 +28,14 @@ def cache():
 def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) is None
-    conversation = [
-        human_msg("user_message"),
-        ai_msg("ai_response"),
-    ]
 
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
         conversation_id,
-        conversation,
+        cache_entry_1,
     )
 
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == conversation
+    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == [cache_entry_1]
 
 
 def test_insert_or_append_existing_key(cache):
@@ -46,18 +44,11 @@ def test_insert_or_append_existing_key(cache):
     # this UUID is different from DEFAULT_USER_UID
     user_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     assert cache.get(user_uuid, conversation_id) is None
-    first_message = [
-        human_msg("user_message1"),
-        ai_msg("ai_response1"),
-    ]
-    second_message = [
-        human_msg("user_message2"),
-        ai_msg("ai_response2"),
-    ]
-    cache.insert_or_append(user_uuid, conversation_id, first_message)
-    cache.insert_or_append(user_uuid, conversation_id, second_message)
-    first_message.extend(second_message)
-    assert cache.get(user_uuid, conversation_id) == first_message
+
+    cache.insert_or_append(user_uuid, conversation_id, cache_entry_1)
+    cache.insert_or_append(user_uuid, conversation_id, cache_entry_2)
+
+    assert cache.get(user_uuid, conversation_id) == [cache_entry_1, cache_entry_2]
 
 
 def test_get_nonexistent_key(cache):

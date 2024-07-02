@@ -2,11 +2,12 @@
 
 import json
 import logging
-from typing import Any, Literal, Optional
+from typing import Any
 
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
+from ols.app.models.models import CacheEntry
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
 
@@ -104,9 +105,7 @@ class PostgresCache(Cache):
         cur.close()
         self.conn.commit()
 
-    def get(
-        self, user_id: str, conversation_id: str
-    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
+    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
@@ -118,7 +117,14 @@ class PostgresCache(Cache):
         """
         with self.conn.cursor() as cursor:
             try:
-                return PostgresCache._select(cursor, user_id, conversation_id)
+                value = PostgresCache._select(cursor, user_id, conversation_id)
+                if value is not None:
+                    cache_entry = [
+                        CacheEntry.from_dict(cache_entry) for cache_entry in value
+                    ]
+                    return cache_entry
+                else:
+                    return []
             except psycopg2.DatabaseError as e:
                 logger.error(f"PostgresCache.get {e}")
                 raise CacheError("PostgresCache.get", e)
@@ -127,21 +133,22 @@ class PostgresCache(Cache):
         self,
         user_id: str,
         conversation_id: str,
-        value: list[dict[Literal["type", "content"], str]],
+        cache_entry: CacheEntry,
     ) -> None:
         """Set the value associated with the given key.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
-            value: The value to set.
+            cache_entry: The `CacheEntry` object to store.
         """
+        value = cache_entry.to_dict()
         # the whole operation is run in one transaction
         with self.conn.cursor() as cursor:
             try:
                 old_value = self._select(cursor, user_id, conversation_id)
                 if old_value:
-                    old_value.extend(value)
+                    old_value.append(value)
                     PostgresCache._update(
                         cursor,
                         user_id,
@@ -153,7 +160,7 @@ class PostgresCache(Cache):
                         cursor,
                         user_id,
                         conversation_id,
-                        json.dumps(value),
+                        json.dumps([value]),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
