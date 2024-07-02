@@ -155,13 +155,19 @@ def install_ols() -> tuple[str, str, str]:
         print("Timed out waiting for OLS deployment to be created")
         return None
 
+
     print("OLS deployment created")
 
     ols_image = os.getenv("OLS_IMAGE", "")
-    print(f"Updating deployment to use OLS image {ols_image}")
 
     # wait for the ols pod to be created
-    time.sleep(60)
+    time.sleep(120)
+
+    print(cluster_utils.run_oc(["get","deployment","lightspeed-app-server","-o","yaml"]).stdout)
+    print(cluster_utils.run_oc(["get","pods"]).stdout)
+    print(cluster_utils.run_oc(["get","pods","-o","yaml"]).stdout)
+
+    print(f"Updating deployment to use OLS image {ols_image}")
     pod = cluster_utils.get_ols_pod_name()
 
     # scale down the operator controller manager to avoid it interfering with the tests
@@ -233,7 +239,11 @@ def install_ols() -> tuple[str, str, str]:
     print("Deployment updated, waiting for new pod to be ready")
 
     # wait for new ols app pod to exist
-    time.sleep(60)
+    time.sleep(120)
+
+    print(cluster_utils.run_oc(["get","deployment","lightspeed-app-server","-o","yaml"]).stdout)
+    print(cluster_utils.run_oc(["get","pods"]).stdout)
+    print(cluster_utils.run_oc(["get","pods","-o","yaml"]).stdout)
 
     pod = cluster_utils.get_ols_pod_name()
 
