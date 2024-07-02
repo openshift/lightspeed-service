@@ -5,6 +5,7 @@ ignore_files:
   - '**/*.cache'         # Exclude files ending with .cache
   - '__pycache__/**/*'   # Exclude Python cache directories
   - '.*'                 # Exclude all files starting with .
+  - 'postgresql/**/*'    # Exclude all files for PostgreSQL'
   - 'ols/utils/keywords.py'
 
 rules:
