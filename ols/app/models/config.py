@@ -755,7 +755,7 @@ class LoggingConfig(BaseModel):
         # logging level names (integer values) for defined model fields
         for field in self.model_fields:
             if field in data:
-                data[field] = self._get_log_level(data[field])  # type: ignore
+                data[field] = self._get_log_level(data[field])  # type: ignore[assignment]
         super().__init__(**data)
 
     def _get_log_level(self, value: str) -> int:
