@@ -88,7 +88,7 @@ class K8sClientSingleton:
                 # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api  # type: ignore
+                    if config.ols_config.authentication_config.k8s_cluster_api
                     not in {None, ""}
                     else configuration.host
                 )
