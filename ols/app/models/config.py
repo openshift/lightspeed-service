@@ -848,7 +848,7 @@ class OLSConfig(BaseModel):
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
     authentication_config: AuthenticationConfig = AuthenticationConfig()
-    tls_config: Optional[TLSConfig] = None
+    tls_config: TLSConfig = TLSConfig()
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
