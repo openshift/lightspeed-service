@@ -363,3 +363,15 @@ class TestCacheEntry:
             "human: query2",
             "ai: response2",
         ]
+
+    @staticmethod
+    def test_cache_entries_to_history_no_whitespace():
+        """Test content is stripped."""
+        cache_entries = [
+            CacheEntry(query="\ngood\nmorning\n", response="\ngood\nnight\n"),
+        ]
+        history = CacheEntry.cache_entries_to_history(cache_entries)
+        assert history == [
+            "human: good\nmorning",
+            "ai: good\nnight",
+        ]

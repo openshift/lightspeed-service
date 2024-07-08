@@ -531,8 +531,8 @@ class CacheEntry(BaseModel):
         """Convert cache entries to a history."""
         history = []
         for entry in cache_entries:
-            history.append(f"human: {entry.query}")
+            history.append(f"human: {entry.query.strip()}")
             if entry.response != "":
-                history.append(f"ai: {entry.response}")
+                history.append(f"ai: {entry.response.strip()}")
 
         return history
