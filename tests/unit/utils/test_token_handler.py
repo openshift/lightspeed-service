@@ -41,7 +41,7 @@ class TestTokenHandler(TestCase):
         self._token_handler_obj = TokenHandler()
 
     def test_available_tokens_for_empty_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
         context_window_size = 500
         max_tokens_for_response = 20
 
@@ -53,7 +53,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == context_window_size - max_tokens_for_response
 
     def test_available_tokens_for_regular_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
         context_window_size = 500
         max_tokens_for_response = 20
 
@@ -71,7 +71,7 @@ class TestTokenHandler(TestCase):
         assert available_tokens == expected_value
 
     def test_available_tokens_for_large_prompt(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa E501
+        """Test the method to calculate available tokens and check if there are any available tokens for default model config."""  # noqa: E501
         context_window_size = 500
         max_tokens_for_response = 20
         context_limit = context_window_size - max_tokens_for_response
@@ -91,7 +91,7 @@ class TestTokenHandler(TestCase):
             )
 
     def test_available_tokens_with_buffer_weight(self):
-        """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa E501
+        """Test the method to calculate available tokens and check if there are any available tokens for specific model config."""  # noqa: E501
         context_window_size = 500
         max_tokens_for_response = 20
 
