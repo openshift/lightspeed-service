@@ -1,4 +1,4 @@
-# type: ignore
+# type: ignore  # noqa: PGH003
 """Module for loading index."""
 
 import logging
