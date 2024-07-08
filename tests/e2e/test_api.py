@@ -14,6 +14,7 @@ from ols.constants import (
     INVALID_QUERY_RESP,
 )
 from ols.utils import suid
+from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
@@ -29,7 +30,6 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
-from tests.e2e.utils.response_evaluation import ResponseEvaluation
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 

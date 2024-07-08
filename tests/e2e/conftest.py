@@ -54,6 +54,18 @@ def pytest_addoption(parser):
         help="Model for which responses will be evaluated.",
     )
     parser.addoption(
+        "--eval_provider_model_id",
+        nargs="+",
+        default=[
+            "bam+granite13b-chatv2",
+            "watsonx+granite13b-chatv2",
+            "openai+gpt35-turbo",
+            "azure+gpt35-turbo-4k",
+        ],
+        type=str,
+        help="Identifier for Provider/Model to be used for model eval.",
+    )
+    parser.addoption(
         "--eval_out_dir",
         default="tests/test_results",
         help="Result destination.",
@@ -70,4 +82,10 @@ def pytest_addoption(parser):
         default="with_rag",
         type=str,
         help="Scenario for which responses will be evaluated.",
+    )
+    parser.addoption(
+        "--qna_pool_file",
+        default=None,
+        type=str,
+        help="Additional file having QnA pool in parquet format.",
     )
