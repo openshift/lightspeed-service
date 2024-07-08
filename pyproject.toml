@@ -27,7 +27,7 @@ init_typed = true
 warn_required_dynamic_aliases = true
 
 [tool.bandit]
-skips = ["B104"]
+skips = []
 exclude_dirs = ["tests", "scripts"]
 
 [tool.pdm]

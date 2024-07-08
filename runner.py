@@ -51,7 +51,9 @@ def start_uvicorn():
     """Start Uvicorn-based REST API service."""
     # use workers=1 so config loaded can be accessed from other modules
     host = (
-        "localhost" if config.dev_config.run_on_localhost else "0.0.0.0"  # noqa: S104
+        "localhost"
+        if config.dev_config.run_on_localhost
+        else "0.0.0.0"  # noqa: S104 # nosec: B104
     )
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
