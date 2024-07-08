@@ -3,7 +3,7 @@
 import pytest
 from pytest import TestReport
 
-import tests.e2e.test_api as test_api
+from tests.e2e import test_api
 
 makereport_called = False
 
