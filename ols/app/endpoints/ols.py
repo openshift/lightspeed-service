@@ -522,7 +522,7 @@ def store_transcript(
         "redacted_query": redacted_query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],  # type: ignore [call-overload]
+        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
         "truncated": truncated,
         "attachments": [attachment.model_dump() for attachment in attachments],
     }

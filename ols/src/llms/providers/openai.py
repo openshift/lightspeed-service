@@ -49,4 +49,4 @@ class OpenAI(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
-        return ChatOpenAI(**self.params)  # type: ignore [return-value]
+        return ChatOpenAI(**self.params)
