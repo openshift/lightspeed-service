@@ -717,7 +717,7 @@ def test_multiple_provider_specific_configs():
     """Test if check for multiple provider-specific configs is performed."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="multiple provider-specific configurations found, but just one is expected for provider bam",  # noqa E501
+        match="multiple provider-specific configurations found, but just one is expected for provider bam",  # noqa: E501
     ):
         # two provider-specific configurations is in the configuration
         ProviderConfig(
@@ -1547,7 +1547,7 @@ def test_conversation_cache_config():
 
     with pytest.raises(
         InvalidConfigurationError,
-        match="Postgres conversation cache type is specified, but Postgres configuration is missing",  # noqa E101
+        match="Postgres conversation cache type is specified, but Postgres configuration is missing",  # noqa: E501
     ):
         ConversationCacheConfig({"type": "postgres"})
 

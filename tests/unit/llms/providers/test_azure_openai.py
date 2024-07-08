@@ -395,7 +395,7 @@ class MockedAccessToken:
 
     def __init__(self):
         """Construct mocked access token class."""
-        self.token = "this-is-access-token"  # noqa S105
+        self.token = "this-is-access-token"  # noqa: S105
         self.expires_on = 3600  # random value
 
 
@@ -426,7 +426,7 @@ def mocked_token_cache():
     """Fake token cache."""
 
     class MockedTokenCache:
-        access_token = "cached_token"  # noqa S105
+        access_token = "cached_token"  # noqa: S105
         expires_on = 0
 
     return MockedTokenCache
@@ -445,7 +445,7 @@ def test_retrieve_access_token(provider_config_access_token_related_parameters):
     assert "api_key" not in azure_openai.default_params
     assert (
         azure_openai.default_params["azure_ad_token"]
-        == "this-is-access-token"  # noqa S105
+        == "this-is-access-token"  # noqa: S105
     )
 
 

@@ -43,7 +43,7 @@ BUILDDEPS_SCRIPT_NAME = "pip_find_builddeps.py"
 
 def shell(command, directory):
     """Run command via shell inside specified directory."""
-    return subprocess.check_output(command, cwd=directory, shell=True)  # noqa S602
+    return subprocess.check_output(command, cwd=directory, shell=True)  # noqa: S602
 
 
 def copy_project_stub(directory):
@@ -99,7 +99,7 @@ def download_wheel(directory, registry, wheel):
     """Download selected wheel from registry."""
     url = wheel_url(registry, wheel)
     into = join(directory, wheel)
-    urlretrieve(url, into)  # noqa S310
+    urlretrieve(url, into)  # noqa: S310
 
 
 def generate_hash(directory, registry, wheel, target):
@@ -132,7 +132,7 @@ def generate_packages_to_be_build(work_directory):
     # download helper script to generate list of packages
     url = f"{CACHITO_URL}/{BUILDDEPS_SCRIPT_PATH}/{BUILDDEPS_SCRIPT_NAME}"
     into = join(work_directory, BUILDDEPS_SCRIPT_NAME)
-    urlretrieve(url, into)  # noqa S310
+    urlretrieve(url, into)  # noqa: S310
 
     infile = "requirements-build.in"
     outfile = "requirements-build.txt"
