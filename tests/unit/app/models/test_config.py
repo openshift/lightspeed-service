@@ -1171,7 +1171,7 @@ def test_llm_providers_equality():
 def test_valid_values():
     """Test valid values."""
     # test default values
-    logging_config = LoggingConfig(**{})
+    logging_config = LoggingConfig()
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
     assert logging_config.uvicorn_log_level == logging.WARNING
