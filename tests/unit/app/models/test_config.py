@@ -22,6 +22,7 @@ from ols.app.models.config import (
     QueryFilter,
     RedisConfig,
     ReferenceContent,
+    TLSConfig,
     UserDataCollection,
 )
 
@@ -1212,6 +1213,40 @@ def test_invalid_values():
         match="'foo' is not valid log level, valid levels are",
     ):
         LoggingConfig(uvicorn_log_level="foo")
+
+
+def test_tls_config_default_values():
+    """Test the TLSConfig model."""
+    tls_config = TLSConfig()
+    assert tls_config.tls_certificate_path is None
+    assert tls_config.tls_key_path is None
+    assert tls_config.tls_key_password is None
+
+
+def test_tls_config_correct_values():
+    """Test the TLSConfig model."""
+    tls_config = TLSConfig(
+        {
+            "tls_certificate_path": "tests/config/empty_cert.crt",
+            "tls_key_path": "tests/config/key",
+            "tls_key_password_path": "tests/config/password",
+        }
+    )
+    assert tls_config.tls_certificate_path == "tests/config/empty_cert.crt"
+    assert tls_config.tls_key_path == "tests/config/key"
+    assert tls_config.tls_key_password == "* this is password *"  # noqa: S105
+
+
+def test_tls_config_incorrect_password_path():
+    """Test the TLSConfig model."""
+    with pytest.raises(FileNotFoundError, match="No such file"):
+        TLSConfig(
+            {
+                "tls_certificate_path": "tests/config/empty_cert.crt",
+                "tls_key_path": "tests/config/key",
+                "tls_key_password_path": "this/file/does/not/exist",
+            }
+        )
 
 
 def test_postgres_config_default_values():
