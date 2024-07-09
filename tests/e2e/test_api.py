@@ -957,7 +957,8 @@ def test_transcripts_storing_cluster():
                 {
                     "attachment_type": "log",
                     "content_type": "text/plain",
-                    "content": "this is attachment",
+                    # Sample content
+                    "content": "Kubernetes is a core component of OpenShift.",
                 }
             ],
         },
@@ -975,6 +976,8 @@ def test_transcripts_storing_cluster():
     assert "query_is_valid" in transcript
     assert "llm_response" in transcript
     assert "rag_chunks" in transcript
+
+    assert transcript["query_is_valid"]
     assert isinstance(transcript["rag_chunks"], list)
     assert len(transcript["rag_chunks"])
     assert transcript["rag_chunks"][0]["text"]
@@ -989,7 +992,7 @@ def test_transcripts_storing_cluster():
         {
             "attachment_type": "log",
             "content_type": "text/plain",
-            "content": "this is attachment",
+            "content": "Kubernetes is a core component of OpenShift.",
         }
     ]
     assert transcript["attachments"] == expected_attachment_node
@@ -1097,7 +1100,7 @@ def test_valid_question_with_one_attachment() -> None:
                     {
                         "attachment_type": "log",
                         "content_type": "text/plain",
-                        "content": "this is attachment",
+                        "content": "Kubernetes is a core component of OpenShift.",
                     },
                 ],
             },
@@ -1127,7 +1130,7 @@ def test_valid_question_with_more_attachments() -> None:
                     {
                         "attachment_type": "log",
                         "content_type": "text/plain",
-                        "content": "this is attachment",
+                        "content": "Kubernetes is a core component of OpenShift.",
                     },
                     {
                         "attachment_type": "configuration",
