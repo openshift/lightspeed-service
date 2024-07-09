@@ -952,7 +952,7 @@ def test_transcripts_storing_cluster():
     response = client.post(
         "/v1/query",
         json={
-            "query": "what is kubernetes?",
+            "query": "How can I get cluster ID and how to deploy a MongoDB?",
             "attachments": [
                 {
                     "attachment_type": "log",
