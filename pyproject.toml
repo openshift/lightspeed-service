@@ -90,6 +90,7 @@ dependencies = [
     "azure-identity==1.16.1",
     "langchain-community==0.2.5",
     "SQLAlchemy==2.0.30",
+    "certifi==2024.07.04",
     "huggingface_hub==0.23.4",
 ]
 requires-python = "==3.11.*"
