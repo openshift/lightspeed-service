@@ -196,34 +196,9 @@ class TLSConfig(BaseModel):
 class AuthenticationConfig(BaseModel):
     """Authentication configuration."""
 
-    skip_tls_verification: Optional[bool] = False
+    skip_tls_verification: bool = False
     k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is not None:
-            self.skip_tls_verification = data.get(
-                "skip_tls_verification", self.skip_tls_verification
-            )
-            self.k8s_cluster_api = data.get("k8s_cluster_api", self.k8s_cluster_api)
-            self.k8s_ca_cert_path = data.get("k8s_ca_cert_path", self.k8s_ca_cert_path)
-
-    def validate_yaml(self) -> None:
-        """Validate authentication config."""
-        if self.k8s_cluster_api and not _is_valid_http_url(self.k8s_cluster_api):
-            raise InvalidConfigurationError("k8s_cluster_api URL is invalid")
-        # Validate k8s_ca_cert_path
-        if self.k8s_ca_cert_path:
-            if not os.path.exists(self.k8s_ca_cert_path):
-                raise InvalidConfigurationError(
-                    f"k8s_ca_cert_path does not exist: {self.k8s_ca_cert_path}"
-                )
-            if not os.path.isfile(self.k8s_ca_cert_path):
-                raise InvalidConfigurationError(
-                    f"k8s_ca_cert_path is not a file: {self.k8s_ca_cert_path}"
-                )
 
 
 class ProviderSpecificConfig(BaseModel, extra="forbid"):
@@ -872,7 +847,7 @@ class OLSConfig(BaseModel):
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
         self.authentication_config = AuthenticationConfig(
-            data.get("authentication_config", None)
+            **data.get("authentication_config", {})
         )
         self.tls_config = TLSConfig(data.get("tls_config", None))
         if data.get("query_filters", None) is not None:
@@ -907,8 +882,6 @@ class OLSConfig(BaseModel):
             self.conversation_cache.validate_yaml()
         if self.reference_content is not None:
             self.reference_content.validate_yaml()
-        if self.authentication_config:
-            self.authentication_config.validate_yaml()
         if self.tls_config:
             self.tls_config.validate_yaml(disable_tls)
         if self.query_filters is not None:
