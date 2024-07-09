@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:6c4e852ca13ab3b3fa372e1ce0b459d740d02b12798e455f59e95058c36ac414"
+content_hash = "sha256:f004f263554b9761f4663d7e9acbda8fcb7339307b6532ad882ce4c096920d24"
 
 [[package]]
 name = "aiofiles"
@@ -952,7 +952,7 @@ files = [
 
 [[package]]
 name = "ibm-watsonx-ai"
-version = "1.0.4"
+version = "1.0.11"
 requires_python = ">=3.10"
 summary = "IBM watsonx.ai API Client"
 groups = ["default"]
@@ -968,8 +968,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watsonx_ai-1.0.4-py3-none-any.whl", hash = "sha256:0a5589418cd3a66ac198949f824c3d44d21c7b345787235c69acaa9c08327f38"},
-    {file = "ibm_watsonx_ai-1.0.4.tar.gz", hash = "sha256:b13eeff566baa138d0e8fd91d020b2e98f101e9e73d031eecc2a0844f8bb1f19"},
+    {file = "ibm_watsonx_ai-1.0.11-py3-none-any.whl", hash = "sha256:13c00cc385184b9ca2741c9d3bff68daa26266aa571783cd7a746603417da4b0"},
+    {file = "ibm_watsonx_ai-1.0.11.tar.gz", hash = "sha256:ff1a940cfa2743aa1ac0c9c8344e589a680664a94541a2c09bd76f66b9527b9b"},
 ]
 
 [[package]]
@@ -1241,17 +1241,17 @@ files = [
 
 [[package]]
 name = "langchain-ibm"
-version = "0.1.7"
+version = "0.1.9"
 requires_python = "<4.0,>=3.10"
 summary = "An integration package connecting IBM watsonx.ai and LangChain"
 groups = ["default"]
 dependencies = [
-    "ibm-watsonx-ai<2.0.0,>=1.0.1",
-    "langchain-core<0.3,>=0.1.50",
+    "ibm-watsonx-ai<2.0.0,>=1.0.8",
+    "langchain-core<0.3,>=0.2.2",
 ]
 files = [
-    {file = "langchain_ibm-0.1.7-py3-none-any.whl", hash = "sha256:11aa78accccd839a1e0bf4f0fc2e6c88dab9e349b2be519639ee8a5732295f30"},
-    {file = "langchain_ibm-0.1.7.tar.gz", hash = "sha256:219934f0b55a2b243cd1abc41e86e142e8b8e91a317599f7367a1ee895035b39"},
+    {file = "langchain_ibm-0.1.9-py3-none-any.whl", hash = "sha256:1a2c35b204fabea37eae2bce4b530d6c982be709449b01a531432e13caeaaa34"},
+    {file = "langchain_ibm-0.1.9.tar.gz", hash = "sha256:92fe243ba782e5826c774a6ad6fb1b5d79ab00b5bc1dd100cdccb3bc25660079"},
 ]
 
 [[package]]
