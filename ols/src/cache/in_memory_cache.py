@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Any
+
+from ols.app.models.models import CacheEntry
 
 if TYPE_CHECKING:
     from ols.app.models.config import InMemoryCacheConfig
@@ -29,11 +31,9 @@ class InMemoryCache(Cache):
         """Initialize the InMemoryCache."""
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()
-        self.cache: dict[str, list[dict[Literal["type", "content"], str]]] = {}
+        self.cache: dict[str, list[dict[str, Any]]] = {}
 
-    def get(
-        self, user_id: str, conversation_id: str
-    ) -> Optional[list[dict[Literal["type", "content"], str]]]:
+    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
@@ -50,32 +50,35 @@ class InMemoryCache(Cache):
 
         self.deque.remove(key)
         self.deque.appendleft(key)
-        return self.cache[key].copy()
+        value = self.cache[key].copy()
+        cache_entry = [CacheEntry.from_dict(cache_entry) for cache_entry in value]
+        return cache_entry
 
     def insert_or_append(
         self,
         user_id: str,
         conversation_id: str,
-        value: list[dict[Literal["type", "content"], str]],
+        cache_entry: CacheEntry,
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 
         Args:
-          user_id: User identification.
-          conversation_id: Conversation ID unique for given user.
-          value: The value to associate with the key.
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            cache_entry: The `CacheEntry` object to store.
         """
         key = super().construct_key(user_id, conversation_id)
+        value = cache_entry.to_dict()
 
         with self._lock:
             if key not in self.cache:
                 if len(self.deque) == self.capacity:
                     oldest = self.deque.pop()
                     del self.cache[oldest]
-                self.cache[key] = value
+                self.cache[key] = [value]
             else:
                 self.deque.remove(key)
                 old_value = self.cache[key]
-                old_value.extend(value)
+                old_value.append(value)
                 self.cache[key] = old_value
             self.deque.appendleft(key)

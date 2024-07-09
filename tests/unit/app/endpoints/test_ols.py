@@ -14,6 +14,7 @@ from ols.app.endpoints import ols
 from ols.app.models.config import UserDataCollection
 from ols.app.models.models import (
     Attachment,
+    CacheEntry,
     LLMRequest,
     RagChunk,
     ReferencedDocument,
@@ -208,13 +209,12 @@ def test_store_conversation_history(insert_or_append):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query)
     response = ""
+
     ols.store_conversation_history(
         constants.DEFAULT_USER_UID, conversation_id, llm_request, response
     )
-    expected_history = [
-        ols.human_msg("Tell me about Kubernetes"),
-        ols.ai_msg(""),
-    ]
+
+    expected_history = CacheEntry(query="Tell me about Kubernetes")
     insert_or_append.assert_called_with(
         constants.DEFAULT_USER_UID, conversation_id, expected_history
     )
@@ -229,11 +229,12 @@ def test_store_conversation_history_some_response(insert_or_append):
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query)
     response = "*response*"
+
     ols.store_conversation_history(user_id, conversation_id, llm_request, response)
-    expected_history = [
-        ols.human_msg("Tell me about Kubernetes"),
-        ols.ai_msg("*response*"),
-    ]
+
+    expected_history = CacheEntry(
+        query="Tell me about Kubernetes", response="*response*"
+    )
     insert_or_append.assert_called_with(user_id, conversation_id, expected_history)
 
 
@@ -719,7 +720,7 @@ def test_question_validation_in_conversation_start(auth):
 @pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.app.endpoints.ols.retrieve_previous_input",
-    new=Mock(return_value=[{"type": "human", "content": "something"}]),
+    new=Mock(return_value=[CacheEntry(query="some question")]),
 )
 @patch(
     "ols.app.endpoints.ols.validate_question",

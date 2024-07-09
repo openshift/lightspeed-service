@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from ols.app.models.models import (
+    CacheEntry,
     FeedbackRequest,
     FeedbackResponse,
     LivenessResponse,
@@ -310,3 +311,79 @@ class TestReadiness:
 
         assert readiness_request.ready == ready
         assert readiness_request.reason == reason
+
+
+class TestCacheEntry:
+    """Unit test for the CacheEntry model."""
+
+    @staticmethod
+    def test_basic_interface():
+        """Test the CacheEntry model."""
+        cache_entry = CacheEntry(query="query")
+        assert cache_entry.query == "query"
+        assert cache_entry.response == ""
+
+        cache_entry = CacheEntry(query="query", response=None)
+        assert cache_entry.query == "query"
+        assert cache_entry.response == ""
+
+        cache_entry = CacheEntry(query="query", response="response")
+        assert cache_entry.query == "query"
+        assert cache_entry.response == "response"
+
+    @staticmethod
+    def test_to_dict():
+        """Test the to_dict method of the CacheEntry model."""
+        cache_entry = CacheEntry(query="query", response="response")
+        assert cache_entry.to_dict() == {
+            "human_query": "query",
+            "ai_response": "response",
+        }
+
+    @staticmethod
+    def test_from_dict():
+        """Test the from_dict method of the CacheEntry model."""
+        cache_entry = CacheEntry.from_dict(
+            {"human_query": "query", "ai_response": "response"}
+        )
+        assert cache_entry.query == "query"
+        assert cache_entry.response == "response"
+
+    @staticmethod
+    def test_cache_entries_to_history():
+        """Test the cache_entries_to_history method of the CacheEntry model."""
+        cache_entries = [
+            CacheEntry(query="query1", response="response1"),
+            CacheEntry(query="query2", response="response2"),
+        ]
+        history = CacheEntry.cache_entries_to_history(cache_entries)
+        assert history == [
+            "human: query1",
+            "ai: response1",
+            "human: query2",
+            "ai: response2",
+        ]
+
+    @staticmethod
+    def test_cache_entries_to_history_no_whitespace():
+        """Test content is stripped."""
+        cache_entries = [
+            CacheEntry(query="\ngood\nmorning\n", response="\ngood\nnight\n"),
+        ]
+        history = CacheEntry.cache_entries_to_history(cache_entries)
+        assert history == [
+            "human: good\nmorning",
+            "ai: good\nnight",
+        ]
+
+    @staticmethod
+    def test_cache_entries_to_history_no_content():
+        """Test empty AI response is handled."""
+        cache_entries = [
+            CacheEntry(query="what?", response=""),
+        ]
+        history = CacheEntry.cache_entries_to_history(cache_entries)
+        assert history == [
+            "human: what?",
+            "ai: ",
+        ]

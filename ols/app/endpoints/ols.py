@@ -6,7 +6,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +15,7 @@ from ols import config, constants
 from ols.app import metrics
 from ols.app.models.models import (
     Attachment,
+    CacheEntry,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
@@ -185,12 +186,10 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(
-    user_id: str, llm_request: LLMRequest
-) -> list[dict[Literal["type", "content"], str]]:
+def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[CacheEntry]:
     """Retrieve previous user input, if exists."""
     try:
-        previous_input: list[dict[Literal["type", "content"], str]] = []
+        previous_input = []
         if llm_request.conversation_id:
             cache_content = config.conversation_cache.get(
                 user_id, llm_request.conversation_id
@@ -245,7 +244,7 @@ def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    previous_input: list[dict[Literal["type", "content"], str]],
+    previous_input: list[CacheEntry],
 ) -> SummarizerResponse:
     """Generate response based on validation result, previous input, and model output."""
     # Summarize documentation
@@ -253,11 +252,7 @@ def generate_response(
         docs_summarizer = DocsSummarizer(
             provider=llm_request.provider, model=llm_request.model
         )
-        history = [
-            conversation["type"] + ": " + conversation["content"].strip()
-            for conversation in previous_input
-            if conversation
-        ]
+        history = CacheEntry.cache_entries_to_history(previous_input)
         return docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
         )
@@ -282,16 +277,6 @@ def generate_response(
         )
 
 
-def human_msg(content: str) -> dict[Literal["type", "content"], str]:
-    """Create a human message dictionary."""
-    return {"type": "human", "content": content}
-
-
-def ai_msg(content: str) -> dict[Literal["type", "content"], str]:
-    """Create an AI message dictionary."""
-    return {"type": "ai", "content": content}
-
-
 def store_conversation_history(
     user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
 ) -> None:
@@ -299,23 +284,20 @@ def store_conversation_history(
 
     History is stored as simple dictionaries in the following format:
     ```python
-        [
-            {"type": "human/ai", "content": "..."},
-            ...
-        ]
+    {"human_query": "texty", "ai_response": "text"},
     ```
     """
     try:
         if config.conversation_cache is not None:
             logger.info(f"{conversation_id} Storing conversation history.")
-            chat_message_history = [
-                human_msg(llm_request.query),
-                ai_msg(response or ""),
-            ]
+            cache_entry = CacheEntry(
+                query=llm_request.query,
+                response=response,
+            )
             config.conversation_cache.insert_or_append(
                 user_id,
                 conversation_id,
-                chat_message_history,
+                cache_entry,
             )
     except Exception as e:
         logger.error(
