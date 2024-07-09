@@ -7,13 +7,26 @@ from datetime import UTC, datetime
 
 import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, read_parquet
+from rouge_score.rouge_scorer import RougeScorer
 from scipy.spatial.distance import cosine, euclidean
 
-from tests.e2e.utils.constants import EVAL_THRESHOLD, LLM_REST_API_TIMEOUT
+# Same Provider/Model combination must be used while launching OLS.
+INSCOPE_MODELS = {
+    "bam+granite13b-chatv2": ("bam", "ibm/granite-13b-chat-v2"),
+    "watsonx+granite13b-chatv2": ("watsonx", "ibm/granite-13b-chat-v2"),
+    "openai+gpt35-turbo": ("openai", "gpt-3.5-turbo"),
+    "azure+gpt35-turbo-4k": ("azure_openai", "gpt-3.5-turbo"),
+    "azure+gpt35-turbo-16k": ("azure_openai", "gpt-3.5-turbo"),
+    "azure+gpt4o": ("azure_openai", "gpt-4o"),
+}
+
+# Cut-off similarity score used for response evaluation.
+EVAL_THRESHOLD = 0.2  # low score is better
 
 
 # TODO: OLS-712 Enrichment of Q+A pairs to contain questions with attachments
+# TODO: Refactor, make it more modular
 class ResponseEvaluation:
     """Evaluate LLM response."""
 
@@ -26,9 +39,13 @@ class ResponseEvaluation:
         self._embedding_model = HuggingFaceEmbedding(
             "sentence-transformers/all-mpnet-base-v2"
         )
+        self._rouge_scorer = RougeScorer(["rougeL"], use_stemmer=True)
 
         with open("tests/test_data/question_answer_pair.json") as qna_f:
             self._qa_pairs = json.load(qna_f)["evaluation"]
+
+        self._result_dir = f"{self._args.eval_out_dir}/eval_result"
+        os.makedirs(self._result_dir, exist_ok=True)
 
     def _get_api_response(self, question, provider, model):
         """Get api response for a question/query."""
@@ -39,7 +56,7 @@ class ResponseEvaluation:
                 "provider": provider,
                 "model": model,
             },
-            timeout=LLM_REST_API_TIMEOUT,
+            timeout=120,
         )
         if response.status_code != requests.codes.ok:
             raise Exception(response)
@@ -86,6 +103,14 @@ class ResponseEvaluation:
         )
         return score
 
+    def _f1_score(self, response, answer):
+        """Get f1 score."""
+        score = self._rouge_scorer.score(answer, response)
+        print(f"Rouge score: \n{score}")
+
+        # Use f1-score
+        return score["rougeL"].fmeasure
+
     def _get_evaluation_score(self, answer_id):
         """Get response evaluation score."""
         result_dict = defaultdict(list)
@@ -117,7 +142,7 @@ class ResponseEvaluation:
                         f"Score: {score} is above cut-off value: {eval_threshold}"
                     )
 
-                result_dict["eval_id"].append(query_id)
+                result_dict["query_id"].append(query_id)
                 result_dict["question"].append(question)
                 result_dict["answer"].append(answer)
                 result_dict["llm_response"].append(response)
@@ -142,13 +167,11 @@ class ResponseEvaluation:
             # If none of the answer for any question has score below threshold,
             # then mark as evaluation failure.
             result_df["question_eval_fail_flag"] = result_df.groupby(
-                "eval_id"
+                "query_id"
             ).answer_eval_fail_flag.transform("min")
 
-            result_dir = self._args.eval_out_dir
-            os.makedirs(result_dir, exist_ok=True)
             result_file = (
-                f"{result_dir}/response_evaluation_result-"
+                f"{self._result_dir}/response_evaluation_result-"
                 f"{answer_id.replace('/', '-')}.csv"
             )
             result_df.to_csv(result_file, index=False)
@@ -167,53 +190,16 @@ class ResponseEvaluation:
 
         return True
 
-    def evaluate_models(self):
-        """Evaluate models against groundtruth answer."""
-        print("Running model evaluation using groundtruth...")
-        inscope_models = [
-            ("bam", "ibm/granite-13b-chat-v2"),
-            ("watsonx", "ibm/granite-13b-chat-v2"),
-            ("openai", "gpt-3.5-turbo"),
-            ("azure_openai", "gpt-3.5-turbo"),
-        ]
-        answer_id = "ground_truth+with_rag"
-
-        result_df = DataFrame(columns=["eval_id", "question", answer_id])
-        for provider_model in inscope_models:
-            result_dict = self.evaluate_model(provider_model, answer_id)
-
-            model_result_df = DataFrame.from_dict(result_dict)
-            result_df = result_df.merge(
-                model_result_df, on=["eval_id", "question", answer_id], how="outer"
-            )
-
-        result_df.to_csv(
-            f"{self._args.eval_out_dir}/model_evaluation_result.csv", index=False
-        )
-
-        average_scores = {}
-        for p_m in inscope_models:
-            provider_model = "+".join(p_m)
-            average_scores[provider_model] = result_df[f"{provider_model}_score"].mean()
-
-        summary_dict = {
-            "timestamp": str(datetime.now(UTC)),
-            "eval_set": result_df.eval_id.unique().tolist(),
-            "avg_similarity_score": average_scores,
-        }
-
-        with open(f"{self._args.eval_out_dir}/model_evaluation_summary.json", "w") as f:
-            json.dump(summary_dict, f)
-
-    def evaluate_model(self, provider_and_model, answer_id):
-        """Evaluate selected provider + model using groundtruth."""
-        provider_model = "+".join(provider_and_model)
+    def _populate_eval_data_for_qna_json(
+        self, provider_and_model, answer_id, result_dict
+    ):
+        """Populate evaluation data for QnAs from json file."""
         provider, model = provider_and_model
-        result_dict = defaultdict(list)
-        print(f"Model evaluation for {provider_model}")
+        provider_model = "+".join(provider_and_model)
+
         try:
             recent_resp_df = read_csv(
-                f"{self._args.eval_out_dir}/response_evaluation_result-"
+                f"{self._result_dir}/response_evaluation_result-"
                 f"{provider_model.replace('/', '-')}+with_rag.csv"
             )
         except FileNotFoundError:
@@ -231,12 +217,113 @@ class ResponseEvaluation:
             response = self._get_recent_response(
                 recent_resp_df, question, provider, model
             )
-            score = self._similarity_score(response, answer)
+            sim_score = self._similarity_score(response, answer)
+            f1_score = self._f1_score(response, answer)
 
-            result_dict["eval_id"].append(query_id)
+            result_dict["query_id"].append(query_id)
             result_dict["question"].append(question)
             result_dict[answer_id].append(answer)
             result_dict[f"{provider_model}_response"].append(response)
-            result_dict[f"{provider_model}_score"].append(score)
+            result_dict[f"{provider_model}_similiarity-score"].append(sim_score)
+            result_dict[f"{provider_model}_f1-score"].append(f1_score)
+            result_dict["query_source"].append("transcript")
+            result_dict["doc_page"].append(None)
+            result_dict["doc_title"].append(None)
 
         return result_dict
+
+    def _populate_eval_data_for_qna_parquet(
+        self, provider_and_model, answer_id, result_dict
+    ):
+        """Populate evaluation data for QnAs from parquet file."""
+        provider, model = provider_and_model
+        provider_model = "+".join(provider_and_model)
+
+        qa_pool_df = read_parquet(self._args.qna_pool_file)
+
+        for indx in range(qa_pool_df.shape[0]):
+            qa_series = qa_pool_df.iloc[indx]
+            question = qa_series["Question"]
+            answer = qa_series["Answer"]
+            response = self._get_api_response(question, provider, model)
+            sim_score = self._similarity_score(response, answer)
+            f1_score = self._f1_score(response, answer)
+
+            result_dict["query_id"].append(f"qa_pool{indx}")
+            result_dict["question"].append(question)
+            result_dict[answer_id].append(answer)
+            result_dict[f"{provider_model}_response"].append(response)
+            result_dict[f"{provider_model}_similiarity-score"].append(sim_score)
+            result_dict[f"{provider_model}_f1-score"].append(f1_score)
+            result_dict["query_source"].append(qa_series["doc_source"])
+            result_dict["doc_page"].append(qa_series["doc_page"])
+            result_dict["doc_title"].append(qa_series["doc_title"])
+
+        return result_dict
+
+    def _evaluate_model(self, provider_and_model, answer_id):
+        """Evaluate selected provider + model using groundtruth."""
+        print(f"Model evaluation for {provider_and_model}")
+
+        result_dict = defaultdict(list)
+
+        result_dict = self._populate_eval_data_for_qna_json(
+            provider_and_model, answer_id, result_dict
+        )
+
+        if self._args.qna_pool_file is not None:
+            result_dict = self._populate_eval_data_for_qna_parquet(
+                provider_and_model, answer_id, result_dict
+            )
+
+        return result_dict
+
+    def evaluate_models(self):
+        """Evaluate models against groundtruth answer."""
+        print("Running model evaluation using groundtruth...")
+
+        answer_id = "ground_truth+with_rag"
+        common_cols = [
+            "query_id",
+            "question",
+            answer_id,
+            "query_source",
+            "doc_page",
+            "doc_title",
+        ]
+        result_df = DataFrame(columns=common_cols)
+
+        provider_model_ids = self._args.eval_provider_model_id
+        if not provider_model_ids:
+            provider_model_ids = INSCOPE_MODELS.keys()
+
+        for provider_model_id in provider_model_ids:
+            provider_model = INSCOPE_MODELS[provider_model_id]
+            result_dict = self._evaluate_model(provider_model, answer_id)
+
+            model_result_df = DataFrame.from_dict(result_dict)
+            result_df = result_df.merge(model_result_df, on=common_cols, how="outer")
+
+        result_df.to_csv(f"{self._result_dir}/model_evaluation_result.csv", index=False)
+
+        sim_score_summary = {}
+        f1_score_summary = {}
+        for p_m_id in provider_model_ids:
+            provider_model = "+".join(INSCOPE_MODELS[p_m_id])
+            sim_score_summary[provider_model] = result_df[
+                f"{provider_model}_similiarity-score"
+            ].mean()
+            f1_score_summary[provider_model] = result_df[
+                f"{provider_model}_f1-score"
+            ].quantile(0.5)
+
+        # TODO: Better structure for summary json file
+        summary_dict = {
+            "timestamp": str(datetime.now(UTC)),
+            "similarity_score-avg": sim_score_summary,
+            "f1_score-p50": f1_score_summary,
+            "eval_set": result_df.query_id.unique().tolist(),
+        }
+        # Save model evaluation summary report
+        with open(f"{self._result_dir}/model_evaluation_summary.json", "w") as f:
+            json.dump(summary_dict, f)
