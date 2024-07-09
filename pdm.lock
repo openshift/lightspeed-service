@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:ac794a655d56e5fba1e9cc7e7d2093853c4592695f3f6c4429c32c0ee67c3a95"
+content_hash = "sha256:f1a2ec4de816cd9bb8679691b2b8911535732cd141737533e98d85d463174682"
 
 [[package]]
 name = "absl-py"
@@ -628,7 +628,7 @@ files = [
 name = "fastapi-cli"
 version = "0.0.4"
 requires_python = ">=3.8"
-summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. 🚀"
+summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. ğŸš€"
 groups = ["default"]
 dependencies = [
     "typer>=0.12.3",
@@ -1002,28 +1002,6 @@ dependencies = [
 files = [
     {file = "ibm_generative_ai-3.0.0-py3-none-any.whl", hash = "sha256:e0c39a5c84356f7408de31988ee055349a4ab7ec7030f313fa1c19d76b2b6d85"},
     {file = "ibm_generative_ai-3.0.0.tar.gz", hash = "sha256:0d86297371a5bb7c41d143a8c770e068f37489b5ca88e6bd56dca61a4f6dc1a8"},
-]
-
-[[package]]
-name = "ibm-watson-machine-learning"
-version = "1.0.359"
-requires_python = ">=3.10"
-summary = "IBM Watson Machine Learning API Client"
-groups = ["default"]
-dependencies = [
-    "certifi",
-    "ibm-cos-sdk<2.14.0,>=2.12.0",
-    "importlib-metadata",
-    "lomond",
-    "packaging",
-    "pandas<2.2.0,>=0.24.2",
-    "requests",
-    "tabulate",
-    "urllib3",
-]
-files = [
-    {file = "ibm_watson_machine_learning-1.0.359-py3-none-any.whl", hash = "sha256:782aacfbe2fcc58eccaf11645bf4e7facd300441874c1e7c7efa886fe9191e43"},
-    {file = "ibm_watson_machine_learning-1.0.359.tar.gz", hash = "sha256:79eba9709a215df83264a749db4d60872b7711e13f71eeacf4602cb6bd0a1d6f"},
 ]
 
 [[package]]

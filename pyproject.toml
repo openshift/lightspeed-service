@@ -78,7 +78,6 @@ dependencies = [
     "faiss-cpu==1.8.0",
     "sentence-transformers==2.7.0",
     "openai==1.35.7",
-    "ibm-watson-machine-learning==1.0.359",
     "ibm-generative-ai==3.0.0",
     "langchain-openai==0.1.8",
     "pydantic==2.7.3",
@@ -92,6 +91,7 @@ dependencies = [
     "SQLAlchemy==2.0.30",
     "certifi==2024.07.04",
     "huggingface_hub==0.23.4",
+    "ibm-watsonx-ai==1.0.11",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
