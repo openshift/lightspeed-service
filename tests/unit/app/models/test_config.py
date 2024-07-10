@@ -2218,129 +2218,89 @@ def test_query_filter_validation():
 
 def test_authentication_config_validation_proper_config():
     """Test method to validate authentication config."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
-        }
+    AuthenticationConfig(
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
+        k8s_ca_cert_path="tests/config/empty_cert.crt",
     )
-    auth_config.validate_yaml()
 
 
-def test_authentication_config_validation_empty_cluster_api():
+def test_authentication_config_k8s_cluster_api():
     """Test method to validate authentication config."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "",
-            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
-        }
-    )
-    auth_config.validate_yaml()
-
-
-def test_authentication_config_validation_missing_cluster_api():
-    """Test method to validate authentication config when cluster API is missing."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
-        }
-    )
     # k8s_cluster_api is optional
-    auth_config.validate_yaml()
-
-
-def test_authentication_config_validation_invalid_cluster_api():
-    """Test method to validate authentication config."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "this-is-not-valid-url",
-            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
-        }
+    AuthenticationConfig(
+        skip_tls_verification=True,
     )
-    with pytest.raises(
-        InvalidConfigurationError, match="k8s_cluster_api URL is invalid"
-    ):
-        auth_config.validate_yaml()
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "None",
-            "k8s_ca_cert_path": "tests/config/empty_cert.crt",
-        }
+
+    # but when provided, it needs to be valid URL pattern
+    AuthenticationConfig(
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
     )
+
     with pytest.raises(
-        InvalidConfigurationError, match="k8s_cluster_api URL is invalid"
+        ValidationError,
+        match="Input should be a valid URL, input is empty",
     ):
-        auth_config.validate_yaml()
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_cluster_api="",
+        )
+
+    with pytest.raises(
+        ValidationError,
+        match="Input should be a valid URL, relative URL without a base",
+    ):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_cluster_api="this-is-not-valid-url",
+        )
+
+    with pytest.raises(
+        ValidationError,
+        match="Input should be a valid URL, relative URL without a base",
+    ):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_cluster_api="None",
+        )
 
 
-def test_authentication_config_validation_empty_cert_path():
+def test_authentication_config_validation_k8s_ca_cert_path():
     """Test method to validate authentication config when cert path is empty."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-            "k8s_ca_cert_path": "",
-        }
-    )
     # k8s_ca_cert_path is optional
-    auth_config.validate_yaml()
-
-
-def test_authentication_config_validation_missing_cert_path():
-    """Test method to validate authentication config when cert path is missing."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-        }
+    AuthenticationConfig(
+        skip_tls_verification=True,
     )
-    # k8s_ca_cert_path is optional
-    auth_config.validate_yaml()
 
-
-def test_authentication_config_validation_invalid_cert_path():
-    """Test method to validate authentication config."""
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-            "k8s_ca_cert_path": "/dev/null/foo",  # that file can not exists
-        }
+    # but when provided, it needs to be a valid file path
+    AuthenticationConfig(
+        skip_tls_verification=True,
+        k8s_ca_cert_path=__file__,  # just use some existing file path here
     )
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="k8s_ca_cert_path does not exist: /dev/null/foo",
-    ):
-        auth_config.validate_yaml()
 
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-            "k8s_ca_cert_path": "/dev/null",
-        }
-    )
-    with pytest.raises(
-        InvalidConfigurationError, match="k8s_ca_cert_path is not a file: /dev/null"
-    ):
-        auth_config.validate_yaml()
+    with pytest.raises(ValidationError, match="Path does not point to a file"):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_ca_cert_path="",
+        )
 
-    auth_config = AuthenticationConfig(
-        {
-            "skip_tls_verification": True,
-            "k8s_cluster_api": "http://cluster.org/foo",
-            "k8s_ca_cert_path": "None",
-        }
-    )
-    with pytest.raises(
-        InvalidConfigurationError, match="k8s_ca_cert_path does not exist: None"
-    ):
-        auth_config.validate_yaml()
+    with pytest.raises(ValidationError, match="Path does not point to a file"):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_ca_cert_path="/dev/null/foo",  # that file can not exists
+        )
+    with pytest.raises(ValidationError, match="Path does not point to a file"):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_ca_cert_path="/dev/null",
+        )
+
+    with pytest.raises(ValidationError, match="Path does not point to a file"):
+        AuthenticationConfig(
+            skip_tls_verification=True,
+            k8s_ca_cert_path="None",
+        )
 
 
 def test_user_data_config__feedback(tmpdir):
