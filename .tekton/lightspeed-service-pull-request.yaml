@@ -224,7 +224,7 @@ spec:
       - name: COMMIT_SHA
         value: $(tasks.clone-repository.results.commit)
       - name: BUILD_ARGS_FILE
-        value: $(params.build-args-file)
+        value: build.args
       runAfter:
       - prefetch-dependencies
       taskRef:
