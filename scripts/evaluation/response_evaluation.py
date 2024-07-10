@@ -41,10 +41,14 @@ class ResponseEvaluation:
         )
         self._rouge_scorer = RougeScorer(["rougeL"], use_stemmer=True)
 
-        with open("tests/test_data/question_answer_pair.json") as qna_f:
+        eval_dir = os.path.dirname(__file__)
+        self._input_dir = os.path.join(eval_dir, "eval_data")
+        with open(os.path.join(self._input_dir, "question_answer_pair.json")) as qna_f:
             self._qa_pairs = json.load(qna_f)["evaluation"]
 
-        self._result_dir = f"{self._args.eval_out_dir}/eval_result"
+        self._result_dir = os.path.join(
+            (self._args.eval_out_dir or eval_dir), "eval_result"
+        )
         os.makedirs(self._result_dir, exist_ok=True)
 
     def _get_api_response(self, question, provider, model):

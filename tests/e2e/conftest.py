@@ -67,7 +67,8 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--eval_out_dir",
-        default="tests/test_results",
+        default=None,
+        type=str,
         help="Result destination.",
     )
     parser.addoption(
