@@ -17,7 +17,7 @@ from tests.mock_classes.mock_k8s_api import (
 def _setup():
     """Setups the test client."""
     global client
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app
