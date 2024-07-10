@@ -80,7 +80,7 @@ def main():
     """Evaluate response."""
     args = _args_parser(sys.argv[1:])
 
-    client = Client(base_url=args.eval_api_url, verify=False)  # noqa: S501
+    client = Client(base_url=args.eval_api_url, verify=False)  # noqa: S501, S113
 
     if "localhost" not in args.eval_api_url:
         with open(args.eval_api_token_file, mode="r", encoding="utf-8") as t_f:
