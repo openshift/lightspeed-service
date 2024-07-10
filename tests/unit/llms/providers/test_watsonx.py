@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from ibm_watson_machine_learning.metanames import (
+from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 

@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Optional
 
-from ibm_watson_machine_learning.metanames import (
+from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
