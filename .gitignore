@@ -32,6 +32,9 @@ tmptest_*
 # don't keep log files
 logs/*
 
+# ignore eval results
+*/*/eval_result/*
+
 # ignore test results
 tests/test_results/*
 htmlcov/

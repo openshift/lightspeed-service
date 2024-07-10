@@ -32,7 +32,8 @@ def _args_parser(args):
     )
     parser.add_argument(
         "--eval_out_dir",
-        default="tests/test_results",
+        default=None,
+        type=str,
         help="Result destination.",
     )
     parser.add_argument(
