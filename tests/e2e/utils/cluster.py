@@ -6,8 +6,8 @@ import subprocess
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
-    return subprocess.run(
-        ["oc", *args],  # noqa: S603, S607
+    return subprocess.run(  # noqa: S603
+        ["oc", *args],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,

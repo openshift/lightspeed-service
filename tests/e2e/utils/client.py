@@ -10,7 +10,7 @@ from tests.e2e.utils.response import check_content_type
 
 def get_http_client(url: str, user_token: Optional[str] = None) -> Client:
     """Get HTTP client."""
-    client = Client(base_url=url, verify=False)  # noqa: S501
+    client = Client(base_url=url, verify=False)  # noqa: S501, S113
     if user_token:
         client.headers.update({"Authorization": f"Bearer {user_token}"})
     return client
