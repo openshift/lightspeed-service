@@ -211,7 +211,7 @@ def test_store_conversation_history(insert_or_append):
     response = ""
 
     ols.store_conversation_history(
-        constants.DEFAULT_USER_UID, conversation_id, llm_request, response
+        constants.DEFAULT_USER_UID, conversation_id, llm_request, response, []
     )
 
     expected_history = CacheEntry(query="Tell me about Kubernetes")
@@ -230,7 +230,7 @@ def test_store_conversation_history_some_response(insert_or_append):
     llm_request = LLMRequest(query=query)
     response = "*response*"
 
-    ols.store_conversation_history(user_id, conversation_id, llm_request, response)
+    ols.store_conversation_history(user_id, conversation_id, llm_request, response, [])
 
     expected_history = CacheEntry(
         query="Tell me about Kubernetes", response="*response*"
@@ -245,9 +245,9 @@ def test_store_conversation_history_empty_user_id():
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.store_conversation_history(user_id, conversation_id, llm_request, "")
+        ols.store_conversation_history(user_id, conversation_id, llm_request, "", [])
     with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.store_conversation_history(user_id, conversation_id, llm_request, None)
+        ols.store_conversation_history(user_id, conversation_id, llm_request, None, [])
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -257,7 +257,7 @@ def test_store_conversation_history_improper_user_id():
     conversation_id = suid.get_suid()
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.store_conversation_history(user_id, conversation_id, llm_request, "")
+        ols.store_conversation_history(user_id, conversation_id, llm_request, "", [])
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -267,7 +267,7 @@ def test_store_conversation_history_improper_conversation_id():
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     with pytest.raises(HTTPException, match="Invalid conversation ID"):
         ols.store_conversation_history(
-            constants.DEFAULT_USER_UID, conversation_id, llm_request, ""
+            constants.DEFAULT_USER_UID, conversation_id, llm_request, "", []
         )
 
 

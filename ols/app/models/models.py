@@ -502,6 +502,7 @@ class CacheEntry(BaseModel):
 
     query: str
     response: Optional[str] = ""
+    attachments: list[Attachment] = []
 
     @field_validator("response")
     @classmethod
@@ -516,6 +517,7 @@ class CacheEntry(BaseModel):
         return {
             "human_query": self.query,
             "ai_response": self.response,
+            "attachments": [attachment.model_dump() for attachment in self.attachments],
         }
 
     @classmethod
@@ -524,6 +526,9 @@ class CacheEntry(BaseModel):
         return cls(
             query=data["human_query"],
             response=data["ai_response"],
+            attachments=[
+                Attachment(**attachment) for attachment in data["attachments"]
+            ],
         )
 
     @staticmethod
