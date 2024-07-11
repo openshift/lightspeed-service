@@ -7,11 +7,13 @@
                     "in_use": true,
                     "cutoff_score": 0.05,
                     "text": [
+                        "Kubernetes is an open source container orchestration tool developed by Google. It allows you to run and manage container-based workloads, and is commonly used to deploy interconnected microservices in a cloud-native way. Kubernetes clusters can span hosts across on-premise, public, private, or hybrid clouds.",
                         "Kubernetes is an open-source container orchestration engine for automating deployment, scaling, and management of containerized applications. It uses a declarative model, meaning it defines a desired state and automatically works towards achieving that state. Kubernetes was originally developed by Google and has since become widely adopted in the industry for its ability to manage large-scale container deployments. It provides features such as self-healing, automated rollouts, and service discovery, making it easier to manage and scale complex applications."
                     ]
                 },
                 "watsonx+ibm/granite-13b-chat-v2+with_rag": {
                     "text": [
+                        "Kubernetes is an open source container orchestration tool developed by Google. It allows you to run and manage container-based workloads, and is commonly used to deploy interconnected microservices in a cloud-native way. Kubernetes clusters can span hosts across on-premise, public, private, or hybrid clouds.",
                         "Kubernetes is an open-source container orchestration engine for automating deployment, scaling, and management of containerized applications. It uses a declarative model, meaning it defines a desired state and automatically works towards achieving that state. Kubernetes was originally developed by Google and has since become widely adopted in the industry for its ability to manage large-scale container deployments. It provides features such as self-healing, automated rollouts, and service discovery, making it easier to manage and scale complex applications."
                     ]
                 },
@@ -72,22 +74,26 @@
             "answer": {
                 "bam+ibm/granite-13b-chat-v2+with_rag": {
                     "text": [
+                        "OpenShift Virtualization is a feature of Red Hat OpenShift Container Platform that allows traditional virtual machines (VMs) to be brought into the platform and run alongside containers. It represents the icon and can be used with either the OVN-Kubernetes or the OpenShiftSDN default Container Network Interface (CNI) network provider. OpenShift Virtualization is certified in Microsoft's Windows Server Virtualization Validation Program (SVVP) to run Windows Server workloads.",
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through a variety of consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, live migrating virtual machines between nodes, and providing an enhanced web console for managing these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
                     ]
                 },
                 "watsonx+ibm/granite-13b-chat-v2+with_rag": {
                     "cutoff_score": 0.01,
                     "text": [
+                        "OpenShift Virtualization is a feature of Red Hat OpenShift Container Platform that allows traditional virtual machines (VMs) to be brought into the platform and run alongside containers. It represents the icon and can be used with either the OVN-Kubernetes or the OpenShiftSDN default Container Network Interface (CNI) network provider. OpenShift Virtualization is certified in Microsoft's Windows Server Virtualization Validation Program (SVVP) to run Windows Server workloads.",
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through a variety of consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, live migrating virtual machines between nodes, and providing an enhanced web console for managing these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
                     ]
                 },
                 "openai+gpt-3.5-turbo+with_rag": {
                     "text": [
+                        "OpenShift Virtualization allows you to bring traditional virtual machines (VMs) into the Red Hat OpenShift Container Platform and run them alongside containers. VMs in OpenShift Virtualization are native Kubernetes objects that can be managed through the Red Hat OpenShift Container Platform web console or command line interface.",
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It enables tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads together in a cluster, connecting to VMs through various consoles and CLI tools, importing and cloning existing VMs, managing network interfaces and storage disks attached to VMs, as well as live migrating VMs between nodes. It provides a graphical web console for managing these virtualized resources within the OpenShift Container Platform cluster infrastructure."
                     ]
                 },
                 "azure_openai+gpt-3.5-turbo+with_rag": {
                     "text": [
+                        "OpenShift Virtualization is a feature of Red Hat OpenShift Container Platform that allows you to bring traditional virtual machines (VMs) into the platform and run them alongside containers. In OpenShift Virtualization, VMs are treated as native Kubernetes objects and can be managed using the OpenShift web console or command line. It provides a way to combine the benefits of both containers and VMs in a single platform.",
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It enables you to create and manage Linux and Windows virtual machines, run pod and VM workloads together in a cluster, connect to VMs through various consoles and CLI tools, import and clone existing VMs, manage network interface controllers and storage disks attached to VMs, as well as live migrate VMs between nodes. It also provides an enhanced web console for managing these virtualized resources alongside the container platform."
                     ]
                 },
@@ -241,6 +247,7 @@
                 },
                 "azure_openai+gpt-3.5-turbo+with_rag": {
                     "text": [
+                        "Yes, there is a document on updating clusters in OpenShift. It provides detailed information about the update process and various considerations. Would you like me to provide more specific details from the document?",
                         "Yes, there is a document on updating clusters in OpenShift. The document provides detailed information on the update process, including how the Cluster Version Operator (CVO) orchestrates and facilitates the update process, and how to select clusters for updates. It also includes instructions on how to update your cluster to a new version."
                     ]
                 },
