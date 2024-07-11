@@ -66,8 +66,13 @@ test-e2e: ## Run e2e tests - requires running OLS server
 	python -m pytest tests/e2e -s --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR}
 
-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit"
+coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
+
+unit-tests-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
+	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit" -d htmlcov-unit
+
+integration-tests-coverage-report:	test-integration ## Export integration test coverage report into interactive HTML
+	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
 
 check-types: ## Checks type hints in sources
 	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
