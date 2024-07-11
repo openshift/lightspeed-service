@@ -19,7 +19,7 @@ from tests.mock_classes.mock_llm_loader import mock_llm_loader
 @pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
     global client
 
     # app.main need to be imported after the configuration is read

@@ -13,11 +13,13 @@ from ols import config
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
 @pytest.fixture(scope="function", autouse=True)
-@patch.dict(os.environ, {"OLS_CONFIG_FILE": "tests/config/valid_config.yaml"})
+@patch.dict(
+    os.environ, {"OLS_CONFIG_FILE": "tests/config/config_for_integration_tests.yaml"}
+)
 def _setup():
     """Setups the test client."""
     global client
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app
