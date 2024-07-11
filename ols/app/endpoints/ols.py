@@ -95,8 +95,6 @@ def conversation_request(
     # Log incoming request (after redaction)
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
-    # TODO OLS-697: Store attachments send to OLS service in structured format into
-    # conversation cache
     previous_input = retrieve_previous_input(user_id, llm_request)
 
     # Retrieve attachments from the request
@@ -128,10 +126,8 @@ def conversation_request(
             conversation_id, llm_request, previous_input
         )
 
-    # TODO OLS-697: Store attachments send to OLS service in structured format into
-    # conversation cache
     store_conversation_history(
-        user_id, conversation_id, llm_request, summarizer_response.response
+        user_id, conversation_id, llm_request, summarizer_response.response, attachments
     )
 
     if config.ols_config.user_data_collection.transcripts_disabled:
@@ -278,7 +274,11 @@ def generate_response(
 
 
 def store_conversation_history(
-    user_id: str, conversation_id: str, llm_request: LLMRequest, response: Optional[str]
+    user_id: str,
+    conversation_id: str,
+    llm_request: LLMRequest,
+    response: Optional[str],
+    attachments: list[Attachment],
 ) -> None:
     """Store conversation history into selected cache.
 
@@ -293,6 +293,7 @@ def store_conversation_history(
             cache_entry = CacheEntry(
                 query=llm_request.query,
                 response=response,
+                attachments=attachments,
             )
             config.conversation_cache.insert_or_append(
                 user_id,

@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from ols.app.models.models import (
+    Attachment,
     CacheEntry,
     FeedbackRequest,
     FeedbackResponse,
@@ -372,16 +373,27 @@ class TestCacheEntry:
         assert cache_entry.to_dict() == {
             "human_query": "query",
             "ai_response": "response",
+            "attachments": [],
         }
 
     @staticmethod
     def test_from_dict():
         """Test the from_dict method of the CacheEntry model."""
+        attachment = Attachment(
+            attachment_type="log",
+            content_type="text/plain",
+            content="this is attachment",
+        )
         cache_entry = CacheEntry.from_dict(
-            {"human_query": "query", "ai_response": "response"}
+            {
+                "human_query": "query",
+                "ai_response": "response",
+                "attachments": [attachment.model_dump()],
+            }
         )
         assert cache_entry.query == "query"
         assert cache_entry.response == "response"
+        assert cache_entry.attachments == [attachment]
 
     @staticmethod
     def test_cache_entries_to_history():
