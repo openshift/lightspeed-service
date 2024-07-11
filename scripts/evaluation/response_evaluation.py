@@ -53,16 +53,24 @@ class ResponseEvaluation:
 
     def _get_api_response(self, question, provider, model):
         """Get api response for a question/query."""
-        response = self._api_client.post(
-            "/v1/query",
-            json={
-                "query": question,
-                "provider": provider,
-                "model": model,
-            },
-            timeout=120,
-        )
+        retry_counter = 1
+        while retry_counter <= 3:
+            print(f"OLS call; attempt: {retry_counter}")
+            response = self._api_client.post(
+                "/v1/query",
+                json={
+                    "query": question,
+                    "provider": provider,
+                    "model": model,
+                },
+                timeout=120,
+            )
+            if response.status_code == requests.codes.ok:
+                break
+            retry_counter += 1
+
         if response.status_code != requests.codes.ok:
+            print(f"Unable to get response for {provider}+{model}; query: {question}")
             raise Exception(response)
 
         print(f"API request is successful for {provider}+{model}; Query: {question}")
