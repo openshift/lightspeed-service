@@ -94,7 +94,7 @@ verify-packages-completeness:	requirements.txt ## Verify that requirements.txt f
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
 
 get-rag: ## Download a copy of the RAG embedding model and vector database
-	podman create --replace --name tmp-rag-container quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:e0db77d709914e677e34658e21b4300b20a9f125c4f27f88429304aa8ad2e276 true
+	podman create --replace --name tmp-rag-container $$(cat build.args | awk 'BEGIN{FS="="}{print $$2}') true
 	rm -rf vector_db embeddings_model
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
