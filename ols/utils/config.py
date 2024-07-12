@@ -30,7 +30,7 @@ class AppConfig:
     def __new__(cls, *args: Any, **kwargs: Any) -> "AppConfig":
         """Create a new instance of the class."""
         if not isinstance(cls._instance, cls):
-            cls._instance = super(AppConfig, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self) -> None:
