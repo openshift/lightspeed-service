@@ -48,7 +48,12 @@ CMD ["python3.11", "runner.py"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \
-      io.openshift.tags="openshift-lightspeed,ols"
+      io.openshift.tags="openshift-lightspeed,ols" \
+      description="Red Hat OpenShift Lightspeed Service" \
+      summary="Red Hat OpenShift Lightspeed Service" \
+      com.redhat.component=openshift-lightspeed-service \
+      name=openshift-lightspeed-service
+
 
 # no-root user is checked in Konflux 
 USER 1001
