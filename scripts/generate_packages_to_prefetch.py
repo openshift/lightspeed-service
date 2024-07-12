@@ -140,7 +140,7 @@ def generate_packages_to_be_build(work_directory):
     # generate file requirements-build.in
     command = (
         "python pip_find_builddeps.py requirements.txt --append "
-        + f"--only-write-on-update --ignore-errors --allow-binary -o {outfile}"
+        + f"--only-write-on-update --ignore-errors --allow-binary -o {infile}"
     )
     shell(command, work_directory)
 
