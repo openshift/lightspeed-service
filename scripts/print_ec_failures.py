@@ -36,7 +36,17 @@ with Path("logs.json").open("w") as json_file:
 # print summary
 for component in json_data["components"]:
     print(f"Component: {component['name']}")
-    violations = component["violations"]
-    print(f"    violations: {len(violations)}")
+    violations = component.get("violations", [])
+    warnings = component.get("warnings", [])
+    successes = component.get("successes", [])
+    total = (
+        (num_successes := len(successes))
+        + (num_warnings := len(warnings))
+        + (num_violations := len(violations))
+    )
+    print(f"    total checks: {total}")
+    print(f"    successes:    {num_successes}")
+    print(f"    warnings:     {num_warnings}")
+    print(f"    violations:   {num_violations}")
     for i, violation in enumerate(violations):
         print(f"        #{i+1}: {violation['msg']}")
