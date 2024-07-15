@@ -145,6 +145,25 @@ user2 user2 READ
 admin admin FULL_CONTROL
 ```
 
+## `print_ownership_controls.py`
+
+Print information about ownership controls over selected bucket.
+
+### Usage
+
+Four environment variables should be set before running the script:
+
+- `ENDPOINT_URL` - Ceph endpoint URL
+- `AWS_ACCESS_KEY` - access key for user or service
+- `AWS_SECRET_ACCESS_KEY` - secret access key for user or service
+- `BUCKET` - bucket name, for example QA-OLS-ARCHIVES or PROD-OLS-ARCHIVES
+
+Run:
+
+```
+python print_ownership_controls.py
+```
+
 ## `update_google_sheet.py`
 
 ### Description
