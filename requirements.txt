@@ -976,9 +976,9 @@ langsmith==0.1.85 \
     #   langchain
     #   langchain-community
     #   langchain-core
-llama-index==0.10.38 \
-    --hash=sha256:5281cfa8b6e7f0f5f12897c00adcd790f7b51c130037f3561fd5630fca37bfb3 \
-    --hash=sha256:5d521b0ea7111679521292432960d3b9fb53c98d55414bd42d753bc6271d234d
+llama-index==0.10.55 \
+    --hash=sha256:32781185d60d99dc7a02f2efa73bdaca2f0ae96bf5d42cef6f1b9124f9eacf65 \
+    --hash=sha256:b07e4708e451c4505df978997c998f10ff2ebdbda12fbf892b7e6df79f5cf4c8
     # via ols (pyproject.toml)
 llama-index-agent-openai==0.2.8 \
     --hash=sha256:7f123e86992d6c33f310d36331c32989a921cb76abe9d0fd1cf1e40a7eb65d2e \
