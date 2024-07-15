@@ -25,6 +25,11 @@ INSCOPE_MODELS = {
 EVAL_THRESHOLD = 0.2  # low score is better
 
 
+# Retry settings for LLM calls
+MAX_RETRY_ATTEMPTS = 5
+REST_API_TIMEOUT = 120
+
+
 # TODO: OLS-712 Enrichment of Q+A pairs to contain questions with attachments
 # TODO: Refactor, make it more modular
 class ResponseEvaluation:
@@ -51,10 +56,16 @@ class ResponseEvaluation:
         )
         os.makedirs(self._result_dir, exist_ok=True)
 
-    def _get_api_response(self, question, provider, model):
+    def _get_api_response(
+        self,
+        question,
+        provider,
+        model,
+        retry_attemps=MAX_RETRY_ATTEMPTS,
+        rest_api_timeout=REST_API_TIMEOUT,
+    ):
         """Get api response for a question/query."""
-        retry_counter = 1
-        while retry_counter <= 3:
+        for retry_counter in range(retry_attemps):
             print(f"OLS call; attempt: {retry_counter}")
             response = self._api_client.post(
                 "/v1/query",
@@ -63,11 +74,10 @@ class ResponseEvaluation:
                     "provider": provider,
                     "model": model,
                 },
-                timeout=120,
+                timeout=rest_api_timeout,
             )
             if response.status_code == requests.codes.ok:
                 break
-            retry_counter += 1
 
         if response.status_code != requests.codes.ok:
             print(f"Unable to get response for {provider}+{model}; query: {question}")
