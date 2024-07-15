@@ -117,6 +117,34 @@ An example:
 python delete_ols_archive.py archives/compressed/b6/b6cf044a-4870-4a8c-a849-1b0016cc8171/202404/25/185345.tar.gz
 ```
 
+## `print_acls.py`
+
+Print ACLs defined in selected Ceph bucket for all users and tools.
+
+### Usage
+
+Four environment variables should be set before running the script:
+
+- `ENDPOINT_URL` - Ceph endpoint URL
+- `AWS_ACCESS_KEY` - access key for user or service
+- `AWS_SECRET_ACCESS_KEY` - secret access key for user or service
+- `BUCKET` - bucket name, for example QA-OLS-ARCHIVES or PROD-OLS-ARCHIVES
+
+Run:
+
+```
+python print_acls.py
+```
+
+An example of output:
+
+```
+user1 user1 READ
+user1 user1 WRITE
+user2 user2 READ
+admin admin FULL_CONTROL
+```
+
 ## `update_google_sheet.py`
 
 ### Description
