@@ -6,7 +6,9 @@ import tempfile
 import threading
 from pathlib import Path
 
+import certifi
 import uvicorn
+from cryptography import x509
 
 from ols import config
 from ols.utils.auth_dependency import K8sClientSingleton
@@ -45,6 +47,30 @@ def load_index():
     # accessing the config's rag_index property will trigger the loading
     # of the index
     config.rag_index
+
+
+# NOTE: Be aware this is irreversible step, as it modifies the certifi
+# store. To restore original certs, the certifi lib needs to be
+# reinstalled (or extra cert manually removed from the file).
+def add_ca_to_certifi(cert_path: str, certifi_cert_location=certifi.where()) -> None:
+    """Add a certificate to the certifi store."""
+    print(f"Certifi store location: '{certifi_cert_location}'")
+    print(f"Adding certificate '{cert_path}' to certifi store")
+    with open(cert_path, "rb") as certificate_file:
+        new_certificate_data = certificate_file.read()
+    new_cert = x509.load_pem_x509_certificate(new_certificate_data)
+
+    # load certifi certs
+    with open(certifi_cert_location, "rb") as certifi_store:
+        certifi_certs_data = certifi_store.read()
+    certifi_certs = x509.load_pem_x509_certificates(certifi_certs_data)
+
+    # append the certificate to the certifi store
+    if new_cert in certifi_certs:
+        print(f"Certificate '{cert_path}' is already in certifi store")
+    else:
+        with open(certifi_cert_location, "ab") as certifi_store:
+            certifi_store.write(new_certificate_data)
 
 
 def start_uvicorn():
@@ -97,6 +123,10 @@ if __name__ == "__main__":
     from ols import config
 
     configure_hugging_face_envs(config.ols_config)
+
+    # add extra certificates if defined
+    for certificate_path in config.ols_config.extra_ca:
+        add_ca_to_certifi(certificate_path)
 
     # Initialize the K8sClientSingleton with cluster id during module load.
     # We want the application to fail early if the cluster ID is not available.

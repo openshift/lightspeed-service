@@ -92,6 +92,8 @@ dependencies = [
     "certifi==2024.07.04",
     "huggingface_hub==0.23.4",
     "ibm-watsonx-ai==1.0.11",
+    "certifi==2024.7.4",
+    "cryptography==42.0.8",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
