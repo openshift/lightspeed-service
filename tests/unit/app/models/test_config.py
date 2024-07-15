@@ -1649,6 +1649,7 @@ def test_ols_config(tmpdir):
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.extra_ca == []
 
 
 def test_config():

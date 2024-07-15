@@ -832,6 +832,8 @@ class OLSConfig(BaseModel):
 
     user_data_collection: UserDataCollection = UserDataCollection()
 
+    extra_ca: list[FilePath] = []
+
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -860,6 +862,8 @@ class OLSConfig(BaseModel):
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
+
+        self.extra_ca = data.get("extra_ca", [])
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
