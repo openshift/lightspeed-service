@@ -67,7 +67,7 @@ dependencies = [
     "torch==2.2.2+cpu",
     "pandas==2.1.4",
     "fastapi==0.111.0",
-    "gradio==4.36.1",
+    "gradio==4.37.2",
     "langchain==0.2.5",
     "langchain-ibm==0.1.9",
     "llama-index==0.10.38",
