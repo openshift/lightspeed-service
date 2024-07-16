@@ -81,7 +81,7 @@ dependencies = [
     "ibm-generative-ai==3.0.0",
     "langchain-openai==0.1.8",
     "pydantic==2.8.2",
-    "setuptools==69.5.1",
+    "setuptools==70.3.0",
     "prometheus-client==0.20.0",
     "kubernetes==29.0.0",
     "pytest-asyncio==0.23.7",
