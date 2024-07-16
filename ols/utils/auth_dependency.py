@@ -22,8 +22,6 @@ class ClusterIDUnavailableError(Exception):
     """Cluster ID is not available."""
 
 
-# mypy: ignore-errors
-# TODO: remove in OLS-648
 class K8sClientSingleton:
     """Return the Kubernetes client instances.
 
@@ -48,15 +46,10 @@ class K8sClientSingleton:
             configuration = kubernetes.client.Configuration()
 
             try:
-                # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
-                if config.ols_config.authentication_config.k8s_cluster_api not in {
-                    None,
-                    "",
-                } and config.dev_config.k8s_auth_token not in {
-                    None,
-                    "None",
-                    "",
-                }:
+                if (
+                    config.ols_config.authentication_config.k8s_cluster_api is not None
+                    and config.dev_config.k8s_auth_token is not None
+                ):
                     logger.info("loading kubeconfig from app Config config")
                     configuration.api_key["authorization"] = (
                         config.dev_config.k8s_auth_token
@@ -85,12 +78,9 @@ class K8sClientSingleton:
                                   and no override token was provided: {e}"
                             )
 
-                # TODO: OLS-648 Broken logic in check if k8s_cluster_api is configured
                 configuration.host = (
                     config.ols_config.authentication_config.k8s_cluster_api
-                    if config.ols_config.authentication_config.k8s_cluster_api
-                    not in {None, ""}
-                    else configuration.host
+                    or configuration.host
                 )
                 configuration.verify_ssl = (
                     not config.ols_config.authentication_config.skip_tls_verification
