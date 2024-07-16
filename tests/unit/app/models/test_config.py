@@ -10,6 +10,7 @@ from ols.app.models.config import (
     AuthenticationConfig,
     Config,
     ConversationCacheConfig,
+    DevConfig,
     InMemoryCacheConfig,
     InvalidConfigurationError,
     LLMProviders,
@@ -2346,3 +2347,28 @@ def test_user_data_config__transcripts(tmpdir):
     user_data = UserDataCollection(transcripts_disabled=True)
     assert user_data.transcripts_disabled is True
     assert user_data.transcripts_storage is None
+
+
+def test_dev_config_defaults():
+    """Test the DevConfig model with default values."""
+    dev_config = DevConfig()
+    assert dev_config.enable_dev_ui is False
+    assert dev_config.llm_params == {}
+    assert dev_config.disable_auth is False
+    assert dev_config.disable_tls is False
+    assert dev_config.k8s_auth_token is None
+    assert dev_config.run_on_localhost is False
+
+
+def test_dev_config_bool_inputs():
+    """Test the DevConfig model with boolean inputs."""
+    true_values = {"1", "on", "t", "true", "y", "yes"}
+    false_values = {"0", "off", "f", "false", "n", "no"}
+
+    for value in true_values:
+        dev_config = DevConfig(enable_dev_ui=value)
+        assert dev_config.enable_dev_ui is True
+
+    for value in false_values:
+        dev_config = DevConfig(enable_dev_ui=value)
+        assert dev_config.enable_dev_ui is False

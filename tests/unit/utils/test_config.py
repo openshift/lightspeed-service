@@ -53,7 +53,7 @@ def test_missing_config_file():
         config.reload_from_yaml_file("/dev/null/non-existent")
 
 
-def test_invalid_config():
+def test_invalid_dev_config():
     """Check that invalid configuration is handled gracefully."""
     check_expected_exception(
         """
@@ -74,8 +74,8 @@ dev_config:
   llm_params:
      - something: 0
 """,
-        InvalidConfigurationError,
-        "llm_params needs to be defined as a dict",
+        ValidationError,
+        "Input should be a valid dictionary",
     )
 
 

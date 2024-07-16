@@ -904,43 +904,11 @@ class DevConfig(BaseModel):
     """Developer-mode-only configuration options."""
 
     enable_dev_ui: bool = False
-    llm_params: Optional[dict] = None
+    llm_params: dict = {}
     disable_auth: bool = False
     disable_tls: bool = False
     k8s_auth_token: Optional[str] = None
-    run_on_localhost: Optional[bool] = False
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize developer configuration settings."""
-        super().__init__()
-        if data is None:
-            return
-        self.enable_dev_ui = str(data.get("enable_dev_ui", "False")).lower() == "true"
-        self.llm_params = data.get("llm_params", {})
-        self.k8s_auth_token = str(data.get("k8s_auth_token", None))
-        self.disable_auth = str(data.get("disable_auth", "False")).lower() == "true"
-        self.disable_tls = str(data.get("disable_tls", "False")).lower() == "true"
-        self.run_on_localhost = (
-            str(data.get("run_on_localhost", "False")).lower() == "true"
-        )
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, DevConfig):
-            return (
-                self.enable_dev_ui == other.enable_dev_ui
-                and self.llm_params == other.llm_params
-                and self.disable_auth == other.disable_auth
-                and self.k8s_auth_token == other.k8s_auth_token
-                and self.disable_tls == other.disable_tls
-                and self.run_on_localhost == other.run_on_localhost
-            )
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate OLS Dev config."""
-        if self.llm_params is not None and not isinstance(self.llm_params, dict):
-            raise InvalidConfigurationError("llm_params needs to be defined as a dict")
+    run_on_localhost: bool = False
 
 
 class Config(BaseModel):
@@ -965,9 +933,8 @@ class Config(BaseModel):
             self.ols_config = OLSConfig(v)
         else:
             raise InvalidConfigurationError("no OLS config section found")
-        v = data.get("dev_config")
         # Always initialize dev config, even if there's no config for it.
-        self.dev_config = DevConfig(v)
+        self.dev_config = DevConfig(**data.get("dev_config", {}))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1005,6 +972,5 @@ class Config(BaseModel):
     def validate_yaml(self) -> None:
         """Validate all configurations."""
         self.llm_providers.validate_yaml()
-        self.dev_config.validate_yaml()
         self.ols_config.validate_yaml(self.dev_config.disable_tls)
         self._validate_default_provider_and_model()
