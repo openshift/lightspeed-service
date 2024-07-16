@@ -56,6 +56,7 @@ def _read_secret(
         msg = "Improper credentials_path specified: it must contain path to directory with secrets."
         # no logging configured yet
         print(msg)
+        return None
 
     try:
         with open(filename, mode="r", encoding="utf-8") as f:

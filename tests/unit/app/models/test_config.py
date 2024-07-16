@@ -465,6 +465,43 @@ def test_provider_config_azure_openai_specific():
     assert provider_config.bam_config is None
 
 
+def test_provider_config_apitoken_only():
+    """Test if Azure OpenAI-specific config is loaded and validated."""
+    # provider type is set to "azure_openai" and Azure OpenAI-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "azure_openai",
+            "url": "test_url",
+            "azure_openai_config": {
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret/apitoken",
+                "deployment_name": "deployment-name",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.url/",
+                }
+            ],
+        }
+    )
+    # Azure OpenAI-specific configuration must be present
+    assert provider_config.azure_config is not None
+    assert str(provider_config.azure_config.url) == "http://localhost/"
+    assert provider_config.azure_config.tenant_id is None
+    assert provider_config.azure_config.client_id is None
+    assert provider_config.azure_config.client_secret is None
+
+    assert provider_config.azure_config.deployment_name == "deployment-name"
+    assert provider_config.azure_config.api_key is not None
+
+    # configuration for other providers must not be set
+    assert provider_config.openai_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
+
+
 def test_provider_config_azure_openai_unknown_parameters():
     """Test if unknown Azure OpenAI parameters are detected."""
     # provider type is set to "azure_openai" and Azure OpenAI-specific configuration is there
