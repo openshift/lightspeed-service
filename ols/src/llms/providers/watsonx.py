@@ -49,8 +49,9 @@ class Watsonx(LLMProvider):
         if self.provider_config.watsonx_config is not None:
             watsonx_config = self.provider_config.watsonx_config
             self.url = str(watsonx_config.url)
-            self.credentials = watsonx_config.api_key
             self.project_id = watsonx_config.project_id
+            if watsonx_config.api_key is not None:
+                self.credentials = watsonx_config.api_key
 
         if self.credentials is None:
             raise ValueError("Credentials must be specified")

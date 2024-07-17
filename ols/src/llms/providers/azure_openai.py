@@ -55,7 +55,8 @@ class AzureOpenAI(LLMProvider):
         if azure_config is not None:
             self.url = str(azure_config.url)
             deployment_name = azure_config.deployment_name
-            self.credentials = azure_config.api_key
+            if azure_config.api_key is not None:
+                self.credentials = azure_config.api_key
 
         default_parameters = {
             "azure_endpoint": self.url,
