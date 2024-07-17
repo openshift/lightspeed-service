@@ -537,6 +537,7 @@ class CacheEntry(BaseModel):
         history = []
         for entry in cache_entries:
             history.append(f"human: {entry.query.strip()}")
-            history.append(f"ai: {entry.response.strip()}")
+            # the real response or empty string when response is not recorded
+            history.append(f"ai: {str(entry.response).strip()}")
 
         return history

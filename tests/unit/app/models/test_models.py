@@ -433,3 +433,15 @@ class TestCacheEntry:
             "human: what?",
             "ai: ",
         ]
+
+    @staticmethod
+    def test_cache_entries_to_history_no_response():
+        """Test no AI response is handled."""
+        cache_entries = [
+            CacheEntry(query="what?", response=None),
+        ]
+        history = CacheEntry.cache_entries_to_history(cache_entries)
+        assert history == [
+            "human: what?",
+            "ai: ",
+        ]
