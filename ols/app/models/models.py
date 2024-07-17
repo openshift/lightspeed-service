@@ -350,7 +350,7 @@ class FeedbackRequest(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def check_sentiment_or_user_feedback_set(self) -> "FeedbackRequest":
+    def check_sentiment_or_user_feedback_set(self) -> Self:
         """Ensure that either 'sentiment' or 'user_feedback' is set."""
         if self.sentiment is None and self.user_feedback is None:
             raise ValueError("Either 'sentiment' or 'user_feedback' must be set")
