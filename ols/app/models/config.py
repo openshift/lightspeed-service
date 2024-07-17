@@ -138,7 +138,7 @@ class ModelConfig(BaseModel):
 
     @field_validator("options")
     @classmethod
-    def validate_options(cls, options: dict) -> None:
+    def validate_options(cls, options: dict) -> dict[str, Any]:
         """Validate model options which must be dict[str, Any]."""
         if not isinstance(options, dict):
             raise InvalidConfigurationError("model options must be dictionary")
