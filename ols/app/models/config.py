@@ -382,8 +382,10 @@ class ProviderConfig(BaseModel):
                     )
 
     @staticmethod
-    def read_api_key(config: dict) -> None:
+    def read_api_key(config: Optional[dict]) -> None:
         """Read API key from file with secret."""
+        if config is None:
+            return
         config["api_key"] = _read_secret(
             config,
             constants.CREDENTIALS_PATH_SELECTOR,
