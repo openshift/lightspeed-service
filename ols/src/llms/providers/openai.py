@@ -29,7 +29,8 @@ class OpenAI(LLMProvider):
         if self.provider_config.openai_config is not None:
             openai_config = self.provider_config.openai_config
             self.url = str(openai_config.url)
-            self.credentials = openai_config.api_key
+            if openai_config.api_key is not None:
+                self.credentials = openai_config.api_key
 
         return {
             "base_url": self.url,
