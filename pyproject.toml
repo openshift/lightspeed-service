@@ -46,7 +46,8 @@ dev = [
     "rouge-score==0.1.2",  # Required for model evaluation
     "ruff==0.5.1",
     "bandit==1.7.9",
-    "types-requests==2.32.0.20240622"
+    "types-requests==2.32.0.20240622",
+    "gradio==4.37.2"
 ]
 
 [[tool.pdm.source]]
@@ -67,7 +68,6 @@ dependencies = [
     "torch==2.2.2+cpu",
     "pandas==2.1.4",
     "fastapi==0.111.0",
-    "gradio==4.37.2",
     "langchain==0.2.7",
     "langchain-ibm==0.1.9",
     "llama-index==0.10.55",
