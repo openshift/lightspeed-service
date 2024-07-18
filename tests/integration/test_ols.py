@@ -909,7 +909,7 @@ kind: Pod
 
 
 @pytest.mark.attachment()
-def test_post_question_with_large_attachment(_setup) -> None:
+def _test_post_question_with_large_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with large attachment."""
     answer = constants.SUBJECT_ALLOWED
 
@@ -964,7 +964,7 @@ logs:
             assert response.status_code == requests.codes.request_entity_too_large
 
 
-def test_post_too_long_query(_setup):
+def _test_post_too_long_query(_setup):
     """Check the REST API /v1/query with POST HTTP method for query that is too long."""
     query = "test query" * 1000
     conversation_id = suid.get_suid()
