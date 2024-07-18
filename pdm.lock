@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:9a7882a12e93603581a757e267ecd7f2ba5285c4c45e6962062c832eb0bf38d9"
+content_hash = "sha256:9415dc1f0c84fccea9cf768f5e33ae44aa16543c0cbd0e818fc1ee6e1c1ece47"
 
 [[package]]
 name = "absl-py"
@@ -945,46 +945,46 @@ files = [
 
 [[package]]
 name = "ibm-cos-sdk"
-version = "2.13.4"
-requires_python = ">= 3.6"
+version = "2.13.6"
+requires_python = ">=3.8"
 summary = "IBM SDK for Python"
 groups = ["default"]
 dependencies = [
-    "ibm-cos-sdk-core==2.13.4",
-    "ibm-cos-sdk-s3transfer==2.13.4",
+    "ibm-cos-sdk-core==2.13.6",
+    "ibm-cos-sdk-s3transfer==2.13.6",
     "jmespath<=1.0.1,>=0.10.0",
 ]
 files = [
-    {file = "ibm-cos-sdk-2.13.4.tar.gz", hash = "sha256:ee06bb89205e2bd031967e7a0d3fc47b39363be03badc49442202394a791d24a"},
+    {file = "ibm-cos-sdk-2.13.6.tar.gz", hash = "sha256:171cf2ae4ab662a4b8ab58dcf4ac994b0577d6c92d78490295fd7704a83978f6"},
 ]
 
 [[package]]
 name = "ibm-cos-sdk-core"
-version = "2.13.4"
-requires_python = ">= 3.6"
+version = "2.13.6"
+requires_python = ">=3.6"
 summary = "Low-level, data-driven core of IBM SDK for Python"
 groups = ["default"]
 dependencies = [
     "jmespath<=1.0.1,>=0.10.0",
-    "python-dateutil<3.0.0,>=2.8.2",
-    "requests<3.0,>=2.31.0",
-    "urllib3<2.2,>=1.26.18; python_version >= \"3.10\"",
+    "python-dateutil<3.0.0,>=2.9.0",
+    "requests<2.32.3,>=2.32.0",
+    "urllib3<3,>=1.26.18",
 ]
 files = [
-    {file = "ibm-cos-sdk-core-2.13.4.tar.gz", hash = "sha256:c0f3c03b6c21bb69d3dedd2a1bb647621e0d99e0e1c0929d2c36bd45cfd4166c"},
+    {file = "ibm-cos-sdk-core-2.13.6.tar.gz", hash = "sha256:dd41fb789eeb65546501afabcd50e78846ab4513b6ad4042e410b6a14ff88413"},
 ]
 
 [[package]]
 name = "ibm-cos-sdk-s3transfer"
-version = "2.13.4"
-requires_python = ">= 3.6"
+version = "2.13.6"
+requires_python = ">=3.8"
 summary = "IBM S3 Transfer Manager"
 groups = ["default"]
 dependencies = [
-    "ibm-cos-sdk-core==2.13.4",
+    "ibm-cos-sdk-core==2.13.6",
 ]
 files = [
-    {file = "ibm-cos-sdk-s3transfer-2.13.4.tar.gz", hash = "sha256:3c93feaf66254803b2b8523720efaf90e7374b544ac0a411099617f3b4689279"},
+    {file = "ibm-cos-sdk-s3transfer-2.13.6.tar.gz", hash = "sha256:e0acce6f380c47d11e07c6765b684b4ababbf5c66cc0503bc246469a1e2b9790"},
 ]
 
 [[package]]
@@ -2490,8 +2490,8 @@ files = [
 
 [[package]]
 name = "requests"
-version = "2.31.0"
-requires_python = ">=3.7"
+version = "2.32.2"
+requires_python = ">=3.8"
 summary = "Python HTTP for Humans."
 groups = ["default", "dev"]
 dependencies = [
@@ -2501,8 +2501,8 @@ dependencies = [
     "urllib3<3,>=1.21.1",
 ]
 files = [
-    {file = "requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f"},
-    {file = "requests-2.31.0.tar.gz", hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1"},
+    {file = "requests-2.32.2-py3-none-any.whl", hash = "sha256:fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c"},
+    {file = "requests-2.32.2.tar.gz", hash = "sha256:dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289"},
 ]
 
 [[package]]
