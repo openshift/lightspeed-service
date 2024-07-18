@@ -906,3 +906,80 @@ kind: Pod
 ```
 """
     assert query_passed == expected
+
+
+@pytest.mark.attachment()
+def test_post_question_with_large_attachment(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with large attachment."""
+    answer = constants.SUBJECT_ALLOWED
+
+    def validate_question(conversation_id, query):
+        """Closure called indirectly to validate the question."""
+        return answer
+
+    # generate large YAML content that exceeds token limit
+    yaml = """
+kind: Pod
+metadata:
+     name: private-reg
+logs:
+"""
+    for i in range(10000):
+        yaml += f"    log{i}: 'this is log message #{i}"
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=validate_question,
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                    "attachments": [
+                        {
+                            "attachment_type": "configuration",
+                            "content": yaml,
+                            "content_type": "application/yaml",
+                        },
+                    ],
+                },
+            )
+            # error should be returned because of very large input
+            assert response.status_code == requests.codes.request_entity_too_large
+
+
+def test_post_too_long_query(_setup):
+    """Check the REST API /v1/query with POST HTTP method for query that is too long."""
+    query = "test query" * 1000
+    conversation_id = suid.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={"conversation_id": conversation_id, "query": query},
+    )
+
+    # error should be returned
+    assert response.status_code == requests.codes.request_entity_too_large
+    expected_details = {
+        "detail": {
+            "cause": "Prompt length 2200 exceeds LLM available context window limit 446 "
+            "tokens",
+            "response": "Prompt is too long",
+        }
+    }
+    assert response.json() == expected_details
