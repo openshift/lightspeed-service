@@ -30,7 +30,7 @@ from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
-from ols.utils import suid
+from ols.utils import errors_parsing, suid
 from ols.utils.auth_dependency import AuthDependency
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
@@ -264,11 +264,14 @@ def generate_response(
     except Exception as summarizer_error:
         logger.error("Error while obtaining answer for user question")
         logger.exception(summarizer_error)
+        status_code, response, cause = errors_parsing.parse_generic_llm_error(
+            summarizer_error
+        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status_code,
             detail={
-                "response": "Error while obtaining answer for user question",
-                "cause": str(summarizer_error),
+                "response": response,
+                "cause": cause,
             },
         )
 

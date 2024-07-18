@@ -22,6 +22,7 @@ from ols.app.models.models import (
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.utils import suid
+from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE
 from ols.utils.redactor import Redactor, RegexFilter
 from ols.utils.token_handler import PromptTooLongError
 
@@ -806,9 +807,7 @@ def test_generate_response_on_summarizer_error(mock_summarize):
     previous_input = None
 
     # try to get response
-    with pytest.raises(
-        HTTPException, match="Error while obtaining answer for user question"
-    ):
+    with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
         ols.generate_response(conversation_id, llm_request, previous_input)
 
 
@@ -824,9 +823,7 @@ def test_generate_response_unknown_validation_result(exc):
     previous_input = None
 
     # try to get response
-    with pytest.raises(
-        HTTPException, match="Error while obtaining answer for user question"
-    ):
+    with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
         ols.generate_response(conversation_id, llm_request, previous_input)
 
 

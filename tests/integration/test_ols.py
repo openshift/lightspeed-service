@@ -12,6 +12,7 @@ from ols.app.models.config import (
     QueryFilter,
 )
 from ols.utils import suid
+from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
@@ -107,11 +108,11 @@ def test_post_question_on_generic_response_type_summarize_error(_setup):
             "/v1/query",
             json={"conversation_id": conversation_id, "query": "test query"},
         )
-        assert response.status_code == requests.codes.internal_server_error
+        assert response.status_code == DEFAULT_STATUS_CODE
         expected_json = {
             "detail": {
+                "response": DEFAULT_ERROR_MESSAGE,
                 "cause": "summarizer error",
-                "response": "Error while obtaining answer for user question",
             }
         }
 
