@@ -230,11 +230,13 @@
             "answer": {
                 "bam+ibm/granite-13b-chat-v2+with_rag": {
                     "text": [
+                        "The provided document is a detailed guide on updating OpenShift clusters, including information on the Cluster Version Operator (CVO), ClusterVersion resource, and various update strategies such as canary rollouts.\n\nAdditionally, the document provides instructions on how to check compatibility and update installed Operators.\n\nFor more information on specific update strategies, refer to the \"Performing a canary rollout update\" section.\n\nFor a general overview of how updates work, see the \"Introduction to OpenShift updates\" section.",
                         "Yes, the Red Hat OpenShift Container Platform documentation covers updating clusters. You can find the relevant information in the \"Updating Clusters\" section of the documentation."
                     ]
                 },
                 "watsonx+ibm/granite-13b-chat-v2+with_rag": {
                     "text": [
+                        "The provided document is a detailed guide on updating OpenShift clusters, including information on the Cluster Version Operator (CVO), ClusterVersion resource, and various update strategies such as canary rollouts.\n\nAdditionally, the document provides instructions on how to check compatibility and update installed Operators.\n\nFor more information on specific update strategies, refer to the \"Performing a canary rollout update\" section.\n\nFor a general overview of how updates work, see the \"Introduction to OpenShift updates\" section.",
                         "Yes, the Red Hat OpenShift Container Platform documentation covers updating clusters. You can find the relevant information in the \"Updating Clusters\" section of the documentation."
                     ]
                 },
