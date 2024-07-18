@@ -116,3 +116,211 @@ def test_post_question_on_generic_response_type_summarize_error(_setup):
         }
 
         assert response.json() == expected_json
+
+
+def test_post_question_that_is_not_validated(_setup):
+    """Check the REST API /v1/query with POST HTTP method for question that is not validated."""
+    # let's pretend the question can not be validated
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=Exception("can not validate"),
+    ):
+        conversation_id = suid.get_suid()
+        response = client.post(
+            "/v1/query",
+            json={"conversation_id": conversation_id, "query": "test query"},
+        )
+
+        # error should be returned
+        assert response.status_code == requests.codes.internal_server_error
+        expected_details = {
+            "detail": {
+                "cause": "can not validate",
+                "response": "Error while validating question",
+            }
+        }
+        assert response.json() == expected_details
+
+
+def test_post_question_with_provider_but_not_model(_setup):
+    """Check how missing model is detected in request."""
+    conversation_id = suid.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={
+            "conversation_id": conversation_id,
+            "query": "test query",
+            "provider": constants.PROVIDER_BAM,
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM model must be specified when the provider is specified."
+    )
+
+
+def test_post_question_with_model_but_not_provider(_setup):
+    """Check how missing provider is detected in request."""
+    conversation_id = suid.get_suid()
+    response = client.post(
+        "/v1/query",
+        json={
+            "conversation_id": conversation_id,
+            "query": "test query",
+            "model": constants.GRANITE_13B_CHAT_V1,
+        },
+    )
+    assert response.status_code == requests.codes.unprocessable
+    assert len(response.json()["detail"]) == 1
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, LLM provider must be specified when the model is specified."
+    )
+
+
+def test_unknown_provider_in_post(_setup):
+    """Check the REST API /v1/query with POST method when unknown provider is requested."""
+    # empty config - no providers
+    config.llm_config.providers = {}
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "hello?",
+            "provider": "some-provider",
+            "model": "some-model",
+        },
+    )
+
+    assert response.status_code == requests.codes.unprocessable
+    expected_json = {
+        "detail": {
+            "cause": "Provider 'some-provider' is not a valid provider. "
+            "Valid providers are: []",
+            "response": "Unable to process this request",
+        }
+    }
+
+    assert response.json() == expected_json
+
+
+def test_unsupported_model_in_post(_setup):
+    """Check the REST API /v1/query with POST method when unsupported model is requested."""
+    test_provider = "test-provider"
+    provider_config = ProviderConfig()
+    provider_config.models = {}  # no models configured
+    config.llm_config.providers = {test_provider: provider_config}
+
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "hello?",
+            "provider": test_provider,
+            "model": "some-model",
+        },
+    )
+
+    assert response.status_code == requests.codes.unprocessable
+    expected_json = {
+        "detail": {
+            "cause": "Model 'some-model' is not a valid model for "
+            "provider 'test-provider'. Valid models are: []",
+            "response": "Unable to process this request",
+        }
+    }
+    assert response.json() == expected_json
+
+
+def test_post_question_improper_conversation_id(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method with improper conversation ID."""
+    assert config.dev_config is not None
+    config.dev_config.disable_auth = True
+    answer = constants.SUBJECT_ALLOWED
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+
+        conversation_id = "not-correct-uuid"
+        response = client.post(
+            "/v1/query",
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query",
+            },
+        )
+        # error should be returned
+        assert response.status_code == requests.codes.internal_server_error
+        expected_details = {
+            "detail": {
+                "cause": "Invalid conversation ID not-correct-uuid",
+                "response": "Error retrieving conversation history",
+            }
+        }
+        assert response.json() == expected_details
+
+
+def test_post_question_on_noyaml_response_type(_setup) -> None:
+    """Check the REST API /v1/query with POST HTTP method when call is success."""
+    answer = constants.SUBJECT_ALLOWED
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
+    ):
+        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": "test query",
+                },
+            )
+            print(response)
+            assert response.status_code == requests.codes.ok
+
+
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.KEYWORD,
+)
+@patch("ols.app.endpoints.ols.QuestionValidator.validate_question")
+def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
+    """Check the REST API /v1/query with keyword validation."""
+    query = "What is Openshift ?"
+
+    from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
+
+    ml = mock_langchain_interface(None)
+    with (
+        patch(
+            "ols.src.query_helpers.docs_summarizer.LLMChain",
+            new=mock_llm_chain(None),
+        ),
+        patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
+        ),
+    ):
+        conversation_id = suid.get_suid()
+        response = client.post(
+            "/v1/query",
+            json={"conversation_id": conversation_id, "query": query},
+        )
+        assert response.status_code == requests.codes.ok
+        # Currently mock invoke passes same query as response text.
+        assert query in response.json()["response"]
+        assert mock_llm_validation.call_count == 0
