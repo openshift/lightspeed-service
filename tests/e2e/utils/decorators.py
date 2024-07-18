@@ -34,7 +34,7 @@ def retry(
                     return test_function(*args, **kwargs)
 
                 except Exception as e:
-                    if type(e) != on_error:
+                    if not isinstance(e, on_error):
                         raise
 
                     # retrieve error message
