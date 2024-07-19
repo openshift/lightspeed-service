@@ -1,0 +1,37 @@
+FROM registry.access.redhat.com/ubi9@sha256:ed84f34cd929ea6b0c247b6daef54dd79602804a32480a052951021caf429494
+
+# PostgreSQL image for OpenShift.
+# Volumes:
+#  * /var/lib/pgsql/data   - Database cluster for PostgreSQL.
+# Environment:
+#  * $POSTGRESQL_USER     - Database user name.
+#  * $POSTGRESQL_PASSWORD - User's password.
+#  * $POSTGRESQL_DATABASE - Name of the database to create.
+#  * $POSTGRESQL_ADMIN_PASSWORD (Optional) - Password for the 'postgres' administrator user.
+
+ENV POSTGRESQL_VERSION=16 \
+    POSTGRESQL_PREV_VERSION=15 \
+    HOME=/var/lib/pgsql
+
+EXPOSE 5432
+
+ENV PATH="/usr/pgsql-${POSTGRESQL_VERSION}/bin:${PATH}"
+
+RUN  { yum -y module enable "postgresql:${POSTGRESQL_VERSION}" || :; } && \
+    dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+    INSTALL_PKGS="glibc-locale-source glibc-langpack-en rsync tar gettext bind-utils nss_wrapper postgresql${POSTGRESQL_VERSION}-server" && \
+    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    rpm -V $INSTALL_PKGS && \
+    postgres -V | grep -qe "$POSTGRESQL_VERSION\." && echo "Found VERSION $POSTGRESQL_VERSION" && \
+    dnf -y clean all --enablerepo='*' && \
+    localedef -f UTF-8 -i en_US en_US.UTF-8 && \
+    mkdir -p /var/lib/pgsql/data && \
+    chgrp -R 0 /var/lib/pgsql /var/run/postgresql && chmod -R g=u /var/lib/pgsql /var/run/postgresql
+
+ENV LANG=en_US.UTF-8 \
+    CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/postgresql
+
+COPY root /
+
+ENTRYPOINT ["container-entrypoint"]
+CMD ["run-postgresql"]
