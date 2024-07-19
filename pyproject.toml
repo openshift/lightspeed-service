@@ -47,7 +47,8 @@ dev = [
     "ruff==0.5.2",
     "bandit==1.7.9",
     "types-requests==2.32.0.20240622",
-    "gradio==4.37.2"
+    "gradio==4.37.2",
+    "boto3==1.34.145",
 ]
 
 [[tool.pdm.source]]
