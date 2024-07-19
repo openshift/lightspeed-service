@@ -39,7 +39,7 @@ async def ensure_feedback_enabled(request: Request) -> None:
     if not feedback_enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Feedback is currently disabled.",
+            detail="Forbidden: Feedback is currently disabled.",
         )
 
 
