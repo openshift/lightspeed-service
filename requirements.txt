@@ -744,9 +744,9 @@ llama-index==0.10.55 \
     --hash=sha256:32781185d60d99dc7a02f2efa73bdaca2f0ae96bf5d42cef6f1b9124f9eacf65 \
     --hash=sha256:b07e4708e451c4505df978997c998f10ff2ebdbda12fbf892b7e6df79f5cf4c8
     # via ols (pyproject.toml)
-llama-index-agent-openai==0.2.8 \
-    --hash=sha256:7f123e86992d6c33f310d36331c32989a921cb76abe9d0fd1cf1e40a7eb65d2e \
-    --hash=sha256:e3e5c58cb1347d336a41391c60539098655f38fa57c1023063df5cfc5f468ef6
+llama-index-agent-openai==0.2.9 \
+    --hash=sha256:d7f0fd4c87124781acd783be603871f8808b1a3969e876a9c96e2ed0844d46ac \
+    --hash=sha256:debe86da6d9d983db32b445ddca7c798ac140fe59573bafded73595b3995f3d5
     # via
     #   llama-index
     #   llama-index-program-openai
