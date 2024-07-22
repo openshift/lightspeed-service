@@ -721,9 +721,9 @@ langchain-ibm==0.1.9 \
     --hash=sha256:1a2c35b204fabea37eae2bce4b530d6c982be709449b01a531432e13caeaaa34 \
     --hash=sha256:92fe243ba782e5826c774a6ad6fb1b5d79ab00b5bc1dd100cdccb3bc25660079
     # via ols (pyproject.toml)
-langchain-openai==0.1.15 \
-    --hash=sha256:016da6be25c1accdb0f7468868d3b294329ae97d73c2425c580656e9c30ad7be \
-    --hash=sha256:7e3cd4c77ccb3a7d28743daaefeb0d34fc1665b03bdfe3f3db5d44894d10b92f
+langchain-openai==0.1.17 \
+    --hash=sha256:30bef5574ecbbbb91b8025b2dc5a1bd81fd62157d3ad1a35d820141f31c5b443 \
+    --hash=sha256:c5d70ddecdcb93e146f376bdbadbb6ec69de9ac0f402cd5b83de50b655ba85ee
     # via ols (pyproject.toml)
 langchain-text-splitters==0.2.2 \
     --hash=sha256:1c80d4b11b55e2995f02d2a326c0323ee1eeff24507329bb22924e420c782dff \
