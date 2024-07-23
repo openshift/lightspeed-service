@@ -1477,11 +1477,19 @@ def test_http_header_redaction():
 def test_model_response(request) -> None:
     """Evaluate model response."""
     # request.config.option.eval_provider="openai"
-    # request.config.option.eval_provider="azure"
     # request.config.option.eval_model="gpt-4o-mini"
-    assert ResponseEvaluation(request.config.option, client).validate_response()
+    # DEBUG
+    # request.config.option.eval_provider="azure_openai"
+    # request.config.option.eval_model="gpt-3.5-turbo"
+    # request.config.option.eval_provider="watsonx"
+    # request.config.option.eval_model="ibm/granite-13b-chat-v2"
+    responses_as_expected = ResponseEvaluation(
+        request.config.option, client
+    ).validate_response()
+    assert responses_as_expected
 
 
+# this runs only for watsonx at the moment
 @pytest.mark.model_evaluation()
 def test_model_evaluation(request) -> None:
     """Evaluate model."""

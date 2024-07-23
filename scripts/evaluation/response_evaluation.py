@@ -146,6 +146,7 @@ class ResponseEvaluation:
             if not answer_data.get("in_use", True):
                 continue
 
+            # TODO dataclass
             question = self._qa_pairs[query_id]["question"]
             answers = answer_data["text"]
             eval_threshold = answer_data.get("cutoff_score", EVAL_THRESHOLD)
@@ -184,14 +185,15 @@ class ResponseEvaluation:
         result_df = self._get_evaluation_score(answer_id)
 
         if len(result_df) > 0:
-            result_df["answer_eval_fail_flag"] = (
+            result_df["answer_eval_failed"] = (
                 result_df.consistency_score > result_df.cutoff_score
             )
-            # If none of the answer for any question has score below threshold,
-            # then mark as evaluation failure.
-            result_df["question_eval_fail_flag"] = result_df.groupby(
+            # If we validate LLM answers against multiple possible expected
+            # answers (defined in qa pairs), we consider evaluation as failed
+            # only if the score doesn't meet the threshold for none of the answers.
+            result_df["scenario_failed"] = result_df.groupby(
                 "query_id"
-            ).answer_eval_fail_flag.transform("min")
+            ).answer_eval_failed.transform("min")
 
             result_file = (
                 f"{self._result_dir}/response_evaluation_result-"
@@ -200,17 +202,19 @@ class ResponseEvaluation:
             result_df.to_csv(result_file, index=False)
             print(f"Result is saved to {result_file}")
 
-            if result_df.question_eval_fail_flag.max() == 1:
+            if result_df.scenario_failed.max() == 1:
                 # If evaluation has failed for any question,
                 # then return False (Failed validation scenario)
                 print(
                     "Response is not matching for question(s):\n"
                     f"Please check result in {result_file}."
                 )
+                print(result_df)
                 return False
         else:
             print("No result. Nothing to process.")
 
+        print("Validation was sucessful, responses are matching for all questions.")
         return True
 
     def _populate_eval_data_for_qna_json(

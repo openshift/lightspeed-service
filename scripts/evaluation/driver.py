@@ -58,7 +58,7 @@ def _args_parser(args):
     parser.add_argument(
         "--eval_type",
         choices=["consistency", "model", "all"],
-        default="model",
+        default="consistency",
         type=str,
         help="Evaluation type.",
     )
@@ -81,6 +81,15 @@ def main():
     """Evaluate response."""
     args = _args_parser(sys.argv[1:])
 
+    # DEBUG
+    # args.eval_provider = "openai"
+    # args.eval_model = "gpt-4o-mini"
+    # args.eval_provider = "watsonx"
+    # args.eval_model = "ibm/granite-13b-chat-v2"
+    # args.eval_provider = "bam"
+    # args.eval_model = "ibm/granite-13b-chat-v2"
+    # args.eval_query_ids = ["eval1", "eval2"]
+
     client = Client(base_url=args.eval_api_url, verify=False)  # noqa: S501
 
     if "localhost" not in args.eval_api_url:
@@ -92,12 +101,14 @@ def main():
 
     match args.eval_type:
         case "consistency":
-            resp_eval.validate_response()
+            print(f"Response evaluation result is: {resp_eval.validate_response()}")
         case "model":
-            resp_eval.evaluate_models()
+            print(f"Models evaluation result is: {resp_eval.evaluate_models()}")
+        case "all":
+            print(f"Response evaluation result is: {resp_eval.validate_response()}")
+            print(f"Models evaluation result is: {resp_eval.evaluate_models()}")
         case _:
-            resp_eval.validate_response()
-            resp_eval.evaluate_models()
+            print("Invalid evaluation type.")
 
 
 if __name__ == "__main__":
