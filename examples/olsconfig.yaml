@@ -14,7 +14,7 @@ llm_providers:
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-4-1106-preview
-      - name: gpt-3.5-turbo
+      - name: gpt-4o-mini
   - name: my_azure_openai
     type: azure_openai
     url: "https://myendpoint.openai.azure.com/"

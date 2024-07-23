@@ -41,7 +41,7 @@ class TestLLM:
         query = "Tell me about Kubernetes"
         conversation_id = "id"
         provider = "openai"
-        model = "gpt-3.5-turbo"
+        model = "gpt-4o-mini"
         llm_request = LLMRequest(
             query=query,
             conversation_id=conversation_id,

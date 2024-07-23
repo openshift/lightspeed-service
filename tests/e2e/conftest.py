@@ -59,7 +59,7 @@ def pytest_addoption(parser):
         default=[
             "bam+granite13b-chatv2",
             "watsonx+granite13b-chatv2",
-            "openai+gpt35-turbo",
+            "openai+gpt-4o-mini",
             "azure+gpt35-turbo-4k",
         ],
         type=str,

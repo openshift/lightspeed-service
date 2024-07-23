@@ -53,6 +53,7 @@ GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
 
 GPT4_TURBO = "gpt-4-turbo"
+GPT4O_MINI = "gpt-4o-mini"
 FAKE_MODEL = "fake_model"
 
 
@@ -86,12 +87,10 @@ CONTEXT_WINDOW_SIZES = {
         GRANITE_13B_CHAT_V2: 8192,
     },
     PROVIDER_AZURE_OPENAI: {
-        GPT4_TURBO: 128000,
-        GPT35_TURBO: 16384,
+        GPT4O_MINI: 128000,
     },
     PROVIDER_OPENAI: {
-        GPT4_TURBO: 128000,
-        GPT35_TURBO: 16384,
+        GPT4O_MINI: 128000,
     },
     PROVIDER_FAKE: {
         FAKE_MODEL: DEFAULT_CONTEXT_WINDOW_SIZE,

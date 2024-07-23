@@ -3,7 +3,7 @@
 # $PROVIDER_PROJECT_ID - for use with watsonx, can leave empty otherwise
 # $PROVIDER_URL - set the provider api url/override the default, primarily for use with azure openai
 # $PROVIDER_DEPLOYMENT_NAME - for use with azure openai, can leave empty otherwise
-# $MODEL - the llm model to use from the provider (e.g. gpt-3.5.-turbo)
+# $MODEL - the llm model to use from the provider (e.g. gpt-4o-mini)
 
 ---
 kind: ConfigMap
@@ -32,7 +32,7 @@ data:
           max_entries: 1000
       logging_config:
         app_log_level: debug
-        lib_log_level: debug
+        lib_log_level: info
       default_provider: "$PROVIDER"
       default_model: "$MODEL"
       query_filters:

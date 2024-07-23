@@ -101,10 +101,11 @@ def setup_module(module):
     if not OLS_READY:
         must_gather()
 
-    # disable collector script by default to avoid running during all
-    # tests (collecting/sending data)
-    pod_name = cluster_utils.get_single_existing_pod_name()
-    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # disable collector script by default in clusterto avoid running
+    # during all tests (collecting/sending data)
+    if on_cluster:
+        pod_name = cluster_utils.get_single_existing_pod_name()
+        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
 
 def teardown_module(module):
@@ -284,7 +285,7 @@ def test_too_long_question() -> None:
     """Check the REST API /v1/query with too long question."""
     endpoint = "/v1/query"
     # let's make the query really large, larger that context window size
-    query = "what is kubernetes?" * 10000
+    query = "what is kubernetes?" * 100000
 
     with metrics_utils.RestAPICallCounterChecker(
         metrics_client, endpoint, status_code=requests.codes.request_entity_too_large
@@ -545,7 +546,10 @@ def test_conversation_history() -> None:
         cid = json_response["conversation_id"]
         response = client.post(
             endpoint,
-            json={"conversation_id": cid, "query": "what?"},
+            json={
+                "conversation_id": cid,
+                "query": "I don't undersant, can you rephrase?",
+            },
             timeout=LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
@@ -719,7 +723,7 @@ def test_model_provider():
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
-        ("gpt-3.5-turbo", "openai"),
+        ("gpt-4o-mini", "openai"),
         ("gpt-3.5-turbo", "azure_openai"),
         ("ibm/granite-13b-chat-v2", "bam"),
         ("ibm/granite-13b-chat-v2", "watsonx"),
@@ -1472,6 +1476,9 @@ def test_http_header_redaction():
 @pytest.mark.response_evaluation()
 def test_model_response(request) -> None:
     """Evaluate model response."""
+    # request.config.option.eval_provider="openai"
+    # request.config.option.eval_provider="azure"
+    # request.config.option.eval_model="gpt-4o-mini"
     assert ResponseEvaluation(request.config.option, client).validate_response()
 
 

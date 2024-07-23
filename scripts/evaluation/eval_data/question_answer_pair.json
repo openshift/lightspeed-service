@@ -17,7 +17,7 @@
                         "Kubernetes is an open-source container orchestration engine for automating deployment, scaling, and management of containerized applications. It uses a declarative model, meaning it defines a desired state and automatically works towards achieving that state. Kubernetes was originally developed by Google and has since become widely adopted in the industry for its ability to manage large-scale container deployments. It provides features such as self-healing, automated rollouts, and service discovery, making it easier to manage and scale complex applications."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "Kubernetes is an open-source container orchestration engine that automates the deployment, scaling, and management of containerized applications. It serves as the engine for various applications such as telecommunications, streaming video, gaming, banking, and more. Kubernetes allows you to run container workloads on multiple worker nodes managed by control plane nodes. It uses pods to group containers and provides additional metadata for easier management."
                     ]
@@ -41,7 +41,7 @@
                     "cutoff_score": {
                         "bam+ibm/granite-13b-chat-v2+with_rag": 0.3,
                         "watsonx+ibm/granite-13b-chat-v2+without_rag": 0.3,
-                        "openai+gpt-3.5-turbo+without_rag": 0.2,
+                        "openai+gpt-4o-mini+without_rag": 0.2,
                         "azure_openai+gpt-3.5-turbo+without_rag": 0.2
                     },
                     "text": [
@@ -52,7 +52,7 @@
                     "cutoff_score": {
                         "bam+ibm/granite-13b-chat-v2+with_rag": 0.2,
                         "watsonx+ibm/granite-13b-chat-v2+with_rag": 0.2,
-                        "openai+gpt-3.5-turbo+with_rag": 0.2,
+                        "openai+gpt-4o-mini+without_rag": 0.2,
                         "azure_openai+gpt-3.5-turbo+with_rag": 0.2
                     },
                     "text": [
@@ -85,7 +85,7 @@
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through a variety of consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, live migrating virtual machines between nodes, and providing an enhanced web console for managing these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "OpenShift Virtualization allows you to bring traditional virtual machines (VMs) into the Red Hat OpenShift Container Platform and run them alongside containers. VMs in OpenShift Virtualization are native Kubernetes objects that can be managed through the Red Hat OpenShift Container Platform web console or command line interface.",
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It enables tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads together in a cluster, connecting to VMs through various consoles and CLI tools, importing and cloning existing VMs, managing network interfaces and storage disks attached to VMs, as well as live migrating VMs between nodes. It provides a graphical web console for managing these virtualized resources within the OpenShift Container Platform cluster infrastructure."
@@ -122,7 +122,7 @@
                         "The purpose of the imagePullPolicy in Red Hat OpenShift Container Platform is to determine if the container image should be pulled prior to starting the container. The imagePullPolicy can have three possible values: Always, IfNotPresent, or Never. If not specified, OpenShift sets the default based on the image tag - setting it to Always for images with the tag \"latest\" and IfNotPresent for other tags."
                     ]
                 },
-                "azure_openai+gpt-3.5-turbo+with_rag": {
+                "azure_openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "The purpose of the imagePullPolicy in Red Hat OpenShift Container Platform is to determine if the container image should be pulled prior to starting the container. The imagePullPolicy can have three possible values: Always, IfNotPresent, or Never."
                     ]
@@ -147,7 +147,7 @@
                         "Red Hat OpenShift Pipelines automates deployments using Tekton building blocks, which introduce standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows for the abstraction of underlying implementation details and the creation of serverless, cloud-native, continuous integration and continuous delivery (CI/CD) systems that run in isolated containers. These pipelines are designed for decentralized teams working on microservices-based architecture and can be triggered by various events, such as code changes or vulnerability discoveries, to rebuild and replace images ensuring the immutable containers process."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.28,
                     "text": [
                         "Red Hat OpenShift Pipelines automates deployments by using Tekton building blocks to define CI/CD pipelines that are portable across Kubernetes distributions. These pipelines are serverless, cloud-native, continuous integration, and continuous deployment systems that run in isolated containers. They leverage standard Tekton custom resources to automate deployments and are designed for decentralized teams working on microservices-based architecture."
@@ -178,7 +178,7 @@
                         "A LimitRange is a feature in OpenShift that sets resource usage limits for each kind of resource in a Namespace. It is used to define the minimum and maximum usage limits for resources that match on kind."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "A LimitRange in OpenShift sets resource usage limits for each kind of resource in a Namespace. It defines minimum and maximum usage limits for resources that match on kind, such as CPU, memory, or storage."
                     ]
@@ -208,7 +208,7 @@
                         "The Vertical Pod Autoscaler Operator (VPA) in Openshift is responsible for managing and scaling the vertical dimensions of applications, such as the number of replicas per container, based on resource utilization metrics. It helps to ensure that the resources are efficiently utilized and prevents overprovisioning or underutilization of resources. The VPA Operator can be installed using the Red Hat OpenShift Container Platform web console or the command line interface."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "The purpose of the Vertical Pod Autoscaler Operator in OpenShift is to automatically adjust the resource requests for pods based on their actual usage. This helps optimize resource allocation and improve overall cluster efficiency by dynamically adjusting resources to meet the demands of workloads."
                     ]
@@ -240,7 +240,7 @@
                         "Yes, the Red Hat OpenShift Container Platform documentation covers updating clusters. You can find the relevant information in the \"Updating Clusters\" section of the documentation."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.28,
                     "text": [
                         "Yes, there is a document on updating clusters in the context of OpenShift. The document provides detailed information on how cluster updates work, including the role of the Cluster Version Operator (CVO) and the ClusterVersion object. It also outlines steps to follow when updating clusters to the next minor version, such as confirming that nodes are updated before deploying workloads that rely on new features. If you have specific questions or need further details from the document, feel free to ask.",
@@ -273,7 +273,7 @@
                         "You can find your clusterID in the Red Hat OpenShift Container Platform web console by navigating to Home -> Overview. The value is available in the Cluster ID field of the Details section."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "To find your clusterID, you can follow these steps:\n\n1. Navigate to Home -> Overview in the Red Hat OpenShift Container Platform web console.\n2. Look for the Cluster ID field in the Details section.\n\nAlternatively, you can use the OpenShift CLI (oc) and run the following command:\n```terminal\n$ oc get clusterversion -o jsonpath='{.items[].spec.clusterID}{\"\\n\"}'\n```\n\nThis will provide you with your cluster's unique identifier."
                     ]
@@ -303,7 +303,7 @@
                         "No, I do not recommend using DeploymentConfig as of Red Hat OpenShift Container Platform 4.14. DeploymentConfig objects are deprecated and should not be used for new installations. Instead, use Deployment objects or another alternative to provide declarative updates for pods."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "text": [
                         "As of Red Hat OpenShift Container Platform 4.14, DeploymentConfig objects are deprecated and not recommended for new installations. It is advised to use Deployment objects or another alternative to provide declarative updates for pods instead."
                     ]
@@ -335,7 +335,7 @@
                         "Here is an example of a YAML file that uses the MongoDB image and deploys a simple application:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: quay.io/centos7/mongodb-36-centos7:latest\n        ports:\n        - containerPort: 27017\n```\n\nThis YAML file creates a Deployment object that deploys a MongoDB container with a replica count of 3. The container image is pulled from the Quay registry and exposes port 27017 for communication.\n\nTo create this YAML file, follow these steps:\n\n1. Open a terminal and navigate to the directory where you want to create the YAML file.\n2. Run the following command to create the YAML file:\n\n```bash\noc create -f mongodb-nationalparks.yaml\n```\n\nThis command creates the Deployment object for the MongoDB application.\n\n3. After the YAML file is created, you can verify its existence by running the following command:\n\n```bash\noc get deployments\n```\n\nThis command lists all the deployments in the project, including the MongoDB deployment.\n\n4. You can also verify the status of the deployment by running the following command:\n\n```bash\noc rollout status deployment/mongodb-nationalparks\n```\n\nThis command displays the current status of the MongoDB deployment, including the number of replicas and the last observed status."
                     ]
                 },
-                "openai+gpt-3.5-turbo+with_rag": {
+                "openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
                         "To deploy a MongoDB image in OpenShift, you can use the following sample deployment YAML:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb\n      app.kubernetes.io/part-of: national-parks-app\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb\n        app.kubernetes.io/part-of: national-parks-app\n    spec:\n      containers:\n        - name: mongodb-nationalparks-container\n          image: quay.io/centos7/mongodb-36-centos7 # MongoDB image reference here \n          env:\n            - name: MONGODB_USER\n              valueFrom:\n                secretKeyRef:\n                  name: nationalparks-mongodb-parameters\n                  key : MONGODB_USER\n            - name : MONGODB_PASSWORD\n              valueFrom :\n                secretKeyRef :\n                  name : nationalparks-mongodb-parameters\n                  key : MONGODB_PASSWORD\n            - name : MONGODB_DATABASE\n              valueFrom :\n                secretKeyRef :\n                  name : nationalparks-mongodb-parameters\n                  key : MONGODB_DATABASE\n            - name : MONGODB_ADMIN_PASSWORD\n              valueFrom :\n                secretKeyRef :\n                  name : nationalparks-mongodb-parameters\n                  key : MONGODB_ADMIN_PASSWORD\n```\n\nThis YAML file defines a Deployment resource that will create and manage a pod running the MongoDB container using the specified image. It also sets environment variables from the `nationalparks-mongodb-parameters` Secret to configure the MongoDB instance.",

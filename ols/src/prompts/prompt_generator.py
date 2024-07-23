@@ -6,6 +6,7 @@ from typing import Any, Optional
 from langchain.prompts import PromptTemplate
 
 from ols.constants import (
+    GPT4O_MINI,
     GPT35_TURBO,
     GRANITE_13B_CHAT_V2,
     PROVIDER_AZURE_OPENAI,
@@ -29,7 +30,7 @@ PromptConfiguration = namedtuple("PromptConfiguration", "provider model")
 # requires specifically updated prompt.
 prompt_configurations = {
     PromptConfiguration(PROVIDER_BAM, GRANITE_13B_CHAT_V2): QUERY_SYSTEM_INSTRUCTION,
-    PromptConfiguration(PROVIDER_OPENAI, GPT35_TURBO): QUERY_SYSTEM_INSTRUCTION,
+    PromptConfiguration(PROVIDER_OPENAI, GPT4O_MINI): QUERY_SYSTEM_INSTRUCTION,
     PromptConfiguration(
         PROVIDER_WATSONX, GRANITE_13B_CHAT_V2
     ): QUERY_SYSTEM_INSTRUCTION,

@@ -349,7 +349,7 @@ async def main():
         default="local:sentence-transformers/all-mpnet-base-v2",
         help="the valid models are:\
             - ibm/granite-13b-chat-v1, ibm/granite-13b-chat-v2, ibm/granite-20b-code-instruct-v1 \
-            - gpt-3.5-turbo-1106, gpt-3.5-turbo for openai",
+            - gpt-3.5-turbo-1106, gpt-3.5-turbo, gpt-4o-mini for openai",
     )
     parser.add_argument(
         "-x", "--product-index", default="applications", help="storage product index"

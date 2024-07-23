@@ -4,6 +4,7 @@ import pytest
 from langchain.prompts import PromptTemplate
 
 from ols.constants import (
+    GPT4O_MINI,
     GPT35_TURBO,
     GRANITE_13B_CHAT_V2,
     PROVIDER_AZURE_OPENAI,
@@ -23,7 +24,7 @@ from ols.src.prompts.prompts import (
 
 provider_and_model = (
     (PROVIDER_BAM, GRANITE_13B_CHAT_V2),
-    (PROVIDER_OPENAI, GPT35_TURBO),
+    (PROVIDER_OPENAI, GPT4O_MINI),
     (PROVIDER_WATSONX, GRANITE_13B_CHAT_V2),
     (PROVIDER_AZURE_OPENAI, GPT35_TURBO),
 )

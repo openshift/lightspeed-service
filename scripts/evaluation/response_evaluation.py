@@ -15,7 +15,7 @@ from scipy.spatial.distance import cosine, euclidean
 INSCOPE_MODELS = {
     "bam+granite13b-chatv2": ("bam", "ibm/granite-13b-chat-v2"),
     "watsonx+granite13b-chatv2": ("watsonx", "ibm/granite-13b-chat-v2"),
-    "openai+gpt35-turbo": ("openai", "gpt-3.5-turbo"),
+    "openai+gpt-4o-mini": ("openai", "gpt-4o-mini"),
     "azure+gpt35-turbo-4k": ("azure_openai", "gpt-3.5-turbo"),
     "azure+gpt35-turbo-16k": ("azure_openai", "gpt-3.5-turbo"),
     "azure+gpt4o": ("azure_openai", "gpt-4o"),
@@ -107,20 +107,20 @@ class ResponseEvaluation:
         ans_vec = self._embedding_model.get_text_embedding(answer)
 
         # Distance score
-        cos_score = cosine(res_vec, ans_vec)
-        euc_score = euclidean(res_vec, ans_vec)
+        cos_score = round(cosine(res_vec, ans_vec), 2)
+        euc_score = round(euclidean(res_vec, ans_vec), 2)
 
         # Naive length consideration with reduced weightage.
         len_res, len_ans = len(response), len(answer)
-        len_score = (abs(len_res - len_ans) / (len_res + len_ans)) * 0.1
+        len_score = round((abs(len_res - len_ans) / (len_res + len_ans)) * 0.1, 2)
 
-        score = len_score + (cos_score + euc_score) / 2
+        score = round(len_score + (cos_score + euc_score) / 2, 2)
         # TODO: OLS-409 Use non-contextual score to evaluate response
 
         print(
             f"cos_score: {cos_score}, "
             f"euc_score: {euc_score}, "
-            f"len_score: {len_score}\n"
+            f"len_score: {len_score}, "
             f"final_score: {score}"
         )
         return score
@@ -160,9 +160,10 @@ class ResponseEvaluation:
 
                 if score > eval_threshold:
                     print(
-                        f"Response is not as expected for question: {question}\n"
+                        f"\nResponse is not as expected for question:\n{question}\n"
                         f"Score: {score} is above cut-off value: {eval_threshold}"
                     )
+                    print(f"Expected answer: {answer}\nActual response: {response}\n")
 
                 result_dict["query_id"].append(query_id)
                 result_dict["question"].append(question)
