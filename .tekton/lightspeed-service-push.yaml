@@ -197,7 +197,7 @@ spec:
             - name: name
               value: prefetch-dependencies
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:9f1dd115789528ed0d9f8469828d180724efb0dca244d17c9ac99663edf5bcda
+              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:464e6fad6b65400d21d5cf63a012a4db4cea5ef704c2a70109c46706b1dd03e6
             - name: kind
               value: task
           resolver: bundles
@@ -255,8 +255,6 @@ spec:
         params:
           - name: BINARY_IMAGE
             value: $(params.output-image)
-          - name: BASE_IMAGES
-            value: $(tasks.build-container.results.BASE_IMAGES_DIGESTS)
         runAfter:
           - build-container
         taskRef:
@@ -282,8 +280,6 @@ spec:
             workspace: workspace
       - name: deprecated-base-image-check
         params:
-          - name: BASE_IMAGES_DIGESTS
-            value: $(tasks.build-container.results.BASE_IMAGES_DIGESTS)
           - name: IMAGE_URL
             value: $(tasks.build-container.results.IMAGE_URL)
           - name: IMAGE_DIGEST
