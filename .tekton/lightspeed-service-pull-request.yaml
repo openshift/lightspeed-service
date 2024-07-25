@@ -200,7 +200,7 @@ spec:
             - name: name
               value: prefetch-dependencies
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:464e6fad6b65400d21d5cf63a012a4db4cea5ef704c2a70109c46706b1dd03e6
+              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:f951900cb1218ecaafc7e0ef2241df01172fb3aefd98a86b0487adf540441779
             - name: kind
               value: task
           resolver: bundles
@@ -242,7 +242,7 @@ spec:
             - name: name
               value: buildah-6gb
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:82e1d62157c30388358a0fd47cadf91ac3ecaf1c4b9e37efbd123d977f12d8f7
+              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:f798ce7e47b759da1807d55977220dd41de9769a1149c8c8fa4018787a28379a
             - name: kind
               value: task
           resolver: bundles
@@ -336,7 +336,7 @@ spec:
             - name: name
               value: ecosystem-cert-preflight-checks
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-ecosystem-cert-preflight-checks:0.1@sha256:8838d3e1628dbe61f4851b3640d2e3a9a3079d3ff3da955f4a3e4c2c95a013df
+              value: quay.io/konflux-ci/tekton-catalog/task-ecosystem-cert-preflight-checks:0.1@sha256:f0b2ee5d02fdff0ea32af13e26f481f6b66bddfc1357cf171b8e7525a38f09d4
             - name: kind
               value: task
           resolver: bundles
@@ -420,7 +420,7 @@ spec:
             - name: name
               value: apply-tags
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.1@sha256:516875845f2988848ebde5f3e9c717d6077af7bf9b3cb2b34a3c3f86b2609a14
+              value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.1@sha256:8a8c1342bfa0b263361cbbc28036750ebc3d7c2460230b14d641170b812dddcc
             - name: kind
               value: task
           resolver: bundles
