@@ -52,7 +52,8 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       description="Red Hat OpenShift Lightspeed Service" \
       summary="Red Hat OpenShift Lightspeed Service" \
       com.redhat.component=openshift-lightspeed-service \
-      name=openshift-lightspeed-service
+      name=openshift-lightspeed-service \
+      vendor="Red Hat, Inc."
 
 
 # no-root user is checked in Konflux 
