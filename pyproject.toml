@@ -83,7 +83,7 @@ dependencies = [
     "ibm-cos-sdk==2.13.6",
     "langchain-openai==0.1.15",
     "pydantic==2.8.2",
-    "setuptools==71.1.0",
+    "setuptools==72.1.0",
     "prometheus-client==0.20.0",
     "kubernetes==30.1.0",
     "pytest-asyncio==0.23.7",
