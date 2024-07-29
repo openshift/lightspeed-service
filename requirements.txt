@@ -619,9 +619,9 @@ httpx-sse==0.4.0 \
     --hash=sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721 \
     --hash=sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f
     # via ibm-generative-ai
-huggingface-hub[inference]==0.23.4 \
-    --hash=sha256:35d99016433900e44ae7efe1c209164a5a81dbbcd53a52f99c281dcd7ce22431 \
-    --hash=sha256:3a0b957aa87150addf0cc7bd71b4d954b78e749850e1e7fb29ebbd2db64ca037
+huggingface-hub[inference]==0.24.3 \
+    --hash=sha256:69ecce486dd6cdad69937ba76779e893c224a670a9d947636c1d5cbd049e44d8 \
+    --hash=sha256:bfdc05cc9b64a0e24e8614a44222698799183268f6b68be209aa2df70cff2cde
     # via
     #   llama-index-embeddings-huggingface
     #   ols (pyproject.toml)
