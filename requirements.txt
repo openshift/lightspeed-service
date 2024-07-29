@@ -1595,9 +1595,9 @@ pyyaml==6.0.1 \
     #   llama-index-core
     #   transformers
     #   uvicorn
-redis==5.0.4 \
-    --hash=sha256:7adc2835c7a9b5033b7ad8f8918d09b7344188228809c98df07af226d39dec91 \
-    --hash=sha256:ec31f2ed9675cc54c21ba854cfe0462e6faf1d83c8ce5944709db8a4700b9c61
+redis==5.0.7 \
+    --hash=sha256:0e479e24da960c690be5d9b96d21f7b918a98c0cf49af3b6fafaa0753f93a0db \
+    --hash=sha256:8f611490b93c8109b50adc317b31bfd84fff31def3475b92e7e80bf39f48175b
     # via ols (pyproject.toml)
 regex==2024.7.24 \
     --hash=sha256:01b689e887f612610c869421241e075c02f2e3d1ae93a037cb14f88ab6a8934c \
