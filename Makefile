@@ -17,12 +17,10 @@ install-tools:	install-woke ## Install required utilities/tools
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
 	pip uninstall -y mypy 2> /dev/null || true
-	# force install older setuptools version
-	# https://issues.redhat.com/browse/OLS-882
-	pip install -I --force-reinstall setuptools==71.0.0
+	# display setuptools version
 	pip show setuptools
-	export PIP_CONSTRAINT=constraints.txt
-	pdm install --no-isolation --dev -v
+	# install all dependencies, including devel ones
+	pdm install --dev
 	# check that correct mypy version is installed
 	mypy --version
 
