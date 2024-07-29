@@ -804,9 +804,9 @@ llama-index-multi-modal-llms-openai==0.1.8 \
     --hash=sha256:16ae72ac3c5201ebd1d4b62203930c1768149ec85c3e477e5e51ed2ef8db1067 \
     --hash=sha256:5e2c94a6415a2509cad035ccea34461959ae327a5900d3e820417e9ebb9a13ec
     # via llama-index
-llama-index-program-openai==0.1.6 \
-    --hash=sha256:4660b338503537c5edca1e0dab606af6ce372b4f1b597e2833c6b602447c5d8d \
-    --hash=sha256:c6a4980c5ea826088b28b4dee3367edb20221e6d05eb0e05019049190131d772
+llama-index-program-openai==0.1.7 \
+    --hash=sha256:33489b573c1050a3f583ff68fcbc4bcbd49f29e74f3e5baea08ab0d5f363403c \
+    --hash=sha256:bf7eb61a073381714be5a049d93b40044dfe51bd4333bee539d1532b7407621f
     # via
     #   llama-index
     #   llama-index-question-gen-openai
