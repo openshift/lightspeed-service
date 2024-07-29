@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:a481d7ebd1e21e8a6087fb6bf44830b69b25d2d322f9b9ee1ed6015e540505ae"
+content_hash = "sha256:c381380c1948bc9c03230df24b734c1be12f33dd3b17f3848fced71b72907dd2"
 
 [[package]]
 name = "absl-py"
@@ -2770,13 +2770,13 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "65.5.1"
-requires_python = ">=3.7"
+version = "70.3.0"
+requires_python = ">=3.8"
 summary = "Easily download, build, install, upgrade, and uninstall Python packages"
 groups = ["default"]
 files = [
-    {file = "setuptools-65.5.1-py3-none-any.whl", hash = "sha256:d0b9a8433464d5800cbe05094acf5c6d52a91bfac9b52bcfc4d41382be5d5d31"},
-    {file = "setuptools-65.5.1.tar.gz", hash = "sha256:e197a19aa8ec9722928f2206f8de752def0e4c9fc6953527360d1c36d94ddb2f"},
+    {file = "setuptools-70.3.0-py3-none-any.whl", hash = "sha256:fe384da74336c398e0d956d1cae0669bc02eed936cdb1d49b57de1990dc11ffc"},
+    {file = "setuptools-70.3.0.tar.gz", hash = "sha256:f171bab1dfbc86b132997f26a119f6056a57950d058587841a0082e8830f9dc5"},
 ]
 
 [[package]]
