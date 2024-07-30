@@ -31,7 +31,7 @@ def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
     """Retrieve value of an attribute from a file."""
     file_path = data.get(file_name_key)
     if file_path is not None:
-        with open(file_path, mode="r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return f.read().rstrip()
     return None
 
@@ -59,7 +59,7 @@ def _read_secret(
         return None
 
     try:
-        with open(filename, mode="r", encoding="utf-8") as f:
+        with open(filename, encoding="utf-8") as f:
             return f.read().rstrip()
     except OSError as e:
         # some files with secret must exist, so for such cases it is time

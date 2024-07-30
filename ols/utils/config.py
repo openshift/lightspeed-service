@@ -97,7 +97,7 @@ class AppConfig:
     def reload_from_yaml_file(self, config_file: str) -> None:
         """Reload the configuration from the YAML file."""
         try:
-            with open(config_file, "r", encoding="utf-8") as f:
+            with open(config_file, encoding="utf-8") as f:
                 self.config = self._load_config_from_yaml_stream(f)
             # reset the query filters and rag index to not use cached
             # values
