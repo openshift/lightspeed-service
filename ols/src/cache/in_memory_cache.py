@@ -51,8 +51,7 @@ class InMemoryCache(Cache):
         self.deque.remove(key)
         self.deque.appendleft(key)
         value = self.cache[key].copy()
-        cache_entry = [CacheEntry.from_dict(cache_entry) for cache_entry in value]
-        return cache_entry
+        return [CacheEntry.from_dict(cache_entry) for cache_entry in value]
 
     def insert_or_append(
         self,
