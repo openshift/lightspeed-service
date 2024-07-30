@@ -119,10 +119,7 @@ class PostgresCache(Cache):
             try:
                 value = PostgresCache._select(cursor, user_id, conversation_id)
                 if value is not None:
-                    cache_entry = [
-                        CacheEntry.from_dict(cache_entry) for cache_entry in value
-                    ]
-                    return cache_entry
+                    return [CacheEntry.from_dict(cache_entry) for cache_entry in value]
                 else:
                     return []
             except psycopg2.DatabaseError as e:
