@@ -6,12 +6,19 @@ import subprocess
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
-    return subprocess.run(  # noqa: S603
-        ["oc", *args],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        res = subprocess.run(  # noqa: S603
+            ["oc", *args],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return res
+    except subprocess.CalledProcessError as e:
+        print(
+            f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
+        )
+        raise
 
 
 def run_oc_and_store_stdout(
@@ -124,12 +131,13 @@ def get_ols_url(route_name: str) -> str:
 
 
 def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
-    """Get the names of all pods in the cluster."""
+    """Get the names of all running pods in the cluster."""
     try:
         result = run_oc(
             [
                 "get",
                 "pods",
+                "--field-selector=status.phase=Running",
                 "-n",
                 namespace,
                 "-o",
@@ -141,12 +149,21 @@ def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
         raise Exception("Error getting pods") from e
 
 
-def get_single_existing_pod_name(namespace: str = "openshift-lightspeed") -> str:
-    """Return name of the single pod that is in the cluster."""
+def get_pod_by_prefix(
+    prefix: str = "lightspeed-app-server-",
+    namespace: str = "openshift-lightspeed",
+    fail_not_found: bool = True,
+) -> list[str]:
+    """Return name of the running pod(s) which match the specified prefix."""
+    pods = []
     try:
         result = get_pods(namespace)
-        assert len(result) == 1
-        return result[0]
+        for pod in result:
+            if prefix in pod:
+                pods.append(pod)
+        if fail_not_found and not pods:
+            assert False, f"No OLS api server pod found in list pods: {result}"
+        return pods
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting pod name") from e
 
@@ -184,8 +201,12 @@ def list_path(pod_name: str, path: str) -> list[str]:
         # files are returned as 'file1\nfile2\n'
         return [f for f in result.stdout.split("\n") if f]
     except subprocess.CalledProcessError as e:
-        if e.returncode == 2 and "No such file or directory" in e.stderr:
-            return []
+        print(f"Error listing path {path}: {e}, stderr: {e.stderr}, stdout: {e.stdout}")
+        if e.returncode == 2 and (
+            "No such file or directory" in e.stdout
+            or "No such file or directory" in e.stderr
+        ):
+            return None
         raise Exception("Error listing pod path") from e
 
 

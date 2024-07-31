@@ -20,79 +20,38 @@ function cleanup_ols() {
     oc delete --wait --ignore-not-found clusterrole ols-user
 }
 
-# Arguments
-# SuiteID
-# Provider
-# Provider key path
-# Provider url (if needed, azure openai only normally)
-# Provider project id (if needed, watsonx only)
-# Deployment name (if needed, azure openai only)
-# Model
-# OLS image
-function install_ols() {
+# no arguments
+function cleanup_ols_operator() {
+    # Deletes may fail if this is the first time running against
+    # the cluster, so ignore failures
 
-    SUITE_ID=$1
-    # exports needed for values used by envsubst
-    export PROVIDER=$2
-    export PROVIDER_KEY_PATH=$3
-    export PROVIDER_URL=$4
-    export PROVIDER_PROJECT_ID=$5
-    export PROVIDER_DEPLOYMENT_NAME=$6
-    export MODEL=$7
-    export OLS_IMAGE=$8
+    # delete the OLS operand
+    oc delete --wait --ignore-not-found olsconfig/cluster
 
-    # get and export cluster version
-    local lines
-    mapfile -t lines <<< "$(oc version | grep Server | awk '{print $3}' | awk 'BEGIN{FS="."}{printf("%s\n%s\n", $1, $2)}')"
-    export CLUSTER_VERSION_MAJOR="${lines[0]}"
-    export CLUSTER_VERSION_MINOR="${lines[1]}"
+    # delete the OLS subscription
+    oc delete -n openshift-lightspeed --wait --ignore-not-found subscription/lightspeed-operator
+    oc delete -n openshift-lightspeed --wait --ignore-not-found operatorgroup/openshift-lightspeed
 
-    oc create ns openshift-lightspeed
-    oc project openshift-lightspeed
+    # delete the OLS catalog
+    oc delete -n openshift-marketplace --wait --ignore-not-found catalogsource/lightspeed-operator-catalog
 
-    # create the llm api key secret ols will mount
-    oc create secret generic llmcreds --from-file=llmkey="$PROVIDER_KEY_PATH"
-
-    # create the configmap containing the ols config yaml
-    mkdir -p "$ARTIFACT_DIR/$SUITE_ID"
-    envsubst < tests/config/cluster_install/ols_configmap.yaml > "$ARTIFACT_DIR/$SUITE_ID/ols_configmap.yaml.tmp"
-    # If no provider url is being specified, remove the url field from the config yaml
-    # so we use the default provider url values.
-    if [ -z ${PROVIDER_URL:-} ]; then
-        grep -v url: "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml.tmp" > "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml"
-        rm "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml.tmp"
-    else
-        mv "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml.tmp" "${ARTIFACT_DIR}/$SUITE_ID/ols_configmap.yaml"
-    fi
-    oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_configmap.yaml"
-
-    # create the ols deployment and related resources (service, route, rbac roles)
-    envsubst < tests/config/cluster_install/ols_manifests.yaml > "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
-    oc create -f "$ARTIFACT_DIR/$SUITE_ID/ols_manifests.yaml"
-
-    # determine the hostname for the ols route
-    export OLS_URL=https://$(oc get route ols -o jsonpath='{.spec.host}')
-
+    # delete the OLS namespace
+    oc delete --wait --ignore-not-found ns openshift-lightspeed
 }
 
 # $1 suite id
 # $2 which test tags to include
 # $3 PROVIDER
 # $4 PROVIDER_KEY_PATH
-# $5 PROVIDER_URL
-# $6 PROVIDER_PROJECT_ID
-# $7 PROVIDER_DEPLOYMENT_NAME
-# $8 MODEL
-# $9 OLS_IMAGE
+# $5 MODEL
+# $6 OLS_IMAGE
 function run_suite() {
   echo "Preparing to run suite $1"
 
-  cleanup_ols
+  cleanup_ols_operator
   
-  install_ols "$1" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
-
   # Run e2e tests with response evaluation.
-  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 MODEL=$8 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
+  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
 
   local rc=$?
   return $rc

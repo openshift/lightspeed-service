@@ -4,6 +4,7 @@ import dataclasses
 import json
 import logging
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -78,24 +79,31 @@ def conversation_request(
     Returns:
         Response containing the processed information.
     """
+    timestamps: dict[str, float] = {}
+    timestamps["start"] = time.time()
+
     # Initialize variables
     previous_input = []
 
     user_id = retrieve_user_id(auth)
     logger.info(f"User ID {user_id}")
+    timestamps["retrieve user"] = time.time()
 
     conversation_id = retrieve_conversation_id(llm_request)
+    timestamps["retrieve conversation"] = time.time()
 
     # Important note: Redact the query before attempting to do any
     # logging of the query to avoid leaking PII into logs.
 
     # Redact the query
     llm_request = redact_query(conversation_id, llm_request)
+    timestamps["redact query"] = time.time()
 
     # Log incoming request (after redaction)
     logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
 
     previous_input = retrieve_previous_input(user_id, llm_request)
+    timestamps["retrieve previous input"] = time.time()
 
     # Retrieve attachments from the request
     attachments = retrieve_attachments(llm_request)
@@ -107,6 +115,7 @@ def conversation_request(
     # query for later use in transcript storage
     query_without_attachments = llm_request.query
     llm_request.query = append_attachments_to_query(llm_request.query, attachments)
+    timestamps["append attachments"] = time.time()
 
     # Validate the query
     if not previous_input:
@@ -114,6 +123,8 @@ def conversation_request(
     else:
         logger.debug("follow-up conversation - skipping question validation")
         valid = True
+
+    timestamps["validate question"] = time.time()
 
     if not valid:
         summarizer_response = SummarizerResponse(
@@ -125,6 +136,8 @@ def conversation_request(
         summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
         )
+
+    timestamps["generate response"] = time.time()
 
     store_conversation_history(
         user_id, conversation_id, llm_request, summarizer_response.response, attachments
@@ -145,6 +158,8 @@ def conversation_request(
             attachments,
         )
 
+    timestamps["store transcripts"] = time.time()
+
     # De-dup & retain order to create list of referenced documents
     referenced_documents = list(
         {
@@ -156,12 +171,44 @@ def conversation_request(
         }.values()
     )
 
+    timestamps["add references"] = time.time()
+    log_processing_durations(timestamps)
+
     return LLMResponse(
         conversation_id=conversation_id,
         response=summarizer_response.response,
         referenced_documents=referenced_documents,
         truncated=summarizer_response.history_truncated,
     )
+
+
+def log_processing_durations(timestamps: dict[str, float]) -> None:
+    """Log processing durations."""
+
+    def duration(key1: str, key2: str) -> float:
+        """Calculate duration between two timestamps."""
+        return timestamps[key2] - timestamps[key1]
+
+    retrieve_user = duration("start", "retrieve user")
+    retrieve_conversation = duration("retrieve user", "retrieve conversation")
+    redact_query = duration("retrieve conversation", "redact query")
+    retrieve_previous_input = duration("redact query", "retrieve previous input")
+    append_attachmens = duration("retrieve previous input", "append attachments")
+    validate_question = duration("append attachments", "validate question")
+    generate_response = duration("validate question", "generate response")
+    store_transcripts = duration("generate response", "store transcripts")
+    add_references = duration("store transcripts", "add references")
+    total = duration("start", "add references")
+
+    # these messages can be grepped from logs and easily transformed into CSV file
+    # for further processing and analysis
+    msg = (
+        f"Processing durations: {retrieve_user},{retrieve_conversation},{redact_query},"
+        f"{retrieve_previous_input},{append_attachmens},{validate_question},"
+        f"{generate_response},{store_transcripts},{add_references},{total}"
+    )
+
+    logger.info(msg)
 
 
 def retrieve_user_id(auth: Any) -> str:

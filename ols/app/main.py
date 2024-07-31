@@ -77,7 +77,16 @@ async def log_requests_responses(
     if not logger.isEnabledFor(logging.DEBUG):
         return await call_next(request)
 
-    request_log_message = f"Request from {request.client.host}:{request.client.port} "
+    # retrieve client host and port if provided in request object
+    host = "not specified"
+    port = -1
+    if request.client is None:
+        logger.debug("Client info is not present in request object")
+    else:
+        host = request.client.host
+        port = request.client.port
+
+    request_log_message = f"Request from {host}:{port} "
     request_log_message += _log_headers(
         request.headers, constants.HTTP_REQUEST_HEADERS_TO_REDACT
     )
@@ -93,9 +102,7 @@ async def log_requests_responses(
 
     response = await call_next(request)
 
-    response_headers_log_message = (
-        f"Response to {request.client.host}:{request.client.port} "
-    )
+    response_headers_log_message = f"Response to {host}:{port} "
     response_headers_log_message += _log_headers(
         response.headers, constants.HTTP_RESPONSE_HEADERS_TO_REDACT
     )
@@ -106,7 +113,7 @@ async def log_requests_responses(
     ) -> AsyncGenerator[bytes, None]:
         async for chunk in response_body:
             logger.debug(
-                f"Response to {request.client.host}:{request.client.port} "
+                f"Response to {host}:{port} "
                 f"Body chunk: {chunk.decode('utf-8', errors='ignore')}"
             )
             yield chunk

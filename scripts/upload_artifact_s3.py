@@ -8,7 +8,6 @@ AWS_BUCKET
 AWS_REGION
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
-
 """
 
 import os
@@ -27,11 +26,11 @@ def upload_artifact_s3(aws_env):
         True if upload successful.
         False otherwise.
     """
-    s3_client = boto3.client(
-        service_name="sqs",
-        region_name=aws_env["AWS_REGION"],
-        aws_access_key_id=aws_env["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=aws_env["AWS_SECRET_ACCESS_KEY"],
+    s3_client = boto3.resource(
+        service_name="s3",
+        region_name=aws_env["aws-region"],
+        aws_access_key_id=aws_env["aws-access-key-id"],
+        aws_secret_access_key=aws_env["aws-secret-access-key"],
     )
 
     for file in os.listdir(path):
@@ -39,16 +38,18 @@ def upload_artifact_s3(aws_env):
             file_name = file
     print(f"found a file to upload: {file_name}")
     try:
-        os.open(file_name, os.O_RDONLY)
-    except FileNotFoundError:
-        print("Failed to open file")
-        return False
-    try:
-        response = s3_client.upload_file(
-            file_name, aws_env["AWS_BUCKET"], "artifact.tar.gz"
-        )
-        print("file uploaded to s3: ", response)
-    except ClientError as e:
+        if (
+            s3_client.meta.client.head_bucket(Bucket=aws_env["aws-bucket"])[
+                "ResponseMetadata"
+            ]["HTTPStatusCode"]
+            == 200
+        ):
+            with open(file_name, "rb") as tar:
+                s3_client.meta.client.upload_fileobj(
+                    tar, aws_env["aws-bucket"], file_name
+                )
+            print("file uploaded to s3")
+    except (ClientError, FileNotFoundError) as e:
         print("failed to upload file: ", e)
         return False
     return True

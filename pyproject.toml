@@ -44,17 +44,20 @@ dev = [
     "pytest-asyncio==0.23.7",
     "pydantic==2.8.2",
     "rouge-score==0.1.2",  # Required for model evaluation
-    "ruff==0.5.2",
+    "ruff==0.5.5",
     "bandit==1.7.9",
     "types-requests==2.32.0.20240622",
     "gradio==4.37.2",
     "boto3==1.34.145",
+    "reportportal-client==5.5.6",
+    "pytest-reportportal==5.4.1",
 ]
 
 [[tool.pdm.source]]
 type = "find_links"
 url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
 name = "torch"
+
 
 [build-system]
 requires = ["pdm-backend"]
@@ -75,8 +78,8 @@ dependencies = [
     "llama-index-vector-stores-faiss==0.1.2",
     "llama-index-embeddings-huggingface==0.2.2",
     "uvicorn==0.30.1",
-    "redis==5.0.4",
-    "faiss-cpu==1.8.0",
+    "redis==5.0.7",
+    "faiss-cpu==1.8.0.post1",
     "sentence-transformers==2.7.0",
     "openai==1.35.13",
     "ibm-generative-ai==3.0.0",
@@ -93,7 +96,7 @@ dependencies = [
     "SQLAlchemy==2.0.31",
     "certifi==2024.07.04",
     "huggingface_hub==0.23.4",
-    "ibm-watsonx-ai==1.0.11",
+    "ibm-watsonx-ai==1.1.2",
     "certifi==2024.7.4",
     "cryptography==42.0.8",
     "urllib3==2.2.2"
@@ -109,7 +112,7 @@ test-unit = "pdm run make test-unit"
 test-integration = "pdm run make test-integration"
 test-e2e = "pdm run make test-e2e"
 coverage-report = "pdm run make coverage-report"
-unit-tests-coverage-report = "pdm run make unit-test-coverage-report"
+unit-tests-coverage-report = "pdm run make unit-tests-coverage-report"
 integration-tests-coverage-report = "pdm run make integration-tests-coverage-report"
 check-types = "pdm run make check-types"
 generate-schema = "pdm run make schema"
