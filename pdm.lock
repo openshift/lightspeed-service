@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:47097e730a9fe8809ee6096eb9ad36b4c6789eabcd2318429288e20ff854a1f3"
+content_hash = "sha256:5972f4b9ad283bc66eac06ebd5e08191db52bc792e1e2d6ce40d8bb3ac7b522e"
 
 [[package]]
 name = "absl-py"
@@ -589,20 +589,17 @@ files = [
 
 [[package]]
 name = "faiss-cpu"
-version = "1.8.0"
+version = "1.8.0.post1"
 requires_python = ">=3.8"
 summary = "A library for efficient similarity search and clustering of dense vectors."
 groups = ["default"]
 dependencies = [
-    "numpy",
+    "numpy<2.0,>=1.0",
+    "packaging",
 ]
 files = [
-    {file = "faiss-cpu-1.8.0.tar.gz", hash = "sha256:3ee1549491728f37b65267c192a94661a907154a8ae0546ad50a564b8be0d82e"},
-    {file = "faiss_cpu-1.8.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:c9e6ad94b86626be1a0faff3e53c4ca169eba88aa156d7e90c5a2e9ba30558fb"},
-    {file = "faiss_cpu-1.8.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4601dbd81733bf1bc3bff690aac981289fb386dc8e60d0c4eec8a37ba6856d20"},
-    {file = "faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa943d3b5e8c5c77cdd629d9c3c6f78d7da616e586fdd1b94aecbf2e5fa9ba06"},
-    {file = "faiss_cpu-1.8.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b644b366c3b239b34fa3e08bf65bfc78a24eda1e1ea5b2b6d9be3e8fc73d8179"},
-    {file = "faiss_cpu-1.8.0-cp311-cp311-win_amd64.whl", hash = "sha256:f85ecf3514850f93985be238351f5a70736133cfae784b372640aa17c6343a1b"},
+    {file = "faiss_cpu-1.8.0.post1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ed46928de3dc20170b10fec89c54075a11383c2aaf4f119c63e0f6ae5a507d74"},
+    {file = "faiss_cpu-1.8.0.post1.tar.gz", hash = "sha256:5686af34414678c3d49c4fa8d774df7156e9cb48d7029071e56230e74b01cc13"},
 ]
 
 [[package]]

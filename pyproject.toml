@@ -76,7 +76,7 @@ dependencies = [
     "llama-index-embeddings-huggingface==0.2.2",
     "uvicorn==0.30.1",
     "redis==5.0.7",
-    "faiss-cpu==1.8.0",
+    "faiss-cpu==1.8.0.post1",
     "sentence-transformers==2.7.0",
     "openai==1.35.13",
     "ibm-generative-ai==3.0.0",
