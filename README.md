@@ -61,6 +61,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    points to file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to
    reference the selected provider and model.
 
+   The example configuration also defines locally running provider instructlab which is OpenAI-compatible and can use
+   several models. Please look at [instructlab pages](https://github.com/instructlab/instructlab/tree/main) for detailed
+   information how to setup and run this provider.
+
    Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
 6. Configure OLS Authentication
