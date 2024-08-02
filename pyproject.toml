@@ -49,12 +49,15 @@ dev = [
     "types-requests==2.32.0.20240622",
     "gradio==4.37.2",
     "boto3==1.34.145",
+    "reportportal-client==5.5.6",
+    "pytest-reportportal==5.4.1",
 ]
 
 [[tool.pdm.source]]
 type = "find_links"
 url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
 name = "torch"
+
 
 [build-system]
 requires = ["pdm-backend"]
