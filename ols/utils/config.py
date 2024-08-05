@@ -65,7 +65,7 @@ class AppConfig:
         return self._conversation_cache
 
     @property
-    def query_redactor(self) -> Optional[Redactor]:
+    def query_redactor(self) -> Redactor:
         """Return the query redactor."""
         # TODO: OLS-380 Config object mirrors configuration
         if self._query_filters is None:
