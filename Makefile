@@ -17,12 +17,17 @@ install-tools:	install-woke ## Install required utilities/tools
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
 	pip uninstall -y mypy 2> /dev/null || true
+	# OLS-899: (Service) CI failure caused by newest Black version
+	pip uninstall -y black 2> /dev/null || true
 	# display setuptools version
 	pip show setuptools
 	# install all dependencies, including devel ones
 	pdm install --dev
 	# check that correct mypy version is installed
 	mypy --version
+	# check that correct Black version is installed
+	black --version
+
 
 install-woke: ## Install woke, required for Inclusive Naming scan
 	@command -v ./woke > /dev/null || { echo >&2 "woke is not installed. Installing..."; curl -sSfL https://git.io/getwoke | bash -s -- -b ./; }
