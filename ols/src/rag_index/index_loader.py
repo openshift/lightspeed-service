@@ -31,7 +31,6 @@ def load_llama_index_deps():
     from llama_index.vector_stores.faiss import FaissVectorStore
 
 
-# TODO: OLS-380 Config object mirrors configuration
 class IndexLoader:
     """Load index from local file storage."""
 
