@@ -287,3 +287,12 @@ def test_missing_credentials_check(provider_config_without_credentials):
     )
     with pytest.raises(ValueError, match="Credentials must be specified"):
         watsonx.load()
+
+
+def test_missing_project_id_check(provider_config):
+    """Test that check for missing project ID is in place ."""
+    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
+    # simulate situation when project ID is missing
+    watsonx.provider_config.project_id = None
+    with pytest.raises(ValueError, match="Project ID must be specified"):
+        watsonx.load()
