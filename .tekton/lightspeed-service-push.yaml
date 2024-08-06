@@ -39,7 +39,7 @@ spec:
             - name: name
               value: show-sbom
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:7f8b5499a21de9aca718d0cf2e170949af6b30cacf882d64983471a2c673b1da
+              value: quay.io/konflux-ci/tekton-catalog/task-show-sbom:0.1@sha256:9bfc6b99ef038800fe131d7b45ff3cd4da3a415dd536f7c657b3527b01c4a13b
             - name: kind
               value: task
           resolver: bundles
@@ -239,7 +239,7 @@ spec:
             - name: name
               value: buildah-6gb
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:cd70d9f48e9a6db05e01abc0b3f743a098c28e432ca57dd775570c3c6e186c06
+              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:1d891aeddbc34adede142ff0393c8519d3a6f885cf193684a48f88a6ff08eb31
             - name: kind
               value: task
           resolver: bundles
