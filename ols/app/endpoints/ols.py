@@ -369,9 +369,6 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
     """Redact query using query_redactor, raise HTTPException in case of any problem."""
     try:
         logger.debug(f"Redacting query for conversation {conversation_id}")
-        if not config.query_redactor:
-            logger.debug("query_redactor not found")
-            return llm_request
         llm_request.query = config.query_redactor.redact(
             conversation_id, llm_request.query
         )
@@ -394,9 +391,6 @@ def redact_attachments(
 ) -> list[Attachment]:
     """Redact all attachments using query_redactor, raise HTTPException in case of any problem."""
     logger.debug(f"Redacting attachments for conversation {conversation_id}")
-    if not config.query_redactor:
-        logger.debug("query_redactor not found, attachments remain as is")
-        return attachments
 
     try:
         redacted_attachments = []
