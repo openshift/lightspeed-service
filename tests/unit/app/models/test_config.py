@@ -1273,6 +1273,7 @@ def test_tls_config_correct_values():
     assert tls_config.tls_certificate_path == "tests/config/empty_cert.crt"
     assert tls_config.tls_key_path == "tests/config/key"
     assert tls_config.tls_key_password == "* this is password *"  # noqa: S105
+    tls_config.validate_yaml(False)
 
 
 def test_tls_config_incorrect_password_path():
@@ -1285,6 +1286,16 @@ def test_tls_config_incorrect_password_path():
                 "tls_key_password_path": "this/file/does/not/exist",
             }
         )
+
+
+def test_tls_config_no_data_provided():
+    """Test the TLSConfig model."""
+    tls_config = TLSConfig(None)
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Can not enable TLS without ols_config.tls_config.tls_certificate_path",
+    ):
+        tls_config.validate_yaml(False)
 
 
 def test_postgres_config_default_values():
