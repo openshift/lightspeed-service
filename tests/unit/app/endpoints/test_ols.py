@@ -795,10 +795,6 @@ def test_generate_response_valid_subject(mock_summarize):
 def test_generate_response_on_summarizer_error(mock_summarize):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
-    mock_response = Mock()
-    mock_response.response = (
-        "Kubernetes is an open-source container-orchestration system..."  # summary
-    )
     mock_summarize.side_effect = Exception  # any exception might occur
 
     # prepare arguments for DocsSummarizer
