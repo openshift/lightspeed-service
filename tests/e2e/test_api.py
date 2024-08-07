@@ -305,6 +305,10 @@ def setup_module(module):
             raise e
     else:
         print("Setting up for standalone test execution\n")
+        # these variables must be created, but does not have to contain
+        # anything relevant for local testing (values are optional)
+        token = None
+        metrics_token = None
 
     client = client_utils.get_http_client(ols_url, token)
     metrics_client = client_utils.get_http_client(ols_url, metrics_token)
