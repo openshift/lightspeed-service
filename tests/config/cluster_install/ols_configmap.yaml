@@ -32,7 +32,10 @@ data:
           max_entries: 1000
       logging_config:
         app_log_level: debug
-        lib_log_level: debug
+        # one of our libs logs a secrets in debug mode which causes the
+        # pod logs beying redacted/removed completely - we need log at
+        # info level and above
+        lib_log_level: info
       default_provider: "$PROVIDER"
       default_model: "$MODEL"
       query_filters:
