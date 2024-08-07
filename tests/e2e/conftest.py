@@ -6,7 +6,6 @@ import os
 import tarfile
 import tempfile
 import uuid
-from typing import Dict
 
 import pytest
 from pytest import TestReport
@@ -15,7 +14,7 @@ from reportportal_client import RPLogger
 from scripts.upload_artifact_s3 import upload_artifact_s3
 from tests.e2e import test_api
 
-aws_env: Dict[str, str] = {}
+aws_env: dict[str, str] = {}
 
 makereport_called = False
 
@@ -177,7 +176,6 @@ def add_secret_to_env(env) -> None:
     with open(os.environ[env]) as file:
         content = file.read()
         aws_env[name] = content
-    return
 
 
 def get_secret_value(env: str) -> str:
@@ -205,7 +203,7 @@ def pytest_sessionfinish(session):
         print(f"Saved Report Portal datarouter archive to {archive_path}.")
     except Exception as e:
         print(f"Error creating RP archive: {e}")
-        return None
+        return
     try:
         add_secret_to_env("AWS_ACCESS_KEY_ID_PATH")
         add_secret_to_env("AWS_BUCKET_PATH")
@@ -217,4 +215,3 @@ def pytest_sessionfinish(session):
             "Could not find aws credentials to upload to S3. "
             "Skipping reporting to Report portal."
         )
-    return None
