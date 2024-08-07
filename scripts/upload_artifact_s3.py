@@ -34,10 +34,17 @@ def upload_artifact_s3(aws_env):
         aws_secret_access_key=aws_env["aws-secret-access-key"],
     )
 
+    file_name = None
     for file in os.listdir(path):
         if file.endswith(extension):
             file_name = file
-    print(f"found a file to upload: {file_name}")
+
+    if file_name is not None:
+        print(f"found a file to upload: {file_name}")
+    else:
+        print(f"unable to find {file_name}")
+        return False
+
     try:
         os.open(file_name, os.O_RDONLY)
     except FileNotFoundError:
