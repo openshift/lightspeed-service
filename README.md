@@ -67,15 +67,31 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
    Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
-   Note: it is possible to use RHELAI as provider too. It is OpenAI-compatible and can be configured the same way as other OpenAI providers. For example if RHELAI is running as EC2 instance and granite-7b-lab model is used, the configuration might look like:
+   Note: it is possible to use RHELAI as provider too. It is OpenAI-compatible
+   and can be configured the same way as other OpenAI providers. For example if
+   RHELAI is running as EC2 instance and `granite-7b-lab` model is used, the
+   configuration might look like:
 
       ```yaml
-          - name: my_ehelai
+          - name: my_rhelai
             type: openai
             url: "http://{PATH}.amazonaws.com:8000/v1/"
             credentials_path: openai_api_key.txt
             models:
               - name: granite-7b-lab
+      ```
+
+    Note: to use RHOAI (Red Hat OpenShitAI) as provider, the following
+    configuration can be utilized (`mistral-7b-instruct` model is supported by
+    RHOAI, as well as other models):
+
+      ```yaml
+          - name: my_rhoai
+            type: openai
+            url: "http://{PATH}:8000/v1/"
+            credentials_path: openai_api_key.txt
+            models:
+              - name: mistral-7b-instruct
       ```
 
 
