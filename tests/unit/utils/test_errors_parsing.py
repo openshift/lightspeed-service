@@ -100,6 +100,123 @@ def test_parse_generic_llm_error_on_api_response_exception_with_info():
     assert cause == expected
 
 
+def test_parse_generic_llm_error_on_api_response_exception_with_message():
+    """Test the parse_generic_llm_error function when ApiResponseException is passed."""
+    message = "This is proper error message"
+
+    error = ApiResponseException(
+        message=message,
+        response={
+            "message": "this is error message",
+            "error": "this is error",
+            "extensions": {},
+            "status_code": 400,
+        },
+    )
+
+    # try to parse the exception
+    status_code, error_message, cause = errors_parsing.parse_generic_llm_error(error)
+
+    # check the parsed error
+    assert status_code == status_code
+    expected = (
+        message
+        + """
+{
+  "error": "this is error",
+  "extensions": {
+    "code": "INVALID_INPUT",
+    "state": null
+  },
+  "message": "this is error message",
+  "status_code": 400
+}"""
+    )
+    assert error_message == expected
+    assert cause == expected
+
+
+def test_parse_generic_llm_error_on_api_response_exception_without_extensions_state():
+    """Test the parse_generic_llm_error function when ApiResponseException is passed."""
+    message = "This is proper error message"
+
+    error = ApiResponseException(
+        message=message,
+        response={
+            "message": "this is error message",
+            "error": "this is error",
+            "extensions": {},
+            "status_code": 400,
+        },
+    )
+    # cleanup extensions state
+    error.response.extensions.state = None
+
+    # try to parse the exception
+    status_code, error_message, cause = errors_parsing.parse_generic_llm_error(error)
+
+    # check the parsed error
+    assert status_code == status_code
+    expected = (
+        message
+        + """
+{
+  "error": "this is error",
+  "extensions": {
+    "code": "INVALID_INPUT",
+    "state": null
+  },
+  "message": "this is error message",
+  "status_code": 400
+}"""
+    )
+    assert error_message == expected
+    assert cause == expected
+
+
+def test_parse_generic_llm_error_on_api_response_exception_with_extensions_state():
+    """Test the parse_generic_llm_error function when ApiResponseException is passed."""
+    message = "This is proper error message"
+
+    error = ApiResponseException(
+        message=message,
+        response={
+            "message": "this is error message",
+            "error": "this is error",
+            "extensions": {
+                "code": "INVALID_INPUT",
+                "state": {"message": "state message"},
+            },
+            "status_code": 400,
+        },
+    )
+    # cleanup extensions state
+    error.response.extensions.state = None
+
+    # try to parse the exception
+    status_code, error_message, cause = errors_parsing.parse_generic_llm_error(error)
+
+    # check the parsed error
+    assert status_code == status_code
+    expected = (
+        message
+        + """
+{
+  "error": "this is error",
+  "extensions": {
+    "code": "INVALID_INPUT",
+    "state": {
+      "message": "state message"
+    }
+  },
+  "message": "this is error message",
+  "status_code": 400
+}"""
+    )
+    assert error_message == expected
+    assert cause == expected
+
+
 def test_parse_generic_llm_error_on_unknown_exception():
     """Test the parse_generic_llm_error function when unknown exception is passed."""
     # generic exception
