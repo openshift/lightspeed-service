@@ -332,6 +332,11 @@ For further guidance, see the rest of our codebase, or check sources online. The
 
 
 ## Adding a new provider/model
+
+It is possible to create interface for new provider. That interface should be
+added into `ols/src/llms/providers/` Then the provider should be registered and
+referenced from `olsconfig.yaml` file the same way as other existing providers.
+
 To add a new provider, follow these steps:
 
 1. Create a new file in the `ols/src/llm/providers/` directory.
@@ -344,3 +349,10 @@ Please note that your custom provider must adhere to the interface defined by `A
 You'll also need to modify your `olsconfig.yaml` file to include an appropriate entry for your new provider.
 
 Once you've created and registered your new provider as described above, no further code modifications are necessary. Our discovery mechanism will automatically locate your provider. After that, you'll be able to use it as needed.
+
+Class diagram with LLM providers and theirs registry:
+![LLM class diagram](docs/llms_classes.png)
+
+Package diagram with LLM providers and theirs registry:
+![LLM package diagram](docs/llms_packages.png)
+

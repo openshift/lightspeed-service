@@ -1,0 +1,71 @@
+@startuml classes
+skin rose
+
+set namespaceSeparator none
+class "AbstractLLMProvider" as ols.src.llms.providers.provider.AbstractLLMProvider {
+  default_params
+  {abstract}load() -> LLM
+}
+class "AzureOpenAI" as ols.src.llms.providers.azure_openai.AzureOpenAI {
+  credentials
+  credentials : Optional[str]
+  default_params
+  url : str
+  url : str
+  load() -> LLM
+  resolve_access_token(azure_config: AzureOpenAIConfig) -> Optional[str]
+  retrieve_access_token(azure_config: AzureOpenAIConfig) -> Optional[AccessToken]
+}
+class "BAM" as ols.src.llms.providers.bam.BAM {
+  credentials
+  credentials : Optional[str]
+  default_params
+  url : str
+  url : str
+  load() -> LLM
+}
+class "FakeProvider" as ols.src.llms.providers.fake_provider.FakeProvider {
+  default_params
+  load() -> LLM
+}
+class "<color:red>LLMConfigurationError</color>" as ols.src.llms.llm_loader.LLMConfigurationError {
+}
+class "LLMProvider" as ols.src.llms.providers.provider.LLMProvider {
+  model : str
+  params : dict
+  provider_config : ProviderConfig
+}
+class "<color:red>ModelConfigMissingError</color>" as ols.src.llms.llm_loader.ModelConfigMissingError {
+}
+class "OpenAI" as ols.src.llms.providers.openai.OpenAI {
+  credentials
+  credentials : Optional[str]
+  default_params
+  url : str
+  url : str
+  load() -> LLM
+}
+class "<color:red>UnknownProviderError</color>" as ols.src.llms.llm_loader.UnknownProviderError {
+}
+class "<color:red>UnsupportedProviderError</color>" as ols.src.llms.llm_loader.UnsupportedProviderError {
+}
+class "Watsonx" as ols.src.llms.providers.watsonx.Watsonx {
+  credentials
+  credentials : Optional[str]
+  default_params
+  project_id
+  project_id : Optional[str]
+  url : str
+  url : str
+  load() -> LLM
+}
+ols.src.llms.llm_loader.ModelConfigMissingError --|> ols.src.llms.llm_loader.LLMConfigurationError
+ols.src.llms.llm_loader.UnknownProviderError --|> ols.src.llms.llm_loader.LLMConfigurationError
+ols.src.llms.llm_loader.UnsupportedProviderError --|> ols.src.llms.llm_loader.LLMConfigurationError
+ols.src.llms.providers.azure_openai.AzureOpenAI --|> ols.src.llms.providers.provider.LLMProvider
+ols.src.llms.providers.bam.BAM --|> ols.src.llms.providers.provider.LLMProvider
+ols.src.llms.providers.fake_provider.FakeProvider --|> ols.src.llms.providers.provider.LLMProvider
+ols.src.llms.providers.openai.OpenAI --|> ols.src.llms.providers.provider.LLMProvider
+ols.src.llms.providers.provider.LLMProvider --|> ols.src.llms.providers.provider.AbstractLLMProvider
+ols.src.llms.providers.watsonx.Watsonx --|> ols.src.llms.providers.provider.LLMProvider
+@enduml
