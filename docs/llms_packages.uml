@@ -1,0 +1,37 @@
+@startuml packages
+skin rose
+
+set namespaceSeparator none
+package "ols.src.llms" as ols.src.llms {
+}
+package "ols.src.llms.llm_loader" as ols.src.llms.llm_loader {
+}
+package "ols.src.llms.providers" as ols.src.llms.providers {
+}
+package "ols.src.llms.providers.azure_openai" as ols.src.llms.providers.azure_openai {
+}
+package "ols.src.llms.providers.bam" as ols.src.llms.providers.bam {
+}
+package "ols.src.llms.providers.fake_provider" as ols.src.llms.providers.fake_provider {
+}
+package "ols.src.llms.providers.openai" as ols.src.llms.providers.openai {
+}
+package "ols.src.llms.providers.provider" as ols.src.llms.providers.provider {
+}
+package "ols.src.llms.providers.registry" as ols.src.llms.providers.registry {
+}
+package "ols.src.llms.providers.watsonx" as ols.src.llms.providers.watsonx {
+}
+ols.src.llms.llm_loader --> ols.src.llms.providers.registry
+ols.src.llms.providers.azure_openai --> ols.src.llms.providers.provider
+ols.src.llms.providers.azure_openai --> ols.src.llms.providers.registry
+ols.src.llms.providers.bam --> ols.src.llms.providers.provider
+ols.src.llms.providers.bam --> ols.src.llms.providers.registry
+ols.src.llms.providers.fake_provider --> ols.src.llms.providers.provider
+ols.src.llms.providers.fake_provider --> ols.src.llms.providers.registry
+ols.src.llms.providers.openai --> ols.src.llms.providers.provider
+ols.src.llms.providers.openai --> ols.src.llms.providers.registry
+ols.src.llms.providers.registry --> ols.src.llms.providers.provider
+ols.src.llms.providers.watsonx --> ols.src.llms.providers.provider
+ols.src.llms.providers.watsonx --> ols.src.llms.providers.registry
+@enduml

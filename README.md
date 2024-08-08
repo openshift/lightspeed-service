@@ -213,6 +213,11 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
       > This action may be required for self-hosted LLMs.
 
+11. Registering new LLM provider
+    Please look info this
+    [contributing guide chapter](https://github.com/openshift/lightspeed-service/blob/main/CONTRIBUTING.md#adding-a-new-providermodel)
+    for more info.
+
 # Usage
 
 ## Local Deployment
