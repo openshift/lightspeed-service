@@ -118,6 +118,7 @@ integration-tests-coverage-report = "pdm run make integration-tests-coverage-rep
 check-types = "pdm run make check-types"
 generate-schema = "pdm run make schema"
 security-check = "pdm run make security-check"
+benchmarks = "pdm run make benchmarks"
 
 [tool.setuptools]
 packages = ["ols"]

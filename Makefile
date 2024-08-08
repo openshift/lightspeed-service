@@ -50,6 +50,10 @@ run: ## Run the service locally
 
 test: test-unit test-integration test-e2e ## Run all tests
 
+benchmarks: ## Run benchmarks
+	@echo "Running benchmarks..."
+	python -m pytest tests/benchmarks
+
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
