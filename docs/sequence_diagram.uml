@@ -9,12 +9,14 @@
 // java -jar plantuml.jar -tsvg sequence_diagram.uml
 
 @startuml
+skin rose
 
-header Sequence diagram for Lightspeed Service
+header Sequence diagram for OpenShift LightSpeed Service
 footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
 
 actor "User" as user
 participant "Lightspeed\nService" as ols
+control "Redactor" as redactor
 control "Question\nValidator" as question_validator
 control "Document\nSummarizer" as document_summarizer
 database "Conversation\ncache" as cache
@@ -25,10 +27,22 @@ collections "LLM" as llm
 
 user -> ols: Question
 
+== Redaction ==
+
+ols -> redactor: Redact query
+redactor -> ols: Redacted query
+
 == Conversation history ==
 
 ols -> cache: Retrieve conversation history
 cache -> ols: Conversation history
+
+== Attachments ==
+
+ols -> ols: Retrieve attachments from request
+ols -> ols: Attachments
+ols -> redactor: Redact attachments
+redactor -> ols: Redacted attachments
 
 == Validation ==
 
@@ -46,8 +60,8 @@ end
 alt "Valid question case"
 question_validator -> ols: Valid question
 ols -> document_summarizer: Summarize document
-document_summarizer -> vector_db: Read vector DB
-vector_db -> document_summarizer: Actual vector DB
+document_summarizer -> vector_db: Read vector DB (RAG)
+vector_db -> document_summarizer: Actual vector DB (RAG)
 document_summarizer -> llm: Query
 llm -> document_summarizer: Answer
 document_summarizer -> ols: Summary
