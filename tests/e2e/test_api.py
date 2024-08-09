@@ -72,14 +72,18 @@ def install_ols() -> tuple[str, str, str]:
     print("Setting up for on cluster test execution")
 
     # setup the lightspeed namespace
-    cluster_utils.run_oc(["create", "ns", "openshift-lightspeed"])
-    cluster_utils.run_oc(["project", "openshift-lightspeed"])
+    cluster_utils.run_oc(
+        ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
+    )
+    cluster_utils.run_oc(
+        ["project", "openshift-lightspeed"], ignore_existing_resource=True
+    )
     print("created OLS project")
 
     cluster_utils.create_user("test-user")
     cluster_utils.create_user("metrics-test-user")
-    token = cluster_utils.get_user_token("test-user")
-    metrics_token = cluster_utils.get_user_token("metrics-test-user")
+    token = cluster_utils.get_token_for("test-user")
+    metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
 
     # install the operator catalog
@@ -164,7 +168,7 @@ def install_ols() -> tuple[str, str, str]:
 
     # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
     # there may be a race condition.
-    r = retry_until_timeout_or_success(
+    retry_until_timeout_or_success(
         60, 5, lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False)
     )
 
@@ -184,7 +188,7 @@ def install_ols() -> tuple[str, str, str]:
     )
 
     # Ensure the operator controller manager pod is gone before touching anything else
-    r = retry_until_timeout_or_success(
+    retry_until_timeout_or_success(
         60,
         5,
         lambda: not cluster_utils.get_pod_by_prefix(
@@ -204,7 +208,7 @@ def install_ols() -> tuple[str, str, str]:
     )
 
     # wait for the old ols api pod to go away due to deployment being scaled down
-    r = retry_until_timeout_or_success(
+    retry_until_timeout_or_success(
         60, 5, lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False)
     )
 
@@ -236,6 +240,15 @@ def install_ols() -> tuple[str, str, str]:
             "LOG_LEVEL=DEBUG",
         ]
     )
+
+    # one of our libs logs a secrets in debug mode which causes the pod
+    # logs beying redacted/removed completely - we need log at info level
+    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    modified_yaml = configmap_yaml.replace(
+        "lib_log_level: DEBUG", "lib_log_level: INFO"
+    )
+    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
+    cluster_utils.run_oc(["apply", "-f", "-"], input=modified_yaml)
 
     # scale the ols app server up
     cluster_utils.run_oc(

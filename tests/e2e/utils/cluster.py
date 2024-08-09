@@ -4,7 +4,9 @@ import json
 import subprocess
 
 
-def run_oc(args: list[str]) -> subprocess.CompletedProcess:
+def run_oc(
+    args: list[str], input=None, ignore_existing_resource=False  # noqa: A002
+) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
     try:
         res = subprocess.run(  # noqa: S603
@@ -12,13 +14,17 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
             capture_output=True,
             text=True,
             check=True,
+            input=input,
         )
         return res
     except subprocess.CalledProcessError as e:
-        print(
-            f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
-        )
-        raise
+        if ignore_existing_resource and "AlreadyExists" in e.stderr:
+            print(f"Resource already exists: {e}\nproceeding...")
+        else:
+            print(
+                f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
+            )
+            raise
 
 
 def run_oc_and_store_stdout(
@@ -86,10 +92,10 @@ def delete_user(name: str) -> None:
         raise Exception("Error deleting service account") from e
 
 
-def get_user_token(name: str) -> str:
+def get_token_for(name: str) -> str:
     """Get the token for the service account user."""
     try:
-        result = run_oc(["create", "token", name])
+        result = run_oc(["sa", "new-token", name])
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting token for service account") from e
