@@ -61,7 +61,7 @@ alt "Valid question case"
 question_validator -> ols: Valid question
 ols -> document_summarizer: Summarize document
 document_summarizer -> vector_db: Read vector DB (RAG)
-vector_db -> document_summarizer: Actual vector DB (RAG)
+vector_db -> document_summarizer: RAG DB content
 document_summarizer -> llm: Query
 llm -> document_summarizer: Answer
 document_summarizer -> ols: Summary
