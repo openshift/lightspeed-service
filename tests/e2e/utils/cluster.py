@@ -76,10 +76,12 @@ def get_cluster_version() -> tuple[str, str]:
         raise Exception("Error getting cluster version") from e
 
 
-def create_user(name: str) -> None:
+def create_user(name: str, ignore_existing_resource=False) -> None:
     """Create a service account user for testing."""
     try:
-        run_oc(["create", "sa", name])
+        run_oc(
+            ["create", "sa", name], ignore_existing_resource=ignore_existing_resource
+        )
     except subprocess.CalledProcessError as e:
         raise Exception("Error creating service account") from e
 

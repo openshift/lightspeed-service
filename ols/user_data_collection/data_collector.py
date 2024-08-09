@@ -1,10 +1,10 @@
 """Collect insights and upload it to the Ingress service.
 
-It waits 5 min after startup before collects the data. Then it collects
-data after specified interval.
+It waits `INITIAL_WAIT` min after startup before collects the data. Then
+it collects data after specified interval.
 
-When CP_OFFLINE_TOKEN is provided (either for prod or stage), it is used
-for ingress authentication instead of cluster pull-secret.
+When `cp_offline_token` is provided via config (either for prod or stage),
+it is used for ingress authentication instead of cluster pull-secret.
 """
 
 import base64
@@ -25,48 +25,32 @@ import requests
 # we need to add the root directory to the path to import from ols
 sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
 
-# initialize config with default values
+# initialize config
 from ols import config
 
-config.reload_empty()
+cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+config.reload_from_yaml_file(
+    cfg_file, ignore_llm_secrets=True, ignore_missing_certs=True
+)
+udc_config = config.user_data_collector_config  # shortcut
+
 
 from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
 
-OLS_USER_DATA_PATH = os.environ["OLS_USER_DATA_PATH"]
-OLS_USER_DATA_COLLECTION_INTERVAL = int(
-    os.environ.get("OLS_USER_DATA_COLLECTION_INTERVAL", 2 * 60 * 60)
-)  # 2 hours in seconds
-
 INITIAL_WAIT = 60 * 5  # 5 minutes in seconds
-RUN_WITHOUT_INITIAL_WAIT = bool(
-    os.environ.get("RUN_WITHOUT_INITIAL_WAIT", "false").lower() == "true"
-)
-
-INGRESS_ENV = os.environ.get("INGRESS_ENV", "stage")  # prod/stage
-if INGRESS_ENV not in {"prod", "stage"}:
-    raise ValueError(
-        f"Unknown value in INGRESS_ENV: {INGRESS_ENV}. Allowed: prod, stage"
-    )
 INGRESS_TIMEOUT = 30  # seconds
 INGRESS_BASE_DELAY = 60  # exponential backoff parameter
 INGRESS_MAX_RETRIES = 3  # exponential backoff parameter
-
-CP_OFFLINE_TOKEN = os.environ.get("CP_OFFLINE_TOKEN")
 REDHAT_SSO_TIMEOUT = 5  # seconds
 
 OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MiB
 USER_AGENT = "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
-
-if INGRESS_ENV == "stage" and not CP_OFFLINE_TOKEN:
-    raise ValueError("CP_OFFLINE_TOKEN is required for stage environment")
-
-
 logging.basicConfig(
-    level=os.environ.get("LOG_LEVEL", "info").upper(),
+    level=udc_config.log_level,
     stream=sys.stdout,
     format="[%(asctime)s] %(levelname)s: %(message)s",
 )
-# silence libs
+# silence libs logging
 # - urllib3 - we don't care about those debug posts
 # - kubernetes - prints resources content when debug, causing secrets leak
 logging.getLogger("kubernetes").setLevel(logging.WARNING)
@@ -86,12 +70,10 @@ class ClusterIDNotFoundError(Exception):
 def get_ingress_upload_url() -> str:
     """Get the Ingress upload URL based on the environment."""
     upload_endpoint = "api/ingress/v1/upload"
-    if INGRESS_ENV == "prod":
+    if udc_config.ingress_env == "prod":
         return "https://console.redhat.com/" + upload_endpoint
-    elif INGRESS_ENV == "stage":
-        return "https://console.stage.redhat.com/" + upload_endpoint
     else:
-        raise ValueError(f"Unknown value in INGRESS_ENV: {INGRESS_ENV}")
+        return "https://console.stage.redhat.com/" + upload_endpoint
 
 
 def access_token_from_offline_token(offline_token: str) -> str:
@@ -107,10 +89,10 @@ def access_token_from_offline_token(offline_token: str) -> str:
     Returns:
         Refresh token.
     """
-    if INGRESS_ENV == "stage":
-        url = "https://sso.stage.redhat.com/"
-    else:
+    if udc_config.ingress_env == "prod":
         url = "https://sso.redhat.com/"
+    else:
+        url = "https://sso.stage.redhat.com/"
     endpoint = "auth/realms/redhat-external/protocol/openid-connect/token"
     data = {
         "grant_type": "refresh_token",
@@ -181,7 +163,6 @@ def package_files_into_tarball(
         BytesIO object representing the tarball.
     """
     tarball_io = io.BytesIO()
-
     with tarfile.open(fileobj=tarball_io, mode="w:gz") as tar:
         # arcname parameter is set to a stripped path to avoid including
         # the full path of the root dir
@@ -249,9 +230,9 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
 
     headers: dict[str, str | bytes]
 
-    if CP_OFFLINE_TOKEN:
+    if udc_config.cp_offline_token:
         logger.debug("using CP offline token to generate refresh token")
-        token = access_token_from_offline_token(CP_OFFLINE_TOKEN)
+        token = access_token_from_offline_token(udc_config.cp_offline_token)
         # when authenticating with token, user-agent is not accepted
         # causing "UHC services authentication failed"
         headers = {"Authorization": f"Bearer {token}"}
@@ -358,7 +339,8 @@ def gather_ols_user_data(data_path: str) -> None:
 
 
 def ensure_data_dir_is_not_bigger_than_defined(
-    data_dir: str = OLS_USER_DATA_PATH, max_size: int = OLS_USER_DATA_MAX_SIZE
+    data_dir: str = udc_config.data_storage.as_posix(),
+    max_size: int = OLS_USER_DATA_MAX_SIZE,
 ) -> None:
     """Ensure that the data dir is not bigger than it should be.
 
@@ -391,11 +373,16 @@ def disabled_by_file() -> bool:
     Pure existence of the file `disable_collector` in the root of the
     user data dir is enough to disable the data collection.
     """
-    return (pathlib.Path(OLS_USER_DATA_PATH) / "disable_collector").exists()
+    if udc_config.data_storage is None:
+        logger.warning(
+            "Data storage path is None, cannot check for disable_collector file."
+        )
+        return False
+    return (udc_config.data_storage / "disable_collector").exists()
 
 
 if __name__ == "__main__":
-    if not RUN_WITHOUT_INITIAL_WAIT:
+    if not udc_config.run_without_initial_wait:
         logger.info(
             f"collection script started, waiting {INITIAL_WAIT} seconds "
             "before first collection"
@@ -403,8 +390,8 @@ if __name__ == "__main__":
         time.sleep(INITIAL_WAIT)
     while True:
         if not disabled_by_file():
-            gather_ols_user_data(OLS_USER_DATA_PATH)
+            gather_ols_user_data(udc_config.data_storage.as_posix())
             ensure_data_dir_is_not_bigger_than_defined()
         else:
             logger.info("disabled by control file, skipping data collection")
-        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL)
+        time.sleep(udc_config.collection_interval)

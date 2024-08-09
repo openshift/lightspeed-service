@@ -7,6 +7,7 @@ import time
 
 import pytest
 import requests
+import yaml
 from httpx import Client
 
 from ols.constants import (
@@ -80,24 +81,30 @@ def install_ols() -> tuple[str, str, str]:
     )
     print("created OLS project")
 
-    cluster_utils.create_user("test-user")
-    cluster_utils.create_user("metrics-test-user")
+    cluster_utils.create_user("test-user", ignore_existing_resource=True)
+    cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
     token = cluster_utils.get_token_for("test-user")
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
 
     # install the operator catalog
-    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/catalog.yaml"])
     cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/operatorgroup.yaml"]
+        ["create", "-f", "tests/config/operator_install/catalog.yaml"],
+        ignore_existing_resource=True,
     )
     cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/subscription.yaml"]
+        ["create", "-f", "tests/config/operator_install/operatorgroup.yaml"],
+        ignore_existing_resource=True,
+    )
+    cluster_utils.run_oc(
+        ["create", "-f", "tests/config/operator_install/subscription.yaml"],
+        ignore_existing_resource=True,
     )
 
     print("Created catalog+subscription")
 
     # wait for the operator to install
+    # time.sleep(3)  # not sure if it is needed but it fails sometimes
     r = retry_until_timeout_or_success(
         60,
         6,
@@ -132,7 +139,8 @@ def install_ols() -> tuple[str, str, str]:
             "generic",
             "llmcreds",
             f"--from-file=apitoken={keypath}",
-        ]
+        ],
+        ignore_existing_resource=True,
     )
 
     # create the olsconfig operand
@@ -142,7 +150,8 @@ def install_ols() -> tuple[str, str, str]:
             "create",
             "-f",
             f"tests/config/operator_install/olsconfig.crd.{provider}.yaml",
-        ]
+        ],
+        ignore_existing_resource=True,
     )
 
     # wait for the ols api server deployment to be created
@@ -223,32 +232,29 @@ def install_ols() -> tuple[str, str, str]:
         ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
     )
 
-    # setup additional env vars for the sidecar container, needed for
-    # testing sending data to the stage instance of insights
-    offline_token = os.getenv("CP_OFFLINE_TOKEN", "")
-    cluster_utils.run_oc(
-        [
-            "set",
-            "env",
-            "deployment/lightspeed-app-server",
-            "-c",
-            "lightspeed-service-user-data-collector",
-            "OLS_USER_DATA_COLLECTION_INTERVAL=10",
-            "RUN_WITHOUT_INITIAL_WAIT=true",
-            "INGRESS_ENV=stage",
-            f"CP_OFFLINE_TOKEN={offline_token}",
-            "LOG_LEVEL=DEBUG",
-        ]
-    )
+    # modify olsconfig configmap
+    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    configmap = yaml.safe_load(configmap_yaml)
+    olsconfig = yaml.safe_load(configmap["data"]["olsconfig.yaml"])
 
     # one of our libs logs a secrets in debug mode which causes the pod
     # logs beying redacted/removed completely - we need log at info level
-    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
-    modified_yaml = configmap_yaml.replace(
-        "lib_log_level: DEBUG", "lib_log_level: INFO"
-    )
+    olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
+
+    # add collector config for e2e tests
+    olsconfig["user_data_collector_config"] = {
+        "data_storage": "/app-root/ols-user-data",
+        "log_level": "debug",
+        "collection_interval": 10,
+        "run_without_initial_wait": True,
+        "ingress_env": "stage",
+        "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
+    }
+    configmap["data"]["olsconfig.yaml"] = yaml.dump(olsconfig)
+    updated_configmap = yaml.dump(configmap)
+
     cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
-    cluster_utils.run_oc(["apply", "-f", "-"], input=modified_yaml)
+    cluster_utils.run_oc(["apply", "-f", "-"], input=updated_configmap)
 
     # scale the ols app server up
     cluster_utils.run_oc(

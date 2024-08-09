@@ -56,6 +56,11 @@ class AppConfig:
         return self.config.dev_config
 
     @property
+    def user_data_collector_config(self) -> config_model.UserDataCollectorConfig:
+        """Return the user data collector configuration."""
+        return self.config.user_data_collector_config
+
+    @property
     def conversation_cache(self) -> Cache:
         """Return the conversation cache."""
         if self._conversation_cache is None:
@@ -87,18 +92,29 @@ class AppConfig:
         self.config = config_model.Config()
 
     @staticmethod
-    def _load_config_from_yaml_stream(stream: TextIOBase) -> config_model.Config:
+    def _load_config_from_yaml_stream(
+        stream: TextIOBase,
+        ignore_llm_secrets: bool = False,
+        ignore_missing_certs: bool = False,
+    ) -> config_model.Config:
         """Load configuration from a YAML stream."""
         data = yaml.safe_load(stream)
-        config = config_model.Config(data)
+        config = config_model.Config(data, ignore_llm_secrets, ignore_missing_certs)
         config.validate_yaml()
         return config
 
-    def reload_from_yaml_file(self, config_file: str) -> None:
+    def reload_from_yaml_file(
+        self,
+        config_file: str,
+        ignore_llm_secrets: bool = False,
+        ignore_missing_certs: bool = False,
+    ) -> None:
         """Reload the configuration from the YAML file."""
         try:
             with open(config_file, encoding="utf-8") as f:
-                self.config = self._load_config_from_yaml_stream(f)
+                self.config = self._load_config_from_yaml_stream(
+                    f, ignore_llm_secrets, ignore_missing_certs
+                )
             # reset the query filters and rag index to not use cached
             # values
             self._query_filters = None
