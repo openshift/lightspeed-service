@@ -295,6 +295,74 @@ ols/app/endpoints/feedback.py                    45     24    47%   37-39, 51, 6
 ...
 ```
 
+
+
+## Benchmarks
+
+### Running benchmarks
+
+Bechmarks for selected functions and methods can be run by using following command:
+
+```
+pdm run benchmarks
+```
+
+### `pytest-benchmark` package
+
+Benchmarks are based on `pytest-benchmark` package. To create new benchmark, the regular test function needs
+to be created and `benchmark` parameter (fixture) should be passed to it. Then the benchmark can be initialized
+by calling this fixture, passing tested function/method to it, together with required parameters.
+
+### Basic usage of `benchmark` fixture
+
+```python
+def test_format_attachment_plain_text_format(benchmark):
+    """Benchmark the function to format one attachment in plain text format."""
+    attachment = Attachment(
+        attachment_type="log", content_type="text/plain", content="foo\nbar\nbaz"
+    )
+    benchmark(format_attachment, attachment)
+```
+
+### Combination of `benchmark` fixture with other fixtures
+
+```python
+def test_format_attachment_yaml(test_yaml, benchmark):
+    """Benchmark the function to format one attachment in YAML format."""
+    attachment = Attachment(
+        attachment_type="log", content_type="application/yaml", content=test_yaml
+    )
+    benchmark(format_attachment, attachment)
+```
+
+### Example output from benchmarks
+
+```
+---------------------------------------------------------------------------------------------------------------------- benchmark: 12 tests ----------------------------------------------------------------------------------------------------------------------
+Name (time in ns)                                             Min                       Max                      Mean                  StdDev                    Median                    IQR             Outliers             OPS            Rounds  Iterations
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_format_attachment_empty_text_plain_format           222.5000 (1.0)            940.2000 (1.0)            254.4121 (1.0)           14.9043 (1.0)            253.8000 (1.0)          13.4500 (1.35)     13112;937  3,930,631.0144 (1.0)      104265          20
+test_format_attachment_plain_text_format                 248.3889 (1.12)         1,715.5556 (1.82)           271.9183 (1.07)          15.1047 (1.01)           270.4444 (1.07)          9.9999 (1.0)      8233;3279  3,677,575.2636 (0.94)     196387          18
+test_format_attachment_empty_yaml_format               8,063.0007 (36.24)       36,815.9999 (39.16)        9,056.3143 (35.60)        654.7283 (43.93)        8,976.0006 (35.37)       320.2501 (32.03)      520;587    110,420.1957 (0.03)      14297           1
+test_validate_question_short_question                 38,743.0000 (174.13)     106,781.9994 (113.57)      59,001.3999 (231.91)    27,868.7079 (>1000.0)     50,208.0002 (197.83)   30,449.7503 (>1000.0)        1;0     16,948.7504 (0.00)          5           1
+test_load_non_existent_config                         41,184.0001 (185.10)      76,090.9998 (80.93)       44,220.5563 (173.81)     1,363.8963 (91.51)       43,990.0004 (173.33)    1,327.0001 (132.70)    1798;435     22,613.9172 (0.01)       8910           1
+test_validate_question_medium_question                44,770.9999 (201.22)     120,769.9997 (128.45)      47,751.7365 (187.69)     2,178.0324 (146.13)      47,571.5001 (187.44)    1,565.0003 (156.50)      247;89     20,941.6468 (0.01)       3848           1
+test_validate_question_long_question                 141,497.0002 (635.94)     187,345.9996 (199.26)     149,891.7847 (589.17)     5,996.6999 (402.35)     147,861.9997 (582.59)    7,773.7500 (777.38)    1207;100      6,671.4797 (0.00)       4737           1
+test_format_attachment_yaml                          151,618.0000 (681.43)     246,112.0002 (261.77)     160,714.3633 (631.71)     4,419.8849 (296.55)     160,190.9998 (631.17)    5,349.4996 (534.95)      632;32      6,222.2192 (0.00)       2841           1
+test_load_invalid_config_stream                    1,621,458.9996 (>1000.0)  1,785,047.0003 (>1000.0)  1,688,481.4733 (>1000.0)   34,127.4243 (>1000.0)  1,677,702.0001 (>1000.0)  61,820.7500 (>1000.0)      215;0        592.2481 (0.00)        543           1
+test_load_valid_config_stream                      1,818,708.0004 (>1000.0)  2,007,125.9996 (>1000.0)  1,865,838.5534 (>1000.0)   29,096.4064 (>1000.0)  1,858,818.0001 (>1000.0)  29,326.9998 (>1000.0)     125;38        535.9521 (0.00)        459           1
+test_load_valid_config_file                        2,069,870.9995 (>1000.0)  4,357,346.0007 (>1000.0)  2,168,878.9340 (>1000.0)  141,905.1851 (>1000.0)  2,149,720.0005 (>1000.0)  69,473.2501 (>1000.0)        4;5        461.0677 (0.00)        379           1
+test_load_invalid_config_file                      2,092,171.0002 (>1000.0)  2,327,104.0000 (>1000.0)  2,184,864.3750 (>1000.0)   45,054.4108 (>1000.0)  2,182,544.4996 (>1000.0)  76,116.0004 (>1000.0)      150;0        457.6943 (0.00)        384           1
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+======================== 12 passed, 1 warning in 11.46s ========================
+```
+
+
+
 ## Updating Dependencies
 
 We are using the [PDM tool](https://github.com/pdm-project/pdm) to manage our dependencies.
