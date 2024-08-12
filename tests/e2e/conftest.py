@@ -68,7 +68,7 @@ def pytest_addoption(parser):
         "--eval_provider_model_id",
         nargs="+",
         default=[
-            "bam+granite13b-chatv2",
+            # "bam+granite13b-chatv2",
             "watsonx+granite13b-chatv2",
             "openai+gpt35-turbo",
             "azure+gpt35-turbo-4k",
