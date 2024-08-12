@@ -1,0 +1,41 @@
+//
+// vim:syntax=plantuml
+//
+
+// Generate PNG image with this diagram by using the following command:
+// java -jar plantuml.jar token_truncation.uml
+//
+// Generate SVG drawing with this diagram by using the following command:
+// java -jar plantuml.jar -tsvg token_truncation.uml
+
+
+// Current truncation logic/context window token check:
+//
+// - Tokens for current prompt system instruction + user query + attachment (if any) + tokens reserved for response (default 512) shouldn’t be greater than model context window size, otherwise OLS will raise an error.
+// - Let’s say above tokens count as default tokens that will be used all the time. If any token is left after default usage then RAG context will be used completely or truncated depending upon how much tokens are left.
+// - Finally if we have further available tokens after using complete RAG context, then history will be used (or will be truncated)
+// - There is a flag set to True by the service, if history is truncated due to tokens limitation.
+
+@startuml
+skin rose
+
+:tokens count = prompt + user query + attachments + response tokens buffer;
+if (tokens count >= context window size) then
+   :raise an error;
+ else
+   :available tokens = context window size - tokens count;
+   if (available tokens <= 0) then
+       :do not add RAG content;
+   else
+       :add RAG content up to remained_tokens;
+       :available tokens = context window size - tokens count;
+       if (available tokens <= 0) then
+           :do not add history;
+       else
+           :add history;
+           :set history_truncated flag;
+       endif
+   endif
+endif
+
+@enduml
