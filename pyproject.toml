@@ -100,7 +100,8 @@ dependencies = [
     "ibm-watsonx-ai==1.1.2",
     "certifi==2024.7.4",
     "cryptography==42.0.8",
-    "urllib3==2.2.2"
+    "urllib3==2.2.2",
+    "nltk==3.8.2",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
