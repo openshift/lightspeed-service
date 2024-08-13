@@ -1,0 +1,56 @@
+//
+// vim:syntax=plantuml
+//
+
+// Generate PNG image with architecture diagram by using the following command:
+// java -jar plantuml.jar architecture_diagram.uml
+//
+// Generate SVG drawing with architecture diagram by using the following command:
+// java -jar plantuml.jar -tsvg architecture_diagram.uml
+
+@startuml
+skin rose
+
+header Architecture diagram for OpenShift LightSpeed
+footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
+
+package "OpenShift LightSpeed service" as ols {
+    component "FastAPI HTTP server" as http
+    component "Query handler" as handler
+    component "History" as history
+    component "Redactor" as redactor
+    component "Question\nvalidator" as question_validator
+    component "Document\nsummarizer" as document_summarizer
+    component "LLM providers registry" as llm_register
+    http -> handler
+    handler --> history
+    handler --> redactor
+    handler --> question_validator
+    handler --> document_summarizer
+    question_validator --> llm_register
+    document_summarizer --> llm_register
+}
+
+component "User data collector" as collector
+
+database "RAG\ndatabase" as rag
+database "Conversation\ncache" as cache
+collections "LLM" as llm
+database "Transcripts" as transcripts
+document_summarizer --> rag
+history --> cache
+llm_register --> llm : call selected LLM
+handler -> transcripts
+transcripts -> collector
+
+package "Red Hat VPN" {
+   [Ingress] as ingress
+   [Pipeline] as pipeline
+   database "Ceph\nbucket" as ceph
+   ingress --> pipeline
+   pipeline --> ceph
+}
+
+collector -> ingress
+
+@enduml
