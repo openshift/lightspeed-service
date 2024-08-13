@@ -102,6 +102,7 @@ dependencies = [
     "cryptography==42.0.8",
     "urllib3==2.2.2",
     "nltk==3.8.2",
+    "aiohttp==3.10.2",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
