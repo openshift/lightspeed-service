@@ -26,8 +26,8 @@ def perform_question_validation_benchmark(benchmark, question):
     # check that LLM loader was called with expected parameters
     question_validator = QuestionValidator(llm_loader=llm_loader)
 
-    # just run the validation, we just need to check parameters passed to LLM
-    # that is performed in mock object
+    # just run the validation for the provided question, we just need to check
+    # parameters passed to LLM that is performed in mock object
     benchmark(
         question_validator.validate_question,
         "123e4567-e89b-12d3-a456-426614174000",
