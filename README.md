@@ -371,11 +371,27 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 1. (Local) Web-based user interface
 
 
+
 ### Sequence diagram
 
 Sequence of operations performed when user asks a question:
 
 ![Sequence diagram](docs/sequence_diagram.png)
+
+
+
+### Token truncation algorithm
+
+The context window size is limited for all supported LLMs which means that token truncation algorithm needs to be performed for longer queries, queries with long conversation history etc. Current truncation logic/context window token check:
+
+1. Tokens for current prompt system instruction + user query + attachment (if any) + tokens reserved for response (default 512) should not be greater than model context window size, otherwise OLS will raise an error.
+1. Let’s say above tokens count as default tokens that will be used all the time. If any token is left after default usage then RAG context will be used completely or truncated depending upon how much tokens are left.
+1. Finally if we have further available tokens after using complete RAG context, then history will be used (or will be truncated)
+1. There is a flag set to True by the service, if history is truncated due to tokens limitation.
+
+![Token truncation](docs/token_truncation.png)
+
+
 
 
 ## Contributing
