@@ -5,8 +5,10 @@ import os
 from collections import defaultdict
 from datetime import UTC, datetime
 
+import matplotlib.pyplot as plt
 import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from matplotlib.colors import BASE_COLORS
 from pandas import DataFrame, read_csv, read_parquet
 from rouge_score.rouge_scorer import RougeScorer
 from scipy.spatial.distance import cosine, euclidean
@@ -300,6 +302,44 @@ class ResponseEvaluation:
 
         return result_dict
 
+    def _plot_score(self, results_df, provider_model_ids):
+        """Plot score."""
+        plot_columns = [
+            "+".join(INSCOPE_MODELS[pm]) + "_f1-score" for pm in provider_model_ids
+        ]
+        score_df = results_df.groupby("query_id")[plot_columns].max()
+        _, ax = plt.subplots(figsize=(14, 8))
+        ax.set_xlabel("ROUGE-L F1 Scores")
+        ax.set_xlim(0, 1)
+
+        ax.axvline(x=0.25, linewidth=2, color="red")
+        ax.axvline(x=0.5, linewidth=2, color="orange")
+        ax.axvline(x=0.75, linewidth=2, color="green")
+
+        ax.axvspan(0, 0.25, facecolor="gainsboro")
+        ax.axvspan(0.25, 0.5, facecolor="mistyrose")
+        ax.axvspan(0.5, 0.75, facecolor="lightyellow")
+        ax.axvspan(0.75, 1.0, facecolor="lightgreen")
+
+        ax.grid(True)
+
+        labels = provider_model_ids
+        bplot = ax.boxplot(
+            score_df,
+            patch_artist=True,
+            sym=".",
+            widths=0.5,
+            # tick_labels=labels,
+            labels=labels,
+            vert=False,
+        )
+        colors = list(BASE_COLORS.keys())[: len(labels)]
+        for patch, color in zip(bplot["boxes"], colors):
+            patch.set_facecolor(color)
+
+        plt.yticks(rotation=45)
+        plt.savefig(f"{self._result_dir}/model_evaluation_result.png")
+
     def evaluate_models(self):
         """Evaluate models against groundtruth answer."""
         print("Running model evaluation using groundtruth...")
@@ -327,6 +367,7 @@ class ResponseEvaluation:
             result_df = result_df.merge(model_result_df, on=common_cols, how="outer")
 
         result_df.to_csv(f"{self._result_dir}/model_evaluation_result.csv", index=False)
+        self._plot_score(result_df, provider_model_ids)
 
         sim_score_summary = {}
         f1_score_summary = {}
@@ -344,7 +385,7 @@ class ResponseEvaluation:
             "timestamp": str(datetime.now(UTC)),
             "similarity_score-avg": sim_score_summary,
             "f1_score-p50": f1_score_summary,
-            "eval_set": result_df.query_id.unique().tolist(),
+            "num_eval_queries": result_df.query_id.nunique(),
         }
         # Save model evaluation summary report
         with open(f"{self._result_dir}/model_evaluation_summary.json", "w") as f:
