@@ -71,7 +71,7 @@ def pytest_addoption(parser):
             # "bam+granite13b-chatv2",
             "watsonx+granite13b-chatv2",
             "openai+gpt35-turbo",
-            "azure+gpt35-turbo-4k",
+            "azure+gpt35-turbo-16k",
         ],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
