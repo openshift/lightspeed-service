@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:c3b97429b4565fcd74af755b770475b6d279a3dc99e3cad08296667e54986d5c"
+content_hash = "sha256:5aede62d43aadf6565fa73545db689e0958a5b2c844beca798590631d746d7fc"
 
 [[package]]
 name = "absl-py"
@@ -646,7 +646,7 @@ files = [
 name = "fastapi-cli"
 version = "0.0.4"
 requires_python = ">=3.8"
-summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. ğŸš€"
+summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. 🚀"
 groups = ["default", "dev"]
 dependencies = [
     "typer>=0.12.3",
@@ -3103,7 +3103,7 @@ files = [
 
 [[package]]
 name = "torch"
-version = "2.2.2+cpu"
+version = "2.3.1+cpu"
 requires_python = ">=3.8.0"
 summary = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 groups = ["default"]
@@ -3116,8 +3116,7 @@ dependencies = [
     "typing-extensions>=4.8.0",
 ]
 files = [
-    {file = "torch-2.2.2+cpu-cp311-cp311-linux_x86_64.whl", hash = "sha256:90089cae572672fb449c8ff1dc1b29daaffa117bf97ede7463dcd2fd1b991e4c"},
-    {file = "torch-2.2.2+cpu-cp311-cp311-win_amd64.whl", hash = "sha256:88e63c916e3275fa30a220ee736423a95573b96072ded85e5c0171fd8f37a755"},
+    {file = "torch-2.3.1+cpu-cp311-cp311-linux_x86_64.whl", hash = "sha256:a272defe305dbd944aa28a91cc3db0f0149495b3ebec2e39723a7224fa05dc57"},
 ]
 
 [[package]]
