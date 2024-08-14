@@ -44,9 +44,7 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
 # models
 
 # BAM
-GRANITE_13B_CHAT_V1 = "ibm/granite-13b-chat-v1"
 GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
-GRANITE_20B_CODE_INSTRUCT_V1 = "ibm/granite-20b-code-instruct-v1"
 
 # OpenAI & Azure OpenAI
 GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
@@ -78,11 +76,9 @@ MINIMUM_CONTEXT_TOKEN_LIMIT = 1
 # and https://www.ibm.com/docs/en/cloud-paks/cp-data/4.8.x?topic=models-supported-foundation
 CONTEXT_WINDOW_SIZES = {
     PROVIDER_BAM: {
-        GRANITE_13B_CHAT_V1: 8192,
         GRANITE_13B_CHAT_V2: 8192,
     },
     PROVIDER_WATSONX: {
-        GRANITE_13B_CHAT_V1: 8192,
         GRANITE_13B_CHAT_V2: 8192,
     },
     PROVIDER_AZURE_OPENAI: {

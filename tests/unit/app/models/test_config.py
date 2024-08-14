@@ -791,7 +791,6 @@ providers = (
 )
 
 models = (
-    constants.GRANITE_13B_CHAT_V1,
     constants.GRANITE_13B_CHAT_V2,
     constants.GPT4_TURBO,
     constants.GPT35_TURBO,
