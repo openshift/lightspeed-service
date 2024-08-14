@@ -363,12 +363,22 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 
 1. REST API handlers
 1. Configuration loader
+1. LLM providers registry
 1. LLM loader
+1. Interface to LLM providers
 1. Doc retriever from vector storage
 1. Question validator
 1. Docs summarizer
 1. Conversation cache
 1. (Local) Web-based user interface
+
+
+
+### Overall architecture
+
+Overall architecture with all main parts are displayed below:
+
+![Architecture diagram](docs/architecture_diagram.png)
 
 
 
