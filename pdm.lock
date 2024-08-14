@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:c3b97429b4565fcd74af755b770475b6d279a3dc99e3cad08296667e54986d5c"
+content_hash = "sha256:0c6def2a758be1c77c7d54aa8b19d2346857e05d285a5a3093f4eaa8fcbd8ad4"
 
 [[package]]
 name = "absl-py"
@@ -646,7 +646,7 @@ files = [
 name = "fastapi-cli"
 version = "0.0.4"
 requires_python = ">=3.8"
-summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. ğŸš€"
+summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. 🚀"
 groups = ["default", "dev"]
 dependencies = [
     "typer>=0.12.3",
@@ -2800,7 +2800,7 @@ files = [
 
 [[package]]
 name = "sentence-transformers"
-version = "2.7.0"
+version = "3.0.1"
 requires_python = ">=3.8.0"
 summary = "Multilingual text embeddings"
 groups = ["default"]
@@ -2815,8 +2815,8 @@ dependencies = [
     "transformers<5.0.0,>=4.34.0",
 ]
 files = [
-    {file = "sentence_transformers-2.7.0-py3-none-any.whl", hash = "sha256:6a7276b05a95931581bbfa4ba49d780b2cf6904fa4a171ec7fd66c343f761c98"},
-    {file = "sentence_transformers-2.7.0.tar.gz", hash = "sha256:2f7df99d1c021dded471ed2d079e9d1e4fc8e30ecb06f957be060511b36f24ea"},
+    {file = "sentence_transformers-3.0.1-py3-none-any.whl", hash = "sha256:01050cc4053c49b9f5b78f6980b5a72db3fd3a0abb9169b1792ac83875505ee6"},
+    {file = "sentence_transformers-3.0.1.tar.gz", hash = "sha256:8a3d2c537cc4d1014ccc20ac92be3d6135420a3bc60ae29a3a8a9b4bb35fbff6"},
 ]
 
 [[package]]
