@@ -52,7 +52,7 @@ test: test-unit test-integration test-e2e ## Run all tests
 
 benchmarks: ## Run benchmarks
 	@echo "Running benchmarks..."
-	python -m pytest tests/benchmarks
+	python -m pytest tests/benchmarks --benchmark-histogram
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
