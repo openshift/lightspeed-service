@@ -4,6 +4,7 @@ import json
 import os
 from collections import defaultdict
 from datetime import UTC, datetime
+from time import sleep
 
 import matplotlib.pyplot as plt
 import requests
@@ -28,8 +29,9 @@ EVAL_THRESHOLD = 0.2  # low score is better
 
 
 # Retry settings for LLM calls
-MAX_RETRY_ATTEMPTS = 5
+MAX_RETRY_ATTEMPTS = 10
 REST_API_TIMEOUT = 120
+TIME_TO_BREATH = 10
 
 
 # TODO: OLS-712 Enrichment of Q+A pairs to contain questions with attachments
@@ -65,6 +67,7 @@ class ResponseEvaluation:
         model,
         retry_attemps=MAX_RETRY_ATTEMPTS,
         rest_api_timeout=REST_API_TIMEOUT,
+        time_to_breath=TIME_TO_BREATH,
     ):
         """Get api response for a question/query."""
         for retry_counter in range(retry_attemps):
@@ -80,6 +83,7 @@ class ResponseEvaluation:
             )
             if response.status_code == requests.codes.ok:
                 break
+            sleep(time_to_breath)
 
         if response.status_code != requests.codes.ok:
             print(f"Unable to get response for {provider}+{model}; query: {question}")
