@@ -28,7 +28,7 @@ EVAL_THRESHOLD = 0.2  # low score is better
 
 
 # Retry settings for LLM calls
-MAX_RETRY_ATTEMPTS = 5
+MAX_RETRY_ATTEMPTS = 10
 REST_API_TIMEOUT = 120
 
 
