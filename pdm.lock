@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:80ec1bea202c917e34035d886a57864a58e326a2a5d0ec535a26a56ad1784aa2"
+content_hash = "sha256:d97fe3446e1f529832a5cc4c4164297d67aa96d9e58d025f7df84ee00275037c"
 
 [[package]]
 name = "absl-py"
@@ -1060,7 +1060,7 @@ name = "importlib-metadata"
 version = "7.1.0"
 requires_python = ">=3.8"
 summary = "Read metadata from Python packages"
-groups = ["default"]
+groups = ["default", "dev"]
 dependencies = [
     "zipp>=0.5",
 ]
@@ -2273,6 +2273,30 @@ files = [
 ]
 
 [[package]]
+name = "pygal"
+version = "3.0.5"
+requires_python = ">=3.8"
+summary = "A Python svg graph plotting library"
+groups = ["dev"]
+dependencies = [
+    "importlib-metadata",
+]
+files = [
+    {file = "pygal-3.0.5-py3-none-any.whl", hash = "sha256:a3268a5667b470c8fbbb0eca7e987561a7321caeba589d40e4c1bc16dbe71393"},
+    {file = "pygal-3.0.5.tar.gz", hash = "sha256:c0a0f34e5bc1c01975c2bfb8342ad521e293ad42e525699dd00c4d7a52c14b71"},
+]
+
+[[package]]
+name = "pygaljs"
+version = "1.0.2"
+summary = "Python package providing assets from https://github.com/Kozea/pygal.js"
+groups = ["dev"]
+files = [
+    {file = "pygaljs-1.0.2-py2.py3-none-any.whl", hash = "sha256:d75e18cb21cc2cda40c45c3ee690771e5e3d4652bf57206f20137cf475c0dbe8"},
+    {file = "pygaljs-1.0.2.tar.gz", hash = "sha256:0b71ee32495dcba5fbb4a0476ddbba07658ad65f5675e4ad409baf154dec5111"},
+]
+
+[[package]]
 name = "pygments"
 version = "2.17.2"
 requires_python = ">=3.7"
@@ -2371,6 +2395,23 @@ groups = ["dev"]
 dependencies = [
     "py-cpuinfo",
     "pytest>=3.8",
+]
+files = [
+    {file = "pytest-benchmark-4.0.0.tar.gz", hash = "sha256:fb0785b83efe599a6a956361c0691ae1dbb5318018561af10f3e915caa0048d1"},
+    {file = "pytest_benchmark-4.0.0-py3-none-any.whl", hash = "sha256:fdb7db64e31c8b277dff9850d2a2556d8b60bcb0ea6524e36e28ffd7c87f71d6"},
+]
+
+[[package]]
+name = "pytest-benchmark"
+version = "4.0.0"
+extras = ["histogram"]
+requires_python = ">=3.7"
+summary = "A ``pytest`` fixture for benchmarking code. It will group the tests into rounds that are calibrated to the chosen timer."
+groups = ["dev"]
+dependencies = [
+    "pygal",
+    "pygaljs",
+    "pytest-benchmark==4.0.0",
 ]
 files = [
     {file = "pytest-benchmark-4.0.0.tar.gz", hash = "sha256:fb0785b83efe599a6a956361c0691ae1dbb5318018561af10f3e915caa0048d1"},
@@ -3463,7 +3504,7 @@ name = "zipp"
 version = "3.18.1"
 requires_python = ">=3.8"
 summary = "Backport of pathlib-compatible object wrapper for zip files"
-groups = ["default"]
+groups = ["default", "dev"]
 files = [
     {file = "zipp-3.18.1-py3-none-any.whl", hash = "sha256:206f5a15f2af3dbaee80769fb7dc6f249695e940acca08dfb2a4769fe61e538b"},
     {file = "zipp-3.18.1.tar.gz", hash = "sha256:2884ed22e7d8961de1c9a05142eb69a247f120291bc0206a00a7642f09b5b715"},
