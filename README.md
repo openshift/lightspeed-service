@@ -7,8 +7,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 * Python 3.11
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
-* An LLM api key, currently BAM (IBM's research environment), OpenAI, Azure
-  OpenAI, and Watsonx are supported as backends.
+* An LLM api key, currently OpenAI, Azure OpenAI, and Watsonx are officially supported as backends.
+  Other providers, that are not fully supported, can be used as well. For example, it is possible to use
+  BAM (IBM's research environment), RHELAI, and RHOAI (Red Hat OpenShiftAI), for example. It is also
+  possible to run Instructlab locally, configure model, and connect to it.
 
 ## Installation
 
@@ -23,14 +25,20 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    ```
 3. Get API keys
 
-   a. BAM provided LLM
+   a. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
+
+   b. Azure OpenAI provided LLM
+       Please look at following articles describing how to retrieve API key or secret from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/)
+
+   c. BAM provided LLM (not officially supported)
       1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
          * Login with your IBM W3 Id credentials.
          * Copy the API Key from the Documentation section.
          ![BAM API Key](docs/bam_api_key.png)
       2. BAM API URL: https://bam-api.res.ibm.com
 
-   b. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
+   d. Locally running Instructlab
+      Depends on configuration, usually not needed to generate or use API key.
 
 4. Store local copies of API keys securely
 
@@ -81,7 +89,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
               - name: granite-7b-lab
       ```
 
-    Note: to use RHOAI (Red Hat OpenShitAI) as provider, the following
+    Note: to use RHOAI (Red Hat OpenShiftAI) as provider, the following
     configuration can be utilized (`mistral-7b-instruct` model is supported by
     RHOAI, as well as other models):
 
