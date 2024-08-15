@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:5aede62d43aadf6565fa73545db689e0958a5b2c844beca798590631d746d7fc"
+content_hash = "sha256:80ec1bea202c917e34035d886a57864a58e326a2a5d0ec535a26a56ad1784aa2"
 
 [[package]]
 name = "absl-py"
@@ -646,7 +646,7 @@ files = [
 name = "fastapi-cli"
 version = "0.0.4"
 requires_python = ">=3.8"
-summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. 🚀"
+summary = "Run and manage FastAPI apps from the command line with FastAPI CLI. ğŸš€"
 groups = ["default", "dev"]
 dependencies = [
     "typer>=0.12.3",
@@ -1914,8 +1914,8 @@ files = [
 
 [[package]]
 name = "nltk"
-version = "3.8.2"
-requires_python = ">=3.8"
+version = "3.8.1"
+requires_python = ">=3.7"
 summary = "Natural Language Toolkit"
 groups = ["default", "dev"]
 dependencies = [
@@ -1925,8 +1925,8 @@ dependencies = [
     "tqdm",
 ]
 files = [
-    {file = "nltk-3.8.2-py3-none-any.whl", hash = "sha256:bae044ae22ebe0b694a87c0012233373209f27d5c76d3572599c842740a62fe0"},
-    {file = "nltk-3.8.2.tar.gz", hash = "sha256:9c051aa981c6745894906d5c3aad27417f3d1c10d91eefca50382fc922966f31"},
+    {file = "nltk-3.8.1-py3-none-any.whl", hash = "sha256:fd5c9109f976fa86bcadba8f91e47f5e9293bd034474752e92a520f81c93dda5"},
+    {file = "nltk-3.8.1.zip", hash = "sha256:1834da3d0682cba4f2cede2f9aad6b0fafb6461ba451db0efb6f9c39798d64d3"},
 ]
 
 [[package]]
