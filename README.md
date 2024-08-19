@@ -3,7 +3,48 @@
 OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services.
 
 
-## Prerequisites
+<!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
+<!-- vim-markdown-toc GFM -->
+
+* [Prerequisites](#prerequisites)
+* [Installation](#installation)
+    * [1. Clone the repo](#1-clone-the-repo)
+    * [2. Install python packages](#2-install-python-packages)
+    * [3. Get API keys](#3-get-api-keys)
+    * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
+    * [5. Configure OpenShift LightSpeed (OLS)](#5-configure-openshift-lightspeed-ols)
+    * [6. Configure LLM providers](#6-configure-llm-providers)
+    * [7. Configure OLS Authentication](#7-configure-ols-authentication)
+    * [8. Configure OLS TLS communication](#8-configure-ols-tls-communication)
+    * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
+    * [10.  (Optional) Configure conversation cache](#10--optional-configure-conversation-cache)
+    * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
+    * [12. Registering new LLM provider](#12-registering-new-llm-provider)
+* [Usage](#usage)
+    * [Deployments](#deployments)
+        * [Local Deployment](#local-deployment)
+            * [Run the server](#run-the-server)
+        * [Optionally run with podman](#optionally-run-with-podman)
+        * [Optionally run inside an OpenShift environment](#optionally-run-inside-an-openshift-environment)
+    * [Communication with the service](#communication-with-the-service)
+        * [Query the server](#query-the-server)
+        * [Swagger UI](#swagger-ui)
+        * [OpenAPI](#openapi)
+        * [Metrics](#metrics)
+        * [Gradio UI](#gradio-ui)
+        * [Swagger UI](#swagger-ui-1)
+    * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
+* [Project structure](#project-structure)
+    * [Overall architecture](#overall-architecture)
+    * [Sequence diagram](#sequence-diagram)
+    * [Token truncation algorithm](#token-truncation-algorithm)
+* [Contributing](#contributing)
+* [License](#license)
+
+<!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
+<!-- vim-markdown-toc -->
+
+# Prerequisites
 
 * Python 3.11
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
@@ -12,18 +53,18 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
   BAM (IBM's research environment), RHELAI, and RHOAI (Red Hat OpenShiftAI), for example. It is also
   possible to run Instructlab locally, configure model, and connect to it.
 
-## Installation
+# Installation
 
-1. Clone the repo
+## 1. Clone the repo
    ```sh
    git clone https://github.com/openshift/lightspeed-service.git
    cd lightspeed-service
    ```
-2. Install python packages
+## 2. Install python packages
    ```sh
    make install-deps
    ```
-3. Get API keys
+## 3. Get API keys
 
    a. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
 
@@ -40,7 +81,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
    d. Locally running Instructlab
       Depends on configuration, usually not needed to generate or use API key.
 
-4. Store local copies of API keys securely
+## 4. Store local copies of API keys securely
 
    Here is a proposed scheme for storing API keys on your development workstation. It is similar to how private keys are stored for OpenSSH.
    It keeps copies of files containing API keys from getting scattered around and forgotten:
@@ -56,12 +97,12 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
     credentials_path: openai_api_key.txt
    ```
 
-5. Configure OpenShift LightSpeed (OLS)
+## 5. Configure OpenShift LightSpeed (OLS)
 
    OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
    You can find a example configuration in the [examples/olsconfig.yaml](examples/olsconfig.yaml) file in this repository.
 
-6. Configure LLM providers
+## 6. Configure LLM providers
 
    The example configuration file defines providers for four LLM providers: BAM, OpenAI, Azure OpenAI, and Watsonx, but defines BAM
    as the default provider. If you prefer to use different LLM provider than BAM, such as OpenAI, ensure that the provider definition
@@ -131,7 +172,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
          ```
 
 
-7. Configure OLS Authentication
+## 7. Configure OLS Authentication
 
    This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
 
@@ -176,7 +217,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
       ```
       **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
 
-8. Configure OLS TLS communication
+## 8. Configure OLS TLS communication
 
    This section provides instructions on configuring TLS (Transport Layer Security) for the OLS Application, enabling secure connections via HTTPS. TLS is enabled by default; however, if necessary, it can be disabled through the `dev_config` settings.
 
@@ -223,12 +264,12 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
                tls_key_password_path: /app-root/certs/password.txt
       ```
 
-9. (Optional) Configure the local document store
+## 9. (Optional) Configure the local document store
    ```sh
    make get-rag
    ```
 
-10.  (Optional) Configure conversation cache
+## 10.  (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
    
       1. Cache stored in memory:
@@ -254,7 +295,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
          ```
          In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
-11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
+## 11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
 
       ```yaml
       ols_config:
@@ -265,16 +306,18 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
       > This action may be required for self-hosted LLMs.
 
-12. Registering new LLM provider
+## 12. Registering new LLM provider
     Please look info this
     [contributing guide chapter](https://github.com/openshift/lightspeed-service/blob/main/CONTRIBUTING.md#adding-a-new-providermodel)
     for more info.
 
 # Usage
 
-## Local Deployment
+## Deployments
 
-### Run the server
+### Local Deployment
+
+#### Run the server
 in order to run the API service
 ```sh
 make run
@@ -317,6 +360,9 @@ manifest file
 
 Once deployed, it is probably easiest to `oc port-forward` into the pod where
 OLS is running so that you can access it from your local machine.
+
+
+## Communication with the service
 
 ### Query the server
 
@@ -395,7 +441,7 @@ helm delete ols-release --namespace openshift-lightspeed
 Chart customization is available using the [Values](helm/values.yaml) file.
 
 
-## Project structure
+# Project structure
 
 1. REST API handlers
 1. Configuration loader
@@ -410,7 +456,7 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 
 
 
-### Overall architecture
+## Overall architecture
 
 Overall architecture with all main parts are displayed below:
 
@@ -418,7 +464,7 @@ Overall architecture with all main parts are displayed below:
 
 
 
-### Sequence diagram
+## Sequence diagram
 
 Sequence of operations performed when user asks a question:
 
@@ -426,7 +472,7 @@ Sequence of operations performed when user asks a question:
 
 
 
-### Token truncation algorithm
+## Token truncation algorithm
 
 The context window size is limited for all supported LLMs which means that token truncation algorithm needs to be performed for longer queries, queries with long conversation history etc. Current truncation logic/context window token check:
 
@@ -440,11 +486,11 @@ The context window size is limited for all supported LLMs which means that token
 
 
 
-## Contributing
+# Contributing
 
 * See [contributors](CONTRIBUTING.md) guide.
 
 * See the [open issues](https://github.com/openshift/lightspeed-service/issues) for a full list of proposed features (and known issues).
 
-## License
+# License
 Published under the Apache 2.0 License
