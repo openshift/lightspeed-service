@@ -1124,9 +1124,9 @@ oauthlib==3.2.2 \
     # via
     #   kubernetes
     #   requests-oauthlib
-openai==1.35.13 \
-    --hash=sha256:36ec3e93e0d1f243f69be85c89b9221a471c3e450dfd9df16c9829e3cdf63e60 \
-    --hash=sha256:c684f3945608baf7d2dcc0ef3ee6f3e27e4c66f21076df0b47be45d57e6ae6e4
+openai==1.41.0 \
+    --hash=sha256:26b81f39b49dce92ff5d30c373625ddb212c2f1050e1574e456d18423730cdd0 \
+    --hash=sha256:3b6cca4571667f3e0800442ef8f2bfa6a6f3301c51776bc7626159a4d81c242c
     # via
     #   langchain-openai
     #   llama-index-agent-openai
