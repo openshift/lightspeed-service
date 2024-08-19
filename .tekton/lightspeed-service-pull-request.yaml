@@ -226,7 +226,7 @@ spec:
             value:
               - $(params.build-args[*])
           - name: BUILD_ARGS_FILE
-            value: $(params.build-args-file)
+            value: build.args
         runAfter:
           - prefetch-dependencies
         taskRef:
