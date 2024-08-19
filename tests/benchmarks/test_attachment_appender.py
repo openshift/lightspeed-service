@@ -3,7 +3,22 @@
 import pytest
 
 from ols.app.models.models import Attachment
-from ols.src.query_helpers.attachment_appender import format_attachment
+from ols.src.query_helpers.attachment_appender import (
+    append_attachments_to_query,
+    format_attachment,
+)
+
+
+@pytest.fixture
+def short_query():
+    """Short query for benchmarks."""
+    return "What is Kubernetes?"
+
+
+@pytest.fixture
+def long_query():
+    """Long query for benchmarks."""
+    return "What is Kubernetes? " * 1000
 
 
 @pytest.fixture
@@ -88,3 +103,57 @@ def test_format_long_attachment_yaml(long_yaml_content, benchmark):
         content=long_yaml_content,
     )
     benchmark(format_attachment, attachment)
+
+
+def test_append_attachments_to_query_one_attachment(benchmark, short_query):
+    """Benchmark the function to append attachments to query."""
+    content = "foo\nbar\nbaz"
+    attachment = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    benchmark(append_attachments_to_query, short_query, [attachment])
+
+
+def test_append_attachments_to_query_3_attachments(
+    benchmark, short_query, yaml_content
+):
+    """Benchmark the function to append attachments to query."""
+    content = "foo\nbar\nbaz"
+    attachment1 = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    attachment2 = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    attachment3 = Attachment(
+        attachment_type="log",
+        content_type="application/yaml",
+        content=yaml_content,
+    )
+    benchmark(
+        append_attachments_to_query,
+        short_query,
+        [attachment1, attachment2, attachment3],
+    )
+
+
+def test_append_attachments_to_query_100_attachments(benchmark, short_query):
+    """Benchmark the function to append attachments to query."""
+    content = "foo\nbar\nbaz"
+    attachment1 = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    attachment2 = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    attachments = [attachment1, attachment2] * 50
+    benchmark(append_attachments_to_query, short_query, attachments)
+
+
+def test_append_attachments_to_query_long_query(benchmark, long_query):
+    """Benchmark the function to append attachments to query."""
+    content = "foo\nbar\nbaz"
+    attachment = Attachment(
+        attachment_type="log", content_type="text/plain", content=content
+    )
+    benchmark(append_attachments_to_query, long_query, [attachment])
