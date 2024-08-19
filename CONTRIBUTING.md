@@ -1,5 +1,38 @@
 # CONTRIBUTING
 
+<!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
+<!-- vim-markdown-toc GFM -->
+
+* [TLDR;](#tldr)
+* [Setting up your development environment](#setting-up-your-development-environment)
+* [Definition of Done](#definition-of-done)
+    * [A deliverable is to be considered “done” when](#a-deliverable-is-to-be-considered-done-when)
+* [Automation](#automation)
+    * [Pre-commit hook settings](#pre-commit-hook-settings)
+    * [Code coverage measurement](#code-coverage-measurement)
+    * [Type hints checks](#type-hints-checks)
+    * [Linters](#linters)
+    * [Security checks](#security-checks)
+* [Testing](#testing)
+    * [Tips and hints for developing unit tests](#tips-and-hints-for-developing-unit-tests)
+        * [Patching](#patching)
+        * [Verifying that some exception is thrown](#verifying-that-some-exception-is-thrown)
+        * [Checking what was printed and logged to stdout or stderr by the tested code](#checking-what-was-printed-and-logged-to-stdout-or-stderr-by-the-tested-code)
+    * [Tips and hints for developing e2e tests](#tips-and-hints-for-developing-e2e-tests)
+        * [Detecting which statements are called in real service](#detecting-which-statements-are-called-in-real-service)
+* [Benchmarks](#benchmarks)
+    * [Running benchmarks](#running-benchmarks)
+    * [`pytest-benchmark` package](#pytest-benchmark-package)
+    * [Basic usage of `benchmark` fixture](#basic-usage-of-benchmark-fixture)
+    * [Combination of `benchmark` fixture with other fixtures](#combination-of-benchmark-fixture-with-other-fixtures)
+    * [Example output from benchmarks](#example-output-from-benchmarks)
+* [Updating Dependencies](#updating-dependencies)
+* [Code style](#code-style)
+    * [Docstrings style](#docstrings-style)
+* [Adding a new provider/model](#adding-a-new-providermodel)
+
+<!-- vim-markdown-toc -->
+
 ## TLDR;
 
 1. Create your own fork of the repo
@@ -61,6 +94,7 @@ Happy hacking!
 * Code changes reviewed by at least one peer
 * Code changes acked by at least one project owner
 
+## Automation
 
 ### Pre-commit hook settings
 
@@ -153,9 +187,9 @@ As specified in Definition of Done, new changes needs to be covered by tests.
 
 
 
-## Tips and hints for developing unit tests
+### Tips and hints for developing unit tests
 
-### Patching
+#### Patching
 
 For patching, for example introducing mock object instead of real object, it is
 possible to use `patch` imported from `unittest.mock`. It is usually used as
@@ -183,7 +217,7 @@ def test_xyz():
         ...
 ```
 
-### Verifying that some exception is thrown
+#### Verifying that some exception is thrown
 
 Sometimes it is needed to test whether some exception is thrown from tested function or method. In this case `pytest.raises` can be used:
 
@@ -206,7 +240,7 @@ def test_constructor_no_provider():
         load_llm(provider=None)
 ```
 
-### Checking what was printed and logged to stdout or stderr by the tested code
+#### Checking what was printed and logged to stdout or stderr by the tested code
 
 It is possible to capture stdout and stderr by using standard fixture `capsys`:
 
@@ -242,7 +276,7 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
 ```
 
 
-## Tips and hints for developing e2e tests
+### Tips and hints for developing e2e tests
 
 End to end tests can be run locally, but in this case, some tests that assume they run on cluster needs to be skipped.
 Set the `TEST_TAGS` environment variable before the tests are started:
@@ -264,7 +298,7 @@ make test-e2e
 
 > E2E tests expects app running on http://localhost:8080 or whatever is defined through `OLS_URL` environment variable.
 
-## Detecting which statements are called in real service
+#### Detecting which statements are called in real service
 
 It is possible to start the service using the following command:
 
