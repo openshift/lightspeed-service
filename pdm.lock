@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:4fe1b1d2db3635a60dd0bfc9474f42dff4690b13e8f8da636d049333622e692b"
+content_hash = "sha256:882a15209e6491bfee2db46c7e272224d26ca1b769cb20bff9a3e383e6611680"
 
 [[package]]
 name = "absl-py"
@@ -1914,7 +1914,7 @@ files = [
 
 [[package]]
 name = "nltk"
-version = "3.9b1"
+version = "3.9.1"
 requires_python = ">=3.8"
 summary = "Natural Language Toolkit"
 groups = ["default", "dev"]
@@ -1925,8 +1925,8 @@ dependencies = [
     "tqdm",
 ]
 files = [
-    {file = "nltk-3.9b1-py3-none-any.whl", hash = "sha256:2d87d63a93824e6a01fcd42053b26e18e53bf8c22aa9c2c9b19e32c036739ed5"},
-    {file = "nltk-3.9b1.tar.gz", hash = "sha256:52f95a2c3f947a34f78ccff081f31e2c11b6a2037ad66a7ba2093b5d15b4622f"},
+    {file = "nltk-3.9.1-py3-none-any.whl", hash = "sha256:4fa26829c5b00715afe3061398a8989dc643b92ce7dd93fb4585a70930d168a1"},
+    {file = "nltk-3.9.1.tar.gz", hash = "sha256:87d127bd3de4bd89a4f81265e5fa59cb1b199b27440175370f7417d2bc7ae868"},
 ]
 
 [[package]]
