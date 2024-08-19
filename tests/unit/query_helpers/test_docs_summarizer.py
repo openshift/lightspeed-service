@@ -40,6 +40,7 @@ def _setup():
 
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
+@patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 1)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
@@ -52,6 +53,7 @@ def test_summarize_empty_history():
 
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
+@patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
@@ -64,12 +66,13 @@ def test_summarize_no_history():
 
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
+@patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     question = "What's the ultimate question with answer 42?"
-    history = ["What is Kubernetes?"]
+    history = ["human: What is Kubernetes?"]
     rag_index = MockLlamaIndex()
 
     # first call with history provided
@@ -78,7 +81,7 @@ def test_summarize_history_provided():
         return_value=([], False),
     ) as token_handler:
         summary1 = summarizer.summarize(conversation_id, question, rag_index, history)
-        token_handler.assert_called_once_with(history, ANY)
+        token_handler.assert_called_once_with(history, ANY, ANY)
         check_summary_result(summary1, question)
 
     # second call without history provided
@@ -87,7 +90,7 @@ def test_summarize_history_provided():
         return_value=([], False),
     ) as token_handler:
         summary2 = summarizer.summarize(conversation_id, question, rag_index)
-        token_handler.assert_called_once_with([], ANY)
+        token_handler.assert_called_once_with([], ANY, ANY)
         check_summary_result(summary2, question)
 
 
@@ -100,7 +103,7 @@ def test_summarize_truncation():
     rag_index = MockLlamaIndex()
 
     # too long history
-    history = ["What is Kubernetes?"] * 10000
+    history = ["human: What is Kubernetes?"] * 10000
     summary = summarizer.summarize(conversation_id, question, rag_index, history)
 
     # truncation should be done
