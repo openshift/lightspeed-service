@@ -105,20 +105,20 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 ## 6. Configure LLM providers
 
    The example configuration file defines providers for four LLM providers: BAM, OpenAI, Azure OpenAI, and Watsonx, but defines BAM
-   as the default provider. If you prefer to use different LLM provider than BAM, such as OpenAI, ensure that the provider definition
-   points to file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to
+   as the default provider. If you prefer to use a different LLM provider than BAM, such as OpenAI, ensure that the provider definition
+   points to a file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to
    reference the selected provider and model.
 
    The example configuration also defines locally running provider instructlab which is OpenAI-compatible and can use
    several models. Please look at [instructlab pages](https://github.com/instructlab/instructlab/tree/main) for detailed
-   information how to setup and run this provider.
+   information on how to set up and run this provider.
 
    API credentials are in turn loaded from files specified in the config YAML by the `credentials_path` attributes. If these paths are relative,
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
-   Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
+   Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains a directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
-   Note: it is possible to use RHELAI as provider too. It is OpenAI-compatible
+   Note: it is possible to use RHELAI as a provider too. It is OpenAI-compatible
    and can be configured the same way as other OpenAI providers. For example if
    RHELAI is running as EC2 instance and `granite-7b-lab` model is used, the
    configuration might look like:
