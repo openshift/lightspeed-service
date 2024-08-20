@@ -22,6 +22,8 @@ install-tools:	install-woke ## Install required utilities/tools
 	mypy --version
 	# check that correct Black version is installed
 	black --version
+	# check that correct Ruff version is installed
+	ruff --version
 
 
 install-woke: ## Install woke, required for Inclusive Naming scan
