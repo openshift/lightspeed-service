@@ -14,8 +14,6 @@ images: ## Build container images
 
 install-tools:	install-woke ## Install required utilities/tools
 	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
-	# OLS-899: (Service) CI failure caused by newest Black version
-	pip uninstall -y black 2> /dev/null || true
 	# display setuptools version
 	pip show setuptools
 	# install all dependencies, including devel ones
