@@ -35,6 +35,13 @@ def test_load_non_existent_config(benchmark):
     )
 
 
+def read_empty_config_stream():
+    """Check if a empty configuration stream is handled correctly."""
+    with pytest.raises(Exception):
+        # empty config won't be validated
+        config._load_config_from_yaml_stream(io.StringIO(""))
+
+
 def read_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     config._load_config_from_yaml_stream(
@@ -52,6 +59,8 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
       - name: m2
         url: 'https://murl2'
+      - name: m3
+        url: 'https://murl3'
   - name: p2
     type: bam
     url: 'https://url2'
@@ -60,6 +69,8 @@ llm_providers:
         url: 'https://murl1'
       - name: m2
         url: 'https://murl2'
+      - name: m3
+        url: 'https://murl3'
 ols_config:
   conversation_cache:
     type: memory
@@ -78,6 +89,11 @@ dev_config:
 """
         )
     )
+
+
+def test_load_empty_config_stream(benchmark):
+    """Benchmark for loading configuration from stream."""
+    benchmark(read_empty_config_stream)
 
 
 def test_load_valid_config_stream(benchmark):
