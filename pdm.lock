@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:882a15209e6491bfee2db46c7e272224d26ca1b769cb20bff9a3e383e6611680"
+content_hash = "sha256:88c90459bf8a6441d2f64afeaf2a8e9885fe71be421809c80de14b30cae4f7d4"
 
 [[package]]
 name = "absl-py"
@@ -1106,6 +1106,17 @@ files = [
 ]
 
 [[package]]
+name = "jiter"
+version = "0.5.0"
+requires_python = ">=3.8"
+summary = "Fast iterable JSON parser."
+groups = ["default"]
+files = [
+    {file = "jiter-0.5.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a42a4bdcf7307b86cb863b2fb9bb55029b422d8f86276a50487982d99eed7c6e"},
+    {file = "jiter-0.5.0.tar.gz", hash = "sha256:1d916ba875bcab5c5f7d927df998c4cb694d27dceddf3392e58beaf10563368a"},
+]
+
+[[package]]
 name = "jmespath"
 version = "1.0.1"
 requires_python = ">=3.7"
@@ -1963,7 +1974,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.35.13"
+version = "1.40.0"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1971,14 +1982,15 @@ dependencies = [
     "anyio<5,>=3.5.0",
     "distro<2,>=1.7.0",
     "httpx<1,>=0.23.0",
+    "jiter<1,>=0.4.0",
     "pydantic<3,>=1.9.0",
     "sniffio",
     "tqdm>4",
-    "typing-extensions<5,>=4.7",
+    "typing-extensions<5,>=4.11",
 ]
 files = [
-    {file = "openai-1.35.13-py3-none-any.whl", hash = "sha256:36ec3e93e0d1f243f69be85c89b9221a471c3e450dfd9df16c9829e3cdf63e60"},
-    {file = "openai-1.35.13.tar.gz", hash = "sha256:c684f3945608baf7d2dcc0ef3ee6f3e27e4c66f21076df0b47be45d57e6ae6e4"},
+    {file = "openai-1.40.0-py3-none-any.whl", hash = "sha256:eb6909abaacd62ef28c275a5c175af29f607b40645b0a49d2856bbed62edb2e7"},
+    {file = "openai-1.40.0.tar.gz", hash = "sha256:1b7b316e27b2333b063ee62b6539b74267c7282498d9a02fc4ccb38a9c14336c"},
 ]
 
 [[package]]
