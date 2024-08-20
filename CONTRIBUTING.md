@@ -108,7 +108,7 @@ to enable it automatically).
 
 During testing, code coverage is measured. If the coverage is below defined threshold (see `pyproject.toml` settings for actual value stored in section `[tool.coverage.report]`), tests will fail. We measured and checked code coverage in order to be able to develop software with high quality.
 
-Code coverage reports are generated in JSON and also in format compatible with [_JUnit_ test automation framework](https://junit.org/junit5/). It is also possible to start `make coverage-report` to generate code coverage reports in form of interactive HTML pages. These pages are stored in `htmlcov` subdirectory. Just open index page from this subdirectory in your web browser.
+Code coverage reports are generated in JSON and also in format compatible with [_JUnit_ test automation framework](https://junit.org/junit5/). It is also possible to start `make coverage-report` to generate code coverage reports in the form of interactive HTML pages. These pages are stored in the `htmlcov` subdirectory. Just open the index page from this subdirectory in your web browser.
 
 Overall code coverage measured for both unit tests and integration tests can be checked by following command:
 
@@ -128,13 +128,14 @@ It is possible to check if type hints added into the code are correct and whethe
 make check-types
 ```
 
-Please note that type hints check might be very slow on the first run. Subsequent runs are much faster thanks to cache that Mypy uses.
-This check is part of CI job that verifies sources.
+Please note that type hints check might be very slow on the first run.
+Subsequent runs are much faster thanks to the cache that Mypy uses. This check
+is part of a CI job that verifies sources.
 
 
 ### Linters
 
-_Ruff_ tools is used as a linter. There are bunch of linters enabled for this repository. All of them are specified in `pyproject.toml` in section `[tool.ruff]`. Some specific rules can be disabled using `ignore` parameter (empty now). List of all linters recognized by Ruff can be retrieved by:
+_Ruff_ tool is used as a linter. There are a bunch of linter rules enabled for this repository. All of them are specified in `pyproject.toml` in section `[tool.ruff]`. Some specific rules can be disabled using `ignore` parameter (empty now). List of all linters recognized by Ruff can be retrieved by:
 
 ```
 ruff linter
@@ -159,7 +160,7 @@ pdm run security-check
 
 ## Testing
 
-Three group of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:
+Three groups of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:
 
 1. Unit Tests
 1. Integration Tests
@@ -179,11 +180,11 @@ make test-integration          Run integration tests tests
 make test-e2e                  Run end to end tests
 ```
 
-All tests are based on [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
+All tests are based on the [Pytest framework](https://docs.pytest.org/en/) and code coverage is measured by the plugin [pytest-cov](https://github.com/pytest-dev/pytest-cov). For mocking and patching, the [unittest framework](https://docs.python.org/3/library/unittest.html) is used.
 
 Currently code coverage threshold for integration tests is set to 60%. This value is specified directly in Makefile, because the coverage threshold is different from threshold required for unit tests.
 
-As specified in Definition of Done, new changes needs to be covered by tests.
+As specified in Definition of Done, new changes need to be covered by tests.
 
 
 
@@ -191,7 +192,7 @@ As specified in Definition of Done, new changes needs to be covered by tests.
 
 #### Patching
 
-For patching, for example introducing mock object instead of real object, it is
+For patching, for example introducing mock objects instead of real objects, it is
 possible to use `patch` imported from `unittest.mock`. It is usually used as
 decorator put before test implementation:
 
@@ -219,7 +220,7 @@ def test_xyz():
 
 #### Verifying that some exception is thrown
 
-Sometimes it is needed to test whether some exception is thrown from tested function or method. In this case `pytest.raises` can be used:
+Sometimes it is needed to test whether some exception is thrown from a tested function or method. In this case `pytest.raises` can be used:
 
 
 ```python
@@ -229,7 +230,7 @@ def test_conversation_cache_wrong_cache(invalid_cache_type_config):
         CacheFactory.conversation_cache(invalid_cache_type_config)
 ```
 
-It is also possible to check if the exception is thrown with expected message. The message (or its part) is written as regexp:
+It is also possible to check if the exception is thrown with the expected message. The message (or its part) is written as regexp:
 
 ```python
 def test_constructor_no_provider():
@@ -278,7 +279,7 @@ def test_logger_show_message_flag(mock_load_dotenv, capsys):
 
 ### Tips and hints for developing e2e tests
 
-End to end tests can be run locally, but in this case, some tests that assume they run on cluster needs to be skipped.
+End to end tests can be run locally, but in this case, some tests that assume they run on a cluster need to be skipped.
 Set the `TEST_TAGS` environment variable before the tests are started:
 
 ```
@@ -296,7 +297,7 @@ export TEST_TAGS="not cluster and not rag"
 make test-e2e
 ```
 
-> E2E tests expects app running on http://localhost:8080 or whatever is defined through `OLS_URL` environment variable.
+> E2E tests expects app running on http://localhost:8080 or whatever is defined through the `OLS_URL` environment variable.
 
 #### Detecting which statements are called in real service
 
@@ -335,7 +336,7 @@ ols/app/endpoints/feedback.py                    45     24    47%   37-39, 51, 6
 
 ### Running benchmarks
 
-Bechmarks for selected functions and methods can be run by using following command:
+Benchmarks for selected functions and methods can be run by using following command:
 
 ```
 pdm run benchmarks
@@ -343,9 +344,9 @@ pdm run benchmarks
 
 ### `pytest-benchmark` package
 
-Benchmarks are based on `pytest-benchmark` package. To create new benchmark, the regular test function needs
+Benchmarks are based on the `pytest-benchmark` package. To create a new benchmark, the regular test function needs
 to be created and `benchmark` parameter (fixture) should be passed to it. Then the benchmark can be initialized
-by calling this fixture, passing tested function/method to it, together with required parameters.
+by calling this fixture, passing a tested function/method to it, together with required parameters.
 
 ### Basic usage of `benchmark` fixture
 
@@ -435,7 +436,7 @@ For further guidance, see the rest of our codebase, or check sources online. The
 
 ## Adding a new provider/model
 
-It is possible to create interface for new provider. That interface should be
+It is possible to create an interface for a new provider. That interface should be
 added into `ols/src/llms/providers/` Then the provider should be registered and
 referenced from `olsconfig.yaml` file the same way as other existing providers.
 
