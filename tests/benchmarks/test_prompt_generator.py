@@ -22,6 +22,12 @@ provider_and_model = (
 
 
 @pytest.fixture
+def empty_history():
+    """Empty conversation history."""
+    return []
+
+
+@pytest.fixture
 def conversation_history():
     """Non-empty conversation history."""
     return [
@@ -30,12 +36,39 @@ def conversation_history():
     ] * 50
 
 
+@pytest.fixture
+def long_history():
+    """Long conversation history."""
+    return [
+        "First human message",
+        "First AI response",
+    ] * 10000
+
+
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)
 def test_generate_prompt_default_prompt(
     benchmark, provider, model, conversation_history
 ):
     """Benchmark for prompt generator."""
     query = "What is Kubernetes?"
+    model_options = {}
+    rag_context = "context"
+
+    benchmark(
+        generate_prompt,
+        provider,
+        model,
+        model_options,
+        query,
+        conversation_history,
+        rag_context,
+    )
+
+
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
+def test_generate_prompt_long_query(benchmark, provider, model, conversation_history):
+    """Benchmark for prompt generator."""
+    query = "What is Kubernetes?" * 10000
     model_options = {}
     rag_context = "context"
 
@@ -71,9 +104,7 @@ def test_generate_prompt_without_rag_context(
 
 
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)
-def test_generate_prompt_without_history(
-    benchmark, provider, model, conversation_history
-):
+def test_generate_prompt_without_history(benchmark, provider, model, empty_history):
     """Benchmark for prompt generator."""
     query = "What is Kubernetes?"
     model_options = {}
@@ -85,14 +116,14 @@ def test_generate_prompt_without_history(
         model,
         model_options,
         query,
-        [],
+        empty_history,
         rag_context,
     )
 
 
 @pytest.mark.parametrize(("provider", "model"), provider_and_model)
 def test_generate_prompt_without_rag_context_nor_history(
-    benchmark, provider, model, conversation_history
+    benchmark, provider, model, empty_history
 ):
     """Benchmark what prompt will be returned for non-existent RAG context."""
     query = "What is Kubernetes?"
@@ -105,6 +136,24 @@ def test_generate_prompt_without_rag_context_nor_history(
         model,
         model_options,
         query,
-        [],
+        empty_history,
+        rag_context,
+    )
+
+
+@pytest.mark.parametrize(("provider", "model"), provider_and_model)
+def test_generate_prompt_long_history(benchmark, provider, model, long_history):
+    """Benchmark for prompt generator."""
+    query = "What is Kubernetes?"
+    model_options = {}
+    rag_context = "context"
+
+    benchmark(
+        generate_prompt,
+        provider,
+        model,
+        model_options,
+        query,
+        long_history,
         rag_context,
     )
