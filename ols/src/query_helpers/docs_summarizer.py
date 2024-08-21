@@ -62,7 +62,8 @@ class DocsSummarizer(QueryHelper):
         if history is None:
             history = []
 
-        verbose = kwargs.get("verbose", "").lower() == "true"
+        verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
+
         settings_string = (
             f"conversation_id: {conversation_id}, "
             f"query: {query}, "
