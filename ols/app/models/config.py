@@ -3,12 +3,13 @@
 import logging
 import os
 import re
-from typing import Any, Optional, Self
+from typing import Any, Literal, Optional, Self
 from urllib.parse import urlparse
 
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
+    DirectoryPath,
     FilePath,
     PositiveInt,
     field_validator,
@@ -90,6 +91,21 @@ def _file_check(path: FilePath, desc: str) -> None:
         raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
 
 
+def _get_log_level(value: str) -> int:
+    """Get log level from string."""
+    if not isinstance(value, str):
+        raise InvalidConfigurationError(
+            f"'{value}' log level must be string, got {type(value)}"
+        )
+    log_level = logging.getLevelName(value.upper())
+    if not isinstance(log_level, int):
+        raise InvalidConfigurationError(
+            f"'{value}' is not valid log level, valid levels are "
+            f"{[k.lower() for k in logging.getLevelNamesMapping()]}"
+        )
+    return log_level
+
+
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
 
@@ -166,9 +182,12 @@ class TLSConfig(BaseModel):
     tls_key_path: Optional[FilePath] = None
     tls_key_password: Optional[str] = None
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self, data: Optional[dict] = None, ignore_missing_certs: bool = False
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
+        self._ignore_missing_certs = ignore_missing_certs
         if data:
             self.tls_certificate_path = data.get(
                 "tls_certificate_path", self.tls_certificate_path
@@ -180,7 +199,7 @@ class TLSConfig(BaseModel):
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate TLS config."""
-        if not disable_tls:
+        if not disable_tls and not self._ignore_missing_certs:
             if not self.tls_certificate_path:
                 raise InvalidConfigurationError(
                     "Can not enable TLS without ols_config.tls_config.tls_certificate_path"
@@ -255,7 +274,9 @@ class ProviderConfig(BaseModel):
     watsonx_config: Optional[WatsonxConfig] = None
     bam_config: Optional[BAMConfig] = None
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self, data: Optional[dict] = None, ignore_llm_secrets: bool = False
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -264,9 +285,15 @@ class ProviderConfig(BaseModel):
 
         self.set_provider_type(data)
         self.url = data.get("url", None)
-        self.credentials = _read_secret(
-            data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
-        )
+        try:
+            self.credentials = _read_secret(
+                data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
+            )
+        except FileNotFoundError:
+            if ignore_llm_secrets:
+                self.credentials = None
+            else:
+                raise
 
         # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
         self.project_id = data.get("project_id", None)
@@ -433,7 +460,9 @@ class LLMProviders(BaseModel):
 
     providers: dict[str, ProviderConfig] = {}
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self, data: Optional[dict] = None, ignore_llm_secrets: bool = False
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -441,7 +470,7 @@ class LLMProviders(BaseModel):
         for p in data:
             if "name" not in p:
                 raise InvalidConfigurationError("provider name is missing")
-            provider = ProviderConfig(p)
+            provider = ProviderConfig(p, ignore_llm_secrets)
             self.providers[p["name"]] = provider
 
     def __eq__(self, other: object) -> bool:
@@ -733,21 +762,8 @@ class LoggingConfig(BaseModel):
         # logging level names (integer values) for defined model fields
         for field in self.model_fields:
             if field in data:
-                data[field] = self._get_log_level(data[field])  # type: ignore[assignment]
+                data[field] = _get_log_level(data[field])  # type: ignore[assignment]
         super().__init__(**data)
-
-    def _get_log_level(self, value: str) -> int:
-        if not isinstance(value, str):
-            raise InvalidConfigurationError(
-                f"'{value}' log level must be string, got {type(value)}"
-            )
-        log_level = logging.getLevelName(value.upper())
-        if not isinstance(log_level, int):
-            raise InvalidConfigurationError(
-                f"'{value}' is not valid log level, valid levels are "
-                f"{[k.lower() for k in logging.getLevelNamesMapping()]}"
-            )
-        return log_level
 
 
 class ReferenceContent(BaseModel):
@@ -837,7 +853,9 @@ class OLSConfig(BaseModel):
 
     extra_ca: list[FilePath] = []
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self, data: Optional[dict] = None, ignore_missing_certs: bool = False
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
@@ -854,7 +872,7 @@ class OLSConfig(BaseModel):
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
-        self.tls_config = TLSConfig(data.get("tls_config", None))
+        self.tls_config = TLSConfig(data.get("tls_config", None), ignore_missing_certs)
         if data.get("query_filters", None) is not None:
             self.query_filters = []
             for item in data.get("query_filters", None):
@@ -914,30 +932,65 @@ class DevConfig(BaseModel):
     run_on_localhost: bool = False
 
 
+class UserDataCollectorConfig(BaseModel):
+    """User data collection configuration."""
+
+    data_storage: Optional[DirectoryPath] = None
+    log_level: int = logging.INFO
+    collection_interval: int = 2 * 60 * 60  # 2 hours
+    run_without_initial_wait: bool = False
+    ingress_env: Literal["stage", "prod"] = "prod"
+    cp_offline_token: Optional[str] = None
+
+    def __init__(self, **data: Optional[dict]) -> None:
+        """Initialize configuration."""
+        # convert input strings (level names, eg. debug/info,...) to
+        # logging level name (integer values)
+        if "log_level" in data:
+            data["log_level"] = _get_log_level(data["log_level"])  # type: ignore[assignment]
+        super().__init__(**data)
+
+    @model_validator(mode="after")
+    def validate_token_is_set_when_needed(self) -> Self:
+        """Check that cp_offline_token is set when env is stage."""
+        if self.ingress_env == "stage" and self.cp_offline_token is None:
+            raise ValueError("cp_offline_token is required in stage environment")
+        return self
+
+
 class Config(BaseModel):
     """Global service configuration."""
 
     llm_providers: LLMProviders = LLMProviders()
     ols_config: OLSConfig = OLSConfig()
     dev_config: DevConfig = DevConfig()
+    user_data_collector_config: Optional[UserDataCollectorConfig] = None
 
-    def __init__(self, data: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        data: Optional[dict] = None,
+        ignore_llm_secrets: bool = False,
+        ignore_missing_certs: bool = False,
+    ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
         v = data.get("llm_providers")
         if v is not None:
-            self.llm_providers = LLMProviders(v)
+            self.llm_providers = LLMProviders(v, ignore_llm_secrets)
         else:
             raise InvalidConfigurationError("no LLM providers config section found")
         v = data.get("ols_config")
         if v is not None:
-            self.ols_config = OLSConfig(v)
+            self.ols_config = OLSConfig(v, ignore_missing_certs)
         else:
             raise InvalidConfigurationError("no OLS config section found")
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
+        self.user_data_collector_config = UserDataCollectorConfig(
+            **data.get("user_data_collector_config", {})
+        )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""

@@ -25,6 +25,7 @@ from ols.app.models.config import (
     ReferenceContent,
     TLSConfig,
     UserDataCollection,
+    UserDataCollectorConfig,
 )
 
 
@@ -1778,6 +1779,7 @@ def test_config():
         config.ols_config.query_validation_method
         == constants.QueryValidationMethod.DISABLED
     )
+    assert config.user_data_collector_config == UserDataCollectorConfig()
 
 
 def test_config_improper_missing_model():
@@ -2420,3 +2422,38 @@ def test_dev_config_bool_inputs():
     for value in false_values:
         dev_config = DevConfig(enable_dev_ui=value)
         assert dev_config.enable_dev_ui is False
+
+
+def test_user_data_collection_config__defaults():
+    """Test the UserDataCollection model with default values."""
+    udc_config = UserDataCollectorConfig()
+    assert udc_config.data_storage is None
+    assert udc_config.log_level == logging.INFO
+    assert udc_config.collection_interval == 2 * 60 * 60
+    assert udc_config.run_without_initial_wait is False
+    assert udc_config.ingress_env == "prod"
+    assert udc_config.cp_offline_token is None
+
+
+def test_user_data_collection_config__logging_level():
+    """Test the UserDataCollection model with logging level."""
+    udc_config = UserDataCollectorConfig(log_level="debug")
+    assert udc_config.log_level == logging.DEBUG
+
+    udc_config = UserDataCollectorConfig(log_level="DEBUG")
+    assert udc_config.log_level == logging.DEBUG
+
+
+def test_user_data_collection_config__token_expectation():
+    """Test the UserDataCollection model with token expectation."""
+    udc_config = UserDataCollectorConfig(
+        ingress_env="stage", cp_offline_token="123"  # noqa: S106
+    )
+    assert udc_config.ingress_env == "stage"
+    assert udc_config.cp_offline_token == "123"  # noqa: S105
+
+    with pytest.raises(
+        ValueError,
+        match="cp_offline_token is required in stage environment",
+    ):
+        UserDataCollectorConfig(ingress_env="stage", cp_offline_token=None)
