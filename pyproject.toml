@@ -94,7 +94,7 @@ dependencies = [
     "psycopg2-binary==2.9.9",
     "azure-identity==1.17.1",
     "langchain-community==0.2.10",
-    "SQLAlchemy==2.0.31",
+    "SQLAlchemy==2.0.32",
     "huggingface_hub==0.23.4",
     "ibm-watsonx-ai==1.1.2",
     "certifi==2024.7.4",
