@@ -47,25 +47,42 @@ The only secret required in this entire process is the one used to authenticate 
     - For production: https://access.redhat.com/management/api
     - For staging: https://access.stage.redhat.com/management/api
 
-    Once you have an "offline token", you can provide it to the data collection script via the `CP_OFFLINE_TOKEN` environment variable. The script will then generate an "access token" for you on-the-fly.
+    Once you have an "offline token", you can provide it to the data collection script via `olsconfig.yaml`, eg.
+    ```yaml
+    user_data_collector_config:
+        cp_offline_token: fake_token
+        ...
+    ...
+    ```
+    The script will then generate an "access token" for you on-the-fly.
 
 3. Direct POSTs to Ingress: If you want to make direct POST requests to the Ingress, you will need an "access token". To get this, you need to have the "offline token" and follow the instructions provided here. Please note that the URL you use to generate the token will differ based on the environment:
 
 For production: https://sso.redhat.com
 For staging: https://sso.stage.redhat.com
 
-> In CI, we are proving in  `CP_OFFLINE_TOKEN` which was manually generated via https://access.redhat.com/management/api and stored into our secrets/vault.
+> In CI, we are proving in `cp_offline_token` which was manually generated via https://access.redhat.com/management/api and stored into our secrets/vault.
 
 ## Data flow diagram
 ![Sequence diagram](../../docs/user_data_flow.png)
 
 
 ## How to test locally
-To test locally, set the following environment variables for the collector script:
+To test locally, use or tweak this configuration from `olsconfig.yaml`:
+```yaml
+# rest of the olsconfig.yaml
+user_data_collector_config:
+  data_storage: "some/path"
+  log_level: debug
+  collection_interval: 10  # seconds
+  run_without_initial_wait: true
+  ingress_env: stage
+  cp_offline_token: token
+```
 
-- `OLS_USER_DATA_PATH`: Absolute path of directory containing /transcripts and/or /feedback with data.
-- `RUN_WITHOUT_INITIAL_WAIT`: Set to `true` to avoid waiting before collection (default is 5 minutes).
-- `CP_OFFLINE_TOKEN`: Offline token generated for the environment you desire.
+- `data_storage`: Absolute path of directory containing /transcripts and/or /feedback with data.
+- `run_without_initial_wait`: Set to `true` to avoid waiting before collection (default is 5 minutes).
+- `cp_offline_token`: Offline token generated for the environment you desire.
 
 If you don't want to create the data manually, you can use OLS service to do it for you (as it does in production). You need relevant config entry
 ```yaml

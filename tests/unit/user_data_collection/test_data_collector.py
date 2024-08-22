@@ -20,15 +20,7 @@ def with_mocked_config():
     """
     global data_collector
     global original_collect_ols_data_from
-    with (
-        patch.dict(
-            os.environ,
-            {
-                "CP_OFFLINE_TOKEN": "fake-token",
-                "OLS_USER_DATA_PATH": "fake-path",
-            },
-        ),
-    ):
+    with patch("ols.config", new=Mock()):
         from ols.user_data_collection import data_collector
         from ols.user_data_collection.data_collector import (
             collect_ols_data_from as original_collect_ols_data_from,

@@ -138,6 +138,19 @@ def must_gather():
         f"{cluster_dir.as_posix()}/installplan.yaml",
     )
 
+    # configmap
+    cluster_utils.run_oc_and_store_stdout(
+        [
+            "get",
+            "configmap",
+            "-n",
+            "openshift-lightspeed",
+            "-o",
+            "yaml",
+        ],
+        f"{cluster_dir.as_posix()}/configmap.yaml",
+    )
+
     # pod logs
     pod_logs_dir = cluster_dir / "podlogs"
     pod_logs_dir.mkdir(exist_ok=True)
