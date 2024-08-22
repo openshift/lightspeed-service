@@ -28,7 +28,7 @@ INSCOPE_MODELS = {
 EVAL_THRESHOLD = 0.2  # low score is better
 
 
-# Retry settings for LLM calls
+# Retry settings for LLM calls used when model does not respond reliably in 100% cases
 MAX_RETRY_ATTEMPTS = 10
 REST_API_TIMEOUT = 120
 TIME_TO_BREATH = 10
@@ -70,6 +70,9 @@ class ResponseEvaluation:
         time_to_breath=TIME_TO_BREATH,
     ):
         """Get api response for a question/query."""
+        # try to retrieve response even when model is not responding reliably
+        # in 100% cases
+        # it fixes OLS-858 e2e test failure - test_model_response response validation
         for retry_counter in range(retry_attemps):
             print(f"OLS call; attempt: {retry_counter}")
             response = self._api_client.post(
@@ -83,6 +86,7 @@ class ResponseEvaluation:
             )
             if response.status_code == requests.codes.ok:
                 break
+            # model is not realiable if it's overloaded, so take some time between requests
             sleep(time_to_breath)
 
         if response.status_code != requests.codes.ok:
