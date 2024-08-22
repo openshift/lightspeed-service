@@ -191,7 +191,7 @@ spec:
             - name: name
               value: prefetch-dependencies
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:bb52d9b1dac92ab01658bcce30aeaa70aefa1dac47d254ce8d43d3eb5ef89a9b
+              value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies:0.1@sha256:d56ee97a3801f13c363d98bd5fe775b19a29a227e39d5214e9092598c6f881a1
             - name: kind
               value: task
           resolver: bundles
@@ -233,7 +233,7 @@ spec:
             - name: name
               value: buildah-6gb
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:e7093625957ce8ac63e18fb92bc94637d24ac82855150070b9928b82241a8913
+              value: quay.io/konflux-ci/tekton-catalog/task-buildah-6gb:0.2@sha256:2f81d486e3cd7901f6fe63b066bb6d02e9cf4b2140001f19982a7ebd73631bc9
             - name: kind
               value: task
           resolver: bundles
