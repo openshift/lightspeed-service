@@ -70,7 +70,7 @@ def args_parser(args: list[str]) -> argparse.Namespace:
 
 def upload_csv_file(worksheet, filename):
     """Upload selected file into selected worksheet."""
-    logger.info(f"Uploading file {filename}")
+    logger.info("Uploading file %s", filename)
 
     # Read CSV and update
     with open(filename, "r") as file:
@@ -86,14 +86,14 @@ def upload_csv_files(
     """Upload all CSV files into Google spreadsheet."""
     # first authorize access to sheet
     logger.info("Authorizing to Google docs.")
-    gc = pygsheets.authorize(service_file="client_secret.json")
+    google_client = pygsheets.authorize(service_file="client_secret.json")
 
     # open Google sheet
-    logger.info(f"Opening spreadsheet with title {spreadsheet_title}")
-    sheet = gc.open(spreadsheet_title)
-    logger.info(f"ID={sheet.id}")
-    logger.info(f"Title={sheet.title}")
-    logger.info(f"URL={sheet.url}")
+    logger.info("Opening spreadsheet with title %s", spreadsheet_title)
+    sheet = google_client.open(spreadsheet_title)
+    logger.info("ID=%s", sheet.id)
+    logger.info("Title=%s", sheet.title)
+    logger.info("URL=%s", sheet.url)
 
     upload_csv_file(sheet[0], feedback)
     upload_csv_file(sheet[1], feedback_with_history)
