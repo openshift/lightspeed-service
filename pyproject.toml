@@ -123,3 +123,6 @@ benchmarks = "pdm run make benchmarks"
 
 [tool.setuptools]
 packages = ["ols"]
+
+[tool.pylint."MESSAGES CONTROL"]
+good-names = ["e"]
