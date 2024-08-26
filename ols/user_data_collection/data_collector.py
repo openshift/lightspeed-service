@@ -72,8 +72,7 @@ def get_ingress_upload_url() -> str:
     upload_endpoint = "api/ingress/v1/upload"
     if udc_config.ingress_env == "prod":
         return "https://console.redhat.com/" + upload_endpoint
-    else:
-        return "https://console.stage.redhat.com/" + upload_endpoint
+    return "https://console.stage.redhat.com/" + upload_endpoint
 
 
 def access_token_from_offline_token(offline_token: str) -> str:
@@ -103,8 +102,7 @@ def access_token_from_offline_token(offline_token: str) -> str:
     response = requests.post(url + endpoint, data=data, timeout=REDHAT_SSO_TIMEOUT)
     if response.status_code == requests.codes.ok:
         return response.json()["access_token"]
-    else:
-        raise Exception(f"Failed to generate access token. Response: {response.json()}")
+    raise Exception(f"Failed to generate access token. Response: {response.json()}")
 
 
 def get_cloud_openshift_pull_secret() -> str:
