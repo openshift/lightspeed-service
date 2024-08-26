@@ -793,9 +793,9 @@ llama-index-core==0.10.62 \
     #   llama-index-readers-llama-parse
     #   llama-index-vector-stores-faiss
     #   llama-parse
-llama-index-embeddings-huggingface==0.2.2 \
-    --hash=sha256:3445b1c7823cdb45622f90e79f2540db870ea55b226ec7538be963d340f43240 \
-    --hash=sha256:43b2978740d29291ae4c7566922d2b1c7543dc979e268794b578e1a2adfb4319
+llama-index-embeddings-huggingface==0.3.1 \
+    --hash=sha256:71708240b1aec183c80f20d531b39a75d0cce774586e11bb0798f3ecb270749c \
+    --hash=sha256:7aef6324a19576e6b95bfe927c3bd4fc1c5725edce9f26b4e5d2eefa27c02fdb
     # via ols (pyproject.toml)
 llama-index-embeddings-openai==0.1.11 \
     --hash=sha256:6025e229e375201788a9b14d6ebe470329907576cba5f6b7b832c3d68f39db30 \
