@@ -20,7 +20,7 @@ def construct_filename(key: str) -> str:
     """Construct filename from key."""
     groups = key_match(key)
     if groups is None:
-        raise Exception(f"Can not construct filename from key {key}")
+        raise ValueError(f"Can not construct filename from key {key}")
 
     cluster_id = groups[1].lower()
     year = groups[2][:4]
