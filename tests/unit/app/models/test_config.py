@@ -463,6 +463,7 @@ def test_provider_config_azure_openai_specific():
 
     # configuration for other providers must not be set
     assert provider_config.openai_config is None
+    assert provider_config.rhoai_vllm_config is None
     assert provider_config.watsonx_config is None
     assert provider_config.bam_config is None
 
@@ -500,6 +501,7 @@ def test_provider_config_apitoken_only():
 
     # configuration for other providers must not be set
     assert provider_config.openai_config is None
+    assert provider_config.rhoai_vllm_config is None
     assert provider_config.watsonx_config is None
     assert provider_config.bam_config is None
 
@@ -564,6 +566,7 @@ def test_provider_config_openai_specific():
     assert provider_config.openai_config.api_key == "secret_key"
 
     # configuration for other providers must not be set
+    assert provider_config.rhoai_vllm_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
     assert provider_config.bam_config is None
@@ -581,6 +584,72 @@ def test_provider_config_openai_unknown_parameters():
                 "credentials_path": "tests/config/secret/apitoken",
                 "deployment_name": "deploment-name",
                 "openai_config": {
+                    "unknown_parameter": "unknown value",
+                    "url": "http://localhost",
+                    "tenant_id": "tenant-ID",
+                    "client_id": "client-ID",
+                    "client_secret_path": "tests/config/secret/apitoken",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "deployment_name": "deployment-name",
+                },
+                "models": [
+                    {
+                        "name": "test_model_name",
+                        "url": "http://test.url/",
+                        "credentials_path": "tests/config/secret/apitoken",
+                    }
+                ],
+            }
+        )
+
+
+def test_provider_config_rhoai_vllm_specific():
+    """Test if RHOAI VLLM-specific config is loaded and validated."""
+    # provider type is set to "openai" and OpenAI-specific configuration is there
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "rhoai_vllm",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret/apitoken",
+            "project_id": "test_project_id",
+            "rhoai_vllm_config": {
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret/apitoken",
+            },
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        }
+    )
+    # OpenAI-specific configuration must be present
+    assert provider_config.rhoai_vllm_config is not None
+    assert str(provider_config.rhoai_vllm_config.url) == "http://localhost/"
+    assert provider_config.rhoai_vllm_config.api_key == "secret_key"
+
+    # configuration for other providers must not be set
+    assert provider_config.openai_config is None
+    assert provider_config.azure_config is None
+    assert provider_config.watsonx_config is None
+    assert provider_config.bam_config is None
+
+
+def test_provider_config_rhoai_vllm_unknown_parameters():
+    """Test if unknown RHOAI-VLLM parameters are detected."""
+    # provider type is set to "openai" and OpenAI-specific configuration is there
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ProviderConfig(
+            {
+                "name": "test_name",
+                "type": "rhoai_vllm",
+                "url": "test_url",
+                "credentials_path": "tests/config/secret/apitoken",
+                "deployment_name": "deploment-name",
+                "rhoai_vllm_config": {
                     "unknown_parameter": "unknown value",
                     "url": "http://localhost",
                     "tenant_id": "tenant-ID",
@@ -631,6 +700,7 @@ def test_provider_config_watsonx_specific():
     assert provider_config.watsonx_config.api_key == "secret_key"
 
     # configuration for other providers must not be set
+    assert provider_config.rhoai_vllm_config is None
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
     assert provider_config.bam_config is None
@@ -693,6 +763,7 @@ def test_provider_config_bam_specific():
     assert provider_config.bam_config.api_key == "secret_key"
 
     # configuration for other providers must not be set
+    assert provider_config.rhoai_vllm_config is None
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
     assert provider_config.watsonx_config is None
@@ -789,6 +860,7 @@ providers = (
     constants.PROVIDER_OPENAI,
     constants.PROVIDER_AZURE_OPENAI,
     constants.PROVIDER_WATSONX,
+    constants.PROVIDER_RHOAI_VLLM,
 )
 
 models = (
