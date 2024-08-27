@@ -10,10 +10,7 @@ import requests
 import yaml
 from httpx import Client
 
-from ols.constants import (
-    HTTP_REQUEST_HEADERS_TO_REDACT,
-    INVALID_QUERY_RESP,
-)
+from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.utils import suid
 from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
@@ -388,13 +385,18 @@ def test_invalid_question():
         response_utils.check_content_type(response, "application/json")
         print(vars(response))
 
-        expected_json = {
-            "conversation_id": cid,
-            "response": INVALID_QUERY_RESP,
-            "referenced_documents": [],
-            "truncated": False,
-        }
-        assert response.json() == expected_json
+        json_response = response.json()
+        assert json_response["conversation_id"] == cid
+        assert json_response["referenced_documents"] == []
+        assert not json_response["truncated"]
+        # LLM shouldn't answer non-ocp queries or
+        # at least acknowledges that query is non-ocp.
+        # Below assert is minimal due to model randomness.
+        assert re.search(
+            r"(sorry|any questions)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
 
 
 def test_invalid_question_without_conversation_id():
@@ -412,9 +414,17 @@ def test_invalid_question_without_conversation_id():
         print(vars(response))
 
         json_response = response.json()
-        assert json_response["response"] == INVALID_QUERY_RESP
         assert json_response["referenced_documents"] == []
         assert json_response["truncated"] is False
+        # Query classification is disabled by default,
+        # and we rely on the model (controlled by prompt) to reject non-ocp queries.
+        # Randomness in response is expected.
+        # assert json_response["response"] == INVALID_QUERY_RESP
+        assert re.search(
+            r"(sorry|any questions)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
 
         # new conversation ID should be generated
         assert suid.check_suid(
