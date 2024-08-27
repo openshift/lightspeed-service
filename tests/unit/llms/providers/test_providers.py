@@ -23,13 +23,15 @@ def test_providers_are_registered():
     from ols.src.llms.providers.bam import BAM
     from ols.src.llms.providers.fake_provider import FakeProvider
     from ols.src.llms.providers.openai import OpenAI
-    from ols.src.llms.providers.watsonx import Watsonx
     from ols.src.llms.providers.rhoai_vllm import RHOAIVLLM
+    from ols.src.llms.providers.watsonx import Watsonx
 
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_OPENAI] == OpenAI
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_BAM] == BAM
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_WATSONX] == Watsonx
-    assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_RHOAI_VLLM] == RHOAIVLLM
+    assert (
+        LLMProvidersRegistry.llm_providers[constants.PROVIDER_RHOAI_VLLM] == RHOAIVLLM
+    )
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_FAKE] == FakeProvider
 
 

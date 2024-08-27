@@ -73,7 +73,9 @@ def provider_config_with_specific_parameters():
 
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    rhoai_vllm = RHOAIVLLM(model="uber-model", params={}, provider_config=provider_config)
+    rhoai_vllm = RHOAIVLLM(
+        model="uber-model", params={}, provider_config=provider_config
+    )
     llm = rhoai_vllm.load()
     assert isinstance(llm, ChatOpenAI)
     assert rhoai_vllm.default_params
@@ -94,7 +96,9 @@ def test_params_handling(provider_config):
         "verbose": True,
     }
 
-    rhoai_vllm = RHOAIVLLM(model="uber-model", params=params, provider_config=provider_config)
+    rhoai_vllm = RHOAIVLLM(
+        model="uber-model", params=params, provider_config=provider_config
+    )
     llm = rhoai_vllm.load()
     assert isinstance(llm, ChatOpenAI)
     assert rhoai_vllm.default_params
@@ -173,7 +177,9 @@ def test_none_params_handling(provider_config):
         "cache": None,
     }
 
-    rhoai_vllm = RHOAIVLLM(model="uber-model", params=params, provider_config=provider_config)
+    rhoai_vllm = RHOAIVLLM(
+        model="uber-model", params=params, provider_config=provider_config
+    )
     llm = rhoai_vllm.load()
     assert isinstance(llm, ChatOpenAI)
     assert rhoai_vllm.default_params
@@ -189,7 +195,9 @@ def test_none_params_handling(provider_config):
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
     # provider initialization with empty set of params
-    rhoai_vllm = RHOAIVLLM(model="uber-model", params={}, provider_config=provider_config)
+    rhoai_vllm = RHOAIVLLM(
+        model="uber-model", params={}, provider_config=provider_config
+    )
     rhoai_vllm.load()
 
     # check default value
@@ -199,7 +207,9 @@ def test_params_replace_default_values_with_none(provider_config):
     # try to override default parameter
     params = {"base_url": None}
 
-    rhoai_vllm = RHOAIVLLM(model="uber-model", params=params, provider_config=provider_config)
+    rhoai_vllm = RHOAIVLLM(
+        model="uber-model", params=params, provider_config=provider_config
+    )
     rhoai_vllm.load()
 
     # known parameter(s) should be there, now with None values

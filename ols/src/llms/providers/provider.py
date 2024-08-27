@@ -17,6 +17,7 @@ from ols.constants import (
     PROVIDER_BAM,
     PROVIDER_FAKE,
     PROVIDER_OPENAI,
+    PROVIDER_RHOAI_VLLM,
     PROVIDER_WATSONX,
     GenericLLMParameters,
 )
@@ -65,6 +66,21 @@ OpenAIParameters = {
     ProviderParameter("verbose", bool),
 }
 
+RHOAIVLLMParameters = {
+    ProviderParameter("openai_api_key", str),
+    ProviderParameter("api_version", str),
+    ProviderParameter("base_url", str),
+    ProviderParameter("deployment_name", str),
+    ProviderParameter("model", str),
+    ProviderParameter("model_kwargs", dict),
+    ProviderParameter("organization", str),
+    ProviderParameter("cache", str),
+    ProviderParameter("streaming", bool),
+    ProviderParameter("temperature", float),
+    ProviderParameter("max_tokens", int),
+    ProviderParameter("verbose", bool),
+}
+
 BAMParameters = {
     ProviderParameter("decoding_method", str),
     ProviderParameter("max_new_tokens", int),
@@ -93,6 +109,7 @@ FakeProviderParameters: set[ProviderParameter] = set()
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
     PROVIDER_OPENAI: OpenAIParameters,
+    PROVIDER_RHOAI_VLLM: RHOAIVLLMParameters,
     PROVIDER_BAM: BAMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
     PROVIDER_FAKE: FakeProviderParameters,
@@ -105,6 +122,11 @@ AzureOpenAIParametersMapping: dict[str, str] = {
 
 # Generic to OpenAI parameters mapping
 OpenAIParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+}
+
+# Generic to RHOAI VLLM parameters mapping
+RHOAIVLLMParametersMapping: dict[str, str] = {
     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
 }
 
@@ -130,6 +152,7 @@ FakeProviderParametersMapping: dict[str, str] = {}
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
     PROVIDER_OPENAI: OpenAIParametersMapping,
+    PROVIDER_RHOAI_VLLM: RHOAIVLLMParametersMapping,
     PROVIDER_BAM: BAMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
     PROVIDER_FAKE: FakeProviderParametersMapping,
