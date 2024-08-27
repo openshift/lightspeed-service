@@ -13,6 +13,7 @@ from ols.app.models.config import (
 )
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
+from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
@@ -269,8 +270,6 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -302,8 +301,6 @@ def test_post_question_on_noyaml_response_type(_setup) -> None:
 def test_post_question_with_keyword(mock_llm_validation, _setup) -> None:
     """Check the REST API /v1/query with keyword validation."""
     query = "What is Openshift ?"
-
-    from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
     ml = mock_langchain_interface(None)
     with (
@@ -345,8 +342,6 @@ def test_post_query_with_query_filters_response_type(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -380,7 +375,6 @@ def test_post_query_for_conversation_history(_setup) -> None:
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 
         ml = mock_langchain_interface("test response")
         with (
@@ -439,7 +433,7 @@ def test_post_question_without_attachments(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -449,8 +443,6 @@ def test_post_question_without_attachments(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -480,7 +472,7 @@ def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -490,8 +482,6 @@ def test_post_question_with_empty_list_of_attachments(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -522,7 +512,7 @@ def test_post_question_with_one_plaintext_attachment(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -532,8 +522,6 @@ def test_post_question_with_one_plaintext_attachment(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -577,7 +565,7 @@ def test_post_question_with_one_yaml_attachment(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -587,8 +575,6 @@ def test_post_question_with_one_yaml_attachment(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -641,7 +627,7 @@ def test_post_question_with_two_yaml_attachments(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -651,8 +637,6 @@ def test_post_question_with_two_yaml_attachments(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -725,7 +709,7 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -735,8 +719,6 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -787,7 +769,7 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -797,8 +779,6 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -851,7 +831,7 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup) -> None:
     answer = constants.SUBJECT_ALLOWED
     query_passed = None
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, query):
         """Closure called indirectly to validate the question."""
         nonlocal query_passed
         query_passed = query
@@ -861,8 +841,6 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup) -> None:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
@@ -914,7 +892,7 @@ def test_post_question_with_large_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with large attachment."""
     answer = constants.SUBJECT_ALLOWED
 
-    def validate_question(conversation_id, query):
+    def validate_question(_conversation_id, _query):
         """Closure called indirectly to validate the question."""
         return answer
 
@@ -932,8 +910,6 @@ logs:
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
         side_effect=validate_question,
     ):
-        from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-
         ml = mock_langchain_interface("test response")
         with (
             patch(
