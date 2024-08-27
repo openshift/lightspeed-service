@@ -9,6 +9,7 @@ from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
     PROVIDER_OPENAI,
+    PROVIDER_RHOAI_VLLM,
     PROVIDER_WATSONX,
 )
 from ols.src.prompts.prompt_generator import generate_prompt
@@ -26,6 +27,7 @@ provider_and_model = (
     (PROVIDER_OPENAI, GPT35_TURBO),
     (PROVIDER_WATSONX, GRANITE_13B_CHAT_V2),
     (PROVIDER_AZURE_OPENAI, GPT35_TURBO),
+    (PROVIDER_RHOAI_VLLM, GPT35_TURBO),
 )
 
 queries = ("What is Kubernetes?", "When is my birthday?")
