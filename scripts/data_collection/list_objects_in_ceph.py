@@ -13,14 +13,6 @@ from pprint import pprint
 
 import boto3
 
-client = boto3.client(
-    "s3",
-    endpoint_url=os.getenv("ENDPOINT_URL"),
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_KEY"),
-    region_name="us-east-1",
-)
-
 
 def list_bucket_content(client, bucket_name):
     """List the contents of the specified bucket."""
@@ -37,8 +29,22 @@ def list_bucket_content(client, bucket_name):
         print(f"Failed to list contents of bucket '{bucket_name}':", e)
 
 
-pprint(client.list_buckets())
+def main():
+    """Initialize connection to S3 storage, list buckets, and list bucket content."""
+    client = boto3.client(
+        "s3",
+        endpoint_url=os.getenv("ENDPOINT_URL"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_KEY"),
+        region_name="us-east-1",
+    )
 
-bucket_name = os.getenv("BUCKET")
+    pprint(client.list_buckets())
 
-list_bucket_content(client, bucket_name)
+    bucket_name = os.getenv("BUCKET")
+
+    list_bucket_content(client, bucket_name)
+
+
+if __name__ == "__main__":
+    main()
