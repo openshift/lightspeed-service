@@ -300,7 +300,7 @@ def construct_filename(key: str) -> str:
     """Construct filename from key."""
     groups = key_match(key)
     if groups is None:
-        raise Exception(f"Can not construct filename from key {key}")
+        raise KeyError(f"Can not construct filename from key {key}")
 
     cluster_id = groups[1].lower()
     year = groups[2][:4]
@@ -316,7 +316,7 @@ def get_cluster_name(key: str) -> str:
     """Retrieve cluster name from object key."""
     groups = key_match(key)
     if groups is None:
-        raise Exception(f"Can not construct filename from key {key}")
+        raise KeyError(f"Can not construct filename from key {key}")
 
     return groups[1].lower()
 
