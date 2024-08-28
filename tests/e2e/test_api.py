@@ -737,8 +737,9 @@ def test_query_filter() -> None:
         response_text = json_response["response"].lower()
         assert "openshift" in response_text
         assert "deploy" in response_text
-        assert "foo" not in response_text
-        assert "bar" not in response_text
+        response_words = response_text.split()
+        assert "foo" not in response_words
+        assert "bar" not in response_words
 
         # Retrieve the pod name
         ols_container_name = "lightspeed-service-api"

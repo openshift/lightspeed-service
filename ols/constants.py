@@ -45,6 +45,14 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
 
 # models
 
+
+class ModelFamily(StrEnum):
+    """Different LLM models family/group."""
+
+    GPT = "gpt"
+    GRANITE = "granite"
+
+
 # BAM
 GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
 
@@ -70,7 +78,9 @@ class GenericLLMParameters:
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
 DEFAULT_MIN_TOKENS_FOR_RESPONSE = 1
 DEFAULT_MAX_TOKENS_FOR_RESPONSE = 512
-MINIMUM_CONTEXT_TOKEN_LIMIT = 1
+
+# Minimum tokens to have some meaningful RAG context including special tags.
+MINIMUM_CONTEXT_TOKEN_LIMIT = 10
 
 
 # Provider and Model-specific context window size

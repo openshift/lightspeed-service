@@ -13,6 +13,11 @@ from ols.constants import (
     RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
 )
+from ols.src.prompts.prompt_generator import (
+    restructure_history,
+    restructure_rag_context_post,
+    restructure_rag_context_pre,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,12 +110,13 @@ class TokenHandler:
         return available_tokens
 
     def truncate_rag_context(
-        self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
+        self, retrieved_nodes: list[NodeWithScore], model: str, max_tokens: int = 500
     ) -> tuple[list[RagChunk], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
             retrieved_nodes: retrieved nodes object from index
+            model: model name; required for adding proper tags
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
@@ -128,7 +134,21 @@ class TokenHandler:
                 )
                 break
 
-            tokens = self.text_to_tokens(node.get_text())
+            # Prepend all model specific tags, so that those will be considered for
+            # token calculation. This requires formatting again after truncation,
+            # whenever there are tags required at the end.
+            # Alternative to this is to calculate tokens for special tags before
+            # and add the number accordingly.
+            # Example: Once token is calculated;
+            # ```
+            # if "granite" in model:
+            #    tokens_count += 7
+            # else:
+            #    tokens_count += 3
+            # ```
+            node_text = node.get_text()
+            node_text = restructure_rag_context_pre(node_text, model)
+            tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
             logger.debug(f"RAG content tokens count: {tokens_count}.")
 
@@ -139,9 +159,11 @@ class TokenHandler:
                 logger.debug(f"{available_tokens} tokens are less than threshold.")
                 break
 
+            node_text = self.tokens_to_text(tokens[:available_tokens])
+            node_text = restructure_rag_context_post(node_text, model)
             rag_chunks.append(
                 RagChunk(
-                    text=self.tokens_to_text(tokens[:available_tokens]),
+                    text=node_text,
                     doc_url=node.metadata.get("docs_url", ""),
                     doc_title=node.metadata.get("title", ""),
                 )
@@ -152,12 +174,15 @@ class TokenHandler:
         return rag_chunks, max_tokens
 
     def limit_conversation_history(
-        self, history: list[str], limit: int = 0
+        self, history: list[str], model: str, limit: int = 0
     ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
 
         for index, message in enumerate(reversed(history)):
+            # Restructure messages as per model
+            message = restructure_history(message, model)
+
             message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
             # if total length of already checked messages is higher than limit
@@ -165,6 +190,5 @@ class TokenHandler:
             if total_length > limit:
                 logger.debug(f"History truncated, it exceeds available {limit} tokens.")
                 return history[len(history) - index :], True
-            total_length += 1  # Additional token for new-line.
 
         return history, False

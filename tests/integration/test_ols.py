@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 import requests
 from fastapi.testclient import TestClient
+from langchain.schema import AIMessage, HumanMessage
 
 from ols import config, constants
 from ols.app.models.config import (
@@ -425,6 +426,10 @@ def test_post_query_for_conversation_history(_setup) -> None:
                 },
             )
             chat_history_expected = f"human: Query1\nai: {response.json()['response']}"
+            chat_history_expected = [
+                HumanMessage(content="Query1"),
+                AIMessage(content=response.json()["response"]),
+            ]
             invoke.assert_called_once_with(
                 input={
                     "query": "Query2",

@@ -35,31 +35,8 @@ USE_CONTEXT_INSTRUCTION = """
 Use the retrieved document to answer the question.
 """
 
-CONTEXT_PLACEHOLDER = """
-
-[DOCUMENT]
-{context}
-[END]
-
-"""
-
 USE_HISTORY_INSTRUCTION = """
 Use the previous chat history to interact and help the user.
-"""
-
-HISTORY_PLACEHOLDER = """
-
-[HISTORY]
-{chat_history}
-[END]
-
-"""
-
-QUERY_PLACEHOLDER = """
-<|user|>
-{query}
-<|assistant|>
-
 """
 
 # {{query}} is escaped because it will be replaced as a parameter at time of use
