@@ -291,11 +291,16 @@ def test_validate_question_valid_kw(llm_validate_question_mock):
 
 @pytest.mark.usefixtures("_load_config")
 @patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
+@patch(
     "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
     side_effect=PromptTooLongError("Prompt length 10000 exceeds LLM"),
 )
 def test_validate_question_too_long_query(llm_validate_question_mock):
     """Check the behaviour of validate_question function with too long query."""
+    # This test case is applicable only for LLM based query validation.
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -319,9 +324,13 @@ def test_validate_question_invalid_kw():
 
 
 @pytest.mark.usefixtures("_load_config")
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question(validate_question_mock):
-    """Check the behaviour of validate_question function."""
+def test_validate_question_llm(validate_question_mock):
+    """Check the behaviour of validate_question function with LLM."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -330,9 +339,14 @@ def test_validate_question(validate_question_mock):
 
 
 @pytest.mark.usefixtures("_load_config")
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_on_configuration_error(validate_question_mock):
+def test_validate_question_on_configuration_error_llm(validate_question_mock):
     """Check the behaviour of validate_question function when wrong configuration is detected."""
+    # This test case is applicable only for LLM based query validation.
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -344,6 +358,10 @@ def test_validate_question_on_configuration_error(validate_question_mock):
 
 
 @pytest.mark.usefixtures("_load_config")
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 def test_validate_question_on_validation_error(validate_question_mock):
     """Check the behaviour of validate_question function when query is not validated properly."""
@@ -359,16 +377,13 @@ def test_validate_question_on_validation_error(validate_question_mock):
         ols.validate_question(conversation_id, llm_request)
 
 
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.DISABLED,
-)
 @patch("ols.app.endpoints.ols._validate_question_keyword")
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 def test_validate_question_disabled(
     validate_question_llm_mock, validate_question_kw_mock
 ):
     """Check the behaviour of validate_question function when it is disabled."""
+    # This is the default behavior; no query validation.
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
@@ -598,6 +613,10 @@ def test_attachments_redact_on_redact_error():
 
 
 @pytest.mark.usefixtures("_load_config")
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
 @patch("ols.config.conversation_cache.get")
@@ -679,6 +698,10 @@ def test_conversation_request_dedup_ref_docs(
 
 
 @pytest.mark.usefixtures("_load_config")
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
 @patch("ols.config.conversation_cache.get")
 def test_conversation_request_on_wrong_configuration(

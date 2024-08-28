@@ -860,7 +860,7 @@ class OLSConfig(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     query_filters: Optional[list[QueryFilter]] = None
-    query_validation_method: Optional[str] = constants.QueryValidationMethod.LLM
+    query_validation_method: Optional[str] = constants.QueryValidationMethod.DISABLED
 
     user_data_collection: UserDataCollection = UserDataCollection()
 
@@ -891,7 +891,7 @@ class OLSConfig(BaseModel):
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
         self.query_validation_method = data.get(
-            "query_validation_method", constants.QueryValidationMethod.LLM
+            "query_validation_method", constants.QueryValidationMethod.DISABLED
         )
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})

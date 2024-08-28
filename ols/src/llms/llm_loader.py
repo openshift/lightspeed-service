@@ -28,7 +28,7 @@ class ModelConfigMissingError(LLMConfigurationError):
     """No configuration exists for the requested model name."""
 
 
-def _resolve_provider_config(
+def resolve_provider_config(
     provider: str, model: str, providers_config: LLMProviders
 ) -> ProviderConfig:
     """Ensure the provided inputs (provider/model) are valid in config.
@@ -83,7 +83,7 @@ def load_llm(
         raise LLMConfigurationError("Providers configuration missing in olsconfig.yaml")
     llm_providers_reg = LLMProvidersRegistry
 
-    provider_config = _resolve_provider_config(provider, model, providers_config)
+    provider_config = resolve_provider_config(provider, model, providers_config)
     if provider_config.type not in llm_providers_reg.llm_providers:
         raise UnsupportedProviderError(
             f"Unsupported LLM provider type '{provider_config.type}'."

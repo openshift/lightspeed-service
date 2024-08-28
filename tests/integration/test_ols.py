@@ -71,9 +71,7 @@ def test_post_question_without_payload(_setup):
 def test_post_question_on_invalid_question(_setup):
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     # let's pretend the question is invalid without even asking LLM
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=False
-    ):
+    with patch("ols.app.endpoints.ols.validate_question", return_value=False):
         conversation_id = suid.get_suid()
         response = client.post(
             "/v1/query",
@@ -120,6 +118,10 @@ def test_post_question_on_generic_response_type_summarize_error(_setup):
         assert response.json() == expected_json
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_that_is_not_validated(_setup):
     """Check the REST API /v1/query with POST HTTP method for question that is not validated."""
     # let's pretend the question can not be validated
@@ -209,6 +211,10 @@ def test_unknown_provider_in_post(_setup):
     assert response.json() == expected_json
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_unsupported_model_in_post(_setup):
     """Check the REST API /v1/query with POST method when unsupported model is requested."""
     test_provider = "test-provider"
@@ -428,6 +434,10 @@ def test_post_query_for_conversation_history(_setup) -> None:
             )
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_without_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method without attachments."""
     answer = constants.SUBJECT_ALLOWED
@@ -466,6 +476,10 @@ def test_post_question_without_attachments(_setup) -> None:
     assert query_passed == "test query"
 
 
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 @pytest.mark.attachment()
 def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with empty list of attachments."""
@@ -507,6 +521,10 @@ def test_post_question_with_empty_list_of_attachments(_setup) -> None:
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_one_plaintext_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with one attachment."""
     answer = constants.SUBJECT_ALLOWED
@@ -560,6 +578,10 @@ this is attachment
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_one_yaml_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with YAML attachment."""
     answer = constants.SUBJECT_ALLOWED
@@ -622,6 +644,10 @@ metadata:
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_two_yaml_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with two YAML attachments."""
     answer = constants.SUBJECT_ALLOWED
@@ -704,6 +730,10 @@ metadata:
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_one_yaml_without_kind_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with one YAML without kind attachment."""
     answer = constants.SUBJECT_ALLOWED
@@ -764,6 +794,10 @@ metadata:
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_one_yaml_without_name_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with one YAML without name attachment."""
     answer = constants.SUBJECT_ALLOWED
@@ -826,6 +860,10 @@ metadata:
 
 
 @pytest.mark.attachment()
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
 def test_post_question_with_one_invalid_yaml_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with one invalid YAML attachment."""
     answer = constants.SUBJECT_ALLOWED
@@ -952,11 +990,6 @@ def test_post_too_long_query(_setup):
 
     # error should be returned
     assert response.status_code == requests.codes.request_entity_too_large
-    expected_details = {
-        "detail": {
-            "cause": "Prompt length 2200 exceeds LLM available context window limit 446 "
-            "tokens",
-            "response": "Prompt is too long",
-        }
-    }
-    assert response.json() == expected_details
+    error_response = response.json()["detail"]
+    assert error_response["response"] == "Prompt is too long"
+    assert "exceeds" in error_response["cause"]

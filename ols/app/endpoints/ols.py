@@ -27,7 +27,7 @@ from ols.app.models.models import (
     SummarizerResponse,
     UnauthorizedResponse,
 )
-from ols.src.llms.llm_loader import LLMConfigurationError
+from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
@@ -116,6 +116,8 @@ def conversation_request(
     query_without_attachments = llm_request.query
     llm_request.query = append_attachments_to_query(llm_request.query, attachments)
     timestamps["append attachments"] = time.time()
+
+    validate_requested_provider_model(llm_request)
 
     # Validate the query
     if not previous_input:
@@ -323,6 +325,25 @@ def generate_response(
         )
 
 
+def validate_requested_provider_model(llm_request: LLMRequest) -> None:
+    """Validate provider/model; if provided in request payload."""
+    provider = llm_request.provider
+    model = llm_request.model
+    if provider is None and model is None:
+        # no validation, when provider & model are not sent with request
+        return
+
+    try:
+        resolve_provider_config(provider, model, config.config.llm_providers)
+    except LLMConfigurationError as e:
+        metrics.llm_calls_validation_errors_total.inc()
+        logger.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"response": "Unable to process this request", "cause": str(e)},
+        )
+
+
 def store_conversation_history(
     user_id: str,
     conversation_id: str,
@@ -479,20 +500,21 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question."""
     match config.ols_config.query_validation_method:
 
-        case constants.QueryValidationMethod.DISABLED:
-            logger.debug(
-                f"{conversation_id} Question validation is disabled. "
-                f"Treating question as valid."
-            )
-            return True
+        case constants.QueryValidationMethod.LLM:
+            logger.debug("LLM based query validation.")
+            return _validate_question_llm(conversation_id, llm_request)
 
         case constants.QueryValidationMethod.KEYWORD:
             logger.debug("Keyword based query validation.")
             return _validate_question_keyword(llm_request.query)
 
         case _:
-            logger.debug("LLM based query validation.")
-            return _validate_question_llm(conversation_id, llm_request)
+            # Query validation disabled by default
+            logger.debug(
+                f"{conversation_id} Question validation is disabled. "
+                f"Treating question as valid."
+            )
+            return True
 
 
 def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
