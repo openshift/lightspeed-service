@@ -47,7 +47,7 @@ def benchmark_limit_conversation_history(benchmark, history, limit=1000):
     """Benchmark the method to calculate available tokens."""
     token_handler = TokenHandler()
 
-    benchmark(token_handler.limit_conversation_history, [], 1000)
+    benchmark(token_handler.limit_conversation_history, history, limit)
 
 
 def test_limit_conversation_history_no_history(benchmark):
