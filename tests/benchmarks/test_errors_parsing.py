@@ -97,7 +97,7 @@ def test_parse_generic_llm_error_on_api_response_exception_without_extensions_st
     error.response.extensions.state = None
 
     # try to parse the exception
-    status_code, error_message, cause = errors_parsing.parse_generic_llm_error(error)
+    errors_parsing.parse_generic_llm_error(error)
 
     # benchmark the function to parse LLM errors
     benchmark(errors_parsing.parse_generic_llm_error, error)
