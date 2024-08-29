@@ -68,6 +68,13 @@ spec:
         workspaces:
           - name: workspace
             workspace: workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 10Gi
     params:
       - description: Source Repository URL
         name: git-url
