@@ -30,6 +30,8 @@ spec:
       value: "{{revision}}"
     - name: build-source-image
       value: "true"
+    - name: prefetch-input
+      value: '{"type": "pip", "path": ".", "allow_binary": "true"}'
   pipelineSpec:
     finally:
       - name: show-sbom
@@ -437,7 +439,7 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 10Gi
+              storage: 15Gi
         status: {}
     - name: git-auth
       secret:
