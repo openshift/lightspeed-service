@@ -909,7 +909,8 @@ def test_provider_model_specific_tokens_limit(provider_name, model_name):
 @pytest.mark.parametrize("model_name", models)
 def test_provider_config_explicit_tokens(model_name):
     """Test the ProviderConfig model when explicit tokens are specified."""
-    context_window_size = 550
+    # Note: context window should be >= 1024 (default) response token limit
+    context_window_size = 1025
 
     provider_config = ProviderConfig(
         {
