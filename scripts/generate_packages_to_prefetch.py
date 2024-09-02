@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 """Generate list of packages to be prefetched in Cachi2 and used in Konflux for hermetic build.
 
 This script performs several steps:
@@ -21,6 +23,9 @@ import subprocess
 import tempfile
 from os.path import join
 from urllib.request import urlretrieve
+
+# flag that enables processing special packages ('pytorch' and 'nvidia-' at this moment)
+PROCESS_SPECIAL_PACKAGES = False
 
 # just these files are needed as project stub, no other configs and/or sources are needed
 PROJECT_FILES = ("pyproject.toml", "pdm.lock", "LICENSE", "README.md")
@@ -115,16 +120,19 @@ def generate_hash(directory, registry, wheel, target):
 def generate_list_of_packages(work_directory):
     """Generate list of packages, take care of unwanted packages and wheel with Torch package."""
     copy_project_stub(work_directory)
-    remove_torch_dependency(work_directory)
+    if PROCESS_SPECIAL_PACKAGES:
+        remove_torch_dependency(work_directory)
     generate_requirements_file(work_directory)
 
-    remove_unwanted_dependencies(work_directory)
-    download_wheel(work_directory, TORCH_REGISTRY, TORCH_WHEEL)
-    shutil.copy(join(work_directory, "step2.txt"), "requirements.txt")
-
-    generate_hash(work_directory, TORCH_REGISTRY, TORCH_WHEEL, "hash.txt")
-    shell("cat step2.txt hash.txt > step3.txt", work_directory)
-    shutil.copy(join(work_directory, "step3.txt"), "requirements.txt")
+    if PROCESS_SPECIAL_PACKAGES:
+        remove_unwanted_dependencies(work_directory)
+        download_wheel(work_directory, TORCH_REGISTRY, TORCH_WHEEL)
+        shutil.copy(join(work_directory, "step2.txt"), "requirements.txt")
+        generate_hash(work_directory, TORCH_REGISTRY, TORCH_WHEEL, "hash.txt")
+        shell("cat step2.txt hash.txt > step3.txt", work_directory)
+        shutil.copy(join(work_directory, "step3.txt"), "requirements.txt")
+    else:
+        shutil.copy(join(work_directory, "requirements.txt"), "requirements.txt")
 
 
 def generate_packages_to_be_build(work_directory):
