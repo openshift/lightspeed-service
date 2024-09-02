@@ -146,6 +146,7 @@
                     ]
                 },
                 "openai+gpt-3.5-turbo+with_rag": {
+                    "cutoff_score": 0.25,
                     "text": [
                         "Red Hat OpenShift Pipelines automates deployments by leveraging Tekton building blocks to abstract away the underlying implementation details. It uses standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. By creating serverless, cloud-native, continuous integration and continuous deployment systems that run in isolated containers, Red Hat OpenShift Pipelines enables decentralized teams working on microservices-based architecture to automate deployments using standard Tekton custom resources.",
                         "Red Hat OpenShift Pipelines automates deployments by leveraging CI/CD processes and Tekton building blocks. It uses standard Tekton custom resources to define CI/CD pipelines that automate deployments across multiple platforms. By abstracting away the underlying implementation details, Red Hat OpenShift Pipelines enables the automation of deployments in a cloud-native environment."
