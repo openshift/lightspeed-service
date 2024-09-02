@@ -241,6 +241,12 @@ class RHOAIVLLMConfig(ProviderSpecificConfig, extra="forbid"):
     credentials_path: str  # required attribute
 
 
+class RHELAIVLLMConfig(ProviderSpecificConfig, extra="forbid"):
+    """Configuration specific to RHEL VLLM provider."""
+
+    credentials_path: str  # required attribute
+
+
 class AzureOpenAIConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to Azure OpenAI provider."""
 
@@ -280,6 +286,7 @@ class ProviderConfig(BaseModel):
     watsonx_config: Optional[WatsonxConfig] = None
     bam_config: Optional[BAMConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
+    rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
 
     def __init__(
         self, data: Optional[dict] = None, ignore_llm_secrets: bool = False
@@ -405,6 +412,11 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(rhoai_vllm_config)
                     self.read_api_key(rhoai_vllm_config)
                     self.rhoai_vllm_config = RHOAIVLLMConfig(**rhoai_vllm_config)
+                case constants.PROVIDER_RHELAI_VLLM:
+                    rhelai_vllm_config = data.get("rhelai_vllm_config")
+                    self.check_provider_config(rhelai_vllm_config)
+                    self.read_api_key(rhelai_vllm_config)
+                    self.rhelai_vllm_config = RHELAIVLLMConfig(**rhelai_vllm_config)
                 case constants.PROVIDER_BAM:
                     bam_config = data.get("bam_config")
                     self.check_provider_config(bam_config)
@@ -453,6 +465,7 @@ class ProviderConfig(BaseModel):
                 and self.azure_config == other.azure_config
                 and self.openai_config == other.openai_config
                 and self.rhoai_vllm_config == other.rhoai_vllm_config
+                and self.rhelai_vllm_config == other.rhelai_vllm_config
                 and self.watsonx_config == other.watsonx_config
                 and self.bam_config == other.bam_config
             )
