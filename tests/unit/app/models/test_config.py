@@ -608,7 +608,7 @@ def test_provider_config_openai_unknown_parameters():
 
 def test_provider_config_rhoai_vllm_specific():
     """Test if RHOAI VLLM-specific config is loaded and validated."""
-    # provider type is set to "openai" and OpenAI-specific configuration is there
+    # provider type is set to "rhoai_vllm" and RHOAI VLLM-specific configuration is there
     provider_config = ProviderConfig(
         {
             "name": "test_name",
@@ -643,7 +643,7 @@ def test_provider_config_rhoai_vllm_specific():
 
 def test_provider_config_rhoai_vllm_unknown_parameters():
     """Test if unknown RHOAI-VLLM parameters are detected."""
-    # provider type is set to "openai" and OpenAI-specific configuration is there
+    # provider type is set to "rhoai_vllm" and RHOAI VLLM-specific configuration is there
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         ProviderConfig(
             {
