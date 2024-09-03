@@ -55,6 +55,11 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       name=openshift-lightspeed-service \
       vendor="Red Hat, Inc."
 
+RUN groupadd -r ols && useradd -r -g ols ols
+RUN chown -R ols:ols /usr/local/lib/python3.11/site-packages/certifi && chmod 755 /usr/local/lib/python3.11/site-packages/certifi
+
+ENV USER_UID=1001 \
+    USER_NAME=ols
 
 # no-root user is checked in Konflux 
-USER 1001
+USER ${USER_UID}
