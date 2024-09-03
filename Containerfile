@@ -41,6 +41,9 @@ COPY ols ./ols
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
 
+
+RUN chmod 666  /usr/local/lib/python3.11/site-packages/certifi/cacert.pem && chmod 777 /usr/local/lib/python3.11/site-packages/certifi
+
 # Run the application
 EXPOSE 8080
 EXPOSE 8443
