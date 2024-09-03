@@ -79,11 +79,7 @@ class GenericLLMParameters:
 # Token related constants
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
 DEFAULT_MIN_TOKENS_FOR_RESPONSE = 1
-DEFAULT_MAX_TOKENS_FOR_RESPONSE = 512
-
-# Minimum tokens to have some meaningful RAG context including special tags.
-MINIMUM_CONTEXT_TOKEN_LIMIT = 10
-
+DEFAULT_MAX_TOKENS_FOR_RESPONSE = 1024
 
 # Provider and Model-specific context window size
 # see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4
@@ -110,6 +106,7 @@ CONTEXT_WINDOW_SIZES = {
     PROVIDER_RHELAI_VLLM: {},
 }
 
+# Tokenizer model to generate tokens (for an approximated token calculation)
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 
 # Example: 1.05 means we increase by 5%.
@@ -117,6 +114,9 @@ TOKEN_BUFFER_WEIGHT = 1.1
 
 
 # RAG related constants
+
+# Minimum tokens to have some meaningful RAG context including special tags.
+MINIMUM_CONTEXT_TOKEN_LIMIT = 10
 
 # This is used to decide how many matching chunks we want to retrieve as context.
 # (in descending order of similarity between query & chunk)
