@@ -104,7 +104,13 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 ## 6. Configure LLM providers
 
-   The example configuration file defines providers for five LLM providers: BAM, OpenAI, Azure OpenAI, Watsonx, and OpenShift AI VLLM (RHOAI VLLM), but defines BAM as the default provider. If you prefer to use a different LLM provider than BAM, such as OpenAI, ensure that the provider definition points to a file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to reference the selected provider and model.
+   The example configuration file defines providers for six LLM providers: BAM,
+   OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI
+   (RHEL AI), but defines BAM as the default provider. If you prefer to use a
+   different LLM provider than BAM, such as OpenAI, ensure that the provider
+   definition points to a file containing a valid OpenAI, Watsonx etc. API key,
+   and change the `default_model` and `default_provider` values to reference
+   the selected provider and model.
 
    The example configuration also defines locally running provider instructlab which is OpenAI-compatible and can use
    several models. Please look at [instructlab pages](https://github.com/instructlab/instructlab/tree/main) for detailed
