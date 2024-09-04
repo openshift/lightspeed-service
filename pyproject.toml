@@ -102,7 +102,7 @@ dependencies = [
     "huggingface_hub==0.23.4",
     "ibm-watsonx-ai==1.1.2",
     "certifi==2024.7.4",
-    "cryptography==42.0.8",
+    "cryptography==43.0.1",
     "urllib3==2.2.2",
     "nltk==3.9.1",
     "aiohttp==3.10.2",
