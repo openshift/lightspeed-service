@@ -116,7 +116,9 @@
                     ]
                 },
                 "openai+gpt-3.5-turbo+with_rag": {
+                    "cutoff_score": 0.25,
                     "text": [
+                        "In Red Hat OpenShift Container Platform, the imagePullPolicy is used to determine if the container image should be pulled prior to starting the container. This policy helps control when and how images are fetched for containers within a pod. The purpose of the imagePullPolicy is to ensure that containers have access to the correct version of an image when they start running.",
                         "The purpose of the imagePullPolicy in Red Hat OpenShift Container Platform is to determine if the container image should be pulled prior to starting the container. This policy helps control when and how images are fetched for containers within a pod. The imagePullPolicy can have three possible values: Always, IfNotPresent, or Never. If the parameter is not specified, OpenShift sets it based on the image tag: \n- If the tag is \"latest,\" OpenShift defaults imagePullPolicy to Always.\n- Otherwise, OpenShift defaults imagePullPolicy to IfNotPresent."
                     ]
                 },
