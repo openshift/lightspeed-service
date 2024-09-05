@@ -1,5 +1,7 @@
 """Benchmarks for PromptGenerator."""
 
+# pylint: disable=W0621
+
 import pytest
 
 from ols.constants import (

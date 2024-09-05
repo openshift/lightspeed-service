@@ -1,5 +1,7 @@
 """Benchmarks for the question filter."""
 
+# pylint: disable=W0621
+
 import re
 
 import pytest
