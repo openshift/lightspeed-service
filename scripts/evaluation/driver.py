@@ -12,21 +12,9 @@ def _args_parser(args):
     """Arguments parser."""
     parser = argparse.ArgumentParser(description="Response validation module.")
     parser.add_argument(
-        "--eval_provider",
-        default="watsonx",
-        type=str,
-        help="Provider name, currently used only to form output file name.",
-    )
-    parser.add_argument(
-        "--eval_model",
-        default="ibm/granite-13b-chat-v2",
-        type=str,
-        help="Model for which responses will be evaluated.",
-    )
-    parser.add_argument(
         "--eval_provider_model_id",
         nargs="+",
-        default=["bam+granite13b-chatv2"],
+        default=["watsonx+ibm/granite-13b-chat-v2"],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
     )
@@ -61,6 +49,12 @@ def _args_parser(args):
         default="model",
         type=str,
         help="Evaluation type.",
+    )
+    parser.add_argument(
+        "--eval_metrics",
+        nargs="+",
+        default=["cos_score"],
+        help="Evaluation score/metric.",
     )
     parser.add_argument(
         "--eval_api_url",

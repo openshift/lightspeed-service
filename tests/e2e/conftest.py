@@ -68,10 +68,10 @@ def pytest_addoption(parser):
         "--eval_provider_model_id",
         nargs="+",
         default=[
-            # "bam+granite13b-chatv2",
-            "watsonx+granite13b-chatv2",
-            "openai+gpt35-turbo",
-            "azure+gpt35-turbo-16k",
+            # "bam+ibm/granite-13b-chat-v2",
+            "watsonx+ibm/granite-13b-chat-v2",
+            "openai+gpt-3.5-turbo",
+            "azure_openai+gpt-3.5-turbo",
         ],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
@@ -100,6 +100,18 @@ def pytest_addoption(parser):
         default=None,
         type=str,
         help="Additional file having QnA pool in parquet format.",
+    )
+    parser.addoption(
+        "--eval_type",
+        choices=["consistency", "model", "all"],
+        default="model",
+        help="Evaluation type.",
+    )
+    parser.addoption(
+        "--eval_metrics",
+        nargs="+",
+        default=["cos_score"],
+        help="Evaluation score/metric.",
     )
     parser.addoption(
         "--rp_name",
