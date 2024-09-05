@@ -38,8 +38,7 @@ def llm_is_ready() -> bool:
             logger.info("LLM connection checked - LLM is ready")
             llm_is_ready_persistent_state = True
             return True
-        else:
-            raise ValueError(f"Unexpected response from LLM: {response}")
+        raise ValueError(f"Unexpected response from LLM: {response}")
     except Exception as e:
         logger.error(f"LLM connection check failed with - {e}")
         return False
@@ -49,8 +48,7 @@ def index_is_ready() -> bool:
     """Check if the index is loaded."""
     if config._rag_index is None and config.ols_config.reference_content is not None:
         return False
-    else:
-        return True
+    return True
 
 
 @router.get("/readiness")
@@ -60,8 +58,7 @@ def readiness_probe_get_method() -> ReadinessResponse:
         return ReadinessResponse(ready=False, reason="index is not ready")
     if not llm_is_ready():
         return ReadinessResponse(ready=False, reason="LLM is not ready")
-    else:
-        return ReadinessResponse(ready=True, reason="service is ready")
+    return ReadinessResponse(ready=True, reason="service is ready")
 
 
 @router.get("/liveness")
