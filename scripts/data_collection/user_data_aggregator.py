@@ -268,11 +268,11 @@ def list_objects(args: argparse.Namespace) -> None:
         response = client.list_objects_v2(Bucket=bucket_name)
         logger.debug(response)
         if "Contents" in response:
-            logger.info(f"Contents of bucket '{bucket_name}':")
+            logger.info("Contents of bucket '%s':", bucket_name)
             for obj in response["Contents"]:
                 logger.info(obj["Key"])
         else:
-            logger.warning(f"Bucket '{bucket_name}' is empty.")
+            logger.warning("Bucket '%s' is empty.", bucket_name)
     except Exception as e:
         logger.exception("Failed to list contents of bucket '%s': %s", bucket_name, e)
 
@@ -327,13 +327,13 @@ def download_tarball(client, bucket_name: str, obj) -> None:
         key = obj["Key"]
         if check_key(key):
             filename = construct_filename(key)
-            logger.info(f"Downloading {key} into {filename}")
+            logger.info("Downloading %s into %s", key, filename)
             data = client.get_object(Bucket=bucket_name, Key=key)
             with open(filename, "wb") as fout:
                 fout.write(data["Body"].read())
             statistic.downloaded_tarballs += 1
         else:
-            logger.warning(f"Incorrect object key {key}, skipping")
+            logger.warning("Incorrect object key %s, skipping", key)
             statistic.tarballs_with_incorrect_key += 1
     except Exception as e:
         logger.exception("Unable to download object: %s", e)
@@ -355,7 +355,7 @@ def download_tarballs(args: argparse.Namespace) -> None:
                 if cluster_name not in ignored_clusters:
                     download_tarball(client, bucket_name, obj)
         else:
-            logger.warning(f"Bucket '{bucket_name}' is empty.")
+            logger.warning("Bucket '%s' is empty.", bucket_name)
     except Exception as e:
         logger.exception("Failed to list contents of bucket '%s': %s", bucket_name, e)
 
@@ -373,7 +373,7 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
                     feedbacks.append(json.loads(data))
                     statistic.feedbacks_read += 1
                 else:
-                    logger.error(f"Nothing to extract from {filename}")
+                    logger.error("Nothing to extract from %s", filename)
                     statistic.tarballs_without_feedback += 1
             except Exception as e:
                 logger.exception("Unable to read feedback: %s", e)
@@ -388,13 +388,13 @@ def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
 
     # check if the tarball seems to be correct one
     if TOPLEVEL_MAGIC_FILE not in filelist:
-        logger.warning(f"Incorrect tarball: missing {TOPLEVEL_MAGIC_FILE}")
+        logger.warning("Incorrect tarball: missing %s", TOPLEVEL_MAGIC_FILE)
         return []
 
     feedbacks = read_feedbacks_from_tarball(tarball)
 
     if len(feedbacks) == 0:
-        logger.warning(f"Tarball {tarball_name} does not contain any feedback.")
+        logger.warning("Tarball %s does not contain any feedback.", tarball_name)
 
     return feedbacks
 
@@ -403,7 +403,7 @@ def read_full_conversation_history(
     tarball_name: str, user_id: str, history_id: str, with_rag_context: bool
 ) -> str:
     """Read full conversation history from tarball."""
-    logger.info(f"Reading full conversation history from {tarball_name}")
+    logger.info("Reading full conversation history from %s", tarball_name)
     tarball = tarfile.open(tarball_name, "r:gz")
     separator = 100 * "-"
 
@@ -436,7 +436,7 @@ def read_full_conversation_history(
                     history[timestamp] = conversation_record
                     statistic.conversation_history_included += 1
                 else:
-                    logger.error(f"Nothing to extract from {filename}")
+                    logger.error("Nothing to extract from %s", filename)
             except Exception as e:
                 logger.exception(
                     f"Unable to read conversation history: {type(e).__name__}: {e}"
