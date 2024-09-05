@@ -1,5 +1,7 @@
 """Bencharks for attachment appender."""
 
+# pylint: disable=W0621
+
 import pytest
 
 from ols.app.models.models import Attachment

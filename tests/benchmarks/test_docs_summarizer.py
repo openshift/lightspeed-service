@@ -1,5 +1,7 @@
 """Benchmarks for DocsSummarizer class."""
 
+# pylint: disable=W0621
+
 from unittest.mock import patch
 
 import pytest
