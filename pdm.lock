@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:8e2842eb944ace66e12feccc4e592f1bf81757fc6ce844d50f525b542dac4f05"
+content_hash = "sha256:d6fd84ddd64ae8d845bb88d75b8de7e8560050444a8380e7fb7d8e98a02fe2df"
 
 [[package]]
 name = "absl-py"
@@ -1012,12 +1012,13 @@ files = [
 
 [[package]]
 name = "ibm-watsonx-ai"
-version = "1.1.2"
+version = "1.1.8"
 requires_python = ">=3.10"
 summary = "IBM watsonx.ai API Client"
 groups = ["default"]
 dependencies = [
     "certifi",
+    "httpx",
     "ibm-cos-sdk<2.14.0,>=2.12.0",
     "importlib-metadata",
     "lomond",
@@ -1028,8 +1029,8 @@ dependencies = [
     "urllib3",
 ]
 files = [
-    {file = "ibm_watsonx_ai-1.1.2-py3-none-any.whl", hash = "sha256:64f35ccb1e36d01430234435e6905dc6a8520058115dc24a30ff51946106e192"},
-    {file = "ibm_watsonx_ai-1.1.2.tar.gz", hash = "sha256:7599b1da6a31d23425e2fd16dc8b6b635a3d142819e9c4c0435e8ab5a4970d8e"},
+    {file = "ibm_watsonx_ai-1.1.8-py3-none-any.whl", hash = "sha256:f3583ec887537e792871d0d2f47556125928c888af149cbd8f69b4e541dcad33"},
+    {file = "ibm_watsonx_ai-1.1.8.tar.gz", hash = "sha256:e50a5ecd652fc927fa54d5433e44e0320c5b3faf22699e5b9e013aa19745a5e7"},
 ]
 
 [[package]]
