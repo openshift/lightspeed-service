@@ -158,7 +158,7 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
             Notes: 
             - `Context window size` varies based on provider/model.
-            - `Max response tokens` depends on user need and should be in reasonable proportion to context window size. If value is too less then there is a risk of response truncation. If we set it too high then we will reserve too much for response & truncate history/rag context unneccessarily.
+            - `Max response tokens` depends on user need and should be in reasonable proportion to context window size. If value is too less then there is a risk of response truncation. If we set it too high then we will reserve too much for response & truncate history/rag context unnecessarily.
             - These are optional setting, if not set; then default will be used (which may be incorrect and may cause truncation & potentially error by exceeding context window).
 
    2. Specific configuration options for WatsonX
