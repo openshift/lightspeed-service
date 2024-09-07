@@ -1,0 +1,47 @@
+# olsconfig.yaml sample for local ollama server
+#
+# 1. install local ollama server from https://ollama.com/
+# 2. install llama3.1:latest model with:
+#       ollama pull llama3.1:latest
+# 3. Copy this file to the project root of cloned lightspeed-service repo
+# 4. Install dependencies with:
+#       make install-deps
+# 5. Start lightspeed-service with:
+#       OPENAI_API_KEY=IGNORED make run
+# 6. Open https://localhost:8080/ui in your web browser
+#
+llm_providers:
+  - name: ollama
+    type: openai
+    url: "http://localhost:11434/v1/"
+    models:
+      - name: 'llama3.1:latest'
+ols_config:
+  reference_content:
+#    product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
+#    product_docs_index_id: ocp-product-docs-4_15
+#    embeddings_model_path: "./embeddings_model"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: ollama
+  default_model: 'llama3.1:latest'
+  query_validation_method: llm
+  user_data_collection:
+    feedback_disabled: false
+    feedback_storage: "/tmp/data/feedback"
+    transcripts_disabled: false
+    transcripts_storage: "/tmp/data/transcripts"
+dev_config:
+  # config options specific to dev environment - launching OLS in local
+  enable_dev_ui: true
+  disable_auth: true
+  disable_tls: true
+  # llm_params:
+  #   temperature_override: 0
+  # k8s_auth_token: optional_token_when_no_available_kube_config
