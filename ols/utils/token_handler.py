@@ -84,12 +84,13 @@ class TokenHandler:
             available_tokens: int, tokens that can be used for augmentation.
         """
         logger.debug(
-            f"Context window size: {context_window_size}, "
-            f"Max generated tokens: {max_tokens_for_response}"
+            "Context window size: %d, Max generated tokens: %d",
+            context_window_size,
+            max_tokens_for_response,
         )
 
         prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
-        logger.debug(f"Prompt tokens: {prompt_token_count}")
+        logger.debug("Prompt tokens: %d", prompt_token_count)
 
         # The context_window_size is the maximum number of tokens that
         # can be used for a "conversation" in the LLM model. This
@@ -150,13 +151,13 @@ class TokenHandler:
             node_text = restructure_rag_context_pre(node_text, model)
             tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
-            logger.debug(f"RAG content tokens count: {tokens_count}.")
+            logger.debug("RAG content tokens count: %d.", tokens_count)
 
             available_tokens = min(tokens_count, max_tokens)
-            logger.debug(f"Available tokens: {tokens_count}.")
+            logger.debug("Available tokens: %d.", tokens_count)
 
             if available_tokens < MINIMUM_CONTEXT_TOKEN_LIMIT:
-                logger.debug(f"{available_tokens} tokens are less than threshold.")
+                logger.debug("%d tokens are less than threshold.", available_tokens)
                 break
 
             node_text = self.tokens_to_text(tokens[:available_tokens])
@@ -188,7 +189,9 @@ class TokenHandler:
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)
             if total_length > limit:
-                logger.debug(f"History truncated, it exceeds available {limit} tokens.")
+                logger.debug(
+                    "History truncated, it exceeds available %d tokens.", limit
+                )
                 return history[len(history) - index :], True
 
         return history, False
