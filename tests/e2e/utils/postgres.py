@@ -13,7 +13,6 @@ def _get_env(env_name):
 
 def retrieve_connection():
     """Perform setup e2e tests for conversation cache based on PostgreSQL."""
-    global connection
     try:
         pg_host = _get_env("PG_HOST")
         pg_port = _get_env("PG_PORT")
