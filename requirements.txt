@@ -930,9 +930,9 @@ llama-index-vector-stores-faiss==0.1.2 \
     --hash=sha256:6db18f4f11fdcce9294d7b1725805992006094766b9dcbd3967065f8997f0be9 \
     --hash=sha256:e462641e4f99ae140a4725103a3d5cad2caf1849cbb782ca405b1a6eb5de65dc
     # via ols (pyproject.toml)
-llama-parse==0.4.9 \
-    --hash=sha256:657f8fa5f7d399f14c0454fc05cae6034da0373f191df6cfca17a1b4a704ef87 \
-    --hash=sha256:71974a57a73d642608cc406942bee4e7fc1a713fa410f51df67da509479ba544
+llama-parse==0.5.3 \
+    --hash=sha256:3cf4f390cbb1a49553473bec884042c5f95db079bfbabb5ecc241fc03e51b299 \
+    --hash=sha256:523c25746ba338cd4e198006cdbb6442d501cc9ca247bc245370bced440d80bd
     # via llama-index-readers-llama-parse
 lomond==0.3.3 \
     --hash=sha256:427936596b144b4ec387ead99aac1560b77c8a78107d3d49415d3abbe79acbd3 \
