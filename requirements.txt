@@ -904,9 +904,9 @@ llama-index-llms-openai==0.1.31 \
     #   llama-index-multi-modal-llms-openai
     #   llama-index-program-openai
     #   llama-index-question-gen-openai
-llama-index-multi-modal-llms-openai==0.1.9 \
-    --hash=sha256:614f40427a4671e72742780be8fda77297dbf2942519bffcb2c9de8696a9edff \
-    --hash=sha256:dbacf44d5c2cca07ca424eacd1337583002d70387a3c1868cf8ae743b1dbec4a
+llama-index-multi-modal-llms-openai==0.2.0 \
+    --hash=sha256:81196b730374cc88d283f8794357d0bd66646b9a4daa5c09cf57619030b4696c \
+    --hash=sha256:b7eab7854861d5b390bab1376f5896c4813827ff67c7fe3b3eaaad1b5aecd7e3
     # via llama-index
 llama-index-program-openai==0.1.7 \
     --hash=sha256:33489b573c1050a3f583ff68fcbc4bcbd49f29e74f3e5baea08ab0d5f363403c \
