@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from argparse import Namespace
 
 import pytest
 import requests
@@ -1715,7 +1716,16 @@ def test_http_header_redaction():
 @pytest.mark.response_evaluation()
 def test_model_response(request) -> None:
     """Evaluate model response."""
-    assert ResponseEvaluation(request.config.option, client).validate_response()
+    args = Namespace(**vars(request.config.option))
+    args.eval_provider_model_id = [f"{args.eval_provider}+{args.eval_model}"]
+    args.eval_type = "consistency"
+
+    val_success_flag = ResponseEvaluation(args, client).validate_response()
+    # If flag is False, then response(s) is not consistent,
+    # And score is more than cust-off score.
+    # Please check eval_result/response_evaluation_* csv file in artifact folder or
+    # Check the log to find out exact file path.
+    assert val_success_flag
 
 
 @pytest.mark.model_evaluation()
