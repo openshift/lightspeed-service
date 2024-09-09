@@ -135,9 +135,9 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
               - name: granite-7b-lab
       ```
 
-    Note: to use RHOAI (Red Hat OpenShiftAI) as provider, the following
-    configuration can be utilized (`mistral-7b-instruct` model is supported by
-    RHOAI, as well as other models):
+   Note: to use RHOAI (Red Hat OpenShiftAI) as provider, the following
+   configuration can be utilized (`mistral-7b-instruct` model is supported by
+   RHOAI, as well as other models):
 
       ```yaml
           - name: my_rhoai
@@ -147,6 +147,11 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
             models:
               - name: mistral-7b-instruct
       ```
+
+   Note: it is possible to configure the service to use local *ollama* server.
+   Please look into an
+   [examples/olsconfig-local-ollama.yaml](examples/olsconfig-local-ollama.yaml)
+   file that describes all required steps.
 
    1. Common providers configuration options
 
