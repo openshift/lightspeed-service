@@ -1311,9 +1311,10 @@ nvidia-nvjitlink-cu12==12.6.68 \
     # via
     #   nvidia-cusolver-cu12
     #   nvidia-cusparse-cu12
-nvidia-nvtx-cu12==12.1.105 \
-    --hash=sha256:65f4d98982b31b60026e0e6de73fbdfc09d08a96f4656dd3665ca616a11e1e82 \
-    --hash=sha256:dc21cf308ca5691e7c04d962e213f8a4aa9bbfa23d95412f452254c2caeb09e5
+nvidia-nvtx-cu12==12.6.68 \
+    --hash=sha256:756dbc52f58ab43265cf5d5dde0a9b3690620943be7bd212963bd165c7ee27ec \
+    --hash=sha256:ce26aa82770c02d2ff4895896009bc3ec698e45f90a633dcd6d0635ff0aa27fd \
+    --hash=sha256:e25b7b7b6ec20cb2d4bebff86a08d51a3c63f3bf8b504b0c8ffb6b3ea7c59d82
     # via torch
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
