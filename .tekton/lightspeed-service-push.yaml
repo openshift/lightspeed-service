@@ -34,6 +34,14 @@ spec:
       value: '{"type": "pip", "path": ".", "allow_binary": "true"}'
     - name: hermetic-build
       value: "true"
+  taskRunSpecs:
+    - pipelineTaskName: build-source-image
+      computeResources:
+        requests:
+          cpu: '1'
+          memory: 1Gi
+        limits:
+          memory: 4Gi
   pipelineSpec:
     finally:
       - name: show-sbom
