@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 from yaml.parser import ParserError
 
-from ols import config
+from ols import config, constants
 from ols.app.models.config import Config, InvalidConfigurationError
 from ols.utils.redactor import RegexFilter
 
@@ -747,6 +747,7 @@ ols_config:
     level: info
   default_provider: p1
   default_model: m1
+  certificate_directory: '/foo/bar/baz'
 dev_config:
   enable_dev_ui: true
   disable_auth: false
@@ -820,6 +821,78 @@ def test_valid_config_file():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
+                    "certificate_directory": "/foo/bar/baz/xyzzy",
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
+def test_valid_config_file_without_certificate_directory():
+    """Check if a valid configuration file is handled correctly."""
+    try:
+        config.reload_from_yaml_file(
+            "tests/config/valid_config_without_certificate_directory.yaml"
+        )
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "bam",
+                        "url": "https://url1",
+                        "credentials_path": "tests/config/secret/apitoken",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                                "credentials_path": "tests/config/secret/apitoken",
+                                "context_window_size": 450,
+                                "parameters": {"max_tokens_for_response": 100},
+                            },
+                            {
+                                "name": "m2",
+                                "url": "https://murl2",
+                            },
+                        ],
+                    },
+                    {
+                        "name": "p2",
+                        "type": "openai",
+                        "url": "https://url2",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "https://murl1",
+                            },
+                            {
+                                "name": "m2",
+                                "url": "https://murl2",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "reference_content": {
+                        "product_docs_index_path": "tests/config",
+                        "product_docs_index_id": "product",
+                    },
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 1000,
+                        },
+                    },
+                    "logging_config": {
+                        "logging_level": "INFO",
+                    },
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                    "certificate_directory": constants.DEFAULT_CERTIFICATE_DIRECTORY,
                 },
             }
         )

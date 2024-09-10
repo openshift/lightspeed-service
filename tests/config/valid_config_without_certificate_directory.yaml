@@ -35,7 +35,6 @@ ols_config:
   default_model: m1
   user_data_collection:
     transcripts_disabled: true
-  certificate_directory: "/foo/bar/baz/xyzzy"
 dev_config:
   disable_auth: true
   disable_tls: true

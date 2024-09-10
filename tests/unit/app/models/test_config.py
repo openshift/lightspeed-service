@@ -1847,6 +1847,7 @@ def test_ols_config(tmpdir):
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig()
     assert ols_config.extra_ca == []
+    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
 
 
 def test_config():
@@ -1881,6 +1882,7 @@ def test_config():
                     "app_log_level": "error",
                 },
                 "query_validation_method": "disabled",
+                "certificate_directory": "/foo/bar/baz",
             },
             "dev_config": {"disable_tls": "true"},
         }
@@ -1927,6 +1929,49 @@ def test_config():
         == constants.QueryValidationMethod.DISABLED
     )
     assert config.user_data_collector_config == UserDataCollectorConfig()
+    assert config.ols_config.certificate_directory == "/foo/bar/baz"
+
+
+def test_config_default_certificate_directory():
+    """Test the Config model of the Global service configuration."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "test_provider_name",
+                    "type": "bam",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
+            ],
+            "ols_config": {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+                "query_validation_method": "disabled",
+            },
+            "dev_config": {"disable_tls": "true"},
+        }
+    )
+    assert (
+        config.ols_config.certificate_directory
+        == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    )
 
 
 def test_config_improper_missing_model():

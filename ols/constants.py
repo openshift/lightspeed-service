@@ -216,3 +216,6 @@ AZURE_CLIENT_SECRET_FILENAME = "client_secret"  # noqa: S105  # nosec: B105
 
 # Selectors for fields from configuration structure
 CREDENTIALS_PATH_SELECTOR = "credentials_path"
+
+# Default directory where standard and extra certificates will be stored
+DEFAULT_CERTIFICATE_DIRECTORY = "/tmp"  # noqa: S108
