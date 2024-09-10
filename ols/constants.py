@@ -77,34 +77,20 @@ class GenericLLMParameters:
 
 
 # Token related constants
+
+# It is important to set correct context window, otherwise there will be potential
+# error due to context window limit or unnecessary truncation may happen.
+# For Provider and Model-specific context window size, Please refer
+# their official documentations. If not set, default value will be used.
 DEFAULT_CONTEXT_WINDOW_SIZE = 8192
-DEFAULT_MIN_TOKENS_FOR_RESPONSE = 1
+
+# Max tokens reserved for response may also vary depending upon provider/model & query.
+# Ex: Larger models tends give more descriptive response,
+# Also response with YAML generally uses more tokens (when large model is used)
+# It should be in reasonable proportion to context window limit; otherwise unnecessary
+# truncation will happen. If not set, default value will be used.
 DEFAULT_MAX_TOKENS_FOR_RESPONSE = 1024
 
-# Provider and Model-specific context window size
-# see https://platform.openai.com/docs/models/gpt-4-turbo-and-gpt-4
-# and https://www.ibm.com/docs/en/cloud-paks/cp-data/4.8.x?topic=models-supported-foundation
-CONTEXT_WINDOW_SIZES = {
-    PROVIDER_BAM: {
-        GRANITE_13B_CHAT_V2: 8192,
-    },
-    PROVIDER_WATSONX: {
-        GRANITE_13B_CHAT_V2: 8192,
-    },
-    PROVIDER_AZURE_OPENAI: {
-        GPT4_TURBO: 128000,
-        GPT35_TURBO: 16384,
-    },
-    PROVIDER_OPENAI: {
-        GPT4_TURBO: 128000,
-        GPT35_TURBO: 16384,
-    },
-    PROVIDER_FAKE: {
-        FAKE_MODEL: DEFAULT_CONTEXT_WINDOW_SIZE,
-    },
-    PROVIDER_RHOAI_VLLM: {},
-    PROVIDER_RHELAI_VLLM: {},
-}
 
 # Tokenizer model to generate tokens (for an approximated token calculation)
 DEFAULT_TOKENIZER_MODEL = "cl100k_base"
