@@ -10,12 +10,13 @@ import certifi
 import uvicorn
 from cryptography import x509
 
+import ols.app.models.config as config_model
 from ols import config
 from ols.utils.auth_dependency import K8sClientSingleton
 from ols.utils.logging import configure_logging
 
 
-def configure_hugging_face_envs(ols_config) -> None:
+def configure_hugging_face_envs(ols_config: config_model.OLSConfig) -> None:
     """Configure HuggingFace library environment variables."""
     if (
         ols_config
@@ -23,7 +24,7 @@ def configure_hugging_face_envs(ols_config) -> None:
         and hasattr(ols_config.reference_content, "embeddings_model_path")
         and ols_config.reference_content.embeddings_model_path
     ):
-        os.environ["TRANSFORMERS_CACHE"] = (
+        os.environ["TRANSFORMERS_CACHE"] = str(
             ols_config.reference_content.embeddings_model_path
         )
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -52,10 +53,12 @@ def load_index():
 # NOTE: Be aware this is irreversible step, as it modifies the certifi
 # store. To restore original certs, the certifi lib needs to be
 # reinstalled (or extra cert manually removed from the file).
-def add_ca_to_certifi(cert_path: str, certifi_cert_location=certifi.where()) -> None:
+def add_ca_to_certifi(
+    logger: logging.Logger, cert_path: Path, certifi_cert_location=certifi.where()
+) -> None:
     """Add a certificate to the certifi store."""
-    print(f"Certifi store location: '{certifi_cert_location}'")
-    print(f"Adding certificate '{cert_path}' to certifi store")
+    logger.info("Cerfify store location: %s", certifi_cert_location)
+    logger.info("Adding certificate '%s' to certify store", cert_path)
     with open(cert_path, "rb") as certificate_file:
         new_certificate_data = certificate_file.read()
     new_cert = x509.load_pem_x509_certificate(new_certificate_data)
@@ -67,10 +70,19 @@ def add_ca_to_certifi(cert_path: str, certifi_cert_location=certifi.where()) -> 
 
     # append the certificate to the certifi store
     if new_cert in certifi_certs:
-        print(f"Certificate '{cert_path}' is already in certifi store")
+        logger.warning("Certificate '%s' is already in certifi store", cert_path)
     else:
         with open(certifi_cert_location, "ab") as certifi_store:
             certifi_store.write(new_certificate_data)
+
+
+def generate_certificates_file(
+    logger: logging.Logger, ols_config: config_model.OLSConfig
+) -> None:
+    """Generate certificates by merging certificates from certify with defined certificates."""
+    logger.info("Generating certificates file")
+    for certificate_path in ols_config.extra_ca:
+        add_ca_to_certifi(logger, certificate_path)
 
 
 def start_uvicorn():
@@ -113,7 +125,7 @@ if __name__ == "__main__":
     config.reload_from_yaml_file(cfg_file)
 
     configure_logging(config.ols_config.logging_config)
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("ols")
     logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
 
     configure_gradio_ui_envs()
@@ -124,9 +136,9 @@ if __name__ == "__main__":
 
     configure_hugging_face_envs(config.ols_config)
 
-    # add extra certificates if defined
-    for certificate_path in config.ols_config.extra_ca:
-        add_ca_to_certifi(certificate_path)
+    # generate certificates file from all certificates from certifi package
+    # merged with explicitly specified certificates
+    generate_certificates_file(logger, config.ols_config)
 
     # Initialize the K8sClientSingleton with cluster id during module load.
     # We want the application to fail early if the cluster ID is not available.

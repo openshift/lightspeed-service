@@ -1,5 +1,7 @@
 """Unit tests for extra certs handling."""
 
+import logging
+
 import pytest
 from cryptography import x509
 
@@ -26,9 +28,15 @@ def load_certs(cert_path):
     return x509.load_pem_x509_certificates(cert_data)
 
 
-def test_add_ca_to_certifi(fake_certifi_store):
+@pytest.fixture
+def logger():
+    """Logger to be used indirectly in unit tests."""
+    return logging.getLogger("ols")
+
+
+def test_add_ca_to_certifi(logger, fake_certifi_store):
     """Test if the certificate is added to the certifi store."""
-    add_ca_to_certifi(extra_cert_path, certifi_cert_location=fake_certifi_store)
+    add_ca_to_certifi(logger, extra_cert_path, certifi_cert_location=fake_certifi_store)
 
     extra_cert = load_certs(extra_cert_path)[0]
     cert_store_certs = load_certs(fake_certifi_store)
@@ -37,11 +45,11 @@ def test_add_ca_to_certifi(fake_certifi_store):
     assert extra_cert in cert_store_certs
 
 
-def test_add_ca_to_certifi_no_cert_multiplication(fake_certifi_store):
+def test_add_ca_to_certifi_no_cert_multiplication(logger, fake_certifi_store):
     """Test if the certificate is not added multiple times to the certifi store."""
     # add the same cert twice
-    add_ca_to_certifi(extra_cert_path, certifi_cert_location=fake_certifi_store)
-    add_ca_to_certifi(extra_cert_path, certifi_cert_location=fake_certifi_store)
+    add_ca_to_certifi(logger, extra_cert_path, certifi_cert_location=fake_certifi_store)
+    add_ca_to_certifi(logger, extra_cert_path, certifi_cert_location=fake_certifi_store)
 
     extra_cert = load_certs(extra_cert_path)[0]
     cert_store_certs = load_certs(fake_certifi_store)
@@ -50,9 +58,9 @@ def test_add_ca_to_certifi_no_cert_multiplication(fake_certifi_store):
     assert extra_cert in cert_store_certs
 
 
-def test_add_ca_to_certifi_only_appends(fake_certifi_store):
+def test_add_ca_to_certifi_only_appends(logger, fake_certifi_store):
     """Test if the certificate is only appended to the certifi store."""
-    add_ca_to_certifi(extra_cert_path, certifi_cert_location=fake_certifi_store)
+    add_ca_to_certifi(logger, extra_cert_path, certifi_cert_location=fake_certifi_store)
 
     cert_in_certitifi_store = load_certs(cert_in_certitifi_store_path)[0]
     extra_cert = load_certs(extra_cert_path)[0]
