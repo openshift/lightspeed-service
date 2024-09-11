@@ -963,14 +963,9 @@ def test_provider_model_specific_tokens_limit(provider_name, model_name):
             ],
         }
     )
-    # expected token limit for given model
+    # expected token limit for given model, default is used if not set.
     expected_limit = constants.DEFAULT_CONTEXT_WINDOW_SIZE
 
-    # some provider+model combinations are not specified; in this case
-    # default value is used instead
-    expected_limit = constants.CONTEXT_WINDOW_SIZES.get(provider_name).get(
-        model_name, constants.DEFAULT_CONTEXT_WINDOW_SIZE
-    )
     assert provider_config.models[model_name].context_window_size == expected_limit
     if model_name == "test":
         assert (
