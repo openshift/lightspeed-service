@@ -107,6 +107,7 @@ dependencies = [
     "nltk==3.9.1",
     "aiohttp==3.10.2",
     "zipp==3.20.1",
+    "jinja2==3.1.4",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
