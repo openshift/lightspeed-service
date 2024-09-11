@@ -11,7 +11,6 @@ import uvicorn
 from cryptography import x509
 
 import ols.app.models.config as config_model
-from ols import config
 from ols.utils.auth_dependency import K8sClientSingleton
 from ols.utils.logging import configure_logging
 
@@ -120,6 +119,13 @@ def start_uvicorn():
 
 
 if __name__ == "__main__":
+    # First of all, configure environment variables for Gradio before
+    # import config and initializing config module.
+    configure_gradio_ui_envs()
+
+    # NOTE: We import config here to avoid triggering import of anything
+    # else via our code before other envs are set (mainly the gradio).
+    from ols import config
 
     cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
     config.reload_from_yaml_file(cfg_file)
@@ -127,12 +133,6 @@ if __name__ == "__main__":
     configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger("ols")
     logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
-
-    configure_gradio_ui_envs()
-
-    # NOTE: We import config here to avoid triggering import of anything
-    # else via our code before other envs are set (mainly the gradio).
-    from ols import config
 
     configure_hugging_face_envs(config.ols_config)
 
