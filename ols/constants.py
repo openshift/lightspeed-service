@@ -205,3 +205,6 @@ CREDENTIALS_PATH_SELECTOR = "credentials_path"
 
 # Default directory where standard and extra certificates will be stored
 DEFAULT_CERTIFICATE_DIRECTORY = "/tmp"  # noqa: S108
+
+# Certificate storage filename
+CERTIFICATE_STORAGE_FILENAME = "ols.pem"
