@@ -521,6 +521,11 @@ llm_providers:
     type: bam
     url: 'http://url1'
     credentials_path: no_such_file
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         FileNotFoundError,
         "No such file or directory: 'no_such_file'",
@@ -538,6 +543,11 @@ llm_providers:
       - name: m1
         url: 'https://murl1'
         credentials_path: no_such_file
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
 """,
         FileNotFoundError,
         "No such file or directory: 'no_such_file'",

@@ -283,9 +283,13 @@ class ProviderConfig(BaseModel):
     bam_config: Optional[BAMConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
+    certificates_store: Optional[str] = None
 
     def __init__(
-        self, data: Optional[dict] = None, ignore_llm_secrets: bool = False
+        self,
+        data: Optional[dict] = None,
+        ignore_llm_secrets: bool = False,
+        certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -320,6 +324,10 @@ class ProviderConfig(BaseModel):
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
             # note: it can be overwritten in azure_config
+        if self.type in (constants.PROVIDER_RHOAI_VLLM, constants.PROVIDER_RHELAI_VLLM):
+            self.certificates_store = os.path.join(
+                certificate_directory, constants.CERTIFICATE_STORAGE_FILENAME
+            )
 
     def set_provider_type(self, data: dict) -> None:
         """Set the provider type."""
@@ -483,7 +491,10 @@ class LLMProviders(BaseModel):
     providers: dict[str, ProviderConfig] = {}
 
     def __init__(
-        self, data: Optional[dict] = None, ignore_llm_secrets: bool = False
+        self,
+        data: Optional[dict] = None,
+        ignore_llm_secrets: bool = False,
+        certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -492,7 +503,7 @@ class LLMProviders(BaseModel):
         for p in data:
             if "name" not in p:
                 raise InvalidConfigurationError("provider name is missing")
-            provider = ProviderConfig(p, ignore_llm_secrets)
+            provider = ProviderConfig(p, ignore_llm_secrets, certificate_directory)
             self.providers[p["name"]] = provider
 
     def __eq__(self, other: object) -> bool:
@@ -1003,16 +1014,18 @@ class Config(BaseModel):
         super().__init__()
         if data is None:
             return
-        v = data.get("llm_providers")
-        if v is not None:
-            self.llm_providers = LLMProviders(v, ignore_llm_secrets)
-        else:
-            raise InvalidConfigurationError("no LLM providers config section found")
         v = data.get("ols_config")
         if v is not None:
             self.ols_config = OLSConfig(v, ignore_missing_certs)
         else:
             raise InvalidConfigurationError("no OLS config section found")
+        v = data.get("llm_providers")
+        if v is not None:
+            self.llm_providers = LLMProviders(
+                v, ignore_llm_secrets, self.ols_config.certificate_directory
+            )
+        else:
+            raise InvalidConfigurationError("no LLM providers config section found")
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
         self.user_data_collector_config = UserDataCollectorConfig(

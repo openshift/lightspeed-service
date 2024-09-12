@@ -633,6 +633,7 @@ def test_provider_config_rhoai_vllm_specific():
     assert provider_config.rhoai_vllm_config is not None
     assert str(provider_config.rhoai_vllm_config.url) == "http://localhost/"
     assert provider_config.rhoai_vllm_config.api_key == "secret_key"
+    assert provider_config.certificates_store == "/tmp/ols.pem"  # noqa: S108
 
     # configuration for other providers must not be set
     assert provider_config.openai_config is None
@@ -699,6 +700,7 @@ def test_provider_config_rhelai_vllm_specific():
     assert provider_config.rhelai_vllm_config is not None
     assert str(provider_config.rhelai_vllm_config.url) == "http://localhost/"
     assert provider_config.rhelai_vllm_config.api_key == "secret_key"
+    assert provider_config.certificates_store == "/tmp/ols.pem"  # noqa: S108
 
     # configuration for other providers must not be set
     assert provider_config.rhoai_vllm_config is None
@@ -1863,6 +1865,32 @@ def test_config():
                         }
                     ],
                 },
+                {
+                    "name": "rhelai_provider_name",
+                    "type": "rhelai_vllm",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
+                {
+                    "name": "rhoai_provider_name",
+                    "type": "rhoai_vllm",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
             ],
             "ols_config": {
                 "default_provider": "test_default_provider",
@@ -1882,7 +1910,7 @@ def test_config():
             "dev_config": {"disable_tls": "true"},
         }
     )
-    assert len(config.llm_providers.providers) == 1
+    assert len(config.llm_providers.providers) == 3
     assert (
         config.llm_providers.providers["test_provider_name"].name
         == "test_provider_name"
@@ -1914,6 +1942,18 @@ def test_config():
         .credentials
         == "secret_key"
     )
+    assert (
+        config.llm_providers.providers["rhoai_provider_name"].certificates_store
+        == "/foo/bar/baz/ols.pem"
+    )
+    assert (
+        config.llm_providers.providers["rhelai_provider_name"].certificates_store
+        == "/foo/bar/baz/ols.pem"
+    )
+    assert (
+        config.llm_providers.providers["test_provider_name"].certificates_store is None
+    )
+
     assert config.ols_config.default_provider == "test_default_provider"
     assert config.ols_config.default_model == "test_default_model"
     assert config.ols_config.conversation_cache.type == "memory"
