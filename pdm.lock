@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:aebe4beea8cc73a2c51f51988d541c57806211300eb46f654bc5576cc87b63a3"
+content_hash = "sha256:ec43911b0df97efde7bf15c0b27d6852a8617d674c2bd15d813711faa52bedc5"
 
 [[package]]
 name = "absl-py"
@@ -1259,7 +1259,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.2.11"
+version = "0.2.16"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1267,7 +1267,7 @@ dependencies = [
     "PyYAML>=5.3",
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
-    "langchain-core<0.3.0,>=0.2.23",
+    "langchain-core<0.3.0,>=0.2.38",
     "langchain-text-splitters<0.3.0,>=0.2.0",
     "langsmith<0.2.0,>=0.1.17",
     "numpy<2,>=1; python_version < \"3.12\"",
@@ -1276,8 +1276,8 @@ dependencies = [
     "tenacity!=8.4.0,<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.2.11-py3-none-any.whl", hash = "sha256:5a7a8b4918f3d3bebce9b4f23b92d050699e6f7fb97591e8941177cf07a260a2"},
-    {file = "langchain-0.2.11.tar.gz", hash = "sha256:d7a9e4165f02dca0bd78addbc2319d5b9286b5d37c51d784124102b57e9fd297"},
+    {file = "langchain-0.2.16-py3-none-any.whl", hash = "sha256:8f59ee8b45f268df4b924ea3b9c63e49286efa756d16b3f6a9de5c6e502c36e1"},
+    {file = "langchain-0.2.16.tar.gz", hash = "sha256:ffb426a76a703b73ac69abad77cd16eaf03dda76b42cff55572f592d74944166"},
 ]
 
 [[package]]
@@ -1305,21 +1305,22 @@ files = [
 
 [[package]]
 name = "langchain-core"
-version = "0.2.23"
+version = "0.2.39"
 requires_python = "<4.0,>=3.8.1"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
 dependencies = [
     "PyYAML>=5.3",
     "jsonpatch<2.0,>=1.33",
-    "langsmith<0.2.0,>=0.1.75",
+    "langsmith<0.2.0,>=0.1.112",
     "packaging<25,>=23.2",
     "pydantic<3,>=1; python_full_version < \"3.12.4\"",
     "tenacity!=8.4.0,<9.0.0,>=8.1.0",
+    "typing-extensions>=4.7",
 ]
 files = [
-    {file = "langchain_core-0.2.23-py3-none-any.whl", hash = "sha256:ef0b4184b37e356a27182514aedcc8c41ffacbd6348a801bc775c1ce1f608637"},
-    {file = "langchain_core-0.2.23.tar.gz", hash = "sha256:ac8165f283d8f5214576ffc38387106ef0de7eb8d2c52576d06e8dd3285294b0"},
+    {file = "langchain_core-0.2.39-py3-none-any.whl", hash = "sha256:5a5ad4e1c02d13e7021c026b2c7965069ad71ef67b018274cd52bab56e39143e"},
+    {file = "langchain_core-0.2.39.tar.gz", hash = "sha256:73d7b6f0b0212bc8069c3640d69e8d75faa51097784019ffa5c36c617c04acb0"},
 ]
 
 [[package]]
@@ -1369,18 +1370,19 @@ files = [
 
 [[package]]
 name = "langsmith"
-version = "0.1.77"
+version = "0.1.118"
 requires_python = "<4.0,>=3.8.1"
 summary = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 groups = ["default"]
 dependencies = [
+    "httpx<1,>=0.23.0",
     "orjson<4.0.0,>=3.9.14",
-    "pydantic<3,>=1",
+    "pydantic<3,>=1; python_full_version < \"3.12.4\"",
     "requests<3,>=2",
 ]
 files = [
-    {file = "langsmith-0.1.77-py3-none-any.whl", hash = "sha256:2202cc21b1ed7e7b9e5d2af2694be28898afa048c09fdf09f620cbd9301755ae"},
-    {file = "langsmith-0.1.77.tar.gz", hash = "sha256:4ace09077a9a4e412afeb4b517ca68e7de7b07f36e4792dc8236ac5207c0c0c7"},
+    {file = "langsmith-0.1.118-py3-none-any.whl", hash = "sha256:f017127b3efb037da5e46ff4f8583e8192e7955191737240c327f3eadc144d7c"},
+    {file = "langsmith-0.1.118.tar.gz", hash = "sha256:ff1ca06c92c6081250244ebbce5d0bb347b9d898d2e9b60a13b11f0f0720f09f"},
 ]
 
 [[package]]
