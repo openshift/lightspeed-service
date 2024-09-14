@@ -248,7 +248,7 @@ spec:
             - name: name
               value: buildah-10gb
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-buildah-10gb:0.2@sha256:8f6faf9c96bd395936a52e2762aa5f5bb251c8b7f06a51ee965bde0c5567da67
+              value: quay.io/konflux-ci/tekton-catalog/task-buildah-10gb:0.2@sha256:e5ca946825148752d388ab3d0776cbe38900dd8baebb7ca3964e370a6f889a25
             - name: kind
               value: task
           resolver: bundles
@@ -389,7 +389,7 @@ spec:
             - name: name
               value: clamav-scan
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.1@sha256:7bb17b937c9342f305468e8a6d0a22493e3ecde58977bd2ffc8b50e2fa234d58
+              value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.1@sha256:0e61e7fce97b089b216eccd8390b1c2a265454c81c6630449e0f648dfcd4fcfe
             - name: kind
               value: task
           resolver: bundles
