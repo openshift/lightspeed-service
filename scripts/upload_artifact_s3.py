@@ -16,8 +16,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-path = "."
-extension = ".tar.gz"
+PATH = "."
+EXTENSION = ".tar.gz"
 
 
 def upload_artifact_s3(aws_env):
@@ -35,8 +35,8 @@ def upload_artifact_s3(aws_env):
     )
 
     file_name = None
-    for file in os.listdir(path):
-        if file.endswith(extension):
+    for file in os.listdir(PATH):
+        if file.endswith(EXTENSION):
             file_name = file
 
     if file_name is not None:
