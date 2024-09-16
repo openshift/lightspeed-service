@@ -869,9 +869,9 @@ llama-index-program-openai==0.1.7 \
     # via
     #   llama-index
     #   llama-index-question-gen-openai
-llama-index-question-gen-openai==0.1.3 \
-    --hash=sha256:1f83b49e8b2e665030d1ec8c54687d6985d9fa8426147b64e46628a9e489b302 \
-    --hash=sha256:4486198117a45457d2e036ae60b93af58052893cc7d78fa9b6f47dd47b81e2e1
+llama-index-question-gen-openai==0.2.0 \
+    --hash=sha256:3dde1cecbd651000639c20031d7ea23334276aabb181cac40ff424f35e10465e \
+    --hash=sha256:a16e68fc5434e9a793f1dfd0cc0354ee19afd167f1d499403b0085b11c5406c0
     # via llama-index
 llama-index-readers-file==0.1.33 \
     --hash=sha256:247a4d5bfabc7d1022027adf58064bc16c224d006db142abb0d182ac5574a887 \
