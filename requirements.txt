@@ -813,9 +813,9 @@ llama-index-cli==0.1.13 \
     --hash=sha256:5e05bc3ce55ee1bf6e5af7e87631a71d6b6cf8fc2af10cd3947b09b1bac6788d \
     --hash=sha256:86147ded4439fbab1d6c7c0d72e8f231d2935da9fdf5c9d3f0dde4f35d44aa59
     # via llama-index
-llama-index-core==0.10.62 \
-    --hash=sha256:227f011829497e654bb32ab6907318f613c3a9a6809e08c20163395c26838606 \
-    --hash=sha256:c48c4b8bdd0ad6eec3f7c4ca129509cdbe5614f3d2ed76bec30999899a38b962
+llama-index-core==0.11.10 \
+    --hash=sha256:2dddd7cb4ccee89fdbbddd62e5fe3c7ae7fc431130e0a0a7155daee052874191 \
+    --hash=sha256:9929b11cfb24a3581620466660ab11a6360fde8c2441caa3660e0127df65c1b9
     # via
     #   llama-index
     #   llama-index-agent-openai
