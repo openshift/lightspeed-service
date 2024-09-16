@@ -383,20 +383,20 @@ def read_feedbacks_from_tarball(tarball: tarfile.TarFile) -> list[dict[str, Any]
 
 def feedbacks_from_tarball(tarball_name: str) -> list[dict[str, Any]]:
     """Retrieve all feedbacks from tarball."""
-    tarball = tarfile.open(tarball_name, "r:gz")
-    filelist = tarball.getnames()
+    with tarfile.open(tarball_name, "r:gz") as tarball:
+        filelist = tarball.getnames()
 
-    # check if the tarball seems to be correct one
-    if TOPLEVEL_MAGIC_FILE not in filelist:
-        logger.warning("Incorrect tarball: missing %s", TOPLEVEL_MAGIC_FILE)
-        return []
+        # check if the tarball seems to be correct one
+        if TOPLEVEL_MAGIC_FILE not in filelist:
+            logger.warning("Incorrect tarball: missing %s", TOPLEVEL_MAGIC_FILE)
+            return []
 
-    feedbacks = read_feedbacks_from_tarball(tarball)
+        feedbacks = read_feedbacks_from_tarball(tarball)
 
-    if len(feedbacks) == 0:
-        logger.warning("Tarball %s does not contain any feedback.", tarball_name)
+        if len(feedbacks) == 0:
+            logger.warning("Tarball %s does not contain any feedback.", tarball_name)
 
-    return feedbacks
+        return feedbacks
 
 
 def read_full_conversation_history(
