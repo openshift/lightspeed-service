@@ -542,7 +542,7 @@ class PostgresConfig(BaseModel):
     @model_validator(mode="after")
     def validate_yaml(self) -> Self:
         """Validate Postgres cache config."""
-        if not (0 < self.port < 65536):
+        if not 0 < self.port < 65536:
             raise ValueError("The port needs to be between 0 and 65536")
         return self
 
@@ -570,7 +570,7 @@ class RedisConfig(BaseModel):
         yaml_port = data.get("port", constants.REDIS_CACHE_PORT)
         try:
             self.port = int(yaml_port)
-            if not (0 < self.port < 65536):
+            if not 0 < self.port < 65536:
                 raise ValueError
         except ValueError:
             raise InvalidConfigurationError(

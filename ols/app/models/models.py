@@ -337,7 +337,7 @@ class FeedbackRequest(BaseModel):
     @classmethod
     def check_uuid(cls, value: str) -> str:
         """Check if conversation ID has the proper format."""
-        if not (suid.check_suid(value)):
+        if not suid.check_suid(value):
             raise ValueError(f"Improper conversation ID {value}")
         return value
 
