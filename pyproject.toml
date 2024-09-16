@@ -101,7 +101,7 @@ dependencies = [
     "SQLAlchemy==2.0.32",
     "huggingface_hub==0.23.4",
     "ibm-watsonx-ai==1.1.8",
-    "certifi==2024.7.4",
+    "certifi==2024.8.30",
     "cryptography==43.0.1",
     "urllib3==2.2.2",
     "nltk==3.9.1",
