@@ -290,7 +290,6 @@ class LLMProvider(AbstractLLMProvider):
                     parameter_value is None
                     and parameter_name in available_parameter_names
                 ):
-                    [p._name for p in AzureOpenAIParameters]
                     filtered_params[parameter_name] = None
                     continue
                 # other parameters
