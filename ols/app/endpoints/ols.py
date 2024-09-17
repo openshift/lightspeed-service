@@ -554,11 +554,11 @@ def store_transcript(
         truncated: The flag indicating if the history was truncated.
         attachments: The list of `Attachment` objects.
     """
-    # ensures storage path exists
+    # Creates transcripts path only if it doesn't exist. The `exist_ok=True` prevents
+    # race conditions in case of multiple server instances trying to set up transcripts
+    # at the same location.
     transcripts_path = construct_transcripts_path(user_id, conversation_id)
-    if not transcripts_path.exists():
-        logger.debug(f"creating transcript storage directory '{transcripts_path}'")
-        transcripts_path.mkdir(parents=True)
+    transcripts_path.mkdir(parents=True, exist_ok=True)
 
     data_to_store = {
         "metadata": {
