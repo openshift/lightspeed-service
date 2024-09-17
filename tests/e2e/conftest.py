@@ -114,6 +114,12 @@ def pytest_addoption(parser):
         help="Evaluation score/metric.",
     )
     parser.addoption(
+        "--eval_modes",
+        nargs="+",
+        default=["ols"],
+        help="Evaluation modes ex: with just prompt/rag etc.",
+    )
+    parser.addoption(
         "--rp_name",
         action="store",
         default="e2e-ols-cluster",

@@ -16,13 +16,15 @@ footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
 
 package "OpenShift LightSpeed service" as ols {
     component "FastAPI HTTP server" as http
+    component "Auth. check" as auth
     component "Query handler" as handler
     component "History" as history
     component "Redactor" as redactor
     component "Question\nvalidator" as question_validator
     component "Document\nsummarizer" as document_summarizer
     component "LLM providers registry" as llm_register
-    http -> handler
+    http -> auth
+    auth -> handler
     handler --> history
     handler --> redactor
     handler --> question_validator

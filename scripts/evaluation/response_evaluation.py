@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from time import sleep
 
 import matplotlib.pyplot as plt
-import requests
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from matplotlib.colors import BASE_COLORS
 from pandas import DataFrame, concat, read_csv, read_parquet
@@ -15,13 +14,19 @@ from rouge_score.rouge_scorer import RougeScorer
 from scipy.spatial.distance import cosine, euclidean
 from tqdm import tqdm
 
+from ols import config
+
+from .utils import get_model_response
+
 tqdm.pandas()
+
 
 # Same Provider/Model combination must be used while launching OLS.
 INSCOPE_MODELS = {
     "bam+ibm/granite-13b-chat-v2": ("bam", "ibm/granite-13b-chat-v2"),
     "watsonx+ibm/granite-13b-chat-v2": ("watsonx", "ibm/granite-13b-chat-v2"),
     "openai+gpt-3.5-turbo": ("openai", "gpt-3.5-turbo"),
+    "openai+gpt-4o-mini": ("openai", "gpt-4o-mini"),
     "azure_openai+gpt-3.5-turbo": ("azure_openai", "gpt-3.5-turbo"),
     "azure_openai+gpt-3.5-turbo-4k": ("azure_openai", "gpt-3.5-turbo"),
     "azure_openai+gpt-3.5-turbo-16k": ("azure_openai", "gpt-3.5-turbo"),
@@ -35,6 +40,15 @@ SCORE_DESCRIPTION = {
     "rougeL_recall": "RougeL Recall Score",
     "rougeL_f1": "RougeL F1 Score",
 }
+EVAL_MODES = {
+    "vanilla",
+    "ols_param",
+    "ols_prompt",
+    "ols_rag",
+    "ols",
+}
+
+DEFAULT_QNA_FILE = "question_answer_pair.json"
 
 # Cut-off similarity score used for response evaluation.
 EVAL_THRESHOLD = 0.2  # low score is better
@@ -63,6 +77,20 @@ class ResponseEvaluation:
         invalid_metrics = set(self._args.eval_metrics) - set(SCORE_DESCRIPTION.keys())
         if len(invalid_metrics) > 0:
             raise ValueError(f"Invalid metrics: {invalid_metrics}")
+        invalid_modes = set(self._args.eval_modes) - EVAL_MODES
+        if len(invalid_modes) > 0:
+            raise ValueError(f"Invalid eval modes: {invalid_modes}")
+
+        if len(set(self._args.eval_modes) - {"ols"}) > 0:
+            # load config separately
+            # Use OLS config file to set provider/model related config. Ex: credential/url
+            cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+            config.reload_from_yaml_file(cfg_file)
+        if "ols_rag" in self._args.eval_modes:
+            # load rag index
+            config.rag_index
+            if config.rag_index is None:
+                raise Exception("No valid rag index for ols_rag mode")
 
         self._embedding_model = HuggingFaceEmbedding(
             "sentence-transformers/all-mpnet-base-v2"
@@ -71,7 +99,7 @@ class ResponseEvaluation:
 
         eval_dir = os.path.dirname(__file__)
         self._input_dir = os.path.join(eval_dir, "eval_data")
-        with open(os.path.join(self._input_dir, "question_answer_pair.json")) as qna_f:
+        with open(os.path.join(self._input_dir, DEFAULT_QNA_FILE)) as qna_f:
             self._qa_pool_json = json.load(qna_f)["evaluation"]
 
         self._qa_pool_df = self._load_qna_pool_parquet()
@@ -86,6 +114,7 @@ class ResponseEvaluation:
         qna_pool_df = DataFrame()
         if self._args.qna_pool_file is not None:
             qna_pool_df = read_parquet(self._args.qna_pool_file).reset_index()
+            qna_pool_df.drop_duplicates(inplace=True)
             qna_pool_df = qna_pool_df.rename(
                 columns={"ID": "query_id", "Question": "question", "Answer": "answer"}
             )
@@ -137,13 +166,14 @@ class ResponseEvaluation:
                 qna_pool_df.query_id.isin(self._args.eval_query_ids)
             ]
         qna_pool_df = qna_pool_df[qna_pool_df.in_use]
-        return qna_pool_df.reset_index(drop=True)
+        return qna_pool_df.reset_index(drop=True).drop(columns="in_use")
 
     def _get_api_response(
         self,
         question,
         provider,
         model,
+        eval_mode,
         retry_attemps=MAX_RETRY_ATTEMPTS,
         rest_api_timeout=REST_API_TIMEOUT,
         time_to_breath=TIME_TO_BREATH,
@@ -153,29 +183,32 @@ class ResponseEvaluation:
         # in 100% cases
         # it fixes OLS-858 e2e test failure - test_model_response response validation
         for retry_counter in range(retry_attemps):
-            print(f"OLS call; attempt: {retry_counter}")
-            response = self._api_client.post(
-                "/v1/query",
-                json={
-                    "query": question,
-                    "provider": provider,
-                    "model": model,
-                },
-                timeout=rest_api_timeout,
-            )
-            if response.status_code == requests.codes.ok:
+            print(f"Call attempt: {retry_counter}")
+            try:
+                response = get_model_response(
+                    question,
+                    provider,
+                    model,
+                    eval_mode,
+                    rest_api_timeout,
+                    self._api_client,
+                )
                 break
+            except Exception:
+                if retry_counter == retry_attemps - 1:
+                    raise
             # model is not realiable if it's overloaded, so take some time between requests
             sleep(time_to_breath)
 
-        if response.status_code != requests.codes.ok:
-            print(f"Unable to get response for {provider}+{model}; query: {question}")
-            raise Exception(response)
+        print(
+            f"API request is successful for {provider}+{model}; "
+            f"mode: {eval_mode};\nQuery: {question}"
+        )
+        return response
 
-        print(f"API request is successful for {provider}+{model}; Query: {question}")
-        return response.json()["response"].strip()
-
-    def _get_recent_response(self, question, recent_resp_df, provider, model):
+    def _get_recent_response(
+        self, question, recent_resp_df, provider, model, eval_mode
+    ):
         """Get llm response from the stored data, if available."""
         if recent_resp_df is not None:
             try:
@@ -188,12 +221,13 @@ class ResponseEvaluation:
                     "Separate api call is required to get response."
                 )
         # Recent response is not found, call api to get response
-        return self._get_api_response(question, provider, model)
+        return self._get_api_response(question, provider, model, eval_mode)
 
-    def _get_model_response(self, qna_pool_df, provider_model_id):
+    def _get_model_response(self, qna_pool_df, provider_model_id, eval_mode):
         """Get model responses for all questions."""
         temp_resp_file = (
-            f"{self._result_dir}/{provider_model_id.replace('/', '-')}_response.csv"
+            f"{self._result_dir}/{eval_mode}_"
+            f"{provider_model_id.replace('/', '-')}_response.csv"
         )
         try:
             recent_resp_df = read_csv(temp_resp_file)
@@ -208,7 +242,7 @@ class ResponseEvaluation:
         qna_pool_unique = qna_pool_df[["question"]].drop_duplicates()
         qna_pool_unique["response"] = qna_pool_unique.progress_apply(
             lambda row: self._get_recent_response(
-                row.question, recent_resp_df, provider, model
+                row.question, recent_resp_df, provider, model, eval_mode
             ),
             axis=1,
         )
@@ -270,12 +304,16 @@ class ResponseEvaluation:
         """Get responses with scores."""
         result_dfs = []
         for provider_model_id in self._args.eval_provider_model_id:
-            print(f"Model evaluation for {provider_model_id}")
-            qna_pool_df = self._get_inscope_qna(provider_model_id)
-            qna_pool_df = self._get_model_response(qna_pool_df, provider_model_id)
-            qna_pool_df = self._get_evaluation_score(qna_pool_df)
-            qna_pool_df["provider_model_id"] = provider_model_id
-            result_dfs.append(qna_pool_df)
+            for eval_mode in self._args.eval_modes:
+                print(f"Model evaluation for {provider_model_id}; Mode: {eval_mode}")
+                qna_pool_df = self._get_inscope_qna(provider_model_id)
+                qna_pool_df = self._get_model_response(
+                    qna_pool_df, provider_model_id, eval_mode
+                )
+                qna_pool_df = self._get_evaluation_score(qna_pool_df)
+                qna_pool_df["eval_mode"] = eval_mode
+                qna_pool_df["provider_model_id"] = provider_model_id
+                result_dfs.append(qna_pool_df)
         return concat(result_dfs)
 
     @staticmethod
@@ -290,10 +328,9 @@ class ResponseEvaluation:
                 "doc_page",
                 "doc_title",
                 "consistency_cutoff",
-                "in_use",
             ],
-            columns=["provider_model_id"],
-        ).swaplevel(1, 0, axis=1)
+            columns=["eval_mode", "provider_model_id"],
+        ).swaplevel(0, axis=1)
         result_df.columns = ["_".join(col) for col in result_df.columns]
         return result_df
 
@@ -386,7 +423,9 @@ class ResponseEvaluation:
         summary_score = {}
         for score_type in self._args.eval_metrics:
             num_columns = [
-                f"{pm}_{score_type}" for pm in self._args.eval_provider_model_id
+                f"{pm}_{m}_{score_type}"
+                for pm in self._args.eval_provider_model_id
+                for m in self._args.eval_modes
             ]
             temp_result_df = result_df[num_columns]
             temp_result_df.columns = [
