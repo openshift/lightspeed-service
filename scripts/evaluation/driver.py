@@ -57,6 +57,12 @@ def _args_parser(args):
         help="Evaluation score/metric.",
     )
     parser.add_argument(
+        "--eval_modes",
+        nargs="+",
+        default=["ols"],
+        help="Evaluation modes ex: with just prompt/rag etc.",
+    )
+    parser.add_argument(
         "--eval_api_url",
         default="http://localhost:8080",
         type=str,

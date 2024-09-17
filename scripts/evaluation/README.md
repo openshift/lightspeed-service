@@ -36,20 +36,28 @@ Please refer above files for the structure, add new data accordingly.
 
 **eval_api_token_file**: Path to a text file containing OLS API token. Required, if OLS is deployed in cluster.
 
-**eval_provider**: Required for `consitency` check
-**eval_model**: Required for `consitency` check
-
 **eval_scenario**: This is primarily required to indetify which pre-defined answers need to be compared. Values can be `with_rag`, `without_rag`. Currently we always do evaluation for the API with rag.
 
 **eval_query_ids**: Option to give set of query ids for evaluation. By default all queries are processed.
 
-**eval_provider_model_id**: This is applicable only for `model` evaluation. We can provide set of provider/model combinations for the comparison.
+**eval_provider_model_id**: We can provide set of provider/model combinations as ids for comparison.
 
-**qna_pool_file**: Applicable only for `model` evaluation. Provide file path to the paruet file having additional QnAs. Default is None.
+**qna_pool_file**: Applicable only for `model` evaluation. Provide file path to the parquet file having additional QnAs. Default is None.
 
 **eval_out_dir**: Directory, where output csv/json files will be saved.
 
-### RAG retrieval script
+**eval_metrics**: By default all scores/metrics are calculated, but this decides which scores will be used to create the graph.
+This is a list of metrics. Ex: cosine, euclidean distance, precision/recall/F1 score.
+
+**eval_modes**: Apart from OLS api, we may want to evaluate vanilla model or with just OLS paramaters/prompt/RAG so that we can have baseline score. This is a list of modes. Ex: vanilla, ols_param, ols_prompt, ols_rag, & ols (actual api).
+
+### Outputs
+Evaluation scripts creates below files.
+- CSV file with response for given provider/model & modes.
+- response evaluation result with scores (for consistency check).
+- Final csv file with all results, json score summary & graph (for model evaluation)
+
+# RAG retrieval script
 ```
 python -m scripts.evaluation.query_rag
 ```
