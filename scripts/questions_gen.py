@@ -238,7 +238,7 @@ async def questions_eval(
     print_evaluation_time("faithfulness, relevancy", start_time)
 
     correctness_results = evaluate_correctness(
-        index, similarity, eval_questions, total_correctness_score, start_time
+        index, similarity, eval_questions, total_correctness_score
     )
     results["correctness"] = correctness_results
 
@@ -271,9 +271,7 @@ async def evaluate_faithfulness_relevancy(index, similarity, eval_questions):
     return faithfulness_results, relevancy_results
 
 
-def evaluate_correctness(
-    index, similarity, eval_questions, total_correctness_score, start_time
-):
+def evaluate_correctness(index, similarity, eval_questions, total_correctness_score):
     """Evaluate correctness."""
     correctness = CorrectnessEvaluator(
         score_threshold=2.0,
