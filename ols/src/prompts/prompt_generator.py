@@ -22,16 +22,14 @@ def restructure_rag_context_pre(text: str, model: str) -> str:
     """Restructure rag text - pre truncation."""
     if ModelFamily.GRANITE in model:
         return "\n[End]\n[Document]\n" + text
-    else:
-        return "\n\nDocument:\n" + text
+    return "\n\nDocument:\n" + text
 
 
 def restructure_rag_context_post(text: str, model: str) -> str:
     """Restructure rag text - post truncation."""
     if ModelFamily.GRANITE in model:
         return text.removeprefix("\n[End]") + "\n[End]"
-    else:
-        return "\n" + text.lstrip("\n") + "\n"
+    return "\n" + text.lstrip("\n") + "\n"
 
 
 def restructure_history(text: str, model: str) -> str:
