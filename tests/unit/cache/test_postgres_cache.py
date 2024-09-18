@@ -14,8 +14,8 @@ from ols.utils import suid
 
 user_id = suid.get_suid()
 conversation_id = suid.get_suid()
-cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
-cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
+cache_entry_1 = CacheEntry(query="用户消息", response="人工智能信息")
+cache_entry_2 = CacheEntry(query="user message", response="ai message")
 
 
 @patch("psycopg2.connect")
@@ -152,7 +152,7 @@ def test_insert_or_append_operation(mock_connect):
         ),
         call(
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id, conversation),
+            (user_id, conversation_id, conversation.encode("utf-8")),
         ),
         call(PostgresCache.QUERY_CACHE_SIZE),
     ]
@@ -194,7 +194,7 @@ def test_insert_or_append_operation_append_item(mock_connect):
         ),
         call(
             PostgresCache.UPDATE_CONVERSATION_HISTORY_STATEMENT,
-            (new_conversation, user_id, conversation_id),
+            (new_conversation.encode("utf-8"), user_id, conversation_id),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=True)

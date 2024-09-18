@@ -149,14 +149,14 @@ class PostgresCache(Cache):
                         cursor,
                         user_id,
                         conversation_id,
-                        json.dumps(old_value),
+                        json.dumps(old_value).encode("utf-8"),
                     )
                 else:
                     PostgresCache._insert(
                         cursor,
                         user_id,
                         conversation_id,
-                        json.dumps([value]),
+                        json.dumps([value]).encode("utf-8"),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
