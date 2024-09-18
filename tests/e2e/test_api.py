@@ -1722,7 +1722,7 @@ def test_model_response(request) -> None:
 
     val_success_flag = ResponseEvaluation(args, client).validate_response()
     # If flag is False, then response(s) is not consistent,
-    # And score is more than cust-off score.
+    # And score is more than cut-off score.
     # Please check eval_result/response_evaluation_* csv file in artifact folder or
     # Check the log to find out exact file path.
     assert val_success_flag
