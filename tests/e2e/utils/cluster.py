@@ -70,7 +70,7 @@ def get_cluster_version() -> tuple[str, str]:
                 "jsonpath='{.status.desired.version}'",
             ]
         )
-        major, minor, rest = result.stdout.strip("'").split(".", 2)
+        major, minor, _ = result.stdout.strip("'").split(".", 2)
         return major, minor
     except subprocess.CalledProcessError as e:
         raise Exception("Error getting cluster version") from e
