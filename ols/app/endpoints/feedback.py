@@ -59,11 +59,11 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         user_id: The user ID (UUID).
         feedback: The feedback to store.
     """
-    # ensures storage path exists
+    # Creates storage path only if it doesn't exist. The `exist_ok=True` prevents
+    # race conditions in case of multiple server instances trying to set up storage
+    # at the same location.
     storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
-    if not storage_path.exists():
-        logger.debug(f"creating feedback storage directories '{storage_path}'")
-        storage_path.mkdir(parents=True)
+    storage_path.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.utcnow())
     data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
