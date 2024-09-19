@@ -572,10 +572,10 @@ class RedisConfig(BaseModel):
             self.port = int(yaml_port)
             if not 0 < self.port < 65536:
                 raise ValueError
-        except ValueError:
+        except ValueError as e:
             raise InvalidConfigurationError(
                 f"invalid Redis port {yaml_port}, valid ports are integers in the (0, 65536) range"
-            )
+            ) from e
 
         self.max_memory = data.get("max_memory", constants.REDIS_CACHE_MAX_MEMORY)
 
@@ -644,11 +644,11 @@ class InMemoryCacheConfig(BaseModel):
             )
             if self.max_entries < 0:
                 raise ValueError
-        except ValueError:
+        except ValueError as e:
             raise InvalidConfigurationError(
                 "invalid max_entries for memory conversation cache,"
                 " max_entries needs to be a non-negative integer"
-            )
+            ) from e
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -678,10 +678,10 @@ class QueryFilter(BaseModel):
             self.replace_with = data.get("replace_with")
             if self.name is None or self.pattern is None or self.replace_with is None:
                 raise ValueError
-        except ValueError:
+        except ValueError as e:
             raise InvalidConfigurationError(
                 "name, pattern and replace_with need to be specified"
-            )
+            ) from e
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -701,8 +701,8 @@ class QueryFilter(BaseModel):
             raise InvalidConfigurationError("pattern is missing")
         try:
             re.compile(self.pattern)
-        except re.error:
-            raise InvalidConfigurationError("pattern is invalid")
+        except re.error as e:
+            raise InvalidConfigurationError("pattern is invalid") from e
         if self.replace_with is None:
             raise InvalidConfigurationError("replace_with is missing")
 
