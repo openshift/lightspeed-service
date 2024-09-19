@@ -327,11 +327,24 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 ### Local Deployment
 
+OLS service can be started locally. In this case GradIO web UI is used to
+interact with the service. Alternatively the service can be accessed through
+REST API.
+
 #### Run the server
-in order to run the API service
+
+If Python virtual environment is setup already, it is possible to start the service by following command:
+
 ```sh
 make run
 ```
+
+It is also possible to initialize virtual environment and start the service by using just one command:
+
+```sh
+pdm start
+```
+
 
 ### Optionally run with podman
 There is an all-in-one image that has the document store included already.
