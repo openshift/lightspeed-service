@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:0a56d74b30b5ee1ebaf2b9aaeef67b1c9dad96da96d13cf7423568bdf69587cf"
+content_hash = "sha256:a2b8ceb55808fbc6f05ccaf7b73250b06b4e52833a5056a7cd42f855fbdf08e7"
 
 [[package]]
 name = "absl-py"
@@ -2130,7 +2130,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.42.0"
+version = "1.46.0"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -2145,8 +2145,8 @@ dependencies = [
     "typing-extensions<5,>=4.11",
 ]
 files = [
-    {file = "openai-1.42.0-py3-none-any.whl", hash = "sha256:dc91e0307033a4f94931e5d03cc3b29b9717014ad5e73f9f2051b6cb5eda4d80"},
-    {file = "openai-1.42.0.tar.gz", hash = "sha256:c9d31853b4e0bc2dc8bd08003b462a006035655a701471695d0bfdc08529cde3"},
+    {file = "openai-1.46.0-py3-none-any.whl", hash = "sha256:8e423690b121d0268c7bb83b552e14f339b0ba250e1d0f70d145c194e79c4e1b"},
+    {file = "openai-1.46.0.tar.gz", hash = "sha256:0c5a783530d7cd90e2370dbd52d9239d2d53dc7a0badf9ee1e2e23d3f148969b"},
 ]
 
 [[package]]
