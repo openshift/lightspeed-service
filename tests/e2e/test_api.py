@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import subprocess
 import time
 from argparse import Namespace
 
@@ -96,21 +97,38 @@ def install_ols() -> tuple[str, str, str]:
         ignore_existing_resource=True,
     )
 
-    # install the operator catalog
+    # install the operator from bundle
+    print("Installing OLS operator from bundle")
     cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/catalog.yaml"],
+        [
+            "apply",
+            "-f",
+            "tests/config/operator_install/imagedigestmirrorset.yaml",
+        ],
         ignore_existing_resource=True,
     )
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/operatorgroup.yaml"],
-        ignore_existing_resource=True,
-    )
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/subscription.yaml"],
-        ignore_existing_resource=True,
-    )
-
-    print("Created catalog+subscription")
+    try:
+        subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "operator-sdk",
+                "run",
+                "bundle",
+                "--timeout=20m",
+                "-n",
+                "openshift-lightspeed",
+                "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
+                "--verbose",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    # TODO: add run_command func
+    except subprocess.CalledProcessError as e:
+        print(
+            f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
+        )
+        raise
 
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
