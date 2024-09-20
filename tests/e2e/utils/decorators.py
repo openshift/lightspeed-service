@@ -38,7 +38,7 @@ def retry(
                         raise
 
                     # retrieve error message
-                    error_message = str(e).strip().split("\n")[0]
+                    error_message = str(e).strip().split("\n", maxsplit=1)[0]
 
                     if expected_error_message not in error_message:
                         raise
