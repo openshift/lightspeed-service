@@ -123,7 +123,7 @@ class PostgresCache(Cache):
                 return [CacheEntry.from_dict(cache_entry) for cache_entry in value]
             except psycopg2.DatabaseError as e:
                 logger.error(f"PostgresCache.get {e}")
-                raise CacheError("PostgresCache.get", e)
+                raise CacheError("PostgresCache.get", e) from e
 
     def insert_or_append(
         self,
@@ -162,7 +162,7 @@ class PostgresCache(Cache):
                 # commit is implicit at this point
             except psycopg2.DatabaseError as e:
                 logger.error(f"PostgresCache.insert_or_append {e}")
-                raise CacheError("PostgresCache.insert_or_append", e)
+                raise CacheError("PostgresCache.insert_or_append", e) from e
 
     @staticmethod
     def _select(
