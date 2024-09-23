@@ -2124,9 +2124,9 @@ scipy==1.14.1 \
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==3.0.1 \
-    --hash=sha256:01050cc4053c49b9f5b78f6980b5a72db3fd3a0abb9169b1792ac83875505ee6 \
-    --hash=sha256:8a3d2c537cc4d1014ccc20ac92be3d6135420a3bc60ae29a3a8a9b4bb35fbff6
+sentence-transformers==3.1.1 \
+    --hash=sha256:8f00020ef4ad6b918475c38af545c22f61403b67eb22d994860bab06902db160 \
+    --hash=sha256:c73bf6f17e3676bb9372a6133a254ebfb5907586b470f2bac5a840c64c3cf97e
     # via
     #   llama-index-embeddings-huggingface
     #   ols (pyproject.toml)
