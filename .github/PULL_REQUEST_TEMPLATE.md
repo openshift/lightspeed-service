@@ -13,6 +13,9 @@
 - [ ] Configuration Update
 - [ ] Bump-up dependent library
 - [ ] Bump-up library or tool used for development (does not change the final image)
+- [ ] CI configuration change
+- [ ] Konflux configuration change
+
 
 ## Related Tickets & Documents
 
