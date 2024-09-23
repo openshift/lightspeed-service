@@ -1728,9 +1728,9 @@ pyjwt[crypto]==2.9.0 \
     --hash=sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850 \
     --hash=sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c
     # via msal
-pypdf==4.3.1 \
-    --hash=sha256:64b31da97eda0771ef22edb1bfecd5deee4b72c3d1736b7df2689805076d6418 \
-    --hash=sha256:b2f37fe9a3030aa97ca86067a56ba3f9d3565f9a791b305c7355d8392c30d91b
+pypdf==5.0.0 \
+    --hash=sha256:5c536ec0f7af8e2f80eb32806964652a562b9abc5477b3c195e2b842725ce55b \
+    --hash=sha256:67603e2e96cdf70e676564520933c017d450f16075b9966be5fee128812ace8c
     # via llama-index-readers-file
 pyproject-hooks==1.1.0 \
     --hash=sha256:4b37730834edbd6bd37f26ece6b44802fb1c1ee2ece0e54ddff8bfc06db86965 \
