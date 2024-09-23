@@ -13,7 +13,9 @@ images: ## Build container images
 	scripts/build-container.sh
 
 install-tools:	install-woke ## Install required utilities/tools
-	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+	# OLS 1085: Service build failure issue caused by newest PDM version
+	# (right now we need to stick to PDM specified in pyproject.toml file)
+	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm==2.18.1; }
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
 	# pip uninstall -y mypy 2> /dev/null || true
