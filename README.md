@@ -187,6 +187,8 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 
 ## 7. Configure OLS Authentication
 
+   NOTE: Currently, only K8S-based authentication can be used. In future versions, more authentication mechanisms will be configurable.
+
    This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
 
    1. Enabling and Disabling Authentication
