@@ -33,6 +33,12 @@ configure model, and connect to it.
     * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
     * [5. Configure OpenShift LightSpeed (OLS)](#5-configure-openshift-lightspeed-ols)
     * [6. Configure LLM providers](#6-configure-llm-providers)
+        * [OpenAI provider](#openai-provider)
+        * [Azure OpenAI](#azure-openai-1)
+        * [WatsonX](#watsonx-1)
+        * [RHEL AI provider](#rhel-ai-provider)
+        * [Red Hat OpenShift AI](#red-hat-openshift-ai)
+        * [Local *ollama* server](#local-ollama-server)
     * [7. Configure OLS Authentication](#7-configure-ols-authentication)
     * [8. Configure OLS TLS communication](#8-configure-ols-tls-communication)
     * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
@@ -141,15 +147,9 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
 ## 6. Configure LLM providers
 
-   The example configuration file defines providers for six LLM providers: BAM,
-   OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI
-   (RHEL AI), but defines BAM as the default provider. If you prefer to use a
-   different LLM provider than BAM, such as OpenAI, ensure that the provider
-   definition points to a file containing a valid OpenAI, Watsonx etc. API key,
-   and change the `default_model` and `default_provider` values to reference
-   the selected provider and model.
+   The example configuration file defines providers for six LLM providers: BAM, OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI (RHEL AI), but defines BAM as the default provider. If you prefer to use a different LLM provider than BAM, such as OpenAI, ensure that the provider definition points to a file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to reference the selected provider and model.
 
-   The example configuration also defines locally running provider instructlab which is OpenAI-compatible and can use
+   The example configuration also defines locally running provider InstructLab which is OpenAI-compatible and can use
    several models. Please look at [instructlab pages](https://github.com/instructlab/instructlab/tree/main) for detailed
    information on how to set up and run this provider.
 
@@ -158,34 +158,82 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains a directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
-   Note: it is possible to use RHELAI as a provider too. It is OpenAI-compatible
+### OpenAI provider
+
+   Multiple models can be configured, but `default_model` will be used, unless specified differently via REST API request:
+
+
+  ```yaml
+    type: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: openai_api_key.txt
+    models:
+      - name: gpt-4-1106-preview
+      - name: gpt-3.5-turbo
+  ```
+
+### Azure OpenAI
+
+   Make sure the `url` and `deployment_name` are set correctly.
+
+  ```yaml
+  - name: my_azure_openai
+    type: azure_openai
+    url: "https://myendpoint.openai.azure.com/"
+    credentials_path: azure_openai_api_key.txt
+    deployment_name: my_azure_openai_deployment_name
+    models:
+      - name: gpt-3.5-turbo
+  ```
+
+### WatsonX
+
+   Make sure the `project_id` is set up correctly.
+
+  ```yaml
+  - name: my_watsonx
+    type: watsonx
+    url: "https://us-south.ml.cloud.ibm.com"
+    credentials_path: watsonx_api_key.txt
+    project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    models:
+      - name: ibm/granite-13b-chat-v2
+  ```
+
+### RHEL AI provider
+
+   It is possible to use RHELAI as a provider too. That provider is OpenAI-compatible
    and can be configured the same way as other OpenAI providers. For example if
-   RHELAI is running as EC2 instance and `granite-7b-lab` model is used, the
+   RHEL AI is running as EC2 instance and `granite-7b-lab` model is deployed, the
    configuration might look like:
 
-      ```yaml
-          - name: my_rhelai
-            type: openai
-            url: "http://{PATH}.amazonaws.com:8000/v1/"
-            credentials_path: openai_api_key.txt
-            models:
-              - name: granite-7b-lab
-      ```
+  ```yaml
+      - name: my_rhelai
+        type: openai
+        url: "http://{PATH}.amazonaws.com:8000/v1/"
+        credentials_path: openai_api_key.txt
+        models:
+          - name: granite-7b-lab
+  ```
 
-   Note: to use RHOAI (Red Hat OpenShiftAI) as provider, the following
+### Red Hat OpenShift AI
+
+   To use RHOAI (Red Hat OpenShiftAI) as provider, the following
    configuration can be utilized (`mistral-7b-instruct` model is supported by
    RHOAI, as well as other models):
 
-      ```yaml
-          - name: my_rhoai
-            type: openai
-            url: "http://{PATH}:8000/v1/"
-            credentials_path: openai_api_key.txt
-            models:
-              - name: mistral-7b-instruct
-      ```
+  ```yaml
+      - name: my_rhoai
+        type: openai
+        url: "http://{PATH}:8000/v1/"
+        credentials_path: openai_api_key.txt
+        models:
+          - name: mistral-7b-instruct
+  ```
 
-   Note: it is possible to configure the service to use local *ollama* server.
+### Local *ollama* server
+
+   It is possible to configure the service to use local *ollama* server.
    Please look into an
    [examples/olsconfig-local-ollama.yaml](examples/olsconfig-local-ollama.yaml)
    file that describes all required steps.
