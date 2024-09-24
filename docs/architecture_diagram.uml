@@ -14,6 +14,8 @@ skin rose
 header Architecture diagram for OpenShift LightSpeed
 footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
 
+collections "Configuration" as configuration
+
 package "OpenShift LightSpeed service" as ols {
     component "FastAPI HTTP server" as http
     component "Auth. check" as auth
@@ -23,6 +25,7 @@ package "OpenShift LightSpeed service" as ols {
     component "Question\nvalidator" as question_validator
     component "Document\nsummarizer" as document_summarizer
     component "LLM providers registry" as llm_register
+    component "Configuration\nloader" as config_loader
     http -> auth
     auth -> handler
     handler --> history
@@ -31,6 +34,7 @@ package "OpenShift LightSpeed service" as ols {
     handler --> document_summarizer
     question_validator --> llm_register
     document_summarizer --> llm_register
+    llm_register -[hidden]> config_loader
 }
 
 component "User data collector" as collector
@@ -44,15 +48,21 @@ history --> cache
 llm_register --> llm : call selected LLM
 handler -> transcripts
 transcripts -> collector
+component "Prometheus"
+component "Grafana"
+
+configuration -u-> config_loader
 
 package "Red Hat VPN" {
    [Ingress] as ingress
    [Pipeline] as pipeline
    database "Ceph\nbucket" as ceph
-   ingress --> pipeline
-   pipeline --> ceph
+   ingress --> pipeline : tarball
+   pipeline --> ceph : tarball
 }
 
 collector -> ingress
+http -u-> Prometheus : metrics
+Prometheus -> Grafana : visualization
 
 @enduml
