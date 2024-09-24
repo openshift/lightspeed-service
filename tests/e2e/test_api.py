@@ -84,6 +84,13 @@ def install_ols() -> tuple[str, str, str]:
     token = cluster_utils.get_token_for("test-user")
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
+    
+    # install the ImageDigestMirrorSet to mirror images from "registry.redhat.io/openshift-lightspeed-beta" 
+    # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
+    cluster_utils.run_oc(
+        ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
+        ignore_existing_resource=True,
+    )
 
     # install the operator catalog
     cluster_utils.run_oc(
