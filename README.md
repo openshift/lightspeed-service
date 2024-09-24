@@ -568,10 +568,61 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 
 ## Overall architecture
 
-Overall architecture with all main parts are displayed below:
+Overall architecture with all main parts is displayed below:
 
 ![Architecture diagram](docs/architecture_diagram.png)
 
+OpenShift LightSpeed service is based on FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
+
+### FastAPI server
+
+Handles REST API requests from clients (mainly from UI console, but can be any REST API-compatible tool), handles requests queue, and also exports Prometheus metrics. Uvicorn framework is used as FastAPI implementation.
+
+### Authorization checker
+
+Manages authentication flow for REST API endpoints. Currently K8S/OCL-based authorization is used, but in the future it will be implemented in a more modular way to allow registering other auth. checkers.
+
+### Query handler
+
+Retrieves user queries, validates them, redacts them, calls LLM, and summarizes feedback.
+
+### Redactor
+
+Redacts the question based on the regex filters provided in the configuration file.
+
+### Question validator
+
+Validates question and provides one-word responses. It is optional component.
+
+### Document summarizer
+
+Summarizes documentation context.
+
+### Conversation history cache interface
+
+Unified interface used to store and retrieve conversation history with optionally defined maximum length.
+
+### Conversation history cache implementations
+
+Currently there exist three conversation history cache implementations:
+1. in-memory cache
+1. Redis cache
+1. Postgres cache
+
+### LLM providers registry
+
+Manages LLM providers implementations. If a new LLM provider type needs to be added, it is registered by this machinery and its libraries are loaded to be used later.
+
+### LLM providers interface implementations
+
+Currently there exist the following LLM providers implementations:
+1. OpenAI
+1. Azure OpenAI
+1. RHEL AI
+1. OpenShift AI
+1. WatsonX
+1. BAM
+1. Fake provider (to be used by tests and benchmarks)
 
 
 ## Sequence diagram
