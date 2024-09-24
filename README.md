@@ -1,6 +1,18 @@
 # About The Project
 
-OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services.
+OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift
+and provides answers to product questions using backend LLM services. Currently
+[OpenAI](https://openai.com/), [Azure
+OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service),
+[OpenShift
+AI](https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai),
+[RHEL
+AI](https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux/ai),
+and [Watsonx](https://www.ibm.com/watsonx) are officially supported as
+backends. Other providers, even ones that are not fully supported, can be used
+as well. For example, it is possible to use BAM (IBM's research environment).
+It is also possible to run [InstructLab](https://instructlab.ai/) locally,
+configure model, and connect to it.
 
 
 <!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
@@ -47,11 +59,10 @@ OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift and
 # Prerequisites
 
 * Python 3.11
+    - please note that currently Python 3.12 is not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
-* An LLM api key, currently OpenAI, Azure OpenAI, OpenShift AI, RHEL AI, and Watsonx are officially supported as backends.
-  Other providers, that are not fully supported, can be used as well. For example, it is possible to use
-  BAM (IBM's research environment). It is also possible
-  to run Instructlab locally, configure model, and connect to it.
+* An LLM API key or API secret (in case of Azure OpenAI)
+* (Optional) extra certificates to access LLM API
 
 # Installation
 
