@@ -23,13 +23,20 @@ configure model, and connect to it.
     * [1. Clone the repo](#1-clone-the-repo)
     * [2. Install python packages](#2-install-python-packages)
     * [3. Get API keys](#3-get-api-keys)
+        * [OpenAI](#openai)
+        * [Azure OpenAI](#azure-openai)
+        * [WatsonX](#watsonx)
+        * [OpenShift AI](#openshift-ai)
+        * [RHEL AI](#rhel-ai)
+        * [BAM (not officially supported)](#bam-not-officially-supported)
+        * [Locally running InstructLab](#locally-running-instructlab)
     * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
     * [5. Configure OpenShift LightSpeed (OLS)](#5-configure-openshift-lightspeed-ols)
     * [6. Configure LLM providers](#6-configure-llm-providers)
     * [7. Configure OLS Authentication](#7-configure-ols-authentication)
     * [8. Configure OLS TLS communication](#8-configure-ols-tls-communication)
     * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
-    * [10. (Optional) Configure conversation cache](#10--optional-configure-conversation-cache)
+    * [10. (Optional) Configure conversation cache](#10-optional-configure-conversation-cache)
     * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
     * [12. Registering new LLM provider](#12-registering-new-llm-provider)
 * [Usage](#usage)
@@ -77,20 +84,39 @@ configure model, and connect to it.
    ```
 ## 3. Get API keys
 
-   a. OpenAI provided LLM ([OpenAI api key](https://platform.openai.com/api-keys))
+   This step depends on provider type
 
-   b. Azure OpenAI provided LLM
-       Please look at following articles describing how to retrieve API key or secret from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/)
+### OpenAI
 
-   c. BAM provided LLM (not officially supported)
-      1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
-         * Login with your IBM W3 Id credentials.
-         * Copy the API Key from the Documentation section.
-         ![BAM API Key](docs/bam_api_key.png)
-      2. BAM API URL: https://bam-api.res.ibm.com
+Please look into ([OpenAI api key](https://platform.openai.com/api-keys))
 
-   d. Locally running Instructlab
-      Depends on configuration, usually not needed to generate or use API key.
+### Azure OpenAI
+
+Please look at following articles describing how to retrieve API key or secret from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/). Currently it is possible to use both ways to auth. to Azure OpenAI: by API key or by using secret
+
+### WatsonX
+
+Please look at into [Generating API keys for authentication](https://www.ibm.com/docs/en/watsonx/watsonxdata/1.0.x?topic=started-generating-api-keys)
+
+### OpenShift AI
+
+(TODO: to be updated)
+
+### RHEL AI
+
+(TODO: to be updated)
+
+### BAM (not officially supported)
+    1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
+        * Login with your IBM W3 Id credentials.
+        * Copy the API Key from the Documentation section.
+        ![BAM API Key](docs/bam_api_key.png)
+    2. BAM API URL: https://bam-api.res.ibm.com
+
+### Locally running InstructLab
+
+Depends on configuration, but usually it is not needed to generate or use API key.
+
 
 ## 4. Store local copies of API keys securely
 
