@@ -48,6 +48,7 @@ class AzureOpenAI(LLMProvider):
         """Default LLM params."""
         self.url = str(self.provider_config.url or self.url)
         self.credentials = self.provider_config.credentials
+        api_version = self.provider_config.api_version
         deployment_name = self.provider_config.deployment_name
         azure_config = self.provider_config.azure_config
 
@@ -60,7 +61,7 @@ class AzureOpenAI(LLMProvider):
 
         default_parameters = {
             "azure_endpoint": self.url,
-            "api_version": "2024-02-15-preview",
+            "api_version": api_version,
             "deployment_name": deployment_name,
             "model": self.model,
             "model_kwargs": {

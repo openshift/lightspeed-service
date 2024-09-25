@@ -1103,6 +1103,10 @@ def test_valid_config_with_azure_openai():
             }
         )
         assert config.config == expected_config
+        assert (
+            config.config.llm_providers.providers.get("p1").api_version
+            == constants.DEFAULT_AZURE_API_VERSION
+        )
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1210,6 +1214,9 @@ def test_valid_config_with_azure_openai_api_version():
             }
         )
         assert config.config == expected_config
+        assert (
+            config.config.llm_providers.providers.get("p1").api_version == "2024-12-31"
+        )
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1260,6 +1267,7 @@ def test_valid_config_with_bam():
             }
         )
         assert config.config == expected_config
+        assert config.config.llm_providers.providers.get("p1").api_version is None
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
