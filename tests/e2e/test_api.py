@@ -284,9 +284,13 @@ def install_ols() -> tuple[str, str, str]:
     if not r:
         print("Timed out waiting for new OLS pod to be ready")
         return None
+
+    print("-" * 50)
+    print("OLS pod seems to be ready")
     print(cluster_utils.run_oc(["get", "pods"]).stdout)
     pod_name = cluster_utils.get_pod_by_prefix()[0]
-    print(f"Found new OLS pod {pod_name}")
+    print(f"Found new running OLS pod {pod_name}")
+    print("-" * 50)
 
     # Print the deployment so we can confirm the configuration is what we
     # expect it to be (must-gather will also collect this)
@@ -295,6 +299,7 @@ def install_ols() -> tuple[str, str, str]:
             ["get", "deployment", "lightspeed-app-server", "-o", "yaml"]
         ).stdout
     )
+    print("-" * 50)
 
     # disable collector script by default to avoid running during all
     # tests (collecting/sending data)
