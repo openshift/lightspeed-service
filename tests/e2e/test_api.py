@@ -52,6 +52,9 @@ OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
 OLS_READY = False
 
+OC_COMMAND_RETRY_COUNT = 120
+OC_COMMAND_RETRY_DELAY = 5
+
 
 def retry_until_timeout_or_success(attempts, interval, func):
     """Retry the function until timeout or success."""
@@ -184,7 +187,9 @@ def install_ols() -> tuple[str, str, str]:
     # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
     # there may be a race condition.
     retry_until_timeout_or_success(
-        60, 5, lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False)
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False),
     )
 
     # get the name of the OLS image from CI so we can substitute it in
@@ -204,8 +209,8 @@ def install_ols() -> tuple[str, str, str]:
 
     # Ensure the operator controller manager pod is gone before touching anything else
     retry_until_timeout_or_success(
-        60,
-        5,
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
         lambda: not cluster_utils.get_pod_by_prefix(
             "lightspeed-operator-controller-manager", fail_not_found=False
         ),
@@ -224,7 +229,9 @@ def install_ols() -> tuple[str, str, str]:
 
     # wait for the old ols api pod to go away due to deployment being scaled down
     retry_until_timeout_or_success(
-        60, 5, lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False)
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
     )
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
@@ -279,7 +286,9 @@ def install_ols() -> tuple[str, str, str]:
     # and we need to wait for it to go away before progressing so we don't try to
     # interact with it.
     r = retry_until_timeout_or_success(
-        60, 5, lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1
+        OC_COMMAND_RETRY_COUNT,
+        5,
+        lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1,
     )
     if not r:
         print("Timed out waiting for new OLS pod to be ready")
@@ -287,7 +296,14 @@ def install_ols() -> tuple[str, str, str]:
 
     print("-" * 50)
     print("OLS pod seems to be ready")
+    print("All pods")
     print(cluster_utils.run_oc(["get", "pods"]).stdout)
+    print("Running pods")
+    print(
+        cluster_utils.run_oc(
+            ["get", "pods", "--field-selector=status.phase=Running"]
+        ).stdout
+    )
     pod_name = cluster_utils.get_pod_by_prefix()[0]
     print(f"Found new running OLS pod {pod_name}")
     print("-" * 50)
