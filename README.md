@@ -61,6 +61,19 @@ configure model, and connect to it.
     * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
 * [Project structure](#project-structure)
     * [Overall architecture](#overall-architecture)
+        * [FastAPI server](#fastapi-server)
+        * [Authorization checker](#authorization-checker)
+        * [Query handler](#query-handler)
+        * [Redactor](#redactor)
+        * [Question validator](#question-validator)
+        * [Document summarizer](#document-summarizer)
+        * [Conversation history cache interface](#conversation-history-cache-interface)
+        * [Conversation history cache implementations](#conversation-history-cache-implementations)
+            * [In-memory cache](#in-memory-cache)
+            * [Redis cache](#redis-cache)
+            * [Postgres cache](#postgres-cache)
+        * [LLM providers registry](#llm-providers-registry)
+        * [LLM providers interface implementations](#llm-providers-interface-implementations)
     * [Sequence diagram](#sequence-diagram)
     * [Token truncation algorithm](#token-truncation-algorithm)
 * [Contributing](#contributing)
@@ -609,19 +622,19 @@ Currently there exist three conversation history cache implementations:
 1. Redis cache
 1. Postgres cache
 
-Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as number of entries; entries size are ignored in this computation.
+Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as the number of entries; entries size are ignored in this computation.
 
 #### In-memory cache
 
-In-memory cache is implemented as a queue with defined maximum capacity specified as number of entries that can be stored in a cache. That number is limit for all cache entries, not matter how many users are using LLM. When new entry is put into the cache and if the maximum capacity is reached, oldest entry is removed from the cache.
+In-memory cache is implemented as a queue with a defined maximum capacity specified as the number of entries that can be stored in a cache. That number is the limit for all cache entries, it doesn't matter how many users are using the LLM. When the new entry is put into the cache and if the maximum capacity is reached, the oldest entry is removed from the cache.
 
 #### Redis cache
 
-Entries are stored in Redis as dictionary. LRU policy can be specified that allows Redis to automatically remove oldest entries.
+Entries are stored in Redis as dictionary. LRU policy can be specified that allows Redis to automatically remove the oldest entries.
 
 #### Postgres cache
 
-Entries are stored in one Postgres table with following schema:
+Entries are stored in one Postgres table with the following schema:
 
 ```
      Column      |            Type             | Nullable | Default | Storage  |
@@ -637,7 +650,7 @@ Indexes:
 Access method: heap
 ```
 
-During new record insertion the maximum number of entries is checked and when the defined capacity is reached, oldest entry is deleted.
+During a new record insertion the maximum number of entries is checked and when the defined capacity is reached, the oldest entry is deleted.
 
 
 
