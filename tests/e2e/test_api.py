@@ -112,8 +112,8 @@ def install_ols() -> tuple[str, str, str]:
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
     r = retry_until_timeout_or_success(
-        60,
-        6,
+        120,
+        10,
         lambda: cluster_utils.run_oc(
             [
                 "get",
