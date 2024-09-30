@@ -74,61 +74,62 @@ def install_ols() -> tuple[str, str, str]:
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
 
-    # setup the lightspeed namespace
-    cluster_utils.run_oc(
-        ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    print("created OLS project")
+    if not os.getenv("KONFLUX_OLS_SERVICE_IMAGE"):
+        # setup the lightspeed namespace
+        cluster_utils.run_oc(
+            ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        cluster_utils.run_oc(
+            ["project", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        print("created OLS project")
+
+        # install the ImageDigestMirrorSet to mirror images
+        # from "registry.redhat.io/openshift-lightspeed-beta"
+        # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
+        cluster_utils.run_oc(
+            ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
+            ignore_existing_resource=True,
+        )
+
+        # install the operator from bundle
+        print("Installing OLS operator from bundle")
+        cluster_utils.run_oc(
+            [
+                "apply",
+                "-f",
+                "tests/config/operator_install/imagedigestmirrorset.yaml",
+            ],
+            ignore_existing_resource=True,
+        )
+        try:
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "operator-sdk",
+                    "run",
+                    "bundle",
+                    "--timeout=20m",
+                    "-n",
+                    "openshift-lightspeed",
+                    "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
+                    "--verbose",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        # TODO: add run_command func
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
+            )
+            raise
 
     cluster_utils.create_user("test-user", ignore_existing_resource=True)
     cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
     token = cluster_utils.get_token_for("test-user")
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
-
-    # install the ImageDigestMirrorSet to mirror images
-    # from "registry.redhat.io/openshift-lightspeed-beta"
-    # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
-        ignore_existing_resource=True,
-    )
-
-    # install the operator from bundle
-    print("Installing OLS operator from bundle")
-    cluster_utils.run_oc(
-        [
-            "apply",
-            "-f",
-            "tests/config/operator_install/imagedigestmirrorset.yaml",
-        ],
-        ignore_existing_resource=True,
-    )
-    try:
-        subprocess.run(  # noqa: S603
-            [  # noqa: S607
-                "operator-sdk",
-                "run",
-                "bundle",
-                "--timeout=20m",
-                "-n",
-                "openshift-lightspeed",
-                "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
-                "--verbose",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    # TODO: add run_command func
-    except subprocess.CalledProcessError as e:
-        print(
-            f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
-        )
-        raise
 
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
