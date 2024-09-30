@@ -8,6 +8,10 @@ options:
   -h, --help            show this help message and exit
   -p, --process-special-packages
                         Enable or disable processing special packages like torch etc.
+  -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
+                        Work directory to store files generated during different stages
+                        of processing
+
 
 
 This script performs several steps:
@@ -27,6 +31,7 @@ care is needed (run this script from within containerized environment etc.).
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -181,6 +186,15 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         help="Enable or disable processing special packages like torch etc.",
     )
 
+    # work directory
+    parser.add_argument(
+        "-w",
+        "--work-directory",
+        default=tempfile.mkdtemp(),
+        type=str,
+        help="Work directory to store files generated during different stages of processing",
+    )
+
     # execute parser
     return parser.parse_args()
 
@@ -188,7 +202,12 @@ def args_parser(args: list[str]) -> argparse.Namespace:
 def main() -> None:
     """Generate packages to prefetch."""
     args = args_parser(sys.argv[1:])
-    work_directory = tempfile.mkdtemp()
+
+    # sanitize work directory
+    work_directory = os.path.normpath("/" + args.work_directory).lstrip("/")
+    if work_directory == "":
+        work_directory = "."
+
     print(f"Work directory {work_directory}")
     generate_list_of_packages(work_directory, args.process_special_packages)
     generate_packages_to_be_build(work_directory)
