@@ -1282,9 +1282,10 @@ nvidia-cusolver-cu12==11.4.5.107 \
     --hash=sha256:74e0c3a24c78612192a74fcd90dd117f1cf21dea4822e66d89e8ea80e3cd2da5 \
     --hash=sha256:8a7ec542f0412294b15072fa7dab71d31334014a69f953004ea7a118206fe0dd
     # via torch
-nvidia-cusparse-cu12==12.1.0.106 \
-    --hash=sha256:b798237e81b9719373e8fae8d4f091b70a0cf09d9d85c95a557e11df2d8e9a5a \
-    --hash=sha256:f3b50f42cf363f86ab21f720998517a659a48131e8d538dc02f8768237bd884c
+nvidia-cusparse-cu12==12.5.3.3 \
+    --hash=sha256:76030755020d3a969b40273f43b8c496c4e122ee2a01fd724cf1398421bcadd8 \
+    --hash=sha256:bfa07cb86edfd6112dbead189c182a924fd9cb3e48ae117b1ac4cd3084078bc0 \
+    --hash=sha256:c9d0ff7870672b1e0c7ffc1e47e9b87b51e38ad32ae39e05f08fc68933983a80
     # via
     #   nvidia-cusolver-cu12
     #   torch
