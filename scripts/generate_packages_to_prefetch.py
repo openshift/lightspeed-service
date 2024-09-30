@@ -2,6 +2,14 @@
 
 """Generate list of packages to be prefetched in Cachi2 and used in Konflux for hermetic build.
 
+usage: generate_packages_to_prefetch.py [-h] [-p]
+
+options:
+  -h, --help            show this help message and exit
+  -p, --process-special-packages
+                        Enable or disable processing special packages like torch etc.
+
+
 This script performs several steps:
     1. removes torch+cpu dependency from project file
     2. generates requirements.txt file from pyproject.toml + pdm.lock
@@ -18,14 +26,13 @@ Cachito system. This tool is run locally w/o any additional security checks etc.
 care is needed (run this script from within containerized environment etc.).
 """
 
+import argparse
 import shutil
 import subprocess
+import sys
 import tempfile
 from os.path import join
 from urllib.request import urlretrieve
-
-# flag that enables processing special packages ('pytorch' and 'nvidia-' at this moment)
-PROCESS_SPECIAL_PACKAGES = False
 
 # just these files are needed as project stub, no other configs and/or sources are needed
 PROJECT_FILES = ("pyproject.toml", "pdm.lock", "LICENSE", "README.md")
@@ -117,14 +124,14 @@ def generate_hash(directory, registry, wheel, target):
         fout.write(f"    {hash_line}\n")
 
 
-def generate_list_of_packages(work_directory):
+def generate_list_of_packages(work_directory, process_special_packages):
     """Generate list of packages, take care of unwanted packages and wheel with Torch package."""
     copy_project_stub(work_directory)
-    if PROCESS_SPECIAL_PACKAGES:
+    if process_special_packages:
         remove_torch_dependency(work_directory)
     generate_requirements_file(work_directory)
 
-    if PROCESS_SPECIAL_PACKAGES:
+    if process_special_packages:
         remove_unwanted_dependencies(work_directory)
         download_wheel(work_directory, TORCH_REGISTRY, TORCH_WHEEL)
         shutil.copy(join(work_directory, "step2.txt"), "requirements.txt")
@@ -161,12 +168,35 @@ def generate_packages_to_be_build(work_directory):
     shutil.copy(join(work_directory, outfile), outfile)
 
 
-if __name__ == "__main__":
+def args_parser(args: list[str]) -> argparse.Namespace:
+    """Command line arguments parser."""
+    parser = argparse.ArgumentParser()
+
+    # flag that enables processing special packages ('pytorch' and 'nvidia-' at this moment)
+    parser.add_argument(
+        "-p",
+        "--process-special-packages",
+        default=False,
+        action="store_true",
+        help="Enable or disable processing special packages like torch etc.",
+    )
+
+    # execute parser
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Generate packages to prefetch."""
+    args = args_parser(sys.argv[1:])
     work_directory = tempfile.mkdtemp()
     print(f"Work directory {work_directory}")
-    generate_list_of_packages(work_directory)
+    generate_list_of_packages(work_directory, args.process_special_packages)
     generate_packages_to_be_build(work_directory)
 
     # optional cleanup step
     # (for now it might be better to see 'steps' files to check if everything's ok
     # shutil.rmtree(work_directory)
+
+
+if __name__ == "__main__":
+    main()
