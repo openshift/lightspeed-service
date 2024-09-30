@@ -157,6 +157,8 @@ def install_ols() -> tuple[str, str, str]:
     )
     print("test service account permissions granted")
 
+    provider = os.getenv("PROVIDER")
+
     # create the llm api key secret ols will mount
     keypath = os.getenv("PROVIDER_KEY_PATH")
     cluster_utils.run_oc(
@@ -170,8 +172,22 @@ def install_ols() -> tuple[str, str, str]:
         ignore_existing_resource=True,
     )
 
+    if provider == "azure_openai":
+        # create extra secrets with Entra ID
+        cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "azure-entra-id",
+                f"--from-literal=tenant_id={os.environ['AZUREOPENAI_ENTRA_ID_TENANT_ID']}",
+                f"--from-literal=client_id={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_ID']}",
+                f"--from-literal=client_secret={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_SECRET']}",
+            ],
+            ignore_existing_resource=True,
+        )
+
     # create the olsconfig operand
-    provider = os.getenv("PROVIDER")
     cluster_utils.run_oc(
         [
             "create",
@@ -1780,3 +1796,30 @@ def test_model_evaluation(request) -> None:
     """Evaluate model."""
     # TODO: Use this to assert.
     ResponseEvaluation(request.config.option, client).evaluate_models()
+
+
+@pytest.mark.azure_entra_id()
+def test_azure_entra_id():
+    """Test single question via Azure Entra ID credentials."""
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+            "provider": "azure_openai_with_entra_id",
+            "model": "gpt-3.5-turbo",
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
+
+    response_utils.check_content_type(response, "application/json")
+    print(vars(response))
+    json_response = response.json()
+
+    # checking a few major information from response
+    assert "Kubernetes is" in json_response["response"]
+    assert re.search(
+        r"orchestration (tool|system|platform|engine)",
+        json_response["response"],
+        re.IGNORECASE,
+    )
