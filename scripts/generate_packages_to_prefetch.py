@@ -8,6 +8,7 @@ options:
   -h, --help            show this help message and exit
   -p, --process-special-packages
                         Enable or disable processing special packages like torch etc.
+  -c, --cleanup         Enable or disable work directory cleanup
   -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
                         Work directory to store files generated during different stages
                         of processing
@@ -57,6 +58,10 @@ BUILDDEPS_SCRIPT_PATH = "master/bin"  # wokeignore:rule=master
 # name of path to helper script to generate list of packages that will need to be build
 BUILDDEPS_SCRIPT_NAME = "pip_find_builddeps.py"
 
+# name of standard pip requirement file
+REQUIREMENTS_FILE = "requirements.txt"
+FILTERED_REQUIREMENTS_FIlE = "requirements_filtered.txt"
+
 
 def shell(command, directory):
     """Run command via shell inside specified directory."""
@@ -101,7 +106,7 @@ def remove_package(directory, source, target, package_prefix):
 def remove_unwanted_dependencies(directory):
     """Remove all unwanted dependencies from requirements file, creating in-between files."""
     # the torch itself
-    remove_package(directory, "requirements.txt", "step1.txt", "torch")
+    remove_package(directory, REQUIREMENTS_FILE, "step1.txt", "torch")
 
     # all CUDA-related packages (torch depends on them)
     remove_package(directory, "step1.txt", "step2.txt", "nvidia")
@@ -129,7 +134,9 @@ def generate_hash(directory, registry, wheel, target):
         fout.write(f"    {hash_line}\n")
 
 
-def generate_list_of_packages(work_directory, process_special_packages):
+def generate_list_of_packages(
+    work_directory: str, process_special_packages: bool, filter_packages: bool
+):
     """Generate list of packages, take care of unwanted packages and wheel with Torch package."""
     copy_project_stub(work_directory)
     if process_special_packages:
@@ -139,12 +146,12 @@ def generate_list_of_packages(work_directory, process_special_packages):
     if process_special_packages:
         remove_unwanted_dependencies(work_directory)
         download_wheel(work_directory, TORCH_REGISTRY, TORCH_WHEEL)
-        shutil.copy(join(work_directory, "step2.txt"), "requirements.txt")
+        shutil.copy(join(work_directory, "step2.txt"), REQUIREMENTS_FILE)
         generate_hash(work_directory, TORCH_REGISTRY, TORCH_WHEEL, "hash.txt")
-        shell("cat step2.txt hash.txt > step3.txt", work_directory)
-        shutil.copy(join(work_directory, "step3.txt"), "requirements.txt")
-    else:
-        shutil.copy(join(work_directory, "requirements.txt"), "requirements.txt")
+        shell("cat step2.txt hash.txt > " + REQUIREMENTS_FILE, work_directory)
+
+    # copy the newly generated requirements file back to the project
+    shutil.copy(join(work_directory, REQUIREMENTS_FILE), REQUIREMENTS_FILE)
 
 
 def generate_packages_to_be_build(work_directory):
@@ -195,6 +202,24 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         help="Work directory to store files generated during different stages of processing",
     )
 
+    # flag that enables cleaning up work directory
+    parser.add_argument(
+        "-c",
+        "--cleanup",
+        default=False,
+        action="store_true",
+        help="Enable or disable work directory cleanup",
+    )
+
+    # flag that enables filtering package SHAs that are not compatible with specified platform
+    parser.add_argument(
+        "-f",
+        "--filter-packages",
+        default=False,
+        action="store_true",
+        help="Enable or disable filtering packages not compatible with specified platform",
+    )
+
     # execute parser
     return parser.parse_args()
 
@@ -204,17 +229,23 @@ def main() -> None:
     args = args_parser(sys.argv[1:])
 
     # sanitize work directory
-    work_directory = os.path.normpath("/" + args.work_directory).lstrip("/")
+    work_directory = os.path.normpath("/" + args.work_directory)
+    if work_directory.startswith("/"):
+        work_directory = work_directory[1:]
     if work_directory == "":
         work_directory = "."
 
     print(f"Work directory {work_directory}")
-    generate_list_of_packages(work_directory, args.process_special_packages)
+    generate_list_of_packages(
+        work_directory, args.process_special_packages, args.filter_packages
+    )
     generate_packages_to_be_build(work_directory)
 
     # optional cleanup step
-    # (for now it might be better to see 'steps' files to check if everything's ok
-    # shutil.rmtree(work_directory)
+    # (for debugging purposes it might be better to see 'steps' files to check
+    # if everything's ok)
+    if args.cleanup:
+        shutil.rmtree(work_directory)
 
 
 if __name__ == "__main__":
