@@ -585,11 +585,11 @@ Overall architecture with all main parts is displayed below:
 
 ![Architecture diagram](docs/architecture_diagram.png)
 
-OpenShift LightSpeed service is based on FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
+OpenShift LightSpeed service is based on the FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
 
 ### FastAPI server
 
-Handles REST API requests from clients (mainly from UI console, but can be any REST API-compatible tool), handles requests queue, and also exports Prometheus metrics. Uvicorn framework is used as FastAPI implementation.
+Handles REST API requests from clients (mainly from UI console, but can be any REST API-compatible tool), handles requests queue, and also exports Prometheus metrics. The Uvicorn framework is used as a FastAPI implementation.
 
 ### Authorization checker
 
@@ -605,7 +605,7 @@ Redacts the question based on the regex filters provided in the configuration fi
 
 ### Question validator
 
-Validates question and provides one-word responses. It is optional component.
+Validates questions and provides one-word responses. It is an optional component.
 
 ### Document summarizer
 
@@ -622,7 +622,7 @@ Currently there exist three conversation history cache implementations:
 1. Redis cache
 1. Postgres cache
 
-Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as the number of entries; entries size are ignored in this computation.
+Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as the number of entries; entries sizes are ignored in this computation.
 
 #### In-memory cache
 
@@ -630,7 +630,7 @@ In-memory cache is implemented as a queue with a defined maximum capacity specif
 
 #### Redis cache
 
-Entries are stored in Redis as dictionary. LRU policy can be specified that allows Redis to automatically remove the oldest entries.
+Entries are stored in Redis as a dictionary. LRU policy can be specified that allows Redis to automatically remove the oldest entries.
 
 #### Postgres cache
 
