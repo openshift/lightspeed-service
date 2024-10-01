@@ -210,7 +210,7 @@
                     ]
                 },
                 "openai+gpt-3.5-turbo+with_rag": {
-                    "cutoff_score": 0.25,
+                    "cutoff_score": 0.3,
                     "text": [
                         "The purpose of the Vertical Pod Autoscaler (VPA) Operator in OpenShift is to automatically adjust the resource requests for pods based on their actual usage. By installing the VPA Operator, you enable dynamic resource allocation for pods, ensuring that they have adequate resources to run efficiently without over-provisioning. This helps optimize resource utilization and improve application performance within an OpenShift cluster.",
                         "The Vertical Pod Autoscaler Operator in OpenShift is used to automatically adjust the resource requests for pods based on their actual usage. It helps optimize resource allocation by dynamically adjusting CPU and memory requests for containers within pods, ensuring that they have adequate resources to run efficiently without being over-provisioned. This optimization can lead to better performance and resource utilization within the cluster."
