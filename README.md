@@ -76,10 +76,19 @@ configure model, and connect to it.
         * [LLM providers interface implementations](#llm-providers-interface-implementations)
     * [Sequence diagram](#sequence-diagram)
     * [Token truncation algorithm](#token-truncation-algorithm)
+* [Additional tools](#additional-tools)
+    * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
+        * [Path](#path)
+        * [Usage](#usage-1)
+    * [Utility to generate `requirements.*` files](#utility-to-generate-requirements-files)
+        * [Path](#path-1)
+        * [Usage](#usage-2)
+    * [Uploading artifact containing the pytest results and configuration to an s3 bucket.](#uploading-artifact-containing-the-pytest-results-and-configuration-to-an-s3-bucket)
+        * [Path](#path-2)
+        * [Usage](#usage-3)
 * [Contributing](#contributing)
 * [License](#license)
 
-<!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
 <!-- vim-markdown-toc -->
 
 # Prerequisites
@@ -690,6 +699,74 @@ The context window size is limited for all supported LLMs which means that token
 ![Token truncation](docs/token_truncation.png)
 
 
+# Additional tools
+
+## Utility to generate OpenAPI schema
+
+This script re-generated OpenAPI schema for the Lightspeed Service REST API.
+
+### Path
+
+[scripts/generate_openapi_schema.py](scripts/generate_openapi_schema.py)
+
+### Usage
+
+```
+pdm generate-schema`
+```
+
+## Utility to generate `requirements.*` files
+
+Generate list of packages to be prefetched in Cachi2 and used in Konflux for hermetic build.
+
+This script performs several steps:
+
+1. removes torch+cpu dependency from project file
+2. generates requirements.txt file from pyproject.toml + pdm.lock
+3. removes all torch dependencies (including CUDA/Nvidia packages)
+4. downloads torch+cpu wheel
+5. computes hashes for this wheel
+6. adds the URL to wheel + hash to resulting requirements.txt file
+7. downloads script `pip_find_builddeps` from the Cachito project
+8. generated requirements-build.in file
+9. compiles requirements-build.in file into requirements-build.txt file
+
+Please note that this script depends on tool that is downloaded from repository containing
+Cachito system. This tool is run locally w/o any additional security checks etc. so some
+care is needed (run this script from within containerized environment etc.).
+
+### Path
+
+[scripts/generate_packages_to_prefetch.py](scripts/generate_packages_to_prefetch.py)
+
+### Usage
+
+```
+usage: generate_packages_to_prefetch.py [-h] [-p]
+
+options:
+  -h, --help            show this help message and exit
+  -p, --process-special-packages
+                        Enable or disable processing special packages like torch etc.
+  -c, --cleanup         Enable or disable work directory cleanup
+  -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
+                        Work directory to store files generated during different stages
+                        of processing
+```
+
+## Uploading artifact containing the pytest results and configuration to an s3 bucket.
+
+### Path
+
+[scripts/upload_artifact_s3.py](scripts/upload_artifact_s3.py)
+
+### Usage
+
+A dictionary containing the credentials of the S3 bucket must be specified, containing the keys:
+- AWS_BUCKET
+- AWS_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
 
 
 # Contributing
