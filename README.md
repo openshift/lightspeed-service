@@ -754,6 +754,15 @@ options:
                         of processing
 ```
 
+### Known issue
+
+When SQLAlchemy package is not locked to latest version in `pyproject.toml` and `pdm.lock`, this script will fail due to issue in `pip`. To fix this issue it is needed to follow those steps:
+
+1. Look at https://pypi.org/project/SQLAlchemy/ to retrieve latest SQLAlchemy version
+1. Update `pyproject.toml` file accordingly using `SQLAlchemy=={latest_version}`
+1. Run `pdm update sqlalchemy`
+
+
 ## Uploading artifact containing the pytest results and configuration to an s3 bucket.
 
 ### Path
