@@ -1,6 +1,6 @@
 # About The Project
 
-OpenShift LightSpeed (OLS) is an AI powered assistant that runs on OpenShift
+Road Core Service (RCS) is an AI powered assistant that runs on OpenShift
 and provides answers to product questions using backend LLM services. Currently
 [OpenAI](https://openai.com/), [Azure
 OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service),
@@ -31,7 +31,7 @@ configure model, and connect to it.
         * [BAM (not officially supported)](#bam-not-officially-supported)
         * [Locally running InstructLab](#locally-running-instructlab)
     * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
-    * [5. Configure OpenShift LightSpeed (OLS)](#5-configure-openshift-lightspeed-ols)
+    * [5. Configure Road Core Service (RCS)](#5-configure-road-core-rcs)
     * [6. Configure LLM providers](#6-configure-llm-providers)
         * [OpenAI provider](#openai-provider)
         * [Azure OpenAI](#azure-openai-1)
@@ -39,11 +39,11 @@ configure model, and connect to it.
         * [RHEL AI provider](#rhel-ai-provider)
         * [Red Hat OpenShift AI](#red-hat-openshift-ai)
         * [Local *ollama* server](#local-ollama-server)
-    * [7. Configure OLS Authentication](#7-configure-ols-authentication)
-    * [8. Configure OLS TLS communication](#8-configure-ols-tls-communication)
+    * [7. Configure RCS Authentication](#7-configure-rcs-authentication)
+    * [8. Configure RCS TLS communication](#8-configure-rcs-tls-communication)
     * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
     * [10. (Optional) Configure conversation cache](#10-optional-configure-conversation-cache)
-    * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
+    * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the RCS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-rcs-trust-store-as-follows)
     * [12. Registering new LLM provider](#12-registering-new-llm-provider)
 * [Usage](#usage)
     * [Deployments](#deployments)
@@ -58,7 +58,7 @@ configure model, and connect to it.
         * [Metrics](#metrics)
         * [Gradio UI](#gradio-ui)
         * [Swagger UI](#swagger-ui-1)
-    * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
+    * [Deploying RCS on OpenShift](#deploying-rcs-on-openshift)
 * [Project structure](#project-structure)
     * [Overall architecture](#overall-architecture)
         * [FastAPI server](#fastapi-server)
@@ -94,7 +94,7 @@ configure model, and connect to it.
 # Prerequisites
 
 * Python 3.11
-    - please note that currently Python 3.12 is not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
+    - please note that currently Python 3.12 is not officially supported, because RDS service depends on some packages that can not be used in this Python version
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
 * An LLM API key or API secret (in case of Azure OpenAI)
 * (Optional) extra certificates to access LLM API
@@ -162,9 +162,9 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: openai_api_key.txt
    ```
 
-## 5. Configure OpenShift LightSpeed (OLS)
+## 5. Configure Road Core Service (RCS)
 
-   OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
+   Service configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
    You can find a example configuration in the [examples/olsconfig.yaml](examples/olsconfig.yaml) file in this repository.
 
 ## 6. Configure LLM providers
@@ -474,7 +474,7 @@ key file(s) (eg: `credentials_path: config/openai_api_key.txt`)
 ### Optionally run inside an OpenShift environment
 In the `examples` folder is a set of YAML manifests,
 `openshift-lightspeed.yaml`. This includes all the resources necessary to get
-OpenShift Lightspeed running in a cluster. It is configured expecting to only
+Road Core Service running in a cluster. It is configured expecting to only
 use OpenAI as the inference endpoint, but you can easily modify these manifests,
 looking at the `olsconfig.yaml` to see how to alter it to work with BAM as the
 provider.
@@ -594,7 +594,7 @@ Overall architecture with all main parts is displayed below:
 
 ![Architecture diagram](docs/architecture_diagram.png)
 
-OpenShift LightSpeed service is based on the FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
+Road Core Service service is based on the FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
 
 ### FastAPI server
 
