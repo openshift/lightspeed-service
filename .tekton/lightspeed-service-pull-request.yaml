@@ -33,7 +33,7 @@ spec:
       value: "true"
     - name: prefetch-input
       value: '{"type": "pip", "path": ".", "allow_binary": "true"}'
-    - name: hermetic-build
+    - name: hermetic
       value: "true"
   taskRunSpecs:
     - pipelineTaskName: build-source-image
