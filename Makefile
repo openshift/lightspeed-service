@@ -31,6 +31,8 @@ install-tools:	install-woke ## Install required utilities/tools
 	black --version
 	# check that correct Ruff version is installed
 	ruff --version
+	# check that correct Pydocstyle version is installed
+	pydocstyle --version
 
 
 install-woke: ## Install woke, required for Inclusive Naming scan
