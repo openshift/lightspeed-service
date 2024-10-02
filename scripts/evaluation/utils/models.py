@@ -12,7 +12,7 @@ class OpenAIVanilla(OpenAI):
 
     @property
     def default_params(self):
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         self.url = str(self.provider_config.url)
         self.credentials = self.provider_config.credentials
         # provider-specific configuration has precendence over regular configuration
@@ -34,7 +34,7 @@ class AzureOpenAIVanilla(AzureOpenAI):
 
     @property
     def default_params(self):
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         self.url = str(self.provider_config.url or self.url)
         self.credentials = self.provider_config.credentials
         deployment_name = self.provider_config.deployment_name
@@ -71,7 +71,7 @@ class WatsonxVanilla(Watsonx):
 
     @property
     def default_params(self):
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         return {
             GenTextParamsMetaNames.MAX_NEW_TOKENS: 1024,
         }

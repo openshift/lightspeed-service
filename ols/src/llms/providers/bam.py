@@ -24,7 +24,7 @@ class BAM(LLMProvider):
 
     @property
     def default_params(self) -> dict[str, Any]:
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         return {
             "decoding_method": "sample",
             "max_new_tokens": 512,
