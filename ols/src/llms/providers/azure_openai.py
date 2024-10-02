@@ -45,7 +45,7 @@ class AzureOpenAI(LLMProvider):
 
     @property
     def default_params(self) -> dict[str, Any]:
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         self.url = str(self.provider_config.url or self.url)
         self.credentials = self.provider_config.credentials
         deployment_name = self.provider_config.deployment_name
