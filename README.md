@@ -279,6 +279,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    3. Specific configuration options for Azure OpenAI
 
+       - `api_version`: as specified in official documentation, if not set; by default `2024-02-15-preview` is used.
        - `deployment_name`: as specified in AzureAI project settings
 
    4. Default provider and default model

@@ -448,6 +448,9 @@ def test_provider_config_azure_openai_specific():
             ],
         }
     )
+    # Default azure api version
+    assert provider_config.api_version == constants.DEFAULT_AZURE_API_VERSION
+
     # Azure OpenAI-specific configuration must be present
     assert provider_config.azure_config is not None
     assert str(provider_config.azure_config.url) == "http://localhost/"
@@ -477,6 +480,7 @@ def test_provider_config_apitoken_only():
             "name": "test_name",
             "type": "azure_openai",
             "url": "test_url",
+            "api_version": "2024-02-15",
             "azure_openai_config": {
                 "url": "http://localhost",
                 "credentials_path": "tests/config/secret/apitoken",
@@ -490,6 +494,9 @@ def test_provider_config_apitoken_only():
             ],
         }
     )
+    # Azure version is set from config
+    assert provider_config.api_version == "2024-02-15"
+
     # Azure OpenAI-specific configuration must be present
     assert provider_config.azure_config is not None
     assert str(provider_config.azure_config.url) == "http://localhost/"
@@ -777,6 +784,8 @@ def test_provider_config_watsonx_specific():
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
     assert provider_config.bam_config is None
+
+    assert provider_config.api_version is None
 
 
 def test_provider_config_watsonx_unknown_parameters():

@@ -45,6 +45,8 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
     }
 )
 
+DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
+
 # models
 
 
