@@ -278,6 +278,7 @@
                 },
                 "openai+gpt-3.5-turbo+with_rag": {
                     "text": [
+                        "To find your clusterID, you can follow these steps:\n\n1. **Using the Web Console:**\n   - Navigate to Home -> Overview.\n   - Locate the Cluster ID field in the Details section.\n\n2. **Using the OpenShift CLI (oc):**\n   - Run the following command:\n     ```\n     $ oc get clusterversion -o jsonpath='{.items[].spec.clusterID}{\"\\n\"}'\n     ```\n\nBy following these steps either through the web console or using the OpenShift CLI, you can obtain your clusterID easily.",
                         "To find your clusterID, you can follow these steps:\n\n1. Access the Red Hat OpenShift Container Platform web console.\n2. Navigate to Home -> Overview.\n3. Look for the Cluster ID field in the Details section. The value displayed there is your clusterID.\n\nAlternatively, you can use the OpenShift CLI (oc) to obtain your clusterID by running the following command:\n\n```sh\n$ oc get clusterversion -o jsonpath='{.items[].spec.clusterID}{\"\\n\"}'\n```\n\nBy executing this command, you will retrieve your clusterID using the OpenShift CLI (oc)."
                     ]
                 },
