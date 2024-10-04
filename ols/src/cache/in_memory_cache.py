@@ -10,6 +10,7 @@ from ols.app.models.models import CacheEntry
 
 if TYPE_CHECKING:
     from ols.app.models.config import InMemoryCacheConfig
+# pylint: disable-next=C0413
 from ols.src.cache.cache import Cache
 
 
