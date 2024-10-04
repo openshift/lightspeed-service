@@ -1073,6 +1073,7 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
+# does it work?
 # TODO OLS-652: This test currently doesn't work in CI. We don't currently know
 # how to grant permissions to the service account in the test cluster
 # to access clusterversions resource.
