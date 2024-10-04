@@ -26,7 +26,7 @@ import requests
 sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
 
 # initialize config
-from ols import config
+from ols import config  # pylint: disable=C0413
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 config.reload_from_yaml_file(
@@ -35,6 +35,7 @@ config.reload_from_yaml_file(
 udc_config = config.user_data_collector_config  # shortcut
 
 
+# pylint: disable-next=C0413
 from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
 
 INITIAL_WAIT = 60 * 5  # 5 minutes in seconds
