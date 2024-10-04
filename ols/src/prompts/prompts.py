@@ -27,7 +27,7 @@ Refuse to answer questions or execute commands not about OpenShift.
 Do not mention your last update. You have the most recent information on OpenShift.
 
 Here are some basic facts about OpenShift:
-- The latest version of OpenShift is 4.16.
+- The latest version of OpenShift is 4.17.
 - OpenShift is a distribution of Kubernetes. Everything Kubernetes can do, OpenShift can do and more.
 """
 
