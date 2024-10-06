@@ -23,7 +23,6 @@ def load_llama_index_deps():
     global BaseIndex
     global resolve_llm
     global FaissVectorStore
-    global HuggingFaceEmbedding
     from llama_index.core import Settings, StorageContext, load_index_from_storage
     from llama_index.core.embeddings.utils import EmbedType
     from llama_index.core.indices.base import BaseIndex
