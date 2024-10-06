@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class ProviderParameter:
     """Specification of one provider parameter."""
 
-    _name: str
+    name: str
     _type: type
 
 
@@ -276,7 +276,7 @@ class LLMProvider(AbstractLLMProvider):
 
         # retrieve all available parameters for provider
         available_parameters = available_provider_parameters[provider]
-        available_parameter_names = {p._name for p in available_parameters}
+        available_parameter_names = {p.name for p in available_parameters}
 
         # only supported parameters will be returned
         filtered_params: dict[str, Any] = {}
