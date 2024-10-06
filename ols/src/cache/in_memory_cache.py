@@ -30,6 +30,7 @@ class InMemoryCache(Cache):
 
     def initialize_cache(self, config: InMemoryCacheConfig) -> None:
         """Initialize the InMemoryCache."""
+        # pylint: disable=W0201
         self.capacity = config.max_entries
         self.deque: deque[str] = deque()
         self.cache: dict[str, list[dict[str, Any]]] = {}
