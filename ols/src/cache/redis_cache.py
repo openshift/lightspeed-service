@@ -55,6 +55,7 @@ class RedisCache(Cache):
             retry_on_error = [BusyLoadingError, ConnectionError]
 
         # initialize Redis client
+        # pylint: disable=W0201
         self.redis_client = redis.StrictRedis(
             host=str(config.host),
             port=int(config.port),
