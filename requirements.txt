@@ -1427,9 +1427,9 @@ pbs-installer==2024.9.9 \
     --hash=sha256:0c5846d3327cb09ea2bcbbc5521f5f45fd4f0021e78e57ca670e9d251085830b \
     --hash=sha256:bed162d05ef71c53a0e5e5c6349bab1b07a3d0e5af1800d619a4414a1fda309a
     # via pdm
-pdm==2.18.1 \
-    --hash=sha256:6a86b9a6fbe071dc26f266006ac8d688e8d16e5115ee115135713af95a860c0a \
-    --hash=sha256:acef692477a7190731ee7c1f626e97516eeb7473e4eeeeede4fef2bf0fb743ee
+pdm==2.19.1 \
+    --hash=sha256:3b63ef645aaa4f4010ed9390550bda5cdfa7a9e70bc7780a555c8496cedfccc2 \
+    --hash=sha256:7fe235a9cb27b7ec17b762dc85bc9ae71e0776e4b7a8b6f64203f24bb915aa2c
     # via ols (pyproject.toml)
 pillow==10.4.0 \
     --hash=sha256:02a2be69f9c9b8c1e97cf2713e789d4e398c751ecfd9967c18d0ce304efbf885 \
