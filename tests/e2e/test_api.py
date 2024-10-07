@@ -402,6 +402,7 @@ def postgres_connection():
     return retrieve_connection()
 
 
+@pytest.mark.smoketest()
 @retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
@@ -413,6 +414,7 @@ def test_readiness():
         assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
+@pytest.mark.smoketest()
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
@@ -600,6 +602,7 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
+@pytest.mark.smoketest()
 @pytest.mark.rag()
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
