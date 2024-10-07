@@ -44,7 +44,6 @@ class DocsSummarizer(QueryHelper):
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[list[str]] = None,
-        **kwargs: Any,
     ) -> SummarizerResponse:
         """Summarize the given query based on the provided conversation context.
 
@@ -53,7 +52,6 @@ class DocsSummarizer(QueryHelper):
             query: The query to be summarized.
             vector_index: Vector index to get rag data/context.
             history: The history of the conversation (if available).
-            kwargs: Additional keyword arguments for customization (model, verbose, etc.).
 
         Returns:
             A `SummarizerResponse` object.
