@@ -31,6 +31,7 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
+from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -55,19 +56,6 @@ OLS_READY = False
 
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
-
-
-def retry_until_timeout_or_success(attempts, interval, func):
-    """Retry the function until timeout or success."""
-    for attempt in range(1, attempts + 1):
-        print(f"Attempt {attempt} of {attempts}")
-        try:
-            if func():
-                return True
-        except Exception as e:
-            print(f"Attempt {attempt} failed with exception {e}")
-        time.sleep(interval)
-    return False
 
 
 def install_ols() -> tuple[str, str, str]:
