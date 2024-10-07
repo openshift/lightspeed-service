@@ -86,7 +86,7 @@ def conversation_request(
     previous_input = []
 
     user_id = retrieve_user_id(auth)
-    logger.info(f"User ID {user_id}")
+    logger.info("User ID %s", user_id)
     timestamps["retrieve user"] = time.time()
 
     conversation_id = retrieve_conversation_id(llm_request)
@@ -100,7 +100,7 @@ def conversation_request(
     timestamps["redact query"] = time.time()
 
     # Log incoming request (after redaction)
-    logger.info(f"{conversation_id} Incoming request: {llm_request.query}")
+    logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
 
     previous_input = retrieve_previous_input(user_id, llm_request)
     timestamps["retrieve previous input"] = time.time()
@@ -191,23 +191,28 @@ def log_processing_durations(timestamps: dict[str, float]) -> None:
         """Calculate duration between two timestamps."""
         return timestamps[key2] - timestamps[key1]
 
-    retrieve_user = duration("start", "retrieve user")
-    retrieve_conversation = duration("retrieve user", "retrieve conversation")
-    redact_query = duration("retrieve conversation", "redact query")
-    retrieve_previous_input = duration("redact query", "retrieve previous input")
-    append_attachmens = duration("retrieve previous input", "append attachments")
-    validate_question = duration("append attachments", "validate question")
-    generate_response = duration("validate question", "generate response")
-    store_transcripts = duration("generate response", "store transcripts")
-    add_references = duration("store transcripts", "add references")
-    total = duration("start", "add references")
+    retrieve_user_duration = duration("start", "retrieve user")
+    retrieve_conversation_duration = duration("retrieve user", "retrieve conversation")
+    redact_query_duration = duration("retrieve conversation", "redact query")
+    retrieve_previous_input_duration = duration(
+        "redact query", "retrieve previous input"
+    )
+    append_attachmens_duration = duration(
+        "retrieve previous input", "append attachments"
+    )
+    validate_question_duration = duration("append attachments", "validate question")
+    generate_response_duration = duration("validate question", "generate response")
+    store_transcripts_duration = duration("generate response", "store transcripts")
+    add_references_duration = duration("store transcripts", "add references")
+    total_duration = duration("start", "add references")
 
     # these messages can be grepped from logs and easily transformed into CSV file
     # for further processing and analysis
     msg = (
-        f"Processing durations: {retrieve_user},{retrieve_conversation},{redact_query},"
-        f"{retrieve_previous_input},{append_attachmens},{validate_question},"
-        f"{generate_response},{store_transcripts},{add_references},{total}"
+        f"Processing durations: {retrieve_user_duration},{retrieve_conversation_duration},"
+        f"{redact_query_duration},{retrieve_previous_input_duration},{append_attachmens_duration},"
+        f"{validate_question_duration},{generate_response_duration},{store_transcripts_duration},"
+        f"{add_references_duration},{total_duration}"
     )
 
     logger.info(msg)
@@ -226,7 +231,7 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     # Generate a new conversation ID if not provided
     if not conversation_id:
         conversation_id = suid.get_suid()
-        logger.info(f"{conversation_id} New conversation")
+        logger.info("%s New conversation", conversation_id)
 
     return conversation_id
 
@@ -242,11 +247,13 @@ def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[Cache
             if cache_content is not None:
                 previous_input = cache_content
             logger.info(
-                f"{llm_request.conversation_id} Previous conversation input: {previous_input}"
+                "%s Previous conversation input: %s",
+                llm_request.conversation_id,
+                previous_input,
             )
         return previous_input
     except Exception as e:
-        logger.error(f"Error retrieving previous user input for user {user_id}")
+        logger.error("Error retrieving previous user input for user %s", user_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -302,7 +309,7 @@ def generate_response(
             conversation_id, llm_request.query, config.rag_index, history
         )
     except PromptTooLongError as summarizer_error:
-        logger.error(f"Prompt is too long: {summarizer_error}")
+        logger.error("Prompt is too long: %s", summarizer_error)
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail={
@@ -360,7 +367,7 @@ def store_conversation_history(
     """
     try:
         if config.conversation_cache is not None:
-            logger.info(f"{conversation_id} Storing conversation history.")
+            logger.info("%s Storing conversation history", conversation_id)
             cache_entry = CacheEntry(
                 query=llm_request.query,
                 response=response,
@@ -373,8 +380,9 @@ def store_conversation_history(
             )
     except Exception as e:
         logger.error(
-            "Error storing conversation history for user "
-            f"{user_id} and conversation {conversation_id}"
+            "Error storing conversation history for user %s and conversation %s",
+            user_id,
+            conversation_id,
         )
         logger.exception(e)
         raise HTTPException(
@@ -389,14 +397,16 @@ def store_conversation_history(
 def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
     """Redact query using query_redactor, raise HTTPException in case of any problem."""
     try:
-        logger.debug(f"Redacting query for conversation {conversation_id}")
+        logger.debug("Redacting query for conversation %s", conversation_id)
         llm_request.query = config.query_redactor.redact(
             conversation_id, llm_request.query
         )
         return llm_request
     except Exception as redactor_error:
         logger.error(
-            f"Error while redacting query {redactor_error} for conversation {conversation_id}"
+            "Error while redacting query %s for conversation %s",
+            redactor_error,
+            conversation_id,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -411,7 +421,7 @@ def redact_attachments(
     conversation_id: str, attachments: list[Attachment]
 ) -> list[Attachment]:
     """Redact all attachments using query_redactor, raise HTTPException in case of any problem."""
-    logger.debug(f"Redacting attachments for conversation {conversation_id}")
+    logger.debug("Redacting attachments for conversation %s", conversation_id)
 
     try:
         redacted_attachments = []
@@ -431,7 +441,9 @@ def redact_attachments(
 
     except Exception as redactor_error:
         logger.error(
-            f"Error while redacting attachment {redactor_error} for conversation {conversation_id}"
+            "Error while redacting attachment %s for conversation %s",
+            redactor_error,
+            conversation_id,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -458,7 +470,7 @@ def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> boo
             detail={"response": "Unable to process this request", "cause": str(e)},
         )
     except PromptTooLongError as e:
-        logger.error(f"Prompt is too long: {e}")
+        logger.error("Prompt is too long: %s", e)
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail={
@@ -492,7 +504,7 @@ def _validate_question_keyword(query: str) -> bool:
     # if len(common_words) > 0:
     #     return constants.SUBJECT_ALLOWED
 
-    logger.debug(f"No matching keyword found for query: {query}")
+    logger.debug("No matching keyword found for query: %s", query)
     return False
 
 
@@ -511,8 +523,8 @@ def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
         case _:
             # Query validation disabled by default
             logger.debug(
-                f"{conversation_id} Question validation is disabled. "
-                f"Treating question as valid."
+                "%s Question validation is disabled. Treating question as valid.",
+                conversation_id,
             )
             return True
 
@@ -581,4 +593,4 @@ def store_transcript(
     with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
         json.dump(data_to_store, transcript_file)
 
-    logger.debug(f"transcript stored in '{transcript_file_path}'")
+    logger.debug("transcript stored in '%s'", transcript_file_path)
