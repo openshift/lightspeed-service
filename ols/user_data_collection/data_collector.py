@@ -101,9 +101,15 @@ def access_token_from_offline_token(offline_token: str) -> str:
     }
 
     response = requests.post(url + endpoint, data=data, timeout=REDHAT_SSO_TIMEOUT)
-    if response.status_code == requests.codes.ok:
-        return response.json()["access_token"]
-    raise Exception(f"Failed to generate access token. Response: {response.json()}")
+    try:
+        if response.status_code == requests.codes.ok:
+            return response.json()["access_token"]
+        raise Exception(f"Failed to generate access token. Response: {response.json()}")
+    except json.JSONDecodeError:
+        raise Exception(
+            "Failed to generate access token. Response is not JSON."
+            f"Response: {response.status_code}: {response.text}"
+        )
 
 
 def get_cloud_openshift_pull_secret() -> str:
