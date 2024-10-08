@@ -150,6 +150,16 @@ def install_ols() -> tuple[str, str, str]:
 
     # create the llm api key secret ols will mount
     keypath = os.getenv("PROVIDER_KEY_PATH")
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                "llmcreds",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("llmcreds secret does not yet exist. Creating it.")
     cluster_utils.run_oc(
         [
             "create",
@@ -177,6 +187,17 @@ def install_ols() -> tuple[str, str, str]:
         )
 
     # create the olsconfig operand
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "olsconfig",
+                "cluster",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("olsconfig does not yet exist. Creating it.")
+
     cluster_utils.run_oc(
         [
             "create",
