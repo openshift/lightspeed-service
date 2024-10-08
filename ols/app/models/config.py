@@ -276,6 +276,7 @@ class ProviderConfig(BaseModel):
     credentials: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
+    api_version: Optional[str] = None
     deployment_name: Optional[str] = None
     openai_config: Optional[OpenAIConfig] = None
     azure_config: Optional[AzureOpenAIConfig] = None
@@ -321,6 +322,9 @@ class ProviderConfig(BaseModel):
         self.setup_models_config(data)
 
         if self.type == constants.PROVIDER_AZURE_OPENAI:
+            self.api_version = data.get(
+                "api_version", constants.DEFAULT_AZURE_API_VERSION
+            )
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
             # note: it can be overwritten in azure_config

@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import subprocess
 import time
 from argparse import Namespace
 
@@ -30,6 +31,7 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
+from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -52,32 +54,64 @@ OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
 
 OLS_READY = False
 
-
-def retry_until_timeout_or_success(attempts, interval, func):
-    """Retry the function until timeout or success."""
-    for attempt in range(1, attempts + 1):
-        print(f"Attempt {attempt} of {attempts}")
-        try:
-            if func():
-                return True
-        except Exception as e:
-            print(f"Attempt {attempt} failed with exception {e}")
-        time.sleep(interval)
-    return False
+OC_COMMAND_RETRY_COUNT = 120
+OC_COMMAND_RETRY_DELAY = 5
 
 
 def install_ols() -> tuple[str, str, str]:
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
 
-    # setup the lightspeed namespace
-    cluster_utils.run_oc(
-        ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    print("created OLS project")
+    if not os.getenv("KONFLUX_OLS_SERVICE_IMAGE"):
+        # setup the lightspeed namespace
+        cluster_utils.run_oc(
+            ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        cluster_utils.run_oc(
+            ["project", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        print("created OLS project")
+
+        # install the ImageDigestMirrorSet to mirror images
+        # from "registry.redhat.io/openshift-lightspeed-beta"
+        # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
+        cluster_utils.run_oc(
+            ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
+            ignore_existing_resource=True,
+        )
+
+        # install the operator from bundle
+        print("Installing OLS operator from bundle")
+        cluster_utils.run_oc(
+            [
+                "apply",
+                "-f",
+                "tests/config/operator_install/imagedigestmirrorset.yaml",
+            ],
+            ignore_existing_resource=True,
+        )
+        try:
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "operator-sdk",
+                    "run",
+                    "bundle",
+                    "--timeout=20m",
+                    "-n",
+                    "openshift-lightspeed",
+                    "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
+                    "--verbose",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        # TODO: add run_command func
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
+            )
+            raise
 
     cluster_utils.create_user("test-user", ignore_existing_resource=True)
     cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
@@ -85,27 +119,11 @@ def install_ols() -> tuple[str, str, str]:
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
 
-    # install the operator catalog
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/catalog.yaml"],
-        ignore_existing_resource=True,
-    )
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/operatorgroup.yaml"],
-        ignore_existing_resource=True,
-    )
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/subscription.yaml"],
-        ignore_existing_resource=True,
-    )
-
-    print("Created catalog+subscription")
-
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
     r = retry_until_timeout_or_success(
-        60,
-        6,
+        120,
+        10,
         lambda: cluster_utils.run_oc(
             [
                 "get",
@@ -128,8 +146,28 @@ def install_ols() -> tuple[str, str, str]:
     )
     print("test service account permissions granted")
 
+    provider = os.getenv("PROVIDER")
+
     # create the llm api key secret ols will mount
     keypath = os.getenv("PROVIDER_KEY_PATH")
+    try:
+        cluster_utils.run_oc(
+            [
+                "get",
+                "secret",
+                "llmcreds",
+            ],
+        )
+        print("Secret llmcreds already exists")
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                "llmcreds",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("llmcreds secret does not yet exist. Creating it.")
     cluster_utils.run_oc(
         [
             "create",
@@ -141,8 +179,41 @@ def install_ols() -> tuple[str, str, str]:
         ignore_existing_resource=True,
     )
 
+    if provider == "azure_openai":
+        # create extra secrets with Entra ID
+        cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "azure-entra-id",
+                f"--from-literal=tenant_id={os.environ['AZUREOPENAI_ENTRA_ID_TENANT_ID']}",
+                f"--from-literal=client_id={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_ID']}",
+                f"--from-literal=client_secret={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_SECRET']}",
+            ],
+            ignore_existing_resource=True,
+        )
+
     # create the olsconfig operand
-    provider = os.getenv("PROVIDER")
+    try:
+        cluster_utils.run_oc(
+            [
+                "get",
+                "olsconfig",
+                "cluster",
+            ],
+        )
+        print("OLSconfig already exists")
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "olsconfig",
+                "cluster",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("olsconfig does not yet exist. Creating it.")
+
     cluster_utils.run_oc(
         [
             "create",
@@ -176,7 +247,9 @@ def install_ols() -> tuple[str, str, str]:
     # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
     # there may be a race condition.
     retry_until_timeout_or_success(
-        60, 5, lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False)
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: cluster_utils.get_pod_by_prefix(fail_not_found=False),
     )
 
     # get the name of the OLS image from CI so we can substitute it in
@@ -196,8 +269,8 @@ def install_ols() -> tuple[str, str, str]:
 
     # Ensure the operator controller manager pod is gone before touching anything else
     retry_until_timeout_or_success(
-        60,
-        5,
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
         lambda: not cluster_utils.get_pod_by_prefix(
             "lightspeed-operator-controller-manager", fail_not_found=False
         ),
@@ -216,7 +289,9 @@ def install_ols() -> tuple[str, str, str]:
 
     # wait for the old ols api pod to go away due to deployment being scaled down
     retry_until_timeout_or_success(
-        60, 5, lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False)
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
     )
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
@@ -271,14 +346,27 @@ def install_ols() -> tuple[str, str, str]:
     # and we need to wait for it to go away before progressing so we don't try to
     # interact with it.
     r = retry_until_timeout_or_success(
-        60, 5, lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1
+        OC_COMMAND_RETRY_COUNT,
+        5,
+        lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1,
     )
     if not r:
         print("Timed out waiting for new OLS pod to be ready")
         return None
+
+    print("-" * 50)
+    print("OLS pod seems to be ready")
+    print("All pods")
     print(cluster_utils.run_oc(["get", "pods"]).stdout)
+    print("Running pods")
+    print(
+        cluster_utils.run_oc(
+            ["get", "pods", "--field-selector=status.phase=Running"]
+        ).stdout
+    )
     pod_name = cluster_utils.get_pod_by_prefix()[0]
-    print(f"Found new OLS pod {pod_name}")
+    print(f"Found new running OLS pod {pod_name}")
+    print("-" * 50)
 
     # Print the deployment so we can confirm the configuration is what we
     # expect it to be (must-gather will also collect this)
@@ -287,6 +375,7 @@ def install_ols() -> tuple[str, str, str]:
             ["get", "deployment", "lightspeed-app-server", "-o", "yaml"]
         ).stdout
     )
+    print("-" * 50)
 
     # disable collector script by default to avoid running during all
     # tests (collecting/sending data)
@@ -350,6 +439,7 @@ def postgres_connection():
     return retrieve_connection()
 
 
+@pytest.mark.smoketest()
 @retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
@@ -361,6 +451,7 @@ def test_readiness():
         assert response.json() == {"ready": True, "reason": "service is ready"}
 
 
+@pytest.mark.smoketest()
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
@@ -548,6 +639,7 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
+@pytest.mark.smoketest()
 @pytest.mark.rag()
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
@@ -1733,3 +1825,30 @@ def test_model_evaluation(request) -> None:
     """Evaluate model."""
     # TODO: Use this to assert.
     ResponseEvaluation(request.config.option, client).evaluate_models()
+
+
+@pytest.mark.azure_entra_id()
+def test_azure_entra_id():
+    """Test single question via Azure Entra ID credentials."""
+    response = client.post(
+        "/v1/query",
+        json={
+            "query": "what is kubernetes?",
+            "provider": "azure_openai_with_entra_id",
+            "model": "gpt-3.5-turbo",
+        },
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
+
+    response_utils.check_content_type(response, "application/json")
+    print(vars(response))
+    json_response = response.json()
+
+    # checking a few major information from response
+    assert "Kubernetes is" in json_response["response"]
+    assert re.search(
+        r"orchestration (tool|system|platform|engine)",
+        json_response["response"],
+        re.IGNORECASE,
+    )

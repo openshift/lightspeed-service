@@ -19,7 +19,7 @@ class FakeProvider(LLMProvider):
 
     @property
     def default_params(self) -> dict[str, Any]:
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         return {}
 
     def load(self) -> LLM:

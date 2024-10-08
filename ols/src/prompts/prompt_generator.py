@@ -119,5 +119,4 @@ class GeneratePrompt:
         """Generate prompt."""
         if ModelFamily.GRANITE in model:
             return self._generate_prompt_granite()
-        else:
-            return self._generate_prompt_gpt()
+        return self._generate_prompt_gpt()

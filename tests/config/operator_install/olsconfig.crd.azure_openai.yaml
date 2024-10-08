@@ -11,13 +11,21 @@ metadata:
 spec:
   llm:
     providers:
-      - credentialsSecretRef:
+      - name: azure_openai
+        type: azure_openai
+        credentialsSecretRef:
           name: llmcreds
         deploymentName: gpt-35-turbo-16k
         models:
           - name: gpt-3.5-turbo
-        name: azure_openai
+        url: 'https://ols-test.openai.azure.com/'
+      - name: azure_openai_with_entra_id
         type: azure_openai
+        credentialsSecretRef:
+          name: azure-entra-id
+        deploymentName: gpt-35-turbo-16k
+        models:
+          - name: gpt-3.5-turbo
         url: 'https://ols-test.openai.azure.com/'
   ols:
     defaultModel: gpt-3.5-turbo

@@ -66,16 +66,17 @@ class K8sClientSingleton:
                             client_configuration=configuration
                         )
                     except ConfigException as e:
-                        logger.debug(f"unable to load in-cluster config: {e}")
+                        logger.debug("unable to load in-cluster config: %s", e)
                         try:
                             logger.info("loading config from kube-config file")
                             kubernetes.config.load_kube_config(
                                 client_configuration=configuration
                             )
-                        except ConfigException as e:
+                        except ConfigException as ce:
                             logger.error(
-                                f"failed to load kubeconfig, in-cluster config\
-                                  and no override token was provided: {e}"
+                                "failed to load kubeconfig, in-cluster config\
+                                  and no override token was provided: %s",
+                                ce,
                             )
 
                 configuration.host = (
@@ -97,7 +98,7 @@ class K8sClientSingleton:
                 cls._authn_api = kubernetes.client.AuthenticationV1Api(api_client)
                 cls._authz_api = kubernetes.client.AuthorizationV1Api(api_client)
             except Exception as e:
-                logger.info(f"Failed to initialize Kubernetes client: {e}")
+                logger.info("Failed to initialize Kubernetes client: %s", e)
                 raise
         return cls._instance
 
@@ -141,20 +142,22 @@ class K8sClientSingleton:
             cluster_id = version_data["spec"]["clusterID"]
             cls._cluster_id = cluster_id
             return cluster_id
-        except KeyError:
+        except KeyError as e:
             logger.error(
                 "Failed to get cluster_id from cluster, missing keys in version object"
             )
-            raise ClusterIDUnavailableError("Failed to get cluster ID")
-        except TypeError:
-            logger.error(f"Failed to get cluster_id, version object is: {version_data}")
-            raise ClusterIDUnavailableError("Failed to get cluster ID")
+            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
+        except TypeError as e:
+            logger.error(
+                "Failed to get cluster_id, version object is: %s", version_data
+            )
+            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
         except ApiException as e:
-            logger.error(f"API exception during ClusterInfo: {e}")
-            raise ClusterIDUnavailableError("Failed to get cluster ID")
+            logger.error("API exception during ClusterInfo: %s", e)
+            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
         except Exception as e:
-            logger.error(f"Unexpected error during getting cluster ID: {e}")
-            raise ClusterIDUnavailableError("Failed to get cluster ID")
+            logger.error("Unexpected error during getting cluster ID: %s", e)
+            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
 
     @classmethod
     def get_cluster_id(cls) -> str:
@@ -189,14 +192,14 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
             return response.status
         return None
     except ApiException as e:
-        logger.error(f"API exception during TokenReview: {e}")
+        logger.error("API exception during TokenReview: %s", e)
         return None
     except Exception as e:
-        logger.error(f"Unexpected error during TokenReview - Unauthorized: {e}")
+        logger.error("Unexpected error during TokenReview - Unauthorized: %s", e)
         raise HTTPException(
             status_code=500,
             detail={"response": "Forbidden: Unable to Review Token", "cause": str(e)},
-        )
+        ) from e
 
 
 def _extract_bearer_token(header: str) -> str:
@@ -280,7 +283,7 @@ class AuthDependency:
                     status_code=403, detail="Forbidden: User does not have access"
                 )
         except ApiException as e:
-            logger.error(f"API exception during SubjectAccessReview: {e}")
-            raise HTTPException(status_code=403, detail="Internal server error")
+            logger.error("API exception during SubjectAccessReview: %s", e)
+            raise HTTPException(status_code=403, detail="Internal server error") from e
 
         return user_info.user.uid, user_info.user.username

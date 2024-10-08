@@ -13,7 +13,7 @@ from ols.app import metrics, routers
 app = FastAPI(
     title="Swagger OpenShift LightSpeed Service - OpenAPI",
     description="""OpenShift LightSpeed Service API specification.""",
-    version="0.1.6",
+    version="0.1.7",
     license_info={
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",

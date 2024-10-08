@@ -61,12 +61,34 @@ configure model, and connect to it.
     * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
 * [Project structure](#project-structure)
     * [Overall architecture](#overall-architecture)
+        * [FastAPI server](#fastapi-server)
+        * [Authorization checker](#authorization-checker)
+        * [Query handler](#query-handler)
+        * [Redactor](#redactor)
+        * [Question validator](#question-validator)
+        * [Document summarizer](#document-summarizer)
+        * [Conversation history cache interface](#conversation-history-cache-interface)
+        * [Conversation history cache implementations](#conversation-history-cache-implementations)
+            * [In-memory cache](#in-memory-cache)
+            * [Redis cache](#redis-cache)
+            * [Postgres cache](#postgres-cache)
+        * [LLM providers registry](#llm-providers-registry)
+        * [LLM providers interface implementations](#llm-providers-interface-implementations)
     * [Sequence diagram](#sequence-diagram)
     * [Token truncation algorithm](#token-truncation-algorithm)
+* [Additional tools](#additional-tools)
+    * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
+        * [Path](#path)
+        * [Usage](#usage-1)
+    * [Utility to generate `requirements.*` files](#utility-to-generate-requirements-files)
+        * [Path](#path-1)
+        * [Usage](#usage-2)
+    * [Uploading artifact containing the pytest results and configuration to an s3 bucket.](#uploading-artifact-containing-the-pytest-results-and-configuration-to-an-s3-bucket)
+        * [Path](#path-2)
+        * [Usage](#usage-3)
 * [Contributing](#contributing)
 * [License](#license)
 
-<!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
 <!-- vim-markdown-toc -->
 
 # Prerequisites
@@ -257,6 +279,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    3. Specific configuration options for Azure OpenAI
 
+       - `api_version`: as specified in official documentation, if not set; by default `2024-02-15-preview` is used.
        - `deployment_name`: as specified in AzureAI project settings
 
    4. Default provider and default model
@@ -585,10 +608,93 @@ Chart customization is available using the [Values](helm/values.yaml) file.
 
 ## Overall architecture
 
-Overall architecture with all main parts are displayed below:
+Overall architecture with all main parts is displayed below:
 
 ![Architecture diagram](docs/architecture_diagram.png)
 
+OpenShift LightSpeed service is based on the FastAPI framework (Uvicorn) with Langchain for LLM interactions. The service is split into several parts described below.
+
+### FastAPI server
+
+Handles REST API requests from clients (mainly from UI console, but can be any REST API-compatible tool), handles requests queue, and also exports Prometheus metrics. The Uvicorn framework is used as a FastAPI implementation.
+
+### Authorization checker
+
+Manages authentication flow for REST API endpoints. Currently K8S/OCL-based authorization is used, but in the future it will be implemented in a more modular way to allow registering other auth. checkers.
+
+### Query handler
+
+Retrieves user queries, validates them, redacts them, calls LLM, and summarizes feedback.
+
+### Redactor
+
+Redacts the question based on the regex filters provided in the configuration file.
+
+### Question validator
+
+Validates questions and provides one-word responses. It is an optional component.
+
+### Document summarizer
+
+Summarizes documentation context.
+
+### Conversation history cache interface
+
+Unified interface used to store and retrieve conversation history with optionally defined maximum length.
+
+### Conversation history cache implementations
+
+Currently there exist three conversation history cache implementations:
+1. in-memory cache
+1. Redis cache
+1. Postgres cache
+
+Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as the number of entries; entries sizes are ignored in this computation.
+
+#### In-memory cache
+
+In-memory cache is implemented as a queue with a defined maximum capacity specified as the number of entries that can be stored in a cache. That number is the limit for all cache entries, it doesn't matter how many users are using the LLM. When the new entry is put into the cache and if the maximum capacity is reached, the oldest entry is removed from the cache.
+
+#### Redis cache
+
+Entries are stored in Redis as a dictionary. LRU policy can be specified that allows Redis to automatically remove the oldest entries.
+
+#### Postgres cache
+
+Entries are stored in one Postgres table with the following schema:
+
+```
+     Column      |            Type             | Nullable | Default | Storage  |
+-----------------+-----------------------------+----------+---------+----------+
+ user_id         | text                        | not null |         | extended |
+ conversation_id | text                        | not null |         | extended |
+ value           | bytea                       |          |         | extended |
+ updated_at      | timestamp without time zone |          |         | plain    |
+Indexes:
+    "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id)
+    "cache_key_key" UNIQUE CONSTRAINT, btree (key)
+    "timestamps" btree (updated_at)
+Access method: heap
+```
+
+During a new record insertion the maximum number of entries is checked and when the defined capacity is reached, the oldest entry is deleted.
+
+
+
+### LLM providers registry
+
+Manages LLM providers implementations. If a new LLM provider type needs to be added, it is registered by this machinery and its libraries are loaded to be used later.
+
+### LLM providers interface implementations
+
+Currently there exist the following LLM providers implementations:
+1. OpenAI
+1. Azure OpenAI
+1. RHEL AI
+1. OpenShift AI
+1. WatsonX
+1. BAM
+1. Fake provider (to be used by tests and benchmarks)
 
 
 ## Sequence diagram
@@ -611,6 +717,83 @@ The context window size is limited for all supported LLMs which means that token
 ![Token truncation](docs/token_truncation.png)
 
 
+# Additional tools
+
+## Utility to generate OpenAPI schema
+
+This script re-generated OpenAPI schema for the Lightspeed Service REST API.
+
+### Path
+
+[scripts/generate_openapi_schema.py](scripts/generate_openapi_schema.py)
+
+### Usage
+
+```
+pdm generate-schema`
+```
+
+## Utility to generate `requirements.*` files
+
+Generate list of packages to be prefetched in Cachi2 and used in Konflux for hermetic build.
+
+This script performs several steps:
+
+1. removes torch+cpu dependency from project file
+2. generates requirements.txt file from pyproject.toml + pdm.lock
+3. removes all torch dependencies (including CUDA/Nvidia packages)
+4. downloads torch+cpu wheel
+5. computes hashes for this wheel
+6. adds the URL to wheel + hash to resulting requirements.txt file
+7. downloads script `pip_find_builddeps` from the Cachito project
+8. generated requirements-build.in file
+9. compiles requirements-build.in file into requirements-build.txt file
+
+Please note that this script depends on tool that is downloaded from repository containing
+Cachito system. This tool is run locally w/o any additional security checks etc. so some
+care is needed (run this script from within containerized environment etc.).
+
+### Path
+
+[scripts/generate_packages_to_prefetch.py](scripts/generate_packages_to_prefetch.py)
+
+### Usage
+
+```
+usage: generate_packages_to_prefetch.py [-h] [-p]
+
+options:
+  -h, --help            show this help message and exit
+  -p, --process-special-packages
+                        Enable or disable processing special packages like torch etc.
+  -c, --cleanup         Enable or disable work directory cleanup
+  -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
+                        Work directory to store files generated during different stages
+                        of processing
+```
+
+### Known issue
+
+When SQLAlchemy package is not locked to latest version in `pyproject.toml` and `pdm.lock`, this script will fail due to issue in `pip`. To fix this issue it is needed to follow those steps:
+
+1. Look at https://pypi.org/project/SQLAlchemy/ to retrieve latest SQLAlchemy version
+1. Update `pyproject.toml` file accordingly using `SQLAlchemy=={latest_version}`
+1. Run `pdm update sqlalchemy`
+
+
+## Uploading artifact containing the pytest results and configuration to an s3 bucket.
+
+### Path
+
+[scripts/upload_artifact_s3.py](scripts/upload_artifact_s3.py)
+
+### Usage
+
+A dictionary containing the credentials of the S3 bucket must be specified, containing the keys:
+- AWS_BUCKET
+- AWS_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
 
 
 # Contributing

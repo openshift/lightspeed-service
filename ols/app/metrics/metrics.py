@@ -68,12 +68,20 @@ def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
 
 def setup_model_metrics(config: AppConfig) -> None:
     """Perform setup of all metrics related to LLM model and provider."""
+    # Set to track which provider/model combinations are set to 1, to
+    # avoid setting provider/model to 0 in case it is already in metric
+    # with value 1 - case when there are more "same" providers/models
+    # combinations, but with the different names and other parameters.
+    model_metrics_set = set()
+
     for provider in config.llm_config.providers.values():
         for model_name in provider.models:
+            label_key = (provider.type, model_name)
             if (
                 provider.name == config.ols_config.default_provider
                 and model_name == config.ols_config.default_model
             ):
-                provider_model_configuration.labels(provider.type, model_name).set(1)
-            else:
-                provider_model_configuration.labels(provider.type, model_name).set(0)
+                provider_model_configuration.labels(*label_key).set(1)
+                model_metrics_set.add(label_key)
+            elif label_key not in model_metrics_set:
+                provider_model_configuration.labels(*label_key).set(0)

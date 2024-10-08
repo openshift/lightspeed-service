@@ -23,7 +23,6 @@ def load_llama_index_deps():
     global BaseIndex
     global resolve_llm
     global FaissVectorStore
-    global HuggingFaceEmbedding
     from llama_index.core import Settings, StorageContext, load_index_from_storage
     from llama_index.core.embeddings.utils import EmbedType
     from llama_index.core.indices.base import BaseIndex
@@ -73,6 +72,7 @@ class IndexLoader:
         Settings.embed_model = self._embed_model
         Settings.llm = resolve_llm(None)
         logger.info("Setting up storage context for index load...")
+        # pylint: disable=W0201
         self._storage_context = StorageContext.from_defaults(
             vector_store=FaissVectorStore.from_persist_dir(self._index_path),
             persist_dir=self._index_path,

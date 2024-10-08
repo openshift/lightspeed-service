@@ -35,7 +35,8 @@ distribution = false
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "black==24.8.0",
+    "black==24.10.0",
+    "pydocstyle==6.3.0",
     "fastparquet==2024.5.0",  # Required for model evaluation (runtime, if parquet qna file is used)
     "httpx==0.27.0",
     "mypy==1.11.2",
@@ -72,7 +73,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "ols"
-version = "0.1.4"
+version = "0.1.7"
 description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
@@ -100,7 +101,7 @@ dependencies = [
     "psycopg2-binary==2.9.9",
     "azure-identity==1.17.1",
     "langchain-community==0.2.16",
-    "SQLAlchemy==2.0.32",
+    "SQLAlchemy==2.0.35",
     "huggingface_hub==0.23.4",
     "ibm-watsonx-ai==1.1.8",
     "certifi==2024.8.30",
@@ -111,6 +112,7 @@ dependencies = [
     "zipp==3.20.1",
     "jinja2==3.1.4",
     "scikit-learn==1.5.1",
+    "tqdm==4.66.5",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
@@ -135,3 +137,4 @@ packages = ["ols"]
 
 [tool.pylint."MESSAGES CONTROL"]
 good-names = ["e"]
+disable = ["W1203", "C0103", "C0301", "C0302", "C0415", "E0602", "E0611", "E1101", "R0801", "R0902", "R0903", "R0913", "R0914", "W0102", "W0212", "W0223", "W0511", "W0602", "W0603", "W0613", "W0621", "W0622", "W0707", "W0718", "W0719", "W1514"]

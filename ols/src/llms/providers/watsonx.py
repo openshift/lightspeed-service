@@ -26,7 +26,7 @@ class Watsonx(LLMProvider):
 
     @property
     def default_params(self) -> dict[str, Any]:
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         # https://www.ibm.com/docs/en/watsonx-as-a-service?topic=models-parameters
         return {
             GenParams.DECODING_METHOD: "sample",
