@@ -1,0 +1,495 @@
+apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "3"
+      hash/additionalca: ""
+      hash/llmprovider: 4d0c04cafab64d47b25e0c2bc012f74c7b9474e7514472822dfe6eebf552b861
+      hash/olsconfig: 068d0e2e3f76da36c22aafb0eee29b38c5be6a403dcd10744ecc808264e96a06
+      hash/olstls: 658cbd85982f435d1cb04e2b65712e78c8e8dc1576a01defb9f5bd2476134da5
+    creationTimestamp: "2024-10-08T12:55:49Z"
+    generation: 5
+    labels:
+      app.kubernetes.io/component: application-server
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-service-api
+      app.kubernetes.io/part-of: openshift-lightspeed
+    name: lightspeed-app-server
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: ols.openshift.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: OLSConfig
+      name: cluster
+      uid: 702ba649-c360-408e-ba46-848fdb15da63
+    resourceVersion: "131474"
+    uid: f0c8bd0f-ff7f-40e7-b7b9-3584b796ae6c
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 1
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: application-server
+        app.kubernetes.io/managed-by: lightspeed-operator
+        app.kubernetes.io/name: lightspeed-service-api
+        app.kubernetes.io/part-of: openshift-lightspeed
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          hash/additionalca: ""
+          hash/llmprovider: 4d0c04cafab64d47b25e0c2bc012f74c7b9474e7514472822dfe6eebf552b861
+          hash/olsconfig: 068d0e2e3f76da36c22aafb0eee29b38c5be6a403dcd10744ecc808264e96a06
+          hash/olstls: 658cbd85982f435d1cb04e2b65712e78c8e8dc1576a01defb9f5bd2476134da5
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/component: application-server
+          app.kubernetes.io/managed-by: lightspeed-operator
+          app.kubernetes.io/name: lightspeed-service-api
+          app.kubernetes.io/part-of: openshift-lightspeed
+      spec:
+        containers:
+        - env:
+          - name: OLS_CONFIG_FILE
+            value: /etc/ols/olsconfig.yaml
+          image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 15
+            httpGet:
+              path: /liveness
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 30
+          name: lightspeed-service-api
+          ports:
+          - containerPort: 8443
+            name: https
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 15
+            httpGet:
+              path: /readiness
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 30
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/apikeys/llmcreds
+            name: secret-llmcreds
+            readOnly: true
+          - mountPath: /etc/certs/lightspeed-tls
+            name: secret-lightspeed-tls
+            readOnly: true
+          - mountPath: /etc/ols
+            name: cm-olsconfig
+            readOnly: true
+          - mountPath: /app-root/ols-user-data
+            name: ols-user-data
+        - command:
+          - python3.11
+          - /app-root/ols/user_data_collection/data_collector.py
+          env:
+          - name: OLS_CONFIG_FILE
+            value: /etc/ols/olsconfig.yaml
+          image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+          imagePullPolicy: IfNotPresent
+          name: lightspeed-service-user-data-collector
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /app-root/ols-user-data
+            name: ols-user-data
+          - mountPath: /etc/ols
+            name: cm-olsconfig
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: lightspeed-app-server
+        serviceAccountName: lightspeed-app-server
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: secret-llmcreds
+          secret:
+            defaultMode: 420
+            secretName: llmcreds
+        - name: secret-lightspeed-tls
+          secret:
+            defaultMode: 420
+            secretName: lightspeed-tls
+        - configMap:
+            defaultMode: 420
+            name: olsconfig
+          name: cm-olsconfig
+        - emptyDir: {}
+          name: ols-user-data
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2024-10-08T12:55:49Z"
+      lastUpdateTime: "2024-10-08T12:56:40Z"
+      message: ReplicaSet "lightspeed-app-server-977f5488d" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2024-10-08T12:57:45Z"
+      lastUpdateTime: "2024-10-08T12:57:45Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 5
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      hash/olsconsoletls: 990c933012e30b990b649b1c2098265ffdd1a377a3e8294ad13b0f537a8e9f6b
+    creationTimestamp: "2024-10-08T12:55:47Z"
+    generation: 1
+    labels:
+      app.kubernetes.io/component: console-plugin
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-console-plugin
+      app.kubernetes.io/part-of: openshift-lightspeed
+    name: lightspeed-console-plugin
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: ols.openshift.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: OLSConfig
+      name: cluster
+      uid: 702ba649-c360-408e-ba46-848fdb15da63
+    resourceVersion: "130677"
+    uid: a2c01ca5-d9ee-4f54-8143-481de303a1ce
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: console-plugin
+        app.kubernetes.io/managed-by: lightspeed-operator
+        app.kubernetes.io/name: lightspeed-console-plugin
+        app.kubernetes.io/part-of: openshift-lightspeed
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          hash/olsconsoletls: 990c933012e30b990b649b1c2098265ffdd1a377a3e8294ad13b0f537a8e9f6b
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/component: console-plugin
+          app.kubernetes.io/managed-by: lightspeed-operator
+          app.kubernetes.io/name: lightspeed-console-plugin
+          app.kubernetes.io/part-of: openshift-lightspeed
+      spec:
+        containers:
+        - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+          imagePullPolicy: Always
+          name: lightspeed-console-plugin
+          ports:
+          - containerPort: 9443
+            name: https
+            protocol: TCP
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 50Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/cert
+            name: lightspeed-console-plugin-cert
+            readOnly: true
+          - mountPath: /etc/nginx/nginx.conf
+            name: nginx-config
+            readOnly: true
+            subPath: nginx.conf
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: lightspeed-console-plugin-cert
+          secret:
+            defaultMode: 420
+            secretName: lightspeed-console-plugin-cert
+        - configMap:
+            defaultMode: 420
+            name: lightspeed-console-plugin
+          name: nginx-config
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2024-10-08T12:55:49Z"
+      lastUpdateTime: "2024-10-08T12:55:49Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2024-10-08T12:55:47Z"
+      lastUpdateTime: "2024-10-08T12:55:49Z"
+      message: ReplicaSet "lightspeed-console-plugin-6fb56cfb65" has successfully
+        progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 1
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+    creationTimestamp: "2024-10-08T12:48:29Z"
+    generation: 2
+    labels:
+      app.kubernetes.io/component: manager
+      app.kubernetes.io/created-by: lightspeed-operator
+      app.kubernetes.io/instance: controller-manager
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/name: deployment
+      app.kubernetes.io/part-of: lightspeed-operator
+      control-plane: controller-manager
+      olm.deployment-spec-hash: 99333GcOoqNsDcQTAKCUNWsRgPojLnENNCmGiK
+      olm.managed: "true"
+      olm.owner: lightspeed-operator.v0.1.7
+      olm.owner.kind: ClusterServiceVersion
+      olm.owner.namespace: openshift-lightspeed
+      operators.coreos.com/lightspeed-operator.openshift-lightspeed: ""
+    name: lightspeed-operator-controller-manager
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v1alpha1
+      blockOwnerDeletion: false
+      controller: false
+      kind: ClusterServiceVersion
+      name: lightspeed-operator.v0.1.7
+      uid: aa79ebdf-4d83-4599-a01b-77f5f06ab092
+    resourceVersion: "130750"
+    uid: 60333fbe-dee4-4987-9da9-8454eeace260
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 0
+    revisionHistoryLimit: 1
+    selector:
+      matchLabels:
+        control-plane: controller-manager
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        annotations:
+          alm-examples: |-
+            [
+              {
+                "apiVersion": "ols.openshift.io/v1alpha1",
+                "kind": "OLSConfig",
+                "metadata": {
+                  "labels": {
+                    "app.kubernetes.io/created-by": "lightspeed-operator",
+                    "app.kubernetes.io/instance": "olsconfig-sample",
+                    "app.kubernetes.io/managed-by": "kustomize",
+                    "app.kubernetes.io/name": "olsconfig",
+                    "app.kubernetes.io/part-of": "lightspeed-operator"
+                  },
+                  "name": "cluster"
+                },
+                "spec": {
+                  "llm": {
+                    "providers": [
+                      {
+                        "credentialsSecretRef": {
+                          "name": "credentials"
+                        },
+                        "models": [
+                          {
+                            "name": "gpt-3.5-turbo-1106"
+                          }
+                        ],
+                        "name": "OpenAI"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          capabilities: Basic Install
+          console.openshift.io/operator-monitoring-default: "true"
+          createdAt: "2024-08-30T09:59:16Z"
+          features.operators.openshift.io/cnf: "false"
+          features.operators.openshift.io/cni: "false"
+          features.operators.openshift.io/csi: "false"
+          features.operators.openshift.io/disconnected: "false"
+          features.operators.openshift.io/fips-compliant: "false"
+          features.operators.openshift.io/proxy-aware: "true"
+          features.operators.openshift.io/tls-profiles: "false"
+          features.operators.openshift.io/token-auth-aws: "false"
+          features.operators.openshift.io/token-auth-azure: "false"
+          features.operators.openshift.io/token-auth-gcp: "false"
+          kubectl.kubernetes.io/default-container: manager
+          olm.operatorGroup: operator-sdk-og
+          olm.operatorNamespace: openshift-lightspeed
+          olm.targetNamespaces: ""
+          operatorframework.io/cluster-monitoring: "true"
+          operatorframework.io/properties: '{"properties":[{"type":"olm.gvk","value":{"group":"ols.openshift.io","kind":"OLSConfig","version":"v1alpha1"}},{"type":"olm.package","value":{"packageName":"lightspeed-operator","version":"0.1.7"}}]}'
+          operatorframework.io/suggested-namespace: openshift-lightspeed
+          operators.openshift.io/valid-subscription: '["OpenShift Kubernetes Engine",
+            "OpenShift Container Platform", "OpenShift Platform Plus"]'
+          operators.operatorframework.io/builder: operator-sdk-v1.33.0
+          operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+          repository: https://github.com/openshift/lightspeed-operator
+        creationTimestamp: null
+        labels:
+          control-plane: controller-manager
+      spec:
+        containers:
+        - args:
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+          - --metrics-bind-address=:8443
+          - --secure-metrics-server
+          - --cert-dir=/etc/tls/private
+          - --console-image=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+          - --service-image=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:f2ae050ceb35a10cba0f1c056975314ea33f320e3a08cffde8b939274aebff0d
+          command:
+          - /manager
+          env:
+          - name: WATCH_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.annotations['olm.targetNamespaces']
+          - name: OPERATOR_CONDITION_NAME
+            value: lightspeed-operator.v0.1.7
+          image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-operator@sha256:0ccb255026063532f3d31d6620ba4e9e68f5dff3acfba32a08cb1dc6dbdb7dba
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: manager
+          ports:
+          - containerPort: 8443
+            name: metrics
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /readyz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/tls/private
+            name: controller-manager-tls
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: lightspeed-operator-controller-manager
+        serviceAccountName: lightspeed-operator-controller-manager
+        terminationGracePeriodSeconds: 10
+        volumes:
+        - name: controller-manager-tls
+          secret:
+            defaultMode: 420
+            secretName: controller-manager-tls
+  status:
+    conditions:
+    - lastTransitionTime: "2024-10-08T12:48:40Z"
+      lastUpdateTime: "2024-10-08T12:48:40Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2024-10-08T12:48:29Z"
+      lastUpdateTime: "2024-10-08T12:48:40Z"
+      message: ReplicaSet "lightspeed-operator-controller-manager-6cc654f968" has
+        successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 2
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

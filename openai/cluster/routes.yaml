@@ -1,0 +1,40 @@
+apiVersion: v1
+items:
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2024-10-08T12:56:57Z"
+    labels:
+      app: ols
+    name: ols
+    namespace: openshift-lightspeed
+    resourceVersion: "131187"
+    uid: bee0d202-913f-4f63-b4d9-00145c4e9465
+  spec:
+    host: ols-openshift-lightspeed.apps.my-ols-tp-test.qe.devcluster.openshift.com
+    port:
+      targetPort: https
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: reencrypt
+    to:
+      kind: Service
+      name: lightspeed-app-server
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: "2024-10-08T12:56:57Z"
+        status: "True"
+        type: Admitted
+      host: ols-openshift-lightspeed.apps.my-ols-tp-test.qe.devcluster.openshift.com
+      routerCanonicalHostname: router-default.apps.my-ols-tp-test.qe.devcluster.openshift.com
+      routerName: default
+      wildcardPolicy: None
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

@@ -1,0 +1,27 @@
+[2024-10-08 12:56:47,032] INFO: '/app-root/ols-user-data' contains no data, nothing to do...
+[2024-10-08 12:56:57,032] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:07,033] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:17,033] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:27,033] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:37,033] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:47,034] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:57:57,034] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:07,034] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:17,035] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:27,035] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:37,035] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:47,035] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:58:57,036] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:59:07,036] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:59:17,036] INFO: disabled by control file, skipping data collection
+[2024-10-08 12:59:27,036] INFO: collected 4 files (splitted to 1 chunks) from '/app-root/ols-user-data'
+[2024-10-08 12:59:27,037] DEBUG: collected files: [PosixPath('/app-root/ols-user-data/transcripts/8b054039-d5f4-49fa-9299-97cef2ce41ff/e8ce6b87-bca9-4285-a871-a9868aed038c/46a84c36-c581-4ad8-b017-f7fa319bdd6e.json'), PosixPath('/app-root/ols-user-data/transcripts/8b054039-d5f4-49fa-9299-97cef2ce41ff/539ee1bf-dc8c-456b-a017-c5437e355155/f7ca0b8a-cb5d-45bd-950c-dd006d839e97.json'), PosixPath('/app-root/ols-user-data/transcripts/8b054039-d5f4-49fa-9299-97cef2ce41ff/f4190fae-d063-474a-9e07-795c6fd43115/f3277ce8-2cd6-43ca-a4f2-236a103e5e69.json'), PosixPath('/app-root/ols-user-data/transcripts/8b054039-d5f4-49fa-9299-97cef2ce41ff/2998cd2b-09df-4a9d-b7ff-0f718a14b8e2/710ac7d2-1d29-4bc3-9b10-56c49f07600d.json')]
+[2024-10-08 12:59:27,037] INFO: uploading data chunk 1/1
+[2024-10-08 12:59:27,042] INFO: sending collected data
+[2024-10-08 12:59:27,042] DEBUG: using cluster pull secret to authenticate
+[2024-10-08 12:59:27,042] DEBUG: no Auth Token Override was provided,                            procceeding with in-cluster config load
+[2024-10-08 12:59:27,042] INFO: loading in-cluster config
+[2024-10-08 12:59:27,071] DEBUG: posting payload to https://console.stage.redhat.com/api/ingress/v1/upload
+[2024-10-08 12:59:27,741] ERROR: posting payload failed, full response: <Response [401]>
+[2024-10-08 12:59:27,741] ERROR: attempt 1 failed with error: data upload failed with response code: 401
+[2024-10-08 12:59:27,741] INFO: retrying in 120 seconds...

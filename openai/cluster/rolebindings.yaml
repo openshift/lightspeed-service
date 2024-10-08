@@ -1,0 +1,166 @@
+apiVersion: v1
+items:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-10-08T12:48:14Z"
+    labels:
+      olm.managed: "true"
+    name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: v1
+      blockOwnerDeletion: false
+      controller: false
+      kind: ConfigMap
+      name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+      uid: 6d7d1483-b466-41c7-a998-cf248609cfcd
+    resourceVersion: "127519"
+    uid: 571199ac-21e8-4c33-bf94-5c61764649f2
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+  subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: openshift-lightspeed
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-10-08T12:48:26Z"
+    labels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/name: rolebinding
+      app.kubernetes.io/part-of: lightspeed-operator
+      olm.managed: "true"
+    name: lightspeed-operator-prometheus-k8s
+    namespace: openshift-lightspeed
+    resourceVersion: "127679"
+    uid: 1c3eadb5-0804-4045-a587-26d88bbc6cf1
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: lightspeed-operator-prometheus-k8s
+  subjects:
+  - kind: ServiceAccount
+    name: prometheus-k8s
+    namespace: openshift-monitoring
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-10-08T12:48:28Z"
+    labels:
+      olm.managed: "true"
+      olm.owner: lightspeed-operator.v0.1.7
+      olm.owner.kind: ClusterServiceVersion
+      olm.owner.namespace: openshift-lightspeed
+      olm.permissions.hash: bUS0hMx8qtq7gKrSaSW6o5afFqijGfng935MEj
+      operators.coreos.com/lightspeed-operator.openshift-lightspeed: ""
+    name: lightspeed-operator.v0.1-9Hjilm8nNyz6OHpMuBPMGO3pqnUVGIOqwKWwML
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v1alpha1
+      blockOwnerDeletion: false
+      controller: false
+      kind: ClusterServiceVersion
+      name: lightspeed-operator.v0.1.7
+      uid: aa79ebdf-4d83-4599-a01b-77f5f06ab092
+    resourceVersion: "127768"
+    uid: 53f0f301-7c7b-4f2e-891c-5b1b4a31957e
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: lightspeed-operator.v0.1-9Hjilm8nNyz6OHpMuBPMGO3pqnUVGIOqwKWwML
+  subjects:
+  - kind: ServiceAccount
+    name: lightspeed-operator-controller-manager
+    namespace: openshift-lightspeed
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-10-08T12:48:25Z"
+    labels:
+      olm.managed: "true"
+    name: lightspeed-operator.v0.1.7
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v2
+      blockOwnerDeletion: false
+      controller: true
+      kind: OperatorCondition
+      name: lightspeed-operator.v0.1.7
+      uid: 635c196d-242e-47ca-8706-5009ccc5753e
+    resourceVersion: "127614"
+    uid: 60d4e278-de7c-40aa-9201-d2399c1226d5
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: lightspeed-operator.v0.1.7
+  subjects:
+  - kind: ServiceAccount
+    name: lightspeed-operator-controller-manager
+  - kind: ServiceAccount
+    name: lightspeed-operator-controller-manager
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      openshift.io/description: Allows deploymentconfigs in this namespace to rollout
+        pods in this namespace.  It is auto-managed by a controller; remove subjects
+        to disable.
+    creationTimestamp: "2024-10-08T12:47:03Z"
+    name: system:deployers
+    namespace: openshift-lightspeed
+    resourceVersion: "127126"
+    uid: 354f1d00-d667-4bf1-b4b9-3b30b62ca7f4
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:deployer
+  subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: openshift-lightspeed
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      openshift.io/description: Allows builds in this namespace to push images to
+        this namespace.  It is auto-managed by a controller; remove subjects to disable.
+    creationTimestamp: "2024-10-08T12:47:03Z"
+    name: system:image-builders
+    namespace: openshift-lightspeed
+    resourceVersion: "127128"
+    uid: 341240d1-f501-4e49-a0d2-5bed038089bd
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:image-builder
+  subjects:
+  - kind: ServiceAccount
+    name: builder
+    namespace: openshift-lightspeed
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      openshift.io/description: Allows all pods in this namespace to pull images from
+        this namespace.  It is auto-managed by a controller; remove subjects to disable.
+    creationTimestamp: "2024-10-08T12:47:03Z"
+    name: system:image-pullers
+    namespace: openshift-lightspeed
+    resourceVersion: "127127"
+    uid: af71456c-8f9b-4ffd-aaac-9d18108c35b3
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: system:image-puller
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts:openshift-lightspeed
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

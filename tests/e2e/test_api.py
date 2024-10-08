@@ -153,14 +153,6 @@ def install_ols() -> tuple[str, str, str]:
     try:
         cluster_utils.run_oc(
             [
-                "get",
-                "secret",
-                "llmcreds",
-            ],
-        )
-        print("Secret llmcreds already exists")
-        cluster_utils.run_oc(
-            [
                 "delete",
                 "secret",
                 "llmcreds",
@@ -196,14 +188,6 @@ def install_ols() -> tuple[str, str, str]:
 
     # create the olsconfig operand
     try:
-        cluster_utils.run_oc(
-            [
-                "get",
-                "olsconfig",
-                "cluster",
-            ],
-        )
-        print("OLSconfig already exists")
         cluster_utils.run_oc(
             [
                 "delete",

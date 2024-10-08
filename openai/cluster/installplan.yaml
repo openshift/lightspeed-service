@@ -1,0 +1,190 @@
+apiVersion: v1
+items:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: InstallPlan
+  metadata:
+    creationTimestamp: "2024-10-08T12:48:24Z"
+    generateName: install-
+    generation: 2
+    labels:
+      operators.coreos.com/lightspeed-operator.openshift-lightspeed: ""
+    name: install-khbfc
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v1alpha1
+      blockOwnerDeletion: false
+      controller: false
+      kind: Subscription
+      name: lightspeed-operator-v0-1-7-sub
+      uid: 2dfba534-0b97-4efb-bfd0-a44c0c857585
+    resourceVersion: "127814"
+    uid: a2bfc58f-a2af-47c7-b5b7-704f1dc70d22
+  spec:
+    approval: Manual
+    approved: true
+    clusterServiceVersionNames:
+    - lightspeed-operator.v0.1.7
+    generation: 1
+  status:
+    bundleLookups:
+    - catalogSourceRef:
+        name: lightspeed-operator-catalog
+        namespace: openshift-lightspeed
+      identifier: lightspeed-operator.v0.1.7
+      path: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/test-bundle@sha256:638a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+      properties: '{"properties":[{"type":"olm.gvk","value":{"group":"ols.openshift.io","kind":"OLSConfig","version":"v1alpha1"}},{"type":"olm.package","value":{"packageName":"lightspeed-operator","version":"0.1.7"}}]}'
+      replaces: ""
+    catalogSources:
+    - lightspeed-operator-catalog
+    conditions:
+    - lastTransitionTime: "2024-10-08T12:48:25Z"
+      lastUpdateTime: "2024-10-08T12:48:25Z"
+      status: "True"
+      type: Installed
+    phase: Complete
+    plan:
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: operators.coreos.com
+        kind: ClusterServiceVersion
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator.v0.1.7
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1alpha1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRoleBinding
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-ols-metrics-reader
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Present
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: Role
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-prometheus-k8s
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: ""
+        kind: Service
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-controller-manager-service
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRole
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-ols-metrics-reader
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Present
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRole
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-query-access
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Present
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: apiextensions.k8s.io
+        kind: CustomResourceDefinition
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: olsconfigs.ols.openshift.io
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Present
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: monitoring.coreos.com
+        kind: ServiceMonitor
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-controller-manager-metrics-monitor
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: RoleBinding
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-prometheus-k8s
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: ""
+        kind: ServiceAccount
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator-controller-manager
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: Role
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator.v0.1-9Hjilm8nNyz6OHpMuBPMGO3pqnUVGIOqwKWwML
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: RoleBinding
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator.v0.1-9Hjilm8nNyz6OHpMuBPMGO3pqnUVGIOqwKWwML
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRole
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator.v0.1-cQm9ouq1tOl3N5RcFP3kyV2SYqmkHmS7JDZwbT
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    - resolving: lightspeed-operator.v0.1.7
+      resource:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRoleBinding
+        manifest: '{"kind":"ConfigMap","name":"c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7","namespace":"openshift-lightspeed","catalogSourceName":"lightspeed-operator-catalog","catalogSourceNamespace":"openshift-lightspeed","replaces":"","properties":"{\"properties\":[{\"type\":\"olm.gvk\",\"value\":{\"group\":\"ols.openshift.io\",\"kind\":\"OLSConfig\",\"version\":\"v1alpha1\"}},{\"type\":\"olm.package\",\"value\":{\"packageName\":\"lightspeed-operator\",\"version\":\"0.1.7\"}}]}"}'
+        name: lightspeed-operator.v0.1-cQm9ouq1tOl3N5RcFP3kyV2SYqmkHmS7JDZwbT
+        sourceName: lightspeed-operator-catalog
+        sourceNamespace: openshift-lightspeed
+        version: v1
+      status: Created
+    startTime: "2024-10-08T12:48:25Z"
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

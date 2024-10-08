@@ -1,0 +1,146 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+      service.beta.openshift.io/serving-cert-secret-name: lightspeed-tls
+      service.beta.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+    creationTimestamp: "2024-10-08T12:55:48Z"
+    labels:
+      app.kubernetes.io/component: application-server
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-service-api
+      app.kubernetes.io/part-of: openshift-lightspeed
+    name: lightspeed-app-server
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: ols.openshift.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: OLSConfig
+      name: cluster
+      uid: 702ba649-c360-408e-ba46-848fdb15da63
+    resourceVersion: "130631"
+    uid: 3a733a96-8846-4798-acdb-c6366ab22de6
+  spec:
+    clusterIP: 172.30.55.82
+    clusterIPs:
+    - 172.30.55.82
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: https
+    selector:
+      app.kubernetes.io/component: application-server
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-service-api
+      app.kubernetes.io/part-of: openshift-lightspeed
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+      service.beta.openshift.io/serving-cert-secret-name: lightspeed-console-plugin-cert
+      service.beta.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+    creationTimestamp: "2024-10-08T12:55:46Z"
+    labels:
+      app.kubernetes.io/component: console-plugin
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-console-plugin
+      app.kubernetes.io/part-of: openshift-lightspeed
+    name: lightspeed-console-plugin
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: ols.openshift.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: OLSConfig
+      name: cluster
+      uid: 702ba649-c360-408e-ba46-848fdb15da63
+    resourceVersion: "130537"
+    uid: cd083fb9-40da-4692-afd7-93829a3d5221
+  spec:
+    clusterIP: 172.30.222.32
+    clusterIPs:
+    - 172.30.222.32
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: https
+      port: 9443
+      protocol: TCP
+      targetPort: https
+    selector:
+      app.kubernetes.io/component: console-plugin
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-console-plugin
+      app.kubernetes.io/part-of: openshift-lightspeed
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+      service.beta.openshift.io/serving-cert-secret-name: controller-manager-tls
+      service.beta.openshift.io/serving-cert-signed-by: openshift-service-serving-signer@1728372632
+    creationTimestamp: "2024-10-08T12:48:25Z"
+    labels:
+      app.kubernetes.io/component: manager
+      app.kubernetes.io/created-by: lightspeed-operator
+      app.kubernetes.io/instance: controller-manager-service
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/name: service
+      app.kubernetes.io/part-of: lightspeed-operator
+      control-plane: controller-manager
+      olm.managed: "true"
+      operators.coreos.com/lightspeed-operator.openshift-lightspeed: ""
+    name: lightspeed-operator-controller-manager-service
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v1alpha1
+      blockOwnerDeletion: false
+      controller: false
+      kind: ClusterServiceVersion
+      name: lightspeed-operator.v0.1.7
+      uid: aa79ebdf-4d83-4599-a01b-77f5f06ab092
+    resourceVersion: "127695"
+    uid: 16e8dbc2-4f61-4cb4-bf8f-4c720e8ed571
+  spec:
+    clusterIP: 172.30.128.165
+    clusterIPs:
+    - 172.30.128.165
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: metrics
+      port: 8443
+      protocol: TCP
+      targetPort: metrics
+    selector:
+      control-plane: controller-manager
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

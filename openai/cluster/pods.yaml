@@ -1,0 +1,1101 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.128.2.55/23"],"mac_address":"0a:58:0a:80:02:37","gateway_ips":["10.128.2.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.128.2.1"},{"dest":"172.30.0.0/16","nextHop":"10.128.2.1"},{"dest":"100.64.0.0/16","nextHop":"10.128.2.1"}],"ip_address":"10.128.2.55/23","gateway_ip":"10.128.2.1"}}'
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "ovn-kubernetes",
+            "interface": "eth0",
+            "ips": [
+                "10.128.2.55"
+            ],
+            "mac": "0a:58:0a:80:02:37",
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: anyuid
+    creationTimestamp: "2024-10-08T12:48:02Z"
+    name: 38a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      name: lightspeed-operator-catalog
+      uid: 89ebaab7-bcd9-4e7f-8c18-f10f4e7bde53
+    resourceVersion: "127454"
+    uid: 8a2cdc01-ab7d-441b-a8e6-d4f8f3c25893
+  spec:
+    containers:
+    - command:
+      - sh
+      - -c
+      - opm serve /lightspeed-operator-catalog-configs -p 50051
+      image: quay.io/operator-framework/opm:latest
+      imagePullPolicy: Always
+      name: registry-grpc
+      ports:
+      - containerPort: 50051
+        name: grpc
+        protocol: TCP
+      resources: {}
+      securityContext:
+        capabilities:
+          drop:
+          - MKNOD
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /lightspeed-operator-catalog-configs/lightspeed-operator-catalog-configmap-partition-1
+        name: lightspeed-operator-catalog-configmap-partition-1-unzip
+        subPath: lightspeed-operator-catalog-configmap-partition-1
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-pzg58
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: default-dockercfg-zvx9z
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - for dir in /compressed/lightspeed-operator-catalog-configs/*configmap-partition*;
+        do for f in ${dir}/*; do file="${f%.*}";file="${file#/compressed}";cat ${f}
+        | gzip -d -c > "${file}";done;done;
+      image: registry.access.redhat.com/ubi8:8.9
+      imagePullPolicy: IfNotPresent
+      name: registry-grpc-init
+      resources: {}
+      securityContext:
+        capabilities:
+          drop:
+          - MKNOD
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /lightspeed-operator-catalog-configs/lightspeed-operator-catalog-configmap-partition-1
+        name: lightspeed-operator-catalog-configmap-partition-1-unzip
+        subPath: lightspeed-operator-catalog-configmap-partition-1
+      - mountPath: /compressed/lightspeed-operator-catalog-configs/lightspeed-operator-catalog-configmap-partition-1
+        name: lightspeed-operator-catalog-configmap-partition-1-volume
+        subPath: lightspeed-operator-catalog-configmap-partition-1
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-pzg58
+        readOnly: true
+    nodeName: ip-10-0-22-99.us-east-2.compute.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      seLinuxOptions:
+        level: s0:c27,c9
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - configMap:
+        defaultMode: 420
+        items:
+        - key: extraFBC
+          path: lightspeed-operator-catalog-configmap-partition-1/extraFBC.yaml.gz
+        name: lightspeed-operator-catalog-configmap-partition-1
+      name: lightspeed-operator-catalog-configmap-partition-1-volume
+    - emptyDir: {}
+      name: lightspeed-operator-catalog-configmap-partition-1-unzip
+    - name: kube-api-access-pzg58
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:03Z"
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:03Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:04Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:04Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:02Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://6d79a513be3897275b1306c8cde35a7e5f414af69a4ed6ade46229ece7d50c9b
+      image: quay.io/operator-framework/opm:latest
+      imageID: quay.io/operator-framework/opm@sha256:077e654da39d055ea56edc91faa2c36d5e8f4dec58db2017fed24a80246b6ca7
+      lastState: {}
+      name: registry-grpc
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2024-10-08T12:48:03Z"
+    hostIP: 10.0.22.99
+    hostIPs:
+    - ip: 10.0.22.99
+    initContainerStatuses:
+    - containerID: cri-o://2c06bb0d5df32f8766f7bd41d29f6436ea69940de048de0102232b567aaccc7b
+      image: registry.access.redhat.com/ubi8:8.9
+      imageID: registry.access.redhat.com/ubi8@sha256:04c033b3b44df719273c43cbb1bb69e59c0ebd04bbea51b3faf0adb0740c7c9b
+      lastState: {}
+      name: registry-grpc-init
+      ready: true
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: cri-o://2c06bb0d5df32f8766f7bd41d29f6436ea69940de048de0102232b567aaccc7b
+          exitCode: 0
+          finishedAt: "2024-10-08T12:48:03Z"
+          reason: Completed
+          startedAt: "2024-10-08T12:48:03Z"
+    phase: Running
+    podIP: 10.128.2.55
+    podIPs:
+    - ip: 10.128.2.55
+    qosClass: BestEffort
+    startTime: "2024-10-08T12:48:02Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.128.2.56/23"],"mac_address":"0a:58:0a:80:02:38","gateway_ips":["10.128.2.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.128.2.1"},{"dest":"172.30.0.0/16","nextHop":"10.128.2.1"},{"dest":"100.64.0.0/16","nextHop":"10.128.2.1"}],"ip_address":"10.128.2.56/23","gateway_ip":"10.128.2.1"}}'
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "ovn-kubernetes",
+            "interface": "eth0",
+            "ips": [
+                "10.128.2.56"
+            ],
+            "mac": "0a:58:0a:80:02:38",
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: restricted-v2
+      seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    creationTimestamp: "2024-10-08T12:48:14Z"
+    generateName: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7-
+    labels:
+      batch.kubernetes.io/controller-uid: 3e618721-b8fb-45c2-a373-2ae30caa9f65
+      batch.kubernetes.io/job-name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+      controller-uid: 3e618721-b8fb-45c2-a373-2ae30caa9f65
+      job-name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+      olm.managed: "true"
+    name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe7wvwm7
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: batch/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Job
+      name: c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+      uid: 3e618721-b8fb-45c2-a373-2ae30caa9f65
+    resourceVersion: "127571"
+    uid: 430559ed-2ed0-4dce-81d6-88f47d6f2e68
+  spec:
+    containers:
+    - command:
+      - opm
+      - alpha
+      - bundle
+      - extract
+      - -m
+      - /bundle/
+      - -n
+      - openshift-lightspeed
+      - -c
+      - c274880201947a54cdac8d04a217f8d4bcb39860c5c830c0ef471d5fe75e3a7
+      - -z
+      env:
+      - name: CONTAINER_IMAGE
+        value: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/test-bundle@sha256:638a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+      image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:f421fbea94df5883915ecbac7034ac4753973145d0a8ca549391b74c3f2ac8a6
+      imagePullPolicy: IfNotPresent
+      name: extract
+      resources:
+        requests:
+          cpu: 10m
+          memory: 50Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: FallbackToLogsOnError
+      volumeMounts:
+      - mountPath: /bundle
+        name: bundle
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-v942x
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - {}
+    initContainers:
+    - command:
+      - /bin/cp
+      - -Rv
+      - /bin/cpb
+      - /util/cpb
+      image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:b8328a2a1f48e21a5d1bc50cb5879aba8b2e38604252cdb6c6238ed83b59e687
+      imagePullPolicy: IfNotPresent
+      name: util
+      resources:
+        requests:
+          cpu: 10m
+          memory: 50Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: FallbackToLogsOnError
+      volumeMounts:
+      - mountPath: /util
+        name: util
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-v942x
+        readOnly: true
+    - command:
+      - /util/cpb
+      - /bundle
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/test-bundle@sha256:638a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+      imagePullPolicy: IfNotPresent
+      name: pull
+      resources:
+        requests:
+          cpu: 10m
+          memory: 50Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: FallbackToLogsOnError
+      volumeMounts:
+      - mountPath: /bundle
+        name: bundle
+      - mountPath: /util
+        name: util
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-v942x
+        readOnly: true
+    nodeName: ip-10-0-22-99.us-east-2.compute.internal
+    nodeSelector:
+      kubernetes.io/os: linux
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000720000
+      seLinuxOptions:
+        level: s0:c27,c9
+      seccompProfile:
+        type: RuntimeDefault
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - key: kubernetes.io/arch
+      operator: Equal
+      value: amd64
+    - key: kubernetes.io/arch
+      operator: Equal
+      value: arm64
+    - key: kubernetes.io/arch
+      operator: Equal
+      value: ppc64le
+    - key: kubernetes.io/arch
+      operator: Equal
+      value: s390x
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoSchedule
+      key: node.kubernetes.io/memory-pressure
+      operator: Exists
+    volumes:
+    - emptyDir: {}
+      name: bundle
+    - emptyDir: {}
+      name: util
+    - name: kube-api-access-v942x
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:18Z"
+      status: "False"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:16Z"
+      reason: PodCompleted
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:14Z"
+      reason: PodCompleted
+      status: "False"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:14Z"
+      reason: PodCompleted
+      status: "False"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:48:14Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://a273bfda4e52ca5304facd8293f75e2d3183cc884a41ddcf4e80dda2e5782352
+      image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:f421fbea94df5883915ecbac7034ac4753973145d0a8ca549391b74c3f2ac8a6
+      imageID: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:f421fbea94df5883915ecbac7034ac4753973145d0a8ca549391b74c3f2ac8a6
+      lastState: {}
+      name: extract
+      ready: false
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: cri-o://a273bfda4e52ca5304facd8293f75e2d3183cc884a41ddcf4e80dda2e5782352
+          exitCode: 0
+          finishedAt: "2024-10-08T12:48:16Z"
+          reason: Completed
+          startedAt: "2024-10-08T12:48:16Z"
+    hostIP: 10.0.22.99
+    hostIPs:
+    - ip: 10.0.22.99
+    initContainerStatuses:
+    - containerID: cri-o://df924bf0d87cd726a7d162172a846a86475755a36840ce4e3eeb07e863e7a4f3
+      image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:b8328a2a1f48e21a5d1bc50cb5879aba8b2e38604252cdb6c6238ed83b59e687
+      imageID: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:b8328a2a1f48e21a5d1bc50cb5879aba8b2e38604252cdb6c6238ed83b59e687
+      lastState: {}
+      name: util
+      ready: true
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: cri-o://df924bf0d87cd726a7d162172a846a86475755a36840ce4e3eeb07e863e7a4f3
+          exitCode: 0
+          finishedAt: "2024-10-08T12:48:15Z"
+          reason: Completed
+          startedAt: "2024-10-08T12:48:15Z"
+    - containerID: cri-o://166c3d10f4a341cbc5927c146a59f2c8d8908aca0ac2c6772b8e8ada8fccc5b3
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/test-bundle@sha256:638a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+      imageID: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/test-bundle@sha256:638a11f209635247bd0c16b8ba6f0422dc650cb8216dcee879baa1852fd2f695
+      lastState: {}
+      name: pull
+      ready: true
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: cri-o://166c3d10f4a341cbc5927c146a59f2c8d8908aca0ac2c6772b8e8ada8fccc5b3
+          exitCode: 0
+          finishedAt: "2024-10-08T12:48:15Z"
+          reason: Completed
+          startedAt: "2024-10-08T12:48:15Z"
+    phase: Succeeded
+    podIP: 10.128.2.56
+    podIPs:
+    - ip: 10.128.2.56
+    qosClass: Burstable
+    startTime: "2024-10-08T12:48:14Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      hash/additionalca: ""
+      hash/llmprovider: 4d0c04cafab64d47b25e0c2bc012f74c7b9474e7514472822dfe6eebf552b861
+      hash/olsconfig: 068d0e2e3f76da36c22aafb0eee29b38c5be6a403dcd10744ecc808264e96a06
+      hash/olstls: 658cbd85982f435d1cb04e2b65712e78c8e8dc1576a01defb9f5bd2476134da5
+      k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.128.2.60/23"],"mac_address":"0a:58:0a:80:02:3c","gateway_ips":["10.128.2.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.128.2.1"},{"dest":"172.30.0.0/16","nextHop":"10.128.2.1"},{"dest":"100.64.0.0/16","nextHop":"10.128.2.1"}],"ip_address":"10.128.2.60/23","gateway_ip":"10.128.2.1"}}'
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "ovn-kubernetes",
+            "interface": "eth0",
+            "ips": [
+                "10.128.2.60"
+            ],
+            "mac": "0a:58:0a:80:02:3c",
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: restricted-v2
+      seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    creationTimestamp: "2024-10-08T12:56:44Z"
+    generateName: lightspeed-app-server-977f5488d-
+    labels:
+      app.kubernetes.io/component: application-server
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-service-api
+      app.kubernetes.io/part-of: openshift-lightspeed
+      pod-template-hash: 977f5488d
+    name: lightspeed-app-server-977f5488d-ld6j5
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: lightspeed-app-server-977f5488d
+      uid: a08bab71-2a15-45d7-84a0-0d4caf24b529
+    resourceVersion: "131470"
+    uid: 3b12f2e2-4a84-45c4-8c9f-8a74dcafe533
+  spec:
+    containers:
+    - env:
+      - name: OLS_CONFIG_FILE
+        value: /etc/ols/olsconfig.yaml
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 15
+        httpGet:
+          path: /liveness
+          port: https
+          scheme: HTTPS
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        successThreshold: 1
+        timeoutSeconds: 30
+      name: lightspeed-service-api
+      ports:
+      - containerPort: 8443
+        name: https
+        protocol: TCP
+      readinessProbe:
+        failureThreshold: 15
+        httpGet:
+          path: /readiness
+          port: https
+          scheme: HTTPS
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        successThreshold: 1
+        timeoutSeconds: 30
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /etc/apikeys/llmcreds
+        name: secret-llmcreds
+        readOnly: true
+      - mountPath: /etc/certs/lightspeed-tls
+        name: secret-lightspeed-tls
+        readOnly: true
+      - mountPath: /etc/ols
+        name: cm-olsconfig
+        readOnly: true
+      - mountPath: /app-root/ols-user-data
+        name: ols-user-data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kfqzv
+        readOnly: true
+    - command:
+      - python3.11
+      - /app-root/ols/user_data_collection/data_collector.py
+      env:
+      - name: OLS_CONFIG_FILE
+        value: /etc/ols/olsconfig.yaml
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      imagePullPolicy: IfNotPresent
+      name: lightspeed-service-user-data-collector
+      resources:
+        limits:
+          memory: 200Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /app-root/ols-user-data
+        name: ols-user-data
+      - mountPath: /etc/ols
+        name: cm-olsconfig
+        readOnly: true
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-kfqzv
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: lightspeed-app-server-dockercfg-drjnm
+    nodeName: ip-10-0-22-99.us-east-2.compute.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000720000
+      seLinuxOptions:
+        level: s0:c27,c9
+      seccompProfile:
+        type: RuntimeDefault
+    serviceAccount: lightspeed-app-server
+    serviceAccountName: lightspeed-app-server
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoSchedule
+      key: node.kubernetes.io/memory-pressure
+      operator: Exists
+    volumes:
+    - name: secret-llmcreds
+      secret:
+        defaultMode: 420
+        secretName: llmcreds
+    - name: secret-lightspeed-tls
+      secret:
+        defaultMode: 420
+        secretName: lightspeed-tls
+    - configMap:
+        defaultMode: 420
+        name: olsconfig
+      name: cm-olsconfig
+    - emptyDir: {}
+      name: ols-user-data
+    - name: kube-api-access-kfqzv
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:56:45Z"
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:56:44Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:57:45Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:57:45Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:56:44Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://805711c88b606dbc9148a06cc6b3d0c50c6909cca7435e8c02c03791ced99cd5
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      imageID: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      lastState: {}
+      name: lightspeed-service-api
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2024-10-08T12:56:45Z"
+    - containerID: cri-o://87a85dc3f1bb8835e26ab3284761d16702592c021f231cbb4c64f4430f985d00
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      imageID: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service@sha256:68624db46e518cc923bf9d6dc57744031f4c23b45889378b8feaea22e6fbf2a3
+      lastState: {}
+      name: lightspeed-service-user-data-collector
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2024-10-08T12:56:45Z"
+    hostIP: 10.0.22.99
+    hostIPs:
+    - ip: 10.0.22.99
+    phase: Running
+    podIP: 10.128.2.60
+    podIPs:
+    - ip: 10.128.2.60
+    qosClass: Burstable
+    startTime: "2024-10-08T12:56:44Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      hash/olsconsoletls: 990c933012e30b990b649b1c2098265ffdd1a377a3e8294ad13b0f537a8e9f6b
+      k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.128.2.58/23"],"mac_address":"0a:58:0a:80:02:3a","gateway_ips":["10.128.2.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.128.2.1"},{"dest":"172.30.0.0/16","nextHop":"10.128.2.1"},{"dest":"100.64.0.0/16","nextHop":"10.128.2.1"}],"ip_address":"10.128.2.58/23","gateway_ip":"10.128.2.1"}}'
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "ovn-kubernetes",
+            "interface": "eth0",
+            "ips": [
+                "10.128.2.58"
+            ],
+            "mac": "0a:58:0a:80:02:3a",
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: restricted-v2
+      seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    creationTimestamp: "2024-10-08T12:55:47Z"
+    generateName: lightspeed-console-plugin-6fb56cfb65-
+    labels:
+      app.kubernetes.io/component: console-plugin
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-console-plugin
+      app.kubernetes.io/part-of: openshift-lightspeed
+      pod-template-hash: 6fb56cfb65
+    name: lightspeed-console-plugin-6fb56cfb65-bss7d
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: lightspeed-console-plugin-6fb56cfb65
+      uid: fbe08182-5e6c-4c6a-b520-a81a15d0badc
+    resourceVersion: "130673"
+    uid: 038ede74-b48b-4103-b6a1-95916f3f5cf1
+  spec:
+    containers:
+    - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      imagePullPolicy: Always
+      name: lightspeed-console-plugin
+      ports:
+      - containerPort: 9443
+        name: https
+        protocol: TCP
+      resources:
+        limits:
+          memory: 100Mi
+        requests:
+          cpu: 10m
+          memory: 50Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/cert
+        name: lightspeed-console-plugin-cert
+        readOnly: true
+      - mountPath: /etc/nginx/nginx.conf
+        name: nginx-config
+        readOnly: true
+        subPath: nginx.conf
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-nxxd5
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: default-dockercfg-zvx9z
+    nodeName: ip-10-0-22-99.us-east-2.compute.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000720000
+      runAsNonRoot: true
+      seLinuxOptions:
+        level: s0:c27,c9
+      seccompProfile:
+        type: RuntimeDefault
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoSchedule
+      key: node.kubernetes.io/memory-pressure
+      operator: Exists
+    volumes:
+    - name: lightspeed-console-plugin-cert
+      secret:
+        defaultMode: 420
+        secretName: lightspeed-console-plugin-cert
+    - configMap:
+        defaultMode: 420
+        name: lightspeed-console-plugin
+      name: nginx-config
+    - name: kube-api-access-nxxd5
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:48Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:48Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://19c6402727982c00f73dc0193091fe55711b28d71dc305a65a24e9c94c6814e9
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      imageID: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      lastState: {}
+      name: lightspeed-console-plugin
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2024-10-08T12:55:49Z"
+    hostIP: 10.0.22.99
+    hostIPs:
+    - ip: 10.0.22.99
+    phase: Running
+    podIP: 10.128.2.58
+    podIPs:
+    - ip: 10.128.2.58
+    qosClass: Burstable
+    startTime: "2024-10-08T12:55:48Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      hash/olsconsoletls: 990c933012e30b990b649b1c2098265ffdd1a377a3e8294ad13b0f537a8e9f6b
+      k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.129.2.18/23"],"mac_address":"0a:58:0a:81:02:12","gateway_ips":["10.129.2.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.129.2.1"},{"dest":"172.30.0.0/16","nextHop":"10.129.2.1"},{"dest":"100.64.0.0/16","nextHop":"10.129.2.1"}],"ip_address":"10.129.2.18/23","gateway_ip":"10.129.2.1"}}'
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "ovn-kubernetes",
+            "interface": "eth0",
+            "ips": [
+                "10.129.2.18"
+            ],
+            "mac": "0a:58:0a:81:02:12",
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: restricted-v2
+      seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    creationTimestamp: "2024-10-08T12:55:48Z"
+    generateName: lightspeed-console-plugin-6fb56cfb65-
+    labels:
+      app.kubernetes.io/component: console-plugin
+      app.kubernetes.io/managed-by: lightspeed-operator
+      app.kubernetes.io/name: lightspeed-console-plugin
+      app.kubernetes.io/part-of: openshift-lightspeed
+      pod-template-hash: 6fb56cfb65
+    name: lightspeed-console-plugin-6fb56cfb65-rjx7v
+    namespace: openshift-lightspeed
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: lightspeed-console-plugin-6fb56cfb65
+      uid: fbe08182-5e6c-4c6a-b520-a81a15d0badc
+    resourceVersion: "130662"
+    uid: f188f3ff-46c2-4b79-861a-d6e52389c56f
+  spec:
+    containers:
+    - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      imagePullPolicy: Always
+      name: lightspeed-console-plugin
+      ports:
+      - containerPort: 9443
+        name: https
+        protocol: TCP
+      resources:
+        limits:
+          memory: 100Mi
+        requests:
+          cpu: 10m
+          memory: 50Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsUser: 1000720000
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/cert
+        name: lightspeed-console-plugin-cert
+        readOnly: true
+      - mountPath: /etc/nginx/nginx.conf
+        name: nginx-config
+        readOnly: true
+        subPath: nginx.conf
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-pfcsq
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: default-dockercfg-zvx9z
+    nodeName: ip-10-0-36-56.us-east-2.compute.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 1000720000
+      runAsNonRoot: true
+      seLinuxOptions:
+        level: s0:c27,c9
+      seccompProfile:
+        type: RuntimeDefault
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoSchedule
+      key: node.kubernetes.io/memory-pressure
+      operator: Exists
+    volumes:
+    - name: lightspeed-console-plugin-cert
+      secret:
+        defaultMode: 420
+        secretName: lightspeed-console-plugin-cert
+    - configMap:
+        defaultMode: 420
+        name: lightspeed-console-plugin
+      name: nginx-config
+    - name: kube-api-access-pfcsq
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:48Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:49Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2024-10-08T12:55:48Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://d0c8836644b4b7c96283519640a41a096891d9c7c6c5f5849f7428ab0895db66
+      image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      imageID: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console@sha256:3c9a5d4ee1ea87a103bef1cf0fa71a28353c65772c357ecb6d3cdc6ce7f2d688
+      lastState: {}
+      name: lightspeed-console-plugin
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2024-10-08T12:55:48Z"
+    hostIP: 10.0.36.56
+    hostIPs:
+    - ip: 10.0.36.56
+    phase: Running
+    podIP: 10.129.2.18
+    podIPs:
+    - ip: 10.129.2.18
+    qosClass: Burstable
+    startTime: "2024-10-08T12:55:48Z"
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

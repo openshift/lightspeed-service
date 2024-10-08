@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="openai" errors="0" failures="1" skipped="2" tests="48" time="290.542" timestamp="2024-10-08T14:55:38.314830+02:00" hostname="fedora"><testcase classname="openai.test_api" name="test_readiness" time="136.998"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_liveness" time="0.745"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_invalid_question" time="2.863"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_invalid_question_without_conversation_id" time="2.159"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_call_without_payload" time="0.735"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_call_with_improper_payload" time="0.735"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_improper_conversation_id" time="0.703"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_missing_conversation_id" time="2.219"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_too_long_question" time="1.210"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question" time="2.187"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_ocp_docs_version_same_as_cluster_version" time="3.260"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_tokens_counter" time="2.877"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_invalid_question_tokens_counter" time="2.325"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_token_counters_for_query_call_without_payload" time="1.500"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_token_counters_for_query_call_with_improper_payload" time="1.556"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_rag_question" time="2.826"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_filter" time="5.104"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_conversation_history" time="3.429"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_with_provider_but_not_model" time="0.745"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_with_model_but_not_provider" time="0.766"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_with_unknown_provider" time="0.946"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_query_with_unknown_model" time="0.926"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_metrics" time="0.153"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_model_provider" time="0.159"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_one_default_model_provider" time="0.162"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_improper_token" time="0.156"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_forbidden_user" time="0.303"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_can_post_with_wrong_token" time="0.191"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_storing_cluster" time="11.759"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_missing_conversation_id" time="0.148"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_missing_user_question" time="0.148"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_missing_llm_response" time="0.169"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_feedback_improper_conversation_id" time="0.162"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_transcripts_storing_cluster" time="18.147"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_openapi_endpoint" time="0.560"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_cache_existence" time="0.001"><skipped type="pytest.skip" message="Postgres is not accessible.">/home/jfula/CCX/OLS/lightspeed-service/tests/e2e/test_api.py:1341: Postgres is not accessible.</skipped><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_empty_attachment_list" time="2.435"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_one_attachment" time="1.790"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_more_attachments" time="2.016"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_wrong_attachment_format_unknown_field" time="0.711"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_wrong_attachment_format_missing_fields" time="0.732"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_wrong_attachment_format_field_of_different_type" time="0.724"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_wrong_attachment_format_unknown_attachment_type" time="0.748"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_valid_question_with_wrong_attachment_format_unknown_content_type" time="0.749"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_conversation_in_postgres_cache" time="0.002"><skipped type="pytest.skip" message="Postgres is not accessible.">/home/jfula/CCX/OLS/lightspeed-service/tests/e2e/test_api.py:1609: Postgres is not accessible.</skipped><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_user_data_collection" time="42.132"><failure message="AssertionError: assert 'contains no data, nothing to do...' in ''">@pytest.mark.cluster()
+    def test_user_data_collection():
+        """Test user data collection.
+    
+        It is performed by checking the user data collection container logs
+        for the expected messages in logs.
+        A bit of trick is required to check just the logs since the last
+        action (as container logs can be influenced by other tests).
+        """
+        pod_name = None
+        try:
+            pod_name = cluster_utils.get_pod_by_prefix()[0]
+    
+            # enable collector script
+            if pod_name is not None:
+                cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
+                assert "disable_collector" not in cluster_utils.list_path(
+                    pod_name, OLS_USER_DATA_PATH
+                )
+    
+            def filter_logs(logs: str, last_log_line: str) -&gt; str:
+                filtered_logs = []
+                new_logs = False
+                for line in logs.split("\n"):
+                    if line == last_log_line:
+                        new_logs = True
+                        continue
+                    if new_logs:
+                        filtered_logs.append(line)
+                return "\n".join(filtered_logs)
+    
+            def get_last_log_line(logs: str) -&gt; str:
+                return [line for line in logs.split("\n") if line][-1]
+    
+            # constants from tests/config/cluster_install/ols_manifests.yaml
+            data_collection_container_name = "lightspeed-service-user-data-collector"
+            pod_name = cluster_utils.get_pod_by_prefix()[0]
+    
+            # there are multiple tests running agains cluster, so user data
+            # can be already present - we need to ensure the storage is empty
+            # for this test
+            user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
+            if user_data:
+                cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
+                cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
+                assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
+    
+            # safety wait for the script to start after being disabled by other
+            # tests
+            time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+    
+            # data shoud be pruned now and this is the point from which we want
+            # to check the logs
+            container_log = cluster_utils.get_container_log(
+                pod_name, data_collection_container_name
+            )
+            last_log_line = get_last_log_line(container_log)
+    
+            # wait the collection period for some extra to give the script a
+            # chance to log what we want to check
+            time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+    
+            # we just check that there are no data and the script is working
+            container_log = cluster_utils.get_container_log(
+                pod_name, data_collection_container_name
+            )
+            logs = filter_logs(container_log, last_log_line)
+    
+            assert "collected" not in logs
+            assert "data uploaded with request_id:" not in logs
+            assert "uploaded data removed" not in logs
+            assert "data upload failed with response:" not in logs
+&gt;           assert "contains no data, nothing to do..." in logs
+E           AssertionError: assert 'contains no data, nothing to do...' in ''
+
+tests/e2e/test_api.py:1729: AssertionError</failure><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_http_header_redaction" time="7.049"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase><testcase classname="openai.test_api" name="test_model_response" time="22.185"><system-out>--------------------------------- Captured Out ---------------------------------
+
+</system-out></testcase></testsuite></testsuites>

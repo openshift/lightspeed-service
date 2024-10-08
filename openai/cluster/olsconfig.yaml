@@ -1,0 +1,59 @@
+apiVersion: v1
+items:
+- apiVersion: ols.openshift.io/v1alpha1
+  kind: OLSConfig
+  metadata:
+    creationTimestamp: "2024-10-08T12:55:46Z"
+    generation: 1
+    labels:
+      app.kubernetes.io/created-by: lightspeed-operator
+      app.kubernetes.io/instance: olsconfig-sample
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/name: olsconfig
+      app.kubernetes.io/part-of: lightspeed-operator
+    name: cluster
+    resourceVersion: "130657"
+    uid: 702ba649-c360-408e-ba46-848fdb15da63
+  spec:
+    llm:
+      providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+        - name: gpt-3.5-turbo
+        name: openai
+        type: openai
+    ols:
+      defaultModel: gpt-3.5-turbo
+      defaultProvider: openai
+      deployment:
+        replicas: 1
+      logLevel: DEBUG
+      queryFilters:
+      - name: foo_filter
+        pattern: \b(?:foo)\b
+        replaceWith: deployment
+      - name: bar_filter
+        pattern: \b(?:bar)\b
+        replaceWith: openshift
+  status:
+    conditions:
+    - lastTransitionTime: "2024-10-08T12:55:47Z"
+      message: All components are successfully deployed
+      reason: Reconciling
+      status: "True"
+      type: ConsolePluginReady
+    - lastTransitionTime: "2024-10-08T12:55:49Z"
+      message: All components are successfully deployed
+      reason: Reconciling
+      status: "True"
+      type: ApiReady
+    - lastTransitionTime: "2024-10-08T12:55:49Z"
+      message: Custom resource successfully reconciled
+      reason: Reconciling
+      status: "True"
+      type: Reconciled
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""
