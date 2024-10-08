@@ -43,6 +43,13 @@ spec:
           memory: 1Gi
         limits:
           memory: 4Gi
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '1'
+          memory: 1Gi
+        limits:
+          memory: 8Gi
   pipelineSpec:
     finally:
       - name: show-sbom
