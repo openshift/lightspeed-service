@@ -26,11 +26,9 @@ COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
-COPY pyproject.toml pdm.lock runner.py ./
-RUN pip3.11 install --no-cache-dir --upgrade pip pdm==2.18.1 \
-    && pdm config python.use_venv false \
-    && pdm sync --global --prod -p ${APP_ROOT}
+COPY pyproject.toml pdm.lock runner.py requirements.txt ./
 
+RUN pip3.11 install --no-cache-dir -r requirements.txt
 
 COPY ols ./ols
 
@@ -52,5 +50,5 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       vendor="Red Hat, Inc."
 
 
-# no-root user is checked in Konflux 
+# no-root user is checked in Konflux
 USER 1001
