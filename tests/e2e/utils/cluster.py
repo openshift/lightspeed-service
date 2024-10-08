@@ -79,9 +79,14 @@ def get_cluster_version() -> tuple[str, str]:
 def create_user(name: str, ignore_existing_resource=False) -> None:
     """Create a service account user for testing."""
     try:
-        run_oc(
-            ["create", "sa", name], ignore_existing_resource=ignore_existing_resource
-        )
+        try:
+            run_oc(["get", "sa", name])
+            print("Service account %s already exists", name)
+        except subprocess.CalledProcessError:
+            run_oc(
+                ["create", "sa", name],
+                ignore_existing_resource=ignore_existing_resource,
+            )
     except subprocess.CalledProcessError as e:
         raise Exception("Error creating service account") from e
 
