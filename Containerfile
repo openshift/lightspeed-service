@@ -6,6 +6,8 @@ FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 FROM registry.redhat.io/ubi9/python-311
 
 ARG VERSION
+# todo: this is overriden by the image ubi9/python-311, we hard coded WORKDIR below to /app-root
+# makesure the default value of rag content is set according to APP_ROOT and then update the operator.
 ARG APP_ROOT=/app-root
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
@@ -19,7 +21,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LANG=en_US.UTF-8 \
     PIP_NO_CACHE_DIR=off
 
-WORKDIR ${APP_ROOT}
+WORKDIR /app-root
 
 COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
 COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
