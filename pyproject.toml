@@ -35,7 +35,7 @@ distribution = false
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "black==24.8.0",
+    "black==24.10.0",
     "pydocstyle==6.3.0",
     "fastparquet==2024.5.0",  # Required for model evaluation (runtime, if parquet qna file is used)
     "httpx==0.27.0",
