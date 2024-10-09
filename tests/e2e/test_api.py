@@ -206,6 +206,14 @@ def install_ols() -> tuple[str, str, str]:
         ],
         ignore_existing_resource=True,
     )
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "1",
+        ]
+    )
 
     # wait for the ols api server deployment to be created
     r = retry_until_timeout_or_success(
@@ -365,6 +373,16 @@ def install_ols() -> tuple[str, str, str]:
     # tests (collecting/sending data)
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "route",
+                "ols",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("No route exists, creating it.")
     # create a route so tests can access OLS directly
     cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"])
 
