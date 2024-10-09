@@ -111,6 +111,7 @@ dependencies = [
     "jinja2==3.1.4",
     "scikit-learn==1.5.1",
     "tqdm==4.66.5",
+    "starlett==0.37.2",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
