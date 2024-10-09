@@ -191,7 +191,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-4-1106-preview
-      - name: gpt-3.5-turbo
+      - name: gpt-4o-mini
   ```
 
 ### Azure OpenAI

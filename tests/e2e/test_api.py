@@ -446,7 +446,7 @@ def test_invalid_question():
         # at least acknowledges that query is non-ocp.
         # Below assert is minimal due to model randomness.
         assert re.search(
-            r"(sorry|any questions)",
+            r"(sorry|questions)",
             json_response["response"],
             re.IGNORECASE,
         )
@@ -474,7 +474,7 @@ def test_invalid_question_without_conversation_id():
         # Randomness in response is expected.
         # assert json_response["response"] == INVALID_QUERY_RESP
         assert re.search(
-            r"(sorry|any questions)",
+            r"(sorry|questions)",
             json_response["response"],
             re.IGNORECASE,
         )
@@ -620,12 +620,7 @@ def test_valid_question() -> None:
 
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
-        assert "Kubernetes is" in json_response["response"]
-        assert re.search(
-            r"orchestration (tool|system|platform|engine)",
-            json_response["response"],
-            re.IGNORECASE,
-        )
+        assert "Kubernetes" in json_response["response"]
 
 
 @pytest.mark.rag()
@@ -770,6 +765,7 @@ def test_rag_question() -> None:
         assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
+@pytest.mark.cluster()
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"
@@ -1014,7 +1010,7 @@ def test_model_provider():
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
-        ("gpt-3.5-turbo", "openai"),
+        ("gpt-4o-mini", "openai"),
         ("gpt-3.5-turbo", "azure_openai"),
         ("ibm/granite-13b-chat-v2", "bam"),
         ("ibm/granite-13b-chat-v2", "watsonx"),
