@@ -1,0 +1,120 @@
+---
+lockfileVersion: 1
+lockfileVendor: redhat
+arches:
+- arch: x86_64
+  packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libnsl2-2.0.0-1.el9.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 33287
+    checksum: sha256:052f7a182180528ba6e3c4378e5dcfb84640594a3e2e7bbe4f0167381e824ce0
+    name: libnsl2
+    evr: 2.0.0-1.el9
+    sourcerpm: libnsl2-2.0.0-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libxcrypt-compat-4.4.18-3.el9.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 93189
+    checksum: sha256:2bd6c288e1970a001d3a1ae69166c0d926d9c87ce892edcb2110f4e142c12a7a
+    name: libxcrypt-compat
+    evr: 4.4.18-3.el9
+    sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 89670
+    checksum: sha256:89a8c9951ac56bed2caa1adbcba349c021af1134b6e2df3fc0a8a60577a4f54d
+    name: mpdecimal
+    evr: 2.5.1-3.el9
+    sourcerpm: mpdecimal-2.5.1-3.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-3.11.7-1.el9_4.5.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 30122
+    checksum: sha256:9b1004a73a0f5787c93d8ecca9e5b996e9ec78f3a41b0bb45fa4dee5d70fd0f5
+    name: python3.11
+    evr: 3.11.7-1.el9_4.5
+    sourcerpm: python3.11-3.11.7-1.el9_4.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-devel-3.11.7-1.el9_4.5.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 288989
+    checksum: sha256:92778fdafde81b279f752517c47b4a845a749502d1b055ef7dea7983f4557953
+    name: python3.11-devel
+    evr: 3.11.7-1.el9_4.5
+    sourcerpm: python3.11-3.11.7-1.el9_4.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-libs-3.11.7-1.el9_4.5.x86_64.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 10394516
+    checksum: sha256:dc749667416857054a41144ea531a4c616f8410e6ba8e444c6b305d101547e1d
+    name: python3.11-libs
+    evr: 3.11.7-1.el9_4.5
+    sourcerpm: python3.11-3.11.7-1.el9_4.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-pip-22.3.1-5.el9.noarch.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 3358530
+    checksum: sha256:c5c12f2941e65ea36b645ea215a62883fcfafc45931f0370153fecf752bde885
+    name: python3.11-pip
+    evr: 22.3.1-5.el9
+    sourcerpm: python3.11-pip-22.3.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-pip-wheel-22.3.1-5.el9.noarch.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 1490893
+    checksum: sha256:c7c531cbc553b7cbec0a3a61ed396aede78ec663ff77a118a60829b9505383ab
+    name: python3.11-pip-wheel
+    evr: 22.3.1-5.el9
+    sourcerpm: python3.11-pip-22.3.1-5.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-setuptools-65.5.1-2.el9_4.1.noarch.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 1800439
+    checksum: sha256:82b9fcdfc7ef4bdbe6ef6c9e61742300c5336dcd9f14a5856ec989778d2f1993
+    name: python3.11-setuptools
+    evr: 65.5.1-2.el9_4.1
+    sourcerpm: python3.11-setuptools-65.5.1-2.el9_4.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-setuptools-wheel-65.5.1-2.el9_4.1.noarch.rpm
+    repoid: ubi-9-appstream-rpms
+    size: 732370
+    checksum: sha256:f2c79055cd9c2ffb4187eab13ee5d1b7aa178790b312fc97b5d2743e6a97b0c8
+    name: python3.11-setuptools-wheel
+    evr: 65.5.1-2.el9_4.1
+    sourcerpm: python3.11-setuptools-65.5.1-2.el9_4.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/e/expat-2.5.0-2.el9_4.1.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 121852
+    checksum: sha256:6486bdacf10803ecd1de28340eb74e85282c73ec2c06349b762fd496844a16b8
+    name: expat
+    evr: 2.5.0-2.el9_4.1
+    sourcerpm: expat-2.5.0-2.el9_4.1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libpkgconf-1.7.3-10.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 38387
+    checksum: sha256:4feae5941b73640bd86b8d506a657cac5b770043db1464fbcd207721b2159dda
+    name: libpkgconf
+    evr: 1.7.3-10.el9
+    sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libtirpc-1.3.3-8.el9_4.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 98621
+    checksum: sha256:ca3bbea74621399af116782c67187169912540556f10044b4774ec332145b9f5
+    name: libtirpc
+    evr: 1.3.3-8.el9_4
+    sourcerpm: libtirpc-1.3.3-8.el9_4.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-1.7.3-10.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 45675
+    checksum: sha256:bb47b4ecc499c308f41031a99e723827d152d5d750f59849d0c265d820944a26
+    name: pkgconf
+    evr: 1.7.3-10.el9
+    sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-m4-1.7.3-10.el9.noarch.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 16054
+    checksum: sha256:91bafd6e06099451f60288327b275cfcc651822f6145176a157c6b0fa5131e02
+    name: pkgconf-m4
+    evr: 1.7.3-10.el9
+    sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-pkg-config-1.7.3-10.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 12438
+    checksum: sha256:9a502d81d73d3303ceb53a06ad7ce525c97117ea64352174a33708bf3429283d
+    name: pkgconf-pkg-config
+    evr: 1.7.3-10.el9
+    sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
+  source: []
+  module_metadata: []

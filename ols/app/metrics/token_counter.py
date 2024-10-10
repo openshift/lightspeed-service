@@ -14,6 +14,7 @@ from .metrics import llm_calls_total, llm_token_received_total, llm_token_sent_t
 logger = logging.getLogger(__name__)
 
 
+# (false alarm) pylint: disable=W0223
 class GenericTokenCounter(BaseCallbackHandler):
     """A callback handler to count tokens sent and received by the LLM.
 

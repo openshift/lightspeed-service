@@ -32,8 +32,8 @@ spec:
     - name: build-source-image
       value: "true"
     - name: prefetch-input
-      value: '{"type": "pip", "path": ".", "allow_binary": "true"}'
-    - name: hermetic-build
+      value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true"}]'
+    - name: hermetic
       value: "true"
   taskRunSpecs:
     - pipelineTaskName: build-source-image
@@ -43,6 +43,20 @@ spec:
           memory: 1Gi
         limits:
           memory: 4Gi
+    - pipelineTaskName: clair-scan
+      computeResources:
+        requests:
+          cpu: '1'
+          memory: 1Gi
+        limits:
+          memory: 8Gi
+    - pipelineTaskName: ecosystem-cert-preflight-checks
+      computeResources:
+        requests:
+          cpu: '1'
+          memory: 1Gi
+        limits:
+          memory: 8Gi
   pipelineSpec:
     finally:
       - name: show-sbom
@@ -199,6 +213,8 @@ spec:
         params:
           - name: input
             value: $(params.prefetch-input)
+          - name: dev-package-managers
+            value: "true"
         runAfter:
           - clone-repository
         taskRef:
