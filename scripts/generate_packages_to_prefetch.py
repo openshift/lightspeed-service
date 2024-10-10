@@ -234,9 +234,9 @@ def select_best_tag(common_tags):
             if match:
                 return int(match.group(1)), int(match.group(2))
             # Normalize manylinux2014 to manylinux_2_17 and manylinux1 to manylinux_2_5
-            elif "manylinux2014" in tag:
+            if "manylinux2014" in tag:
                 return 2, 17
-            elif "manylinux1" in tag:
+            if "manylinux1" in tag:
                 return 2, 5
             return 0, 0  # Default to lowest version if no match
 
