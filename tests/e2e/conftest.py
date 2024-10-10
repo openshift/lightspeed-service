@@ -70,7 +70,7 @@ def pytest_addoption(parser):
         default=[
             # "bam+ibm/granite-13b-chat-v2",
             "watsonx+ibm/granite-13b-chat-v2",
-            "openai+gpt-3.5-turbo",
+            "openai+gpt-4o-mini",
             "azure_openai+gpt-3.5-turbo",
         ],
         type=str,
