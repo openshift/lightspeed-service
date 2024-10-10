@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:f6f28db597007f5cead6846b9e2476f36fdb00c1cf9f5d9d10ae389351b7a04c"
+content_hash = "sha256:7b63105c55481eacade0754a7af8cdee08f3e423f38aa4999aa95051169bf871"
 
 [[package]]
 name = "absl-py"
