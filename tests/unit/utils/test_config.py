@@ -577,6 +577,7 @@ ols_config:
 dev_config:
   enable_dev_ui: true
   disable_auth: false
+  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
 
 """,
         InvalidConfigurationError,
@@ -604,6 +605,7 @@ dev_config:
   llm_temperature_override: 0.1
   enable_dev_ui: true
   disable_auth: false
+  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
 
 """,
         InvalidConfigurationError,
