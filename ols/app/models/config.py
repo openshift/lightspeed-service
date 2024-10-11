@@ -880,6 +880,8 @@ class OLSConfig(BaseModel):
     reference_content: Optional[ReferenceContent] = None
     authentication_config: AuthenticationConfig = AuthenticationConfig()
     tls_config: TLSConfig = TLSConfig()
+    system_prompt_path: Optional[str] = None
+    system_prompt: Optional[str] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -921,6 +923,10 @@ class OLSConfig(BaseModel):
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
+        # read file containing system prompt
+        # if not specified, the prompt will remain None, which will be handled
+        # by system prompt infrastructure
+        self.system_prompt = _get_attribute_from_file(data, "system_prompt_path")
 
         self.extra_ca = data.get("extra_ca", [])
         self.certificate_directory = data.get(
@@ -940,6 +946,7 @@ class OLSConfig(BaseModel):
                 and self.query_validation_method == other.query_validation_method
                 and self.tls_config == other.tls_config
                 and self.certificate_directory == other.certificate_directory
+                and self.system_prompt == other.system_prompt
             )
         return False
 

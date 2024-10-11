@@ -758,6 +758,7 @@ ols_config:
   default_provider: p1
   default_model: m1
   certificate_directory: '/foo/bar/baz'
+  system_prompt_path: 'tests/config/system_prompt.txt'
 dev_config:
   enable_dev_ui: true
   disable_auth: false
@@ -832,6 +833,7 @@ def test_valid_config_file():
                     "default_provider": "p1",
                     "default_model": "m1",
                     "certificate_directory": "/foo/bar/baz/xyzzy",
+                    "system_prompt_path": "tests/config/system_prompt.txt",
                 },
             }
         )
