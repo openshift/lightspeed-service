@@ -1854,6 +1854,8 @@ def test_ols_config(tmpdir):
     assert ols_config.authentication_config == AuthenticationConfig()
     assert ols_config.extra_ca == []
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt is None
 
 
 def test_config():
@@ -1974,6 +1976,8 @@ def test_config():
     )
     assert config.user_data_collector_config == UserDataCollectorConfig()
     assert config.ols_config.certificate_directory == "/foo/bar/baz"
+    assert config.ols_config.system_prompt_path is None
+    assert config.ols_config.system_prompt is None
 
 
 def test_config_default_certificate_directory():
@@ -2693,3 +2697,86 @@ def test_user_data_collection_config__token_expectation():
         match="cp_offline_token is required in stage environment",
     ):
         UserDataCollectorConfig(ingress_env="stage", cp_offline_token=None)
+
+
+def test_ols_config_with_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "logging_config": {
+                "logging_level": "INFO",
+            },
+            "system_prompt_path": "tests/config/system_prompt.txt",
+        }
+    )
+    assert ols_config.default_provider == "test_default_provider"
+    assert ols_config.default_model == "test_default_model"
+    assert ols_config.conversation_cache.type == "memory"
+    assert ols_config.conversation_cache.memory.max_entries == 100
+    assert ols_config.logging_config.app_log_level == logging.INFO
+    assert (
+        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
+    )
+    assert ols_config.user_data_collection == UserDataCollection()
+    assert ols_config.reference_content is None
+    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.extra_ca == []
+    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt == "This is test system prompt!"
+
+
+def test_ols_config_with_non_existing_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt path specification that does not exist."""
+    with pytest.raises(
+        FileNotFoundError,
+        match="No such file or directory: 'tests/config/non_existing_file.txt'",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "logging_level": "INFO",
+                },
+                "system_prompt_path": "tests/config/non_existing_file.txt",
+            }
+        )
+
+
+def test_ols_config_with_non_readable_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt path specification that is not readable."""
+    with pytest.raises(
+        IsADirectoryError,
+        match="Is a directory: 'tests/config/'",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "logging_level": "INFO",
+                },
+                "system_prompt_path": "tests/config/",
+            }
+        )
