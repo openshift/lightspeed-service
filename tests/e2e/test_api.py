@@ -16,7 +16,7 @@ from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
-from tests.e2e.utils import ols_installer as ols_installer
+from tests.e2e.utils import ols_installer
 from tests.e2e.utils import response as response_utils
 from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
