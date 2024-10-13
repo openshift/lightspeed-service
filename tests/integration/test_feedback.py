@@ -13,6 +13,8 @@ from ols.utils import suid
 # use proper conversation ID
 CONVERSATION_ID = suid.get_suid()
 
+client: TestClient
+
 
 @pytest.fixture(scope="function", autouse=True)
 def _setup():
