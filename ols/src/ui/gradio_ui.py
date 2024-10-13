@@ -90,4 +90,5 @@ class GradioUI:
 
 
 if __name__ == "__main__":
-    GradioUI.ui.launch(show_api=False)
+    """Start the HTTP server with chat based on GradioUI."""
+    GradioUI().ui.launch(show_api=False)
