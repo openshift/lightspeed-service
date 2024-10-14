@@ -12,6 +12,7 @@ from ols.app.models.config import ProviderConfig
 from ols.app.models.models import SummarizerResponse
 from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
+from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils.token_handler import TokenHandler
 
@@ -29,6 +30,14 @@ class DocsSummarizer(QueryHelper):
         self.generic_llm_params = {
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.parameters.max_tokens_for_response  # noqa: E501
         }
+        # default system prompt fine-tuned for the service
+        self.system_prompt = QUERY_SYSTEM_INSTRUCTION
+
+        # allow the system prompt to be customizable
+        if config.ols_config.system_prompt is not None:
+            self.system_prompt = config.ols_config.system_prompt
+
+        logger.debug("System prompt: %s", self.system_prompt)
 
     def _get_model_options(
         self, provider_config: ProviderConfig
@@ -79,7 +88,7 @@ class DocsSummarizer(QueryHelper):
         # Use sample text for context/history to get complete prompt instruction.
         # This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = GeneratePrompt(
-            query, ["sample"], ["ai: sample"]
+            query, ["sample"], ["ai: sample"], self.system_prompt
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -104,7 +113,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
-            query, rag_context, history
+            query, rag_context, history, self.system_prompt
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
