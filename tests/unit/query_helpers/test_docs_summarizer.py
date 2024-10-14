@@ -39,6 +39,14 @@ def _setup():
     config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
 
+def test_if_system_prompt_was_updated():
+    """Test if system prompt was overided from the configuration."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    # expected prompt was loaded during configuration phase
+    expected_prompt = config.ols_config.system_prompt
+    assert summarizer.system_prompt == expected_prompt
+
+
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 1)
 @patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))

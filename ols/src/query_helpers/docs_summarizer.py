@@ -31,13 +31,13 @@ class DocsSummarizer(QueryHelper):
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.parameters.max_tokens_for_response  # noqa: E501
         }
         # default system prompt fine-tuned for the service
-        self.system_prompt = QUERY_SYSTEM_INSTRUCTION
+        self._system_prompt = QUERY_SYSTEM_INSTRUCTION
 
         # allow the system prompt to be customizable
         if config.ols_config.system_prompt is not None:
-            self.system_prompt = config.ols_config.system_prompt
+            self._system_prompt = config.ols_config.system_prompt
 
-        logger.debug("System prompt: %s", self.system_prompt)
+        logger.debug("System prompt: %s", self._system_prompt)
 
     def _get_model_options(
         self, provider_config: ProviderConfig
@@ -88,7 +88,7 @@ class DocsSummarizer(QueryHelper):
         # Use sample text for context/history to get complete prompt instruction.
         # This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = GeneratePrompt(
-            query, ["sample"], ["ai: sample"], self.system_prompt
+            query, ["sample"], ["ai: sample"], self._system_prompt
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -113,7 +113,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
-            query, rag_context, history, self.system_prompt
+            query, rag_context, history, self._system_prompt
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
@@ -149,3 +149,8 @@ class DocsSummarizer(QueryHelper):
         logger.debug(f"{conversation_id} Summary response: {response}")
 
         return SummarizerResponse(response, rag_chunks, truncated)
+
+    @property
+    def system_prompt(self) -> str:
+        """Return actually used system prompt."""
+        return self._system_prompt
