@@ -44,7 +44,9 @@ class GradioUI:
         # Headers for the HTTP request
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-        logger.info(f"Using history: {use_history!s}")
+        logger.info("Using history: %s", use_history)
+        logger.info("History length: %d", len(history))
+
         # Body of the request (a JSON object with a "query" field)
 
         data = {"query": prompt}
@@ -56,10 +58,10 @@ class GradioUI:
             logger.info(f"Using conversation ID: {self.conversation_id}")
 
         if provider:
-            logger.info(f"Using provider: {provider}")
+            logger.info("Using provider: %s", provider)
             data["provider"] = provider
         if model:
-            logger.info(f"Using model: {model}")
+            logger.info("Using model: %s", model)
             data["model"] = model
 
         # Convert the data dictionary to a JSON string
@@ -73,11 +75,11 @@ class GradioUI:
 
             # Check if the request was successful (status code 200)
             if response.status_code == requests.codes.ok:
-                logger.info(f"Response JSON: {response.json()}")
+                logger.info("Response JSON: %s", response.json())
                 self.conversation_id = response.json().get("conversation_id")
                 return response.json().get("response")
-            logger.info(f"Request failed with status code {response.status_code}")
-            logger.info(f"Response text: {response.text}")
+            logger.info("Request failed with status code %d", response.status_code)
+            logger.info("Response text: %s", response.text)
             return f"Sorry, an error occurred: {response.text}"
 
         except (ValueError, requests.RequestException) as e:
@@ -90,4 +92,5 @@ class GradioUI:
 
 
 if __name__ == "__main__":
-    GradioUI.ui.launch(show_api=False)
+    # Start the HTTP server with chat based on GradioUI.
+    GradioUI().ui.launch(show_api=False)
