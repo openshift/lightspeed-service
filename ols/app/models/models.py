@@ -240,6 +240,32 @@ class ErrorResponse(BaseModel):
     }
 
 
+class NotAvailableResponse(BaseModel):
+    """Model representing error response for readiness endpoint."""
+
+    detail: dict[str, str]
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "detail": {
+                        "response": "Service is not ready",
+                        "cause": "Index is not ready",
+                    }
+                },
+                {
+                    "detail": {
+                        "response": "Service is not ready",
+                        "cause": "LLM is not ready",
+                    },
+                },
+            ]
+        }
+    }
+
+
 class PromptTooLongResponse(ErrorResponse):
     """Model representing error response when prompt is too long."""
 
