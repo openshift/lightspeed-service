@@ -207,7 +207,7 @@ data:
         credentials_path: config/openai/openai_api_key.txt
         models:
           - name: gpt-4-1106-preview
-          - name: gpt-3.5-turbo
+          - name: gpt-4o-mini
     ols_config:
       reference_content:
         product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
@@ -224,7 +224,7 @@ data:
         tls_certificate_path: /app-root/certs/tls.crt
         tls_key_path: /app-root/certs/tls.key
       default_provider: openai
-      default_model: gpt-3.5-turbo
+      default_model: gpt-4o-mini
       user_data_collection:
         feedback_disabled: true
         transcripts_disabled: true

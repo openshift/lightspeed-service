@@ -191,7 +191,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: openai_api_key.txt
     models:
       - name: gpt-4-1106-preview
-      - name: gpt-3.5-turbo
+      - name: gpt-4o-mini
   ```
 
 ### Azure OpenAI
@@ -205,7 +205,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: azure_openai_api_key.txt
     deployment_name: my_azure_openai_deployment_name
     models:
-      - name: gpt-3.5-turbo
+      - name: gpt-4o-mini
   ```
 
 ### WatsonX
