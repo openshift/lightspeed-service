@@ -16,7 +16,7 @@ from ols.src.llms.llm_loader import load_llm
 
 router = APIRouter(tags=["health"])
 logger = logging.getLogger(__name__)
-llm_is_ready_persistent_state = False
+llm_is_ready_persistent_state: bool = False
 
 
 def llm_is_ready() -> bool:
@@ -25,7 +25,7 @@ def llm_is_ready() -> bool:
     If so, store the success to `llm_is_ready_persistent_state` to cache
     the result for future calls.
     """
-    global llm_is_ready_persistent_state
+    global llm_is_ready_persistent_state  # pylint: disable=global-statement
     if llm_is_ready_persistent_state is True:
         return True
     try:
@@ -40,7 +40,7 @@ def llm_is_ready() -> bool:
             return True
         raise ValueError(f"Unexpected response from LLM: {response}")
     except Exception as e:
-        logger.error(f"LLM connection check failed with - {e}")
+        logger.error("LLM connection check failed with - %s", e)
         return False
 
 
