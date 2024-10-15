@@ -44,7 +44,8 @@ configure model, and connect to it.
     * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
     * [10. (Optional) Configure conversation cache](#10-optional-configure-conversation-cache)
     * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
-    * [12. Registering new LLM provider](#12-registering-new-llm-provider)
+    * [12. Registering a new LLM provider](#12-registering-new-llm-provider)
+    * [13. Fine tuning)(#13-fine-tuning)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -428,8 +429,16 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
  > This action may be required for self-hosted LLMs.
 
-## 12. Registering new LLM provider
+## 12. Registering a new LLM provider
    Please look [here](https://github.com/openshift/lightspeed-service/blob/main/CONTRIBUTING.md#adding-a-new-providermodel) for more info.
+
+## 13. Fine tuning
+   The service uses the, so called, system prompt to put the question into context before the question is sent to the selected LLM. The default system prompt is fine tuned for questions about OpenShift and Kubernetes. It is possible to use a different system prompt via the configuration option `system_prompt_path` in the `ols_config` section. That option must contain the path to the text file with the actual system prompt (can contain multiple lines). An example of such configuration:
+
+```yaml
+ols_config:
+  system_prompt_path: "system_prompts/system_prompt_for_product_XYZZY"
+```
 
 # Usage
 
