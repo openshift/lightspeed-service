@@ -31,21 +31,22 @@ configure model, and connect to it.
         * [BAM (not officially supported)](#bam-not-officially-supported)
         * [Locally running InstructLab](#locally-running-instructlab)
     * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
-    * [5. Configure OpenShift LightSpeed (OLS)](#5-configure-openshift-lightspeed-ols)
-    * [6. Configure LLM providers](#6-configure-llm-providers)
+* [Configuration](#configuration)
+    * [1. Configure OpenShift LightSpeed (OLS)](#1-configure-openshift-lightspeed-ols)
+    * [2. Configure LLM providers](#2-configure-llm-providers)
         * [OpenAI provider](#openai-provider)
         * [Azure OpenAI](#azure-openai-1)
         * [WatsonX](#watsonx-1)
         * [RHEL AI provider](#rhel-ai-provider)
         * [Red Hat OpenShift AI](#red-hat-openshift-ai)
         * [Local *ollama* server](#local-ollama-server)
-    * [7. Configure OLS Authentication](#7-configure-ols-authentication)
-    * [8. Configure OLS TLS communication](#8-configure-ols-tls-communication)
-    * [9. (Optional) Configure the local document store](#9-optional-configure-the-local-document-store)
-    * [10. (Optional) Configure conversation cache](#10-optional-configure-conversation-cache)
-    * [11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#11-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
-    * [12. Registering a new LLM provider](#12-registering-new-llm-provider)
-    * [13. Fine tuning)(#13-fine-tuning)
+    * [3. Configure OLS Authentication](#3-configure-ols-authentication)
+    * [4. Configure OLS TLS communication](#4-configure-ols-tls-communication)
+    * [5. (Optional) Configure the local document store](#5-optional-configure-the-local-document-store)
+    * [6. (Optional) Configure conversation cache](#6-optional-configure-conversation-cache)
+    * [7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#7-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
+    * [8. Registering a new LLM provider](#8-registering-a-new-llm-provider)
+    * [9. Fine tuning](#9-fine-tuning)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -84,6 +85,7 @@ configure model, and connect to it.
     * [Utility to generate `requirements.*` files](#utility-to-generate-requirements-files)
         * [Path](#path-1)
         * [Usage](#usage-2)
+        * [Known issue](#known-issue)
     * [Uploading artifact containing the pytest results and configuration to an s3 bucket.](#uploading-artifact-containing-the-pytest-results-and-configuration-to-an-s3-bucket)
         * [Path](#path-2)
         * [Usage](#usage-3)
@@ -91,6 +93,7 @@ configure model, and connect to it.
 * [License](#license)
 
 <!-- vim-markdown-toc -->
+
 
 # Prerequisites
 
@@ -163,12 +166,14 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: openai_api_key.txt
    ```
 
-## 5. Configure OpenShift LightSpeed (OLS)
+# Configuration
+
+## 1. Configure OpenShift LightSpeed (OLS)
 
    OLS configuration is in YAML format. It is loaded from a file referred to by the `OLS_CONFIG_FILE` environment variable and defaults to `olsconfig.yaml` in the current directory.
    You can find a example configuration in the [examples/olsconfig.yaml](examples/olsconfig.yaml) file in this repository.
 
-## 6. Configure LLM providers
+## 2. Configure LLM providers
 
    The example configuration file defines providers for six LLM providers: BAM, OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI (RHEL AI), but defines BAM as the default provider. If you prefer to use a different LLM provider than BAM, such as OpenAI, ensure that the provider definition points to a file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to reference the selected provider and model.
 
@@ -294,7 +299,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
          ```
 
 
-## 7. Configure OLS Authentication
+## 3. Configure OLS Authentication
 
    NOTE: Currently, only K8S-based authentication can be used. In future versions, more authentication mechanisms will be configurable.
 
@@ -341,7 +346,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
       ```
       **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
 
-## 8. Configure OLS TLS communication
+## 4. Configure OLS TLS communication
 
    This section provides instructions on configuring TLS (Transport Layer Security) for the OLS Application, enabling secure connections via HTTPS. TLS is enabled by default; however, if necessary, it can be disabled through the `dev_config` settings.
 
@@ -388,12 +393,12 @@ Depends on configuration, but usually it is not needed to generate or use API ke
                tls_key_password_path: /app-root/certs/password.txt
       ```
 
-## 9. (Optional) Configure the local document store
+## 5. (Optional) Configure the local document store
    ```sh
    make get-rag
    ```
 
-## 10. (Optional) Configure conversation cache
+## 6. (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
    
    1. Cache stored in memory:
@@ -419,7 +424,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
          ```
          In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
 
-## 11. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
+## 7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
 ```yaml
       ols_config:
          extra_ca:
@@ -429,10 +434,10 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
  > This action may be required for self-hosted LLMs.
 
-## 12. Registering a new LLM provider
+## 8. Registering a new LLM provider
    Please look [here](https://github.com/openshift/lightspeed-service/blob/main/CONTRIBUTING.md#adding-a-new-providermodel) for more info.
 
-## 13. Fine tuning
+## 9. Fine tuning
    The service uses the, so called, system prompt to put the question into context before the question is sent to the selected LLM. The default system prompt is fine tuned for questions about OpenShift and Kubernetes. It is possible to use a different system prompt via the configuration option `system_prompt_path` in the `ols_config` section. That option must contain the path to the text file with the actual system prompt (can contain multiple lines). An example of such configuration:
 
 ```yaml
