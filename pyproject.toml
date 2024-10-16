@@ -78,7 +78,7 @@ dependencies = [
     "pdm==2.18.1",
     "torch==2.4.1",
     "pandas==2.1.4",
-    "fastapi==0.115.0",
+    "fastapi==0.115.2",
     "langchain==0.2.16",
     "langchain-ibm==0.1.12",
     "llama-index==0.10.62",
@@ -110,7 +110,7 @@ dependencies = [
     "zipp==3.20.1",
     "jinja2==3.1.4",
     "scikit-learn==1.5.1",
-    "starlette==0.37.2",
+    "starlette==0.40.0",
     "tqdm==4.66.5",
 ]
 requires-python = "==3.11.*"
