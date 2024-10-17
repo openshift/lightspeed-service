@@ -192,11 +192,21 @@
                 "operationId": "readiness_probe_get_method_readiness_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Service is ready",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ReadinessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service is not ready",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotAvailableResponse"
                                 }
                             }
                         }
@@ -654,6 +664,37 @@
                 "examples": [
                     {
                         "alive": true
+                    }
+                ]
+            },
+            "NotAvailableResponse": {
+                "properties": {
+                    "detail": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "NotAvailableResponse",
+                "description": "Model representing error response for readiness endpoint.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Index is not ready",
+                            "response": "Service is not ready"
+                        }
+                    },
+                    {
+                        "detail": {
+                            "cause": "LLM is not ready",
+                            "response": "Service is not ready"
+                        }
                     }
                 ]
             },
