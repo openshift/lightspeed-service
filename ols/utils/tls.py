@@ -13,6 +13,7 @@ class TLSProfiles(StrEnum):
     OLD_TYPE = "OldType"
     INTERMEDIATE_TYPE = "IntermediateType"
     MODERN_TYPE = "ModernType"
+    CUSTOM_TYPE = "Custom"
 
 
 class TLSProtocolVersion(StrEnum):
