@@ -260,7 +260,9 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         )
 
     if response.status_code != requests.codes.accepted:
-        logger.error(f"posting payload failed, full response: {response}")
+        logger.error(
+            f"posting payload failed, response: {response.status_code}: {response.text}"
+        )
         raise requests.exceptions.HTTPError(
             f"data upload failed with response code: {response.status_code}"
         )
