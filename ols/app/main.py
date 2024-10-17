@@ -119,7 +119,9 @@ async def log_requests_responses(
             )
             yield chunk
 
-    if isinstance(response, StreamingResponse):
+    # current version of Starlette pass instance of _StreamingResponse class that is
+    # private. Thus we need to check if the body_iterator attribute exists
+    if hasattr(response, "body_iterator"):
         # The response is already a streaming response
         response.body_iterator = stream_response_body(response.body_iterator)
     else:
