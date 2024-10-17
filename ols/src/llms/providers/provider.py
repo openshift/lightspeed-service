@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
+import httpx
 from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
@@ -80,6 +81,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 RHELAIVLLMParameters = {
@@ -95,6 +97,7 @@ RHELAIVLLMParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 BAMParameters = {
