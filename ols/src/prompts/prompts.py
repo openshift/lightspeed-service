@@ -5,8 +5,6 @@
 
 from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
 
-# TODO: OLS-503 Fine tune system prompt
-
 # Note::
 # Right now templates are somewhat alligned to make granite work better.
 # GPT still works well with this. Ideally we should have model specific tags.
