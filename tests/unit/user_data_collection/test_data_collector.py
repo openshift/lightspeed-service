@@ -229,3 +229,10 @@ def test_ensure_data_is_not_bigger_than_defined(tmpdir):
     data_collector.ensure_data_dir_is_not_bigger_than_defined(tmpdir.strpath, 50)
 
     assert len(feedback_dir.listdir()) == 2
+
+
+def test_access_token_from_offline_token():
+    """Test the access_token_from_offline_token function."""
+    with patch("requests.post", return_value=Response()):
+        with pytest.raises(Exception, match="Response is not JSON"):
+            data_collector.access_token_from_offline_token("offline_token")

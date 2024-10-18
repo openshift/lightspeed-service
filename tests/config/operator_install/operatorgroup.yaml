@@ -1,9 +1,0 @@
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  annotations:
-    olm.providedAPIs: OLSConfig.v1alpha1.ols.openshift.io
-  name: openshift-lightspeed
-  namespace: openshift-lightspeed
-spec:
-  upgradeStrategy: Default

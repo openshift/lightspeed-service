@@ -760,6 +760,7 @@ ols_config:
   default_provider: p1
   default_model: m1
   certificate_directory: '/foo/bar/baz'
+  system_prompt_path: 'tests/config/system_prompt.txt'
 dev_config:
   enable_dev_ui: true
   disable_auth: false
@@ -834,6 +835,7 @@ def test_valid_config_file():
                     "default_provider": "p1",
                     "default_model": "m1",
                     "certificate_directory": "/foo/bar/baz/xyzzy",
+                    "system_prompt_path": "tests/config/system_prompt.txt",
                 },
             }
         )
@@ -1105,6 +1107,10 @@ def test_valid_config_with_azure_openai():
             }
         )
         assert config.config == expected_config
+        assert (
+            config.config.llm_providers.providers.get("p1").api_version
+            == constants.DEFAULT_AZURE_API_VERSION
+        )
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1212,6 +1218,9 @@ def test_valid_config_with_azure_openai_api_version():
             }
         )
         assert config.config == expected_config
+        assert (
+            config.config.llm_providers.providers.get("p1").api_version == "2024-12-31"
+        )
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1262,6 +1271,7 @@ def test_valid_config_with_bam():
             }
         )
         assert config.config == expected_config
+        assert config.config.llm_providers.providers.get("p1").api_version is None
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")

@@ -16,6 +16,7 @@ from pydantic import (
     model_validator,
 )
 
+import ols.utils.tls as tls
 from ols import constants
 
 
@@ -276,6 +277,7 @@ class ProviderConfig(BaseModel):
     credentials: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = {}
+    api_version: Optional[str] = None
     deployment_name: Optional[str] = None
     openai_config: Optional[OpenAIConfig] = None
     azure_config: Optional[AzureOpenAIConfig] = None
@@ -321,6 +323,9 @@ class ProviderConfig(BaseModel):
         self.setup_models_config(data)
 
         if self.type == constants.PROVIDER_AZURE_OPENAI:
+            self.api_version = data.get(
+                "api_version", constants.DEFAULT_AZURE_API_VERSION
+            )
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
             # note: it can be overwritten in azure_config
@@ -536,7 +541,7 @@ class PostgresConfig(BaseModel):
         super().__init__(**data)
         # password should be read from file
         if self.password_path is not None:
-            with open(self.password_path) as f:
+            with open(self.password_path, "r") as f:
                 self.password = f.read().rstrip()
 
     @model_validator(mode="after")
@@ -868,6 +873,51 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class TLSSecurityProfile(BaseModel):
+    """TLS security profile structure."""
+
+    profile_type: Optional[str] = None
+    min_tls_version: Optional[str] = None
+    ciphers: Optional[list[str]] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is not None:
+            self.profile_type = data.get("type")
+            self.min_tls_version = data.get("minTLSVersion")
+            self.ciphers = data.get("ciphers")
+
+    def validate_yaml(self) -> None:
+        """Validate structure content."""
+        # check the TLS profile type
+        if self.profile_type is not None:
+            try:
+                tls.TLSProfiles(self.profile_type)
+            except ValueError:
+                raise InvalidConfigurationError(
+                    f"Invalid TLS profile type '{self.profile_type}'"
+                )
+        # check the TLS protocol version
+        if self.min_tls_version is not None:
+            try:
+                tls.TLSProtocolVersion(self.min_tls_version)
+            except ValueError:
+                raise InvalidConfigurationError(
+                    f"Invalid minimal TLS version '{self.min_tls_version}'"
+                )
+        # check ciphers
+        if self.ciphers is not None:
+            # just perform the check for non-custom TLS profile type
+            if self.profile_type is not None and self.profile_type != "Custom":
+                supported_ciphers = tls.TLS_CIPHERS[tls.TLSProfiles(self.profile_type)]
+                for cipher in self.ciphers:
+                    if cipher not in supported_ciphers:
+                        raise InvalidConfigurationError(
+                            f"Unsupported cipher '{cipher}' found in configuration"
+                        )
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
@@ -876,6 +926,8 @@ class OLSConfig(BaseModel):
     reference_content: Optional[ReferenceContent] = None
     authentication_config: AuthenticationConfig = AuthenticationConfig()
     tls_config: TLSConfig = TLSConfig()
+    system_prompt_path: Optional[str] = None
+    system_prompt: Optional[str] = None
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
@@ -883,6 +935,7 @@ class OLSConfig(BaseModel):
     query_validation_method: Optional[str] = constants.QueryValidationMethod.DISABLED
 
     user_data_collection: UserDataCollection = UserDataCollection()
+    tls_security_profile: Optional[TLSSecurityProfile] = None
 
     extra_ca: list[FilePath] = []
     certificate_directory: Optional[str] = None
@@ -917,10 +970,17 @@ class OLSConfig(BaseModel):
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
+        # read file containing system prompt
+        # if not specified, the prompt will remain None, which will be handled
+        # by system prompt infrastructure
+        self.system_prompt = _get_attribute_from_file(data, "system_prompt_path")
 
         self.extra_ca = data.get("extra_ca", [])
         self.certificate_directory = data.get(
             "certificate_directory", constants.DEFAULT_CERTIFICATE_DIRECTORY
+        )
+        self.tls_security_profile = TLSSecurityProfile(
+            data.get("tlsSecurityProfile", None)
         )
 
     def __eq__(self, other: object) -> bool:
@@ -936,6 +996,8 @@ class OLSConfig(BaseModel):
                 and self.query_validation_method == other.query_validation_method
                 and self.tls_config == other.tls_config
                 and self.certificate_directory == other.certificate_directory
+                and self.system_prompt == other.system_prompt
+                and self.tls_security_profile == other.tls_security_profile
             )
         return False
 
@@ -950,6 +1012,8 @@ class OLSConfig(BaseModel):
         if self.query_filters is not None:
             for query_filter in self.query_filters:
                 query_filter.validate_yaml()
+        if self.tls_security_profile is not None:
+            self.tls_security_profile.validate_yaml()
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:

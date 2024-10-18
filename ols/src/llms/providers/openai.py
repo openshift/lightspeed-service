@@ -22,7 +22,7 @@ class OpenAI(LLMProvider):
 
     @property
     def default_params(self) -> dict[str, Any]:
-        """Default LLM params."""
+        """Construct and return structure with default LLM params."""
         self.url = str(self.provider_config.url or self.url)
         self.credentials = self.provider_config.credentials
         # provider-specific configuration has precendence over regular configuration

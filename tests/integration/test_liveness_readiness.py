@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 from ols import config
 
+client: TestClient
+
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py

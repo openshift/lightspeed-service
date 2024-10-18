@@ -18,6 +18,16 @@ DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/utils.sh"
 
+# install operator-sdk 
+export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
+export OS=$(uname | awk '{print tolower($0)}')
+export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.36.1
+curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
+mkdir -p $HOME/.local/bin
+chmod +x operator-sdk_${OS}_${ARCH} && mv operator-sdk_${OS}_${ARCH} $HOME/.local/bin/operator-sdk
+export PATH=$HOME/.local/bin:$PATH
+operator-sdk version
+
 function run_suites() {
   local rc=0
 
@@ -32,11 +42,16 @@ function run_suites() {
   # run_suite "bam" "not model_evaluation" "bam" "$BAM_PROVIDER_KEY_PATH" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
   # (( rc = rc || $? ))
 
-  run_suite "openai" "not model_evaluation" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
+  run_suite "openai" "not model_evaluation and not azure_entra_id" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" "" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
+  run_suite "watsonx" " not azure_entra_id" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
   (( rc = rc || $? ))
+
+  # smoke tests for RHOAI VLLM-compatible provider
+  run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
+  (( rc = rc || $? ))
+
   set -e
 
   return $rc

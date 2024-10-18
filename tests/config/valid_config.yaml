@@ -36,6 +36,7 @@ ols_config:
   user_data_collection:
     transcripts_disabled: true
   certificate_directory: "/foo/bar/baz/xyzzy"
+  system_prompt_path: "tests/config/system_prompt.txt"
 dev_config:
   disable_auth: true
   disable_tls: true

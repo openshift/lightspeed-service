@@ -76,7 +76,7 @@ class ResponseEvaluation:
 
         if "ols_rag" in self._args.eval_modes:
             # load rag index
-            config.rag_index
+            config.rag_index  # pylint: disable=W0104
             if config.rag_index is None:
                 raise Exception("No valid rag index for ols_rag mode")
 

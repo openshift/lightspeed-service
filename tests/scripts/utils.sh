@@ -27,16 +27,15 @@ function cleanup_ols_operator() {
 
     # delete the OLS operand
     oc delete --wait --ignore-not-found olsconfig/cluster
-
-    # delete the OLS subscription
-    oc delete -n openshift-lightspeed --wait --ignore-not-found subscription/lightspeed-operator
-    oc delete -n openshift-lightspeed --wait --ignore-not-found operatorgroup/openshift-lightspeed
-
-    # delete the OLS catalog
-    oc delete -n openshift-marketplace --wait --ignore-not-found catalogsource/lightspeed-operator-catalog
-
+        
+    # cleanup the bundle
+    operator-sdk cleanup lightspeed-operator
+    
     # delete the OLS namespace
     oc delete --wait --ignore-not-found ns openshift-lightspeed
+
+    # delete the ImageDigestMirrorSet
+    oc delete --wait --ignore-not-found imagedigestmirrorset/openshift-lightspeed-prod-to-ci
 }
 
 # $1 suite id

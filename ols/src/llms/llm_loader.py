@@ -89,7 +89,7 @@ def load_llm(
             f"Unsupported LLM provider type '{provider_config.type}'."
         )
 
-    logger.debug(f"loading LLM '{model}' from '{provider}'")
+    logger.debug("loading LLM model '%s' from provider '%s'", model, provider)
 
     llm_provider = llm_providers_reg.llm_providers[provider_config.type]
     return llm_provider(model, provider_config, generic_llm_params or {}).load()

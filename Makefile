@@ -15,7 +15,8 @@ images: ## Build container images
 install-tools:	install-woke ## Install required utilities/tools
 	# OLS 1085: Service build failure issue caused by newest PDM version
 	# (right now we need to stick to PDM specified in pyproject.toml file)
-	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm==2.18.1; }
+	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
+	pdm --version
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
 	# pip uninstall -y mypy 2> /dev/null || true
@@ -29,6 +30,8 @@ install-tools:	install-woke ## Install required utilities/tools
 	black --version
 	# check that correct Ruff version is installed
 	ruff --version
+	# check that correct Pydocstyle version is installed
+	pydocstyle --version
 
 
 install-woke: ## Install woke, required for Inclusive Naming scan

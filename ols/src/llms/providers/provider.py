@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
+import httpx
 from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 class ProviderParameter:
     """Specification of one provider parameter."""
 
-    _name: str
+    name: str
     _type: type
 
 
@@ -80,6 +81,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 RHELAIVLLMParameters = {
@@ -95,6 +97,7 @@ RHELAIVLLMParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 BAMParameters = {
@@ -276,7 +279,7 @@ class LLMProvider(AbstractLLMProvider):
 
         # retrieve all available parameters for provider
         available_parameters = available_provider_parameters[provider]
-        available_parameter_names = {p._name for p in available_parameters}
+        available_parameter_names = {p.name for p in available_parameters}
 
         # only supported parameters will be returned
         filtered_params: dict[str, Any] = {}

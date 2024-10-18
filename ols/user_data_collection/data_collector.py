@@ -26,7 +26,7 @@ import requests
 sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
 
 # initialize config
-from ols import config
+from ols import config  # pylint: disable=C0413
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 config.reload_from_yaml_file(
@@ -35,6 +35,7 @@ config.reload_from_yaml_file(
 udc_config = config.user_data_collector_config  # shortcut
 
 
+# pylint: disable-next=C0413
 from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
 
 INITIAL_WAIT = 60 * 5  # 5 minutes in seconds
@@ -100,9 +101,15 @@ def access_token_from_offline_token(offline_token: str) -> str:
     }
 
     response = requests.post(url + endpoint, data=data, timeout=REDHAT_SSO_TIMEOUT)
-    if response.status_code == requests.codes.ok:
-        return response.json()["access_token"]
-    raise Exception(f"Failed to generate access token. Response: {response.json()}")
+    try:
+        if response.status_code == requests.codes.ok:
+            return response.json()["access_token"]
+        raise Exception(f"Failed to generate access token. Response: {response.json()}")
+    except json.JSONDecodeError:
+        raise Exception(
+            "Failed to generate access token. Response is not JSON."
+            f"Response: {response.status_code}: {response.text}"
+        )
 
 
 def get_cloud_openshift_pull_secret() -> str:

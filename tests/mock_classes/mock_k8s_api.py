@@ -63,8 +63,7 @@ def mock_token_review_response(token_review):
         return MockK8sResponse(
             True, username="valid-user", uid="valid-uid", groups=["ols-group"]
         )
-    else:
-        return MockK8sResponse(False)
+    return MockK8sResponse(False)
 
 
 def mock_subject_access_review_response(sar):
@@ -81,5 +80,4 @@ def mock_subject_access_review_response(sar):
     """
     if sar.spec.user in {"valid-user", "kube:admin"}:
         return MockK8sResponse(allowed=True)
-    else:
-        return MockK8sResponse(allowed=False)
+    return MockK8sResponse(allowed=False)

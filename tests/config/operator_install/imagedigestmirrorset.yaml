@@ -1,0 +1,19 @@
+# The images are pulled from our redhat-user-workloads registry or staging registry while the production image is not yet available.
+kind: ImageDigestMirrorSet
+apiVersion: config.openshift.io/v1
+metadata:
+  name: openshift-lightspeed-prod-to-ci
+spec:
+  imageDigestMirrors:
+    - source: registry.redhat.io/openshift-lightspeed-beta/lightspeed-rhel9-operator
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-operator
+    - source: registry.redhat.io/openshift-lightspeed-beta/lightspeed-operator-bundle
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/bundle
+    - source: registry.redhat.io/openshift-lightspeed-beta/lightspeed-service-api-rhel9
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service
+    - source: registry.redhat.io/openshift-lightspeed-beta/lightspeed-console-plugin-rhel9
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console

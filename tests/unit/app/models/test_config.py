@@ -5,6 +5,7 @@ import logging
 import pytest
 from pydantic import ValidationError
 
+import ols.utils.tls as tls
 from ols import constants
 from ols.app.models.config import (
     AuthenticationConfig,
@@ -24,6 +25,7 @@ from ols.app.models.config import (
     RedisConfig,
     ReferenceContent,
     TLSConfig,
+    TLSSecurityProfile,
     UserDataCollection,
     UserDataCollectorConfig,
 )
@@ -448,6 +450,9 @@ def test_provider_config_azure_openai_specific():
             ],
         }
     )
+    # Default azure api version
+    assert provider_config.api_version == constants.DEFAULT_AZURE_API_VERSION
+
     # Azure OpenAI-specific configuration must be present
     assert provider_config.azure_config is not None
     assert str(provider_config.azure_config.url) == "http://localhost/"
@@ -477,6 +482,7 @@ def test_provider_config_apitoken_only():
             "name": "test_name",
             "type": "azure_openai",
             "url": "test_url",
+            "api_version": "2024-02-15",
             "azure_openai_config": {
                 "url": "http://localhost",
                 "credentials_path": "tests/config/secret/apitoken",
@@ -490,6 +496,9 @@ def test_provider_config_apitoken_only():
             ],
         }
     )
+    # Azure version is set from config
+    assert provider_config.api_version == "2024-02-15"
+
     # Azure OpenAI-specific configuration must be present
     assert provider_config.azure_config is not None
     assert str(provider_config.azure_config.url) == "http://localhost/"
@@ -777,6 +786,8 @@ def test_provider_config_watsonx_specific():
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
     assert provider_config.bam_config is None
+
+    assert provider_config.api_version is None
 
 
 def test_provider_config_watsonx_unknown_parameters():
@@ -1396,6 +1407,158 @@ def test_invalid_values():
         LoggingConfig(uvicorn_log_level="foo")
 
 
+def test_tls_security_profile_default_values():
+    """Test the TLSSecurityProfile model."""
+    tls_security_profile = TLSSecurityProfile()
+    assert tls_security_profile.profile_type is None
+    assert tls_security_profile.min_tls_version is None
+    assert tls_security_profile.ciphers is None
+
+
+def test_tls_security_profile_correct_values():
+    """Test the TLSSecurityProfile model."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "VersionTLS13",
+            "ciphers": [
+                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+            ],
+        }
+    )
+    assert tls_security_profile.profile_type == "Custom"
+    assert tls_security_profile.min_tls_version == "VersionTLS13"
+    assert "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" in tls_security_profile.ciphers
+    assert "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" in tls_security_profile.ciphers
+
+
+tls_types = (
+    tls.TLSProfiles.OLD_TYPE,
+    tls.TLSProfiles.INTERMEDIATE_TYPE,
+    tls.TLSProfiles.MODERN_TYPE,
+    tls.TLSProfiles.CUSTOM_TYPE,
+)
+
+
+tls_versions = (
+    tls.TLSProtocolVersion.VERSION_TLS_10,
+    tls.TLSProtocolVersion.VERSION_TLS_11,
+    tls.TLSProtocolVersion.VERSION_TLS_12,
+    tls.TLSProtocolVersion.VERSION_TLS_13,
+)
+
+
+@pytest.mark.parametrize("tls_type", tls_types)
+@pytest.mark.parametrize("min_tls_version", tls_versions)
+def test_tls_security_profile_validate_yaml(tls_type, min_tls_version):
+    """Test the TLSSecurityProfile model validation."""
+    tls_security_profile = TLSSecurityProfile()
+    tls_security_profile.validate_yaml()
+
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": tls_type,
+            "minTLSVersion": min_tls_version,
+            "ciphers": [],
+        }
+    )
+    tls_security_profile.validate_yaml()
+
+
+def test_tls_security_profile_validate_invalid_yaml_type():
+    """Test the TLSSecurityProfile model validation."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "Foo",
+            "minTLSVersion": "VersionTLS13",
+            "ciphers": [
+                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+            ],
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Invalid TLS profile type 'Foo'",
+    ):
+        tls_security_profile.validate_yaml()
+
+
+def test_tls_security_profile_validate_invalid_yaml_min_tls_version():
+    """Test the TLSSecurityProfile model validation."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "foo",
+            "ciphers": [
+                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+            ],
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Invalid minimal TLS version 'foo'",
+    ):
+        tls_security_profile.validate_yaml()
+
+
+tls_types_without_custom = (
+    tls.TLSProfiles.OLD_TYPE,
+    tls.TLSProfiles.INTERMEDIATE_TYPE,
+    tls.TLSProfiles.MODERN_TYPE,
+)
+
+
+@pytest.mark.parametrize("tls_type", tls_types_without_custom)
+def test_tls_security_profile_validate_invalid_yaml_ciphers(tls_type):
+    """Test the TLSSecurityProfile model validation."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": tls_type,
+            "minTLSVersion": "VersionTLS13",
+            "ciphers": [
+                "foo",
+                "bar",
+            ],
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Unsupported cipher 'foo' found in configuration",
+    ):
+        tls_security_profile.validate_yaml()
+
+
+def test_tls_security_profile_equality():
+    """Test equality or inequality of two security profiles."""
+    profile1 = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "VersionTLS13",
+            "ciphers": [],
+        }
+    )
+    profile2 = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "VersionTLS13",
+            "ciphers": [],
+        }
+    )
+    assert profile1 == profile2
+
+    profile3 = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "VersionTLS12",
+            "ciphers": [],
+        }
+    )
+    assert profile1 != profile3
+
+
 def test_tls_config_default_values():
     """Test the TLSConfig model."""
     tls_config = TLSConfig()
@@ -1845,6 +2008,8 @@ def test_ols_config(tmpdir):
     assert ols_config.authentication_config == AuthenticationConfig()
     assert ols_config.extra_ca == []
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt is None
 
 
 def test_config():
@@ -1965,6 +2130,8 @@ def test_config():
     )
     assert config.user_data_collector_config == UserDataCollectorConfig()
     assert config.ols_config.certificate_directory == "/foo/bar/baz"
+    assert config.ols_config.system_prompt_path is None
+    assert config.ols_config.system_prompt is None
 
 
 def test_config_default_certificate_directory():
@@ -2685,3 +2852,86 @@ def test_user_data_collection_config__token_expectation():
         match="cp_offline_token is required in stage environment",
     ):
         UserDataCollectorConfig(ingress_env="stage", cp_offline_token=None)
+
+
+def test_ols_config_with_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "logging_config": {
+                "logging_level": "INFO",
+            },
+            "system_prompt_path": "tests/config/system_prompt.txt",
+        }
+    )
+    assert ols_config.default_provider == "test_default_provider"
+    assert ols_config.default_model == "test_default_model"
+    assert ols_config.conversation_cache.type == "memory"
+    assert ols_config.conversation_cache.memory.max_entries == 100
+    assert ols_config.logging_config.app_log_level == logging.INFO
+    assert (
+        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
+    )
+    assert ols_config.user_data_collection == UserDataCollection()
+    assert ols_config.reference_content is None
+    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.extra_ca == []
+    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt == "This is test system prompt!"
+
+
+def test_ols_config_with_non_existing_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt path specification that does not exist."""
+    with pytest.raises(
+        FileNotFoundError,
+        match="No such file or directory: 'tests/config/non_existing_file.txt'",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "logging_level": "INFO",
+                },
+                "system_prompt_path": "tests/config/non_existing_file.txt",
+            }
+        )
+
+
+def test_ols_config_with_non_readable_system_prompt(tmpdir):
+    """Test the OLSConfig model with system prompt path specification that is not readable."""
+    with pytest.raises(
+        IsADirectoryError,
+        match="Is a directory: 'tests/config/'",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "logging_level": "INFO",
+                },
+                "system_prompt_path": "tests/config/",
+            }
+        )

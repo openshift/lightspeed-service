@@ -18,6 +18,8 @@ from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 
+client: TestClient
+
 
 @pytest.fixture(scope="function")
 def _setup():
@@ -425,7 +427,6 @@ def test_post_query_for_conversation_history(_setup) -> None:
                     "query": "Query2",
                 },
             )
-            chat_history_expected = f"human: Query1\nai: {response.json()['response']}"
             chat_history_expected = [
                 HumanMessage(content="Query1"),
                 AIMessage(content=response.json()["response"]),
