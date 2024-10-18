@@ -53,6 +53,12 @@ update-deps: ## Check pyproject.toml for changes, update the lock file if needed
 run: ## Run the service locally
 	python runner.py
 
+memray-run: ## Run the service locally using memray
+	python -m memray run -o ./memory_profile.bin runner.py
+
+memray-flamegraph: ./memory_profile.bin
+	memray flamegraph ./memory_profile.bin
+
 test: test-unit test-integration test-e2e ## Run all tests
 
 benchmarks: ## Run benchmarks
