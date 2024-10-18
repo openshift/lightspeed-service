@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:7944213620231a43907c3f0ff97e6c23e07863e21609be7352fdcc0bca8f7ccb"
+content_hash = "sha256:4da4cf43e0074043b16e9b679fadb72e23777c66082648a46c41d1a00399f781"
 
 [[package]]
 name = "absl-py"
@@ -2936,23 +2936,22 @@ files = [
 
 [[package]]
 name = "sentence-transformers"
-version = "3.0.1"
-requires_python = ">=3.8.0"
-summary = "Multilingual text embeddings"
+version = "3.1.1"
+requires_python = ">=3.8"
+summary = "State-of-the-Art Text Embeddings"
 groups = ["default"]
 dependencies = [
     "Pillow",
-    "huggingface-hub>=0.15.1",
-    "numpy",
+    "huggingface-hub>=0.19.3",
     "scikit-learn",
     "scipy",
     "torch>=1.11.0",
     "tqdm",
-    "transformers<5.0.0,>=4.34.0",
+    "transformers<5.0.0,>=4.38.0",
 ]
 files = [
-    {file = "sentence_transformers-3.0.1-py3-none-any.whl", hash = "sha256:01050cc4053c49b9f5b78f6980b5a72db3fd3a0abb9169b1792ac83875505ee6"},
-    {file = "sentence_transformers-3.0.1.tar.gz", hash = "sha256:8a3d2c537cc4d1014ccc20ac92be3d6135420a3bc60ae29a3a8a9b4bb35fbff6"},
+    {file = "sentence_transformers-3.1.1-py3-none-any.whl", hash = "sha256:c73bf6f17e3676bb9372a6133a254ebfb5907586b470f2bac5a840c64c3cf97e"},
+    {file = "sentence_transformers-3.1.1.tar.gz", hash = "sha256:8f00020ef4ad6b918475c38af545c22f61403b67eb22d994860bab06902db160"},
 ]
 
 [[package]]
