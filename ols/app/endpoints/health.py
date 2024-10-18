@@ -6,12 +6,17 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
 import logging
+from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from langchain_core.messages.ai import AIMessage
 
 from ols import config
-from ols.app.models.models import LivenessResponse, ReadinessResponse
+from ols.app.models.models import (
+    LivenessResponse,
+    NotAvailableResponse,
+    ReadinessResponse,
+)
 from ols.src.llms.llm_loader import load_llm
 
 router = APIRouter(tags=["health"])
@@ -51,14 +56,39 @@ def index_is_ready() -> bool:
     return True
 
 
-@router.get("/readiness")
+get_readiness_responses: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": "Service is ready",
+        "model": ReadinessResponse,
+    },
+    503: {
+        "description": "Service is not ready",
+        "model": NotAvailableResponse,
+    },
+}
+
+
+@router.get("/readiness", responses=get_readiness_responses)
 def readiness_probe_get_method() -> ReadinessResponse:
     """Ready status of service."""
     if not index_is_ready():
-        return ReadinessResponse(ready=False, reason="index is not ready")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "response": "Service is not ready",
+                "cause": "Index is not ready",
+            },
+        )
     if not llm_is_ready():
-        return ReadinessResponse(ready=False, reason="LLM is not ready")
-    return ReadinessResponse(ready=True, reason="service is ready")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "response": "Service is not ready",
+                "cause": "LLM is not ready",
+            },
+        )
+    else:
+        return ReadinessResponse(ready=True, reason="service is ready")
 
 
 @router.get("/liveness")

@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+from fastapi import HTTPException
 from langchain_core.messages.ai import AIMessage
 
 from ols import config
@@ -84,13 +86,14 @@ def test_readiness_probe_get_method_service_is_ready(mocked_load_llm):
     assert response == ReadinessResponse(ready=True, reason="service is ready")
 
 
+@patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=True)
 def test_readiness_probe_get_method_index_is_ready():
     """Test the readiness_probe function when index is loaded."""
     # simulate that the index is loaded
     config._rag_index = True
     assert index_is_ready()
     response = readiness_probe_get_method()
-    assert response == ReadinessResponse(ready=False, reason="LLM is not ready")
+    assert response == ReadinessResponse(ready=True, reason="service is ready")
 
     # simulate that the index is not loaded, but it shouldn't as there
     # is no reference content in config
@@ -98,9 +101,10 @@ def test_readiness_probe_get_method_index_is_ready():
     config.ols_config.reference_content = None
     assert index_is_ready()
     response = readiness_probe_get_method()
-    assert response == ReadinessResponse(ready=False, reason="LLM is not ready")
+    assert response == ReadinessResponse(ready=True, reason="service is ready")
 
 
+@patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=True)
 def test_readiness_probe_get_method_index_not_ready():
     """Test the readiness_probe function when index is not loaded."""
     # simulate that the index is not loaded
@@ -108,8 +112,8 @@ def test_readiness_probe_get_method_index_not_ready():
     config.ols_config.reference_content = "something else than None"
 
     assert not index_is_ready()
-    response = readiness_probe_get_method()
-    assert response == ReadinessResponse(ready=False, reason="index is not ready")
+    with pytest.raises(HTTPException, match="Service is not ready"):
+        readiness_probe_get_method()
 
 
 def test_liveness_probe_get_method():
