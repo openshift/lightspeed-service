@@ -44,8 +44,13 @@ def test_readiness():
         patch("ols.app.endpoints.health.index_is_ready", return_value=False),
     ):
         response = client.get("/readiness")
-        assert response.status_code == requests.codes.ok
-        assert response.json() == {"ready": False, "reason": "index is not ready"}
+        assert response.status_code == requests.codes.service_unavailable
+        assert response.json() == {
+            "detail": {
+                "response": "Service is not ready",
+                "cause": "Index is not ready",
+            }
+        }
 
     # index is ready, LLM is not ready
     with (
@@ -53,8 +58,10 @@ def test_readiness():
         patch("ols.app.endpoints.health.index_is_ready", return_value=True),
     ):
         response = client.get("/readiness")
-        assert response.status_code == requests.codes.ok
-        assert response.json() == {"ready": False, "reason": "LLM is not ready"}
+        assert response.status_code == requests.codes.service_unavailable
+        assert response.json() == {
+            "detail": {"response": "Service is not ready", "cause": "LLM is not ready"}
+        }
 
     # both index and LLM are ready
     with (
