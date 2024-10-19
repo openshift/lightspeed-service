@@ -71,8 +71,8 @@ build-backend = "pdm.backend"
 
 [project]
 name = "ols"
-version = "0.2.0"
-description = "OpenShift LightSpeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
+version = "0.2.1"
+description = "OpenShift Lightspeed is an AI powered assistant that runs on OpenShift and provides answers to product questions using backend LLM services."
 authors = []
 dependencies = [
     "pdm==2.18.1",
