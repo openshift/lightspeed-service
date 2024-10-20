@@ -25,6 +25,7 @@ def run_oc(
                 f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
             )
             raise
+    return subprocess.CompletedProcess("", 0)
 
 
 def run_oc_and_store_stdout(

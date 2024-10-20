@@ -166,6 +166,9 @@ class RestAPICallCounterChecker:
         self.client = client
         self.endpoint = endpoint
         self.status_code = status_code
+        # to be updated when the code entered the "with" block
+        self.old_counter = None
+        self.old_duration = None
 
     def __enter__(self):
         """Retrieve old counter value before calling REST API."""
@@ -223,6 +226,10 @@ class TokenCounterChecker:
 
         # expect change in number of received tokens
         self.expect_received_change = expect_received_change
+
+        # to be updated when code enters the "with" block
+        self.old_counter_token_sent_total = None
+        self.old_counter_token_received_total = None
 
     def __enter__(self):
         """Retrieve old counter values before calling LLM."""
