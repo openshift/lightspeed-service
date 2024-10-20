@@ -16,8 +16,8 @@ from pydantic import (
     model_validator,
 )
 
-import ols.utils.tls as tls
 from ols import constants
+from ols.utils import tls
 
 
 def _is_valid_http_url(url: AnyHttpUrl) -> bool:
