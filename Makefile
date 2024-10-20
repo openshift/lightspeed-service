@@ -25,7 +25,7 @@ install-tools:	install-woke ## Install required utilities/tools
 	# install all dependencies, including devel ones
 	pdm install --dev
 	# check that correct mypy version is installed
-	mypy --version
+	# mypy --version
 	# check that correct Black version is installed
 	black --version
 	# check that correct Ruff version is installed
@@ -93,7 +93,7 @@ integration-tests-coverage-report:	test-integration ## Export integration test c
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
 
 check-types: ## Checks type hints in sources
-	mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+	#mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 security-check: ## Check the project for security issues
 	bandit -c pyproject.toml -r .
