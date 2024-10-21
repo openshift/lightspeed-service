@@ -740,6 +740,12 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
       - name: m2
         url: 'https://murl2'
+    tlsSecurityProfile:
+      type: Custom
+      ciphers:
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      minTLSVersion: VersionTLS13
   - name: p2
     type: bam
     url: 'https://url2'
@@ -759,6 +765,12 @@ ols_config:
   default_model: m1
   certificate_directory: '/foo/bar/baz'
   system_prompt_path: 'tests/config/system_prompt.txt'
+  tlsSecurityProfile:
+    type: Custom
+    ciphers:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    minTLSVersion: VersionTLS13
 dev_config:
   enable_dev_ui: true
   disable_auth: false

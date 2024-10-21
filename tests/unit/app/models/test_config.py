@@ -231,6 +231,7 @@ def test_provider_config():
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
     assert provider_config.bam_config is None
+    assert provider_config.tls_security_profile is None
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
@@ -258,6 +259,45 @@ def test_provider_config():
             }
         )
     assert "model name is missing" in str(excinfo.value)
+
+
+def test_provider_config_with_tls_security_profile():
+    """Test the ProviderConfig model."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_name",
+            "type": "bam",
+            "url": "test_url",
+            "credentials_path": "tests/config/secret/apitoken",
+            "project_id": "test_project_id",
+            "models": [
+                {
+                    "name": "test_model_name",
+                    "url": "http://test.url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+            "tlsSecurityProfile": {
+                "type": "Custom",
+                "minTLSVersion": "VersionTLS13",
+                "ciphers": [
+                    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                ],
+            },
+        }
+    )
+    assert provider_config.tls_security_profile is not None
+    assert provider_config.tls_security_profile.profile_type == "Custom"
+    assert provider_config.tls_security_profile.min_tls_version == "VersionTLS13"
+    assert (
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+        in provider_config.tls_security_profile.ciphers
+    )
+    assert (
+        "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        in provider_config.tls_security_profile.ciphers
+    )
 
 
 def test_that_url_is_required_provider_parameter():
@@ -2010,6 +2050,60 @@ def test_ols_config(tmpdir):
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
+    assert ols_config.tls_security_profile == TLSSecurityProfile()
+
+
+def test_ols_config_with_tls_security_profile(tmpdir):
+    """Test the OLSConfig model."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "logging_config": {
+                "logging_level": "INFO",
+            },
+            "tlsSecurityProfile": {
+                "type": "Custom",
+                "minTLSVersion": "VersionTLS13",
+                "ciphers": [
+                    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                ],
+            },
+        }
+    )
+    assert ols_config.default_provider == "test_default_provider"
+    assert ols_config.default_model == "test_default_model"
+    assert ols_config.conversation_cache.type == "memory"
+    assert ols_config.conversation_cache.memory.max_entries == 100
+    assert ols_config.logging_config.app_log_level == logging.INFO
+    assert (
+        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
+    )
+    assert ols_config.user_data_collection == UserDataCollection()
+    assert ols_config.reference_content is None
+    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.extra_ca == []
+    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt is None
+    assert ols_config.tls_security_profile is not None
+    assert ols_config.tls_security_profile.profile_type == "Custom"
+    assert ols_config.tls_security_profile.min_tls_version == "VersionTLS13"
+    assert (
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+        in ols_config.tls_security_profile.ciphers
+    )
+    assert (
+        "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        in ols_config.tls_security_profile.ciphers
+    )
 
 
 def test_config():
