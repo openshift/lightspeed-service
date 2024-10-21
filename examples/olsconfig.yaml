@@ -8,6 +8,12 @@ llm_providers:
         context_window_size: 8000
         parameters:
           max_tokens_for_response: 500
+    tlsSecurityProfile:
+      type: Custom
+      ciphers:
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      minTLSVersion: VersionTLS13
   - name: my_openai
     type: openai
     url: "https://api.openai.com/v1"
@@ -85,7 +91,7 @@ ols_config:
     tls_key_path: /app-root/certs/private.key
     tls_key_password_path: /app-root/certs/password.txt
   tlsSecurityProfile:
-    type: OldType
+    type: Custom
     ciphers:
         - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
         - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384

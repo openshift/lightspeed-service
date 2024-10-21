@@ -218,6 +218,51 @@ class AuthenticationConfig(BaseModel):
     k8s_ca_cert_path: Optional[FilePath] = None
 
 
+class TLSSecurityProfile(BaseModel):
+    """TLS security profile structure."""
+
+    profile_type: Optional[str] = None
+    min_tls_version: Optional[str] = None
+    ciphers: Optional[list[str]] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is not None:
+            self.profile_type = data.get("type")
+            self.min_tls_version = data.get("minTLSVersion")
+            self.ciphers = data.get("ciphers")
+
+    def validate_yaml(self) -> None:
+        """Validate structure content."""
+        # check the TLS profile type
+        if self.profile_type is not None:
+            try:
+                tls.TLSProfiles(self.profile_type)
+            except ValueError:
+                raise InvalidConfigurationError(
+                    f"Invalid TLS profile type '{self.profile_type}'"
+                )
+        # check the TLS protocol version
+        if self.min_tls_version is not None:
+            try:
+                tls.TLSProtocolVersion(self.min_tls_version)
+            except ValueError:
+                raise InvalidConfigurationError(
+                    f"Invalid minimal TLS version '{self.min_tls_version}'"
+                )
+        # check ciphers
+        if self.ciphers is not None:
+            # just perform the check for non-custom TLS profile type
+            if self.profile_type is not None and self.profile_type != "Custom":
+                supported_ciphers = tls.TLS_CIPHERS[tls.TLSProfiles(self.profile_type)]
+                for cipher in self.ciphers:
+                    if cipher not in supported_ciphers:
+                        raise InvalidConfigurationError(
+                            f"Unsupported cipher '{cipher}' found in configuration"
+                        )
+
+
 class ProviderSpecificConfig(BaseModel, extra="forbid"):
     """Base class with common provider specific configurations."""
 
@@ -286,6 +331,7 @@ class ProviderConfig(BaseModel):
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
     certificates_store: Optional[str] = None
+    tls_security_profile: Optional[TLSSecurityProfile] = None
 
     def __init__(
         self,
@@ -333,6 +379,9 @@ class ProviderConfig(BaseModel):
             self.certificates_store = os.path.join(
                 certificate_directory, constants.CERTIFICATE_STORAGE_FILENAME
             )
+        self.tls_security_profile = TLSSecurityProfile(
+            data.get("tlsSecurityProfile", None)
+        )
 
     def set_provider_type(self, data: dict) -> None:
         """Set the provider type."""
@@ -477,6 +526,7 @@ class ProviderConfig(BaseModel):
                 and self.rhelai_vllm_config == other.rhelai_vllm_config
                 and self.watsonx_config == other.watsonx_config
                 and self.bam_config == other.bam_config
+                and self.tls_security_profile == other.tls_security_profile
             )
         return False
 
@@ -871,51 +921,6 @@ class UserDataCollection(BaseModel):
                 "transcripts_storage is required when transcripts capturing is enabled"
             )
         return self
-
-
-class TLSSecurityProfile(BaseModel):
-    """TLS security profile structure."""
-
-    profile_type: Optional[str] = None
-    min_tls_version: Optional[str] = None
-    ciphers: Optional[list[str]] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is not None:
-            self.profile_type = data.get("type")
-            self.min_tls_version = data.get("minTLSVersion")
-            self.ciphers = data.get("ciphers")
-
-    def validate_yaml(self) -> None:
-        """Validate structure content."""
-        # check the TLS profile type
-        if self.profile_type is not None:
-            try:
-                tls.TLSProfiles(self.profile_type)
-            except ValueError:
-                raise InvalidConfigurationError(
-                    f"Invalid TLS profile type '{self.profile_type}'"
-                )
-        # check the TLS protocol version
-        if self.min_tls_version is not None:
-            try:
-                tls.TLSProtocolVersion(self.min_tls_version)
-            except ValueError:
-                raise InvalidConfigurationError(
-                    f"Invalid minimal TLS version '{self.min_tls_version}'"
-                )
-        # check ciphers
-        if self.ciphers is not None:
-            # just perform the check for non-custom TLS profile type
-            if self.profile_type is not None and self.profile_type != "Custom":
-                supported_ciphers = tls.TLS_CIPHERS[tls.TLSProfiles(self.profile_type)]
-                for cipher in self.ciphers:
-                    if cipher not in supported_ciphers:
-                        raise InvalidConfigurationError(
-                            f"Unsupported cipher '{cipher}' found in configuration"
-                        )
 
 
 class OLSConfig(BaseModel):

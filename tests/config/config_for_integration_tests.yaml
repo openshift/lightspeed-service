@@ -16,6 +16,12 @@ llm_providers:
           max_tokens_for_response: 100
       - name: m2
         url: "https://murl2"
+    tlsSecurityProfile:
+      type: Custom
+      ciphers:
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      minTLSVersion: VersionTLS13
   - name: p2
     type: openai
     url: "https://url2"
@@ -93,6 +99,12 @@ ols_config:
     tls_certificate_path: tests/config/empty_cert.crt
     tls_key_path: tests/config/key
     tls_key_password_path: tests/config/password
+  tlsSecurityProfile:
+    type: Custom
+    ciphers:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    minTLSVersion: VersionTLS13
 dev_config:
   enable_dev_ui: true
   disable_auth: true
