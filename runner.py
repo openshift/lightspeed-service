@@ -140,6 +140,7 @@ def start_uvicorn():
 
 
 if __name__ == "__main__":
+
     # First of all, configure environment variables for Gradio before
     # import config and initializing config module.
     configure_gradio_ui_envs()
@@ -151,10 +152,10 @@ if __name__ == "__main__":
     cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
     config.reload_from_yaml_file(cfg_file)
 
-    configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger("ols")
-    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
+    configure_logging(config.ols_config.logging_config)
 
+    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
     configure_hugging_face_envs(config.ols_config)
 
     # generate certificates file from all certificates from certifi package
@@ -169,10 +170,47 @@ if __name__ == "__main__":
     # init loading of query redactor
     config.query_redactor
 
-    # create and start the rag_index_thread - allows loading index in
-    # parallel with starting the Uvicorn server
-    rag_index_thread = threading.Thread(target=load_index)
-    rag_index_thread.start()
+    if config.dev_config.pyroscope_url:
+        try:
+            import requests
 
-    # start the Uvicorn server
-    start_uvicorn()
+            response = requests.get(config.dev_config.pyroscope_url, timeout=60)
+            if requests.codes.ok:
+                logger.info(
+                    f"Pyroscope server is reachable at {config.dev_config.pyroscope_url}"
+                )
+                import pyroscope
+
+                pyroscope.configure(
+                    application_name="lightspeed-service",
+                    server_address=config.dev_config.pyroscope_url,
+                    oncpu=True,
+                    gil_only=True,
+                    enable_logging=True,
+                )
+                with pyroscope.tag_wrapper({"main": "main_method"}):
+                    # create and start the rag_index_thread - allows loading index in
+                    # parallel with starting the Uvicorn server
+                    rag_index_thread = threading.Thread(target=load_index)
+                    rag_index_thread.start()
+
+                    # start the Uvicorn server
+                    start_uvicorn()
+            else:
+                logger.info(
+                    f"Failed to reach Pyroscope server. Status code: {response.status_code}"
+                )
+        except requests.exceptions.RequestException as e:
+            logger.info(f"Error connecting to Pyroscope server: {e}")
+    else:
+        logger.info(
+            "Pyroscope url is not specified. To enable profiling please set `pyroscope_url` "
+            "in the `dev_config` section of the configuration file."
+        )
+        # create and start the rag_index_thread - allows loading index in
+        # parallel with starting the Uvicorn server
+        rag_index_thread = threading.Thread(target=load_index)
+        rag_index_thread.start()
+
+        # start the Uvicorn server
+        start_uvicorn()
