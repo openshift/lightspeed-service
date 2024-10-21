@@ -13,7 +13,7 @@ OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
 
 
-def install_ols() -> tuple[str, str, str]:
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
 
