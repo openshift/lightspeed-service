@@ -73,7 +73,7 @@ def load_llm(
         # using the class and overriding specific parameters
         generic_llm_params = {'temperature': 0.02, 'top_p': 0.95}
 
-        bare_llm = load_llm(provider="openai", model="gpt-3.5-turbo",
+        bare_llm = load_llm(provider="openai", model="gpt-4o-mini",
                             generic_llm_params=generic_llm_params).llm
         llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
         ```
