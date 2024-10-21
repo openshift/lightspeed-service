@@ -37,7 +37,7 @@ def read_version_from_app():
     """Read version from app object."""
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
     # app.main need to be imported after the configuration is read
-    from ols.app.main import app
+    from ols.app.main import app  # pylint: disable=C0415
 
     assert app.version is not None
     return app.version

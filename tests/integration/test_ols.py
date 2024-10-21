@@ -28,7 +28,7 @@ def _setup():
     global client
 
     # app.main need to be imported after the configuration is read
-    from ols.app.main import app
+    from ols.app.main import app  # pylint: disable=C0415
 
     client = TestClient(app)
 

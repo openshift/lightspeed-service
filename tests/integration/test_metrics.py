@@ -23,7 +23,7 @@ def _setup():
     """Setups the test client."""
     global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
-    from ols.app.main import app
+    from ols.app.main import app  # pylint: disable=C0415
 
     client = TestClient(app)
 
@@ -83,7 +83,7 @@ def get_counter_value(client, counter_name, path, status_code):
 
 def test_rest_api_call_counter_ok_status():
     """Check if REST API call counter works as expected, label with 200 OK status."""
-    endpoint = "/readiness"
+    endpoint = "/liveness"
 
     # initialize counter with label by calling endpoint
     client.get(endpoint)
