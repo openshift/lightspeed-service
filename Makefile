@@ -26,12 +26,13 @@ install-tools:	install-woke ## Install required utilities/tools
 	pdm install --dev
 	# check that correct mypy version is installed
 	# mypy --version
+	pdm run mypy --version
 	# check that correct Black version is installed
-	black --version
+	pdm run black --version
 	# check that correct Ruff version is installed
-	ruff --version
+	pdm run ruff --version
 	# check that correct Pydocstyle version is installed
-	pydocstyle --version
+	pdm run pydocstyle --version
 
 
 install-woke: ## Install woke, required for Inclusive Naming scan
@@ -93,18 +94,18 @@ integration-tests-coverage-report:	test-integration ## Export integration test c
 	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
 
 check-types: ## Checks type hints in sources
-	#mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 security-check: ## Check the project for security issues
 	bandit -c pyproject.toml -r .
 
 format: ## Format the code into unified format
-	black .
-	ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	pdm run black .
+	pdm run ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
 verify:	install-woke install-deps-test ## Verify the code using various linters
-	black . --check
-	ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	pdm run black . --check
+	pdm run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 	./woke . --exit-1-on-failure
 
 schema:	## Generate OpenAPI schema file
