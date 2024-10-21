@@ -1,7 +1,7 @@
 [tool.ruff]
 
 # description of all rules are available on https://docs.astral.sh/ruff/rules/
-lint.select = ["D", "E", "F", "W", "C", "S", "I", "TCH", "SLOT", "RUF", "C90", "N", "YTT", "ASYNC", "A", "C4", "T10", "PGH"]
+lint.select = ["D", "E", "F", "W", "C", "S", "I", "TCH", "SLOT", "RUF", "C90", "N", "YTT", "ASYNC", "A", "C4", "T10", "PGH", "FURB", "PERF", "AIR", "NPY", "FLY"]
 
 # we need to check 'mood' of all docstrings, this needs to be enabled explicitly
 lint.extend-select = ["D401"]
