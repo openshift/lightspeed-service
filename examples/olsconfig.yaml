@@ -84,6 +84,12 @@ ols_config:
     tls_certificate_path: /app-root/certs/certificate.crt
     tls_key_path: /app-root/certs/private.key
     tls_key_password_path: /app-root/certs/password.txt
+  tlsSecurityProfile:
+    type: OldType
+    ciphers:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    minTLSVersion: VersionTLS13
 dev_config:
   # config options specific to dev environment - launching OLS in local
   enable_dev_ui: true
