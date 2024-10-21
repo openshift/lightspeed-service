@@ -23,7 +23,7 @@ def _setup():
     """Setups the test client."""
     global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
-    from ols.app.main import app
+    from ols.app.main import app  # pylint: disable=C0415
 
     client = TestClient(app)
 
