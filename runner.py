@@ -113,30 +113,25 @@ def start_uvicorn():
         if config.dev_config.run_on_localhost
         else "0.0.0.0"  # noqa: S104 # nosec: B104
     )
+    port = 8080 if config.dev_config.disable_tls else 8443
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
-    if config.dev_config.disable_tls:
-        # TLS is disabled, run without SSL configuration
-        uvicorn.run(
-            "ols.app.main:app",
-            host=host,
-            port=8080,
-            log_level=log_level,
-            workers=1,
-            access_log=log_level < logging.INFO,
-        )
-    else:
-        uvicorn.run(
-            "ols.app.main:app",
-            host=host,
-            port=8443,
-            workers=1,
-            log_level=log_level,
-            ssl_keyfile=config.ols_config.tls_config.tls_key_path,
-            ssl_certfile=config.ols_config.tls_config.tls_certificate_path,
-            ssl_keyfile_password=config.ols_config.tls_config.tls_key_password,
-            access_log=log_level < logging.INFO,
-        )
+    # The tls fields can be None, which means we will pass those values as None to uvicorn.run
+    ssl_keyfile = config.ols_config.tls_config.tls_key_path
+    ssl_certfile = config.ols_config.tls_config.tls_certificate_path
+    ssl_keyfile_password = config.ols_config.tls_config.tls_key_password
+
+    uvicorn.run(
+        "ols.app.main:app",
+        host=host,
+        port=port,
+        workers=1,
+        log_level=log_level,
+        ssl_keyfile=ssl_keyfile,
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile_password=ssl_keyfile_password,
+        access_log=log_level < logging.INFO,
+    )
 
 
 if __name__ == "__main__":
