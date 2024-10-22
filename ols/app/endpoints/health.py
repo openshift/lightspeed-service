@@ -87,8 +87,7 @@ def readiness_probe_get_method() -> ReadinessResponse:
                 "cause": "LLM is not ready",
             },
         )
-    else:
-        return ReadinessResponse(ready=True, reason="service is ready")
+    return ReadinessResponse(ready=True, reason="service is ready")
 
 
 @router.get("/liveness")
