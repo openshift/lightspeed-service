@@ -936,6 +936,7 @@ class OLSConfig(BaseModel):
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
+    max_workers: Optional[int] = 1
     query_filters: Optional[list[QueryFilter]] = None
     query_validation_method: Optional[str] = constants.QueryValidationMethod.DISABLED
 
@@ -961,6 +962,7 @@ class OLSConfig(BaseModel):
             self.reference_content = ReferenceContent(data.get("reference_content"))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
+        self.max_workers = data.get("max_workers", 1)
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
@@ -997,6 +999,7 @@ class OLSConfig(BaseModel):
                 and self.reference_content == other.reference_content
                 and self.default_provider == other.default_provider
                 and self.default_model == other.default_model
+                and self.max_workers == other.max_workers
                 and self.query_filters == other.query_filters
                 and self.query_validation_method == other.query_validation_method
                 and self.tls_config == other.tls_config

@@ -829,6 +829,7 @@ def test_valid_config_file():
                     },
                 ],
                 "ols_config": {
+                    "max_workers": 1,
                     "reference_content": {
                         "product_docs_index_path": "tests/config",
                         "product_docs_index_id": "product",
