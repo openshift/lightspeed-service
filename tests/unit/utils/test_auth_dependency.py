@@ -1,6 +1,7 @@
 """Unit tests for auth_dependency module."""
 
 import os
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +21,8 @@ from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
 )
+
+auth_dependency: Optional[AuthDependency] = None
 
 
 @pytest.fixture(scope="function")
