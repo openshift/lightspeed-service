@@ -61,10 +61,9 @@ class ModelFamily(StrEnum):
 GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
 
 # OpenAI & Azure OpenAI
-GPT35_TURBO_1106 = "gpt-3.5-turbo-1106"
 GPT35_TURBO = "gpt-3.5-turbo"
+GPT_4O_MINI = "gpt-4o-mini"
 
-GPT4_TURBO = "gpt-4-turbo"
 FAKE_MODEL = "fake_model"
 
 

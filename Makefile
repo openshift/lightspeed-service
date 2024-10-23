@@ -7,7 +7,7 @@ ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
-MODEL := $(if $(MODEL),$(MODEL),"gpt-3.5-turbo")
+MODEL := $(if $(MODEL),$(MODEL),"gpt-4o-mini")
 
 images: ## Build container images
 	scripts/build-container.sh

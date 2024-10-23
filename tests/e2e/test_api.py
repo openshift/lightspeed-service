@@ -144,7 +144,7 @@ def test_invalid_question():
         # at least acknowledges that query is non-ocp.
         # Below assert is minimal due to model randomness.
         assert re.search(
-            r"(sorry|any questions)",
+            r"(sorry|questions|assist)",
             json_response["response"],
             re.IGNORECASE,
         )
@@ -172,7 +172,7 @@ def test_invalid_question_without_conversation_id():
         # Randomness in response is expected.
         # assert json_response["response"] == INVALID_QUERY_RESP
         assert re.search(
-            r"(sorry|any questions)",
+            r"(sorry|questions|assist)",
             json_response["response"],
             re.IGNORECASE,
         )
@@ -469,6 +469,7 @@ def test_rag_question() -> None:
         assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
+@pytest.mark.cluster()
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"
@@ -713,8 +714,8 @@ def test_model_provider():
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
-        ("gpt-3.5-turbo", "openai"),
-        ("gpt-3.5-turbo", "azure_openai"),
+        ("gpt-4o-mini", "openai"),
+        ("gpt-4o-mini", "azure_openai"),
         ("ibm/granite-13b-chat-v2", "bam"),
         ("ibm/granite-13b-chat-v2", "watsonx"),
     }
@@ -1494,7 +1495,7 @@ def test_azure_entra_id():
         json={
             "query": "what is kubernetes?",
             "provider": "azure_openai_with_entra_id",
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4o-mini",
         },
         timeout=LLM_REST_API_TIMEOUT,
     )
