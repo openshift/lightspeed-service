@@ -101,7 +101,7 @@ class ResponseEvaluation:
                 columns={"ID": "query_id", "Question": "question", "Answer": "answer"}
             )
             qna_pool_df["query_id"] = "qna" + qna_pool_df["query_id"].astype(str)
-            qna_pool_df["query_source"].append("doc")
+            qna_pool_df["query_source"] = "doc"
             qna_pool_df["consistency_cutoff"] = EVAL_THRESHOLD
             qna_pool_df["in_use"] = True
         return qna_pool_df
@@ -280,7 +280,6 @@ class ResponseEvaluation:
                 "doc_source",
                 "doc_title",
                 "doc_page",
-                "consistency_cutoff",
             ],
             columns=["eval_mode", "provider_model_id"],
         ).swaplevel(0, axis=1)
