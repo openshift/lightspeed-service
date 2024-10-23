@@ -238,7 +238,7 @@ class LLMProvider(AbstractLLMProvider):
             return generic_llm_params
 
         if provider not in generic_to_llm_parameters:
-            logger.warning(f"Mappings for provider {provider} are not defined.")
+            logger.warning("Mappings for provider %s are not defined.", provider)
             return generic_llm_params
 
         # retrieve mapping
@@ -272,8 +272,9 @@ class LLMProvider(AbstractLLMProvider):
 
         if provider not in available_provider_parameters:
             logger.warning(
-                f"Available parameters for provider {provider} are not defined."
-                "Parameters validation is disabled."
+                "Available parameters for provider %s are not defined."
+                "Parameters validation is disabled.",
+                provider,
             )
             return params
 
@@ -297,8 +298,10 @@ class LLMProvider(AbstractLLMProvider):
                     continue
                 # other parameters
                 logger.warning(
-                    f"Parameter {parameter_name} with type {parameter_type} "
-                    f"can not be used by provider {provider}"
+                    "Parameter %s with type %s can not be used by provider %s",
+                    parameter_name,
+                    parameter_type,
+                    provider,
                 )
             else:
                 filtered_params[parameter_name] = parameter_value
@@ -312,7 +315,8 @@ class LLMProvider(AbstractLLMProvider):
         # config params overrides everything
         if config.dev_config.llm_params:
             logger.debug(
-                f"overriding LLM params with debug options {config.dev_config.llm_params}"
+                "overriding LLM params with debug options %s",
+                config.dev_config.llm_params,
             )
             updated_params = {**updated_params, **config.dev_config.llm_params}
 
