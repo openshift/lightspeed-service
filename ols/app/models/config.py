@@ -962,7 +962,7 @@ class OLSConfig(BaseModel):
             self.reference_content = ReferenceContent(data.get("reference_content"))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
-        self.max_workers = data.get("max_workers", None)
+        self.max_workers = data.get("max_workers", 1)
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
