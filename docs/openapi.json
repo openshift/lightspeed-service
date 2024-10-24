@@ -597,7 +597,7 @@
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "model": "gpt-3.5-turbo",
+                        "model": "gpt-4o-mini",
                         "provider": "openai",
                         "query": "write a deployment yaml for the mongodb image"
                     }
