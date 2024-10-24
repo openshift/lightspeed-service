@@ -125,7 +125,7 @@ def start_uvicorn():
         "ols.app.main:app",
         host=host,
         port=port,
-        workers=1,
+        workers=config.ols_config.max_workers,
         log_level=log_level,
         ssl_keyfile=ssl_keyfile,
         ssl_certfile=ssl_certfile,

@@ -70,6 +70,7 @@ class "ModelParameters" as ols.app.models.config.ModelParameters {
 class "OLSConfig" as ols.app.models.config.OLSConfig {
   authentication_config
   conversation_cache : Optional[ConversationCacheConfig]
+  max_workers: Optional[int]
   default_model : Optional[str]
   default_provider : Optional[str]
   extra_ca : list[FilePath]

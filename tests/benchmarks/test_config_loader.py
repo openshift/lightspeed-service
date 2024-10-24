@@ -72,6 +72,7 @@ llm_providers:
       - name: m3
         url: 'https://murl3'
 ols_config:
+  max_workers: 2
   conversation_cache:
     type: memory
     memory:

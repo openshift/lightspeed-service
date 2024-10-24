@@ -209,6 +209,7 @@ data:
           - name: gpt-4-1106-preview
           - name: gpt-3.5-turbo
     ols_config:
+      max_workers: 1
       reference_content:
         product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
         product_docs_index_id: ocp-product-docs-4_15

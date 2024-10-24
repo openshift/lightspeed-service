@@ -22,6 +22,7 @@ llm_providers:
       - name: m2
         url: "https://murl2"
 ols_config:
+  max_workers: 1
   reference_content:
     product_docs_index_path: "tests/config"
     product_docs_index_id: product
