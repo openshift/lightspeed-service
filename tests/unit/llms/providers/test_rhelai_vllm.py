@@ -2,6 +2,7 @@
 
 import os
 
+import httpx
 import pytest
 from langchain_openai.chat_models.base import ChatOpenAI
 
@@ -99,8 +100,13 @@ def test_basic_interface(provider_config, fake_certifi_store):
     assert "base_url" in rhelai_vllm.default_params
     assert "model" in rhelai_vllm.default_params
     assert "max_tokens" in rhelai_vllm.default_params
+
+    # check the HTTP client parameter
     assert "http_client" in rhelai_vllm.default_params
     assert rhelai_vllm.default_params["http_client"] is not None
+
+    client = rhelai_vllm.default_params["http_client"]
+    assert isinstance(client, httpx.Client)
 
 
 def test_params_handling(provider_config, fake_certifi_store):

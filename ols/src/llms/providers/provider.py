@@ -50,6 +50,7 @@ AzureOpenAIParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 OpenAIParameters = {
@@ -66,6 +67,7 @@ OpenAIParameters = {
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
+    ProviderParameter("http_client", httpx.Client),
 }
 
 RHOAIVLLMParameters = {
@@ -321,3 +323,12 @@ class LLMProvider(AbstractLLMProvider):
             updated_params = {**updated_params, **config.dev_config.llm_params}
 
         return updated_params
+
+    def _construct_httpx_client(
+        self, use_custom_certificate_store: bool
+    ) -> httpx.Client:
+        """Construct HTTPX client instance to be used to communicate with LLM."""
+        if use_custom_certificate_store:
+            return httpx.Client(verify=self.provider_config.certificates_store)
+        else:
+            return httpx.Client()
