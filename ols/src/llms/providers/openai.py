@@ -46,6 +46,7 @@ class OpenAI(LLMProvider):
             "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
+            "http_client": self._construct_httpx_client(False),
         }
 
     def load(self) -> LLM:

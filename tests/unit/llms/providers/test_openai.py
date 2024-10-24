@@ -1,5 +1,6 @@
 """Unit tests for OpenAI provider."""
 
+import httpx
 import pytest
 from langchain_openai.chat_models.base import ChatOpenAI
 
@@ -80,6 +81,13 @@ def test_basic_interface(provider_config):
     assert "base_url" in openai.default_params
     assert "model" in openai.default_params
     assert "max_tokens" in openai.default_params
+
+    # check the HTTP client parameter
+    assert "http_client" in openai.default_params
+    assert openai.default_params["http_client"] is not None
+
+    client = openai.default_params["http_client"]
+    assert isinstance(client, httpx.Client)
 
 
 def test_params_handling(provider_config):
