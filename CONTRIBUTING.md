@@ -60,8 +60,11 @@ pdm install
 `pdm venv activate`
 # which will active the venv where you can further work, or prefix the rest of commands with `pdm run`, eg. `pdm run make test`
 
-# run unit+integration tests (e2e test requires a running OLS instance)
-make test-unit && make test-integration
+# run unit+integration tests
+pdm run test-unit && pdm run test-integration
+
+# run e2e tests (that requires a running OLS instance)
+pdm run test-e2e
 
 # code formatting
 # (this is also run automatically as part of pre-commit hook if configured)
