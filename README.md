@@ -394,9 +394,14 @@ Depends on configuration, but usually it is not needed to generate or use API ke
       ```
 
 ## 5. (Optional) Configure the local document store
+
+   The following command downloads a copy of the whole image containing RAG embedding model and vector database:
+
    ```sh
    make get-rag
    ```
+
+   Please note that the link to the specific image to be downloaded is stored in the file `build.args` (and that file is autoupdated by bots when new a RAG is re-generated):
 
 ## 6. (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
