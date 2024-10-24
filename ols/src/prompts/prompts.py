@@ -5,13 +5,6 @@
 
 from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
 
-# Note::
-# Right now templates are somewhat alligned to make granite work better.
-# GPT still works well with this. Ideally we should have model specific tags.
-# For history we can laverage ChatPromptTemplate from langchain,
-# but that is not done as granite was adding role tags like `Human:` in the response.
-# With PromptTemplate, we have more control how we want to structure the prompt.
-
 QUERY_SYSTEM_INSTRUCTION = """
 You are OpenShift Lightspeed - an intelligent assistant for question-answering tasks \
 related to the OpenShift container orchestration platform.
