@@ -161,6 +161,9 @@ or within PDM-controlled environment:
 pdm run security-check
 ```
 
+Please note that the _Bandit_ tool needs to be installed via PDM. It is included in `pyproject.toml` in the `[dev-dependencies]` section and is locked to specific version.
+
+
 ## Testing
 
 Three groups of software tests are used in this repository, each group from the test suite having different granularity. These groups are designed to represent three layers:
