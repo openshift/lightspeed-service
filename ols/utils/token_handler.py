@@ -179,8 +179,9 @@ class TokenHandler:
     ) -> tuple[list[str], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
+        formatted_history: list[str] = []
 
-        for index, message in enumerate(reversed(history)):
+        for message in reversed(history):
             # Restructure messages as per model
             message = restructure_history(message, model)
 
@@ -192,6 +193,7 @@ class TokenHandler:
                 logger.debug(
                     "History truncated, it exceeds available %d tokens.", limit
                 )
-                return history[len(history) - index :], True
+                return formatted_history[::-1], True
+            formatted_history.append(message)
 
-        return history, False
+        return formatted_history[::-1], False
