@@ -4,11 +4,8 @@
 INSCOPE_MODELS = {
     "bam+ibm/granite-13b-chat-v2": ("bam", "ibm/granite-13b-chat-v2"),
     "watsonx+ibm/granite-13b-chat-v2": ("watsonx", "ibm/granite-13b-chat-v2"),
-    "openai+gpt-3.5-turbo": ("openai", "gpt-3.5-turbo"),
     "openai+gpt-4o-mini": ("openai", "gpt-4o-mini"),
-    "azure_openai+gpt-3.5-turbo": ("azure_openai", "gpt-3.5-turbo"),
-    "azure_openai+gpt-3.5-turbo-4k": ("azure_openai", "gpt-3.5-turbo"),
-    "azure_openai+gpt-3.5-turbo-16k": ("azure_openai", "gpt-3.5-turbo"),
+    "azure_openai+gpt-4o-mini": ("azure_openai", "gpt-4o-mini"),
     "azure_openai+gpt-4o": ("azure_openai", "gpt-4o"),
 }
 
