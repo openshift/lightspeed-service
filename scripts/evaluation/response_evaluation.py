@@ -44,7 +44,7 @@ class ResponseEvaluation:
         self._load_config_and_rag()  # Set global config
         self._input_dir, self._result_dir = self._set_directories()
 
-        self._scorer = ResponseScore()
+        self._scorer = ResponseScore(self._args.eval_metrics)
 
         # Load data
         with open(os.path.join(self._input_dir, DEFAULT_QNA_FILE)) as qna_f:
@@ -131,9 +131,9 @@ class ResponseEvaluation:
                 qna_pool_dict["question"].append(question)
                 qna_pool_dict["answer"].append(answer)
                 qna_pool_dict["query_source"].append("transcript")
-                qna_pool_dict["doc_source"].append(None)
-                qna_pool_dict["doc_title"].append(None)
-                qna_pool_dict["doc_page"].append(None)
+                qna_pool_dict["doc_source"].append("NA")
+                qna_pool_dict["doc_title"].append("NA")
+                qna_pool_dict["doc_page"].append("NA")
                 qna_pool_dict["consistency_cutoff"].append(consistency_cutoff)
                 qna_pool_dict["in_use"].append(in_use)
 
@@ -236,21 +236,24 @@ class ResponseEvaluation:
     def _get_evaluation_score(self, qna_pool_df):
         """Get response evaluation score."""
         print("Getting evaluation scores...")
-        qna_pool_df[
-            [
-                "cos_score",
-                "euc_score",
-                "len_score",
-                "rougeL_precision",
-                "rougeL_recall",
-                "rougeL_f1",
-            ]
-        ] = qna_pool_df.progress_apply(
-            lambda row: self._scorer.calculate_scores(row.answer, row.response),
+        # Default scores
+        score_cols = [
+            "cos_score",
+            "euc_score",
+            "len_score",
+            "rougeL_precision",
+            "rougeL_recall",
+            "rougeL_f1",
+            "answer_relevancy",
+        ]
+        qna_pool_df[score_cols] = qna_pool_df.progress_apply(
+            lambda row: self._scorer.calculate_scores(
+                row.question, row.answer, row.response
+            ),
             axis=1,
             result_type="expand",
         )
-        return qna_pool_df
+        return qna_pool_df.dropna(axis=1, how="all")
 
     def _get_response_with_score(self):
         """Get responses with scores."""

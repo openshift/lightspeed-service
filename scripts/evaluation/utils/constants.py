@@ -16,6 +16,7 @@ SCORE_DESCRIPTION = {
     "rougeL_precision": "RougeL Precision Score",
     "rougeL_recall": "RougeL Recall Score",
     "rougeL_f1": "RougeL F1 Score",
+    "answer_relevancy": "Answer relevancy score against query",
 }
 
 EVAL_MODES = {
