@@ -3,6 +3,7 @@
 import time
 from unittest.mock import patch
 
+import httpx
 import pytest
 from azure.core.credentials import AccessToken
 from langchain_openai import AzureChatOpenAI
@@ -210,6 +211,13 @@ def test_basic_interface(provider_config):
     assert azure_openai.default_params["api_key"] == "secret_key"
 
     assert azure_openai.default_params["azure_endpoint"] == "test_url"
+
+    # check the HTTP client parameter
+    assert "http_client" in azure_openai.default_params
+    assert azure_openai.default_params["http_client"] is not None
+
+    client = azure_openai.default_params["http_client"]
+    assert isinstance(client, httpx.Client)
 
 
 def test_credentials_in_directory_handling(provider_config_credentials_directory):

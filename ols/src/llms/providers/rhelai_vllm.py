@@ -3,7 +3,6 @@
 import logging
 from typing import Any, Optional
 
-import httpx
 from langchain.llms.base import LLM
 from langchain_openai import ChatOpenAI
 
@@ -48,7 +47,7 @@ class RHELAIVLLM(LLMProvider):
             "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
-            "http_client": httpx.Client(verify=self.provider_config.certificates_store),
+            "http_client": self._construct_httpx_client(True),
         }
 
     def load(self) -> LLM:
