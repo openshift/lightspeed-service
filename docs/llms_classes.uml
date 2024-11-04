@@ -7,20 +7,16 @@ class "AbstractLLMProvider" as ols.src.llms.providers.provider.AbstractLLMProvid
   {abstract}load() -> LLM
 }
 class "AzureOpenAI" as ols.src.llms.providers.azure_openai.AzureOpenAI {
-  credentials
   credentials : Optional[str]
   default_params
-  url : str
   url : str
   load() -> LLM
   resolve_access_token(azure_config: AzureOpenAIConfig) -> Optional[str]
   retrieve_access_token(azure_config: AzureOpenAIConfig) -> Optional[AccessToken]
 }
 class "BAM" as ols.src.llms.providers.bam.BAM {
-  credentials
   credentials : Optional[str]
   default_params
-  url : str
   url : str
   load() -> LLM
 }
@@ -35,27 +31,45 @@ class "LLMProvider" as ols.src.llms.providers.provider.LLMProvider {
   params : dict
   provider_config : ProviderConfig
 }
+class "LLMProvidersRegistry" as ols.src.llms.providers.registry.LLMProvidersRegistry {
+  llm_providers
+  register(provider_type: str, llm_provider: Callable) -> None
+}
 class "<color:red>ModelConfigMissingError</color>" as ols.src.llms.llm_loader.ModelConfigMissingError {
 }
 class "OpenAI" as ols.src.llms.providers.openai.OpenAI {
-  credentials
   credentials : Optional[str]
   default_params
   url : str
+  load() -> LLM
+}
+class "ProviderParameter" as ols.src.llms.providers.provider.ProviderParameter {
+  name : str
+}
+class "RHELAIVLLM" as ols.src.llms.providers.rhelai_vllm.RHELAIVLLM {
+  credentials : Optional[str]
+  default_params
   url : str
   load() -> LLM
+}
+class "RHOAIVLLM" as ols.src.llms.providers.rhoai_vllm.RHOAIVLLM {
+  credentials : Optional[str]
+  default_params
+  url : str
+  load() -> LLM
+}
+class "TokenCache" as ols.src.llms.providers.azure_openai.TokenCache {
+  access_token : Optional[str]
+  expires_on : int
 }
 class "<color:red>UnknownProviderError</color>" as ols.src.llms.llm_loader.UnknownProviderError {
 }
 class "<color:red>UnsupportedProviderError</color>" as ols.src.llms.llm_loader.UnsupportedProviderError {
 }
 class "Watsonx" as ols.src.llms.providers.watsonx.Watsonx {
-  credentials
   credentials : Optional[str]
   default_params
-  project_id
   project_id : Optional[str]
-  url : str
   url : str
   load() -> LLM
 }
@@ -67,5 +81,7 @@ ols.src.llms.providers.bam.BAM --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.fake_provider.FakeProvider --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.openai.OpenAI --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.provider.LLMProvider --|> ols.src.llms.providers.provider.AbstractLLMProvider
+ols.src.llms.providers.rhelai_vllm.RHELAIVLLM --|> ols.src.llms.providers.provider.LLMProvider
+ols.src.llms.providers.rhoai_vllm.RHOAIVLLM --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.watsonx.Watsonx --|> ols.src.llms.providers.provider.LLMProvider
 @enduml
