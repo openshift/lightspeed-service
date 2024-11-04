@@ -121,6 +121,10 @@ def start_uvicorn():
     ssl_certfile = config.ols_config.tls_config.tls_certificate_path
     ssl_keyfile_password = config.ols_config.tls_config.tls_key_password
 
+    # default values used by FastAPI and based on default SSL package settings
+    ssl_version = constants.DEFAULT_SSL_VERSION
+    ssl_ciphers = constants.DEFAULT_SSL_CIPHERS
+
     uvicorn.run(
         "ols.app.main:app",
         host=host,
@@ -130,6 +134,8 @@ def start_uvicorn():
         ssl_keyfile=ssl_keyfile,
         ssl_certfile=ssl_certfile,
         ssl_keyfile_password=ssl_keyfile_password,
+        ssl_version=ssl_version,
+        ssl_ciphers=ssl_ciphers,
         access_log=log_level < logging.INFO,
     )
 
