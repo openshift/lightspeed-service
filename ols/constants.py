@@ -1,6 +1,7 @@
 """Constants used in business logic."""
 
 import os
+import ssl
 from enum import StrEnum
 
 
@@ -209,3 +210,9 @@ DEFAULT_CERTIFICATE_DIRECTORY = "/tmp"  # noqa: S108
 
 # Certificate storage filename
 CERTIFICATE_STORAGE_FILENAME = "ols.pem"
+
+# Default SSL version used by FastAPI REST API
+DEFAULT_SSL_VERSION = ssl.PROTOCOL_TLS_SERVER
+
+# Default SSL ciphers used by FastAPI REST API
+DEFAULT_SSL_CIPHERS = "TLSv1"
