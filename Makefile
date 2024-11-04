@@ -19,11 +19,11 @@ install-tools:	install-woke ## Install required utilities/tools
 	pdm --version
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
-	# pip uninstall -y mypy 2> /dev/null || true
+	# pip uninstall -v -y mypy 2> /dev/null || true
 	# display setuptools version
 	pip show setuptools
 	# install all dependencies, including devel ones
-	pdm install --dev
+	pdm install --dev --fail-fast -v
 	# check that correct mypy version is installed
 	# mypy --version
 	pdm run mypy --version

@@ -39,7 +39,8 @@ dev = [
     "pydocstyle==6.3.0",
     "fastparquet==2024.5.0",  # Required for model evaluation (runtime, if parquet qna file is used)
     "httpx==0.27.0",
-    "mypy==1.13.0",  # Usually needs to be set to latest stable version available
+    "mypy==1.12.1",  # Usually needs to be set to latest stable version available
+    "packaging==24.1",
     "pytest==8.3.2",
     "pytest-cov==5.0.0",
     "pytest-asyncio==0.24.0",
@@ -53,6 +54,7 @@ dev = [
     "reportportal-client==5.5.6",
     "pytest-reportportal==5.4.1",
     "pytest-benchmark[histogram]>=4.0.0",
+    "typing-extensions==4.12.2",
 ]
 
 # The following section is needed only for torch[cpu] variant on Linux,
