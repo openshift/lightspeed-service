@@ -387,8 +387,10 @@ nvidia-curand-cu12==10.3.2.106; platform_system == "Linux" and platform_machine 
     --hash=sha256:9d264c5036dde4e64f1de8c50ae753237c12e0b1348738169cd0f8a536c0e1e0
 nvidia-cusolver-cu12==11.4.5.107; platform_system == "Linux" and platform_machine == "x86_64" \
     --hash=sha256:8a7ec542f0412294b15072fa7dab71d31334014a69f953004ea7a118206fe0dd
-nvidia-cusparse-cu12==12.1.0.106; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:f3b50f42cf363f86ab21f720998517a659a48131e8d538dc02f8768237bd884c
+nvidia-cusparse-cu12==12.5.4.2; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:23749a6571191a215cb74d1cdbff4a86e7b19f1200c071b3fcf844a5bea23a2f \
+    --hash=sha256:4acb8c08855a26d737398cba8fb6f8f5045d93f82612b4cfd84645a2332ccf20 \
+    --hash=sha256:7aa32fa5470cf754f72d1116c7cbc300b4e638d3ae5304cfa4a638a5b87161b1
 nvidia-nccl-cu12==2.20.5; platform_system == "Linux" and platform_machine == "x86_64" \
     --hash=sha256:057f6bf9685f75215d0c53bf3ac4a10b3e6578351de307abad9e18a99182af56
 nvidia-nvjitlink-cu12==12.6.20; platform_system == "Linux" and platform_machine == "x86_64" \
