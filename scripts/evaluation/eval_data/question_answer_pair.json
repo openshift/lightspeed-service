@@ -247,8 +247,9 @@
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
-                    "cutoff_score": 0.3,
+                    "cutoff_score": 0.35,
                     "text": [
+                        "Yes, there are detailed sections that describe the update process for Red Hat OpenShift Container Platform (OCP). The primary component that orchestrates and facilitates the update process is the Cluster Version Operator (CVO). It monitors the ClusterVersion resource and ensures that the actual state of resources matches their desired state.\n\nFor specific procedures, you can refer to topics such as performing rolling updates, canary rollouts, and managing machine config pools during updates. It's important to carefully plan your update strategy based on your cluster's characteristics and requirements.",
                         "Yes, the update process for clusters in OpenShift is detailed in various sections. The primary component that orchestrates updates is the Cluster Version Operator (CVO), which monitors the ClusterVersion resource to ensure that the actual state of resources matches their desired state.\nThe update process generally involves selecting a version to update to, monitoring progress through status updates, and confirming that nodes are updated before deploying workloads that rely on new features. It's also important to check for available updates after completing an update.\nIf you have specific questions about any part of the cluster updating process, feel free to ask!"
                     ]
                 },
