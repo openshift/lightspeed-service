@@ -21,6 +21,7 @@ class "Config" as ols.app.models.config.Config {
   dev_config
   llm_providers
   ols_config
+  user_data_collector_config : Optional[UserDataCollectorConfig]
   validate_yaml() -> None
 }
 class "ConversationCacheConfig" as ols.app.models.config.ConversationCacheConfig {
@@ -54,7 +55,7 @@ class "LoggingConfig" as ols.app.models.config.LoggingConfig {
   uvicorn_log_level : int
 }
 class "ModelConfig" as ols.app.models.config.ModelConfig {
-  context_window_size
+  context_window_size : Annotated
   credentials : Optional[str]
   name : str
   options : Optional[dict[str, Any]]
@@ -65,12 +66,12 @@ class "ModelConfig" as ols.app.models.config.ModelConfig {
   validate_options(options: dict) -> dict[str, Any]
 }
 class "ModelParameters" as ols.app.models.config.ModelParameters {
-  max_tokens_for_response
+  max_tokens_for_response : Annotated
 }
 class "OLSConfig" as ols.app.models.config.OLSConfig {
   authentication_config
+  certificate_directory : Optional[str]
   conversation_cache : Optional[ConversationCacheConfig]
-  max_workers: Optional[int]
   default_model : Optional[str]
   default_provider : Optional[str]
   extra_ca : list[FilePath]
@@ -78,7 +79,10 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   query_filters : Optional[list[QueryFilter]]
   query_validation_method : Optional[str]
   reference_content : Optional[ReferenceContent]
+  system_prompt : Optional[str]
+  system_prompt_path : Optional[str]
   tls_config
+  tls_security_profile : Optional[TLSSecurityProfile]
   user_data_collection
   validate_yaml(disable_tls: bool) -> None
 }
@@ -89,23 +93,28 @@ class "PostgresConfig" as ols.app.models.config.PostgresConfig {
   ca_cert_path : Optional[FilePath]
   dbname : str
   host : str
-  max_entries
+  max_entries : Annotated
   password : Optional[str]
   password_path : Optional[FilePath]
-  port
+  port : Annotated
   ssl_mode : str
   user : str
   validate_yaml() -> Self
 }
 class "ProviderConfig" as ols.app.models.config.ProviderConfig {
+  api_version : Optional[str]
   azure_config : Optional[AzureOpenAIConfig]
   bam_config : Optional[BAMConfig]
+  certificates_store : Optional[str]
   credentials : Optional[str]
   deployment_name : Optional[str]
   models : dict[str, ModelConfig]
   name : Optional[str]
   openai_config : Optional[OpenAIConfig]
   project_id : Optional[str]
+  rhelai_vllm_config : Optional[RHELAIVLLMConfig]
+  rhoai_vllm_config : Optional[RHOAIVLLMConfig]
+  tls_security_profile : Optional[TLSSecurityProfile]
   type : Optional[str]
   url : Optional[AnyHttpUrl]
   watsonx_config : Optional[WatsonxConfig]
@@ -119,7 +128,7 @@ class "ProviderConfig" as ols.app.models.config.ProviderConfig {
 class "ProviderSpecificConfig" as ols.app.models.config.ProviderSpecificConfig {
   api_key : Optional[str]
   token : Optional[Any]
-  url
+  url : Annotated
 }
 class "QueryFilter" as ols.app.models.config.QueryFilter {
   name : Optional[str]
@@ -127,12 +136,18 @@ class "QueryFilter" as ols.app.models.config.QueryFilter {
   replace_with : Optional[str]
   validate_yaml() -> None
 }
+class "RHELAIVLLMConfig" as ols.app.models.config.RHELAIVLLMConfig {
+  credentials_path : str
+}
+class "RHOAIVLLMConfig" as ols.app.models.config.RHOAIVLLMConfig {
+  credentials_path : str
+}
 class "RedisConfig" as ols.app.models.config.RedisConfig {
   ca_cert_path : Optional[FilePath]
   host : Optional[str]
   max_memory : Optional[str]
   max_memory_policy : Optional[str]
-  number_of_retries : int
+  number_of_retries : Optional[int]
   password : Optional[str]
   port : Optional[int]
   retry_on_error : Optional[bool]
@@ -151,12 +166,27 @@ class "TLSConfig" as ols.app.models.config.TLSConfig {
   tls_key_path : Optional[FilePath]
   validate_yaml(disable_tls: bool) -> None
 }
+class "TLSSecurityProfile" as ols.app.models.config.TLSSecurityProfile {
+  ciphers : Optional[list[str]]
+  min_tls_version : Optional[str]
+  profile_type : Optional[str]
+  validate_yaml() -> None
+}
 class "UserDataCollection" as ols.app.models.config.UserDataCollection {
   feedback_disabled : bool
   feedback_storage : Optional[str]
   transcripts_disabled : bool
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
+}
+class "UserDataCollectorConfig" as ols.app.models.config.UserDataCollectorConfig {
+  collection_interval : int
+  cp_offline_token : Optional[str]
+  data_storage : Optional[DirectoryPath]
+  ingress_env : Literal['stage', 'prod']
+  log_level : int
+  run_without_initial_wait : bool
+  validate_token_is_set_when_needed() -> Self
 }
 class "WatsonxConfig" as ols.app.models.config.WatsonxConfig {
   credentials_path : str
@@ -165,28 +195,29 @@ class "WatsonxConfig" as ols.app.models.config.WatsonxConfig {
 ols.app.models.config.AzureOpenAIConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.BAMConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.OpenAIConfig --|> ols.app.models.config.ProviderSpecificConfig
+ols.app.models.config.RHELAIVLLMConfig --|> ols.app.models.config.ProviderSpecificConfig
+ols.app.models.config.RHOAIVLLMConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.WatsonxConfig --|> ols.app.models.config.ProviderSpecificConfig
-ols.app.models.config.AuthenticationConfig --* ols.app.models.config.OLSConfig : authentication_config
 ols.app.models.config.AuthenticationConfig --* ols.app.models.config.OLSConfig : authentication_config
 ols.app.models.config.AzureOpenAIConfig --* ols.app.models.config.ProviderConfig : azure_config
 ols.app.models.config.BAMConfig --* ols.app.models.config.ProviderConfig : bam_config
 ols.app.models.config.ConversationCacheConfig --* ols.app.models.config.OLSConfig : conversation_cache
 ols.app.models.config.DevConfig --* ols.app.models.config.Config : dev_config
-ols.app.models.config.DevConfig --* ols.app.models.config.Config : dev_config
 ols.app.models.config.InMemoryCacheConfig --* ols.app.models.config.ConversationCacheConfig : memory
-ols.app.models.config.LLMProviders --* ols.app.models.config.Config : llm_providers
 ols.app.models.config.LLMProviders --* ols.app.models.config.Config : llm_providers
 ols.app.models.config.LoggingConfig --* ols.app.models.config.OLSConfig : logging_config
 ols.app.models.config.ModelParameters --* ols.app.models.config.ModelConfig : parameters
 ols.app.models.config.OLSConfig --* ols.app.models.config.Config : ols_config
-ols.app.models.config.OLSConfig --* ols.app.models.config.Config : ols_config
 ols.app.models.config.OpenAIConfig --* ols.app.models.config.ProviderConfig : openai_config
 ols.app.models.config.PostgresConfig --* ols.app.models.config.ConversationCacheConfig : postgres
+ols.app.models.config.RHELAIVLLMConfig --* ols.app.models.config.ProviderConfig : rhelai_vllm_config
+ols.app.models.config.RHOAIVLLMConfig --* ols.app.models.config.ProviderConfig : rhoai_vllm_config
 ols.app.models.config.RedisConfig --* ols.app.models.config.ConversationCacheConfig : redis
 ols.app.models.config.ReferenceContent --* ols.app.models.config.OLSConfig : reference_content
 ols.app.models.config.TLSConfig --* ols.app.models.config.OLSConfig : tls_config
-ols.app.models.config.TLSConfig --* ols.app.models.config.OLSConfig : tls_config
+ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.OLSConfig : tls_security_profile
+ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.ProviderConfig : tls_security_profile
 ols.app.models.config.UserDataCollection --* ols.app.models.config.OLSConfig : user_data_collection
-ols.app.models.config.UserDataCollection --* ols.app.models.config.OLSConfig : user_data_collection
+ols.app.models.config.UserDataCollectorConfig --* ols.app.models.config.Config : user_data_collector_config
 ols.app.models.config.WatsonxConfig --* ols.app.models.config.ProviderConfig : watsonx_config
 @enduml

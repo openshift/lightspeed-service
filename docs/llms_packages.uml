@@ -20,6 +20,10 @@ package "ols.src.llms.providers.provider" as ols.src.llms.providers.provider {
 }
 package "ols.src.llms.providers.registry" as ols.src.llms.providers.registry {
 }
+package "ols.src.llms.providers.rhelai_vllm" as ols.src.llms.providers.rhelai_vllm {
+}
+package "ols.src.llms.providers.rhoai_vllm" as ols.src.llms.providers.rhoai_vllm {
+}
 package "ols.src.llms.providers.watsonx" as ols.src.llms.providers.watsonx {
 }
 ols.src.llms.llm_loader --> ols.src.llms.providers.registry
@@ -32,6 +36,10 @@ ols.src.llms.providers.fake_provider --> ols.src.llms.providers.registry
 ols.src.llms.providers.openai --> ols.src.llms.providers.provider
 ols.src.llms.providers.openai --> ols.src.llms.providers.registry
 ols.src.llms.providers.registry --> ols.src.llms.providers.provider
+ols.src.llms.providers.rhelai_vllm --> ols.src.llms.providers.provider
+ols.src.llms.providers.rhelai_vllm --> ols.src.llms.providers.registry
+ols.src.llms.providers.rhoai_vllm --> ols.src.llms.providers.provider
+ols.src.llms.providers.rhoai_vllm --> ols.src.llms.providers.registry
 ols.src.llms.providers.watsonx --> ols.src.llms.providers.provider
 ols.src.llms.providers.watsonx --> ols.src.llms.providers.registry
 @enduml
