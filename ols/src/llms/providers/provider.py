@@ -2,6 +2,7 @@
 
 import abc
 import logging
+import ssl
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -23,6 +24,7 @@ from ols.constants import (
     PROVIDER_WATSONX,
     GenericLLMParameters,
 )
+from ols.utils import tls
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +330,35 @@ class LLMProvider(AbstractLLMProvider):
         self, use_custom_certificate_store: bool
     ) -> httpx.Client:
         """Construct HTTPX client instance to be used to communicate with LLM."""
-        if use_custom_certificate_store:
-            return httpx.Client(verify=self.provider_config.certificates_store)
-        else:
+        sec_profile = self.provider_config.tls_security_profile
+
+        # if security profile is not set, use httpx.Client as is
+        if sec_profile is None or sec_profile.profile_type is None:
+            if use_custom_certificate_store:
+                return httpx.Client(verify=self.provider_config.certificates_store)
             return httpx.Client()
+
+        # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
+        ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
+        logger.info("list of ciphers: %s", ciphers)
+
+        min_tls_version = tls.min_tls_version(
+            sec_profile.min_tls_version, sec_profile.profile_type
+        )
+        logger.info("min TLS version: %s", min_tls_version)
+
+        ssl_version = tls.ssl_tls_version(min_tls_version)
+        logger.info("SSL version: %d", ssl_version)
+
+        context = ssl.create_default_context()
+
+        if ssl_version is not None:
+            context.minimum_version = ssl_version
+
+        if ciphers is not None:
+            context.set_ciphers(ciphers)
+
+        if use_custom_certificate_store:
+            context.load_verify_locations(self.provider_config.certificates_store)
+
+        return httpx.Client(verify=context)
