@@ -459,7 +459,26 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 - `ciphers` is list of enabled ciphers. The values are not checked.
 
 Please look into `examples` folder that contains `olsconfig.yaml` with filled-in TLS security profile for the service.
-Additionally the TLS security profile can be set for any configured provider. In this case the `tlsSecurityProfile` needs to be added into the `olsconfig.yaml` file into `llm_provieders/{selected_provider}` section.
+Additionally the TLS security profile can be set for any configured provider. In this case the `tlsSecurityProfile` needs to be added into the `olsconfig.yaml` file into `llm_providers/{selected_provider}` section. For example:
+
+```
+llm_providers:
+  - name: my_openai
+    type: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: openai_api_key.txt
+    models:
+      - name: gpt-4-1106-preview
+      - name: gpt-4o-mini
+    tlsSecurityProfile:
+      type: Custom
+      ciphers:
+          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      minTLSVersion: VersionTLS13
+```
+
+Note: the `tlsSecurityProfile` is fully optional. When it is not specified, the LLM call won't be affected by specific SSL/TLS settings.
 
 
 
