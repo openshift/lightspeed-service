@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
     configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger("ols")
-    logger.info(f"Config loaded from {Path(cfg_file).resolve()}")
+    logger.info("Config loaded from %s", Path(cfg_file).resolve())
 
     configure_hugging_face_envs(config.ols_config)
 
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # Initialize the K8sClientSingleton with cluster id during module load.
     # We want the application to fail early if the cluster ID is not available.
     cluster_id = K8sClientSingleton.get_cluster_id()
-    logger.info(f"running on cluster with ID '{cluster_id}'")
+    logger.info("running on cluster with ID '%s'", cluster_id)
 
     # init loading of query redactor
     config.query_redactor
