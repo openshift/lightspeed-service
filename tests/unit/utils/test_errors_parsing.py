@@ -1,4 +1,4 @@
-"""Unit Test for the Utils class."""
+"""Unit Test for the errors parsing class."""
 
 from genai.exceptions import ApiResponseException
 from httpx import Response
