@@ -91,8 +91,9 @@
                     ]
                 },
                 "azure_openai+gpt-4o-mini+with_rag": {
-                    "cutoff_score": 0.3,
+                    "cutoff_score": 0.35,
                     "text": [
+                        "OpenShift Virtualization is an add-on to the Red Hat OpenShift Container Platform that enables you to run and manage virtual machine (VM) workloads alongside container workloads. It integrates virtualization capabilities into the OpenShift environment, allowing users to create and manage both Linux and Windows VMs as native Kubernetes objects.\n\nKey features of OpenShift Virtualization include:\n\n- Creating and managing VMs directly within the OpenShift platform.\n- Running pod (container) and VM workloads together in a single cluster.\n- Connecting to VMs through various consoles and command-line tools.\n- Importing and cloning existing virtual machines.\n- Managing network interfaces and storage disks attached to VMs.\n- Live migrating VMs between nodes for better resource management.\n\nThe enhanced web console provides a graphical interface for managing these virtualized resources alongside containerized applications, making it easier for users to handle diverse workloads within a unified platform.",
                         "OpenShift Virtualization is a feature of Red Hat OpenShift Container Platform that allows you to bring traditional virtual machines (VMs) into the Kubernetes environment and run them alongside containers. In OpenShift Virtualization, VMs are treated as native Kubernetes objects and can be managed using the OpenShift web console or command line interface. This feature enables organizations to consolidate their containerized and virtualized workloads onto a single platform, providing greater flexibility and efficiency in managing their applications."
                     ]
                 },
