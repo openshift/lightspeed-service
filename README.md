@@ -184,7 +184,8 @@ Depends on configuration, but usually it is not needed to generate or use API ke
    API credentials are in turn loaded from files specified in the config YAML by the `credentials_path` attributes. If these paths are relative,
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
-   Note: there are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains a directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
+   [!NOTE]
+   There are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains a directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
 ### OpenAI provider
 
@@ -301,7 +302,8 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
 ## 3. Configure OLS Authentication
 
-   NOTE: Currently, only K8S-based authentication can be used. In future versions, more authentication mechanisms will be configurable.
+   [!NOTE]
+   Currently, only K8S-based authentication can be used. In future versions, more authentication mechanisms will be configurable.
 
    This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
 
@@ -478,7 +480,8 @@ llm_providers:
       minTLSVersion: VersionTLS13
 ```
 
-Note: the `tlsSecurityProfile` is fully optional. When it is not specified, the LLM call won't be affected by specific SSL/TLS settings.
+[!NOTE]
+The `tlsSecurityProfile` is fully optional. When it is not specified, the LLM call won't be affected by specific SSL/TLS settings.
 
 
 
@@ -499,6 +502,18 @@ ols_config:
 OLS service can be started locally. In this case GradIO web UI is used to
 interact with the service. Alternatively the service can be accessed through
 REST API.
+
+[!TIP]
+To enable GradIO web UI you need to have the following `dev_config` section in your configuration file:
+
+```yaml
+dev_config:
+  enable_dev_ui: true
+  ...
+  ...
+  ...
+```
+
 
 #### Run the server
 
@@ -832,10 +847,10 @@ When SQLAlchemy package is not locked to latest version in `pyproject.toml` and 
 ### Usage
 
 A dictionary containing the credentials of the S3 bucket must be specified, containing the keys:
-- AWS_BUCKET
-- AWS_REGION
-- AWS_ACCESS_KEY_ID
-- AWS_SECRET_ACCESS_KEY
+- `AWS_BUCKET`
+- `AWS_REGION`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
 
 
 # Contributing
