@@ -316,7 +316,8 @@ def test_api_version_can_not_be_none(provider_config):
     )
 
     # api_version is required parameter and can not be None
-    with pytest.raises(KeyError, match="api_version"):
+    # in new OpenAI library it is checked internally!
+    with pytest.raises(ValueError, match="api_version"):
         azure_openai.load()
 
 
