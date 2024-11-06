@@ -56,8 +56,8 @@ def test_is_user_authorized_false_no_bearer_token():
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
     """Tests the is_user_authorized function with a mocked valid-token."""
     # Setup mock responses for valid token
@@ -78,8 +78,8 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
     """Test the is_user_authorized function with a mocked invalid-token."""
     # Setup mock responses for invalid token

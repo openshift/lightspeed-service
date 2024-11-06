@@ -10,7 +10,7 @@ from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 from kubernetes.client.rest import ApiException
 
 from ols import config
-from ols.utils.auth_dependency import (
+from ols.src.auth.k8s import (
     CLUSTER_ID_LOCAL,
     AuthDependency,
     ClusterIDUnavailableError,
@@ -43,8 +43,8 @@ def test_singleton_pattern():
 
 @pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
     """Tests the auth dependency with a mocked valid-token."""
     # Setup mock responses for valid token
@@ -69,8 +69,8 @@ async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
 
 @pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authn_api")
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
     """Test the auth dependency with a mocked invalid-token."""
     # Setup mock responses for invalid token
@@ -96,7 +96,7 @@ async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
 
 @pytest.mark.usefixtures("_setup")
 @pytest.mark.asyncio()
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_authz_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_cluster_id_is_used_for_kube_admin(mock_authz_api):
     """Test the cluster id is used as user_id when user is kube:admin."""
     mock_authz_api.return_value.create_subject_access_review.side_effect = (
@@ -110,13 +110,13 @@ async def test_cluster_id_is_used_for_kube_admin(mock_authz_api):
 
     with (
         patch(
-            "ols.utils.auth_dependency.get_user_info",
+            "ols.src.auth.k8s.get_user_info",
             return_value=MockK8sResponseStatus(
                 True, True, "kube:admin", "some-uuid", "ols-group"
             ),
         ),
         patch(
-            "ols.utils.auth_dependency.K8sClientSingleton.get_cluster_id",
+            "ols.src.auth.k8s.K8sClientSingleton.get_cluster_id",
             return_value="some-cluster-id",
         ),
     ):
@@ -131,7 +131,7 @@ async def test_cluster_id_is_used_for_kube_admin(mock_authz_api):
 @patch.dict(os.environ, {"KUBECONFIG": "tests/config/kubeconfig"})
 def test_auth_dependency_config():
     """Test the auth dependency can load kubeconfig file."""
-    from ols.utils.auth_dependency import K8sClientSingleton
+    from ols.src.auth.k8s import K8sClientSingleton
 
     authn_client = K8sClientSingleton.get_authn_api()
     authz_client = K8sClientSingleton.get_authz_api()
@@ -143,7 +143,7 @@ def test_auth_dependency_config():
     ), "authz_client is not an instance of AuthorizationV1Api"
 
 
-@patch("ols.utils.auth_dependency.K8sClientSingleton.get_custom_objects_api")
+@patch("ols.src.auth.k8s.K8sClientSingleton.get_custom_objects_api")
 def test_get_cluster_id(mock_get_custom_objects_api):
     """Test get_cluster_id function."""
     cluster_id = {"spec": {"clusterID": "some-cluster-id"}}
@@ -179,17 +179,17 @@ def test_get_cluster_id(mock_get_custom_objects_api):
         K8sClientSingleton._get_cluster_id()
 
 
-@patch("ols.utils.auth_dependency.RUNNING_IN_CLUSTER", True)
-@patch("ols.utils.auth_dependency.K8sClientSingleton.__new__")
-@patch("ols.utils.auth_dependency.K8sClientSingleton._get_cluster_id")
+@patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", True)
+@patch("ols.src.auth.k8s.K8sClientSingleton.__new__")
+@patch("ols.src.auth.k8s.K8sClientSingleton._get_cluster_id")
 def test_get_cluster_id_in_cluster(mock_get_cluster_id, _mock_new):
     """Test get_cluster_id function when running inside of cluster."""
     mock_get_cluster_id.return_value = "some-cluster-id"
     assert K8sClientSingleton.get_cluster_id() == "some-cluster-id"
 
 
-@patch("ols.utils.auth_dependency.RUNNING_IN_CLUSTER", False)
-@patch("ols.utils.auth_dependency.K8sClientSingleton.__new__")
+@patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", False)
+@patch("ols.src.auth.k8s.K8sClientSingleton.__new__")
 def test_get_cluster_id_outside_of_cluster(_mock_new):
     """Test get_cluster_id function when running outside of cluster."""
     # ensure cluster_id is None to trigger the condition
