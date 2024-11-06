@@ -36,7 +36,7 @@ udc_config = config.user_data_collector_config  # shortcut
 
 
 # pylint: disable-next=C0413
-from ols.utils.auth_dependency import K8sClientSingleton  # noqa: E402
+from ols.src.auth.k8s import K8sClientSingleton  # noqa: E402
 
 INITIAL_WAIT = 60 * 5  # 5 minutes in seconds
 INGRESS_TIMEOUT = 30  # seconds

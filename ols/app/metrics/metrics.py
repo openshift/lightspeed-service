@@ -13,7 +13,7 @@ from prometheus_client import (
     generate_latest,
 )
 
-from ols.utils.auth_dependency import AuthDependency
+from ols.src.auth.k8s import AuthDependency
 from ols.utils.config import AppConfig
 
 router = APIRouter(tags=["metrics"])

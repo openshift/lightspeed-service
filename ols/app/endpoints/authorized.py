@@ -12,7 +12,7 @@ from ols.app.models.models import (
     ForbiddenResponse,
     UnauthorizedResponse,
 )
-from ols.utils.auth_dependency import AuthDependency
+from ols.src.auth.k8s import AuthDependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authorized"])

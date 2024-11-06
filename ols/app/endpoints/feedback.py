@@ -18,7 +18,7 @@ from ols.app.models.models import (
     StatusResponse,
     UnauthorizedResponse,
 )
-from ols.utils.auth_dependency import AuthDependency
+from ols.src.auth.k8s import AuthDependency
 from ols.utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
