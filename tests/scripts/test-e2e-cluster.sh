@@ -52,6 +52,10 @@ function run_suites() {
   run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
+  # smoke tests for RHELAI VLLM-compatible provider
+  run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
+  (( rc = rc || $? ))
+
   set -e
 
   return $rc
