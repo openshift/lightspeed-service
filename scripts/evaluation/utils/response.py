@@ -32,7 +32,7 @@ def get_model_response(query, provider, model, mode, api_client=None):
     prompt_input = {"query": query}
     provider_config = config.config.llm_providers.providers[provider]
     model_config = provider_config.models[model]
-    llm = VANILLA_MODEL[provider](model, provider_config).load()
+    llm = VANILLA_MODEL[provider_config.type](model, provider_config).load()
 
     if mode == "ols_param":
         max_resp_tokens = model_config.parameters.max_tokens_for_response
