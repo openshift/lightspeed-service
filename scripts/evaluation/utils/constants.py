@@ -46,3 +46,6 @@ TIME_TO_BREATH = 10
 
 # Cut-off similarity score used for response evaluation.
 EVAL_THRESHOLD = 0.3  # low score is better
+
+# Number of related questions to be generated.
+N_QUESTIONS = 2
