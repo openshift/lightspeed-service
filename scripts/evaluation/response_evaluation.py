@@ -245,6 +245,9 @@ class ResponseEvaluation:
             "rougeL_recall",
             "rougeL_f1",
             "answer_relevancy",
+            # Supporting data
+            "answer_valid_flag",
+            "generated_questions",
         ]
         qna_pool_df[score_cols] = qna_pool_df.progress_apply(
             lambda row: self._scorer.calculate_scores(

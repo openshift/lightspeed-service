@@ -17,11 +17,10 @@ class ResponseScore:
 
         self._relevancy_scorer = None
         if "answer_relevancy" in metrics:
-            # Importing here to avoid including additional dependencies for CI.
-            # Currently it is used with local LLM inference
+            # Importing here to avoid setting up judge LLM in config, if not required.
             from .relevancy_score import AnswerRelevancyScore
 
-            self._relevancy_scorer = AnswerRelevancyScore()
+            self._relevancy_scorer = AnswerRelevancyScore(self._embedding_model)
 
     def calculate_scores(self, query, answer, response):
         """Calculate different similarity scores for two strings."""
@@ -38,9 +37,11 @@ class ResponseScore:
         # text based scores
         rouge_score = self._rouge_scorer.score(target=answer, prediction=response)
 
-        relevancy_score = None
+        relevancy_score = answer_valid_flag = generated_questions = None
         if self._relevancy_scorer:
-            relevancy_score = self._relevancy_scorer.get_score(query, response)
+            relevancy_score, answer_valid_flag, generated_questions = (
+                self._relevancy_scorer.get_score(query, response)
+            )
 
         print(
             f"cos_score: {cos_score}, "
@@ -57,4 +58,7 @@ class ResponseScore:
             rouge_score["rougeL"].recall,
             rouge_score["rougeL"].fmeasure,
             relevancy_score,
+            # Return additional information
+            answer_valid_flag,
+            generated_questions,
         )
