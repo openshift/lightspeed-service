@@ -39,7 +39,9 @@ def get_model_response(query, provider, model, mode, api_client=None):
         override_params = {
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: max_resp_tokens
         }
-        llm = MODEL_OLS_PARAM[provider](model, provider_config, override_params).load()
+        llm = MODEL_OLS_PARAM[provider_config.type](
+            model, provider_config, override_params
+        ).load()
     if mode == "ols_prompt":
         prompt, prompt_input = GeneratePrompt(query, [], []).generate_prompt(model)
     if mode == "ols_rag":
