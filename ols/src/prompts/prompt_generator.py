@@ -10,9 +10,10 @@ from langchain_core.prompts import (
 )
 
 from ols.constants import ModelFamily
-
+from lightspeed_agents.settings import AGENTS_SYSTEM_INSTRUCTION
 from .prompts import (
     QUERY_SYSTEM_INSTRUCTION,
+    USE_AGENTS_OUTPUT_INSTRUCTION,
     USE_CONTEXT_INSTRUCTION,
     USE_HISTORY_INSTRUCTION,
 )
@@ -53,12 +54,14 @@ class GeneratePrompt:
         rag_context: list[str] = [],
         history: list[str] = [],
         system_instruction: str = QUERY_SYSTEM_INSTRUCTION,
+        agents_output: str = "",
     ):
         """Initialize prompt generator."""
         self._query = query
         self._rag_context = rag_context
         self._history = history
         self._sys_instruction = system_instruction
+        self._agents_output = agents_output
 
     def _generate_prompt_gpt(self) -> tuple[ChatPromptTemplate, dict]:
         """Generate prompt for GPT."""
@@ -83,6 +86,18 @@ class GeneratePrompt:
 
         if "context" in llm_input_values:
             sys_intruction = sys_intruction + "\n{context}"
+
+        # TODO configurable via config
+        if self._agents_output:
+            # llm_input_values["query"] = f'USER QUERY: {llm_input_values["query"]}, CLUSTER CONTEXT: {self._agents_output}'
+            sys_intruction = (
+                sys_intruction
+                + "\n"
+                + USE_AGENTS_OUTPUT_INSTRUCTION
+            )
+            llm_input_values["agents_output"] = self._agents_output
+        else:
+            sys_intruction += "\n" + AGENTS_SYSTEM_INSTRUCTION
 
         prompt_message.append(SystemMessagePromptTemplate.from_template(sys_intruction))
 

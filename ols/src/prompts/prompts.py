@@ -30,6 +30,14 @@ USE_HISTORY_INSTRUCTION = """
 Use the previous chat history to interact and help the user.
 """
 
+USE_AGENTS_OUTPUT_INSTRUCTION = """
+Following are the precise information retrieved from the OpenShift cluster itself.
+You absolutely must use this information to answer the user's question.
+Prioritize this over all the other information you have, but can include other
+information if you think it will help the user.
+{agents_output}
+"""
+
 # {{query}} is escaped because it will be replaced as a parameter at time of use
 QUESTION_VALIDATOR_PROMPT_TEMPLATE = f"""
 Instructions:

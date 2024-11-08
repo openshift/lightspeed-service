@@ -53,6 +53,7 @@ class DocsSummarizer(QueryHelper):
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[list[str]] = None,
+        agents_output: str = "",
     ) -> SummarizerResponse:
         """Summarize the given query based on the provided conversation context.
 
@@ -113,7 +114,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
-            query, rag_context, history, self._system_prompt
+            query, rag_context, history, self._system_prompt, agents_output
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count

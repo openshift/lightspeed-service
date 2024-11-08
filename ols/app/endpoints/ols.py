@@ -28,6 +28,8 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
+from lightspeed_agents import LightspeedAgents
+from lightspeed_agents.settings import AGENTS_KEYWORD
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
@@ -305,9 +307,25 @@ def generate_response(
             provider=llm_request.provider, model=llm_request.model
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
-        return docs_summarizer.summarize(
+        response = docs_summarizer.summarize(
             conversation_id, llm_request.query, config.rag_index, history
         )
+
+        if AGENTS_KEYWORD in response.response:
+            logger.info("Agents request detected in response")
+            # TODO: supports only one agent call per request, there
+            # is no assistant-to-agent/agent-to-agent communication
+            agents = LightspeedAgents()
+            agent_name, agent_args = agents.parse_agents_request(response.response)
+            agent_output = agents.run_agent(agent_name, agent_args)
+            response = docs_summarizer.summarize(
+                conversation_id,
+                llm_request.query,
+                config.rag_index,
+                history,
+                agent_output,
+            )
+        return response
     except PromptTooLongError as summarizer_error:
         logger.error("Prompt is too long: %s", summarizer_error)
         raise HTTPException(
