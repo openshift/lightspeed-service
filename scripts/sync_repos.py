@@ -1,25 +1,25 @@
 #!/usr/bin/python
 
-"""Utility script for syncing up upstream repository with downstream one."""
+"""Utility script for syncing up upstream repository with downstream one.
+
+usage: sync_repos.py [-h] -s SOURCE_REPOSITORY -t TARGET_REPOSITORY [-e SINCE]
+
+options:
+  -h, --help            show this help message and exit
+  -s SOURCE_REPOSITORY, --source-repository SOURCE_REPOSITORY
+                        Path to the source repository
+  -t TARGET_REPOSITORY, --target-repository TARGET_REPOSITORY
+                        Path to the target repository
+  -e SINCE, --since SINCE
+                        Synchronize commits since given date
+"""
+
 
 import argparse
 import logging
 import os
 import subprocess
 from datetime import datetime
-
-"""Usage:
-    usage: sync_repos.py [-h] -s SOURCE_REPOSITORY -t TARGET_REPOSITORY [-e SINCE]
-
-    options:
-      -h, --help            show this help message and exit
-      -s SOURCE_REPOSITORY, --source-repository SOURCE_REPOSITORY
-                            Path to the source repository
-      -t TARGET_REPOSITORY, --target-repository TARGET_REPOSITORY
-                            Path to the target repository
-      -e SINCE, --since SINCE
-                            Synchronize commits since given date
-"""
 
 logger = logging.getLogger("Repository sync")
 
@@ -44,6 +44,7 @@ def read_shas(source_repository: str, since: str) -> list[str]:
             f"--since={since}",
         ],
         capture_output=True,
+        check=False,
     )
 
     # check if the command finished with ok status
@@ -73,6 +74,7 @@ def export_patches(
             workdir,
         ],
         capture_output=True,
+        check=False,
     )
 
     # check if the command finished with ok status
@@ -90,6 +92,7 @@ def check_changes(target_repository: str, patch_file: str) -> None:
     result = subprocess.run(  # noqa: S603
         ["git", "-C", target_repository, "apply", "--stat", patch_file],  # noqa: S607
         capture_output=True,
+        check=False,
     )
 
     # check if the command finished with ok status
@@ -107,6 +110,7 @@ def check_if_applicable(target_repository: str, patch_file: str) -> None:
     result = subprocess.run(  # noqa: S603
         ["git", "-C", target_repository, "apply", "--check", patch_file],  # noqa: S607
         capture_output=True,
+        check=False,
     )
 
     # check if the command finished with ok status
@@ -124,6 +128,7 @@ def apply_patch(target_repository: str, patch_file: str) -> None:
     result = subprocess.run(  # noqa: S603
         ["git", "-C", target_repository, "am", "--signoff", patch_file],  # noqa: S607
         capture_output=True,
+        check=False,
     )
 
     # check if the command finished with ok status
