@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:1ee4a62d09bb4264a6d81c9e88da82bd01e57611a7fa79fee38e0f34dff8b362"
+content_hash = "sha256:63c5c84503055a63986da4672fbc135ecbc728d368b0217d40983206bf111b26"
 
 [[package]]
 name = "absl-py"
@@ -2172,7 +2172,7 @@ files = [
 
 [[package]]
 name = "pdm"
-version = "2.19.3"
+version = "2.20.0.post1"
 requires_python = ">=3.8"
 summary = "A modern Python package and dependency manager supporting the latest PEP standards"
 groups = ["default"]
@@ -2190,7 +2190,7 @@ dependencies = [
     "platformdirs",
     "pyproject-hooks",
     "python-dotenv>=0.15",
-    "resolvelib>=1.0.1",
+    "resolvelib>=1.1",
     "rich>=12.3.0",
     "shellingham>=1.3.2",
     "tomlkit<1,>=0.11.1",
@@ -2199,8 +2199,8 @@ dependencies = [
     "virtualenv>=20",
 ]
 files = [
-    {file = "pdm-2.19.3-py3-none-any.whl", hash = "sha256:80594e5d6167fb17ea724df09b68cdfe9c601ad7f218f1beea2c032b61bf30e9"},
-    {file = "pdm-2.19.3.tar.gz", hash = "sha256:a9cc7f2078cd3b25ac645ffb5eca9d6b3d5dfcd788eaddfb6083432da71c97c2"},
+    {file = "pdm-2.20.0.post1-py3-none-any.whl", hash = "sha256:d4dcd55c19cdb34d85fd33dafbe2e582338be30dea58e0448f21205a1bac6118"},
+    {file = "pdm-2.20.0.post1.tar.gz", hash = "sha256:e976c9a346ddb5802a53b70295f9ef4b0af617c65400b41764696b0001cdaee3"},
 ]
 
 [[package]]
@@ -2801,12 +2801,13 @@ files = [
 
 [[package]]
 name = "resolvelib"
-version = "1.0.1"
+version = "1.1.0"
+requires_python = ">=3.7"
 summary = "Resolve abstract dependencies into concrete ones"
 groups = ["default"]
 files = [
-    {file = "resolvelib-1.0.1-py2.py3-none-any.whl", hash = "sha256:d2da45d1a8dfee81bdd591647783e340ef3bcb104b54c383f70d422ef5cc7dbf"},
-    {file = "resolvelib-1.0.1.tar.gz", hash = "sha256:04ce76cbd63fded2078ce224785da6ecd42b9564b1390793f64ddecbe997b309"},
+    {file = "resolvelib-1.1.0-py2.py3-none-any.whl", hash = "sha256:f80de38ae744bcf4e918e27a681a5c6cb63a08d9a926c0989c0730bcdd089049"},
+    {file = "resolvelib-1.1.0.tar.gz", hash = "sha256:b68591ef748f58c1e2a2ac28d0961b3586ae8b25f60b0ba9a5e4f3d87c1d6a79"},
 ]
 
 [[package]]
