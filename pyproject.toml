@@ -55,6 +55,7 @@ dev = [
     "pytest-reportportal==5.4.1",
     "pytest-benchmark[histogram]>=4.0.0",
     "typing-extensions==4.12.2",
+    "pytest-subtests==0.13.1",
 ]
 
 # The following section is needed only for torch[cpu] variant on Linux,

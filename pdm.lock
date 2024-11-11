@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:29ffbdeceaf5a64815b4c12281188734d559281e805a051bdeffaf4581e62bd2"
+content_hash = "sha256:1ee4a62d09bb4264a6d81c9e88da82bd01e57611a7fa79fee38e0f34dff8b362"
 
 [[package]]
 name = "absl-py"
@@ -2620,6 +2620,21 @@ dependencies = [
 files = [
     {file = "pytest-reportportal-5.4.1.tar.gz", hash = "sha256:5af38667cb922695a0c73fdab472cdc75a9d9be255b51053b354d8f1a5a49d33"},
     {file = "pytest_reportportal-5.4.1-py2.py3-none-any.whl", hash = "sha256:77503398d19044e62faa392792b92944e8846b40d0983d6b82e02eb52cafa512"},
+]
+
+[[package]]
+name = "pytest-subtests"
+version = "0.13.1"
+requires_python = ">=3.7"
+summary = "unittest subTest() support and subtests fixture"
+groups = ["dev"]
+dependencies = [
+    "attrs>=19.2.0",
+    "pytest>=7.0",
+]
+files = [
+    {file = "pytest_subtests-0.13.1-py3-none-any.whl", hash = "sha256:ab616a22f64cd17c1aee65f18af94dbc30c444f8683de2b30895c3778265e3bd"},
+    {file = "pytest_subtests-0.13.1.tar.gz", hash = "sha256:989e38f0f1c01bc7c6b2e04db7d9fd859db35d77c2c1a430c831a70cbf3fde2d"},
 ]
 
 [[package]]
