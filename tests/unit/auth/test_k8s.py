@@ -1,4 +1,4 @@
-"""Unit tests for auth_dependency module."""
+"""Unit tests for auth/k8s module."""
 
 import os
 from typing import Optional
