@@ -216,3 +216,9 @@ DEFAULT_SSL_VERSION = ssl.PROTOCOL_TLS_SERVER
 
 # Default SSL ciphers used by FastAPI REST API
 DEFAULT_SSL_CIPHERS = "TLSv1"
+
+# Default authentication module
+DEFAULT_AUTHENTICATION_MODULE = "k8s"
+
+# All supported authentication modules
+SUPPORTED_AUTHENTICATION_MODULES = {"k8s"}

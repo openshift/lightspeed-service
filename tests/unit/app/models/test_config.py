@@ -2045,7 +2045,45 @@ def test_ols_config(tmpdir):
     )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
-    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.authentication_config == AuthenticationConfig(
+        module=constants.DEFAULT_AUTHENTICATION_MODULE
+    )
+    assert ols_config.extra_ca == []
+    assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
+    assert ols_config.system_prompt_path is None
+    assert ols_config.system_prompt is None
+    assert ols_config.tls_security_profile == TLSSecurityProfile()
+
+
+def test_ols_config_with_auth_config(tmpdir):
+    """Test the OLSConfig model."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "logging_config": {
+                "logging_level": "INFO",
+            },
+            "authentication_config": {"module": "foo"},
+        }
+    )
+    assert ols_config.default_provider == "test_default_provider"
+    assert ols_config.default_model == "test_default_model"
+    assert ols_config.conversation_cache.type == "memory"
+    assert ols_config.conversation_cache.memory.max_entries == 100
+    assert ols_config.logging_config.app_log_level == logging.INFO
+    assert (
+        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
+    )
+    assert ols_config.user_data_collection == UserDataCollection()
+    assert ols_config.reference_content is None
+    assert ols_config.authentication_config == AuthenticationConfig(module="foo")
     assert ols_config.extra_ca == []
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
@@ -2088,7 +2126,9 @@ def test_ols_config_with_tls_security_profile(tmpdir):
     )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
-    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.authentication_config == AuthenticationConfig(
+        module=constants.DEFAULT_AUTHENTICATION_MODULE
+    )
     assert ols_config.extra_ca == []
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None
@@ -2165,6 +2205,7 @@ def test_config():
                 },
                 "query_validation_method": "disabled",
                 "certificate_directory": "/foo/bar/baz",
+                "authentication_config": {"module": "foo"},
             },
             "dev_config": {"disable_tls": "true"},
         }
@@ -2226,6 +2267,9 @@ def test_config():
     assert config.ols_config.certificate_directory == "/foo/bar/baz"
     assert config.ols_config.system_prompt_path is None
     assert config.ols_config.system_prompt is None
+    assert config.ols_config.authentication_config is not None
+    assert config.ols_config.authentication_config.module is not None
+    assert config.ols_config.authentication_config.module == "foo"
 
 
 def test_config_default_certificate_directory():
@@ -2758,11 +2802,58 @@ def test_query_filter_validation():
 
 def test_authentication_config_validation_proper_config():
     """Test method to validate authentication config."""
+    # default module
     AuthenticationConfig(
         skip_tls_verification=True,
         k8s_cluster_api="http://cluster.org/foo",
         k8s_ca_cert_path="tests/config/empty_cert.crt",
     )
+    # custom module
+    AuthenticationConfig(
+        module=constants.DEFAULT_AUTHENTICATION_MODULE,
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
+        k8s_ca_cert_path="tests/config/empty_cert.crt",
+    )
+
+
+def test_authentication_config_wrong_module():
+    """Test method to validate authentication config when wrong module is specified."""
+    #  no module
+    cfg = AuthenticationConfig(
+        module=None,
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
+        k8s_ca_cert_path="tests/config/empty_cert.crt",
+    )
+    with pytest.raises(
+        InvalidConfigurationError, match="Authentication module is not setup"
+    ):
+        cfg.validate_yaml()
+
+    # empty module
+    cfg = AuthenticationConfig(
+        module="",
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
+        k8s_ca_cert_path="tests/config/empty_cert.crt",
+    )
+    with pytest.raises(
+        InvalidConfigurationError, match="invalid authentication module"
+    ):
+        cfg.validate_yaml()
+
+    # custom module
+    cfg = AuthenticationConfig(
+        module="foo",
+        skip_tls_verification=True,
+        k8s_cluster_api="http://cluster.org/foo",
+        k8s_ca_cert_path="tests/config/empty_cert.crt",
+    )
+    with pytest.raises(
+        InvalidConfigurationError, match="invalid authentication module"
+    ):
+        cfg.validate_yaml()
 
 
 def test_authentication_config_k8s_cluster_api():
@@ -2975,7 +3066,9 @@ def test_ols_config_with_system_prompt(tmpdir):
     )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
-    assert ols_config.authentication_config == AuthenticationConfig()
+    assert ols_config.authentication_config == AuthenticationConfig(
+        module=constants.DEFAULT_AUTHENTICATION_MODULE
+    )
     assert ols_config.extra_ca == []
     assert ols_config.certificate_directory == constants.DEFAULT_CERTIFICATE_DIRECTORY
     assert ols_config.system_prompt_path is None

@@ -79,6 +79,7 @@ ols_config:
   #     replace_with: "openshift"
   query_validation_method: llm
   authentication_config:
+    module: "k8s"
     k8s_cluster_api: "https://api.example.com:6443"
     k8s_ca_cert_path: "/Users/home/ca.crt"
     skip_tls_verification: false

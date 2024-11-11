@@ -213,9 +213,20 @@ class TLSConfig(BaseModel):
 class AuthenticationConfig(BaseModel):
     """Authentication configuration."""
 
+    module: Optional[str] = None
     skip_tls_verification: bool = False
     k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
+
+    def validate_yaml(self) -> None:
+        """Validate YAML containing authentication configuration section."""
+        if self.module is None:
+            raise InvalidConfigurationError("Authentication module is not setup")
+        if self.module not in constants.SUPPORTED_AUTHENTICATION_MODULES:
+            raise InvalidConfigurationError(
+                f"invalid authentication module: {self.module}, supported modules are"
+                f" {constants.SUPPORTED_AUTHENTICATION_MODULES}"
+            )
 
 
 class TLSSecurityProfile(BaseModel):
@@ -966,6 +977,10 @@ class OLSConfig(BaseModel):
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
+        # setup the authentication module, which is optional in configuration file
+        if self.authentication_config.module is None:
+            self.authentication_config.module = constants.DEFAULT_AUTHENTICATION_MODULE
+
         self.tls_config = TLSConfig(data.get("tls_config", None), ignore_missing_certs)
         if data.get("query_filters", None) is not None:
             self.query_filters = []
@@ -1006,6 +1021,7 @@ class OLSConfig(BaseModel):
                 and self.certificate_directory == other.certificate_directory
                 and self.system_prompt == other.system_prompt
                 and self.tls_security_profile == other.tls_security_profile
+                and self.authentication_config == other.authentication_config
             )
         return False
 
@@ -1022,6 +1038,8 @@ class OLSConfig(BaseModel):
                 query_filter.validate_yaml()
         if self.tls_security_profile is not None:
             self.tls_security_profile.validate_yaml()
+        if self.authentication_config is not None:
+            self.authentication_config.validate_yaml()
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:
