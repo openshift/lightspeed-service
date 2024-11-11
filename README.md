@@ -45,8 +45,10 @@ configure model, and connect to it.
     * [5. (Optional) Configure the local document store](#5-optional-configure-the-local-document-store)
     * [6. (Optional) Configure conversation cache](#6-optional-configure-conversation-cache)
     * [7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#7-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
-    * [8. Registering a new LLM provider](#8-registering-a-new-llm-provider)
-    * [9. Fine tuning](#9-fine-tuning)
+    * [8. (Optional) Configure the number of workers](#8-optional-configure-the-number-of-workers)
+    * [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
+    * [10. TLS security profiles](#10-tls-security-profiles)
+    * [11. Fine tuning](#11-fine-tuning)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -441,10 +443,17 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
  > This action may be required for self-hosted LLMs.
 
-## 8. Registering a new LLM provider
+## 8. (Optional) Configure the number of workers
+   By default the number of workers is set to 1, you can increase the number of workers to scale up the REST API by modifying the max_workers config option in `olsconfig.yaml`.
+   ```yaml
+         ols_config:
+           max_workers: 4
+   ```
+
+## 9. Registering a new LLM provider
    Please look [here](https://github.com/openshift/lightspeed-service/blob/main/CONTRIBUTING.md#adding-a-new-providermodel) for more info.
 
-## 9. TLS security profiles
+## 10. TLS security profiles
    TLS security profile can be set for the service itself and also for any configured provider. To specify TLS security profile for the service, the following section can be added into `ols` section in the `olsconfig.yaml` configuration file:
 
 ```
@@ -485,7 +494,7 @@ The `tlsSecurityProfile` is fully optional. When it is not specified, the LLM ca
 
 
 
-## 10. Fine tuning
+## 11. Fine tuning
    The service uses the, so called, system prompt to put the question into context before the question is sent to the selected LLM. The default system prompt is fine tuned for questions about OpenShift and Kubernetes. It is possible to use a different system prompt via the configuration option `system_prompt_path` in the `ols_config` section. That option must contain the path to the text file with the actual system prompt (can contain multiple lines). An example of such configuration:
 
 ```yaml
