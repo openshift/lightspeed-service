@@ -386,9 +386,9 @@ nvidia-nvtx-cu12==12.1.105; platform_system == "Linux" and platform_machine == "
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
     --hash=sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918
-openai==1.53.1 \
-    --hash=sha256:04b8df362e7e2af75c8a3bcd105a5abb3837ce883e2fa3cb8d922cb8ee3515ac \
-    --hash=sha256:b26bc2d91eda8a9317ebecddfbd388b3698f89fa56d78672dd115a1ccc175722
+openai==1.54.3 \
+    --hash=sha256:7511b74eeb894ac0b0253dc71f087a15d2e4d71d22d0088767205143d880cca6 \
+    --hash=sha256:f18dbaf09c50d70c4185b892a2a553f80681d1d866323a2da7f7be2f688615d5
 orjson==3.10.1 \
     --hash=sha256:03a3ca0b3ed52bed1a869163a4284e8a7b0be6a0359d521e467cdef7e8e8a3ee \
     --hash=sha256:2567bc928ed3c3fcd90998009e8835de7c7dc59aabcf764b8374d36044864f3b \
