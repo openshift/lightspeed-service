@@ -91,7 +91,7 @@ dependencies = [
     "redis==5.0.8",
     "faiss-cpu==1.8.0.post1",
     "sentence-transformers==3.1.1",
-    "openai==1.53.1",
+    "openai==1.54.3",
     "pyarrow==18.0.0",
     "ibm-generative-ai==3.0.0",
     "ibm-cos-sdk==2.13.6",
