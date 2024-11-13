@@ -198,23 +198,6 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
-# TODO OLS-652: This test currently doesn't work in CI. We don't currently know
-# how to grant permissions to the service account in the test cluster
-# to access clusterversions resource.
-# @pytest.mark.cluster()
-# def test_get_cluster_id_function():
-#     """Test if the cluster ID is properly retrieved."""
-#     # During the test in cluster, there is no config initialized for the
-#     # tests run (these run against application), so we need to initialize
-#     # the config (with the fields auth needs) manually here.
-#     config.init_config("tests/config/auth_config.yaml")
-
-#     actual = K8sClientSingleton.get_cluster_id()
-#     expected = cluster_utils.get_cluster_id()
-
-#     assert actual == expected
-
-
 @pytest.mark.cluster()
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
