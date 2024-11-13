@@ -12,6 +12,8 @@ from kubernetes.config import ConfigException
 from ols import config
 from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, RUNNING_IN_CLUSTER
 
+from .auth import AuthDependencyInterface
+
 logger = logging.getLogger(__name__)
 
 
@@ -218,7 +220,7 @@ def _extract_bearer_token(header: str) -> str:
         return ""
 
 
-class AuthDependency:
+class AuthDependency(AuthDependencyInterface):
     """Create an AuthDependency Class that allows customizing the acces Scope path to check."""
 
     def __init__(self, virtual_path: str = "/ols-access") -> None:
