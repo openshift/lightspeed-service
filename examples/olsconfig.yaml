@@ -77,6 +77,11 @@ ols_config:
   #   - name: bar_filter
   #     pattern: '\b(?:bar)\b'
   #     replace_with: "openshift"
+  # query_validation_method chooses, how the first query will be validated
+  # supported values:
+  #     "keyword"  - keyword based query validation (see ols/utils/keywords.py)
+  #     "llm"      - LLM based query validation
+  #     "disabled" - question validation is disabled (all questions will be marked as valid)
   query_validation_method: llm
   authentication_config:
     module: "k8s"
