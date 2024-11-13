@@ -1,1 +1,1 @@
-LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-rag-content@sha256:29c94081607292b8a22af31251d165d5cb4826cdfac38d63c2051c30a70d4371
+LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-rag-content@sha256:51633ef61d62e0cf52930431e1de2adaef3a0dd3ae81cff7752a5cb8d87d6d19
