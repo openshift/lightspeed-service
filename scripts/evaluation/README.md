@@ -47,7 +47,9 @@ Please refer above files for the structure, add new data accordingly.
 **eval_out_dir**: Directory, where output csv/json files will be saved.
 
 **eval_metrics**: By default all scores/metrics are calculated, but this decides which scores will be used to create the graph.
-This is a list of metrics. Ex: cosine, euclidean distance, precision/recall/F1 score.
+This is a list of metrics. Ex: cosine, euclidean distance, precision/recall/F1 score, answer relevancy score, LLM based similarity score.
+
+**judge_provider / judge_model**: Provider / Model for judge LLM. This is required for LLM based evaluation (answer relevancy score, LLM based similarity score). This needs to be configured correctly through config yaml file. [Sample provider/model configuration](../../examples/olsconfig.yaml)
 
 **eval_modes**: Apart from OLS api, we may want to evaluate vanilla model or with just OLS paramaters/prompt/RAG so that we can have baseline score. This is a list of modes. Ex: vanilla, ols_param, ols_prompt, ols_rag, & ols (actual api).
 

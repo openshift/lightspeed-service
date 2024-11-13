@@ -26,7 +26,7 @@ def plot_score(results_df, score_name, out_file_path=None):
     # labels=self._args.eval_provider_model_id
     labels = results_df.columns
     bplot = ax.boxplot(
-        results_df,
+        results_df.fillna(0),
         patch_artist=True,
         sym=".",
         widths=0.5,
