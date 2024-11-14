@@ -19,6 +19,18 @@ def _args_parser(args):
         help="Identifier for Provider/Model to be used for model eval.",
     )
     parser.add_argument(
+        "--judge_provider",
+        default="ollama",
+        type=str,
+        help="Provider name for judge model; required for LLM based evaluation",
+    )
+    parser.add_argument(
+        "--judge_model",
+        default="llama3.1:latest",
+        type=str,
+        help="Judge model; required for LLM based evaluation",
+    )
+    parser.add_argument(
         "--eval_out_dir",
         default=None,
         type=str,

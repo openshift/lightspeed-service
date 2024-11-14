@@ -7,32 +7,19 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts.prompt import PromptTemplate
 from scipy.spatial.distance import cosine
 
-from ols import config
-
 from .constants import MAX_RETRY_ATTEMPTS, N_QUESTIONS, TIME_TO_BREATH
-from .models import VANILLA_MODEL
 from .prompts import ANSWER_RELEVANCY_PROMPT
 
 
 class AnswerRelevancyScore:
     """Calculate response/answer relevancy score."""
 
-    def __init__(
-        self, embedding_model, judge_provider="ollama", judge_model="llama3.1:latest"
-    ):
+    def __init__(self, judge_llm, embedding_model):
         """Initialize."""
         self._embedding_model = embedding_model
-        self._judge_llm = self._judge_llm_init(judge_provider, judge_model)
-
-    @staticmethod
-    def _judge_llm_init(judge_provider, judge_model):
-        """Load judge LLM."""
-        # Provider/model should be in config yaml
-        provider_config = config.config.llm_providers.providers[judge_provider]
-        llm = VANILLA_MODEL[provider_config.type](judge_model, provider_config).load()
 
         prompt = PromptTemplate.from_template(ANSWER_RELEVANCY_PROMPT)
-        return prompt | llm | JsonOutputParser()
+        self._judge_llm = prompt | judge_llm | JsonOutputParser()
 
     def get_score(
         self,

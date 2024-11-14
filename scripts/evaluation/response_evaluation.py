@@ -19,6 +19,7 @@ from .utils.constants import (
     EVAL_MODES,
     EVAL_THRESHOLD,
     INSCOPE_MODELS,
+    LLM_BASED_EVALS,
     MAX_RETRY_ATTEMPTS,
     SCORE_DESCRIPTION,
     TIME_TO_BREATH,
@@ -44,7 +45,7 @@ class ResponseEvaluation:
         self._load_config_and_rag()  # Set global config
         self._input_dir, self._result_dir = self._set_directories()
 
-        self._scorer = ResponseScore(self._args.eval_metrics)
+        self._scorer = ResponseScore(self._args)
 
         # Load data
         with open(os.path.join(self._input_dir, DEFAULT_QNA_FILE)) as qna_f:
@@ -68,7 +69,10 @@ class ResponseEvaluation:
 
     def _load_config_and_rag(self):
         """Load config and RAG."""
-        if len(set(self._args.eval_modes) - {"ols"}) > 0:
+        if (len(set(self._args.eval_modes) - {"ols"}) > 0) or (
+            len(set(self._args.eval_metrics).intersection(set(LLM_BASED_EVALS.keys())))
+            > 0
+        ):
             # load config separately
             # Use OLS config file to set provider/model related config. Ex: credential/url
             cfg_file = os.environ.get("OLS_CONFIG_FILE", DEFAULT_CONFIG_FILE)
@@ -245,9 +249,9 @@ class ResponseEvaluation:
             "rougeL_recall",
             "rougeL_f1",
             "answer_relevancy",
-            # Supporting data
-            "answer_valid_flag",
-            "generated_questions",
+            "answer_valid_flag",  # Supporting data for answer_relevancy
+            "generated_questions",  # Supporting data for answer_relevancy
+            "answer_similarity_llm",
         ]
         qna_pool_df[score_cols] = qna_pool_df.progress_apply(
             lambda row: self._scorer.calculate_scores(
@@ -271,6 +275,11 @@ class ResponseEvaluation:
                 qna_pool_df = self._get_evaluation_score(qna_pool_df)
                 qna_pool_df["eval_mode"] = eval_mode
                 qna_pool_df["provider_model_id"] = provider_model_id
+                qna_pool_df.to_csv(
+                    f"{self._result_dir}/temp_score-{eval_mode}-"
+                    f"{provider_model_id.replace('/', '-')}.csv",
+                    index=False,
+                )
                 result_dfs.append(qna_pool_df)
         return concat(result_dfs)
 

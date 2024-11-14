@@ -7,8 +7,9 @@ from ols import config
 from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 
-from .constants import BASIC_PROMPT, REST_API_TIMEOUT
+from .constants import REST_API_TIMEOUT
 from .models import MODEL_OLS_PARAM, VANILLA_MODEL
+from .prompts import BASIC_PROMPT
 from .rag import retrieve_rag_chunks
 
 
