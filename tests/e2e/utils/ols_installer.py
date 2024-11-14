@@ -16,8 +16,8 @@ OC_COMMAND_RETRY_DELAY = 5
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
-
-    if not os.getenv("KONFLUX_OLS_SERVICE_IMAGE"):
+    is_konflux = os.getenv("KONFLUX_BOOL")
+    if not is_konflux:
         # setup the lightspeed namespace
         cluster_utils.run_oc(
             ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
@@ -74,6 +74,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     print("created test service account users")
 
+    # grant the test service accounts permission to query ols and retrieve metrics
+    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
+    cluster_utils.grant_sa_user_access(
+        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
+    )
+    print("test service account permissions granted")
+
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
     r = retry_until_timeout_or_success(
@@ -93,13 +100,6 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
         print("Timed out waiting for OLS operator to install successfully")
         return None
     print("Operator installed successfully")
-
-    # grant the test service accounts permission to query ols and retrieve metrics
-    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
-    cluster_utils.grant_sa_user_access(
-        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
-    )
-    print("test service account permissions granted")
 
     provider = os.getenv("PROVIDER")
 
@@ -202,55 +202,56 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     # get the name of the OLS image from CI so we can substitute it in
     ols_image = os.getenv("OLS_IMAGE", "")
 
-    print(f"Updating deployment to use OLS image {ols_image}")
+    if ols_image != "":
+        print(f"Updating deployment to use OLS image {ols_image}")
 
-    # scale down the operator controller manager to avoid it interfering with the tests
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "0",
-        ]
-    )
+        # scale down the operator controller manager to avoid it interfering with the tests
+        cluster_utils.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-operator-controller-manager",
+                "--replicas",
+                "0",
+            ]
+        )
 
-    # Ensure the operator controller manager pod is gone before touching anything else
-    retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
-        lambda: not cluster_utils.get_pod_by_prefix(
-            "lightspeed-operator-controller-manager", fail_not_found=False
-        ),
-    )
+        # Ensure the operator controller manager pod is gone before touching anything else
+        retry_until_timeout_or_success(
+            OC_COMMAND_RETRY_COUNT,
+            OC_COMMAND_RETRY_DELAY,
+            lambda: not cluster_utils.get_pod_by_prefix(
+                "lightspeed-operator-controller-manager", fail_not_found=False
+            ),
+        )
 
-    # scale down the ols api server so we can ensure no pods
-    # are still running the unsubstituted image
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
+        # scale down the ols api server so we can ensure no pods
+        # are still running the unsubstituted image
+        cluster_utils.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-app-server",
+                "--replicas",
+                "0",
+            ]
+        )
 
-    # wait for the old ols api pod to go away due to deployment being scaled down
-    retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        OC_COMMAND_RETRY_DELAY,
-        lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
-    )
+        # wait for the old ols api pod to go away due to deployment being scaled down
+        retry_until_timeout_or_success(
+            OC_COMMAND_RETRY_COUNT,
+            OC_COMMAND_RETRY_DELAY,
+            lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
+        )
 
-    # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
-    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
-    cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-    )
+        # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
+        patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
+        cluster_utils.run_oc(
+            ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+        )
 
-    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
-    cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-    )
+        patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
+        cluster_utils.run_oc(
+            ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+        )
 
     # modify olsconfig configmap
     configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
