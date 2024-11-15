@@ -6,17 +6,18 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
+from ols import config
 from ols.app.models.models import (
     AuthorizationResponse,
     ErrorResponse,
     ForbiddenResponse,
     UnauthorizedResponse,
 )
-from ols.src.auth.k8s import AuthDependency
+from ols.src.auth.auth import get_auth_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authorized"])
-auth_dependency = AuthDependency(virtual_path="/ols-access")
+auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 authorized_responses: dict[int | str, dict[str, Any]] = {
     200: {

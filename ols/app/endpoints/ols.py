@@ -27,7 +27,7 @@ from ols.app.models.models import (
     SummarizerResponse,
     UnauthorizedResponse,
 )
-from ols.src.auth.k8s import AuthDependency
+from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
@@ -39,7 +39,7 @@ from ols.utils.token_handler import PromptTooLongError
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["query"])
-auth_dependency = AuthDependency(virtual_path="/ols-access")
+auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 
 query_responses: dict[int | str, dict[str, Any]] = {

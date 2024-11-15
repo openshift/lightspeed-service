@@ -6,7 +6,7 @@ from fastapi import Request
 
 from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
 
-from .auth import AuthDependencyInterface
+from .auth_dependency_interface import AuthDependencyInterface
 
 logger = logging.getLogger(__name__)
 
@@ -27,4 +27,8 @@ class AuthDependency(AuthDependencyInterface):
         Returns:
             The user's UID and username if authentication and authorization succeed.
         """
+        logger.warning("Using no-op dependency authentication!")
+        logger.warning(
+            "The service is in insecure mode meant only to be used in devel environment"
+        )
         return DEFAULT_USER_UID, DEFAULT_USER_NAME

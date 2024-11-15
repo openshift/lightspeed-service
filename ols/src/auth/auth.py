@@ -1,10 +1,13 @@
 """Authentication related utilities."""
 
-from abc import ABC, abstractmethod
-
-from fastapi import Request
+import logging
 
 from ols.app.models.config import OLSConfig
+
+from . import k8s, noop
+from .auth_dependency_interface import AuthDependencyInterface
+
+logger = logging.getLogger(__name__)
 
 
 def use_k8s_auth(ols_config: OLSConfig) -> bool:
@@ -16,10 +19,22 @@ def use_k8s_auth(ols_config: OLSConfig) -> bool:
     return auth_module is not None and auth_module == "k8s"
 
 
-class AuthDependencyInterface(ABC):
-    """An interface to be satisfied by all auth. implementations."""
+def get_auth_dependency(
+    ols_config: OLSConfig, virtual_path: str
+) -> AuthDependencyInterface:
+    """Select the configured authentication dependency interface."""
+    module = ols_config.authentication_config.module
+    logger.info(
+        "Authentication retrieval for module %s and virtual path %s",
+        module,
+        virtual_path,
+    )
 
-    @abstractmethod
-    async def __call__(self, request: Request) -> tuple[str, str]:
-        """Validate FastAPI Requests for authentication and authorization."""
-        return ("", "")
+    match module:
+        case "k8s":
+            return k8s.AuthDependency(virtual_path=virtual_path)
+        case "noop":
+            return noop.AuthDependency(virtual_path=virtual_path)
+        case _:
+            # this is internal error and should not happen in reality
+            raise Exception("Invalid/unknown auth. module was configured")

@@ -18,12 +18,12 @@ from ols.app.models.models import (
     StatusResponse,
     UnauthorizedResponse,
 )
-from ols.src.auth.k8s import AuthDependency
+from ols.src.auth.auth import get_auth_dependency
 from ols.utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
-auth_dependency = AuthDependency(virtual_path="/ols-access")
+auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 
 async def ensure_feedback_enabled(request: Request) -> None:

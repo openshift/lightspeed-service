@@ -13,11 +13,14 @@ from prometheus_client import (
     generate_latest,
 )
 
-from ols.src.auth.k8s import AuthDependency
+from ols import config
+from ols.src.auth.auth import get_auth_dependency
 from ols.utils.config import AppConfig
 
 router = APIRouter(tags=["metrics"])
-auth_dependency = AuthDependency(virtual_path="/ols-metrics-access")
+auth_dependency = get_auth_dependency(
+    config.ols_config, virtual_path="/ols-metrics-access"
+)
 
 disable_created_metrics()  # type: ignore [no-untyped-call]
 
