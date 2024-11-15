@@ -13,7 +13,119 @@ OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
 
 
-def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
+def create_and_config_sas() -> tuple[str, str]:
+    """Create and provide access to service accounts for testing.
+
+    Returns:
+        tuple containing token and metrics token.
+    """
+    cluster_utils.create_user("test-user", ignore_existing_resource=True)
+    cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
+    token = cluster_utils.get_token_for("test-user")
+    metrics_token = cluster_utils.get_token_for("metrics-test-user")
+    print("created test service account users")
+
+    # grant the test service accounts permission to query ols and retrieve metrics
+    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
+    cluster_utils.grant_sa_user_access(
+        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
+    )
+    print("test service account permissions granted")
+    return token, metrics_token
+
+
+def create_ols_config() -> None:
+    """Create the ols config configmap with log and collector config for e2e tests.
+
+    Returns:
+        Nothing.
+    """
+    # modify olsconfig configmap
+    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    configmap = yaml.safe_load(configmap_yaml)
+    olsconfig = yaml.safe_load(configmap["data"]["olsconfig.yaml"])
+
+    # one of our libs logs a secrets in debug mode which causes the pod
+    # logs beying redacted/removed completely - we need log at info level
+    olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
+
+    # add collector config for e2e tests
+    olsconfig["user_data_collector_config"] = {
+        "data_storage": "/app-root/ols-user-data",
+        "log_level": "debug",
+        "collection_interval": 10,
+        "run_without_initial_wait": True,
+        "ingress_env": "stage",
+        "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
+    }
+    configmap["data"]["olsconfig.yaml"] = yaml.dump(olsconfig)
+    updated_configmap = yaml.dump(configmap)
+
+    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
+    cluster_utils.run_oc(["apply", "-f", "-"], input=updated_configmap)
+
+
+def replace_ols_image(ols_image: str) -> None:
+    """Replace the existing ols image with a new one.
+
+    Args:
+        ols_image (str): the new ols image to be added to the server pod.
+
+    Returns:
+        Nothing.
+    """
+    print(f"Updating deployment to use OLS image {ols_image}")
+
+    # scale down the operator controller manager to avoid it interfering with the tests
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "0",
+        ]
+    )
+
+    # Ensure the operator controller manager pod is gone before touching anything else
+    retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: not cluster_utils.get_pod_by_prefix(
+            "lightspeed-operator-controller-manager", fail_not_found=False
+        ),
+    )
+
+    # scale down the ols api server so we can ensure no pods
+    # are still running the unsubstituted image
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "0",
+        ]
+    )
+
+    # wait for the old ols api pod to go away due to deployment being scaled down
+    retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
+        lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
+    )
+
+    # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
+    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
+    cluster_utils.run_oc(
+        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    )
+
+    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
+    cluster_utils.run_oc(
+        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    )
+
+
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
     is_konflux = os.getenv("KONFLUX_BOOL")
@@ -67,19 +179,6 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
                 f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
             )
             raise
-
-    cluster_utils.create_user("test-user", ignore_existing_resource=True)
-    cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
-    token = cluster_utils.get_token_for("test-user")
-    metrics_token = cluster_utils.get_token_for("metrics-test-user")
-    print("created test service account users")
-
-    # grant the test service accounts permission to query ols and retrieve metrics
-    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
-    cluster_utils.grant_sa_user_access(
-        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
-    )
-    print("test service account permissions granted")
 
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
@@ -200,83 +299,23 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     )
 
     # get the name of the OLS image from CI so we can substitute it in
-    ols_image = os.getenv("OLS_IMAGE", "")
+    new_ols_image = os.getenv("OLS_IMAGE", "")
 
-    if ols_image != "":
-        print(f"Updating deployment to use OLS image {ols_image}")
+    if new_ols_image != "":
+        replace_ols_image(new_ols_image)
 
-        # scale down the operator controller manager to avoid it interfering with the tests
-        cluster_utils.run_oc(
-            [
-                "scale",
-                "deployment/lightspeed-operator-controller-manager",
-                "--replicas",
-                "0",
-            ]
-        )
-
-        # Ensure the operator controller manager pod is gone before touching anything else
-        retry_until_timeout_or_success(
-            OC_COMMAND_RETRY_COUNT,
-            OC_COMMAND_RETRY_DELAY,
-            lambda: not cluster_utils.get_pod_by_prefix(
-                "lightspeed-operator-controller-manager", fail_not_found=False
-            ),
-        )
-
-        # scale down the ols api server so we can ensure no pods
-        # are still running the unsubstituted image
-        cluster_utils.run_oc(
-            [
-                "scale",
-                "deployment/lightspeed-app-server",
-                "--replicas",
-                "0",
-            ]
-        )
-
-        # wait for the old ols api pod to go away due to deployment being scaled down
-        retry_until_timeout_or_success(
-            OC_COMMAND_RETRY_COUNT,
-            OC_COMMAND_RETRY_DELAY,
-            lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
-        )
-
-        # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
-        patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
-        cluster_utils.run_oc(
-            ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-        )
-
-        patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
-        cluster_utils.run_oc(
-            ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-        )
-
-    # modify olsconfig configmap
-    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
-    configmap = yaml.safe_load(configmap_yaml)
-    olsconfig = yaml.safe_load(configmap["data"]["olsconfig.yaml"])
-
-    # one of our libs logs a secrets in debug mode which causes the pod
-    # logs beying redacted/removed completely - we need log at info level
-    olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
-
-    # add collector config for e2e tests
-    olsconfig["user_data_collector_config"] = {
-        "data_storage": "/app-root/ols-user-data",
-        "log_level": "debug",
-        "collection_interval": 10,
-        "run_without_initial_wait": True,
-        "ingress_env": "stage",
-        "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
-    }
-    configmap["data"]["olsconfig.yaml"] = yaml.dump(olsconfig)
-    updated_configmap = yaml.dump(configmap)
-
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
-    cluster_utils.run_oc(["apply", "-f", "-"], input=updated_configmap)
-
+    # Scale down server pod. If image is replaced, it won't do anything
+    # otherwise, it enables the config modification and subsequent
+    # scaling up
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "0",
+        ]
+    )
+    create_ols_config()
     # scale the ols app server up
     cluster_utils.run_oc(
         [
@@ -346,4 +385,4 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
         ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
     ).stdout.strip("'")
     ols_url = f"https://{url}"
-    return ols_url, token, metrics_token
+    return ols_url

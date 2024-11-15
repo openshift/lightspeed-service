@@ -63,7 +63,8 @@ def setup_module(module):
 
     if on_cluster:
         try:
-            ols_url, token, metrics_token = ols_installer.install_ols()
+            token, metrics_token = ols_installer.create_and_config_sas()
+            ols_url = ols_installer.install_ols()
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
             must_gather()
