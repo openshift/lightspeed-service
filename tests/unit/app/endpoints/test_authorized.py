@@ -6,11 +6,15 @@ import pytest
 from fastapi import HTTPException, Request
 
 from ols import config, constants
-from ols.app.endpoints.authorized import (
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+from ols.app.endpoints.authorized import (  # noqa:E402
     is_user_authorized,
 )
-from ols.app.models.models import AuthorizationResponse
-from tests.mock_classes.mock_k8s_api import (
+from ols.app.models.models import AuthorizationResponse  # noqa:E402
+from tests.mock_classes.mock_k8s_api import (  # noqa:E402
     mock_subject_access_review_response,
     mock_token_review_response,
 )

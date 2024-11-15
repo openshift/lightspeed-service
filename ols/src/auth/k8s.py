@@ -12,7 +12,7 @@ from kubernetes.config import ConfigException
 from ols import config
 from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, RUNNING_IN_CLUSTER
 
-from .auth import AuthDependencyInterface
+from .auth_dependency_interface import AuthDependencyInterface
 
 logger = logging.getLogger(__name__)
 
