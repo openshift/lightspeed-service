@@ -23,7 +23,14 @@ def get_auth_dependency(
     ols_config: OLSConfig, virtual_path: str
 ) -> AuthDependencyInterface:
     """Select the configured authentication dependency interface."""
+    if ols_config is None or ols_config.authentication_config is None:
+        raise Exception("Authentication is not configured properly")
+
     module = ols_config.authentication_config.module
+    if module is None:
+        raise Exception("Authentication module is not specified")
+
+    # module is specified -> time to construct AuthDependency instance
     logger.info(
         "Authentication retrieval for module %s and virtual path %s",
         module,
@@ -37,4 +44,4 @@ def get_auth_dependency(
             return noop.AuthDependency(virtual_path=virtual_path)
         case _:
             # this is internal error and should not happen in reality
-            raise Exception("Invalid/unknown auth. module was configured")
+            raise Exception(f"Invalid/unknown auth. module was configured: {module}")
