@@ -11,4 +11,3 @@ class AuthDependencyInterface(ABC):
     @abstractmethod
     async def __call__(self, request: Request) -> tuple[str, str]:
         """Validate FastAPI Requests for authentication and authorization."""
-        return ("", "")
