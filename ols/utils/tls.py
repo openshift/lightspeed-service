@@ -4,9 +4,12 @@
 # wokeignore:rule=master
 # https://github.com/openshift/api/blob/master/config/v1/types_tlssecurityprofile.go
 
+import logging
 import ssl
 from enum import StrEnum
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class TLSProfiles(StrEnum):
