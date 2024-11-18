@@ -42,6 +42,7 @@ component "User data collector" as collector
 database "RAG\ndatabase" as rag
 database "Conversation\ncache" as cache
 collections "LLM" as llm
+collections "Auth.modules" as auth_modules
 database "Transcripts" as transcripts
 document_summarizer --> rag
 history --> cache
@@ -50,6 +51,8 @@ handler -> transcripts
 transcripts -> collector
 component "Prometheus"
 component "Grafana"
+
+auth -u-> auth_modules : "call selected authentication\nmodule to retrieve\nuser ID and user name"
 
 configuration -u-> config_loader
 
@@ -62,7 +65,7 @@ package "Red Hat VPN" {
 }
 
 collector -> ingress
-http -u-> Prometheus : metrics
-Prometheus -> Grafana : visualization
+http -u-> Prometheus : "expose metrics"
+Prometheus -u-> Grafana : visualization
 
 @enduml
