@@ -48,14 +48,14 @@ spec:
       computeResources:
         requests:
           cpu: '1'
-          memory: 1Gi
+          memory: 8Gi
         limits:
           memory: 8Gi
     - pipelineTaskName: ecosystem-cert-preflight-checks
       computeResources:
         requests:
           cpu: '1'
-          memory: 1Gi
+          memory: 8Gi
         limits:
           memory: 8Gi
     - pipelineTaskName: build-container
