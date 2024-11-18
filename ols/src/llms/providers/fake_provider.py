@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from langchain.llms.base import LLM
-from langchain.llms.fake import FakeListLLM
+from langchain_community.llms import FakeListLLM
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
