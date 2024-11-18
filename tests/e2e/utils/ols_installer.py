@@ -19,6 +19,9 @@ def create_and_config_sas() -> tuple[str, str]:
     Returns:
         tuple containing token and metrics token.
     """
+    cluster_utils.run_oc(
+        ["project", "openshift-lightspeed"], ignore_existing_resource=True
+    )
     cluster_utils.create_user("test-user", ignore_existing_resource=True)
     cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
     token = cluster_utils.get_token_for("test-user")
@@ -179,6 +182,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
                 f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
             )
             raise
+
+    token, metrics_token = create_and_config_sas()
 
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
@@ -385,4 +390,4 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
         ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
     ).stdout.strip("'")
     ols_url = f"https://{url}"
-    return ols_url
+    return ols_url, token, metrics_token
