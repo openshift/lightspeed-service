@@ -38,7 +38,7 @@ dev = [
     "black==24.10.0",
     "pydocstyle==6.3.0",
     "fastparquet==2024.5.0",  # Required for model evaluation (runtime, if parquet qna file is used)
-    "httpx==0.27.0",
+    "httpx==0.27.2",
     "mypy==1.13.0",  # Usually needs to be set to latest stable version available
     "packaging==24.1",
     "pytest==8.3.2",
@@ -81,6 +81,7 @@ dependencies = [
     "pdm==2.20.0.post1",
     "torch==2.4.1",
     "pandas==2.1.4",
+    "httpx==0.27.2",
     "fastapi==0.115.4",
     "langchain==0.3.6",
     "langchain-ibm==0.3.2",
