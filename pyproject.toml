@@ -136,6 +136,7 @@ check-types = "pdm run make check-types"
 generate-schema = "pdm run make schema"
 security-check = "pdm run make security-check"
 benchmarks = "pdm run make benchmarks"
+requirements = "pdm run make requirements.txt"
 
 [tool.setuptools]
 packages = ["ols"]
