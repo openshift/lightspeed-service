@@ -61,7 +61,7 @@ spec:
     - pipelineTaskName: build-container
       computeResources:
         requests:
-          memory: 1Gi
+          memory: 8Gi
         limits:
           memory: 8Gi
   pipelineSpec:
