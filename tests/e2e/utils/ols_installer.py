@@ -37,7 +37,7 @@ def create_and_config_sas() -> tuple[str, str]:
     return token, metrics_token
 
 
-def create_ols_config() -> None:
+def update_ols_config() -> None:
     """Create the ols config configmap with log and collector config for e2e tests.
 
     Returns:
@@ -320,7 +320,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
             "0",
         ]
     )
-    create_ols_config()
+    # update_ols_config() - removed because deletion is not happening and apply causes failure
     # scale the ols app server up
     cluster_utils.run_oc(
         [
