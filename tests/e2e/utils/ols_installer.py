@@ -79,16 +79,6 @@ def replace_ols_image(ols_image: str) -> None:
     """
     print(f"Updating deployment to use OLS image {ols_image}")
 
-    # scale down the operator controller manager to avoid it interfering with the tests
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "0",
-        ]
-    )
-
     # Ensure the operator controller manager pod is gone before touching anything else
     retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
@@ -306,6 +296,16 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
     # get the name of the OLS image from CI so we can substitute it in
     new_ols_image = os.getenv("OLS_IMAGE", "")
 
+    # scale down the operator controller manager to avoid it interfering with the tests
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "0",
+        ]
+    )
+
     if new_ols_image != "":
         replace_ols_image(new_ols_image)
 
@@ -320,7 +320,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
             "0",
         ]
     )
-    # update_ols_config() - removed because deletion is not happening and apply causes failure
+    update_ols_config()
     # scale the ols app server up
     cluster_utils.run_oc(
         [
