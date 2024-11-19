@@ -8,7 +8,6 @@ from llama_index.core import VectorStoreIndex
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.config import ProviderConfig
 from ols.app.models.models import SummarizerResponse
 from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
@@ -38,14 +37,6 @@ class DocsSummarizer(QueryHelper):
             self._system_prompt = config.ols_config.system_prompt
 
         logger.debug("System prompt: %s", self._system_prompt)
-
-    def _get_model_options(
-        self, provider_config: ProviderConfig
-    ) -> Optional[dict[str, Any]]:
-        if provider_config is not None:
-            model_config = provider_config.models.get(self.model)
-            return model_config.options
-        return None
 
     def summarize(
         self,
