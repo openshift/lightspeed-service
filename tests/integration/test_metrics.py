@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from ols import config
 from ols.app.models.config import LoggingConfig
-from ols.utils.logging import configure_logging
+from ols.utils.logging_configurator import configure_logging
 
 client: TestClient
 
