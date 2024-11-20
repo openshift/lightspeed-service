@@ -854,12 +854,14 @@ class LoggingConfig(BaseModel):
     app_log_level: int = logging.INFO
     lib_log_level: int = logging.WARNING
     uvicorn_log_level: int = logging.WARNING
+    suppress_metrics_in_log: bool = False
+    suppress_auth_checks_warning_in_log: bool = False
 
     def __init__(self, **data: Optional[dict]) -> None:
         """Initialize configuration and perform basic validation."""
         # convert input strings (level names, eg. debug/info,...) to
         # logging level names (integer values) for defined model fields
-        for field in self.model_fields:
+        for field in filter(lambda x: x.endswith("_log_level"), self.model_fields):
             if field in data:
                 data[field] = _get_log_level(data[field])  # type: ignore[assignment]
         super().__init__(**data)

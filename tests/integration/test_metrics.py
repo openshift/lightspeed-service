@@ -1,5 +1,6 @@
 """Integration tests for metrics exposed by the service."""
 
+import logging
 import os
 import re
 from unittest.mock import patch
@@ -9,8 +10,21 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import config
+from ols.app.models.config import LoggingConfig
+from ols.utils.logging import configure_logging
 
 client: TestClient
+
+# counters that are expected to be part of metrics
+expected_counters = (
+    "ols_rest_api_calls_total",
+    "ols_llm_calls_total",
+    "ols_llm_calls_failures_total",
+    "ols_llm_validation_errors_total",
+    "ols_llm_token_sent_total",
+    "ols_llm_token_received_total",
+    "ols_provider_model_configuration",
+)
 
 
 # we need to patch the config file path to point to the test
@@ -45,22 +59,57 @@ def test_metrics():
     """Check if service provides metrics endpoint with some expected counters."""
     response_text = retrieve_metrics(client)
 
-    # counters that are expected to be part of metrics
-    expected_counters = (
-        "ols_rest_api_calls_total",
-        "ols_llm_calls_total",
-        "ols_llm_calls_failures_total",
-        "ols_llm_validation_errors_total",
-        "ols_llm_token_sent_total",
-        "ols_llm_token_received_total",
-        "ols_provider_model_configuration",
-    )
+    # check if all counters are present
+    for expected_counter in expected_counters:
+        assert (
+            f"{expected_counter} " in response_text
+        ), f"Counter {expected_counter} not found in {response_text}"
+
+
+def test_metrics_with_debug_log(caplog):
+    """Check if service provides metrics endpoint with some expected counters."""
+    logging_config = LoggingConfig(app_log_level="debug")
+
+    configure_logging(logging_config)
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
+    response_text = retrieve_metrics(client)
 
     # check if all counters are present
     for expected_counter in expected_counters:
         assert (
             f"{expected_counter} " in response_text
         ), f"Counter {expected_counter} not found in {response_text}"
+
+    # check if the metrics are also found in the log
+    captured_out = caplog.text
+    for expected_counter in expected_counters:
+        assert expected_counter in captured_out
+
+
+def test_metrics_with_debug_logging_suppressed(caplog):
+    """Check if service provides metrics endpoint with some counters and log output suppressed."""
+    logging_config = LoggingConfig(app_log_level="debug")
+    config.ols_config.logging_config.suppress_metrics_in_log = True
+
+    configure_logging(logging_config)
+
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
+    response_text = retrieve_metrics(client)
+
+    # check if all counters are present
+    for expected_counter in expected_counters:
+        assert (
+            f"{expected_counter} " in response_text
+        ), f"Counter {expected_counter} not found in {response_text}"
+
+    # check if the metrics are NOT found in the log
+    captured_out = caplog.text
+    for expected_counter in expected_counters:
+        assert expected_counter not in captured_out
 
 
 def get_counter_value(client, counter_name, path, status_code):

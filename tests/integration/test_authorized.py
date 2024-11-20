@@ -1,5 +1,6 @@
 """Integration tests for /livenss and /readiness REST API endpoints."""
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,8 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import config, constants
+from ols.app.models.config import LoggingConfig
+from ols.utils.logging import configure_logging
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
@@ -42,9 +45,15 @@ def _enabled_auth():
 
 
 @pytest.mark.usefixtures("_disabled_auth")
-def test_post_authorized_disabled():
-    """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
+def test_post_authorized_disabled(caplog):
+    """Check the REST API /v1/query with POST HTTP method with authentication disabled."""
     # perform POST request with authentication disabled
+    logging_config = LoggingConfig(app_log_level="warning")
+
+    configure_logging(logging_config)
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
     response = client.post("/authorized")
     assert response.status_code == requests.codes.ok
 
@@ -53,6 +62,35 @@ def test_post_authorized_disabled():
         "user_id": constants.DEFAULT_USER_UID,
         "username": constants.DEFAULT_USER_NAME,
     }
+
+    # check if the auth checks warning message is found in the log
+    captured_out = caplog.text
+    assert "Auth checks disabled, skipping" in captured_out
+
+
+@pytest.mark.usefixtures("_disabled_auth")
+def test_post_authorized_disabled_with_logging_suppressed(caplog):
+    """Check the REST API /v1/query with POST HTTP method with the auth warning suppressed."""
+    # perform POST request with authentication disabled
+    logging_config = LoggingConfig(app_log_level="warning")
+    config.ols_config.logging_config.suppress_auth_checks_warning_in_log = True
+
+    configure_logging(logging_config)
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
+    response = client.post("/authorized")
+    assert response.status_code == requests.codes.ok
+
+    # check the response payload
+    assert response.json() == {
+        "user_id": constants.DEFAULT_USER_UID,
+        "username": constants.DEFAULT_USER_NAME,
+    }
+
+    # check if the auth checks warning message is NOT found in the log
+    captured_out = caplog.text
+    assert "Auth checks disabled, skipping" not in captured_out
 
 
 @pytest.mark.usefixtures("_enabled_auth")
