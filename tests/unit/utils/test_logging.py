@@ -2,7 +2,7 @@
 
 import logging
 
-from ols.utils.logging import LoggingConfig, configure_logging
+from ols.utils.logging_configurator import LoggingConfig, configure_logging
 
 
 def test_configure_app_logging(caplog):

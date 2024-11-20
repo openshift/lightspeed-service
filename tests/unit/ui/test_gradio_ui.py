@@ -6,7 +6,7 @@ from unittest.mock import patch
 import requests
 
 from ols.src.ui.gradio_ui import GradioUI
-from ols.utils.logging import LoggingConfig, configure_logging
+from ols.utils.logging_configurator import LoggingConfig, configure_logging
 
 
 def setup_logging(caplog):

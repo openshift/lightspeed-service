@@ -15,7 +15,7 @@ import ols.app.models.config as config_model
 from ols import constants
 from ols.src.auth.auth import use_k8s_auth
 from ols.utils import ssl
-from ols.utils.logging import configure_logging
+from ols.utils.logging_configurator import configure_logging
 
 
 def configure_hugging_face_envs(ols_config: config_model.OLSConfig) -> None:
