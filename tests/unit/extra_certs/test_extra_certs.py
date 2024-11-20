@@ -8,7 +8,10 @@ from cryptography import x509
 
 import ols.app.models.config as config_model
 import ols.constants as constants
-from runner import add_ca_to_certificates_store, generate_certificates_file
+from ols.utils.certificates import (
+    add_ca_to_certificates_store,
+    generate_certificates_file,
+)
 
 cert_in_certificates_store_path = "tests/unit/extra_certs/sample_cert_1.crt"
 extra_cert_path = "tests/unit/extra_certs/sample_cert_2.crt"
