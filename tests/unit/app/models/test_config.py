@@ -1408,6 +1408,8 @@ def test_valid_values():
     assert logging_config.app_log_level == logging.INFO
     assert logging_config.lib_log_level == logging.WARNING
     assert logging_config.uvicorn_log_level == logging.WARNING
+    assert not logging_config.suppress_metrics_in_log
+    assert not logging_config.suppress_auth_checks_warning_in_log
 
     # test custom values
     logging_config = LoggingConfig(

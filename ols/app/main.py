@@ -74,8 +74,12 @@ async def log_requests_responses(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """Middleware for logging of HTTP requests and responses, at debug level."""
-    # Bail out early if not logging
-    if not logger.isEnabledFor(logging.DEBUG):
+    # Bail out early if not logging or Prometheus metrics logging is suppressed
+    if (
+        not logger.isEnabledFor(logging.DEBUG)
+        or config.ols_config.logging_config.suppress_metrics_in_log
+        and request.url.path == "/metrics"
+    ):
         return await call_next(request)
 
     # retrieve client host and port if provided in request object

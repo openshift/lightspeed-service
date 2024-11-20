@@ -243,7 +243,11 @@ class AuthDependency(AuthDependencyInterface):
             HTTPException: If authentication fails or the user does not have access.
         """
         if config.dev_config.disable_auth:
-            logger.warning("Auth checks disabled, skipping")
+            if (
+                config.ols_config.logging_config is None
+                or not config.ols_config.logging_config.suppress_auth_checks_warning_in_log
+            ):
+                logger.warning("Auth checks disabled, skipping")
             # Use constant user ID and user name in case auth. is disabled
             # It will be needed for testing purposes because (for example)
             # conversation history and user feedback depend on having any

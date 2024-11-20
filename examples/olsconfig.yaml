@@ -68,6 +68,8 @@ ols_config:
     app_log_level: info
     lib_log_level: warning
     uvicorn_log_level: info
+    suppress_metrics_in_log: false
+    suppress_auth_checks_warning_in_log: false
   default_provider: my_bam
   default_model: ibm/granite-13b-chat-v2
   # query_filters:
