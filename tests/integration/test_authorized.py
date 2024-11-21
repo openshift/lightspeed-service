@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from ols import config, constants
 from ols.app.models.config import LoggingConfig
-from ols.utils.logging import configure_logging
+from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_k8s_api import (
     mock_subject_access_review_response,
     mock_token_review_response,
