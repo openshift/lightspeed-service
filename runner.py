@@ -5,26 +5,11 @@ import os
 import threading
 from pathlib import Path
 
-import ols.app.models.config as config_model
 from ols.runners.uvicorn import start_uvicorn
 from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
-from ols.utils.environments import configure_gradio_ui_envs
+from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_face_envs
 from ols.utils.logging_configurator import configure_logging
-
-
-def configure_hugging_face_envs(ols_config: config_model.OLSConfig) -> None:
-    """Configure HuggingFace library environment variables."""
-    if (
-        ols_config
-        and hasattr(ols_config, "reference_content")
-        and hasattr(ols_config.reference_content, "embeddings_model_path")
-        and ols_config.reference_content.embeddings_model_path
-    ):
-        os.environ["TRANSFORMERS_CACHE"] = str(
-            ols_config.reference_content.embeddings_model_path
-        )
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 
 def load_index():
