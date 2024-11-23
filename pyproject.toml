@@ -47,7 +47,7 @@ dev = [
     "pydantic==2.9.2",
     "rouge-score==0.1.2",  # Required for model evaluation
     "ruff==0.7.0",
-    "bandit==1.7.9",
+    "bandit==1.7.10",
     "types-requests==2.32.0.20240622",
     "gradio==4.44.0",
     "boto3==1.34.145",
