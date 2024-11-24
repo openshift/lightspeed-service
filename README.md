@@ -80,6 +80,7 @@ configure model, and connect to it.
         * [LLM providers interface implementations](#llm-providers-interface-implementations)
     * [Sequence diagram](#sequence-diagram)
     * [Token truncation algorithm](#token-truncation-algorithm)
+* [New `pdm` commands available in project repository](#new-pdm-commands-available-in-project-repository)
 * [Additional tools](#additional-tools)
     * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
         * [Path](#path)
@@ -782,6 +783,28 @@ The context window size is limited for all supported LLMs which means that token
 
 ![Token truncation](docs/token_truncation.png)
 
+
+# New `pdm` commands available in project repository
+
+```
+╭───────────────────────────────────┬──────┬────────────────────────────────────────────────╮
+│ Name                              │ Type │ Description                                    │
+├───────────────────────────────────┼──────┼────────────────────────────────────────────────┤
+│ benchmarks                        │ cmd  │ pdm run make benchmarks                        │
+│ check-types                       │ cmd  │ pdm run make check-types                       │
+│ coverage-report                   │ cmd  │ pdm run make coverage-report                   │
+│ generate-schema                   │ cmd  │ pdm run make schema                            │
+│ integration-tests-coverage-report │ cmd  │ pdm run make integration-tests-coverage-report │
+│ requirements                      │ cmd  │ pdm run make requirements.txt                  │
+│ security-check                    │ cmd  │ pdm run make security-check                    │
+│ start                             │ cmd  │ pdm run make run                               │
+│ test                              │ cmd  │ pdm run make test                              │
+│ test-e2e                          │ cmd  │ pdm run make test-e2e                          │
+│ test-integration                  │ cmd  │ pdm run make test-integration                  │
+│ test-unit                         │ cmd  │ pdm run make test-unit                         │
+│ unit-tests-coverage-report        │ cmd  │ pdm run make unit-tests-coverage-report        │
+╰───────────────────────────────────┴──────┴────────────────────────────────────────────────╯
+```
 
 # Additional tools
 
