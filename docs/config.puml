@@ -4,7 +4,9 @@ set namespaceSeparator none
 class "AuthenticationConfig" as ols.app.models.config.AuthenticationConfig {
   k8s_ca_cert_path : Optional[FilePath]
   k8s_cluster_api : Optional[AnyHttpUrl]
+  module : Optional[str]
   skip_tls_verification : bool
+  validate_yaml() -> None
 }
 class "AzureOpenAIConfig" as ols.app.models.config.AzureOpenAIConfig {
   client_id : Optional[str]
@@ -52,6 +54,8 @@ class "LLMProviders" as ols.app.models.config.LLMProviders {
 class "LoggingConfig" as ols.app.models.config.LoggingConfig {
   app_log_level : int
   lib_log_level : int
+  suppress_auth_checks_warning_in_log : bool
+  suppress_metrics_in_log : bool
   uvicorn_log_level : int
 }
 class "ModelConfig" as ols.app.models.config.ModelConfig {
@@ -76,6 +80,7 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   default_provider : Optional[str]
   extra_ca : list[FilePath]
   logging_config : Optional[LoggingConfig]
+  max_workers : Optional[int]
   query_filters : Optional[list[QueryFilter]]
   query_validation_method : Optional[str]
   reference_content : Optional[ReferenceContent]
