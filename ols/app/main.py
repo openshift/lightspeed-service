@@ -29,7 +29,10 @@ if config.dev_config.enable_dev_ui:
     # regular deployment
     from ols.src.ui.gradio_ui import GradioUI
 
-    app = GradioUI().mount_ui(app)
+    if config.dev_config.disable_tls:
+        app = GradioUI().mount_ui(app)
+    else:
+        app = GradioUI(ols_url="https://127.0.0.1:8443/v1/query").mount_ui(app)
 else:
     logger.info(
         "Embedded Gradio UI is disabled. To enable set `enable_dev_ui: true` "
