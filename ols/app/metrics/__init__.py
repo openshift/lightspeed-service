@@ -21,8 +21,8 @@ __all__ = [
     "llm_calls_validation_errors_total",
     "llm_token_received_total",
     "llm_token_sent_total",
+    "provider_model_configuration",
     "response_duration_seconds",
     "rest_api_calls_total",
-    "provider_model_configuration",
     "setup_model_metrics",
 ]

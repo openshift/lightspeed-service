@@ -75,9 +75,8 @@ async def log_requests_responses(
 ) -> Response:
     """Middleware for logging of HTTP requests and responses, at debug level."""
     # Bail out early if not logging or Prometheus metrics logging is suppressed
-    if (
-        not logger.isEnabledFor(logging.DEBUG)
-        or config.ols_config.logging_config.suppress_metrics_in_log
+    if not logger.isEnabledFor(logging.DEBUG) or (
+        config.ols_config.logging_config.suppress_metrics_in_log
         and request.url.path == "/metrics"
     ):
         return await call_next(request)
