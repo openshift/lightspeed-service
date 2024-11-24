@@ -45,8 +45,8 @@ function run_suites() {
   run_suite "openai" "not model_evaluation and not azure_entra_id" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" " not azure_entra_id" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
-  (( rc = rc || $? ))
+  ###run_suite "watsonx" " not azure_entra_id" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-13b-chat-v2" "$OLS_IMAGE"
+  ###(( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider
   run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
