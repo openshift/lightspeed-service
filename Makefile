@@ -124,6 +124,10 @@ get-rag: ## Download a copy of the RAG embedding model and vector database
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
 	podman rm tmp-rag-container
 
+config.puml: ## Generate PlantUML class diagram for configuration
+	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
+	mv docs/classes.puml docs/config.puml
+
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''
