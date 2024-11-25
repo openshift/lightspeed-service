@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:2aec8c0ebd311c3e4b7b55b689090f0048e82160eef1bd48e7c5d6a437e10b2c"
+content_hash = "sha256:b30aa5d72ab3561b29334fb4b9a884ec79ad1a892074e116c30fec9e6fab34c1"
 
 [[package]]
 name = "absl-py"
@@ -624,11 +624,13 @@ files = [
 
 [[package]]
 name = "ffmpy"
-version = "0.3.2"
-summary = "A simple Python wrapper for ffmpeg"
-groups = ["dev"]
+version = "0.4.0"
+requires_python = "<4.0.0,>=3.8.1"
+summary = "A simple Python wrapper for FFmpeg"
+groups = ["default", "dev"]
 files = [
-    {file = "ffmpy-0.3.2.tar.gz", hash = "sha256:475ebfff1044661b8d969349dbcd2db9bf56d3ee78c0627e324769b49a27a78f"},
+    {file = "ffmpy-0.4.0-py3-none-any.whl", hash = "sha256:39c0f20c5b465e7f8d29a5191f3a7d7675a8c546d9d985de8921151cd9b59e14"},
+    {file = "ffmpy-0.4.0.tar.gz", hash = "sha256:131b57794e802ad555f579007497f7a3d0cab0583d37496c685b8acae4837b1d"},
 ]
 
 [[package]]
@@ -834,7 +836,7 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "1.0.5"
+version = "1.0.7"
 requires_python = ">=3.8"
 summary = "A minimal low-level HTTP client."
 groups = ["default", "dev"]
@@ -843,8 +845,8 @@ dependencies = [
     "h11<0.15,>=0.13",
 ]
 files = [
-    {file = "httpcore-1.0.5-py3-none-any.whl", hash = "sha256:421f18bac248b25d310f3cacd198d55b8e6125c107797b609ff9b7a6ba7991b5"},
-    {file = "httpcore-1.0.5.tar.gz", hash = "sha256:34a38e2f9291467ee3b44e89dd52615370e152954ba21721378a87b2960f7a61"},
+    {file = "httpcore-1.0.7-py3-none-any.whl", hash = "sha256:a3fff8f43dc260d5bd363d9f9cf1830fa3a458b332856f34282de498ed420edd"},
+    {file = "httpcore-1.0.7.tar.gz", hash = "sha256:8551cb62a169ec7162ac7be8d4817d561f60e08eaa485234898414bb5a8a0b4c"},
 ]
 
 [[package]]
@@ -2171,16 +2173,18 @@ files = [
 
 [[package]]
 name = "pdm"
-version = "2.20.0.post1"
-requires_python = ">=3.8"
+version = "2.21.0"
+requires_python = ">=3.9"
 summary = "A modern Python package and dependency manager supporting the latest PEP standards"
 groups = ["default"]
 dependencies = [
     "blinker",
+    "certifi>=2024.8.30",
     "dep-logic>=0.4.4",
     "filelock>=3.13",
     "findpython<1.0.0a0,>=0.6.0",
-    "hishel<0.1.0,>=0.0.32",
+    "hishel>=0.0.32",
+    "httpcore>=1.0.6",
     "httpx[socks]<1,>0.20",
     "installer<0.8,>=0.7",
     "msgpack>=1.0",
@@ -2198,8 +2202,8 @@ dependencies = [
     "virtualenv>=20",
 ]
 files = [
-    {file = "pdm-2.20.0.post1-py3-none-any.whl", hash = "sha256:d4dcd55c19cdb34d85fd33dafbe2e582338be30dea58e0448f21205a1bac6118"},
-    {file = "pdm-2.20.0.post1.tar.gz", hash = "sha256:e976c9a346ddb5802a53b70295f9ef4b0af617c65400b41764696b0001cdaee3"},
+    {file = "pdm-2.21.0-py3-none-any.whl", hash = "sha256:c01a50622072a9529bd9c7f8c1ce8d050b7e340d25d051233bce9fcdd8449614"},
+    {file = "pdm-2.21.0.tar.gz", hash = "sha256:9c928d6db62d104ab86318fe09aaf9bdfc6f616176af407e4df00f59e001930f"},
 ]
 
 [[package]]
