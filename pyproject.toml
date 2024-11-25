@@ -46,7 +46,7 @@ dev = [
     "pytest-asyncio==0.24.0",
     "pydantic==2.9.2",
     "rouge-score==0.1.2",  # Required for model evaluation
-    "ruff==0.7.0",
+    "ruff==0.8.0",
     "bandit==1.7.9",
     "types-requests==2.32.0.20240622",
     "gradio==4.44.0",

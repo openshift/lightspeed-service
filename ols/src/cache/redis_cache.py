@@ -8,7 +8,7 @@ import redis
 from redis.backoff import ExponentialBackoff
 from redis.exceptions import (
     BusyLoadingError,
-    ConnectionError,
+    ConnectionError,  # noqa: A004
     RedisError,
 )
 from redis.retry import Retry
