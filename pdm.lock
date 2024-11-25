@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:2aec8c0ebd311c3e4b7b55b689090f0048e82160eef1bd48e7c5d6a437e10b2c"
+content_hash = "sha256:5c2342710416e916ed767336f214fa2e11709f97d822d4358373df59ca37c3a0"
 
 [[package]]
 name = "absl-py"
@@ -624,11 +624,13 @@ files = [
 
 [[package]]
 name = "ffmpy"
-version = "0.3.2"
-summary = "A simple Python wrapper for ffmpeg"
-groups = ["dev"]
+version = "0.4.0"
+requires_python = "<4.0.0,>=3.8.1"
+summary = "A simple Python wrapper for FFmpeg"
+groups = ["default", "dev"]
 files = [
-    {file = "ffmpy-0.3.2.tar.gz", hash = "sha256:475ebfff1044661b8d969349dbcd2db9bf56d3ee78c0627e324769b49a27a78f"},
+    {file = "ffmpy-0.4.0-py3-none-any.whl", hash = "sha256:39c0f20c5b465e7f8d29a5191f3a7d7675a8c546d9d985de8921151cd9b59e14"},
+    {file = "ffmpy-0.4.0.tar.gz", hash = "sha256:131b57794e802ad555f579007497f7a3d0cab0583d37496c685b8acae4837b1d"},
 ]
 
 [[package]]
