@@ -261,6 +261,42 @@ def test_provider_config():
     assert "model name is missing" in str(excinfo.value)
 
 
+def test_provider_config_improper_path_to_secret():
+    """Test that exception is thrown when path to secret is wrong."""
+    with pytest.raises(FileNotFoundError):
+        ProviderConfig(
+            {
+                "name": "bam",
+                "url": "test_url",
+                "credentials_path": "foo",
+                "models": [
+                    {
+                        "name": "WatsonX",
+                        "url": "http://test.url/",
+                        "credentials_path": "tests/config/secret/apitoken",
+                    }
+                ],
+            }
+        )
+
+    # now let's ignore LLM secrets-related errors
+    ProviderConfig(
+        {
+            "name": "bam",
+            "url": "test_url",
+            "credentials_path": "foo",
+            "models": [
+                {
+                    "name": "WatsonX",
+                    "url": "http://test.url/",
+                    "credentials_path": "tests/config/secret/apitoken",
+                }
+            ],
+        },
+        ignore_llm_secrets=True,
+    )
+
+
 def test_provider_config_with_tls_security_profile():
     """Test the ProviderConfig model."""
     provider_config = ProviderConfig(
@@ -1634,6 +1670,37 @@ def test_tls_config_incorrect_password_path():
                 "tls_key_password_path": "this/file/does/not/exist",
             }
         )
+    with pytest.raises(IsADirectoryError, match="Is a directory"):
+        TLSConfig(
+            {
+                "tls_certificate_path": "tests/config/empty_cert.crt",
+                "tls_key_path": "tests/config/key",
+                "tls_key_password_path": "/",
+            }
+        )
+
+
+def test_tls_config_incorrect_certificate_path():
+    """Test the TLSConfig model with incorrect path to certificate."""
+    config = TLSConfig(
+        {
+            "tls_certificate_path": "/",
+            "tls_key_path": "tests/config/key",
+            "tls_key_password_path": "tests/config/password",
+        }
+    )
+    with pytest.raises(InvalidConfigurationError, match="is not a file"):
+        config.validate_yaml()
+
+    config2 = TLSConfig(
+        {
+            "tls_certificate_path": "/etc/shadow",
+            "tls_key_path": "tests/config/key",
+            "tls_key_password_path": "tests/config/password",
+        }
+    )
+    with pytest.raises(InvalidConfigurationError, match="is not readable"):
+        config2.validate_yaml()
 
 
 def test_tls_config_no_data_provided():
@@ -1850,6 +1917,29 @@ def test_redis_config_with_invalid_password_path():
         )
 
 
+def test_redis_config_invalid_port():
+    """Test the RedisConfig model with invalid password path."""
+    with pytest.raises(InvalidConfigurationError):
+        RedisConfig(
+            {
+                "host": "localhost",
+                "port": -1,
+                "max_memory": "200mb",
+                "max_memory_policy": "allkeys-lru",
+            }
+        )
+
+    with pytest.raises(InvalidConfigurationError):
+        RedisConfig(
+            {
+                "host": "localhost",
+                "port": 100000,
+                "max_memory": "200mb",
+                "max_memory_policy": "allkeys-lru",
+            }
+        )
+
+
 def test_redis_config_equality():
     """Test the RedisConfig equality check."""
     redis_config_1 = RedisConfig()
@@ -1865,6 +1955,36 @@ def test_redis_config_equality():
     # compare with value of different type
     other_value = "foo"
     assert redis_config_1 != other_value
+
+
+def test_redis_config_yaml_valiation():
+    """Test the RedisConfig yaml validation method."""
+    redis_config = RedisConfig(
+        {
+            "host": "localhost",
+            "port": 6379,
+            "max_memory": "200mb",
+            "max_memory_policy": "allkeys-lru",
+            "retry_on_error": "false",
+            "retry_on_timeout": "false",
+            "number_of_retries": 42,
+        }
+    )
+    redis_config.validate_yaml()
+
+    # change max_memory_policy
+    redis_config.max_memory_policy = "allkeys-lru"
+    redis_config.validate_yaml()
+
+    # change max_memory_policy
+    redis_config.max_memory_policy = "volatile-lru"
+    redis_config.validate_yaml()
+
+    # unknown max_memory_policy
+    # -> it should raises an exception
+    redis_config.max_memory_policy = "unknown"
+    with pytest.raises(InvalidConfigurationError):
+        redis_config.validate_yaml()
 
 
 def test_memory_cache_config():
@@ -2274,6 +2394,74 @@ def test_config():
     assert config.ols_config.authentication_config.module == "foo"
 
 
+def test_config_equality():
+    """Check the equality operator of Config class."""
+    config = Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "test_provider_name",
+                    "type": "bam",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
+                {
+                    "name": "rhelai_provider_name",
+                    "type": "rhelai_vllm",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
+                {
+                    "name": "rhoai_provider_name",
+                    "type": "rhoai_vllm",
+                    "url": "test_provider_url",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "test_model_name",
+                            "url": "http://test_model_url/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                        }
+                    ],
+                },
+            ],
+            "ols_config": {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "logging_config": {
+                    "app_log_level": "error",
+                },
+                "query_validation_method": "disabled",
+                "certificate_directory": "/foo/bar/baz",
+                "authentication_config": {"module": "foo"},
+            },
+            "dev_config": {"disable_tls": "true"},
+        }
+    )
+    assert config != "foo"
+    assert config == config
+
+
 def test_config_default_certificate_directory():
     """Test the Config model of the Global service configuration."""
     config = Config(
@@ -2503,6 +2691,30 @@ def test_reference_content_equality():
     # compare with value of different type
     other_value = "foo"
     assert reference_content_1 != other_value
+
+
+def test_reference_content_yaml_validation():
+    """Test the ReferenceContent YAML validation method."""
+    reference_content = ReferenceContent()
+    # should not raise an exception
+    reference_content.validate_yaml()
+
+    # non-existing docs index path
+    reference_content.product_docs_index_path = "foo"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content.validate_yaml()
+
+    # docs index does not point to a proper directory
+    # but to special file
+    reference_content.product_docs_index_path = "/dev/null"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content.validate_yaml()
+
+    # docs index point to a proper directory, that is not
+    # readable by the service
+    reference_content.product_docs_index_path = "/root"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content.validate_yaml()
 
 
 def test_config_no_query_filter_node():
