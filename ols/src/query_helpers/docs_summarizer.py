@@ -134,6 +134,9 @@ class DocsSummarizer(QueryHelper):
 
         # retrieve text response returned from LLM, strip whitespace characters from beginning/end
         response = summary["text"].strip()
+        # TODO: Better handling of stop token.
+        # Recently watsonx/granite-13b started adding stop token to response.
+        response = response.replace("<|endoftext|>", "")
 
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
