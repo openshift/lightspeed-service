@@ -125,6 +125,10 @@ requires-python = "==3.11.*"
 readme = "README.md"
 license = {file = "LICENSE"}
 
+[project.urls]
+Homepage = "https://github.com/openshift/lightspeed-service"
+Issues = "https://github.com/openshift/lightspeed-service/issues"
+
 [tool.pdm.scripts]
 start = "pdm run make run"
 test = "pdm run make test"
