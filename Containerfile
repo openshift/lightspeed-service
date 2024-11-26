@@ -3,11 +3,9 @@ ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-con
 
 FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/rhel9-4-els/rhel-minimal@sha256:34ab194b05e765bbbaec550f6158ab907d864fecbb39af04b1e3501d858a5544
 
 ARG VERSION
-# todo: this is overriden by the image ubi9/python-311, we hard coded WORKDIR below to /app-root
-# makesure the default value of rag content is set according to APP_ROOT and then update the operator.
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
