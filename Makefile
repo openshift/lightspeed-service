@@ -133,6 +133,10 @@ config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
 
+llms.puml: ## Generate PlantUML class diagram for LLM plugin system
+	pyreverse ols/src/llms/ --output puml --output-directory=docs
+	mv docs/classes.puml docs/llms_classes.uml
+
 distribution-archives: ## Generate distribution archives to be uploaded into Python registry
 	pdm run python -m build
 
@@ -145,5 +149,5 @@ help: ## Show this help screen
 	@echo 'Available targets are:'
 	@echo ''
 	@grep -E '^[ a-zA-Z0-9_.-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-33s\033[0m %s\n", $$1, $$2}'
 	@echo ''
