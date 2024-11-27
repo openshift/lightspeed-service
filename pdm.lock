@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:bdf9548bba0cedd8c692b618edaf20211d6a201d7c3e702f641db4293d2d0961"
+content_hash = "sha256:5ad7e0408905d49ea00c35d2674bf3e50e5c98660b5c6661591bc933b98e6f7d"
 
 [[package]]
 name = "absl-py"
@@ -732,7 +732,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "4.44.0"
+version = "4.44.1"
 requires_python = ">=3.8"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["dev"]
@@ -766,8 +766,8 @@ dependencies = [
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-4.44.0-py3-none-any.whl", hash = "sha256:1d358f2671fbc37b51fd0758ed9910b7047e978c961031d4b4ded068a07ef5ab"},
-    {file = "gradio-4.44.0.tar.gz", hash = "sha256:a2f8d1279da088f6715423aff13b83de471b8076c34c1a9a48136bad33753241"},
+    {file = "gradio-4.44.1-py3-none-any.whl", hash = "sha256:c908850c638e4a176b22f95a758ce6a63ffbc2a7a5a74b23186ceeeedc23f4d9"},
+    {file = "gradio-4.44.1.tar.gz", hash = "sha256:a68a52498ac6b63f8864ef84bf7866a70e7d07ebe913edf921e1d2a3708ad5ae"},
 ]
 
 [[package]]
