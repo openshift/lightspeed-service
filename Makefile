@@ -9,6 +9,10 @@ SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-4o-mini")
 
+# Python registry to where the package should be uploaded
+PYTHON_REGISTRY = testpypi
+
+
 images: ## Build container images
 	scripts/build-container.sh
 
@@ -128,6 +132,12 @@ get-rag: ## Download a copy of the RAG embedding model and vector database
 config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
+
+distribution-archives: ## Generate distribution archives to be uploaded into Python registry
+	pdm run python -m build
+
+upload-distribution-archives: ## Upload distribution archives into Python registry
+	pdm run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
