@@ -416,6 +416,8 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
       - name: image-url
         value: $(tasks.build-image-index.results.IMAGE_URL)
+      - name: ARGS
+        value: "--project-name=lightspeed-service --report --org=dca2ca89-7e51-4a3a-b7a5-6ad5633057b8"
       runAfter:
       - build-image-index
       taskRef:
