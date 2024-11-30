@@ -107,7 +107,7 @@ dependencies = [
     "azure-identity==1.18.0",
     "langchain-community==0.3.5",
     "SQLAlchemy==2.0.35",
-    "huggingface_hub==0.26.1",
+    "huggingface_hub==0.26.3",
     "ibm-watsonx-ai==1.1.22",
     "certifi==2024.8.30",
     "cryptography==43.0.1",
