@@ -365,30 +365,30 @@ numpy==1.26.4 \
     --hash=sha256:afedb719a9dcfc7eaf2287b839d8198e06dcd4cb5d276a3df279231138e83d30 \
     --hash=sha256:cd25bcecc4974d09257ffcd1f098ee778f7834c3ad767fe5db785be9a4aa9cb2 \
     --hash=sha256:edd8b5fe47dab091176d21bb6de568acdd906d1887a4584a15a9a96a1dca06ef
-nvidia-cublas-cu12==12.1.3.1; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:ee53ccca76a6fc08fb9701aa95b6ceb242cdaab118c3bb152af4e579af792728
-nvidia-cuda-cupti-cu12==12.1.105; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:e54fde3983165c624cb79254ae9818a456eb6e87a7fd4d56a2352c24ee542d7e
-nvidia-cuda-nvrtc-cu12==12.1.105; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:339b385f50c309763ca65456ec75e17bbefcbbf2893f462cb8b90584cd27a1c2
-nvidia-cuda-runtime-cu12==12.1.105; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:6e258468ddf5796e25f1dc591a31029fa317d97a0a94ed93468fc86301d61e40
+nvidia-cublas-cu12==12.4.5.8; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:2fc8da60df463fdefa81e323eef2e36489e1c94335b5358bcb38360adf75ac9b
+nvidia-cuda-cupti-cu12==12.4.127; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:9dec60f5ac126f7bb551c055072b69d85392b13311fcc1bcda2202d172df30fb
+nvidia-cuda-nvrtc-cu12==12.4.127; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:a178759ebb095827bd30ef56598ec182b85547f1508941a3d560eb7ea1fbf338
+nvidia-cuda-runtime-cu12==12.4.127; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:64403288fa2136ee8e467cdc9c9427e0434110899d07c779f25b5c068934faa5
 nvidia-cudnn-cu12==9.1.0.70; platform_system == "Linux" and platform_machine == "x86_64" \
     --hash=sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f
-nvidia-cufft-cu12==11.0.2.54; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:794e3948a1aa71fd817c3775866943936774d1c14e7628c74f6f7417224cdf56
-nvidia-curand-cu12==10.3.2.106; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:9d264c5036dde4e64f1de8c50ae753237c12e0b1348738169cd0f8a536c0e1e0
-nvidia-cusolver-cu12==11.4.5.107; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:8a7ec542f0412294b15072fa7dab71d31334014a69f953004ea7a118206fe0dd
-nvidia-cusparse-cu12==12.1.0.106; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:f3b50f42cf363f86ab21f720998517a659a48131e8d538dc02f8768237bd884c
-nvidia-nccl-cu12==2.20.5; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:057f6bf9685f75215d0c53bf3ac4a10b3e6578351de307abad9e18a99182af56
-nvidia-nvjitlink-cu12==12.6.20; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:562ab97ea2c23164823b2a89cb328d01d45cb99634b8c65fe7cd60d14562bd79
-nvidia-nvtx-cu12==12.1.105; platform_system == "Linux" and platform_machine == "x86_64" \
-    --hash=sha256:dc21cf308ca5691e7c04d962e213f8a4aa9bbfa23d95412f452254c2caeb09e5
+nvidia-cufft-cu12==11.2.1.3; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:f083fc24912aa410be21fa16d157fed2055dab1cc4b6934a0e03cba69eb242b9
+nvidia-curand-cu12==10.3.5.147; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:a88f583d4e0bb643c49743469964103aa59f7f708d862c3ddb0fc07f851e3b8b
+nvidia-cusolver-cu12==11.6.1.9; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:19e33fa442bcfd085b3086c4ebf7e8debc07cfe01e11513cc6d332fd918ac260
+nvidia-cusparse-cu12==12.3.1.170; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:ea4f11a2904e2a8dc4b1833cc1b5181cde564edd0d5cd33e3c168eff2d1863f1
+nvidia-nccl-cu12==2.21.5; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:8579076d30a8c24988834445f8d633c697d42397e92ffc3f63fa26766d25e0a0
+nvidia-nvjitlink-cu12==12.4.127; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:06b3b9b25bf3f8af351d664978ca26a16d2c5127dbd53c0497e28d1fb9611d57
+nvidia-nvtx-cu12==12.4.127; platform_system == "Linux" and platform_machine == "x86_64" \
+    --hash=sha256:781e950d9b9f60d8241ccea575b32f5105a5baf4c2351cab5256a24869f12a1a
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
     --hash=sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918
@@ -659,9 +659,9 @@ starlette==0.40.0 \
 striprtf==0.0.26 \
     --hash=sha256:8c8f9d32083cdc2e8bfb149455aa1cc5a4e0a035893bedc75db8b73becb3a1bb \
     --hash=sha256:fdb2bba7ac440072d1c41eab50d8d74ae88f60a8b6575c6e2c7805dc462093aa
-sympy==1.12 \
-    --hash=sha256:c3588cd4295d0c0f603d0f2ae780587e64e2efeedb3521e46b9bb1d08d184fa5 \
-    --hash=sha256:ebf595c8dac3e0fdc4152c51878b498396ec7f30e7a914d6071e674d49420fb8
+sympy==1.13.1 \
+    --hash=sha256:9cebf7e04ff162015ce31c9c6c9144daa34a93bd082f54fd8f12deca4f47515f \
+    --hash=sha256:db36cdc64bf61b9b24578b6f7bab1ecdd2452cf008f34faa33776680c26d66f8
 tabulate==0.9.0 \
     --hash=sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c \
     --hash=sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f
@@ -724,16 +724,16 @@ tokenizers==0.19.1 \
 tomlkit==0.12.0 \
     --hash=sha256:01f0477981119c7d8ee0f67ebe0297a7c95b14cf9f4b102b45486deb77018716 \
     --hash=sha256:926f1f37a1587c7a4f6c7484dae538f1345d96d793d9adab5d3675957b1d0766
-torch==2.4.1 \
-    --hash=sha256:0b5f88afdfa05a335d80351e3cea57d38e578c8689f751d35e0ff36bce872113
+torch==2.5.1 \
+    --hash=sha256:de5b7d6740c4b636ef4db92be922f0edc425b65ed78c5076c43c42d362a45457
 tqdm==4.66.5 \
     --hash=sha256:90279a3770753eafc9194a0364852159802111925aa30eb3f9d85b0e805ac7cd \
     --hash=sha256:e1020aef2e5096702d8a025ac7d16b1577279c9d63f8375b63083e9a5f0fcbad
 transformers==4.40.0 \
     --hash=sha256:92797ec3368ed4476a053529a4039a12ad09167d9e371981dda4afb4bdf590ac \
     --hash=sha256:fdb01dfe6a492bd34e3fa2aefffa470b1d8a2341db47a932f83ed33839d96b03
-triton==3.0.0; platform_system == "Linux" and platform_machine == "x86_64" and python_version < "3.13" \
-    --hash=sha256:5ce8520437c602fb633f1324cc3871c47bee3b67acf9756c1a66309b60e3216c
+triton==3.1.0; platform_system == "Linux" and platform_machine == "x86_64" and python_version < "3.13" \
+    --hash=sha256:0f34f6e7885d1bf0eaaf7ba875a5f0ce6f3c13ba98f9503651c1e6dc6757ed5c
 truststore==0.9.2; python_version >= "3.10" \
     --hash=sha256:04559916f8810cc1a5ecc41f215eddc988746067b754fc0995da7a2ceaf54735 \
     --hash=sha256:a1dee0d0575ff22d2875476343783a5d64575419974e228f3248772613c3d993
