@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +65,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     storage_path = Path(config.ols_config.user_data_collection.feedback_storage)
     storage_path.mkdir(parents=True, exist_ok=True)
 
-    current_time = str(datetime.utcnow())
+    current_time = str(datetime.now(tz=UTC))
     data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
 
     # stores feedback in a file under unique uuid
