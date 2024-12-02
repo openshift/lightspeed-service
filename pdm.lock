@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:b9fc0555a8757b71893d99349328c636f8be7276a7ec15c5b46bb804345ce1ea"
+content_hash = "sha256:c6b6a71ecda3f38f7902a675a491901f478208b62414c3f11c97314403baa034"
 
 [[package]]
 name = "absl-py"
@@ -3716,8 +3716,8 @@ files = [
 
 [[package]]
 name = "virtualenv"
-version = "20.26.3"
-requires_python = ">=3.7"
+version = "20.28.0"
+requires_python = ">=3.8"
 summary = "Virtual Python Environment builder"
 groups = ["default"]
 dependencies = [
@@ -3726,8 +3726,8 @@ dependencies = [
     "platformdirs<5,>=3.9.1",
 ]
 files = [
-    {file = "virtualenv-20.26.3-py3-none-any.whl", hash = "sha256:8cc4a31139e796e9a7de2cd5cf2489de1217193116a8fd42328f1bd65f434589"},
-    {file = "virtualenv-20.26.3.tar.gz", hash = "sha256:4c43a2a236279d9ea36a0d76f98d84bd6ca94ac4e0f4a3b9d46d05e10fea542a"},
+    {file = "virtualenv-20.28.0-py3-none-any.whl", hash = "sha256:23eae1b4516ecd610481eda647f3a7c09aea295055337331bb4e6892ecce47b0"},
+    {file = "virtualenv-20.28.0.tar.gz", hash = "sha256:2c9c3262bb8e7b87ea801d715fae4495e6032450c71d2309be9550e7364049aa"},
 ]
 
 [[package]]
