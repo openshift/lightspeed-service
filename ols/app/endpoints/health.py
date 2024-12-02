@@ -6,6 +6,7 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
 import logging
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
@@ -22,6 +23,7 @@ from ols.src.llms.llm_loader import load_llm
 router = APIRouter(tags=["health"])
 logger = logging.getLogger(__name__)
 llm_is_ready_persistent_state: bool = False
+llm_is_ready_timestamp = 0
 
 
 def llm_is_ready() -> bool:
@@ -30,9 +32,17 @@ def llm_is_ready() -> bool:
     If so, store the success to `llm_is_ready_persistent_state` to cache
     the result for future calls.
     """
-    global llm_is_ready_persistent_state  # pylint: disable=global-statement
-    if llm_is_ready_persistent_state is True:
+    global llm_is_ready_persistent_state, llm_is_ready_timestamp  # pylint: disable=global-statement
+    last_called, llm_is_ready_timestamp = llm_is_ready_timestamp, int(time.time())
+    if llm_is_ready_persistent_state is True and (
+        not config.ols_config.expire_llm_is_ready_persistent_state
+        or config.ols_config.expire_llm_is_ready_persistent_state < 0
+        or (llm_is_ready_timestamp - last_called)
+        < config.ols_config.expire_llm_is_ready_persistent_state
+    ):
         return True
+    # Reset `llm_is_ready_persistent_state`
+    llm_is_ready_persistent_state = False
     try:
         bare_llm = load_llm(
             config.ols_config.default_provider, config.ols_config.default_model
