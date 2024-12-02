@@ -2,7 +2,7 @@
 """Module for loading index."""
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from ols.app.models.config import ReferenceContent
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # we load it only when it is required.
 # As these dependencies are lazily loaded, we can't use them in type hints.
 # So this module is excluded from mypy checks as a whole.
-def load_llama_index_deps():
+def load_llama_index_deps() -> None:
     """Load llama_index dependencies."""
     global Settings
     global StorageContext
@@ -51,7 +51,7 @@ class IndexLoader:
             self._embed_model = self._get_embed_model()
             self._load_index()
 
-    def _get_embed_model(self):
+    def _get_embed_model(self) -> Any:
         """Get embed model according to configuration."""
         if self._embed_model_path is not None:
             from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -95,7 +95,7 @@ class IndexLoader:
                 logger.exception(f"Error loading vector index:\n{err}")
 
     @property
-    def vector_index(self):
+    def vector_index(self) -> Optional[ReferenceContent]:
         """Get index."""
         if self._index is None:
             logger.warning(
