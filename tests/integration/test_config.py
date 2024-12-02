@@ -131,7 +131,7 @@ def mutate_items_one_iteration(original_payload, how_many):
     new_payload = copy.deepcopy(original_payload)
     rpg = RandomPayloadGenerator()
 
-    for i in range(how_many):
+    for _ in range(how_many):
         selected_key = random.choice(list(original_payload.keys()))  # noqa: S311
         new_value = rpg.generate_random_payload()
         new_payload[selected_key] = new_value
