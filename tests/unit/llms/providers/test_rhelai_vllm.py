@@ -13,7 +13,7 @@ from ols.src.llms.providers.rhelai_vllm import RHELAIVLLM
 cert_in_certificates_store_path = "tests/unit/extra_certs/sample_cert_1.crt"
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_certifi_store(tmpdir):
     """Create a fake certifi store."""
     cert_store_path = os.path.join(

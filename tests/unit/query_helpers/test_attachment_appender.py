@@ -40,7 +40,7 @@ metadata:
 """
 
 
-@pytest.fixture()
+@pytest.fixture
 def broken_yaml():
     """Broken YAML file for testing."""
     return """
