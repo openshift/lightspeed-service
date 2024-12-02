@@ -1,5 +1,6 @@
 """Unit tests for health endpoints handlers."""
 
+import time
 from unittest.mock import patch
 
 import pytest
@@ -66,6 +67,52 @@ def test_readiness_probe_llm_check__state_cache(mocked_load_llm):
     # try again and check if the llm function was invoked again - it shoudn't
     llm_is_ready()
     assert mocked_load_llm.call_count == 1
+
+
+@patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
+@patch("ols.app.endpoints.health.load_llm")
+def test_readiness_probe_llm_check__state_cache_not_expired(mocked_load_llm):
+    """Test the scenario with cache not expired - LLM check is done only once."""
+    try:
+        # Set cache expiration time to 1 sec.
+        config.ols_config.expire_llm_is_ready_persistent_state = 1
+        mocked_load_llm.return_value = MockedLLM(invoke_return="message")
+        assert llm_is_ready()
+        assert mocked_load_llm.call_count == 1
+
+        response = readiness_probe_get_method()
+        assert response == ReadinessResponse(ready=True, reason="service is ready")
+
+        # try again and check if the llm function was invoked again - it shouldn't
+        llm_is_ready()
+        assert mocked_load_llm.call_count == 1
+    finally:
+        # Reset the expire_llm_is_ready_persistent_state option.
+        config.ols_config.expire_llm_is_ready_persistent_state = -1
+
+
+@patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
+@patch("ols.app.endpoints.health.load_llm")
+def test_readiness_probe_llm_check__state_cache_expired(mocked_load_llm):
+    """Test the scenario with cache expired - LLM check is done twice."""
+    try:
+        # Set cache expiration time to 1 sec.
+        config.ols_config.expire_llm_is_ready_persistent_state = 1
+        mocked_load_llm.return_value = MockedLLM(invoke_return="message")
+        assert llm_is_ready()
+        assert mocked_load_llm.call_count == 1
+
+        response = readiness_probe_get_method()
+        assert response == ReadinessResponse(ready=True, reason="service is ready")
+        # Wait for 1.5 secs and let the cache get expired.
+        time.sleep(1.5)
+
+        # try again and check if the llm function was invoked again - it should.
+        llm_is_ready()
+        assert mocked_load_llm.call_count == 2
+    finally:
+        # Reset the expire_llm_is_ready_persistent_state option.
+        config.ols_config.expire_llm_is_ready_persistent_state = -1
 
 
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)

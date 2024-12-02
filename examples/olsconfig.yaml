@@ -72,6 +72,7 @@ ols_config:
     suppress_auth_checks_warning_in_log: false
   default_provider: my_bam
   default_model: ibm/granite-13b-chat-v2
+  expire_llm_is_ready_persistent_state: -1
   # query_filters:
   #   - name: foo_filter
   #     pattern: '\b(?:foo)\b'
