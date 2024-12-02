@@ -166,9 +166,9 @@ httpx-sse==0.4.0 \
 httpx[socks]==0.27.2 \
     --hash=sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0 \
     --hash=sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2
-huggingface-hub==0.26.1 \
-    --hash=sha256:414c0d9b769eecc86c70f9d939d0f48bb28e8461dd1130021542eff0212db890 \
-    --hash=sha256:5927a8fc64ae68859cd954b7cc29d1c8390a5e15caba6d3d349c973be8fdacf3
+huggingface-hub==0.26.3 \
+    --hash=sha256:90e1fe62ffc26757a073aaad618422b899ccf9447c2bba8c902a90bef5b42e1d \
+    --hash=sha256:e66aa99e569c2d5419240a9e553ad07245a5b1300350bfbc5a4945cf7432991b
 huggingface-hub[inference]==0.26.1 \
     --hash=sha256:414c0d9b769eecc86c70f9d939d0f48bb28e8461dd1130021542eff0212db890 \
     --hash=sha256:5927a8fc64ae68859cd954b7cc29d1c8390a5e15caba6d3d349c973be8fdacf3
