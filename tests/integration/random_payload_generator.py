@@ -135,8 +135,8 @@ class RandomPayloadGenerator:
             int: lambda: random.randrange(100000),  # noqa: S311
             float: lambda: random.random() * 100000.0,  # noqa: S311
             bool: lambda: bool(random.getrandbits(1)),
-            list: lambda: self.generate_random_list_or_string(),
-            dict: lambda: self.generate_random_dict_or_string(),
+            list: self.generate_random_list_or_string,
+            dict: self.generate_random_dict_or_string,
         }
 
         # Select the generator specified by `data_type` argument.
