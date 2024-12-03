@@ -430,7 +430,7 @@ class MockedCredentialThrowingException:
         raise Exception("Error getting token")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_token_cache():
     """Fake token cache."""
 

@@ -10,7 +10,7 @@ from ols.utils.config import AppConfig
 from ols.utils.redactor import Redactor, RegexFilter
 
 
-@pytest.fixture()
+@pytest.fixture
 def config():
     """Load configuration used for benchmarks."""
     config = AppConfig()

@@ -11,7 +11,7 @@ from ols.app.endpoints import feedback
 from ols.app.models.config import UserDataCollection
 
 
-@pytest.fixture()
+@pytest.fixture
 def feedback_location(tmpdir):
     """Fixture sets feedback location to tmpdir and return the path."""
     full_path = (tmpdir / "feedback").strpath
