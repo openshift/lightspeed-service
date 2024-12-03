@@ -37,10 +37,8 @@ class RHELAIVLLM(LLMProvider):
             "base_url": self.url,
             "openai_api_key": self.credentials,
             "model": self.model,
-            "model_kwargs": {
-                "top_p": 0.95,
-                "frequency_penalty": 1.03,
-            },
+            "top_p": 0.95,
+            "frequency_penalty": 1.03,
             "organization": None,
             "cache": None,
             "streaming": True,
