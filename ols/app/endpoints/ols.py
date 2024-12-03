@@ -120,12 +120,7 @@ def conversation_request(
     validate_requested_provider_model(llm_request)
 
     # Validate the query
-    if not previous_input:
-        valid = validate_question(conversation_id, llm_request)
-    else:
-        logger.debug("follow-up conversation - skipping question validation")
-        valid = True
-
+    valid = validate_question(conversation_id, llm_request)
     timestamps["validate question"] = time.time()
 
     if not valid:
