@@ -1,7 +1,7 @@
 """Unit tests for BAM provider."""
 
 import pytest
-from langchain.llms.fake import FakeListLLM
+from langchain_community.llms import FakeListLLM
 
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.providers.fake_provider import FakeProvider
