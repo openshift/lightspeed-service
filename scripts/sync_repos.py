@@ -59,7 +59,7 @@ def read_shas(source_repository: str, since: str) -> list[str]:
 
 
 def export_patches(
-    source_repository: str, workdir: str, patches: list[str]
+    source_repository: str, workdir: str, patches: int
 ) -> list[str]:
     """Export all found patches that are not merge commits."""
     logger.info("exporting %d patches", patches)
