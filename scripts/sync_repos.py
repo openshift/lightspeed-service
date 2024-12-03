@@ -58,9 +58,7 @@ def read_shas(source_repository: str, since: str) -> list[str]:
     return [line.split(" ")[0] for line in lines]
 
 
-def export_patches(
-    source_repository: str, workdir: str, patches: int
-) -> list[str]:
+def export_patches(source_repository: str, workdir: str, patches: int) -> list[str]:
     """Export all found patches that are not merge commits."""
     logger.info("exporting %d patches", patches)
     result = subprocess.run(  # noqa: S603
