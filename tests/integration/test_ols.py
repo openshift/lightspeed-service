@@ -486,7 +486,7 @@ def test_post_question_without_attachments(_setup) -> None:
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
 )
-@pytest.mark.attachment()
+@pytest.mark.attachment
 def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with empty list of attachments."""
     answer = constants.SUBJECT_ALLOWED
@@ -526,7 +526,7 @@ def test_post_question_with_empty_list_of_attachments(_setup) -> None:
     assert query_passed == "test query"
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -583,7 +583,7 @@ this is attachment
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -649,7 +649,7 @@ metadata:
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -735,7 +735,7 @@ metadata:
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -799,7 +799,7 @@ metadata:
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -865,7 +865,7 @@ metadata:
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 @patch(
     "ols.app.endpoints.ols.config.ols_config.query_validation_method",
     constants.QueryValidationMethod.LLM,
@@ -931,7 +931,7 @@ kind: Pod
     assert query_passed == expected
 
 
-@pytest.mark.attachment()
+@pytest.mark.attachment
 def test_post_question_with_large_attachment(_setup) -> None:
     """Check the REST API /v1/query with POST HTTP method with large attachment."""
     answer = constants.SUBJECT_ALLOWED

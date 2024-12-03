@@ -12,7 +12,7 @@ CONVERSATION_ID = "00000000-0000-0000-0000-000000000002"
 redis_cache: RedisCache
 
 
-@pytest.mark.redis()
+@pytest.mark.redis
 def setup():
     """Setups the Redis client."""
     global redis_cache
@@ -32,7 +32,7 @@ def setup():
     redis_cache = RedisCache(redis_config)
 
 
-@pytest.mark.redis()
+@pytest.mark.redis
 def test_conversation_in_redis():
     """Check the elementary GET operation and insert_or_append operation."""
     # make sure the cache is empty
