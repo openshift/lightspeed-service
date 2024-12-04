@@ -158,7 +158,13 @@ def filter_hashes(hashes, package_line, supported_tags):
     )  # Ensure there's no extra space or backslash
     for hash_line in hashes:
         # Extract the hash from the hash line
-        hash_value = re.search(r"sha256:(\w+)", hash_line).group(1)
+        match_groups = re.search(r"sha256:(\w+)", hash_line)
+
+        # skip lines w/o hashes
+        if match_groups is None:
+            continue
+
+        hash_value = match_groups.group(1)
 
         # Fetch wheel metadata from PyPI
         file_info = get_package_file_info(package_name, package_version, hash_value)
