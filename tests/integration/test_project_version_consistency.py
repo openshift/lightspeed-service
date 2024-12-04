@@ -1,7 +1,7 @@
 """Test that the project version is set consistently."""
 
 import json
-import tomllib
+import subprocess
 
 import semantic_version
 
@@ -22,15 +22,13 @@ def read_version_from_openapi():
 
 def read_version_from_pyproject():
     """Read version from pyproject.toml file."""
-    with open("pyproject.toml", "rb") as fin:
-        pyproject = tomllib.load(fin)
-        assert pyproject is not None
-        assert "project" in pyproject, "section [project] is missing in pyproject.toml"
-        project = pyproject["project"]
-        assert (
-            "version" in project
-        ), "attribute 'version' is missing in section [project]"
-        return project["version"]
+    # it is not safe to just try to read version from pyproject.toml file directly
+    # the PDM tool itself is able to retrieve the version, even if the version
+    # is generated dynamically
+    completed = subprocess.run(  # noqa: S603
+        ["pdm", "show", "--version"], capture_output=True, check=True  # noqa: S607
+    )
+    return completed.stdout.decode("utf-8").strip()
 
 
 def read_version_from_app():
