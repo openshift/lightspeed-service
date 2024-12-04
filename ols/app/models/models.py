@@ -1,6 +1,6 @@
 """Data models representing payloads for REST API calls."""
 
-from typing import Any, Optional, Self
+from typing import Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
@@ -134,13 +134,6 @@ class ReferencedDocument:
 
     docs_url: str
     title: str
-
-    @staticmethod
-    def json_decode_object_hook(dct: dict[str, Any]) -> Any:
-        """Deserialize dict into ReferencedDocument if we can."""
-        if "docs_url" in dct and "title" in dct:
-            return ReferencedDocument(**dct)
-        return dct
 
 
 class LLMResponse(BaseModel):

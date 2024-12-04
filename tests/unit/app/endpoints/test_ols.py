@@ -17,7 +17,6 @@ from ols.app.models.models import (
     CacheEntry,
     LLMRequest,
     RagChunk,
-    ReferencedDocument,
     SummarizerResponse,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError
@@ -935,9 +934,7 @@ def test_store_transcript(transcripts_location):
 
     # check the transcript json content
     with open(transcripts[0]) as f:
-        transcript = json.loads(
-            f.read(), object_hook=ReferencedDocument.json_decode_object_hook
-        )
+        transcript = json.loads(f.read())
     # we don't really care about the timestamp, so let's just set it to
     # a fixed value
     transcript["metadata"]["timestamp"] = "fake-timestamp"
