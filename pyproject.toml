@@ -31,7 +31,7 @@ skips = []
 exclude_dirs = ["tests", "scripts"]
 
 [tool.pdm]
-distribution = false
+distribution = true
 
 [tool.pdm.dev-dependencies]
 dev = [
