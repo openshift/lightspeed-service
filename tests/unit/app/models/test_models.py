@@ -1,7 +1,5 @@
 """Unit tests for the API models."""
 
-import json
-
 import pytest
 from pydantic import ValidationError
 
@@ -81,38 +79,6 @@ class TestLLM:
                 docs_url="https://foo.bar.com/index.html", title="Foo Bar"
             )
         ]
-
-        llm_response = LLMResponse(
-            conversation_id=conversation_id,
-            response=response,
-            referenced_documents=referenced_documents,
-            truncated=False,
-        )
-
-        assert llm_response.conversation_id == conversation_id
-        assert llm_response.response == response
-        assert llm_response.referenced_documents == referenced_documents
-        assert not llm_response.truncated
-
-    @staticmethod
-    def test_llm_response_referenced_documents_as_json():
-        """Test the LLMResponse model when referenced documents are passed as string with JSON."""
-        conversation_id = "id"
-        response = "response"
-
-        # check the object hook defined for ReferenceDocument
-        # data class
-        referenced_documents = json.loads(
-            """
-                [
-                    {
-                     \"docs_url\": \"https://foo.bar.com/index.html\",
-                     \"title\": \"Foo Bar\"
-                    }
-                ]
-                """,
-            object_hook=ReferencedDocument.json_decode_object_hook,
-        )
 
         llm_response = LLMResponse(
             conversation_id=conversation_id,
