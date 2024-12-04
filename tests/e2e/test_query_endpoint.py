@@ -199,8 +199,8 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
-@pytest.mark.smoketest()
-@pytest.mark.rag()
+@pytest.mark.smoketest
+@pytest.mark.rag
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
@@ -228,7 +228,7 @@ def test_valid_question() -> None:
         )
 
 
-@pytest.mark.rag()
+@pytest.mark.rag
 def test_ocp_docs_version_same_as_cluster_version() -> None:
     """Check that the version of OCP docs matches the cluster we're on."""
     endpoint = "/v1/query"
@@ -354,7 +354,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
-@pytest.mark.rag()
+@pytest.mark.rag
 @retry(max_attempts=3, wait_between_runs=10)
 def test_rag_question() -> None:
     """Ensure responses include rag references."""
@@ -382,7 +382,7 @@ def test_rag_question() -> None:
         assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
-@pytest.mark.cluster()
+@pytest.mark.cluster
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"

@@ -9,7 +9,7 @@ from tests.e2e.utils import response as response_utils
 from . import test_api
 
 
-@pytest.mark.cluster()
+@pytest.mark.cluster
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
     response = test_api.client.post(
@@ -26,7 +26,7 @@ def test_feedback_can_post_with_wrong_token():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.cluster()
+@pytest.mark.cluster
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
     feedbacks_path = test_api.OLS_USER_DATA_PATH + "/feedback"

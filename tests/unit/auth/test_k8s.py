@@ -42,7 +42,7 @@ def test_singleton_pattern():
 
 
 @pytest.mark.usefixtures("_setup")
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
 @patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
@@ -68,7 +68,7 @@ async def test_auth_dependency_valid_token(mock_authz_api, mock_authn_api):
 
 
 @pytest.mark.usefixtures("_setup")
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
 @patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
@@ -95,7 +95,7 @@ async def test_auth_dependency_invalid_token(mock_authz_api, mock_authn_api):
 
 
 @pytest.mark.usefixtures("_setup")
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
 async def test_cluster_id_is_used_for_kube_admin(mock_authz_api):
     """Test the cluster id is used as user_id when user is kube:admin."""
