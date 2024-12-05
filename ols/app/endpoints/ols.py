@@ -162,15 +162,8 @@ def conversation_request(
 
     timestamps["store transcripts"] = time.time()
 
-    # De-dup & retain order to create list of referenced documents
-    referenced_documents = list(
-        {
-            rag_chunk.doc_url: ReferencedDocument(
-                rag_chunk.doc_url,
-                rag_chunk.doc_title,
-            )
-            for rag_chunk in summarizer_response.rag_chunks
-        }.values()
+    referenced_documents = ReferencedDocument.from_rag_chunks(
+        summarizer_response.rag_chunks
     )
 
     timestamps["add references"] = time.time()
