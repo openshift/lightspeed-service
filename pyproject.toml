@@ -31,7 +31,7 @@ skips = []
 exclude_dirs = ["tests", "scripts"]
 
 [tool.pdm]
-distribution = false
+distribution = true
 
 [tool.pdm.dev-dependencies]
 dev = [
@@ -124,6 +124,7 @@ dependencies = [
     "filelock==3.16.1",
     "ffmpy==0.4.0",
     "virtualenv==20.28.0",
+    "msgpack==1.1.0",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
