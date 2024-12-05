@@ -995,6 +995,13 @@ class OLSConfig(BaseModel):
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
+
+        if self.system_prompt is not None:
+            raise InvalidConfigurationError(
+                "The `system_prompt` is not meant for direct configuration. "
+                "To get the system prompt, please use the `system_prompt_path` attribute."
+            )
+
         # read file containing system prompt
         # if not specified, the prompt will remain None, which will be handled
         # by system prompt infrastructure
