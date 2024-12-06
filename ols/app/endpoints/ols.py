@@ -7,7 +7,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Generator, Optional, Union
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -285,17 +285,34 @@ def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
     previous_input: list[CacheEntry],
-) -> SummarizerResponse:
-    """Generate response based on validation result, previous input, and model output."""
-    # Summarize documentation
+    streaming: bool = False,
+) -> Union[SummarizerResponse, Generator]:
+    """Generate response based on validation result, previous input, and model output.
+
+    Args:
+        conversation_id: The unique identifier for the conversation.
+        llm_request: The request containing a query.
+        previous_input: The history of the conversation (if available).
+        streaming: The flag indicating if the response should be streamed.
+
+    Returns:
+        SummarizerResponse or Generator, depending on the streaming flag.
+    """
     try:
         docs_summarizer = DocsSummarizer(
             provider=llm_request.provider, model=llm_request.model
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
-        return docs_summarizer.summarize(
-            conversation_id, llm_request.query, config.rag_index, history
-        )
+        if streaming:
+            return docs_summarizer.generate_response(
+                llm_request.query, config.rag_index, history
+            )
+        else:
+            response = docs_summarizer.create_response(
+                llm_request.query, config.rag_index, history
+            )
+            logger.debug(f"{conversation_id} Generated response: {response}")
+            return response
     except PromptTooLongError as summarizer_error:
         logger.error("Prompt is too long: %s", summarizer_error)
         raise HTTPException(
