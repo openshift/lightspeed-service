@@ -1,5 +1,6 @@
 """Data models representing payloads for REST API calls."""
 
+from collections import OrderedDict
 from typing import Optional, Self
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -123,7 +124,7 @@ class LLMRequest(BaseModel):
         return self
 
 
-@dataclass
+@dataclass(frozen=True, unsafe_hash=False)
 class ReferencedDocument:
     """RAG referenced document.
 
@@ -134,6 +135,22 @@ class ReferencedDocument:
 
     docs_url: str
     title: str
+
+    @staticmethod
+    def from_rag_chunks(rag_chunks: list["RagChunk"]) -> list["ReferencedDocument"]:
+        """Create a list of ReferencedDocument from a list of rag_chunks.
+
+        Order of items is preserved.
+        """
+        return list(
+            OrderedDict(
+                (
+                    rag_chunk.doc_url,
+                    ReferencedDocument(rag_chunk.doc_url, rag_chunk.doc_title),
+                )
+                for rag_chunk in rag_chunks
+            ).values()
+        )
 
 
 class LLMResponse(BaseModel):
