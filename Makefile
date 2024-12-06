@@ -59,6 +59,9 @@ update-deps: ## Check pyproject.toml for changes, update the lock file if needed
 run: ## Run the service locally
 	python runner.py
 
+print-version: ## Print the service version
+	python runner.py --version
+
 test: test-unit test-integration test-e2e ## Run all tests
 
 benchmarks: ## Run benchmarks
