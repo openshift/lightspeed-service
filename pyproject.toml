@@ -152,6 +152,7 @@ generate-schema = "pdm run make schema"
 security-check = "pdm run make security-check"
 benchmarks = "pdm run make benchmarks"
 requirements = "pdm run make requirements.txt"
+version = "pdm run make print-version"
 
 [tool.setuptools]
 packages = ["ols"]

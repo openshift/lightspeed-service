@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 import threading
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
 from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_face_envs
 from ols.utils.logging_configurator import configure_logging
+from ols.version import __version__
 
 
 def load_index():
@@ -20,6 +22,10 @@ def load_index():
 
 
 if __name__ == "__main__":
+    if "--version" in sys.argv:
+        print(__version__)
+        sys.exit()
+
     # First of all, configure environment variables for Gradio before
     # import config and initializing config module.
     configure_gradio_ui_envs()
