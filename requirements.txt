@@ -220,9 +220,9 @@ kubernetes==30.1.0 \
 langchain==0.3.6 \
     --hash=sha256:0b0e2dc3be7b49eb3ca2aa21341bb204ed74450e34b3041345820454e21bcdc8 \
     --hash=sha256:6e453f6c26dfd8f800ba5eb3ecbd21d283d5b6ccad422179b2933a962c1a6563
-langchain-community==0.3.5 \
-    --hash=sha256:03736105700960fa0acbd72bff678d1c97c49e38e9f8af3012b712d64e992982 \
-    --hash=sha256:345febbc972a08c97f09cce6cc07d039aa7d1348fe8efdace85335be6ac9cb7d
+langchain-community==0.3.10 \
+    --hash=sha256:f503e90cbb44ddb14afb141552a93fd9fbd0b216407315a6608f901861a938f9 \
+    --hash=sha256:f718de973f60c6d0f10c71321e461cf41251cc74543f064b7b2ee7ae06b9a43f
 langchain-core==0.3.15 \
     --hash=sha256:3d4ca6dbb8ed396a6ee061063832a2451b0ce8c345570f7b086ffa7288e4fa29 \
     --hash=sha256:b1a29787a4ffb7ec2103b4e97d435287201da7809b369740dd1e32f176325aba
