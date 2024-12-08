@@ -43,9 +43,11 @@ database "RAG\ndatabase" as rag
 database "Conversation\ncache" as cache
 collections "LLM" as llm
 collections "Auth.modules" as auth_modules
+collections "Cache interface" as cache_interface
 database "Transcripts" as transcripts
 document_summarizer --> rag
-history --> cache
+history --> cache_interface : unified cache interface
+cache_interface --> cache : configured cache\nimplementation
 llm_register --> llm : call selected LLM
 handler -> transcripts
 transcripts -> collector
