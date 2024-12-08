@@ -977,6 +977,9 @@ class OLSConfig(BaseModel):
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
         self.max_workers = data.get("max_workers", 1)
+        self.expire_llm_is_ready_persistent_state = data.get(
+            "expire_llm_is_ready_persistent_state", -1
+        )
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
@@ -1025,6 +1028,8 @@ class OLSConfig(BaseModel):
                 and self.system_prompt == other.system_prompt
                 and self.tls_security_profile == other.tls_security_profile
                 and self.authentication_config == other.authentication_config
+                and self.expire_llm_is_ready_persistent_state
+                == other.expire_llm_is_ready_persistent_state
             )
         return False
 
