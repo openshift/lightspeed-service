@@ -330,8 +330,28 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
             "1",
         ]
     )
-
     print("Deployment updated, waiting for new pod to be ready")
+    # Wait for the pod to start being created and then wait for it to start running.
+    r = retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        2,
+        lambda: len(
+            cluster_utils.run_oc(
+                ["get", "pods", "--field-selector=status.phase=Pending"]
+            ).stdout
+        )
+        == 1,
+    )
+    r = retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        5,
+        lambda: len(
+            cluster_utils.run_oc(
+                ["get", "pods", "--field-selector=status.phase=Pending"]
+            ).stdout
+        )
+        == 0,
+    )
 
     # wait for new ols app pod to be created+running
     # there should be exactly one, if we see more than one it may be an old pod
