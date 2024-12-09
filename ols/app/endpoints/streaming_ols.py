@@ -141,6 +141,7 @@ async def response_processing_wrapper(
     # drain the stream until we get the SummarizerResponse (end of LLM
     # response) and yield the doc links at the end
     response = ""
+    idx = 0
     async for item in generator:
         if isinstance(item, SummarizerResponse):
             history_truncated = item.history_truncated
@@ -150,7 +151,8 @@ async def response_processing_wrapper(
         if stream_text:
             yield item
         else:
-            yield json.dumps({"event": "token", "data": item})
+            yield json.dumps({"event": "token", "data": {"id": idx, "token": item}})
+        idx += 1
 
     timestamps["generate response"] = time.time()
 
