@@ -1,5 +1,6 @@
 """This module contains the FastAPI endpoint for the OLS streaming query endpoint."""
 
+import json
 import logging
 import time
 from typing import Any
@@ -23,6 +24,7 @@ from ols.app.endpoints.ols import (
     validate_requested_provider_model,
 )
 from ols.app.models.models import (
+    Attachment,
     LLMRequest,
     SummarizerResponse,
 )
@@ -37,8 +39,6 @@ auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-acce
 
 # TODO: more unification of the streaming and non-streaming endpoints,
 # half of the endpoint is practically the same
-# TODO: correctly mark the endpoint return type - consider using JSONlines
-# instead of streaming plain text
 @router.post("/streaming_query")
 def conversation_request(llm_request: LLMRequest, auth: Any = Depends(auth_dependency)):
     """Handle conversation requests for the OLS endpoint.
@@ -113,27 +113,29 @@ def conversation_request(llm_request: LLMRequest, auth: Any = Depends(auth_depen
     return StreamingResponse(
         response_processing_wrapper(
             summarizer_response,
-            timestamps,
             user_id,
             conversation_id,
             llm_request,
             attachments,
             valid,
             query_without_attachments,
+            llm_request.stream_text,
+            timestamps,
         ),
         media_type="text/plain",
     )
 
 
 async def response_processing_wrapper(
-    generator,
-    timestamps,
-    user_id,
-    conversation_id,
-    llm_request,
-    attachments,
-    valid,
-    query_without_attachments,
+    generator: Any,
+    user_id: str,
+    conversation_id: str,
+    llm_request: LLMRequest,
+    attachments: list[Attachment],
+    valid: bool,
+    query_without_attachments: str,
+    stream_text: bool,
+    timestamps: dict[str, float],
 ):
     """Wrap the processing of the response to include the referenced documents."""
     # drain the stream until we get the SummarizerResponse (end of LLM
@@ -145,7 +147,10 @@ async def response_processing_wrapper(
             rag_chunks = item.rag_chunks
             break
         response += item
-        yield item
+        if stream_text:
+            yield item
+        else:
+            yield json.dumps({"event": "token", "data": item})
 
     timestamps["generate response"] = time.time()
 
@@ -180,4 +185,22 @@ async def response_processing_wrapper(
     timestamps["add references"] = time.time()
     log_processing_durations(timestamps)
 
-    yield f"\n\n---\n\n{ref_docs_string}"
+    if stream_text:
+        ref_docs_string = "\n".join(
+            f"{title}: {url}"
+            for title, url in {
+                rag_chunk.doc_title: rag_chunk.doc_url for rag_chunk in rag_chunks
+            }.items()
+        )
+        yield f"\n\n---\n\n{ref_docs_string}"
+    else:
+        for rag_chunk in rag_chunks:
+            yield json.dumps(
+                {
+                    "event": "doc_references",
+                    "data": {
+                        "doc_title": rag_chunk.doc_title,
+                        "doc_url": rag_chunk.doc_url,
+                    },
+                }
+            )

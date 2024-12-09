@@ -64,6 +64,9 @@ class LLMRequest(BaseModel):
         provider: The optional provider.
         model: The optional model.
         attachments: The optional attachments.
+        streaming_text: The optional stream text. If true, the streaming
+            response will be send as a plain text, otherwise as a JSON
+            object.
 
     Example:
         ```python
@@ -76,6 +79,7 @@ class LLMRequest(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
+    stream_text: Optional[bool] = True
 
     # provides examples for /docs endpoint
     model_config = {
@@ -104,6 +108,7 @@ class LLMRequest(BaseModel):
                             "content": "foo: bar",
                         },
                     ],
+                    "streaming_text": False,
                 }
             ]
         },
