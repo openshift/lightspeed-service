@@ -1,5 +1,6 @@
 """Unit tests for data models."""
 
+import copy
 import logging
 
 import pytest
@@ -2328,6 +2329,7 @@ def test_config():
                 "query_validation_method": "disabled",
                 "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
+                "expire_llm_is_ready_persistent_state": 2,
             },
             "dev_config": {"disable_tls": "true"},
         }
@@ -2392,6 +2394,7 @@ def test_config():
     assert config.ols_config.authentication_config is not None
     assert config.ols_config.authentication_config.module is not None
     assert config.ols_config.authentication_config.module == "foo"
+    assert config.ols_config.expire_llm_is_ready_persistent_state == 2
 
 
 def test_config_equality():
@@ -2454,12 +2457,19 @@ def test_config_equality():
                 "query_validation_method": "disabled",
                 "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
+                "expire_llm_is_ready_persistent_state": 2,
             },
             "dev_config": {"disable_tls": "true"},
         }
     )
     assert config != "foo"
     assert config == config
+
+    config2 = copy.deepcopy(config)
+    assert config == config2
+
+    config2.ols_config.expire_llm_is_ready_persistent_state = 3
+    assert config != config2
 
 
 def test_config_default_certificate_directory():
