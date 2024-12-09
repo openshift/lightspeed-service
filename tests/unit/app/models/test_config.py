@@ -14,7 +14,6 @@ from ols.app.models.config import (
     ConversationCacheConfig,
     DevConfig,
     InMemoryCacheConfig,
-    InvalidConfigurationError,
     LLMProviders,
     LoggingConfig,
     ModelConfig,
@@ -30,6 +29,7 @@ from ols.app.models.config import (
     UserDataCollection,
     UserDataCollectorConfig,
 )
+from ols.utils.checks import InvalidConfigurationError
 
 
 def test_model_parameters():

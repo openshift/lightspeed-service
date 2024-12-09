@@ -12,7 +12,8 @@ from pydantic import ValidationError
 from yaml.parser import ParserError
 
 from ols import config, constants
-from ols.app.models.config import Config, InvalidConfigurationError
+from ols.app.models.config import Config
+from ols.utils.checks import InvalidConfigurationError
 from ols.utils.redactor import RegexFilter
 
 E = TypeVar("E", bound=Exception)

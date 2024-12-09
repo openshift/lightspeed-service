@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from ols import config
-from ols.app.models.config import InvalidConfigurationError
+from ols.utils.checks import InvalidConfigurationError
 from tests.integration.random_payload_generator import RandomPayloadGenerator
 
 CORRECT_CONFIG_FILE = "tests/config/config_for_integration_tests.yaml"
