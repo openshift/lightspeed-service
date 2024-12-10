@@ -512,7 +512,7 @@ class PostgresConfig(BaseModel):
         super().__init__(**data)
         # password should be read from file
         if self.password_path is not None:
-            with open(self.password_path, "r") as f:
+            with open(self.password_path, "r", encoding="utf-8") as f:
                 self.password = f.read().rstrip()
 
     @model_validator(mode="after")
