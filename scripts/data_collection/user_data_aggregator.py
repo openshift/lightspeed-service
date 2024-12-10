@@ -404,43 +404,43 @@ def read_full_conversation_history(
 ) -> str:
     """Read full conversation history from tarball."""
     logger.info("Reading full conversation history from %s", tarball_name)
-    tarball = tarfile.open(tarball_name, "r:gz")
     separator = 100 * "-"
 
-    history = {}
-    for filename in tarball.getnames():
-        if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
-            try:
-                fname = sanitize_filename(filename)
-                f = tarball.extractfile(fname)
-                if f is not None:
-                    data = f.read().decode("UTF-8")
-                    conversation = json.loads(data)
-                    timestamp = conversation["metadata"]["timestamp"]
-                    query = conversation["redacted_query"].strip()
-                    response = conversation["llm_response"].strip()
-                    rag_chunks = conversation["rag_chunks"]
-                    conversation_record = f"\nQ:{query}\nA:{response}\n"
+    with tarfile.open(tarball_name, "r:gz") as tarball:
+        history = {}
+        for filename in tarball.getnames():
+            if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
+                try:
+                    fname = sanitize_filename(filename)
+                    f = tarball.extractfile(fname)
+                    if f is not None:
+                        data = f.read().decode("UTF-8")
+                        conversation = json.loads(data)
+                        timestamp = conversation["metadata"]["timestamp"]
+                        query = conversation["redacted_query"].strip()
+                        response = conversation["llm_response"].strip()
+                        rag_chunks = conversation["rag_chunks"]
+                        conversation_record = f"\nQ:{query}\nA:{response}\n"
 
-                    if with_rag_context:
-                        conversation_record += "RAG context part\n"
-                        for rag_chunk in rag_chunks:
-                            ref_doc = (
-                                f"{rag_chunk['doc_title']}: {rag_chunk['doc_url']}"
-                            )
-                            conversation_record += f"\nReferenced doc:\n{ref_doc}"
-                            conversation_record += (
-                                f"\nRAG context:\n{rag_chunk['text'].strip()}\n"
-                            )
-                    conversation_record += f"{separator}\n"
-                    history[timestamp] = conversation_record
-                    statistic.conversation_history_included += 1
-                else:
-                    logger.error("Nothing to extract from %s", filename)
-            except Exception as e:
-                logger.exception(
-                    f"Unable to read conversation history: {type(e).__name__}: {e}"
-                )
+                        if with_rag_context:
+                            conversation_record += "RAG context part\n"
+                            for rag_chunk in rag_chunks:
+                                ref_doc = (
+                                    f"{rag_chunk['doc_title']}: {rag_chunk['doc_url']}"
+                                )
+                                conversation_record += f"\nReferenced doc:\n{ref_doc}"
+                                conversation_record += (
+                                    f"\nRAG context:\n{rag_chunk['text'].strip()}\n"
+                                )
+                        conversation_record += f"{separator}\n"
+                        history[timestamp] = conversation_record
+                        statistic.conversation_history_included += 1
+                    else:
+                        logger.error("Nothing to extract from %s", filename)
+                except Exception as e:
+                    logger.exception(
+                        f"Unable to read conversation history: {type(e).__name__}: {e}"
+                    )
 
     output = ""
     for timestamp in sorted(history):
@@ -557,9 +557,9 @@ def read_full_conversation_history_for_all_users(
 ) -> list[tuple[str, str, str]]:
     """Read conversation history for all users and return it as list of conversations."""
     logger.info(f"Reading full conversation history from {tarball_name} for all users")
-    tarball = tarfile.open(tarball_name, "r:gz")
-    filenames = tarball.getnames()
-    tarball.close()
+
+    with tarfile.open(tarball_name, "r:gz") as tarball:
+        filenames = tarball.getnames()
 
     history = []
     for filename in filenames:
