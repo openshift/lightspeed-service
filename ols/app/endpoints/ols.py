@@ -79,54 +79,15 @@ def conversation_request(
     Returns:
         Response containing the processed information.
     """
-    timestamps: dict[str, float] = {}
-    timestamps["start"] = time.time()
-
-    # Initialize variables
-    previous_input = []
-
-    user_id = retrieve_user_id(auth)
-    logger.info("User ID %s", user_id)
-    timestamps["retrieve user"] = time.time()
-
-    conversation_id = retrieve_conversation_id(llm_request)
-    timestamps["retrieve conversation"] = time.time()
-
-    # Important note: Redact the query before attempting to do any
-    # logging of the query to avoid leaking PII into logs.
-
-    # Redact the query
-    llm_request = redact_query(conversation_id, llm_request)
-    timestamps["redact query"] = time.time()
-
-    # Log incoming request (after redaction)
-    logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
-
-    previous_input = retrieve_previous_input(user_id, llm_request)
-    timestamps["retrieve previous input"] = time.time()
-
-    # Retrieve attachments from the request
-    attachments = retrieve_attachments(llm_request)
-
-    # Redact all attachments
-    attachments = redact_attachments(conversation_id, attachments)
-
-    # All attachments should be appended to query - but store original
-    # query for later use in transcript storage
-    query_without_attachments = llm_request.query
-    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
-    timestamps["append attachments"] = time.time()
-
-    validate_requested_provider_model(llm_request)
-
-    # Validate the query
-    if not previous_input:
-        valid = validate_question(conversation_id, llm_request)
-    else:
-        logger.debug("follow-up conversation - skipping question validation")
-        valid = True
-
-    timestamps["validate question"] = time.time()
+    (
+        user_id,
+        conversation_id,
+        query_without_attachments,
+        previous_input,
+        attachments,
+        valid,
+        timestamps,
+    ) = process_request(auth, llm_request)
 
     if not valid:
         summarizer_response = SummarizerResponse(
@@ -181,6 +142,64 @@ def conversation_request(
         response=summarizer_response.response,
         referenced_documents=referenced_documents,
         truncated=summarizer_response.history_truncated,
+    )
+
+
+def process_request(auth: Any, llm_request: LLMRequest):
+    """Process incoming request."""
+    timestamps = {"start": time.time()}
+
+    user_id = retrieve_user_id(auth)
+    logger.info("User ID %s", user_id)
+    timestamps["retrieve user"] = time.time()
+
+    conversation_id = retrieve_conversation_id(llm_request)
+    timestamps["retrieve conversation"] = time.time()
+
+    # Important note: Redact the query before attempting to do any
+    # logging of the query to avoid leaking PII into logs.
+
+    # Redact the query
+    llm_request = redact_query(conversation_id, llm_request)
+    timestamps["redact query"] = time.time()
+
+    # Log incoming request (after redaction)
+    logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
+
+    previous_input = retrieve_previous_input(user_id, llm_request)
+    timestamps["retrieve previous input"] = time.time()
+
+    # Retrieve attachments from the request
+    attachments = retrieve_attachments(llm_request)
+
+    # Redact all attachments
+    attachments = redact_attachments(conversation_id, attachments)
+
+    # All attachments should be appended to query - but store original
+    # query for later use in transcript storage
+    query_without_attachments = llm_request.query
+    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
+    timestamps["append attachments"] = time.time()
+
+    validate_requested_provider_model(llm_request)
+
+    # Validate the query
+    if not previous_input:
+        valid = validate_question(conversation_id, llm_request)
+    else:
+        logger.debug("follow-up conversation - skipping question validation")
+        valid = True
+
+    timestamps["validate question"] = time.time()
+
+    return (
+        user_id,
+        conversation_id,
+        query_without_attachments,
+        previous_input,
+        attachments,
+        valid,
+        timestamps,
     )
 
 

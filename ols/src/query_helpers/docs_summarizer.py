@@ -165,8 +165,24 @@ class DocsSummarizer(QueryHelper):
             query, vector_index, history
         )
 
-        async for chunk in self.bare_llm.astream(
-            final_prompt.format_prompt(**llm_input_values).to_messages(),
-        ):
-            yield chunk.content
+        with TokenMetricUpdater(
+            llm=self.bare_llm,
+            provider=self.provider_config.type,
+            model=self.model,
+        ) as token_counter:
+            async for chunk in self.bare_llm.astream(
+                final_prompt.format_prompt(**llm_input_values).to_messages(),
+                config={"callbacks": [token_counter]},
+            ):
+                # TODO: it is bad to have provider specific code here
+                # the reason we have provider classes is to hide specific
+                # implementation details there. But it requires expanding
+                # the current providers interface, eg. to stream messages
+
+                # openai returns an `AIMessageChunk` while Watsonx plain string
+                chunk_content = chunk.content if hasattr(chunk, "content") else chunk
+                if "<|endoftext|>" in chunk_content:
+                    chunk_content = chunk_content.replace("<|endoftext|>", "")
+                yield chunk_content
+
         yield SummarizerResponse("", rag_chunks, truncated)

@@ -219,3 +219,7 @@ DEFAULT_AUTHENTICATION_MODULE = "k8s"
 
 # All supported authentication modules
 SUPPORTED_AUTHENTICATION_MODULES = {"k8s", "noop"}
+
+# Response streaming media types
+MEDIA_TYPE_TEXT = "text/plain"
+MEDIA_TYPE_JSON = "application/json"
