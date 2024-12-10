@@ -116,6 +116,8 @@ class ResponseEvaluation:
 
         provider, model = INSCOPE_MODELS[provider_model_id]
         answer_id = f"{provider}+{model}+{self._args.eval_scenario}"
+        cutoff_score_id = None
+
         if self._args.eval_type == "model":
             cutoff_score_id = answer_id
             answer_id = f"ground_truth+{self._args.eval_scenario}"

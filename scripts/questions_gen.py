@@ -30,8 +30,8 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
 
-from ols import config
-from ols.src.llms.llm_loader import load_llm
+from ols import config  # pylint: disable=C0413
+from ols.src.llms.llm_loader import load_llm  # pylint: disable=C0413
 
 cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
 config.reload_from_yaml_file(cfg_file)

@@ -4,7 +4,6 @@ import logging
 import os
 import re
 from typing import Any, Literal, Optional, Self
-from urllib.parse import urlparse
 
 from pydantic import (
     AnyHttpUrl,
@@ -17,98 +16,7 @@ from pydantic import (
 )
 
 from ols import constants
-from ols.utils import tls
-
-
-def _is_valid_http_url(url: AnyHttpUrl) -> bool:
-    """Check is a string is a well-formed http or https URL."""
-    result = urlparse(str(url))
-    return all([result.scheme, result.netloc]) and result.scheme in {
-        "http",
-        "https",
-    }
-
-
-def _get_attribute_from_file(data: dict, file_name_key: str) -> Optional[str]:
-    """Retrieve value of an attribute from a file."""
-    file_path = data.get(file_name_key)
-    if file_path is not None:
-        with open(file_path, encoding="utf-8") as f:
-            return f.read().rstrip()
-    return None
-
-
-def _read_secret(
-    data: dict,
-    path_key: str,
-    default_filename: str,
-    raise_on_error: bool = True,
-    directory_name_expected: bool = False,
-) -> Optional[str]:
-    """Read secret from file on given path or from filename if path points to directory."""
-    path = data.get(path_key)
-
-    if path is None:
-        return None
-
-    filename = path
-    if os.path.isdir(path):
-        filename = os.path.join(path, default_filename)
-    elif directory_name_expected:
-        msg = "Improper credentials_path specified: it must contain path to directory with secrets."
-        # no logging configured yet
-        print(msg)
-        return None
-
-    try:
-        with open(filename, encoding="utf-8") as f:
-            return f.read().rstrip()
-    except OSError as e:
-        # some files with secret must exist, so for such cases it is time
-        # to inform about improper configuration
-        if raise_on_error:
-            raise
-        # no logging configured yet
-        print(f"Problem reading secret from file {filename}:", e)
-        print(f"Verify the provider secret contains {default_filename}")
-        return None
-
-
-def _dir_check(path: FilePath, desc: str) -> None:
-    """Check that path is a readable directory."""
-    if not os.path.exists(path):
-        raise InvalidConfigurationError(f"{desc} '{path}' does not exist")
-    if not os.path.isdir(path):
-        raise InvalidConfigurationError(f"{desc} '{path}' is not a directory")
-    if not os.access(path, os.R_OK):
-        raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
-
-
-def _file_check(path: FilePath, desc: str) -> None:
-    """Check that path is a readable regular file."""
-    if not os.path.isfile(path):
-        raise InvalidConfigurationError(f"{desc} '{path}' is not a file")
-    if not os.access(path, os.R_OK):
-        raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
-
-
-def _get_log_level(value: str) -> int:
-    """Get log level from string."""
-    if not isinstance(value, str):
-        raise InvalidConfigurationError(
-            f"'{value}' log level must be string, got {type(value)}"
-        )
-    log_level = logging.getLevelName(value.upper())
-    if not isinstance(log_level, int):
-        raise InvalidConfigurationError(
-            f"'{value}' is not valid log level, valid levels are "
-            f"{[k.lower() for k in logging.getLevelNamesMapping()]}"
-        )
-    return log_level
-
-
-class InvalidConfigurationError(Exception):
-    """OLS Configuration is invalid."""
+from ols.utils import checks, tls
 
 
 class ModelParameters(BaseModel):
@@ -136,9 +44,9 @@ class ModelConfig(BaseModel):
     def validate_inputs(cls, data: Any) -> None:
         """Validate model inputs."""
         if data.get("name") is None:
-            raise InvalidConfigurationError("model name is missing")
+            raise checks.InvalidConfigurationError("model name is missing")
 
-        data["credentials"] = _read_secret(
+        data["credentials"] = checks.read_secret(
             data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
         )
 
@@ -154,17 +62,19 @@ class ModelConfig(BaseModel):
     def validate_options(cls, options: dict) -> dict[str, Any]:
         """Validate model options which must be dict[str, Any]."""
         if not isinstance(options, dict):
-            raise InvalidConfigurationError("model options must be dictionary")
+            raise checks.InvalidConfigurationError("model options must be dictionary")
         for key in options:
             if not isinstance(key, str):
-                raise InvalidConfigurationError("key for model option must be string")
+                raise checks.InvalidConfigurationError(
+                    "key for model option must be string"
+                )
         return options
 
     @model_validator(mode="after")
     def validate_context_window_and_max_tokens(self) -> Self:
         """Validate context window size and max tokens for response."""
         if self.context_window_size <= self.parameters.max_tokens_for_response:  # type: ignore [operator]
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"Context window size {self.context_window_size}, "
                 "should be greater than max_tokens_for_response "
                 f"{self.parameters.max_tokens_for_response}"
@@ -190,7 +100,7 @@ class TLSConfig(BaseModel):
                 "tls_certificate_path", self.tls_certificate_path
             )
             self.tls_key_path = data.get("tls_key_path", self.tls_key_path)
-            self.tls_key_password = _get_attribute_from_file(
+            self.tls_key_password = checks.get_attribute_from_file(
                 data, "tls_key_password_path"
             )
 
@@ -198,16 +108,16 @@ class TLSConfig(BaseModel):
         """Validate TLS config."""
         if not disable_tls and not self._ignore_missing_certs:
             if not self.tls_certificate_path:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     "Can not enable TLS without ols_config.tls_config.tls_certificate_path"
                 )
 
-            _file_check(self.tls_certificate_path, "OLS server certificate")
+            checks.file_check(self.tls_certificate_path, "OLS server certificate")
             if not self.tls_key_path:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     "Can not enable TLS without ols_config.tls_config.tls_key_path"
                 )
-            _file_check(self.tls_key_path, "OLS server certificate private key")
+            checks.file_check(self.tls_key_path, "OLS server certificate private key")
 
 
 class AuthenticationConfig(BaseModel):
@@ -221,9 +131,9 @@ class AuthenticationConfig(BaseModel):
     def validate_yaml(self) -> None:
         """Validate YAML containing authentication configuration section."""
         if self.module is None:
-            raise InvalidConfigurationError("Authentication module is not setup")
+            raise checks.InvalidConfigurationError("Authentication module is not setup")
         if self.module not in constants.SUPPORTED_AUTHENTICATION_MODULES:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"invalid authentication module: {self.module}, supported modules are"
                 f" {constants.SUPPORTED_AUTHENTICATION_MODULES}"
             )
@@ -251,7 +161,7 @@ class TLSSecurityProfile(BaseModel):
             try:
                 tls.TLSProfiles(self.profile_type)
             except ValueError:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     f"Invalid TLS profile type '{self.profile_type}'"
                 )
         # check the TLS protocol version
@@ -259,7 +169,7 @@ class TLSSecurityProfile(BaseModel):
             try:
                 tls.TLSProtocolVersion(self.min_tls_version)
             except ValueError:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     f"Invalid minimal TLS version '{self.min_tls_version}'"
                 )
         # check ciphers
@@ -269,7 +179,7 @@ class TLSSecurityProfile(BaseModel):
                 supported_ciphers = tls.TLS_CIPHERS[tls.TLSProfiles(self.profile_type)]
                 for cipher in self.ciphers:
                     if cipher not in supported_ciphers:
-                        raise InvalidConfigurationError(
+                        raise checks.InvalidConfigurationError(
                             f"Unsupported cipher '{cipher}' found in configuration"
                         )
 
@@ -359,7 +269,7 @@ class ProviderConfig(BaseModel):
         self.set_provider_type(data)
         self.url = data.get("url", None)
         try:
-            self.credentials = _read_secret(
+            self.credentials = checks.read_secret(
                 data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
             )
         except FileNotFoundError:
@@ -371,7 +281,7 @@ class ProviderConfig(BaseModel):
         # OLS-622: Provider-specific configuration parameters in olsconfig.yaml
         self.project_id = data.get("project_id", None)
         if self.type == constants.PROVIDER_WATSONX and self.project_id is None:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"project_id is required for Watsonx provider {self.name}"
             )
 
@@ -400,7 +310,7 @@ class ProviderConfig(BaseModel):
         # specified explicitly.
         self.type = str(data.get("type", self.name)).lower()
         if self.type not in constants.SUPPORTED_PROVIDER_TYPES:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"invalid provider type: {self.type}, supported types are"
                 f" {set(constants.SUPPORTED_PROVIDER_TYPES)}"
             )
@@ -408,12 +318,12 @@ class ProviderConfig(BaseModel):
     def setup_models_config(self, data: dict) -> None:
         """Set up models configuration."""
         if "models" not in data or len(data["models"]) == 0:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"no models configured for provider {data['name']}"
             )
         for m in data["models"]:
             if "name" not in m:
-                raise InvalidConfigurationError("model name is missing")
+                raise checks.InvalidConfigurationError("model name is missing")
             # add provider to model data - needed for some constants
             # resolution based on the specific provider
             m["provider"] = self.type
@@ -433,7 +343,7 @@ class ProviderConfig(BaseModel):
         # just none or one provider-specific configuration
         # should available
         if found > 1:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 "multiple provider-specific configurations found, "
                 f"but just one is expected for provider {self.type}"
             )
@@ -448,21 +358,21 @@ class ProviderConfig(BaseModel):
                     azure_config = data.get("azure_openai_config")
                     self.check_provider_config(azure_config)
                     if azure_config is not None:
-                        azure_config["tenant_id"] = _read_secret(
+                        azure_config["tenant_id"] = checks.read_secret(
                             azure_config,
                             constants.CREDENTIALS_PATH_SELECTOR,
                             constants.AZURE_TENANT_ID_FILENAME,
                             directory_name_expected=True,
                             raise_on_error=False,
                         )
-                        azure_config["client_id"] = _read_secret(
+                        azure_config["client_id"] = checks.read_secret(
                             azure_config,
                             constants.CREDENTIALS_PATH_SELECTOR,
                             constants.AZURE_CLIENT_ID_FILENAME,
                             directory_name_expected=True,
                             raise_on_error=False,
                         )
-                        azure_config["client_secret"] = _read_secret(
+                        azure_config["client_secret"] = checks.read_secret(
                             azure_config,
                             constants.CREDENTIALS_PATH_SELECTOR,
                             constants.AZURE_CLIENT_SECRET_FILENAME,
@@ -497,7 +407,7 @@ class ProviderConfig(BaseModel):
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
                 case _:
-                    raise InvalidConfigurationError(
+                    raise checks.InvalidConfigurationError(
                         f"Unsupported provider {self.type} configured"
                     )
 
@@ -506,7 +416,7 @@ class ProviderConfig(BaseModel):
         """Read API key from file with secret."""
         if config is None:
             return
-        config["api_key"] = _read_secret(
+        config["api_key"] = checks.read_secret(
             config,
             constants.CREDENTIALS_PATH_SELECTOR,
             constants.API_TOKEN_FILENAME,
@@ -516,7 +426,7 @@ class ProviderConfig(BaseModel):
     def check_provider_config(self, provider_config: Any) -> None:
         """Check if configuration is presented for selected provider type."""
         if provider_config is None:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"provider type {self.type} selected, "
                 "but configuration is set for different provider"
             )
@@ -544,9 +454,9 @@ class ProviderConfig(BaseModel):
     def validate_yaml(self) -> None:
         """Validate provider config."""
         if self.name is None:
-            raise InvalidConfigurationError("provider name is missing")
-        if self.url is not None and not _is_valid_http_url(self.url):
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError("provider name is missing")
+        if self.url is not None and not checks.is_valid_http_url(self.url):
+            raise checks.InvalidConfigurationError(
                 "provider URL is invalid, only http:// and https:// URLs are supported"
             )
 
@@ -568,7 +478,7 @@ class LLMProviders(BaseModel):
             return
         for p in data:
             if "name" not in p:
-                raise InvalidConfigurationError("provider name is missing")
+                raise checks.InvalidConfigurationError("provider name is missing")
             provider = ProviderConfig(p, ignore_llm_secrets, certificate_directory)
             self.providers[p["name"]] = provider
 
@@ -639,7 +549,7 @@ class RedisConfig(BaseModel):
             if not 0 < self.port < 65536:
                 raise ValueError
         except ValueError as e:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"invalid Redis port {yaml_port}, valid ports are integers in the (0, 65536) range"
             ) from e
 
@@ -649,7 +559,7 @@ class RedisConfig(BaseModel):
             "max_memory_policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
         )
         self.ca_cert_path = data.get("ca_cert_path", None)
-        self.password = _get_attribute_from_file(data, "password_path")
+        self.password = checks.get_attribute_from_file(data, "password_path")
         self.retry_on_error = (
             str(data.get("retry_on_error", constants.REDIS_RETRY_ON_ERROR)).lower()
             == "true"
@@ -687,7 +597,7 @@ class RedisConfig(BaseModel):
             valid_polices = ", ".join(
                 str(p) for p in constants.REDIS_CACHE_MAX_MEMORY_POLICIES
             )
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"invalid Redis max_memory_policy {self.max_memory_policy},"
                 f" valid policies are ({valid_polices})"
             )
@@ -711,7 +621,7 @@ class InMemoryCacheConfig(BaseModel):
             if self.max_entries < 0:
                 raise ValueError
         except ValueError as e:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 "invalid max_entries for memory conversation cache,"
                 " max_entries needs to be a non-negative integer"
             ) from e
@@ -745,7 +655,7 @@ class QueryFilter(BaseModel):
             if self.name is None or self.pattern is None or self.replace_with is None:
                 raise ValueError
         except ValueError as e:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 "name, pattern and replace_with need to be specified"
             ) from e
 
@@ -762,15 +672,15 @@ class QueryFilter(BaseModel):
     def validate_yaml(self) -> None:
         """Validate memory cache config."""
         if self.name is None:
-            raise InvalidConfigurationError("name is missing")
+            raise checks.InvalidConfigurationError("name is missing")
         if self.pattern is None:
-            raise InvalidConfigurationError("pattern is missing")
+            raise checks.InvalidConfigurationError("pattern is missing")
         try:
             re.compile(self.pattern)
         except re.error as e:
-            raise InvalidConfigurationError("pattern is invalid") from e
+            raise checks.InvalidConfigurationError("pattern is invalid") from e
         if self.replace_with is None:
-            raise InvalidConfigurationError("replace_with is missing")
+            raise checks.InvalidConfigurationError("replace_with is missing")
 
 
 class ConversationCacheConfig(BaseModel):
@@ -791,14 +701,14 @@ class ConversationCacheConfig(BaseModel):
             match self.type:
                 case constants.CACHE_TYPE_REDIS:
                     if constants.CACHE_TYPE_REDIS not in data:
-                        raise InvalidConfigurationError(
+                        raise checks.InvalidConfigurationError(
                             "redis conversation cache type is specified,"
                             " but redis configuration is missing"
                         )
                     self.redis = RedisConfig(data.get(constants.CACHE_TYPE_REDIS))
                 case constants.CACHE_TYPE_MEMORY:
                     if constants.CACHE_TYPE_MEMORY not in data:
-                        raise InvalidConfigurationError(
+                        raise checks.InvalidConfigurationError(
                             "memory conversation cache type is specified,"
                             " but memory configuration is missing"
                         )
@@ -807,7 +717,7 @@ class ConversationCacheConfig(BaseModel):
                     )
                 case constants.CACHE_TYPE_POSTGRES:
                     if constants.CACHE_TYPE_POSTGRES not in data:
-                        raise InvalidConfigurationError(
+                        raise checks.InvalidConfigurationError(
                             "Postgres conversation cache type is specified,"
                             " but Postgres configuration is missing"
                         )
@@ -815,7 +725,7 @@ class ConversationCacheConfig(BaseModel):
                         **data.get(constants.CACHE_TYPE_POSTGRES)
                     )
                 case _:
-                    raise InvalidConfigurationError(
+                    raise checks.InvalidConfigurationError(
                         f"unknown conversation cache type: {self.type}"
                     )
 
@@ -833,7 +743,7 @@ class ConversationCacheConfig(BaseModel):
     def validate_yaml(self) -> None:
         """Validate conversation cache config."""
         if self.type is None:
-            raise InvalidConfigurationError("missing conversation cache type")
+            raise checks.InvalidConfigurationError("missing conversation cache type")
         # cache type is specified, we can decide which cache configuration to validate
         match self.type:
             case constants.CACHE_TYPE_REDIS:
@@ -843,7 +753,7 @@ class ConversationCacheConfig(BaseModel):
             case constants.CACHE_TYPE_POSTGRES:
                 pass  # it is validated by Pydantic already
             case _:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     f"unknown conversation cache type: {self.type}"
                 )
 
@@ -863,7 +773,7 @@ class LoggingConfig(BaseModel):
         # logging level names (integer values) for defined model fields
         for field in filter(lambda x: x.endswith("_log_level"), self.model_fields):
             if field in data:
-                data[field] = _get_log_level(data[field])  # type: ignore[assignment]
+                data[field] = checks.get_log_level(data[field])  # type: ignore[assignment]
         super().__init__(**data)
 
 
@@ -897,10 +807,10 @@ class ReferenceContent(BaseModel):
     def validate_yaml(self) -> None:
         """Validate reference content config."""
         if self.product_docs_index_path is not None:
-            _dir_check(self.product_docs_index_path, "Reference content path")
+            checks.dir_check(self.product_docs_index_path, "Reference content path")
 
             if self.product_docs_index_id is None:
-                raise InvalidConfigurationError(
+                raise checks.InvalidConfigurationError(
                     "product_docs_index_path is specified but product_docs_index_id is missing"
                 )
 
@@ -908,12 +818,12 @@ class ReferenceContent(BaseModel):
             self.product_docs_index_id is not None
             and self.product_docs_index_path is None
         ):
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 "product_docs_index_id is specified but product_docs_index_path is missing"
             )
 
         if self.embeddings_model_path is not None:
-            _dir_check(self.embeddings_model_path, "Embeddings model path")
+            checks.dir_check(self.embeddings_model_path, "Embeddings model path")
 
 
 class UserDataCollection(BaseModel):
@@ -977,6 +887,9 @@ class OLSConfig(BaseModel):
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
         self.max_workers = data.get("max_workers", 1)
+        self.expire_llm_is_ready_persistent_state = data.get(
+            "expire_llm_is_ready_persistent_state", -1
+        )
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
@@ -998,7 +911,7 @@ class OLSConfig(BaseModel):
         # read file containing system prompt
         # if not specified, the prompt will remain None, which will be handled
         # by system prompt infrastructure
-        self.system_prompt = _get_attribute_from_file(data, "system_prompt_path")
+        self.system_prompt = checks.get_attribute_from_file(data, "system_prompt_path")
 
         self.extra_ca = data.get("extra_ca", [])
         self.certificate_directory = data.get(
@@ -1025,6 +938,8 @@ class OLSConfig(BaseModel):
                 and self.system_prompt == other.system_prompt
                 and self.tls_security_profile == other.tls_security_profile
                 and self.authentication_config == other.authentication_config
+                and self.expire_llm_is_ready_persistent_state
+                == other.expire_llm_is_ready_persistent_state
             )
         return False
 
@@ -1046,7 +961,7 @@ class OLSConfig(BaseModel):
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"Invalid query validation method: {self.query_validation_method}\n"
                 f"Available options are {valid_query_validation_methods}"
             )
@@ -1078,7 +993,7 @@ class UserDataCollectorConfig(BaseModel):
         # convert input strings (level names, eg. debug/info,...) to
         # logging level name (integer values)
         if "log_level" in data:
-            data["log_level"] = _get_log_level(data["log_level"])  # type: ignore[assignment]
+            data["log_level"] = checks.get_log_level(data["log_level"])  # type: ignore[assignment]
         super().__init__(**data)
 
     @model_validator(mode="after")
@@ -1111,14 +1026,16 @@ class Config(BaseModel):
         if v is not None:
             self.ols_config = OLSConfig(v, ignore_missing_certs)
         else:
-            raise InvalidConfigurationError("no OLS config section found")
+            raise checks.InvalidConfigurationError("no OLS config section found")
         v = data.get("llm_providers")
         if v is not None:
             self.llm_providers = LLMProviders(
                 v, ignore_llm_secrets, self.ols_config.certificate_directory
             )
         else:
-            raise InvalidConfigurationError("no LLM providers config section found")
+            raise checks.InvalidConfigurationError(
+                "no LLM providers config section found"
+            )
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
         self.user_data_collector_config = UserDataCollectorConfig(
@@ -1142,19 +1059,19 @@ class Config(BaseModel):
         model_specified = selected_default_model is not None
 
         if not provider_specified:
-            raise InvalidConfigurationError("default_provider is missing")
+            raise checks.InvalidConfigurationError("default_provider is missing")
         if not model_specified:
-            raise InvalidConfigurationError("default_model is missing")
+            raise checks.InvalidConfigurationError("default_model is missing")
 
         # provider and model are specified
         provider_config = self.llm_providers.providers.get(selected_default_provider)
         if provider_config is None:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"default_provider specifies an unknown provider {selected_default_provider}"
             )
         model_config = provider_config.models.get(selected_default_model)
         if model_config is None:
-            raise InvalidConfigurationError(
+            raise checks.InvalidConfigurationError(
                 f"default_model specifies an unknown model {selected_default_model}"
             )
 
