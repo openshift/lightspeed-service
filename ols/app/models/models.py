@@ -126,8 +126,8 @@ class LLMRequest(BaseModel):
             )
         if self.media_type not in (MEDIA_TYPE_TEXT, MEDIA_TYPE_JSON):
             raise ValueError(
-                f"Invalid media type {self.media_type}, must be {MEDIA_TYPE_TEXT}"
-                f" or {MEDIA_TYPE_JSON}"
+                f"Invalid media type: '{self.media_type}', must be "
+                f"{MEDIA_TYPE_TEXT} or {MEDIA_TYPE_JSON}"
             )
         return self
 

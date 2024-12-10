@@ -101,7 +101,7 @@ class DocsSummarizer(QueryHelper):
 
         # Truncate history
         history, truncated = token_handler.limit_conversation_history(
-            history, self.model, available_tokens
+            history or [], self.model, available_tokens
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
