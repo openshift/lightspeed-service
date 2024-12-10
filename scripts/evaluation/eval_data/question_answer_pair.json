@@ -321,6 +321,7 @@
                 "azure_openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
+                        "As of Red Hat OpenShift Container Platform 4.14, DeploymentConfig objects are deprecated and are not recommended for new installations. It is advised to use Deployment objects or other alternatives for declarative updates for pods instead. While DeploymentConfig objects are still supported, only security-related and critical issues will be fixed. Therefore, it is recommended to transition to using Deployment objects for better support and features.",
                         "No, I do not recommend using DeploymentConfig objects. As of OpenShift 4.14, DeploymentConfig objects are deprecated and only security-related and critical issues will be fixed for them. It is advisable to use Deployment objects or other alternatives for declarative updates for pods instead."
                     ]
                 },
