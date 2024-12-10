@@ -8,6 +8,7 @@ lint.extend-select = ["D401"]
 
 lint.ignore = []
 
+# always generate Python 3.11-compatible code.
 target-version = "py311"
 lint.pydocstyle.convention = "google"
 line-length = 100
@@ -131,7 +132,7 @@ dependencies = [
     "virtualenv==20.28.0",
     "msgpack==1.1.0",
 ]
-requires-python = "==3.11.*"
+requires-python = ">=3.11.1,<=3.12.8"
 readme = "README.md"
 license = {file = "LICENSE"}
 
