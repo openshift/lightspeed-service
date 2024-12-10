@@ -118,7 +118,7 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
-def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
     is_konflux = os.getenv("KONFLUX_BOOL")
@@ -332,39 +332,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915 # noqa: C901
     )
     print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
-    r = retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        2,
-        lambda: len(
-            cluster_utils.run_oc(
-                ["get", "pods", "--field-selector=status.phase=Pending"]
-            ).stdout
-        )
-        == 1,
-    )
-    r = retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        5,
-        lambda: len(
-            cluster_utils.run_oc(
-                ["get", "pods", "--field-selector=status.phase=Pending"]
-            ).stdout
-        )
-        == 0,
-    )
-
-    # wait for new ols app pod to be created+running
-    # there should be exactly one, if we see more than one it may be an old pod
-    # and we need to wait for it to go away before progressing so we don't try to
-    # interact with it.
-    r = retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        5,
-        lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1,
-    )
-    if not r:
-        print("Timed out waiting for new OLS pod to be ready")
-        return None
+    cluster_utils.wait_for_running_pod()
 
     print("-" * 50)
     print("OLS pod seems to be ready")

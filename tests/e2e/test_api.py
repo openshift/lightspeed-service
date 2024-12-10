@@ -33,7 +33,6 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
-from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -202,14 +201,7 @@ def test_forbidden_user():
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
-    r = retry_until_timeout_or_success(
-        120,
-        5,
-        lambda: len(cluster_utils.get_pod_by_prefix(fail_not_found=False)) == 1,
-    )
-    if not r:
-        print("Timed out waiting for new OLS pod to be ready")
-        return None
+    cluster_utils.wait_for_running_pod()
     pod_name = cluster_utils.get_pod_by_prefix()[0]
     # disable collector script to avoid interference with the test
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
