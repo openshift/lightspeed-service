@@ -3,6 +3,10 @@
 import json
 import subprocess
 
+from tests.e2e.utils.retry import retry_until_timeout_or_success
+
+OC_COMMAND_RETRY_COUNT = 120
+
 
 def run_oc(
     args: list[str], input=None, ignore_existing_resource=False  # noqa: A002
@@ -294,3 +298,64 @@ def remove_file(pod_name: str, path: str) -> None:
         run_oc(["exec", pod_name, "--", "rm", path])
     except subprocess.CalledProcessError as e:
         raise Exception("Error removing file") from e
+
+
+def wait_for_running_pod(
+    name: str = "lightspeed-app-server-", namespace: str = "openshift-lightspeed"
+):
+    """Wait for the selected pod to be in running state."""
+    r = retry_until_timeout_or_success(
+        5,
+        3,
+        lambda: len(
+            run_oc(
+                [
+                    "get",
+                    "pods",
+                    "--field-selector=status.phase=Pending",
+                    "-n",
+                    namespace,
+                ]
+            ).stdout
+        )
+        == 1,
+    )
+    r = retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        6,
+        lambda: (
+            len(
+                [
+                    pod
+                    for pod in [
+                        run_oc(
+                            [
+                                "get",
+                                "pods",
+                                "--field-selector=status.phase=Running",
+                                "-n",
+                                namespace,
+                            ]
+                        ).stdout.find(name)
+                    ]
+                    if pod > 0
+                ]
+            )
+            == 1
+        ),
+    )
+
+    # wait for new ols app pod to be created+running
+    # there should be exactly one, if we see more than one it may be an old pod
+    # and we need to wait for it to go away before progressing so we don't try to
+    # interact with it.
+    r = retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        5,
+        lambda: len(
+            get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
+        )
+        == 1,
+    )
+    if not r:
+        raise Exception("Timed out waiting for new OLS pod to be ready")
