@@ -40,6 +40,7 @@ if __name__ == "__main__":
     configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger("ols")
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
+    logger.info("Running on Python version %s", sys.version)
 
     configure_hugging_face_envs(config.ols_config)
 
