@@ -28,7 +28,7 @@ install-tools:	install-woke ## Install required utilities/tools
 	pip show setuptools
 	export PIP_DEFAULT_TIMEOUT=100
 	# install all dependencies, including devel ones
-	pdm install --dev --fail-fast -v
+	@for a in 1 2 3 4 5; do pdm install --dev --fail-fast -v && break || sleep 15; done
 	# check that correct mypy version is installed
 	# mypy --version
 	pdm run mypy --version
@@ -47,10 +47,10 @@ pdm-lock-check: ## Check that the pdm.lock file is in a good shape
 	pdm lock --check
 
 install-deps: install-tools pdm-lock-check ## Install all required dependencies needed to run the service, according to pdm.lock
-	pdm sync
-
+	@for a in 1 2 3 4 5; do pdm sync && break || sleep 15; done
+	
 install-deps-test: install-tools pdm-lock-check ## Install all required dev dependencies needed to test the service, according to pdm.lock
-	pdm sync --dev
+	@for a in 1 2 3 4 5; do pdm sync --dev && break || sleep 15; done
 
 update-deps: ## Check pyproject.toml for changes, update the lock file if needed, then sync.
 	pdm install
