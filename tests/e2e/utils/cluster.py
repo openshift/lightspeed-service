@@ -300,6 +300,25 @@ def remove_file(pod_name: str, path: str) -> None:
         raise Exception("Error removing file") from e
 
 
+def get_container_ready_status(pod: str, namespace: str = "openshift-lightspeed"):
+    """Get status for all containers in pod."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "-n",
+                namespace,
+                "pod",
+                pod,
+                "-o",
+                "jsonpath='{.status.containerStatuses[*].ready}'",
+            ]
+        )
+        return result.stdout.strip("'").split()
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Error getting containers of pod {pod}") from e
+
+
 def wait_for_running_pod(
     name: str = "lightspeed-app-server-", namespace: str = "openshift-lightspeed"
 ):
@@ -320,30 +339,6 @@ def wait_for_running_pod(
         )
         == 1,
     )
-    r = retry_until_timeout_or_success(
-        OC_COMMAND_RETRY_COUNT,
-        6,
-        lambda: (
-            len(
-                [
-                    pod
-                    for pod in [
-                        run_oc(
-                            [
-                                "get",
-                                "pods",
-                                "--field-selector=status.phase=Running",
-                                "-n",
-                                namespace,
-                            ]
-                        ).stdout.find(name)
-                    ]
-                    if pod > 0
-                ]
-            )
-            == 1
-        ),
-    )
 
     # wait for new ols app pod to be created+running
     # there should be exactly one, if we see more than one it may be an old pod
@@ -359,3 +354,19 @@ def wait_for_running_pod(
     )
     if not r:
         raise Exception("Timed out waiting for new OLS pod to be ready")
+    pod_name = get_pod_by_prefix(
+        prefix=name, namespace=namespace, fail_not_found=False
+    )[0]
+    # wait for the two containers in the server pod to become ready
+    retry_until_timeout_or_success(
+        OC_COMMAND_RETRY_COUNT,
+        5,
+        lambda: len(
+            [
+                container
+                for container in get_container_ready_status(pod_name)
+                if container == "true"
+            ]
+        )
+        == 2,
+    )
