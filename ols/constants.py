@@ -45,12 +45,10 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
         PROVIDER_FAKE,
     }
 )
-
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
 
+
 # models
-
-
 class ModelFamily(StrEnum):
     """Different LLM models family/group."""
 
@@ -64,7 +62,6 @@ GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
 # OpenAI & Azure OpenAI
 GPT35_TURBO = "gpt-3.5-turbo"
 GPT_4O_MINI = "gpt-4o-mini"
-
 FAKE_MODEL = "fake_model"
 
 
@@ -222,3 +219,7 @@ DEFAULT_AUTHENTICATION_MODULE = "k8s"
 
 # All supported authentication modules
 SUPPORTED_AUTHENTICATION_MODULES = {"k8s", "noop"}
+
+# Response streaming media types
+MEDIA_TYPE_TEXT = "text/plain"
+MEDIA_TYPE_JSON = "application/json"
