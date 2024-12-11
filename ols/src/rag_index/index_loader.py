@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # So this module is excluded from mypy checks as a whole.
 def load_llama_index_deps() -> None:
     """Load llama_index dependencies."""
+    # pylint: disable=global-statement
     global Settings
     global StorageContext
     global load_index_from_storage
