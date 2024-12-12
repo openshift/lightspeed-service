@@ -5,7 +5,7 @@ import io
 import pytest
 
 from ols import config
-from ols.app.models.config import InvalidConfigurationError
+from ols.utils.checks import InvalidConfigurationError
 
 
 def test_load_valid_config_file(benchmark):
