@@ -1,7 +1,7 @@
 """A class for summarizing documentation context."""
 
 import logging
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
 
 from langchain.chains import LLMChain
 from llama_index.core import VectorStoreIndex
@@ -28,7 +28,8 @@ class DocsSummarizer(QueryHelper):
         self._get_system_prompt()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
 
-    def _prepare_llm(self):
+    def _prepare_llm(self) -> None:
+        """Prepare the LLM configuration."""
         self.provider_config = config.llm_config.providers.get(self.provider)
         self.model_config = self.provider_config.models.get(self.model)
         self.generic_llm_params = {
@@ -38,7 +39,8 @@ class DocsSummarizer(QueryHelper):
             self.provider, self.model, self.generic_llm_params
         )
 
-    def _get_system_prompt(self):
+    def _get_system_prompt(self) -> None:
+        """Retrieve the system prompt."""
         # use system prompt from config if available otherwise use
         # default system prompt fine-tuned for the service
         if config.ols_config.system_prompt is not None:
@@ -56,13 +58,13 @@ class DocsSummarizer(QueryHelper):
         """Summarize the given query based on the provided conversation context.
 
         Args:
-            conversation_id: The unique identifier for the conversation.
             query: The query to be summarized.
-            vector_index: Vector index to get rag data/context.
+            vector_index: Vector index to get RAG data/context.
             history: The history of the conversation (if available).
 
         Returns:
-            A `SummarizerResponse` object.
+            A tuple containing the final prompt, input values, RAG chunks,
+            and a flag for truncated history.
         """
         settings_string = (
             f"query: {query}, "
@@ -159,7 +161,7 @@ class DocsSummarizer(QueryHelper):
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
         history: Optional[list[str]] = None,
-    ):
+    ) -> AsyncGenerator[str, None]:
         """Generate a response for the given query based on the provided conversation context."""
         final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
             query, vector_index, history
