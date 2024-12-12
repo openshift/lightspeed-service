@@ -138,8 +138,20 @@ def conversation_request(
     )
 
 
-def process_request(auth: Any, llm_request: LLMRequest):
-    """Process incoming request."""
+def process_request(
+    auth: Any, llm_request: LLMRequest
+) -> tuple[str, str, str, list[CacheEntry], list[Attachment], bool, dict[str, float]]:
+    """Process incoming request.
+
+    Args:
+        auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        llm_request: The request containing a query, conversation ID, and optional attachments.
+
+    Returns:
+        Tuple containing the processed information.
+        User ID, conversation ID, query without attachments, previous input,
+        attachments, validation result and timestamps.
+    """
     timestamps = {"start": time.time()}
 
     user_id = retrieve_user_id(auth)
@@ -331,12 +343,11 @@ def generate_response(
             return docs_summarizer.generate_response(
                 llm_request.query, config.rag_index, history
             )
-        else:
-            response = docs_summarizer.create_response(
-                llm_request.query, config.rag_index, history
-            )
-            logger.debug(f"{conversation_id} Generated response: {response}")
-            return response
+        response = docs_summarizer.create_response(
+            llm_request.query, config.rag_index, history
+        )
+        logger.debug("%s Generated response: %s", conversation_id, response)
+        return response
     except PromptTooLongError as summarizer_error:
         logger.error("Prompt is too long: %s", summarizer_error)
         raise HTTPException(
