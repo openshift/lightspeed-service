@@ -56,7 +56,7 @@ def test_summarize_empty_history():
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
     history = []  # empty history
-    summary = summarizer.summarize(conversation_id, question, rag_index, history)
+    summary = summarizer.create_response(question, rag_index, history)
     check_summary_result(summary, question)
 
 
@@ -69,7 +69,7 @@ def test_summarize_no_history():
     question = "What's the ultimate question with answer 42?"
     rag_index = MockLlamaIndex()
     # no history is passed into summarize() method
-    summary = summarizer.summarize(conversation_id, question, rag_index)
+    summary = summarizer.create_response(question, rag_index)
     check_summary_result(summary, question)
 
 
@@ -88,7 +88,7 @@ def test_summarize_history_provided():
         "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
         return_value=([], False),
     ) as token_handler:
-        summary1 = summarizer.summarize(conversation_id, question, rag_index, history)
+        summary1 = summarizer.create_response(question, rag_index, history)
         token_handler.assert_called_once_with(history, ANY, ANY)
         check_summary_result(summary1, question)
 
@@ -97,7 +97,7 @@ def test_summarize_history_provided():
         "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
         return_value=([], False),
     ) as token_handler:
-        summary2 = summarizer.summarize(conversation_id, question, rag_index)
+        summary2 = summarizer.create_response(question, rag_index)
         token_handler.assert_called_once_with([], ANY, ANY)
         check_summary_result(summary2, question)
 
@@ -112,7 +112,7 @@ def test_summarize_truncation():
 
     # too long history
     history = ["human: What is Kubernetes?"] * 10000
-    summary = summarizer.summarize(conversation_id, question, rag_index, history)
+    summary = summarizer.create_response(question, rag_index, history)
 
     # truncation should be done
     assert summary.history_truncated
@@ -125,7 +125,25 @@ def test_summarize_no_reference_content():
         llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
     )
     question = "What's the ultimate question with answer 42?"
-    summary = summarizer.summarize(conversation_id, question)
+    summary = summarizer.create_response(question)
     assert question in summary.response
     assert summary.rag_chunks == []
     assert not summary.history_truncated
+
+
+@pytest.mark.asyncio
+@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
+async def test_response_generator():
+    """Test response generator method."""
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
+    )
+    question = "What's the ultimate question with answer 42?"
+    summary_gen = summarizer.generate_response(question)
+    generated_content = ""
+
+    async for item in summary_gen:
+        if isinstance(item, str):
+            generated_content += item
+
+    assert generated_content == question

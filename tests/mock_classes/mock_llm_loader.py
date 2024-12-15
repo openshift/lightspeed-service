@@ -14,6 +14,11 @@ class MockLLMLoader:
             llm.model = "mock_model"
         self.llm = llm
 
+    async def astream(self, llm_input, **kwargs):
+        """Return query result."""
+        # yield input prompt/user query
+        yield llm_input[1].content
+
 
 def mock_llm_loader(llm=None, expected_params=None):
     """Construct mock for load_llm."""

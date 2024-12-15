@@ -617,7 +617,7 @@ def test_attachments_redact_on_redact_error():
     constants.QueryValidationMethod.LLM,
 )
 @patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
 @patch("ols.config.conversation_cache.get")
 def test_conversation_request(
     mock_conversation_cache_get,
@@ -662,6 +662,38 @@ def test_conversation_request(
         response = ols.conversation_request(llm_request, auth)
         assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         assert len(response.conversation_id) == 0
+
+
+@pytest.mark.usefixtures("_load_config")
+@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
+@patch("ols.config.conversation_cache.get")
+def test_conversation_request_dedup_ref_docs(
+    mock_conversation_cache_get,
+    mock_summarize,
+    mock_validate_question,
+    auth,
+):
+    """Test deduplication of referenced docs."""
+    mock_rag_chunk = [
+        RagChunk("text1", "url-b", "title-b"),
+        RagChunk("text2", "url-b", "title-b"),  # duplicate doc
+        RagChunk("text3", "url-a", "title-a"),
+    ]
+    mock_validate_question.return_value = True
+    mock_summarize.return_value = SummarizerResponse(
+        response="some response",
+        rag_chunks=mock_rag_chunk,
+        history_truncated=False,
+    )
+    llm_request = LLMRequest(query="some query")
+    response = ols.conversation_request(llm_request, auth)
+
+    assert len(response.referenced_documents) == 2
+    assert response.referenced_documents[0].docs_url == "url-b"
+    assert response.referenced_documents[0].title == "title-b"
+    assert response.referenced_documents[1].docs_url == "url-a"
+    assert response.referenced_documents[1].title == "title-a"
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -717,7 +749,7 @@ def test_question_validation_in_conversation_start(auth):
     "ols.app.endpoints.ols.validate_question",
     new=Mock(return_value=constants.SUBJECT_REJECTED),
 )
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
 def test_no_question_validation_in_follow_up_conversation(mock_summarize, auth):
     """Test if question validation is skipped in follow-up conversation."""
     # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
@@ -751,7 +783,7 @@ def test_conversation_request_invalid_subject(mock_validate, auth):
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
 def test_generate_response_valid_subject(mock_summarize):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
@@ -781,7 +813,7 @@ def test_generate_response_valid_subject(mock_summarize):
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.summarize")
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
 def test_generate_response_on_summarizer_error(mock_summarize):
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer

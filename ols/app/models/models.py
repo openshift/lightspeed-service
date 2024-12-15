@@ -6,6 +6,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
+from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from ols.utils import suid
 
 
@@ -65,6 +66,7 @@ class LLMRequest(BaseModel):
         provider: The optional provider.
         model: The optional model.
         attachments: The optional attachments.
+        media_type: The optional parameter for streaming response.
 
     Example:
         ```python
@@ -77,6 +79,7 @@ class LLMRequest(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
+    media_type: Optional[str] = MEDIA_TYPE_TEXT
 
     # provides examples for /docs endpoint
     model_config = {
@@ -105,6 +108,7 @@ class LLMRequest(BaseModel):
                             "content": "foo: bar",
                         },
                     ],
+                    "media_type": "text/plain",
                 }
             ]
         },
@@ -120,6 +124,11 @@ class LLMRequest(BaseModel):
         if self.provider and not self.model:
             raise ValueError(
                 "LLM model must be specified when the provider is specified."
+            )
+        if self.media_type not in (MEDIA_TYPE_TEXT, MEDIA_TYPE_JSON):
+            raise ValueError(
+                f"Invalid media type: '{self.media_type}', must be "
+                f"{MEDIA_TYPE_TEXT} or {MEDIA_TYPE_JSON}"
             )
         return self
 
