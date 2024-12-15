@@ -120,8 +120,10 @@ async def log_requests_responses(
     ) -> AsyncGenerator[bytes, None]:
         async for chunk in response_body:
             logger.debug(
-                f"Response to {host}:{port} "
-                f"Body chunk: {chunk.decode('utf-8', errors='ignore')}"
+                "Response to %s:%d Body chunk: %s}",
+                host,
+                port,
+                chunk.decode("utf-8", errors="ignore"),
             )
             yield chunk
 

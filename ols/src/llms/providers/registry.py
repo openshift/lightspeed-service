@@ -22,7 +22,7 @@ class LLMProvidersRegistry:
                 f"LLMProvider subclass required, got '{type(llm_provider)}'"
             )
         cls.llm_providers[provider_type] = llm_provider
-        logger.debug(f"LLM provider '{provider_type}' registered")
+        logger.debug("LLM provider '%s' registered", provider_type)
 
 
 def register_llm_provider_as(provider_type: str) -> Callable:

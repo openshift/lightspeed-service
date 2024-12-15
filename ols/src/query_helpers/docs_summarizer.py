@@ -69,7 +69,7 @@ class DocsSummarizer(QueryHelper):
             f"model: {self.model}, "
             f"verbose: {verbose}"
         )
-        logger.debug(f"{conversation_id} call settings: {settings_string}")
+        logger.debug("%s call settings: %s", conversation_id, settings_string)
 
         token_handler = TokenHandler()
         bare_llm = self.llm_loader(self.provider, self.model, self.generic_llm_params)
@@ -140,7 +140,7 @@ class DocsSummarizer(QueryHelper):
 
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
-        logger.debug(f"{conversation_id} Summary response: {response}")
+        logger.debug("%s Summary response: %s", conversation_id, response)
 
         return SummarizerResponse(response, rag_chunks, truncated)
 

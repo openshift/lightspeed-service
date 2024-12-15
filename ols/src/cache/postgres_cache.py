@@ -93,7 +93,7 @@ class PostgresCache(Cache):
             self.initialize_cache()
         except Exception as e:
             self.conn.close()
-            logger.exception(f"Error initializing Postgres cache:\n{e}")
+            logger.exception("Error initializing Postgres cache:\n%s", e)
             raise
         self.capacity = config.max_entries
 
@@ -122,7 +122,7 @@ class PostgresCache(Cache):
                     return []
                 return [CacheEntry.from_dict(cache_entry) for cache_entry in value]
             except psycopg2.DatabaseError as e:
-                logger.error(f"PostgresCache.get {e}")
+                logger.error("PostgresCache.get %s", e)
                 raise CacheError("PostgresCache.get", e) from e
 
     def insert_or_append(
@@ -161,7 +161,7 @@ class PostgresCache(Cache):
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
             except psycopg2.DatabaseError as e:
-                logger.error(f"PostgresCache.insert_or_append {e}")
+                logger.error("PostgresCache.insert_or_append: %s", e)
                 raise CacheError("PostgresCache.insert_or_append", e) from e
 
     @staticmethod
