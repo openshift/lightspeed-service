@@ -203,8 +203,7 @@ def generate_full_results_markdown(full_results):
                 for d in value:
                     for k, v in d.items():
                         new += f"   - {k}: {v}\n"
-                value = new
-            full_results_markdown_content += f"    - {key}: {value}\n"
+            full_results_markdown_content += f"    - {key}: {new}\n"
     return full_results_markdown_content
 
 
