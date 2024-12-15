@@ -183,9 +183,9 @@ class TokenHandler:
         total_length = 0
         formatted_history: list[str] = []
 
-        for message in reversed(history):
+        for original_message in reversed(history):
             # Restructure messages as per model
-            message = restructure_history(message, model)
+            message = restructure_history(original_message, model)
 
             message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
             total_length += message_length
