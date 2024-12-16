@@ -31,10 +31,15 @@ sys.path.append(
 )
 
 from ols import config  # pylint: disable=C0413
-from ols.constants import DEFAULT_CONFIGURATION_FILE
+from ols.constants import (
+    CONFIGURATION_FILE_NAME_ENV_VARIABLE,
+    DEFAULT_CONFIGURATION_FILE,
+)
 from ols.src.llms.llm_loader import load_llm  # pylint: disable=C0413
 
-cfg_file = os.environ.get("OLS_CONFIG_FILE", DEFAULT_CONFIGURATION_FILE)
+cfg_file = os.environ.get(
+    CONFIGURATION_FILE_NAME_ENV_VARIABLE, DEFAULT_CONFIGURATION_FILE
+)
 config.reload_from_yaml_file(cfg_file)
 
 

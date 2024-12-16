@@ -9,6 +9,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import config
+from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
 
 client: TestClient
 
@@ -17,7 +18,10 @@ client: TestClient
 # config file before we import anything from main.py
 @pytest.fixture(scope="function", autouse=True)
 @patch.dict(
-    os.environ, {"OLS_CONFIG_FILE": "tests/config/config_for_integration_tests.yaml"}
+    os.environ,
+    {
+        CONFIGURATION_FILE_NAME_ENV_VARIABLE: "tests/config/config_for_integration_tests.yaml"
+    },
 )
 def _setup():
     """Setups the test client."""
