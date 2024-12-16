@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from ols import config
 from ols.app.models.config import LoggingConfig
+from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
 from ols.utils.logging_configurator import configure_logging
 
 client: TestClient
@@ -31,7 +32,10 @@ expected_counters = (
 # config file before we import anything from main.py
 @pytest.fixture(scope="function", autouse=True)
 @patch.dict(
-    os.environ, {"OLS_CONFIG_FILE": "tests/config/config_for_integration_tests.yaml"}
+    os.environ,
+    {
+        CONFIGURATION_FILE_NAME_ENV_VARIABLE: "tests/config/config_for_integration_tests.yaml"
+    },
 )
 def _setup():
     """Setups the test client."""
