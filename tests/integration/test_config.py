@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from ols import config
+from ols.constants import DEFAULT_CONFIGURATION_FILE
 from ols.utils.checks import InvalidConfigurationError
 from tests.integration.random_payload_generator import RandomPayloadGenerator
 
@@ -104,7 +105,7 @@ def test_load_config_with_removed_items(tmpdir, subtests):
 
     for i, broken_config in enumerate(broken_configs):
         with subtests.test(msg=f"removed_item_{i}", i=i):
-            cfg_filename = tmpdir + "/olsconfig.yaml"
+            cfg_filename = tmpdir + "/" + DEFAULT_CONFIGURATION_FILE
             write_config_file(cfg_filename, broken_config)
 
             with pytest.raises(InvalidConfigurationError):
@@ -118,7 +119,7 @@ def test_load_config_with_removed_items_from_ols_config_section(tmpdir, subtests
 
     for i, broken_config in enumerate(broken_configs):
         with subtests.test(msg=f"removed_item_{i}", i=i):
-            cfg_filename = tmpdir + "/olsconfig.yaml"
+            cfg_filename = tmpdir + "/" + DEFAULT_CONFIGURATION_FILE
             write_config_file(cfg_filename, broken_config)
 
             with pytest.raises(InvalidConfigurationError):
@@ -154,7 +155,7 @@ def test_load_config_with_mutated_items(tmpdir, subtests):
 
     for i, broken_config in enumerate(broken_configs):
         with subtests.test(msg=f"mutated_item_{i}", i=i):
-            cfg_filename = tmpdir + "/olsconfig.yaml"
+            cfg_filename = tmpdir + "/" + DEFAULT_CONFIGURATION_FILE
             write_config_file(cfg_filename, broken_config)
 
             with pytest.raises(Exception):

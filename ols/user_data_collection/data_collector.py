@@ -27,8 +27,9 @@ sys.path.append(pathlib.Path(__file__).parent.parent.parent.as_posix())
 
 # initialize config
 from ols import config  # pylint: disable=C0413
+from ols.constants import DEFAULT_CONFIGURATION_FILE  # pylint: disable=C0413
 
-cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+cfg_file = os.environ.get("OLS_CONFIG_FILE", DEFAULT_CONFIGURATION_FILE)
 config.reload_from_yaml_file(
     cfg_file, ignore_llm_secrets=True, ignore_missing_certs=True
 )

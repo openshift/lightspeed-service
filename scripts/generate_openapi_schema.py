@@ -13,9 +13,10 @@ sys.path.append(
 )
 
 from ols import config  # pylint: disable=C0413
+from ols.constants import DEFAULT_CONFIGURATION_FILE
 
 # it is needed to read proper configuration in order to start the app to generate schema
-cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+cfg_file = os.environ.get("OLS_CONFIG_FILE", DEFAULT_CONFIGURATION_FILE)
 config.reload_from_yaml_file(cfg_file)
 
 from ols.app.main import app  # noqa: E402  pylint: disable=C0413
