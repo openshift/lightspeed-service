@@ -132,7 +132,7 @@ class AzureOpenAI(LLMProvider):
             )
             return credential.get_token("https://cognitiveservices.azure.com/.default")
         except Exception as e:
-            logger.error(f"Error retrieving access token: {e}")
+            logger.error("Error retrieving access token: %s", e)
             return None
 
 

@@ -73,7 +73,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
         json.dump(data_to_store, feedback_file)
 
-    logger.debug(f"feedback stored in '{feedback_file_path}'")
+    logger.debug("feedback stored in '%s'", feedback_file_path)
 
 
 @router.get("/status")
@@ -126,13 +126,13 @@ def store_user_feedback(
     Returns:
         Response indicating the status of the feedback storage request.
     """
-    logger.debug(f"feedback received {feedback_request}")
+    logger.debug("feedback received %s", str(feedback_request))
 
     user_id = retrieve_user_id(auth)
     try:
         store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
     except Exception as e:
-        logger.error(f"Error storing user feedback: {e}")
+        logger.error("Error storing user feedback: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
