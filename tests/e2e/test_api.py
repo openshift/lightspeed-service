@@ -547,6 +547,7 @@ def test_azure_entra_id():
     )
 
 
+@pytest.mark.certificates
 def test_generated_service_certs_rotation():
     """Verify OLS responds after certificate rotation."""
     service_tls = cluster_utils.get_certificate_secret_name()
@@ -561,6 +562,7 @@ def test_generated_service_certs_rotation():
     assert response.status_code == requests.codes.ok
 
 
+@pytest.mark.certificates
 def test_ca_service_certs_rotation():
     """Verify OLS responds after ca certificate rotation."""
     cluster_utils.delete_resource(
