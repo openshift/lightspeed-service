@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ols import config
+from ols import config, constants
 from ols.app.models.config import LLMProviders
 from ols.src.llms.llm_loader import (
     LLMConfigurationError,
@@ -94,6 +94,7 @@ def test_load_llm_no_provider_config():
     config.config.llm_providers = None
 
     with pytest.raises(
-        LLMConfigurationError, match="Providers configuration missing in olsconfig.yaml"
+        LLMConfigurationError,
+        match=f"Providers configuration missing in {constants.DEFAULT_CONFIGURATION_FILE}",
     ):
         load_llm(provider="fake-provider", model="model")

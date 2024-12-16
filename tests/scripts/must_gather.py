@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from ols.constants import DEFAULT_CONFIGURATION_FILE
+
 sys.path.append(Path(__file__).parent.parent.parent.as_posix())
 from tests.e2e.utils import cluster as cluster_utils
 
@@ -109,7 +111,7 @@ def must_gather():
             "-o",
             "yaml",
         ],
-        f"{cluster_dir.as_posix()}/olsconfig.yaml",
+        f"{cluster_dir.as_posix()}/{DEFAULT_CONFIGURATION_FILE}",
     )
 
     # clusterserviceversion

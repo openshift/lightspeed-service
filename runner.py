@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
+from ols.constants import DEFAULT_CONFIGURATION_FILE
 from ols.runners.uvicorn import start_uvicorn
 from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     # else via our code before other envs are set (mainly the gradio).
     from ols import config
 
-    cfg_file = os.environ.get("OLS_CONFIG_FILE", "olsconfig.yaml")
+    cfg_file = os.environ.get("OLS_CONFIG_FILE", DEFAULT_CONFIGURATION_FILE)
     config.reload_from_yaml_file(cfg_file)
 
     configure_logging(config.ols_config.logging_config)
