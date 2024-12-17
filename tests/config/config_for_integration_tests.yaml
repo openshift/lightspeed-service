@@ -116,3 +116,4 @@ dev_config:
   enable_dev_ui: true
   disable_auth: true
   disable_tls: true
+  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040

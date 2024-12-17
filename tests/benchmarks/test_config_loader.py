@@ -83,6 +83,7 @@ ols_config:
   default_model: m1
 dev_config:
   enable_dev_ui: true
+  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
   disable_auth: false
   disable_tls: true
   llm_params:
@@ -139,6 +140,7 @@ ols_config:
   default_model: m1
 dev_config:
   enable_dev_ui: true
+  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
   disable_auth: false
   disable_tls: true
   llm_params:

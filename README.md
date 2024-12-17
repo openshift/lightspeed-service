@@ -633,6 +633,23 @@ By default this interface will ask the OLS server to retain and use your convers
 
 OLS API documentation is available at http://localhost:8080/docs
 
+###  CPU profiling
+To enable CPU profiling, please deploy your own pyroscope server and specify its URL in the `devconfig` as shown below. This will help OLS to send profiles to a specified endpoint.
+
+```yaml
+dev_config:
+  pyroscope_url: https://your-pyroscope-url.com
+```
+
+### Memory profiling
+To enable memory profiling, simply start the server with the below command.
+```
+make memray-run
+```
+Once you are done executing a few queries and want to look at the memory flamegraphs, please run the below command and it should spit out a html file for us.
+```
+make memray-flamegraph
+```
 
 ## Deploying OLS on OpenShift
 
@@ -895,4 +912,3 @@ A dictionary containing the credentials of the S3 bucket must be specified, cont
 
 # License
 Published under the Apache 2.0 License
-

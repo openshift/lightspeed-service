@@ -231,6 +231,7 @@ data:
         transcripts_disabled: true
     dev_config:
       enable_dev_ui: true
+      pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
       # llm_temperature_override: 0
       disable_auth: true
 immutable: false
