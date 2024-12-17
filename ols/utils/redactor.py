@@ -21,7 +21,7 @@ class Redactor:
         """Initialize the class instance."""
         regex_filters: list[RegexFilter] = []
         self.regex_filters = regex_filters
-        logger.debug(f"Filters : {filters}")
+        logger.debug("Filters : %s", filters)
         if not filters:
             return
         for regex_filter in filters:

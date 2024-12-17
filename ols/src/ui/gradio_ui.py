@@ -55,7 +55,7 @@ class GradioUI:
             logger.info("Ignoring conversation history")
         elif use_history and self.conversation_id is not None:
             data["conversation_id"] = self.conversation_id
-            logger.info(f"Using conversation ID: {self.conversation_id}")
+            logger.info("Using conversation ID: %s", self.conversation_id)
 
         if provider:
             logger.info("Using provider: %s", provider)
