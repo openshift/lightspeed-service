@@ -439,7 +439,9 @@ def read_full_conversation_history(
                         logger.error("Nothing to extract from %s", filename)
                 except Exception as e:
                     logger.exception(
-                        f"Unable to read conversation history: {type(e).__name__}: {e}"
+                        "Unable to read conversation history: %s: %s",
+                        type(e).__name__,
+                        e,
                     )
 
     output = ""
@@ -476,7 +478,7 @@ def aggregate_user_feedback_from_files(
     conversation_history: bool,
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
-    logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
+    logger.info("Aggregating feedbacks from all tarballs in %s", directory_name)
     directory = os.fsencode(directory_name)
 
     for file in os.listdir(directory):
@@ -484,7 +486,7 @@ def aggregate_user_feedback_from_files(
         if filename.endswith(".tar.gz"):
             cluster_id = filename[:36]
             timestamp = format_timestamp(filename[37:56])
-            logger.info(f"Processing tarball {filename}")
+            logger.info("Processing tarball %s", filename)
             feedbacks = feedbacks_from_tarball(filename)
             for feedback in feedbacks:
                 user_id = feedback["user_id"]
@@ -516,7 +518,7 @@ def aggregate_user_feedback_from_files(
 def aggregate_feedbacks(args: argparse.Namespace) -> None:
     """Aggregate feedback and store it into CSV file."""
     output_filename = args.output
-    logger.info(f"Generating {output_filename}")
+    logger.info("Generating %s", output_filename)
     with open(output_filename, "w") as csvfile:
         filewriter = csv.writer(
             csvfile,
@@ -556,7 +558,7 @@ def read_full_conversation_history_for_all_users(
     tarball_name: str, with_rag_context: bool
 ) -> list[tuple[str, str, str]]:
     """Read conversation history for all users and return it as list of conversations."""
-    logger.info(f"Reading full conversation history from {tarball_name} for all users")
+    logger.info("Reading full conversation history from %s for all users", tarball_name)
 
     with tarfile.open(tarball_name, "r:gz") as tarball:
         filenames = tarball.getnames()
@@ -584,14 +586,14 @@ def aggregate_conversation_history_from_files(
     filewriter, directory_name: str, with_rag_context: bool
 ) -> None:
     """Aggregate feedbacks from files in specified directory."""
-    logger.info(f"Aggregating feedbacks from all tarballs in {directory_name}")
+    logger.info("Aggregating feedbacks from all tarballs in %s", directory_name)
     directory = os.fsencode(directory_name)
 
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
         if filename.endswith(".tar.gz"):
             cluster_id = filename[:36]
-            logger.info(f"Processing tarball {filename}")
+            logger.info("Processing tarball %s", filename)
             full_history = read_full_conversation_history_for_all_users(
                 filename, with_rag_context
             )
@@ -603,7 +605,7 @@ def aggregate_conversation_history_from_files(
 def aggregate_conversation_history(args: argparse.Namespace) -> None:
     """Aggregate conversation history and store it into CSV file."""
     output_filename = args.conversation_history_output
-    logger.info(f"Generating {output_filename}")
+    logger.info("Generating %s", output_filename)
     with open(output_filename, "w") as csvfile:
         filewriter = csv.writer(
             csvfile,
@@ -635,7 +637,7 @@ def perform_cleanup(work_directory: str) -> None:
 
     for filename in filenames:
         if filename.endswith((".tgz", ".tar.gz")):
-            logger.info(f"Removing {filename}")
+            logger.info("Removing %s", filename)
             os.remove(os.path.join(work_directory, filename))
 
 
@@ -662,7 +664,7 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO)
 
-    logger.debug(f"Arguments passed: {args}")
+    logger.debug("Arguments passed: %s", args)
 
     # sanitize work directory
     work_directory = os.path.normpath("/" + args.work_directory).lstrip("/")
