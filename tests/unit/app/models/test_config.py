@@ -3205,6 +3205,7 @@ def test_user_data_config__transcripts(tmpdir):
 def test_dev_config_defaults():
     """Test the DevConfig model with default values."""
     dev_config = DevConfig()
+    assert dev_config.pyroscope_url is None
     assert dev_config.enable_dev_ui is False
     assert dev_config.llm_params == {}
     assert dev_config.disable_auth is False

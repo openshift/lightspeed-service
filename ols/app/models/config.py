@@ -974,6 +974,7 @@ class DevConfig(BaseModel):
     llm_params: dict = {}
     disable_auth: bool = False
     disable_tls: bool = False
+    pyroscope_url: Optional[str] = None
     k8s_auth_token: Optional[str] = None
     run_on_localhost: bool = False
 

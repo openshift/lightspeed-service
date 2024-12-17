@@ -15,6 +15,7 @@ from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
 from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_face_envs
 from ols.utils.logging_configurator import configure_logging
+from ols.utils.pyroscope import start_with_pyroscope_enabled
 from ols.version import __version__
 
 
@@ -43,11 +44,10 @@ if __name__ == "__main__":
     )
     config.reload_from_yaml_file(cfg_file)
 
-    configure_logging(config.ols_config.logging_config)
     logger = logging.getLogger("ols")
+    configure_logging(config.ols_config.logging_config)
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
     logger.info("Running on Python version %s", sys.version)
-
     configure_hugging_face_envs(config.ols_config)
 
     # generate certificates file from all certificates from certifi package
@@ -66,6 +66,13 @@ if __name__ == "__main__":
     # init loading of query redactor
     config.query_redactor
 
+    if config.dev_config.pyroscope_url:
+        start_with_pyroscope_enabled(config, logger)
+    else:
+        logger.info(
+            "Pyroscope url is not specified. To enable profiling please set `pyroscope_url` "
+            "in the `dev_config` section of the configuration file."
+        )
     # create and start the rag_index_thread - allows loading index in
     # parallel with starting the Uvicorn server
     rag_index_thread = threading.Thread(target=load_index)

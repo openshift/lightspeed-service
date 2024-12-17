@@ -43,6 +43,7 @@ dev_config:
   enable_dev_ui: true
   disable_auth: true
   disable_tls: true
+  pyroscope_url: "https://pyroscope.pyroscope.svc.cluster.local:4040"
   # llm_params:
   #   temperature_override: 0
   # k8s_auth_token: optional_token_when_no_available_kube_config
