@@ -51,7 +51,7 @@ class QuestionValidator(QueryHelper):
             f"model: {self.model}, "
             f"verbose: {verbose}"
         )
-        logger.info(f"{conversation_id} call settings: {settings_string}")
+        logger.info("%s call settings: %s", conversation_id, settings_string)
 
         prompt_instructions = PromptTemplate.from_template(
             QUESTION_VALIDATOR_PROMPT_TEMPLATE
@@ -74,7 +74,7 @@ class QuestionValidator(QueryHelper):
             verbose=verbose,
         )
 
-        logger.debug(f"{conversation_id} validating user query: {query}")
+        logger.debug("%s validating user query: %s", conversation_id, query)
 
         with TokenMetricUpdater(
             llm=bare_llm,
@@ -86,7 +86,9 @@ class QuestionValidator(QueryHelper):
             )
         clean_response = str(response["text"]).strip()
 
-        logger.debug(f"{conversation_id} query validation response: {clean_response}")
+        logger.debug(
+            "%s query validation response: %s", conversation_id, clean_response
+        )
 
         # Default to be permissive(allow the question) if we don't get a clean
         # rejection from the LLM.

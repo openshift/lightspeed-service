@@ -134,10 +134,11 @@ def get_cloud_openshift_pull_secret() -> str:
     except TypeError:
         logger.error(
             "failed to get token from cluster pull-secret, unexpected "
-            f"object type: {type(dockerconfig)}"
+            "object type: %s",
+            str(type(dockerconfig)),
         )
     except kubernetes.client.exceptions.ApiException as e:
-        logger.error(f"failed to get pull-secret object, body: {e.body}")
+        logger.error("failed to get pull-secret object, body: %s", str(e.body))
     raise ClusterPullSecretNotFoundError
 
 
@@ -205,10 +206,12 @@ def exponential_backoff_decorator(max_retries: int, base_delay: int) -> Callable
                     func(*args, **kwargs)
                     return
                 except Exception as e:
-                    logger.error(f"attempt {retries + 1} failed with error: {e}")
+                    logger.error(
+                        "attempt %d failed with error: %s", retries + 1, str(e)
+                    )
                     retries += 1
                     delay = base_delay * 2**retries
-                    logger.info(f"retrying in {delay} seconds...")
+                    logger.info("retrying in %d seconds...", delay)
                     time.sleep(delay)
             logger.error("max retries reached, operation failed.")
 
@@ -258,7 +261,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
 
     with requests.Session() as s:
         s.headers = headers
-        logger.debug(f"posting payload to {url}")
+        logger.debug("posting payload to %s", url)
         response = s.post(
             url=url,
             files=payload,
@@ -267,14 +270,16 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
 
     if response.status_code != requests.codes.accepted:
         logger.error(
-            f"posting payload failed, response: {response.status_code}: {response.text}"
+            "posting payload failed, response: %d: %s",
+            response.status_code,
+            response.text,
         )
         raise requests.exceptions.HTTPError(
             f"data upload failed with response code: {response.status_code}"
         )
 
     request_id = response.json()["request_id"]
-    logger.info(f"data uploaded with request_id: '{request_id}'")
+    logger.info("data uploaded with request_id: '%s'", request_id)
 
     return response
 
@@ -286,10 +291,10 @@ def delete_data(file_paths: list[pathlib.Path]) -> None:
         file_paths: List of paths to the files to be deleted.
     """
     for file_path in file_paths:
-        logger.debug(f"removing '{file_path}'")
+        logger.debug("removing '%s'", file_path)
         file_path.unlink()
         if file_path.exists():
-            logger.error(f"failed to remove '{file_path}'")
+            logger.error("failed to remove '%s'", file_path)
 
 
 def chunk_data(
@@ -329,12 +334,14 @@ def gather_ols_user_data(data_path: str) -> None:
     data_chunks = chunk_data(collected_files)
     if any(data_chunks):
         logger.info(
-            f"collected {len(collected_files)} files (splitted to "
-            f"{len(data_chunks)} chunks) from '{data_path}'"
+            "collected %d files (splitted to %d chunks) from '%s'",
+            len(collected_files),
+            len(data_chunks),
+            data_path,
         )
-        logger.debug(f"collected files: {collected_files}")
+        logger.debug("collected files: %s", collected_files)
         for i, data_chunk in enumerate(data_chunks):
-            logger.info(f"uploading data chunk {i + 1}/{len(data_chunks)}")
+            logger.info("uploading data chunk %d/%d", i + 1, len(data_chunks))
             tarball = package_files_into_tarball(data_chunk, path_to_strip=data_path)
             try:
                 upload_data_to_ingress(tarball)
@@ -342,13 +349,13 @@ def gather_ols_user_data(data_path: str) -> None:
                 logger.info("uploaded data removed")
             except (ClusterPullSecretNotFoundError, ClusterIDNotFoundError) as e:
                 logger.error(
-                    f"{e.__class__.__name__} - upload and data removal canceled"
+                    "%s - upload and data removal canceled", e.__class__.__name__
                 )
 
             # close the tarball to release mem
             tarball.close()
     else:
-        logger.info(f"'{data_path}' contains no data, nothing to do...")
+        logger.info("'%s' contains no data, nothing to do...", data_path)
 
 
 def ensure_data_dir_is_not_bigger_than_defined(
@@ -365,8 +372,9 @@ def ensure_data_dir_is_not_bigger_than_defined(
     data_size = sum(file.stat().st_size for file in collected_files)
     if data_size > max_size:
         logger.error(
-            f"data folder size is bigger than the maximum allowed size: "
-            f"{data_size} > {max_size}"
+            "data folder size is bigger than the maximum allowed size: %d > %d",
+            data_size,
+            max_size,
         )
         logger.info("removing files to fit the data into the limit...")
         extra_size = data_size - max_size
@@ -397,8 +405,8 @@ def disabled_by_file() -> bool:
 if __name__ == "__main__":
     if not udc_config.run_without_initial_wait:
         logger.info(
-            f"collection script started, waiting {INITIAL_WAIT} seconds "
-            "before first collection"
+            "collection script started, waiting %d seconds before first collection",
+            INITIAL_WAIT,
         )
         time.sleep(INITIAL_WAIT)
     while True:

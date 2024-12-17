@@ -81,16 +81,20 @@ class QueryDocs:
             ```
         """
         logger.info(
-            f"""Retrieving docs for
-                query: {query},
-                vectordb: {vectordb},
-                search_type: {search_type},
-                search_kwargs: {search_kwargs}
-        """
+            """Retrieving docs for
+                query: %s,
+                vectordb: %s,
+                search_type: %s,
+                search_kwargs: %s
+        """,
+            query,
+            vectordb,
+            search_type,
+            search_kwargs,
         )
 
         if search_type not in {"mmr", "similarity", "similarity_score_threshold"}:
-            logger.exception(f"incorrect search type {search_type}")
+            logger.exception("incorrect search type '%s'", search_type)
             raise RetrieveDocsExceptionError(f"search type is invalid: {search_type}")
 
         db_retriever: VectorStoreRetriever = vectordb.as_retriever(
@@ -100,7 +104,7 @@ class QueryDocs:
         try:
             docs = db_retriever.get_relevant_documents(query=query)
         except Exception as e:
-            logger.error(f"exception raised while getting the docs for query: {query}")
+            logger.error("exception raised while getting the docs for query: %s", query)
             raise RetrieveDocsExceptionError(
                 "error in getting the docs from vectorstore"
             ) from e

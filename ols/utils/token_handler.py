@@ -132,8 +132,9 @@ class TokenHandler:
             score = float(node.get_score(raise_error=False))
             if score < RAG_SIMILARITY_CUTOFF:
                 logger.debug(
-                    f"RAG content similarity score: {score} is "
-                    f"less than threshold {RAG_SIMILARITY_CUTOFF}."
+                    "RAG content similarity score: %f is less than threshold %f.",
+                    score,
+                    RAG_SIMILARITY_CUTOFF,
                 )
                 break
 

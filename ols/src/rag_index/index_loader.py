@@ -40,7 +40,7 @@ class IndexLoader:
         self._index = None
 
         self._index_config = index_config
-        logger.debug(f"Config used for index load: {self._index_config}")
+        logger.debug("Config used for index load: %s", str(self._index_config))
 
         if self._index_config is None:
             logger.warning("Config for reference content is not set.")
@@ -58,7 +58,7 @@ class IndexLoader:
             from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
             logger.debug(
-                f"Loading embedding model info from path {self._embed_model_path}"
+                "Loading embedding model info from path %s", self._embed_model_path
             )
             return HuggingFaceEmbedding(model_name=self._embed_model_path)
 
@@ -68,7 +68,7 @@ class IndexLoader:
 
     def _set_context(self) -> None:
         """Set storage/service context required for index load."""
-        logger.debug(f"Using {self._embed_model!s} as embedding model for index.")
+        logger.debug("Using %s as embedding model for index", str(self._embed_model))
         logger.info("Setting up settings for index load...")
         Settings.embed_model = self._embed_model
         Settings.llm = resolve_llm(None)
@@ -93,7 +93,7 @@ class IndexLoader:
                 )
                 logger.info("Vector index is loaded.")
             except Exception as err:
-                logger.exception(f"Error loading vector index:\n{err}")
+                logger.exception("Error loading vector index:\n%s", err)
 
     @property
     def vector_index(self) -> Optional[ReferenceContent]:
