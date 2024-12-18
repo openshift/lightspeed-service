@@ -19,7 +19,7 @@ def start_with_pyroscope_enabled(
         response = requests.get(config.dev_config.pyroscope_url, timeout=60)
         if response.status_code == requests.codes.ok:
             logger.info(
-                f"Pyroscope server is reachable at {config.dev_config.pyroscope_url}"
+                "Pyroscope server is reachable at %s", config.dev_config.pyroscope_url
             )
             import pyroscope
 
@@ -39,7 +39,8 @@ def start_with_pyroscope_enabled(
                 start_uvicorn(config)
         else:
             logger.info(
-                f"Failed to reach Pyroscope server. Status code: {response.status_code}"
+                "Failed to reach Pyroscope server. Status code: %d",
+                response.status_code,
             )
     except requests.exceptions.RequestException as e:
-        logger.info(f"Error connecting to Pyroscope server: {e}")
+        logger.info("Error connecting to Pyroscope server: %s", str(e))
