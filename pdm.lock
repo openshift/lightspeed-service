@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:98cf43e377accd4558d5d5aaa25c6e061b86170fcdf0dd662738597cf175b797"
+content_hash = "sha256:951269abbfbe659bb6d2534b6015020e88edc35e722b3a9b63345cb87b37e6a4"
 
 [[package]]
 name = "absl-py"
@@ -1609,18 +1609,18 @@ files = [
 
 [[package]]
 name = "langchain-openai"
-version = "0.2.5"
+version = "0.2.9"
 requires_python = "<4.0,>=3.9"
 summary = "An integration package connecting OpenAI and LangChain"
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.4.0,>=0.3.15",
-    "openai<2.0.0,>=1.52.0",
+    "langchain-core<0.4.0,>=0.3.17",
+    "openai<2.0.0,>=1.54.0",
     "tiktoken<1,>=0.7",
 ]
 files = [
-    {file = "langchain_openai-0.2.5-py3-none-any.whl", hash = "sha256:745fd9d51a5a3a9cb8839d41f3786ab38dfc539e47c713a806cbca32f3d0875c"},
-    {file = "langchain_openai-0.2.5.tar.gz", hash = "sha256:55b98711a880474ec363267bf6cd0e2727dc00e8433731318d063a2184582c28"},
+    {file = "langchain_openai-0.2.9-py3-none-any.whl", hash = "sha256:2723015e56879f9e5edfcb175fdbec6c296c1b3bf65caad28579ce9c4d1bd652"},
+    {file = "langchain_openai-0.2.9.tar.gz", hash = "sha256:38a0f2004f17cdad622d46d4dcfb92d75adbf51909dadc76d0360dd94b0d4f70"},
 ]
 
 [[package]]
