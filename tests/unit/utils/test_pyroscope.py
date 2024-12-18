@@ -50,7 +50,7 @@ def test_pyroscope_server_reachable(mock_config, mock_logger):
         start_with_pyroscope_enabled(mock_config, mock_logger)
 
         mock_logger.info.assert_any_call(
-            f"Pyroscope server is reachable at {mock_config.dev_config.pyroscope_url}"
+            "Pyroscope server is reachable at %s", mock_config.dev_config.pyroscope_url
         )
         mock_pyroscope.configure.assert_called_once()
         mock_run.assert_called_once()
@@ -65,7 +65,7 @@ def test_pyroscope_server_unreachable(mock_config, mock_logger):
         start_with_pyroscope_enabled(mock_config, mock_logger)
 
         mock_logger.info.assert_any_call(
-            "Failed to reach Pyroscope server. Status code: 500"
+            "Failed to reach Pyroscope server. Status code: %d", 500
         )
 
 
@@ -78,5 +78,5 @@ def test_pyroscope_connection_error(mock_config, mock_logger):
         start_with_pyroscope_enabled(mock_config, mock_logger)
 
         mock_logger.info.assert_any_call(
-            "Error connecting to Pyroscope server: Connection error"
+            "Error connecting to Pyroscope server: %s", "Connection error"
         )
