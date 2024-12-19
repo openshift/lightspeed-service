@@ -370,3 +370,89 @@ def wait_for_running_pod(
         )
         == 2,
     )
+
+
+def get_certificate_secret_name(
+    name: str = "lightspeed-app-server", namespace: str = "openshift-lightspeed"
+) -> str:
+    """Get the name of the certificates secret for the service."""
+    try:
+        result = run_oc(
+            [
+                "get",
+                "service",
+                name,
+                "-n",
+                namespace,
+                "-o",
+                "json",
+            ]
+        )
+        return json.loads(result.stdout)["metadata"]["annotations"][
+            "service.beta.openshift.io/serving-cert-secret-name"
+        ]
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error getting serving cert secret name") from e
+
+
+def delete_resource(resource: str, name: str, namespace: str = "") -> None:
+    """Delete the selected resource. If namespace is None, we assume it's a cluster resource."""
+    if namespace:
+        try:
+            run_oc(
+                [
+                    "delete",
+                    resource,
+                    name,
+                    "-n",
+                    namespace,
+                ]
+            )
+            return
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                "Error deleting the %s instance of %s" % (name, resource)
+            ) from e
+    try:
+        run_oc(
+            [
+                "delete",
+                resource,
+                name,
+            ]
+        )
+        return
+    except subprocess.CalledProcessError as e:
+        raise Exception(
+            "Error deleting the %s instance of %s" % (name, resource)
+        ) from e
+
+
+def restart_deployment(name: str, namespace: str) -> None:
+    """Restart the selected deployment."""
+    try:
+        run_oc(
+            [
+                "scale",
+                f"deployment/{name}",
+                "--replicas",
+                "0",
+                "-n",
+                namespace,
+            ]
+        )
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error scaling replicas to 0") from e
+    try:
+        run_oc(
+            [
+                "scale",
+                f"deployment/{name}",
+                "--replicas",
+                "1",
+                "-n",
+                namespace,
+            ]
+        )
+    except subprocess.CalledProcessError as e:
+        raise Exception("Error scaling replicas to 1") from e
