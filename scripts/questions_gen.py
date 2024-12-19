@@ -322,7 +322,7 @@ def evaluate_single_query(engine, query, correctness, total_correctness_score):
         "score": result.score,
     }
 
-    #               it is not possible to convert the value w/o checks
+    # it is not possible to convert the value w/o checks
     if result.score is not None:
         total_correctness_score.append(float(result.score))
 
@@ -338,6 +338,7 @@ def print_evaluation_time(stage, start_time):
     )
 
 
+# pylint: disable-next=R0915
 async def main():
     """Execute main function."""
     start_time = time.time()
