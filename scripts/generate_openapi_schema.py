@@ -43,5 +43,5 @@ if __name__ == "__main__":
     )
 
     # dump the schema into file
-    with open(filename, "w") as fout:
+    with open(filename, "w", encoding="utf-8") as fout:
         json.dump(open_api, fout, indent=4)

@@ -519,7 +519,7 @@ def aggregate_feedbacks(args: argparse.Namespace) -> None:
     """Aggregate feedback and store it into CSV file."""
     output_filename = args.output
     logger.info("Generating %s", output_filename)
-    with open(output_filename, "w") as csvfile:
+    with open(output_filename, "w", encoding="utf-8") as csvfile:
         filewriter = csv.writer(
             csvfile,
             delimiter=",",
@@ -606,7 +606,7 @@ def aggregate_conversation_history(args: argparse.Namespace) -> None:
     """Aggregate conversation history and store it into CSV file."""
     output_filename = args.conversation_history_output
     logger.info("Generating %s", output_filename)
-    with open(output_filename, "w") as csvfile:
+    with open(output_filename, "w", encoding="utf-8") as csvfile:
         filewriter = csv.writer(
             csvfile,
             delimiter=",",

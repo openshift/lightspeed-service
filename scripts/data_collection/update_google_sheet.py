@@ -73,7 +73,7 @@ def upload_csv_file(worksheet, filename):
     logger.info("Uploading file %s", filename)
 
     # Read CSV and update
-    with open(filename, "r") as file:
+    with open(filename, "r", encoding="utf-8") as file:
         csv_reader = csv.reader(file)
         worksheet.update_values("A1", list(csv_reader))
 
