@@ -100,7 +100,7 @@ dependencies = [
     "llama-index-vector-stores-faiss==0.3.0",
     "llama-index-embeddings-huggingface==0.4.0",
     "uvicorn==0.32.1",
-    "redis==5.0.8",
+    "redis==5.2.0",
     "faiss-cpu==1.8.0.post1",
     "sentence-transformers==3.1.1",
     "openai==1.54.3",
