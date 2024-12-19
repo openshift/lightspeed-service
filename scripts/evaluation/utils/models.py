@@ -10,6 +10,7 @@ from ols.src.llms.providers.watsonx import Watsonx
 class OpenAIVanilla(OpenAI):
     """OpenAI provider."""
 
+    # pylint: disable=W0201
     @property
     def default_params(self):
         """Construct and return structure with default LLM params."""
@@ -32,6 +33,7 @@ class OpenAIVanilla(OpenAI):
 class AzureOpenAIVanilla(AzureOpenAI):
     """Azure OpenAI provider."""
 
+    # pylint: disable=W0201
     @property
     def default_params(self):
         """Construct and return structure with default LLM params."""
