@@ -175,7 +175,7 @@ def write_json_metadata(persist_folder, args, metadata):
         f"{persist_folder}/questions-{args.provider}-{model_name_formatted}.json"
     )
 
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         json.dump(metadata, file)
 
 
@@ -191,7 +191,7 @@ def write_markdown_metadata(persist_folder, args, metadata, full_results):
         f"{persist_folder}/questions-{args.provider}-{model_name_formatted}_metadata.md"
     )
 
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding="utf-8") as file:
         file.write(markdown_content)
 
 

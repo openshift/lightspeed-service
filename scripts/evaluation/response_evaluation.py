@@ -48,7 +48,9 @@ class ResponseEvaluation:
         self._scorer = ResponseScore(self._args)
 
         # Load data
-        with open(os.path.join(self._input_dir, DEFAULT_QNA_FILE)) as qna_f:
+        with open(
+            os.path.join(self._input_dir, DEFAULT_QNA_FILE), encoding="utf-8"
+        ) as qna_f:
             self._qa_pool_json = json.load(qna_f)["evaluation"]
 
         self._qa_pool_df = self._load_qna_pool_parquet()
@@ -374,5 +376,7 @@ class ResponseEvaluation:
             "score": summary_score,
         }
         # Save model evaluation summary report
-        with open(f"{self._result_dir}/model_evaluation_summary.json", "w") as f:
+        with open(
+            f"{self._result_dir}/model_evaluation_summary.json", "w", encoding="utf-8"
+        ) as f:
             json.dump(summary_result, f)
