@@ -408,6 +408,7 @@ def read_full_conversation_history(
 
     with tarfile.open(tarball_name, "r:gz") as tarball:
         history = {}
+        # pylint: disable-next=R1702
         for filename in tarball.getnames():
             if filename.startswith(f"{HISTORY_DIRECTORY}{user_id}/{history_id}"):
                 try:

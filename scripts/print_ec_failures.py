@@ -18,7 +18,7 @@ log_file_name = sys.argv[1]
 
 # read the log file that contains several sections
 # and where each line has some prefix
-with Path(log_file_name).open("r") as log_file:
+with Path(log_file_name).open("r", encoding="utf-8") as log_file:
     for line in log_file:
         # retrieve just those lines with JSON data
         # and append them
@@ -30,7 +30,7 @@ with Path(log_file_name).open("r") as log_file:
 json_data = json.loads(json_raw_data)
 
 # serialize into pretty-printed format
-with Path("logs.json").open("w") as json_file:
+with Path("logs.json").open("w", encoding="utf-8") as json_file:
     json.dump(json_data, json_file, indent=4)
 
 # print summary

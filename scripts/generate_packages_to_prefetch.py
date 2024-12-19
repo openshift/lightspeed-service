@@ -92,8 +92,8 @@ def remove_package(directory, source, target, package_prefix):
     """Remove package or packages with specified prefix from the requirements file."""
     package_block = False
 
-    with open(join(directory, source)) as fin:
-        with open(join(directory, target), "w") as fout:
+    with open(join(directory, source), encoding="utf-8") as fin:
+        with open(join(directory, target), "w", encoding="utf-8") as fout:
             for line in fin:
                 if line.startswith(package_prefix):
                     print(line)
@@ -132,7 +132,7 @@ def generate_hash(directory, registry, wheel, target):
     """Generate hash entry for given wheel."""
     output = shell(f"pip hash {wheel}", directory)
     hash_line = output.decode("ascii").splitlines()[1]
-    with open(join(directory, target), "w") as fout:
+    with open(join(directory, target), "w", encoding="utf-8") as fout:
         url = wheel_url(registry, wheel)
         fout.write(f"torch @ {url} \\\n")
         fout.write(f"    {hash_line}\n")
@@ -282,7 +282,10 @@ def append_package(outfile, hashes, package_line, supported_tags):
 def filter_packages_for_platform(input_file: str, output_file: str):
     """Filter packages for given platform."""
     supported_tags = retrieve_supported_tags()
-    with open(input_file, "r") as infile, open(output_file, "w") as outfile:
+    with (
+        open(input_file, "r", encoding="utf-8") as infile,
+        open(output_file, "w", encoding="utf-8") as outfile,
+    ):
         package_line = None
         hashes = []
         for line in infile:
