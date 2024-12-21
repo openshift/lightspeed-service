@@ -545,3 +545,51 @@ def test_azure_entra_id():
         json_response["response"],
         re.IGNORECASE,
     )
+
+
+@pytest.mark.certificates
+def test_generated_service_certs_rotation():
+    """Verify OLS responds after certificate rotation."""
+    service_tls = cluster_utils.get_certificate_secret_name()
+    cluster_utils.delete_resource(
+        resource="secret", name=service_tls, namespace="openshift-lightspeed"
+    )
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
+
+
+@pytest.mark.certificates
+def test_ca_service_certs_rotation():
+    """Verify OLS responds after ca certificate rotation."""
+    cluster_utils.delete_resource(
+        resource="secret", name="signing-key", namespace="openshift-service-ca"
+    )
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
+    cluster_utils.restart_deployment(
+        name="lightspeed-operator-controller-manager", namespace="openshift-lightspeed"
+    )
+    cluster_utils.restart_deployment(
+        name="lightspeed-app-server", namespace="openshift-lightspeed"
+    )
+    cluster_utils.restart_deployment(
+        name="lightspeed-console-plugin", namespace="openshift-lightspeed"
+    )
+    # Wait for service to become available again
+    time.sleep(120)
+    cluster_utils.wait_for_running_pod()
+
+    response = client.post(
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
