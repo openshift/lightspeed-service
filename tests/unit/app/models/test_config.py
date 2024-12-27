@@ -3212,6 +3212,7 @@ def test_dev_config_defaults():
     assert dev_config.disable_tls is False
     assert dev_config.k8s_auth_token is None
     assert dev_config.run_on_localhost is False
+    assert dev_config.enable_system_prompt_override is False
 
 
 def test_dev_config_bool_inputs():

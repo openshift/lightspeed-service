@@ -29,14 +29,6 @@ class DocsSummarizer(QueryHelper):
         self.generic_llm_params = {
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: model_config.parameters.max_tokens_for_response  # noqa: E501
         }
-        # default system prompt fine-tuned for the service
-        self._system_prompt = QUERY_SYSTEM_INSTRUCTION
-
-        # allow the system prompt to be customizable
-        if config.ols_config.system_prompt is not None:
-            self._system_prompt = config.ols_config.system_prompt
-
-        logger.debug("System prompt: %s", self._system_prompt)
 
     def summarize(
         self,

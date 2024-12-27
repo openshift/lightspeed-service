@@ -1,5 +1,6 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -9,12 +10,14 @@ from langchain.schema import AIMessage, HumanMessage
 
 from ols import config, constants
 from ols.app.models.config import (
+    LoggingConfig,
     ProviderConfig,
     QueryFilter,
 )
 from ols.customize import prompts
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
+from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
@@ -1000,3 +1003,82 @@ def test_post_too_long_query(_setup):
     error_response = response.json()["detail"]
     assert error_response["response"] == "Prompt is too long"
     assert "exceeds" in error_response["cause"]
+
+
+def _post_with_system_prompt_override(_setup, caplog, query, system_prompt):
+    """Invoke the POST /v1/query API with a system prompt override."""
+    logging_config = LoggingConfig(app_log_level="debug")
+
+    configure_logging(logging_config)
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
+    with patch(
+        "ols.app.endpoints.ols.QuestionValidator.validate_question",
+        side_effect=lambda x, y: constants.SUBJECT_ALLOWED,
+    ):
+        ml = mock_langchain_interface("test response")
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.LLMChain",
+                new=mock_llm_chain(None),
+            ),
+            patch(
+                "ols.src.query_helpers.query_helper.load_llm",
+                new=mock_llm_loader(ml()),
+            ),
+        ):
+            conversation_id = suid.get_suid()
+            response = client.post(
+                "/v1/query",
+                json={
+                    "conversation_id": conversation_id,
+                    "query": query,
+                    "system_prompt": system_prompt,
+                },
+            )
+            assert response.status_code == requests.codes.ok
+
+    # Specified system prompt should appear twice in query_helper outputs:
+    # One is from question_validator and another from docs_summarizer.
+    assert response.status_code == requests.codes.ok
+
+
+@patch(
+    "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
+    True,
+)
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
+def test_post_with_system_prompt_override(_setup, caplog):
+    """Check the POST /v1/query API with a system prompt."""
+    query = "test query"
+    system_prompt = "You are an expert in something marvelous."
+
+    _post_with_system_prompt_override(_setup, caplog, query, system_prompt)
+
+    # Specified system prompt should appear twice in query_helper debug log outputs.
+    # One is from question_validator and another is from docs_summarizer.
+    assert caplog.text.count("System prompt: " + system_prompt) == 2
+
+
+@patch(
+    "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
+    False,
+)
+@patch(
+    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+    constants.QueryValidationMethod.LLM,
+)
+def test_post_with_system_prompt_override_disabled(_setup, caplog):
+    """Check the POST /v1/query API with a system prompt when overriding is disabled."""
+    query = "test query"
+    system_prompt = "You are an expert in something marvelous."
+
+    _post_with_system_prompt_override(_setup, caplog, query, system_prompt)
+
+    # Specified system prompt should NOT appear in query_helper debug log outputs
+    # as enable_system_prompt_override is set to False.
+    assert caplog.text.count("System prompt: " + system_prompt) == 0

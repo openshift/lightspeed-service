@@ -977,6 +977,7 @@ class DevConfig(BaseModel):
     pyroscope_url: Optional[str] = None
     k8s_auth_token: Optional[str] = None
     run_on_localhost: bool = False
+    enable_system_prompt_override: bool = False
 
 
 class UserDataCollectorConfig(BaseModel):
