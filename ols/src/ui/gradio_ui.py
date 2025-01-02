@@ -8,6 +8,9 @@ import gradio as gr
 import requests
 from fastapi import FastAPI
 
+from ols import config
+from ols.src.prompts import prompts
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,9 +31,13 @@ class GradioUI:
         use_history = gr.Checkbox(value=True, label="Use history")
         provider = gr.Textbox(value=None, label="Provider")
         model = gr.Textbox(value=None, label="Model")
-        self.ui = gr.ChatInterface(
-            self.chat_ui, additional_inputs=[use_history, provider, model]
-        )
+        additional_inputs = [use_history, provider, model]
+        if config.dev_config.enable_system_prompt_override:
+            system_prompt = gr.TextArea(
+                value=prompts.QUERY_SYSTEM_INSTRUCTION, label="System prompt"
+            )
+            additional_inputs.append(system_prompt)
+        self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=additional_inputs)
 
     def chat_ui(
         self,
@@ -39,6 +46,7 @@ class GradioUI:
         use_history: Optional[bool] = None,
         provider: Optional[str] = None,
         model: Optional[str] = None,
+        system_prompt: Optional[str] = None,
     ) -> str:
         """Handle requests from web-based user interface."""
         # Headers for the HTTP request
@@ -63,6 +71,9 @@ class GradioUI:
         if model:
             logger.info("Using model: %s", model)
             data["model"] = model
+        if system_prompt:
+            logger.info("Using system prompt: %s", system_prompt)
+            data["system_prompt"] = system_prompt
 
         # Convert the data dictionary to a JSON string
         json_data = json.dumps(data)

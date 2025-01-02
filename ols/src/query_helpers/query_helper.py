@@ -8,6 +8,7 @@ from langchain.llms.base import LLM
 
 from ols import config
 from ols.src.llms.llm_loader import load_llm
+from ols.src.prompts import prompts
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class QueryHelper:
         model: Optional[str] = None,
         generic_llm_params: Optional[dict] = None,
         llm_loader: Optional[Callable[[str, str, dict], LLM]] = None,
+        system_prompt: Optional[str] = None,
     ) -> None:
         """Initialize query helper."""
         # NOTE: As signature of this method is evaluated before the config,
@@ -30,3 +32,10 @@ class QueryHelper:
         self.model = model or config.ols_config.default_model
         self.generic_llm_params = generic_llm_params or {}
         self.llm_loader = llm_loader or load_llm
+
+        self._system_prompt = (
+            (config.dev_config.enable_system_prompt_override and system_prompt)
+            or config.ols_config.system_prompt
+            or prompts.QUERY_SYSTEM_INSTRUCTION
+        )
+        logger.debug("System prompt: %s", self._system_prompt)

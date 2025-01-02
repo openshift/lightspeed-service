@@ -6,6 +6,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
+from ols.src.prompts import prompts
 from ols.utils import suid
 
 
@@ -76,6 +77,7 @@ class LLMRequest(BaseModel):
     conversation_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
 
     # provides examples for /docs endpoint
@@ -88,6 +90,7 @@ class LLMRequest(BaseModel):
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "provider": "openai",
                     "model": "gpt-4o-mini",
+                    "system_prompt": prompts.QUERY_SYSTEM_INSTRUCTION,
                     "attachments": [
                         {
                             "attachment_type": "log",
