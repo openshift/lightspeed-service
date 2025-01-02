@@ -290,7 +290,7 @@ def test_openapi_endpoint():
         assert endpoint in paths, f"Endpoint {endpoint} is not described"
 
     # retrieve pre-generated OpenAPI schema
-    with open("docs/openapi.json") as fin:
+    with open("docs/openapi.json", encoding="utf-8") as fin:
         expected_schema = json.load(fin)
 
     # remove node that is not included in pre-generated OpenAPI schema
