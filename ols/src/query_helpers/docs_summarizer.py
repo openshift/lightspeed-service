@@ -11,7 +11,6 @@ from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import SummarizerResponse
 from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
-from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.utils.token_handler import TokenHandler
 

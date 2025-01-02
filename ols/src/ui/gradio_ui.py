@@ -9,7 +9,7 @@ import requests
 from fastapi import FastAPI
 
 from ols import config
-from ols.customize import prompts
+from ols.src.prompts import prompts
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from typing import Optional, Self
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
-from ols.customize import prompts
+from ols.src.prompts import prompts
 from ols.utils import suid
 
 
