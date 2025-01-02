@@ -63,7 +63,7 @@ def test_openapi_endpoint():
 def test_openapi_content():
     """Check if the pre-generated OpenAPI schema is up-to date."""
     # retrieve pre-generated OpenAPI schema
-    with open("docs/openapi.json") as fin:
+    with open("docs/openapi.json", encoding="utf-8") as fin:
         pre_generated_schema = json.load(fin)
 
     # retrieve current OpenAPI schema

@@ -38,13 +38,13 @@ def test_load_improper_config():
 
 def load_config_file():
     """Read proper configuration file and deserialize from YAML format."""
-    with open(MINIMAL_CONFIG_FILE) as fin:
+    with open(MINIMAL_CONFIG_FILE, encoding="utf-8") as fin:
         return yaml.safe_load(fin)
 
 
 def write_config_file(cfg_filename, cfg):
     """Serialize configuration into YAML format and write it to file."""
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         yaml.dump(cfg, fout, default_flow_style=False)
 
 

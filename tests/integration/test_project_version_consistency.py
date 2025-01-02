@@ -11,7 +11,7 @@ from ols import config, version
 def read_version_from_openapi():
     """Read version from OpenAPI.json file."""
     # retrieve pre-generated OpenAPI schema
-    with open("docs/openapi.json") as fin:
+    with open("docs/openapi.json", encoding="utf-8") as fin:
         pre_generated_schema = json.load(fin)
         assert pre_generated_schema is not None
         assert "info" in pre_generated_schema, "node 'info' not found in openapi.json"

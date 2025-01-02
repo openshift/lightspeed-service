@@ -191,14 +191,14 @@ def add_secret_to_env(env) -> None:
         Null
     """
     name = env[:-5]
-    with open(os.environ[env]) as file:
+    with open(os.environ[env], encoding="utf-8") as file:
         content = file.read()
         aws_env[name] = content
 
 
 def get_secret_value(env: str) -> str:
     """Handle secrets delivered in env variables."""
-    with open(os.environ[env]) as file:
+    with open(os.environ[env], encoding="utf-8") as file:
         return file.read()
 
 

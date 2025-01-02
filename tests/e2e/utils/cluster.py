@@ -39,7 +39,7 @@ def run_oc_and_store_stdout(
     try:
         result = run_oc(args)
         assert result.returncode == 0
-        with open(stdout_file, "w") as fout:
+        with open(stdout_file, "w", encoding="utf-8") as fout:
             fout.write(result.stdout)
         return result
     except subprocess.CalledProcessError as e:
