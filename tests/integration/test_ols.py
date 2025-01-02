@@ -12,6 +12,7 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
+from ols.customize import prompts
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
