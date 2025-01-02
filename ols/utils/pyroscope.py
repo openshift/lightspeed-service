@@ -21,6 +21,7 @@ def start_with_pyroscope_enabled(
             logger.info(
                 "Pyroscope server is reachable at %s", config.dev_config.pyroscope_url
             )
+            # pylint: disable=C0415
             import pyroscope
 
             pyroscope.configure(

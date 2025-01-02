@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # So this module is excluded from mypy checks as a whole.
 def load_llama_index_deps() -> None:
     """Load llama_index dependencies."""
-    # pylint: disable=global-statement
+    # pylint: disable=global-statement disable=C0415
     global Settings
     global StorageContext
     global load_index_from_storage
@@ -55,6 +55,7 @@ class IndexLoader:
     def _get_embed_model(self) -> Any:
         """Get embed model according to configuration."""
         if self._embed_model_path is not None:
+            # pylint: disable=C0415
             from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
             logger.debug(
