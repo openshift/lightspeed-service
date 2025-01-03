@@ -410,9 +410,7 @@ def delete_resource(resource: str, name: str, namespace: str = "") -> None:
             )
             return
         except subprocess.CalledProcessError as e:
-            raise Exception(
-                "Error deleting the %s instance of %s" % (name, resource)
-            ) from e
+            raise Exception(f"Error deleting the {name} instance of {resource}") from e
     try:
         run_oc(
             [
@@ -423,9 +421,7 @@ def delete_resource(resource: str, name: str, namespace: str = "") -> None:
         )
         return
     except subprocess.CalledProcessError as e:
-        raise Exception(
-            "Error deleting the %s instance of %s" % (name, resource)
-        ) from e
+        raise Exception(f"Error deleting the {name} instance of {resource}") from e
 
 
 def restart_deployment(name: str, namespace: str) -> None:
