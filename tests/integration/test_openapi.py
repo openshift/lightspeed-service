@@ -11,8 +11,6 @@ from fastapi.testclient import TestClient
 from ols import config
 from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
 
-client: TestClient
-
 
 # we need to patch the config file path to point to the test
 # config file before we import anything from main.py
@@ -25,18 +23,17 @@ client: TestClient
 )
 def _setup():
     """Setups the test client."""
-    global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app  # pylint: disable=C0415
 
-    client = TestClient(app)
+    pytest.client = TestClient(app)
 
 
 def test_openapi_endpoint():
     """Check if REST API provides endpoint with OpenAPI specification."""
-    response = client.get("/openapi.json")
+    response = pytest.client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
 
     # this line ensures that response payload contains proper JSON
@@ -67,7 +64,7 @@ def test_openapi_content():
         pre_generated_schema = json.load(fin)
 
     # retrieve current OpenAPI schema
-    response = client.get("/openapi.json")
+    response = pytest.client.get("/openapi.json")
     assert response.status_code == requests.codes.ok
     current_schema = response.json()
 

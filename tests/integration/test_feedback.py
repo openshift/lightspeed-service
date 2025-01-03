@@ -13,19 +13,16 @@ from ols.utils import suid
 # use proper conversation ID
 CONVERSATION_ID = suid.get_suid()
 
-client: TestClient
-
 
 @pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Setups the test client."""
-    global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app  # pylint: disable=C0415
 
-    client = TestClient(app)
+    pytest.client = TestClient(app)
     config.dev_config.disable_auth = True
 
 
@@ -47,17 +44,17 @@ def _with_enabled_feedback(tmpdir):
 def test_feedback_endpoints_disabled_when_set_in_config():
     """Check if feedback endpoints are disabled when set in config."""
     # status endpoint is always available
-    response = client.get("/v1/feedback/status")
+    response = pytest.client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
 
-    response = client.post("/v1/feedback/", json={"a": 5})
+    response = pytest.client.post("/v1/feedback/", json={"a": 5})
     assert response.status_code == requests.codes.forbidden
 
 
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_status():
     """Check if feedback status is returned."""
-    response = client.get("/v1/feedback/status")
+    response = pytest.client.get("/v1/feedback/status")
     assert response.status_code == requests.codes.ok
     assert response.json() == {"functionality": "feedback", "status": {"enabled": True}}
 
@@ -65,7 +62,7 @@ def test_feedback_status():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback():
     """Check if feedback with correct format is accepted by the service."""
-    response = client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": CONVERSATION_ID,
@@ -81,7 +78,7 @@ def test_feedback():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_improper_conversation_id():
     """Check if feedback with improper conversation ID is rejected."""
-    response = client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": "really-not-an-uuid",
@@ -96,7 +93,7 @@ def test_feedback_improper_conversation_id():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_improper_sentiment():
     """Check if feedback with improper sentiment value is rejected."""
-    response = client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": CONVERSATION_ID,
@@ -107,7 +104,7 @@ def test_feedback_improper_sentiment():
     )
     assert response.status_code == requests.codes.unprocessable_entity
 
-    response = client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": CONVERSATION_ID,
@@ -122,7 +119,7 @@ def test_feedback_improper_sentiment():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_wrong_request():
     """Check if feedback with wrong payload (empty one) is not accepted by the service."""
-    response = client.post("/v1/feedback", json={})
+    response = pytest.client.post("/v1/feedback", json={})
     # for the request send w/o proper payload, the server
     # should respond with proper error code
     assert response.status_code == requests.codes.unprocessable_entity
@@ -131,7 +128,7 @@ def test_feedback_wrong_request():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_mandatory_fields_not_provided_filled_in_request():
     """Check if feedback without mandatory fields is not accepted by the service."""
-    response = client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": CONVERSATION_ID,
@@ -147,7 +144,7 @@ def test_feedback_mandatory_fields_not_provided_filled_in_request():
 @pytest.mark.usefixtures("_with_enabled_feedback")
 def test_feedback_no_payload_send():
     """Check if feedback without feedback payload."""
-    response = client.post("/v1/feedback")
+    response = pytest.client.post("/v1/feedback")
     # for the request send w/o payload, the server
     # should respond with proper error code
     assert response.status_code == requests.codes.unprocessable_entity
@@ -160,7 +157,7 @@ def test_feedback_error_raised():
         "ols.app.endpoints.feedback.store_feedback",
         side_effect=Exception("Test exception"),
     ):
-        response = client.post(
+        response = pytest.client.post(
             "/v1/feedback",
             json={
                 "conversation_id": CONVERSATION_ID,

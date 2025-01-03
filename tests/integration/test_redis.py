@@ -9,14 +9,10 @@ from ols.src.cache.redis_cache import RedisCache
 USER_ID = "00000000-0000-0000-0000-000000000001"
 CONVERSATION_ID = "00000000-0000-0000-0000-000000000002"
 
-redis_cache: RedisCache
-
 
 @pytest.mark.redis
 def setup():
     """Setups the Redis client."""
-    global redis_cache
-
     # please note that the setup expect Redis running locally on default port
     redis_config = RedisConfig(
         {
@@ -29,25 +25,25 @@ def setup():
         }
     )
 
-    redis_cache = RedisCache(redis_config)
+    pytest.redis_cache = RedisCache(redis_config)
 
 
 @pytest.mark.redis
 def test_conversation_in_redis():
     """Check the elementary GET operation and insert_or_append operation."""
     # make sure the cache is empty
-    redis_cache.redis_client.delete(USER_ID + ":" + CONVERSATION_ID)
+    pytest.redis_cache.redis_client.delete(USER_ID + ":" + CONVERSATION_ID)
 
     # the initial value should be empty
-    retrieved = redis_cache.get(USER_ID, CONVERSATION_ID)
+    retrieved = pytest.redis_cache.get(USER_ID, CONVERSATION_ID)
     assert retrieved is None
 
     # insert some conversation
     cache_entry = CacheEntry(query="First human message", response="First AI response")
-    redis_cache.insert_or_append(USER_ID, CONVERSATION_ID, cache_entry)
+    pytest.redis_cache.insert_or_append(USER_ID, CONVERSATION_ID, cache_entry)
 
     # check what is stored in conversation cache
-    retrieved = redis_cache.get(USER_ID, CONVERSATION_ID)
+    retrieved = pytest.redis_cache.get(USER_ID, CONVERSATION_ID)
     assert retrieved is not None
 
     # just the initial cache_entry should be stored
@@ -58,10 +54,10 @@ def test_conversation_in_redis():
         query="Second human message", response="Second AI response"
     )
 
-    redis_cache.insert_or_append(USER_ID, CONVERSATION_ID, cache_entry_2)
+    pytest.redis_cache.insert_or_append(USER_ID, CONVERSATION_ID, cache_entry_2)
 
     # check what is stored in conversation cache
-    retrieved = redis_cache.get(USER_ID, CONVERSATION_ID)
+    retrieved = pytest.redis_cache.get(USER_ID, CONVERSATION_ID)
     assert retrieved is not None
 
     # now both conversations should be stored
