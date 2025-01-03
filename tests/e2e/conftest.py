@@ -16,6 +16,9 @@ from tests.e2e import test_api
 
 aws_env: dict[str, str] = {}
 
+# this flag is set to True when synthetic test report was generated already
+pytest.makereport_called = False
+
 
 def pytest_runtest_makereport(item, call) -> TestReport:
     """Generate a synthetic test report.

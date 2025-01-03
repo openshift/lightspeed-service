@@ -5,10 +5,10 @@ import os
 import re
 import time
 from argparse import Namespace
-from typing import TYPE_CHECKING
 
 import pytest
 import requests
+from httpx import Client
 
 from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.utils import suid
@@ -36,24 +36,21 @@ from tests.e2e.utils.postgres import (
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
-if TYPE_CHECKING:
-    from httpx import Client
+# generic http client for talking to OLS, when OLS is run on a cluster
+# this client will be preconfigured with a valid user token header.
+client: Client
+metrics_client: Client
 
 OLS_READY = False
 
 
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    # generic HTTP client for talking to OLS, when OLS is run on a cluster
-    # this client will be preconfigured with a valid user token header.
-    pytest.client: Client = None
-    pytest.pytest.metrics_client: Client = None
-
     # on_cluster is set to true when the tests are being run
     # against ols running on a cluster
     pytest.on_cluster = False
 
-    global OLS_READY  # pylint: disable=W0603
+    global client, metrics_client, OLS_READY  # pylint: disable=W0603
     provider = os.getenv("PROVIDER")
 
     # OLS_URL env only needs to be set when running against a local ols instance,
@@ -76,8 +73,8 @@ def setup_module(module):
         token = None
         metrics_token = None
 
-    pytest.client = client_utils.get_http_client(ols_url, token)
-    pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+    client = client_utils.get_http_client(ols_url, token)
+    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
@@ -104,8 +101,8 @@ def postgres_connection():
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = pytest.client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        response = client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
         assert response.json() == {"ready": True, "reason": "service is ready"}
@@ -115,8 +112,8 @@ def test_readiness():
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = pytest.client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
+    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
         assert response.json() == {"alive": True}
@@ -124,7 +121,7 @@ def test_liveness():
 
 def test_metrics() -> None:
     """Check if service provides metrics endpoint with expected metrics."""
-    response = pytest.metrics_client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = metrics_client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     assert response.text is not None
 
@@ -150,9 +147,7 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = metrics_utils.get_enabled_model_and_provider(
-        pytest.metrics_client
-    )
+    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
@@ -165,7 +160,7 @@ def test_model_provider():
 
 def test_one_default_model_provider():
     """Check if one model and provider is selected as default."""
-    states = metrics_utils.get_enable_status_for_all_models(pytest.metrics_client)
+    states = metrics_utils.get_enable_status_for_all_models(metrics_client)
     enabled_states = [state for state in states if state is True]
     assert (
         len(enabled_states) == 1
@@ -175,7 +170,7 @@ def test_one_default_model_provider():
 @pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={"query": "what is foo in bar?"},
         timeout=NON_LLM_REST_API_TIMEOUT,
@@ -191,13 +186,13 @@ def test_forbidden_user():
     Test accessing /v1/query endpoint using the metrics user w/ no ols permissions,
     Test accessing /metrics endpoint using the ols user w/ no ols-metrics permissions.
     """
-    response = pytest.metrics_client.post(
+    response = metrics_client.post(
         "/v1/query",
         json={"query": "what is foo in bar?"},
         timeout=NON_LLM_REST_API_TIMEOUT,
     )
     assert response.status_code == requests.codes.forbidden
-    response = pytest.client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.forbidden
 
 
@@ -218,7 +213,7 @@ def test_transcripts_storing_cluster():
         cluster_utils.remove_dir(pod_name, transcripts_path)
         assert cluster_utils.list_path(pod_name, transcripts_path) is None
 
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={
             "query": "what is kubernetes?",
@@ -270,7 +265,7 @@ def test_transcripts_storing_cluster():
 @retry(max_attempts=3, wait_between_runs=10)
 def test_openapi_endpoint():
     """Test handler for /opanapi REST API endpoint."""
-    response = pytest.client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     response_utils.check_content_type(response, "application/json")
 
@@ -322,7 +317,7 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
         pytest.skip("Postgres is not accessible.")
 
     cid = suid.get_suid()
-    client_utils.perform_query(pytest.client, cid, "what is kubernetes?")
+    client_utils.perform_query(client, cid, "what is kubernetes?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
@@ -342,7 +337,7 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "Kubernetes" in deserialized[1].content
 
     # second question
-    client_utils.perform_query(pytest.client, cid, "what is openshift virtualization?")
+    client_utils.perform_query(client, cid, "what is openshift virtualization?")
 
     conversation, updated_at = read_conversation_history(postgres_connection, cid)
     assert conversation is not None
@@ -445,7 +440,7 @@ def test_user_data_collection():
         last_log_line = get_last_log_line(container_log)
 
         # create a new data via feedback endpoint
-        response = pytest.client.post(
+        response = client.post(
             "/v1/feedback",
             json={
                 "conversation_id": CONVERSATION_ID,
@@ -483,8 +478,8 @@ def test_http_header_redaction():
     """Test that sensitive HTTP headers are redacted from the logs."""
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         endpoint = "/liveness"
-        with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-            response = pytest.client.get(
+        with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+            response = client.get(
                 endpoint,
                 headers={f"{header}": "some_value"},
                 timeout=BASIC_ENDPOINTS_TIMEOUT,
@@ -509,7 +504,7 @@ def test_model_response(request) -> None:
     args.eval_provider_model_id = [f"{args.eval_provider}+{args.eval_model}"]
     args.eval_type = "consistency"
 
-    val_success_flag = ResponseEvaluation(args, pytest.client).validate_response()
+    val_success_flag = ResponseEvaluation(args, client).validate_response()
     # If flag is False, then response(s) is not consistent,
     # And score is more than cut-off score.
     # Please check eval_result/response_evaluation_* csv file in artifact folder or
@@ -521,13 +516,13 @@ def test_model_response(request) -> None:
 def test_model_evaluation(request) -> None:
     """Evaluate model."""
     # TODO: Use this to assert.
-    ResponseEvaluation(request.config.option, pytest.client).evaluate_models()
+    ResponseEvaluation(request.config.option, client).evaluate_models()
 
 
 @pytest.mark.azure_entra_id
 def test_azure_entra_id():
     """Test single question via Azure Entra ID credentials."""
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={
             "query": "what is kubernetes?",
@@ -558,7 +553,7 @@ def test_generated_service_certs_rotation():
     cluster_utils.delete_resource(
         resource="secret", name=service_tls, namespace="openshift-lightspeed"
     )
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},
         timeout=LLM_REST_API_TIMEOUT,
@@ -572,7 +567,7 @@ def test_ca_service_certs_rotation():
     cluster_utils.delete_resource(
         resource="secret", name="signing-key", namespace="openshift-service-ca"
     )
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},
         timeout=LLM_REST_API_TIMEOUT,
@@ -591,7 +586,7 @@ def test_ca_service_certs_rotation():
     time.sleep(120)
     cluster_utils.wait_for_running_pod()
 
-    response = pytest.client.post(
+    response = client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},
         timeout=LLM_REST_API_TIMEOUT,
