@@ -127,7 +127,7 @@ dependencies = [
     "jinja2==3.1.5",
     "scikit-learn==1.5.2",
     "starlette==0.41.3",
-    "tqdm==4.66.5",
+    "tqdm==4.67.1",
     "findpython==0.6.2",
     "filelock==3.16.1",
     "ffmpy==0.4.0",
