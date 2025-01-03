@@ -14,8 +14,6 @@ from ols.app.models.config import LoggingConfig
 from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
 from ols.utils.logging_configurator import configure_logging
 
-client: TestClient
-
 # counters that are expected to be part of metrics
 expected_counters = (
     "ols_rest_api_calls_total",
@@ -39,16 +37,15 @@ expected_counters = (
 )
 def _setup():
     """Setups the test client."""
-    global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
     from ols.app.main import app  # pylint: disable=C0415
 
-    client = TestClient(app)
+    pytest.client = TestClient(app)
 
 
 def retrieve_metrics(client):
     """Retrieve all service metrics."""
-    response = client.get("/metrics")
+    response = pytest.client.get("/metrics")
 
     # check that the /metrics endpoint is correct and we got
     # some response
@@ -61,7 +58,7 @@ def retrieve_metrics(client):
 
 def test_metrics():
     """Check if service provides metrics endpoint with some expected counters."""
-    response_text = retrieve_metrics(client)
+    response_text = retrieve_metrics(pytest.client)
 
     # check if all counters are present
     for expected_counter in expected_counters:
@@ -78,7 +75,7 @@ def test_metrics_with_debug_log(caplog):
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
 
-    response_text = retrieve_metrics(client)
+    response_text = retrieve_metrics(pytest.client)
 
     # check if all counters are present
     for expected_counter in expected_counters:
@@ -102,7 +99,7 @@ def test_metrics_with_debug_logging_suppressed(caplog):
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
 
-    response_text = retrieve_metrics(client)
+    response_text = retrieve_metrics(pytest.client)
 
     # check if all counters are present
     for expected_counter in expected_counters:
@@ -139,12 +136,12 @@ def test_rest_api_call_counter_ok_status():
     endpoint = "/liveness"
 
     # initialize counter with label by calling endpoint
-    client.get(endpoint)
-    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
+    pytest.client.get(endpoint)
+    old = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "200")
 
     # call some REST API endpoint
-    client.get(endpoint)
-    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "200")
+    pytest.client.get(endpoint)
+    new = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "200")
 
     # compare counters
     assert new == old + 1, "Counter has not been updated properly"
@@ -155,12 +152,12 @@ def test_rest_api_call_counter_not_found_status():
     endpoint = "/this-does-not-exists"
 
     # initialize counter with label
-    client.get(endpoint)
-    old = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
+    pytest.client.get(endpoint)
+    old = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "404")
 
     # call some REST API endpoint
-    client.get(endpoint)
-    new = get_counter_value(client, "ols_rest_api_calls_total", endpoint, "404")
+    pytest.client.get(endpoint)
+    new = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "404")
 
     # compare counters
     # just the NotFound value should change
@@ -169,7 +166,7 @@ def test_rest_api_call_counter_not_found_status():
 
 def test_metrics_duration():
     """Check if service provides metrics for durations."""
-    response_text = retrieve_metrics(client)
+    response_text = retrieve_metrics(pytest.client)
 
     # duration histograms are expected to be part of metrics
 
@@ -191,7 +188,7 @@ def test_metrics_duration():
 
 def test_provider_model_configuration_metrics():
     """Check if provider_model_configuration metrics shows the expected information."""
-    response_text = retrieve_metrics(client)
+    response_text = retrieve_metrics(pytest.client)
     print(response_text)
     for provider in ("bam", "openai"):
         for model in ("m1", "m2"):

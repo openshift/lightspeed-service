@@ -15,19 +15,16 @@ from tests.mock_classes.mock_k8s_api import (
     mock_token_review_response,
 )
 
-client: TestClient
-
 
 @pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Setups the test client."""
-    global client
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
     # app.main need to be imported after the configuration is read
     from ols.app.main import app  # pylint: disable=C0415
 
-    client = TestClient(app)
+    pytest.client = TestClient(app)
 
 
 @pytest.fixture
@@ -54,7 +51,7 @@ def test_post_authorized_disabled(caplog):
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
 
-    response = client.post("/authorized")
+    response = pytest.client.post("/authorized")
     assert response.status_code == requests.codes.ok
 
     # check the response payload
@@ -79,7 +76,7 @@ def test_post_authorized_disabled_with_logging_suppressed(caplog):
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
 
-    response = client.post("/authorized")
+    response = pytest.client.post("/authorized")
     assert response.status_code == requests.codes.ok
 
     # check the response payload
@@ -97,7 +94,7 @@ def test_post_authorized_disabled_with_logging_suppressed(caplog):
 def test_post_authorized_no_token():
     """Check the REST API /v1/query with POST HTTP method when no payload is posted."""
     # perform POST request without any payload
-    response = client.post("/authorized")
+    response = pytest.client.post("/authorized")
     assert response.status_code == 401
 
 
@@ -113,7 +110,7 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
     mock_authz_api.return_value.create_subject_access_review.side_effect = (
         mock_subject_access_review_response
     )
-    response = client.post(
+    response = pytest.client.post(
         "/authorized",
         headers=[(b"authorization", b"Bearer valid-token")],
     )
@@ -137,7 +134,7 @@ def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
         mock_subject_access_review_response
     )
 
-    response = client.post(
+    response = pytest.client.post(
         "/authorized",
         headers=[(b"authorization", b"Bearer invalid-token")],
     )
