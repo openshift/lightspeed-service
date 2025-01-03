@@ -979,6 +979,22 @@ class DevConfig(BaseModel):
     run_on_localhost: bool = False
     enable_system_prompt_override: bool = False
 
+    def __eq__(self, other: object) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, DevConfig):
+            return (
+                self.enable_dev_ui == other.enable_dev_ui
+                and self.llm_params == other.llm_params
+                and self.disable_auth == other.disable_auth
+                and self.disable_tls == other.disable_tls
+                and self.pyroscope_url == other.pyroscope_url
+                and self.k8s_auth_token == other.k8s_auth_token
+                and self.run_on_localhost == other.run_on_localhost
+                and self.enable_system_prompt_override
+                == other.enable_system_prompt_override
+            )
+        return False
+
 
 class UserDataCollectorConfig(BaseModel):
     """User data collection configuration."""

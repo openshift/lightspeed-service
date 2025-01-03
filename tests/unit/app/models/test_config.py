@@ -3215,6 +3215,73 @@ def test_dev_config_defaults():
     assert dev_config.enable_system_prompt_override is False
 
 
+def get_dev_configs():
+    """Construct two instances of DevConfig class."""
+    dev_config_1 = DevConfig()
+    dev_config_2 = DevConfig()
+    return dev_config_1, dev_config_2
+
+
+def test_dev_config_equality(subtests):
+    """Test the DevConfig equality check."""
+    # compare two objects with the same content
+    dev_config_1, dev_config_2 = get_dev_configs()
+    assert dev_config_1 == dev_config_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert dev_config_1 != other_value
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attritubte: enable_dev_ui"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.enable_dev_ui = True
+        dev_config_2.enable_dev_ui = False
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: llm_params"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.llm_params = {}
+        dev_config_2.llm_params = {"foo": "bar"}
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: disable_auth"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.disable_auth = True
+        dev_config_2.disable_auth = False
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: disable_tls"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.disable_tls = True
+        dev_config_2.disable_tls = False
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: enable_system_prompt_override"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.enable_system_prompt_override = True
+        dev_config_2.enable_system_prompt_override = False
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: run_on_localhost"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.run_on_localhost = True
+        dev_config_2.run_on_localhost = False
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: pyroscope_url"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.pyroscope_url = None
+        dev_config_2.pyroscope_url = "http://test.com"
+        assert dev_config_1 != dev_config_2
+
+    with subtests.test(msg="Different attritubte: k8s_auth_token"):
+        dev_config_1, dev_config_2 = get_dev_configs()
+        dev_config_1.k8s_auth_token = None
+        dev_config_2.k8s_auth_token = "***token***"  # noqa: S105
+        assert dev_config_1 != dev_config_2
+
+
 def test_dev_config_bool_inputs():
     """Test the DevConfig model with boolean inputs."""
     true_values = {"1", "on", "t", "true", "y", "yes"}
