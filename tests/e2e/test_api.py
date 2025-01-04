@@ -44,14 +44,14 @@ on_cluster = False
 # generic http client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
 client: Client
-metrics_client: Client
+pytest.metrics_client: Client = None
 
 OLS_READY = False
 
 
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    global client, metrics_client, OLS_READY, on_cluster
+    global client, OLS_READY, on_cluster
     provider = os.getenv("PROVIDER")
 
     # OLS_URL env only needs to be set when running against a local ols instance,
@@ -75,7 +75,7 @@ def setup_module(module):
         metrics_token = None
 
     client = client_utils.get_http_client(ols_url, token)
-    metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+    pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
@@ -102,7 +102,7 @@ def postgres_connection():
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
-    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         response = client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
@@ -113,7 +113,7 @@ def test_readiness():
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
-    with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         response = client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
@@ -122,7 +122,7 @@ def test_liveness():
 
 def test_metrics() -> None:
     """Check if service provides metrics endpoint with expected metrics."""
-    response = metrics_client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
+    response = pytest.metrics_client.get("/metrics", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     assert response.text is not None
 
@@ -148,7 +148,7 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = metrics_utils.get_enabled_model_and_provider(metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
@@ -161,7 +161,7 @@ def test_model_provider():
 
 def test_one_default_model_provider():
     """Check if one model and provider is selected as default."""
-    states = metrics_utils.get_enable_status_for_all_models(metrics_client)
+    states = metrics_utils.get_enable_status_for_all_models(pytest.metrics_client)
     enabled_states = [state for state in states if state is True]
     assert (
         len(enabled_states) == 1
@@ -187,7 +187,7 @@ def test_forbidden_user():
     Test accessing /v1/query endpoint using the metrics user w/ no ols permissions,
     Test accessing /metrics endpoint using the ols user w/ no ols-metrics permissions.
     """
-    response = metrics_client.post(
+    response = pytest.metrics_client.post(
         "/v1/query",
         json={"query": "what is foo in bar?"},
         timeout=NON_LLM_REST_API_TIMEOUT,
@@ -479,7 +479,7 @@ def test_http_header_redaction():
     """Test that sensitive HTTP headers are redacted from the logs."""
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         endpoint = "/liveness"
-        with metrics_utils.RestAPICallCounterChecker(metrics_client, endpoint):
+        with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
             response = client.get(
                 endpoint,
                 headers={f"{header}": "some_value"},

@@ -17,7 +17,7 @@ from . import test_api
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
         response = test_api.client.post(
             endpoint,
@@ -46,7 +46,7 @@ def test_invalid_question():
 def test_invalid_question_without_conversation_id():
     """Check the REST API /v1/query with invalid question and without conversation ID."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         response = test_api.client.post(
             endpoint,
             json={"query": "how to make burger?"},
@@ -80,7 +80,7 @@ def test_query_call_without_payload():
     """Check the REST API /v1/query with POST HTTP method when no payload is provided."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -101,7 +101,7 @@ def test_query_call_with_improper_payload():
     """Check the REST API /v1/query with POST HTTP method when improper payload is provided."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -124,7 +124,7 @@ def test_valid_question_improper_conversation_id() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.internal_server_error,
     ):
@@ -152,7 +152,7 @@ def test_valid_question_missing_conversation_id() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client, endpoint, status_code=requests.codes.ok
+        pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = test_api.client.post(
             endpoint,
@@ -180,7 +180,7 @@ def test_too_long_question() -> None:
     query = "what is kubernetes?" * 10000
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.request_entity_too_large,
     ):
@@ -205,7 +205,7 @@ def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     endpoint = "/v1/query"
 
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
         response = test_api.client.post(
             endpoint,
@@ -233,7 +233,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
     """Check that the version of OCP docs matches the cluster we're on."""
     endpoint = "/v1/query"
 
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
         response = test_api.client.post(
             endpoint,
@@ -258,13 +258,13 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
-        test_api.metrics_client
+        pytest.metrics_client
     )
 
     endpoint = "/v1/query"
     with (
-        metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint),
-        metrics_utils.TokenCounterChecker(test_api.metrics_client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
+        metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
         response = test_api.client.post(
             endpoint,
@@ -278,13 +278,13 @@ def test_valid_question_tokens_counter() -> None:
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
-        test_api.metrics_client
+        pytest.metrics_client
     )
 
     endpoint = "/v1/query"
     with (
-        metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint),
-        metrics_utils.TokenCounterChecker(test_api.metrics_client, model, provider),
+        metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
+        metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
         response = test_api.client.post(
             endpoint,
@@ -298,18 +298,18 @@ def test_invalid_question_tokens_counter() -> None:
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
-        test_api.metrics_client
+        pytest.metrics_client
     )
 
     endpoint = "/v1/query"
     with (
         metrics_utils.RestAPICallCounterChecker(
-            test_api.metrics_client,
+            pytest.metrics_client,
             endpoint,
             status_code=requests.codes.unprocessable_entity,
         ),
         metrics_utils.TokenCounterChecker(
-            test_api.metrics_client,
+            pytest.metrics_client,
             model,
             provider,
             expect_sent_change=False,
@@ -327,18 +327,18 @@ def test_token_counters_for_query_call_without_payload() -> None:
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
-        test_api.metrics_client
+        pytest.metrics_client
     )
 
     endpoint = "/v1/query"
     with (
         metrics_utils.RestAPICallCounterChecker(
-            test_api.metrics_client,
+            pytest.metrics_client,
             endpoint,
             status_code=requests.codes.unprocessable_entity,
         ),
         metrics_utils.TokenCounterChecker(
-            test_api.metrics_client,
+            pytest.metrics_client,
             model,
             provider,
             expect_sent_change=False,
@@ -360,7 +360,7 @@ def test_rag_question() -> None:
     """Ensure responses include rag references."""
     endpoint = "/v1/query"
 
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         response = test_api.client.post(
             endpoint,
             json={"query": "what is openshift virtualization?"},
@@ -386,7 +386,7 @@ def test_rag_question() -> None:
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         query = "what is foo in bar?"
         response = test_api.client.post(
             endpoint,
@@ -432,7 +432,7 @@ def test_query_filter() -> None:
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
     endpoint = "/v1/query"
-    with metrics_utils.RestAPICallCounterChecker(test_api.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         response = test_api.client.post(
             endpoint,
             json={
@@ -472,7 +472,7 @@ def test_query_with_provider_but_not_model() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -503,7 +503,7 @@ def test_query_with_model_but_not_provider() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -533,10 +533,10 @@ def test_query_with_unknown_provider() -> None:
     endpoint = "/v1/query"
 
     # retrieve currently selected model
-    model, _ = metrics_utils.get_enabled_model_and_provider(test_api.metrics_client)
+    model, _ = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -572,10 +572,10 @@ def test_query_with_unknown_model() -> None:
     endpoint = "/v1/query"
 
     # retrieve currently selected provider
-    _, provider = metrics_utils.get_enabled_model_and_provider(test_api.metrics_client)
+    _, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):

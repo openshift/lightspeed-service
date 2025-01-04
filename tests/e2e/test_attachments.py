@@ -15,7 +15,7 @@ def test_valid_question_with_empty_attachment_list() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client, endpoint, status_code=requests.codes.ok
+        pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = test_api.client.post(
             endpoint,
@@ -39,7 +39,7 @@ def test_valid_question_with_one_attachment() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client, endpoint, status_code=requests.codes.ok
+        pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = test_api.client.post(
             endpoint,
@@ -69,7 +69,7 @@ def test_valid_question_with_more_attachments() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client, endpoint, status_code=requests.codes.ok
+        pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
         response = test_api.client.post(
             endpoint,
@@ -104,7 +104,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_field() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -139,7 +139,7 @@ def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -170,7 +170,7 @@ def test_valid_question_with_wrong_attachment_format_field_of_different_type() -
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -205,7 +205,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
@@ -244,7 +244,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> N
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(
-        test_api.metrics_client,
+        pytest.metrics_client,
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
