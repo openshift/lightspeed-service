@@ -28,7 +28,7 @@ def pytest_runtest_makereport(item, call) -> TestReport:
     """
     # The first time we try to generate a test report, check if OLS timed out on startup
     # if so, generate a synthetic test report for the wait_for_ols timeout.
-    if not test_api.OLS_READY and not pytest.makereport_called:
+    if not pytest.OLS_READY and not pytest.makereport_called:
         pytest.makereport_called = True
         return TestReport(
             "test_wait_for_ols",
@@ -44,7 +44,7 @@ def pytest_runtest_makereport(item, call) -> TestReport:
     # OLS didn't come up)
     # There is no clean way to return the synthetic test report above *and* exit pytest
     # in a single invocation
-    if not test_api.OLS_READY:
+    if not pytest.OLS_READY:
         pytest.exit("OLS did not become ready!", 1)
     # If OLS did come up cleanly during setup, then just generate normal test reports for all tests
     return TestReport.from_item_and_call(item, call)

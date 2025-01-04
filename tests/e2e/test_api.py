@@ -41,7 +41,7 @@ from tests.scripts.must_gather import must_gather
 client: Client
 metrics_client: Client
 
-OLS_READY = False
+pytest.OLS_READY = False
 
 
 def setup_module(module):
@@ -50,7 +50,7 @@ def setup_module(module):
     # against ols running on a cluster
     pytest.on_cluster = False
 
-    global client, metrics_client, OLS_READY  # pylint: disable=W0603
+    global client, metrics_client  # pylint: disable=W0603
     provider = os.getenv("PROVIDER")
 
     # OLS_URL env only needs to be set when running against a local ols instance,
@@ -78,9 +78,9 @@ def setup_module(module):
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
-    OLS_READY = wait_for_ols(ols_url)
-    print(f"OLS is ready: {OLS_READY}")
-    if not OLS_READY:
+    pytest.OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {pytest.OLS_READY}")
+    if not pytest.OLS_READY:
         must_gather()
 
 
