@@ -148,7 +148,9 @@ def test_metrics() -> None:
 
 def test_model_provider():
     """Read configured model and provider from metrics."""
-    model, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
+    model, provider = metrics_utils.get_enabled_model_and_provider(
+        pytest.metrics_client
+    )
 
     # enabled model must be one of our expected combinations
     assert model, provider in {
