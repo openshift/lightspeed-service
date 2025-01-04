@@ -1,5 +1,6 @@
 """End to end tests for the REST API endpoint /query when attachment(s) are send in request."""
 
+import pytest
 import requests
 
 from tests.e2e.utils import metrics as metrics_utils
