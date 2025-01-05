@@ -36,12 +36,12 @@ from tests.e2e.utils.postgres import (
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
-# on_cluster is set to true when the tests are being run
+# on_cluster attribute is set to true when the tests are being run
 # against ols running on a cluster
-on_cluster = False
+pytest.on_cluster: bool = False
 
 
-# generic http client for talking to OLS, when OLS is run on a cluster
+# generic HTTP client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
 pytest.client: Client = None
 pytest.metrics_client: Client = None
@@ -51,16 +51,16 @@ OLS_READY = False
 
 def setup_module(module):
     """Set up common artifacts used by all e2e tests."""
-    global OLS_READY, on_cluster
+    global OLS_READY  # pylint: disable=W0603
     provider = os.getenv("PROVIDER")
 
     # OLS_URL env only needs to be set when running against a local ols instance,
     # when ols is run against a cluster the url is retrieved from the cluster.
     ols_url = os.getenv("OLS_URL", "")
     if "localhost" not in ols_url:
-        on_cluster = True
+        pytest.on_cluster = True
 
-    if on_cluster:
+    if pytest.on_cluster:
         try:
             ols_url, token, metrics_token = ols_installer.install_ols()
         except Exception as e:
@@ -87,7 +87,7 @@ def setup_module(module):
 
 def teardown_module(module):
     """Clean up the environment after all tests are executed."""
-    if on_cluster:
+    if pytest.on_cluster:
         must_gather()
 
 
