@@ -37,9 +37,10 @@ class "DevConfig" as ols.app.models.config.DevConfig {
   disable_auth : bool
   disable_tls : bool
   enable_dev_ui : bool
-  pyroscope_url: Optional[str]
+  enable_system_prompt_override : bool
   k8s_auth_token : Optional[str]
   llm_params : dict
+  pyroscope_url : Optional[str]
   run_on_localhost : bool
 }
 class "InMemoryCacheConfig" as ols.app.models.config.InMemoryCacheConfig {
