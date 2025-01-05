@@ -12,7 +12,7 @@ from . import test_api
 @pytest.mark.cluster
 def test_feedback_can_post_with_wrong_token():
     """Test posting feedback with improper auth. token."""
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": test_api.CONVERSATION_ID,
@@ -43,7 +43,7 @@ def test_feedback_storing_cluster():
         cluster_utils.remove_dir(pod_name, feedbacks_path)
         assert cluster_utils.list_path(pod_name, feedbacks_path) is None
 
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": test_api.CONVERSATION_ID,
@@ -67,7 +67,7 @@ def test_feedback_storing_cluster():
 
 def test_feedback_missing_conversation_id():
     """Test posting feedback with missing conversation ID."""
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "user_question": "what is OCP4?",
@@ -82,7 +82,7 @@ def test_feedback_missing_conversation_id():
 
 def test_feedback_missing_user_question():
     """Test posting feedback with missing user question."""
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": test_api.CONVERSATION_ID,
@@ -97,7 +97,7 @@ def test_feedback_missing_user_question():
 
 def test_feedback_missing_llm_response():
     """Test posting feedback with missing LLM response."""
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": test_api.CONVERSATION_ID,
@@ -112,7 +112,7 @@ def test_feedback_missing_llm_response():
 
 def test_feedback_improper_conversation_id():
     """Test posting feedback with improper conversation ID."""
-    response = test_api.client.post(
+    response = pytest.client.post(
         "/v1/feedback",
         json={
             "conversation_id": "incorrect-conversation-id",

@@ -19,7 +19,7 @@ def test_invalid_question():
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": cid, "query": "how to make burger?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -47,7 +47,7 @@ def test_invalid_question_without_conversation_id():
     """Check the REST API /v1/query with invalid question and without conversation ID."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"query": "how to make burger?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -84,7 +84,7 @@ def test_query_call_without_payload():
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -105,7 +105,7 @@ def test_query_call_with_improper_payload():
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"parameter": "this-is-not-proper-question-my-friend"},
             timeout=test_api.NON_LLM_REST_API_TIMEOUT,
@@ -128,7 +128,7 @@ def test_valid_question_improper_conversation_id() -> None:
         endpoint,
         status_code=requests.codes.internal_server_error,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -154,7 +154,7 @@ def test_valid_question_missing_conversation_id() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": "", "query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -185,7 +185,7 @@ def test_too_long_question() -> None:
         status_code=requests.codes.request_entity_too_large,
     ):
         cid = suid.get_suid()
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": cid, "query": query},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -207,7 +207,7 @@ def test_valid_question() -> None:
 
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": cid, "query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -235,7 +235,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
 
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         cid = suid.get_suid()
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": cid,
@@ -266,7 +266,7 @@ def test_valid_question_tokens_counter() -> None:
         metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -286,7 +286,7 @@ def test_invalid_question_tokens_counter() -> None:
         metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"query": "how to make burger?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -316,7 +316,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
             expect_received_change=False,
         ),
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -345,7 +345,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
             expect_received_change=False,
         ),
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"parameter": "this-is-not-proper-question-my-friend"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -361,7 +361,7 @@ def test_rag_question() -> None:
     endpoint = "/v1/query"
 
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"query": "what is openshift virtualization?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -388,7 +388,7 @@ def test_query_filter() -> None:
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
         query = "what is foo in bar?"
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"query": query},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -433,7 +433,7 @@ def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
     endpoint = "/v1/query"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "query": "what is ingress in kubernetes?",
@@ -451,7 +451,7 @@ def test_conversation_history() -> None:
 
         # get the conversation id so we can reuse it for the follow up question
         cid = json_response["conversation_id"]
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={"conversation_id": cid, "query": "what?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
@@ -477,7 +477,7 @@ def test_query_with_provider_but_not_model() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # just the provider is explicitly specified, but model selection is missing
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -508,7 +508,7 @@ def test_query_with_model_but_not_provider() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # just model is explicitly specified, but provider selection is missing
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -541,7 +541,7 @@ def test_query_with_unknown_provider() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # provider is unknown
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -580,7 +580,7 @@ def test_query_with_unknown_model() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # model is unknown
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",

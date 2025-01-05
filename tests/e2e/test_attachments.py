@@ -18,7 +18,7 @@ def test_valid_question_with_empty_attachment_list() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -42,7 +42,7 @@ def test_valid_question_with_one_attachment() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -72,7 +72,7 @@ def test_valid_question_with_more_attachments() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -109,7 +109,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_field() -> None:
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -144,7 +144,7 @@ def test_valid_question_with_wrong_attachment_format_missing_fields() -> None:
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -175,7 +175,7 @@ def test_valid_question_with_wrong_attachment_format_field_of_different_type() -
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -210,7 +210,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
@@ -249,7 +249,7 @@ def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> N
         endpoint,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = test_api.client.post(
+        response = pytest.client.post(
             endpoint,
             json={
                 "conversation_id": "",
