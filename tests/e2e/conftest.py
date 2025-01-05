@@ -16,7 +16,8 @@ from tests.e2e import test_api
 
 aws_env: dict[str, str] = {}
 
-makereport_called = False
+# this flag is set to True when synthetic test report was already generated
+pytest.makereport_called = False
 
 
 def pytest_runtest_makereport(item, call) -> TestReport:
@@ -25,11 +26,10 @@ def pytest_runtest_makereport(item, call) -> TestReport:
     If OLS did not come up in time generate a synethic test entry,
     generate a normal test report entry otherwise.
     """
-    global makereport_called
     # The first time we try to generate a test report, check if OLS timed out on startup
     # if so, generate a synthetic test report for the wait_for_ols timeout.
-    if not test_api.OLS_READY and not makereport_called:
-        makereport_called = True
+    if not test_api.OLS_READY and not pytest.makereport_called:
+        pytest.makereport_called = True
         return TestReport(
             "test_wait_for_ols",
             ("", 0, ""),
