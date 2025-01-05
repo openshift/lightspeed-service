@@ -1714,6 +1714,21 @@ def test_tls_config_no_data_provided():
         tls_config.validate_yaml(False)
 
 
+def test_tls_config_no_tls_key_path():
+    """Test the TLSConfig model if tls_key_path is not specified."""
+    tls_config = TLSConfig(
+        {
+            "tls_certificate_path": "tests/config/empty_cert.crt",
+            "tls_key_password_path": "tests/config/password",
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Can not enable TLS without ols_config.tls_config.tls_key_path",
+    ):
+        tls_config.validate_yaml(False)
+
+
 def test_postgres_config_default_values():
     """Test the PostgresConfig model."""
     postgres_config = PostgresConfig()
