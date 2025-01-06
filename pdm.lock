@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:f991566f0563ea26d1e5713e264c247cc24d0c4336a84a589e2a6df314f5162a"
+content_hash = "sha256:c6fc9098d9536dc4c2cc35816d4c1735ae776476556d216308611280141de15d"
 
 [[package]]
 name = "absl-py"
@@ -1484,7 +1484,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.3.10"
+version = "0.3.12"
 requires_python = "<4.0,>=3.9"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1492,17 +1492,17 @@ dependencies = [
     "PyYAML>=5.3",
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
-    "langchain-core<0.4.0,>=0.3.22",
-    "langchain-text-splitters<0.4.0,>=0.3.0",
-    "langsmith<0.2.0,>=0.1.17",
+    "langchain-core<0.4.0,>=0.3.25",
+    "langchain-text-splitters<0.4.0,>=0.3.3",
+    "langsmith<0.3,>=0.1.17",
     "numpy<2,>=1.22.4; python_version < \"3.12\"",
     "pydantic<3.0.0,>=2.7.4",
     "requests<3,>=2",
     "tenacity!=8.4.0,<10,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.3.10-py3-none-any.whl", hash = "sha256:4ae38d4c9f9ec5cd1a16a505b451a57c0aab2807d6c9f8cb5b346d06301b2232"},
-    {file = "langchain-0.3.10.tar.gz", hash = "sha256:aef0f9bdaf4a4d3d50aec348438135987bda1d83070b49f77032f561d3a761d8"},
+    {file = "langchain-0.3.12-py3-none-any.whl", hash = "sha256:581ad93a9de12e4b957bc2af9ba8482eb86e3930e84c4ee20ed677da5e2311cd"},
+    {file = "langchain-0.3.12.tar.gz", hash = "sha256:0d8247afbf37beb263b4adc29f7aa8a5ae83c43a6941894e2f9ba39d5c869e3b"},
 ]
 
 [[package]]
