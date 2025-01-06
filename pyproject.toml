@@ -120,7 +120,7 @@ dependencies = [
     "ibm-watsonx-ai==1.1.25",
     "certifi==2024.8.30",
     "cryptography==44.0.0",
-    "urllib3==2.2.2",
+    "urllib3==2.2.3",
     "nltk==3.9.1",
     "aiohttp==3.11.10",
     "zipp==3.20.1",
