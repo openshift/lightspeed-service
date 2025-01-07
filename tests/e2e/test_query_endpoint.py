@@ -513,7 +513,7 @@ def test_query_with_model_but_not_provider() -> None:
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
-                "model": "ibm/granite-13b-chat-v2",
+                "model": "ibm/granite-3-8b-instruct",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )

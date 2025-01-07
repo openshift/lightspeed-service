@@ -11,7 +11,7 @@ from langchain.prompts import (
 
 from ols.constants import (
     GPT_4O_MINI,
-    GRANITE_13B_CHAT_V2,
+    GRANITE_3_8B_INSTRUCT,
     ModelFamily,
 )
 from ols.src.prompts.prompt_generator import (
@@ -21,7 +21,7 @@ from ols.src.prompts.prompt_generator import (
     restructure_rag_context_pre,
 )
 
-model = [GRANITE_13B_CHAT_V2, GPT_4O_MINI]
+model = [GRANITE_3_8B_INSTRUCT, GPT_4O_MINI]
 
 system_instruction = """
 Answer user queries in the context of openshift.

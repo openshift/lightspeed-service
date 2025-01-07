@@ -1027,7 +1027,7 @@ providers = (
 )
 
 models = (
-    constants.GRANITE_13B_CHAT_V2,
+    constants.GRANITE_3_8B_INSTRUCT,
     constants.GPT35_TURBO,
     constants.GPT_4O_MINI,
     "test",

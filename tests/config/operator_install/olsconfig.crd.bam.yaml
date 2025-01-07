@@ -14,11 +14,11 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: ibm/granite-13b-chat-v2
+          - name: ibm/granite-3-8b-instruct
         name: bam
         type: bam
   ols:
-    defaultModel: ibm/granite-13b-chat-v2
+    defaultModel: ibm/granite-3-8b-instruct
     defaultProvider: bam
     deployment:
       replicas: 1
