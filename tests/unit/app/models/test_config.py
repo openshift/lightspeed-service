@@ -3039,6 +3039,69 @@ def test_query_filter_validation():
         query_filter.validate_yaml()
 
 
+def get_query_filters():
+    """Construct two instances of QueryFilter class."""
+    query_filter_1 = QueryFilter()
+    query_filter_2 = QueryFilter()
+    return query_filter_1, query_filter_2
+
+
+def test_query_filter_equality(subtests):
+    """Test the QueryFilter equality check."""
+    # compare two objects with the same content
+    query_filter_1, query_filter_2 = get_query_filters()
+    assert query_filter_1 == query_filter_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert query_filter_1 != other_value
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: name"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.name = "foo"
+        query_filter_2.name = "bar"
+        assert query_filter_1 != query_filter_2
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: pattern"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.pattern = "foo.*"
+        query_filter_2.pattern = "bar.*"
+        assert query_filter_1 != query_filter_2
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: replace_with"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.replace_with = "-foo-"
+        query_filter_2.replace_with = "-bar-"
+        assert query_filter_1 != query_filter_2
+
+
+def test_query_filter_equality_null_values(subtests):
+    """Test the QueryFilter equality check."""
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: name"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.name = None
+        query_filter_2.name = "bar"
+        assert query_filter_1 != query_filter_2
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: pattern"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.pattern = None
+        query_filter_2.pattern = "bar.*"
+        assert query_filter_1 != query_filter_2
+
+    # compare two objects with different content
+    with subtests.test(msg="Different attribute: replace_with"):
+        query_filter_1, query_filter_2 = get_query_filters()
+        query_filter_1.replace_with = None
+        query_filter_2.replace_with = "-bar-"
+        assert query_filter_1 != query_filter_2
+
+
 def test_authentication_config_validation_proper_config():
     """Test method to validate authentication config."""
     # default module
