@@ -9,6 +9,8 @@ options:
   -p, --process-special-packages
                         Enable or disable processing special packages like torch etc.
   -c, --cleanup         Enable or disable work directory cleanup
+  -f, --filter-packages
+                        Enable or disable filtering packages not compatible with specified platform
   -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
                         Work directory to store files generated during different stages
                         of processing
@@ -43,6 +45,9 @@ from urllib.request import urlretrieve
 
 import requests
 from packaging import tags
+
+# special tags that are supported all the times
+SPECIAL_TAGS = ["py2.py3-none-any", "py3-none-any"]
 
 # just these files are needed as project stub, no other configs and/or sources are needed
 PROJECT_FILES = ("pyproject.toml", "pdm.lock", "LICENSE", "README.md")
@@ -141,6 +146,8 @@ def generate_hash(directory, registry, wheel, target):
 def retrieve_supported_tags():
     """Retrieve all supported tags for the current environment."""
     supported_tags = {str(tag) for tag in tags.sys_tags()}
+    # add tags supported all the times
+    supported_tags.update(SPECIAL_TAGS)
 
     # Print supported tags for the current environment
     print("Supported tags for current environment:")
@@ -150,12 +157,14 @@ def retrieve_supported_tags():
     return supported_tags
 
 
-def filter_hashes(hashes, package_line, supported_tags):
+def filter_hashes_with_supported_tags(hashes, package_line, supported_tags):
     """Filter hashes based on platform and Python version compatibility."""
     package_name, package_version = package_line.split("==")
     package_version = (
         package_version.strip()
     )  # Ensure there's no extra space or backslash
+    filtered_hashes = []
+
     for hash_line in hashes:
         # Extract the hash from the hash line
         match_groups = re.search(r"sha256:(\w+)", hash_line)
@@ -183,16 +192,20 @@ def filter_hashes(hashes, package_line, supported_tags):
                 # Find the best matching tag based on priority
                 common_tags = wheel_tags & supported_tags
                 if common_tags:
-                    best_tag = select_best_tag(common_tags)
-                    print(f"Best tag selected for {file_info['filename']}: {best_tag}")
-                    return hash_value
+                    # register hash
+                    filtered_hashes.append(hash_value)
+
+                    # TODO: this is no longer applicable in multi-arch environments!!!
+                    # best_tag = select_best_tag(common_tags)
+                    # print(f"Best tag selected for {file_info['filename']}: {best_tag}")
+                    # return hash_value
             else:
                 # For source distributions (.tar.gz or .zip),
                 # assume compatibility with all platforms
                 print(f"\nSource distribution {file_info['filename']} is compatible.")
-                return hash_value  # Skip tag matching for source distributions
+                filtered_hashes.append(hash_value)
 
-    return None
+    return filtered_hashes
 
 
 def extract_tags_from_filename(filename):
@@ -256,6 +269,8 @@ def select_best_tag(common_tags):
 
 def get_package_file_info(package_name, package_version, hash_value):
     """Fetch package file information from PyPI for a specific hash."""
+    if "[" in package_name and "]" in package_name:
+        package_name = re.sub("\\[.*\\]", "", package_name)
     url = f"https://pypi.org/pypi/{package_name}/{package_version}/json"
     response = requests.get(url, timeout=60)
     if response.status_code == requests.codes.ok:
@@ -270,10 +285,17 @@ def get_package_file_info(package_name, package_version, hash_value):
 def append_package(outfile, hashes, package_line, supported_tags):
     """Append package with filtered hashes into the output file."""
     if package_line and hashes:
-        filtered_hash = filter_hashes(hashes, package_line, supported_tags)
-        if filtered_hash:
+        filtered_hashes = filter_hashes_with_supported_tags(
+            hashes, package_line, supported_tags
+        )
+        if filtered_hashes:
             outfile.write(f"{package_line} \\\n")
-            outfile.write(f"    --hash=sha256:{filtered_hash}\n")
+            for i, hash_value in enumerate(filtered_hashes):
+                # write all hashes into generated requirements file
+                if i == len(filtered_hashes) - 1:
+                    outfile.write(f"    --hash=sha256:{hash_value}\n")
+                else:
+                    outfile.write(f"    --hash=sha256:{hash_value} \\\n")
         else:
             # If no valid hash was found for this package, issue a warning
             print(f"WARNING: No valid hash found for {package_line}, skipping.")
