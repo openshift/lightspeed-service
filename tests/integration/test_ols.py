@@ -177,7 +177,7 @@ def test_post_question_with_model_but_not_provider(_setup):
         json={
             "conversation_id": conversation_id,
             "query": "test query",
-            "model": constants.GRANITE_13B_CHAT_V2,
+            "model": constants.GRANITE_3_8B_INSTRUCT,
         },
     )
     assert response.status_code == requests.codes.unprocessable

@@ -2,8 +2,7 @@
 
 # Same Provider/Model combination must be used while launching OLS.
 INSCOPE_MODELS = {
-    "bam+ibm/granite-13b-chat-v2": ("bam", "ibm/granite-13b-chat-v2"),
-    "watsonx+ibm/granite-13b-chat-v2": ("watsonx", "ibm/granite-13b-chat-v2"),
+    "bam+ibm/granite-13b-chat-v2": ("bam", "ibm/granite-3-8b-instruct"),
     "watsonx+ibm/granite-3-2b-instruct": ("watsonx", "ibm/granite-3-2b-instruct"),
     "watsonx+ibm/granite-3-8b-instruct": ("watsonx", "ibm/granite-3-8b-instruct"),
     "openai+gpt-4o-mini": ("openai", "gpt-4o-mini"),

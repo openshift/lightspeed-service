@@ -355,7 +355,7 @@ async def main():
         "--model",
         default="local:sentence-transformers/all-mpnet-base-v2",
         help="the valid models are:\
-            - ibm/granite-13b-chat-v2 \
+            - ibm/granite-3-8b-instruct \
             - gpt-3.5-turbo-1106, gpt-3.5-turbo, gpt-4o-mini for openai",
     )
     parser.add_argument(

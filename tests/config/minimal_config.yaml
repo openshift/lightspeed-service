@@ -42,13 +42,13 @@ llm_providers:
       url: "http://localhost:1234"
       credentials_path: tests/config/secret/apitoken
     models:
-      - name: ibm/granite-13b-chat-v2
+      - name: ibm/granite-3-8b-instruct
   - name: my_azure_openai
     type: azure_openai
     url: "https://ols-test.com"
     project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
-      - name: ibm/granite-13b-chat-v2
+      - name: gpt-4o-mini
     azure_openai_config:
       url: "http://localhost:1234"
       deployment_name: "*deployment name*"
@@ -64,7 +64,7 @@ llm_providers:
     url: "http://localhost:8000/v1"
     credentials_path: tests/config/secret/apitoken
     models:
-      - name: granite-13b-chat-v2
+      - name: granite-3-8b-instruct
 ols_config:
   reference_content:
     product_docs_index_path: "tests/config"

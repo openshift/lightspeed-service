@@ -59,7 +59,7 @@ class ModelFamily(StrEnum):
 
 
 # BAM
-GRANITE_13B_CHAT_V2 = "ibm/granite-13b-chat-v2"
+GRANITE_3_8B_INSTRUCT = "ibm/granite-3-8b-instruct"
 
 # OpenAI & Azure OpenAI
 GPT35_TURBO = "gpt-3.5-turbo"
