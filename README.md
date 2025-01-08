@@ -504,6 +504,10 @@ ols_config:
   system_prompt_path: "system_prompts/system_prompt_for_product_XYZZY"
 ```
 
+Additionally an optional string parameter `system_prompt` can be specified in `/v1/query` endpoint to override the configured system prompt. This override mechanism can be used only when the `dev_config.enable_system_prompt_override` configuration options is set to `true` in the service configuration file. Please note that the default value for this option is `false`, so the system prompt cannot be changed. This means, when the `dev_config.enable_system_prompt_override` is set to `false` and `/v1/query` is invoked with the `system_prompt` parameter, the value specified in `system_prompt` parameter is ignored.
+
+
+
 # Usage
 
 ## Deployments
