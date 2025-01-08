@@ -156,7 +156,16 @@ def write_json_to_temp_file(json_data):
 def create_datarouter_config_file(session):
     """Create datarouter config file."""
     project = session.config.getini("rp_project")
-    endpoint = session.config.getini("rp_endpoint").replace("https://", "")
+    assert (
+        project is not None
+    ), "create_datarouter_config_file: 'rp_project' attribute not found in session.config"
+
+    endpoint = session.config.getini("rp_endpoint")
+    assert (
+        endpoint is not None
+    ), "create_datarouter_config_file: 'rp_endpoint' attribute not found in session.config"
+
+    endpoint = endpoint.replace("https://", "")
     launch = session.config.option.rp_name
     launch_desc = session.config.getini("rp_launch_description") or ""
     json_data = {
