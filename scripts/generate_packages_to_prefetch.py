@@ -11,6 +11,9 @@ options:
   -c, --cleanup         Enable or disable work directory cleanup
   -f, --filter-packages
                         Enable or disable filtering packages not compatible with specified platform
+  -a ARCHITECTURES, --architectures ARCHITECTURES
+                        Enable or disable filtering packages by architecture or list of
+                        architectures
   -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
                         Work directory to store files generated during different stages
                         of processing
@@ -41,6 +44,7 @@ import subprocess
 import sys
 import tempfile
 from os.path import join
+from typing import Optional
 from urllib.request import urlretrieve
 
 import requests
@@ -157,7 +161,9 @@ def retrieve_supported_tags():
     return supported_tags
 
 
-def filter_hashes_with_supported_tags(hashes, package_line, supported_tags):
+def filter_hashes_with_supported_tags(
+    hashes, package_line, supported_tags, architectures_to_filter
+):
     """Filter hashes based on platform and Python version compatibility."""
     package_name, package_version = package_line.split("==")
     package_version = (
@@ -178,11 +184,15 @@ def filter_hashes_with_supported_tags(hashes, package_line, supported_tags):
         # Fetch wheel metadata from PyPI
         file_info = get_package_file_info(package_name, package_version, hash_value)
         if file_info:
+            filename = file_info["filename"]
             # Check if the file is a wheel or source distribution
-            if file_info["filename"].endswith(".whl"):
+            if filename.endswith(".whl"):
+                if unwanted_arch(filename, architectures_to_filter):
+                    print(f"WARNING: Unwanted architecture for the wheel {filename}")
+                    continue
                 # Extract the tags directly from the filename
                 # (e.g., "cp310-cp310-manylinux_2_17_x86_64")
-                wheel_tags = extract_tags_from_filename(file_info["filename"])
+                wheel_tags = extract_tags_from_filename(filename)
 
                 # Print tags found in file_info
                 print(f"\nTags for {file_info['filename']} from PyPI:")
@@ -282,11 +292,27 @@ def get_package_file_info(package_name, package_version, hash_value):
     return None
 
 
-def append_package(outfile, hashes, package_line, supported_tags):
+def unwanted_arch(package, architectures) -> bool:
+    """Check if wheel is prepared for any architecture that is to be filtered."""
+    if architectures is None:
+        return False
+    for architecture in architectures:
+        if architecture + ".whl" in package:
+            return True
+    return False
+
+
+def append_package(
+    outfile,
+    hashes,
+    package_line,
+    supported_tags,
+    architectures_to_filter: Optional[list[str]],
+):
     """Append package with filtered hashes into the output file."""
     if package_line and hashes:
         filtered_hashes = filter_hashes_with_supported_tags(
-            hashes, package_line, supported_tags
+            hashes, package_line, supported_tags, architectures_to_filter
         )
         if filtered_hashes:
             outfile.write(f"{package_line} \\\n")
@@ -301,7 +327,9 @@ def append_package(outfile, hashes, package_line, supported_tags):
             print(f"WARNING: No valid hash found for {package_line}, skipping.")
 
 
-def filter_packages_for_platform(input_file: str, output_file: str):
+def filter_packages_for_platform_and_architectures(
+    input_file: str, output_file: str, architectures_to_filter: Optional[list[str]]
+):
     """Filter packages for given platform."""
     supported_tags = retrieve_supported_tags()
     with (
@@ -314,7 +342,13 @@ def filter_packages_for_platform(input_file: str, output_file: str):
             # Check if we are at a package definition line
             if "==" in line:
                 # If we have a previous package, filter its hashes and write it to the file
-                append_package(outfile, hashes, package_line, supported_tags)
+                append_package(
+                    outfile,
+                    hashes,
+                    package_line,
+                    supported_tags,
+                    architectures_to_filter,
+                )
 
                 # Start a new package (clean the trailing continuation character and quotes)
                 package_line = line.strip().rstrip("\\").strip()
@@ -324,11 +358,16 @@ def filter_packages_for_platform(input_file: str, output_file: str):
                 hashes.append(line.strip())
 
         # Handle the last package in the file
-        append_package(outfile, hashes, package_line, supported_tags)
+        append_package(
+            outfile, hashes, package_line, supported_tags, architectures_to_filter
+        )
 
 
 def generate_list_of_packages(
-    work_directory: str, process_special_packages: bool, filter_packages: bool
+    work_directory: str,
+    process_special_packages: bool,
+    filter_packages: bool,
+    architectures_to_filter: Optional[list[str]],
 ):
     """Generate list of packages, take care of unwanted packages and wheel with Torch package."""
     copy_project_stub(work_directory)
@@ -343,10 +382,11 @@ def generate_list_of_packages(
         generate_hash(work_directory, TORCH_REGISTRY, TORCH_WHEEL, "hash.txt")
         shell("cat step2.txt hash.txt > " + REQUIREMENTS_FILE, work_directory)
 
-    if filter_packages:
-        filter_packages_for_platform(
+    if filter_packages or architectures_to_filter is not None:
+        filter_packages_for_platform_and_architectures(
             join(work_directory, REQUIREMENTS_FILE),
             join(work_directory, FILTERED_REQUIREMENTS_FILE),
+            architectures_to_filter,
         )
         # copy the newly generated requirements file back to the project
         shutil.copy(join(work_directory, FILTERED_REQUIREMENTS_FILE), REQUIREMENTS_FILE)
@@ -421,13 +461,31 @@ def args_parser(args: list[str]) -> argparse.Namespace:
         help="Enable or disable filtering packages not compatible with specified platform",
     )
 
+    # flag that enables filtering package SHAs by architecture
+    parser.add_argument(
+        "-a",
+        "--architectures",
+        default=None,
+        action="store",
+        help="Enable or disable filtering packages by architecture or list of architectures",
+    )
+
     # execute parser
     return parser.parse_args()
 
 
+def parse_command_line_arguments(a):
+    """Parse all command line arguments, returning object with all arguments set up."""
+    args = args_parser(sys.argv[1:])
+    if args.architectures is not None:
+        architectures = args.architectures.split(",")
+        args.architectures = [a.strip() for a in architectures]
+    return args
+
+
 def main() -> None:
     """Generate packages to prefetch."""
-    args = args_parser(sys.argv[1:])
+    args = parse_command_line_arguments(sys.argv[1:])
 
     # sanitize work directory
     work_directory = os.path.normpath("/" + args.work_directory)
@@ -438,7 +496,10 @@ def main() -> None:
 
     print(f"Work directory {work_directory}")
     generate_list_of_packages(
-        work_directory, args.process_special_packages, args.filter_packages
+        work_directory,
+        args.process_special_packages,
+        args.filter_packages,
+        args.architectures,
     )
     generate_packages_to_be_build(work_directory)
 
