@@ -138,13 +138,37 @@ is part of a CI job that verifies sources.
 
 ### Linters
 
-_Ruff_ tool is used as a linter. There are a bunch of linter rules enabled for this repository. All of them are specified in `pyproject.toml` in section `[tool.ruff]`. Some specific rules can be disabled using `ignore` parameter (empty now). List of all linters recognized by Ruff can be retrieved by:
+_Ruff_ and _Pylint_ tools are used as linters. There are a bunch of linter rules enabled for this repository. All of them are specified in `pyproject.toml` in sections `[tool.ruff]` and `[tool.pylint."MESSAGES CONTROL"]`. Some specific rules can be disabled using `ignore` parameter (empty now).
+
+List of all _Ruff_ rules recognized by Ruff can be retrieved by:
+
 
 ```
 ruff linter
 ```
 
-Description of all rules are available on https://docs.astral.sh/ruff/rules/
+Description of all _Ruff_ rules are available on https://docs.astral.sh/ruff/rules/
+
+Ruff rules can be disabled in source code (for given line or block) by using special `noqa` comment line. For example:
+
+```python
+# noqa: E501
+```
+
+List of all _Pylint_ rules can be retrieved by:
+
+```
+pylint --list-msgs
+```
+
+Description of all rules are available on https://pylint.readthedocs.io/en/latest/user_guide/checkers/features.html
+
+To disable _Pylint_ rule in source code, the comment line in following format can be used:
+
+```python
+# pylint: disable=C0415
+```
+
 
 
 ### Security checks
