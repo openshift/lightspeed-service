@@ -16,6 +16,7 @@ from ols.app.models.models import (
     ReferencedDocument,
     StatusResponse,
 )
+from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from ols.utils import suid
 
 
@@ -33,6 +34,8 @@ class TestLLM:
         assert llm_request.conversation_id is None
         assert llm_request.provider is None
         assert llm_request.model is None
+        assert llm_request.attachments is None
+        assert llm_request.media_type == "text/plain"
 
     @staticmethod
     def test_llm_request_optional_inputs():
@@ -92,6 +95,22 @@ class TestLLM:
         assert llm_response.response == response
         assert llm_response.referenced_documents == referenced_documents
         assert not llm_response.truncated
+
+    @staticmethod
+    def test_media_type():
+        """Test the media_type field of the LLMRequest model."""
+        query = "irrelevant"
+
+        media_type = MEDIA_TYPE_TEXT
+        llm_request = LLMRequest(query=query, media_type=media_type)
+        assert llm_request.media_type == media_type
+
+        media_type = MEDIA_TYPE_JSON
+        llm_request = LLMRequest(query=query, media_type=media_type)
+        assert llm_request.media_type == media_type
+
+        with pytest.raises(ValidationError, match="Invalid media type: 'unknown'"):
+            LLMRequest(query=query, media_type="unknown")
 
 
 class TestStatusResponse:

@@ -88,6 +88,89 @@
                 }
             }
         },
+        "/v1/streaming_query": {
+            "post": {
+                "tags": [
+                    "streaming_query"
+                ],
+                "summary": "Conversation Request",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The incoming request containing query details.\n    auth: The authentication context, provided by dependency injection.\n\nReturns:\n    StreamingResponse: The streaming response generated for the query.",
+                "operationId": "conversation_request_v1_streaming_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LLMRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Query is valid and stream/events from endpoint is returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string",
+                                    "title": "Response 200 Conversation Request V1 Streaming Query Post"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Query can not be validated, LLM is not accessible or other internal error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback/status": {
             "get": {
                 "tags": [
@@ -579,6 +662,18 @@
                             }
                         ],
                         "title": "Attachments"
+                    },
+                    "media_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Media Type",
+                        "default": "text/plain"
                     }
                 },
                 "additionalProperties": false,
@@ -587,7 +682,7 @@
                     "query"
                 ],
                 "title": "LLMRequest",
-                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -608,6 +703,7 @@
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "media_type": "text/plain",
                         "model": "gpt-4o-mini",
                         "provider": "openai",
                         "query": "write a deployment yaml for the mongodb image",
