@@ -49,7 +49,7 @@ pytest.metrics_client: Client = None
 OLS_READY = False
 
 
-def setup_module(module):
+def pytest_runtest_setup(item: pytest.Item) -> None:
     """Set up common artifacts used by all e2e tests."""
     global OLS_READY  # pylint: disable=W0603
     provider = os.getenv("PROVIDER")
