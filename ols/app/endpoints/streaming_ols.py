@@ -332,8 +332,12 @@ async def response_processing_wrapper(
             idx += 1
     except PromptTooLongError as summarizer_error:
         yield prompt_too_long_error(summarizer_error, media_type)
+        return  # stop execution after error
+
     except Exception as summarizer_error:
         yield generic_llm_error(summarizer_error, media_type)
+        return  # stop execution after error
+
     timestamps["generate response"] = time.time()
 
     store_data(
