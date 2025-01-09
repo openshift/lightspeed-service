@@ -5,9 +5,6 @@
 import pytest
 
 from ols.constants import (
-    GPT35_TURBO,
-    GPT_4O_MINI,
-    GRANITE_3_8B_INSTRUCT,
     PROVIDER_AZURE_OPENAI,
     PROVIDER_BAM,
     PROVIDER_OPENAI,
@@ -19,12 +16,12 @@ from ols.src.prompts.prompt_generator import GeneratePrompt
 
 # providers and models used by parametrized benchmarks
 provider_and_model = (
-    (PROVIDER_BAM, GRANITE_3_8B_INSTRUCT),
-    (PROVIDER_OPENAI, GPT_4O_MINI),
-    (PROVIDER_WATSONX, GRANITE_3_8B_INSTRUCT),
-    (PROVIDER_AZURE_OPENAI, GPT_4O_MINI),
-    (PROVIDER_RHOAI_VLLM, GPT35_TURBO),
-    (PROVIDER_RHELAI_VLLM, GPT35_TURBO),
+    (PROVIDER_BAM, "some-granite-model"),
+    (PROVIDER_OPENAI, "some-gpt-model"),
+    (PROVIDER_WATSONX, "some-granite-model"),
+    (PROVIDER_AZURE_OPENAI, "some-gpt-model"),
+    (PROVIDER_RHOAI_VLLM, "some-granite-model"),
+    (PROVIDER_RHELAI_VLLM, "some-granite-model"),
 )
 
 

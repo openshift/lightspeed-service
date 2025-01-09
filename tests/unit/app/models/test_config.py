@@ -1026,18 +1026,10 @@ providers = (
     constants.PROVIDER_RHELAI_VLLM,
 )
 
-models = (
-    constants.GRANITE_3_8B_INSTRUCT,
-    constants.GPT35_TURBO,
-    constants.GPT_4O_MINI,
-    "test",
-)
-
 
 @pytest.mark.parametrize("provider_name", providers)
-@pytest.mark.parametrize("model_name", models)
-def test_provider_model_specific_tokens_limit(provider_name, model_name):
-    """Test if the model specific token limits are set as default."""
+def test_provider_model_default_tokens_limit(provider_name):
+    """Test if the token limits are set as default when not set."""
     # provider config with attributes 'blended' for all providers
     provider_config = ProviderConfig(
         {
@@ -1048,7 +1040,7 @@ def test_provider_model_specific_tokens_limit(provider_name, model_name):
             "project_id": 42,
             "models": [
                 {
-                    "name": model_name,
+                    "name": "test_model_name",
                 }
             ],
         }
@@ -1056,16 +1048,12 @@ def test_provider_model_specific_tokens_limit(provider_name, model_name):
     # expected token limit for given model, default is used if not set.
     expected_limit = constants.DEFAULT_CONTEXT_WINDOW_SIZE
 
-    assert provider_config.models[model_name].context_window_size == expected_limit
-    if model_name == "test":
-        assert (
-            provider_config.models[model_name].context_window_size
-            == constants.DEFAULT_CONTEXT_WINDOW_SIZE
-        )
+    assert (
+        provider_config.models["test_model_name"].context_window_size == expected_limit
+    )
 
 
-@pytest.mark.parametrize("model_name", models)
-def test_provider_config_explicit_tokens(model_name):
+def test_provider_config_explicit_tokens():
     """Test the ProviderConfig model when explicit tokens are specified."""
     # Note: context window should be >= 1024 (default) response token limit
     context_window_size = 1025
@@ -1079,7 +1067,7 @@ def test_provider_config_explicit_tokens(model_name):
             "project_id": "test_project_id",
             "models": [
                 {
-                    "name": model_name,
+                    "name": "test_model_name",
                     "url": "http://test.url/",
                     "credentials_path": "tests/config/secret/apitoken",
                     "context_window_size": context_window_size,
@@ -1087,7 +1075,10 @@ def test_provider_config_explicit_tokens(model_name):
             ],
         }
     )
-    assert provider_config.models[model_name].context_window_size == context_window_size
+    assert (
+        provider_config.models["test_model_name"].context_window_size
+        == context_window_size
+    )
 
 
 def test_provider_config_improper_context_window_size_value():
