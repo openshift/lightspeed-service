@@ -5,112 +5,112 @@ arches:
 - arch: x86_64
   packages:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libnsl2-2.0.0-1.el9.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 33287
     checksum: sha256:052f7a182180528ba6e3c4378e5dcfb84640594a3e2e7bbe4f0167381e824ce0
     name: libnsl2
     evr: 2.0.0-1.el9
     sourcerpm: libnsl2-2.0.0-1.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libxcrypt-compat-4.4.18-3.el9.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 93189
     checksum: sha256:2bd6c288e1970a001d3a1ae69166c0d926d9c87ce892edcb2110f4e142c12a7a
     name: libxcrypt-compat
     evr: 4.4.18-3.el9
     sourcerpm: libxcrypt-4.4.18-3.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/m/mpdecimal-2.5.1-3.el9.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 89670
     checksum: sha256:89a8c9951ac56bed2caa1adbcba349c021af1134b6e2df3fc0a8a60577a4f54d
     name: mpdecimal
     evr: 2.5.1-3.el9
     sourcerpm: mpdecimal-2.5.1-3.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-3.11.9-7.el9_5.2.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 30525
     checksum: sha256:3791dbf6ab5a10ad6504852bd1c8c5afb1247e527555bc7e2fcffbcff5bff17c
     name: python3.11
     evr: 3.11.9-7.el9_5.2
     sourcerpm: python3.11-3.11.9-7.el9_5.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-devel-3.11.9-7.el9_5.2.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 289425
     checksum: sha256:76ef39af1f34db22c5c5c8597ec899d4c51b37aef7e85d36c6ac628e1ef8ecf5
     name: python3.11-devel
     evr: 3.11.9-7.el9_5.2
     sourcerpm: python3.11-3.11.9-7.el9_5.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-libs-3.11.9-7.el9_5.2.x86_64.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 10721348
     checksum: sha256:9280ee7526222782dade6efdcdd559d77446bff4f39b9b41f11371974e0ddf74
     name: python3.11-libs
     evr: 3.11.9-7.el9_5.2
     sourcerpm: python3.11-3.11.9-7.el9_5.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-pip-22.3.1-5.el9.noarch.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 3358530
     checksum: sha256:c5c12f2941e65ea36b645ea215a62883fcfafc45931f0370153fecf752bde885
     name: python3.11-pip
     evr: 22.3.1-5.el9
     sourcerpm: python3.11-pip-22.3.1-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-pip-wheel-22.3.1-5.el9.noarch.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 1490893
     checksum: sha256:c7c531cbc553b7cbec0a3a61ed396aede78ec663ff77a118a60829b9505383ab
     name: python3.11-pip-wheel
     evr: 22.3.1-5.el9
     sourcerpm: python3.11-pip-22.3.1-5.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-setuptools-65.5.1-3.el9.noarch.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 1800394
     checksum: sha256:beae6c2ed08b28236462f282ad5a6b79bb320bc30be551621beb81df5ed10a08
     name: python3.11-setuptools
     evr: 65.5.1-3.el9
     sourcerpm: python3.11-setuptools-65.5.1-3.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/p/python3.11-setuptools-wheel-65.5.1-3.el9.noarch.rpm
-    repoid: ubi-9-appstream-rpms
+    repoid: ubi-9-for-x86_64-appstream-rpms
     size: 732455
     checksum: sha256:1c62d47b95503b00ba45db358d2611d94575a579e47fcaa0ce134ae21b4509de
     name: python3.11-setuptools-wheel
     evr: 65.5.1-3.el9
     sourcerpm: python3.11-setuptools-65.5.1-3.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/e/expat-2.5.0-3.el9_5.1.x86_64.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 121783
     checksum: sha256:e9b4eb1c8a2ca7787a8ffea53b2a86533a1eb6aea72f05919c2748cd63dad32a
     name: expat
     evr: 2.5.0-3.el9_5.1
     sourcerpm: expat-2.5.0-3.el9_5.1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libpkgconf-1.7.3-10.el9.x86_64.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 38387
     checksum: sha256:4feae5941b73640bd86b8d506a657cac5b770043db1464fbcd207721b2159dda
     name: libpkgconf
     evr: 1.7.3-10.el9
     sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libtirpc-1.3.3-9.el9.x86_64.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 98934
     checksum: sha256:f82cd69dc3aac881d5b574930c7d274687054cb5b03d3a8e3affa7bbcd5950b1
     name: libtirpc
     evr: 1.3.3-9.el9
     sourcerpm: libtirpc-1.3.3-9.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-1.7.3-10.el9.x86_64.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 45675
     checksum: sha256:bb47b4ecc499c308f41031a99e723827d152d5d750f59849d0c265d820944a26
     name: pkgconf
     evr: 1.7.3-10.el9
     sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-m4-1.7.3-10.el9.noarch.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 16054
     checksum: sha256:91bafd6e06099451f60288327b275cfcc651822f6145176a157c6b0fa5131e02
     name: pkgconf-m4
     evr: 1.7.3-10.el9
     sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/p/pkgconf-pkg-config-1.7.3-10.el9.x86_64.rpm
-    repoid: ubi-9-baseos-rpms
+    repoid: ubi-9-for-x86_64-baseos-rpms
     size: 12438
     checksum: sha256:9a502d81d73d3303ceb53a06ad7ce525c97117ea64352174a33708bf3429283d
     name: pkgconf-pkg-config
