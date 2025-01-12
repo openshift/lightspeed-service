@@ -2,7 +2,13 @@
 
 from langchain_core.outputs.llm_result import LLMResult
 
-from ols.app.metrics import GenericTokenCounter
+from ols import config
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+
+from ols.app.metrics import GenericTokenCounter  # noqa:E402
 
 
 class MockLLM:
