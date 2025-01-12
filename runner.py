@@ -23,7 +23,7 @@ def load_index():
     """Load the index."""
     # accessing the config's rag_index property will trigger the loading
     # of the index
-    config.rag_index # pylint: disable=W0104, E0606
+    config.rag_index  # pylint: disable=W0104, E0606
 
 
 if __name__ == "__main__":
