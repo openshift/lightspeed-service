@@ -101,6 +101,16 @@ class GenericTokenCounter(BaseCallbackHandler):
         """Compute tokens count for given input text."""
         return len(self.token_handler.text_to_tokens(text))
 
+    def __str__(self) -> str:
+        """Textual representation of GenericTokenCounter instance."""
+        return (
+            f"{self.__class__.__name__}: "
+            + f"input_tokens: {self.input_tokens} "
+            + f"output_tokens: {self.output_tokens} "
+            + f"counted: {self.input_tokens_counted} "
+            + f"LLM calls: {self.llm_calls}"
+        )
+
 
 class TokenMetricUpdater:
     """A context manager to update token metrics in a callback handler.
