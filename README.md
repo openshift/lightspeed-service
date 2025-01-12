@@ -49,6 +49,7 @@ configure model, and connect to it.
     * [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
     * [10. TLS security profiles](#10-tls-security-profiles)
     * [11. Fine tuning](#11-fine-tuning)
+    * [12. Configuration dump](#12-configuration-dump)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -62,6 +63,8 @@ configure model, and connect to it.
         * [Metrics](#metrics)
         * [Gradio UI](#gradio-ui)
         * [Swagger UI](#swagger-ui-1)
+        * [CPU profiling](#cpu-profiling)
+        * [Memory profiling](#memory-profiling)
     * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
 * [Project structure](#project-structure)
     * [Overall architecture](#overall-architecture)
@@ -506,6 +509,12 @@ ols_config:
 
 Additionally an optional string parameter `system_prompt` can be specified in `/v1/query` endpoint to override the configured system prompt. This override mechanism can be used only when the `dev_config.enable_system_prompt_override` configuration options is set to `true` in the service configuration file. Please note that the default value for this option is `false`, so the system prompt cannot be changed. This means, when the `dev_config.enable_system_prompt_override` is set to `false` and `/v1/query` is invoked with the `system_prompt` parameter, the value specified in `system_prompt` parameter is ignored.
 
+
+## 12. Configuration dump
+
+It is possible to dump the actual configuration into a JSON file for further processing. The generated configuration file will contain all the configuration attributes, including keys etc., so keep the output file in a secret.
+
+In order to dump the configuration, pass `--dump-config` command line option.
 
 
 # Usage
