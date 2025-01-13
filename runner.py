@@ -44,6 +44,11 @@ if __name__ == "__main__":
     )
     config.reload_from_yaml_file(cfg_file)
 
+    if "--dump-config" in sys.argv:
+        with open("olsconfig.json", "w") as fout:
+            fout.write(config.config.json())
+        sys.exit()
+
     logger = logging.getLogger("ols")
     configure_logging(config.ols_config.logging_config)
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
