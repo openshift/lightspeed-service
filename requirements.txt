@@ -1188,8 +1188,10 @@ nvidia-cuda-nvrtc-cu12==12.4.127 \
 nvidia-cuda-runtime-cu12==12.4.127 \
     --hash=sha256:64403288fa2136ee8e467cdc9c9427e0434110899d07c779f25b5c068934faa5
     # via torch
-nvidia-cudnn-cu12==9.1.0.70 \
-    --hash=sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f
+nvidia-cudnn-cu12==9.6.0.74 \
+    --hash=sha256:6a6466301b5ab1f0d8e62b14cdd02a714158f32f70ee99892218bec661e76595 \
+    --hash=sha256:7ce9c6a738b151f9e4d0a8716bdd73181a6bf28cc841d6525915c6980837667e \
+    --hash=sha256:cb700ea574ba8ffdbf9381fed2cdfa0b1847852c3811fb5f0d998d8d47a1cf1a
     # via torch
 nvidia-cufft-cu12==11.2.1.3 \
     --hash=sha256:f083fc24912aa410be21fa16d157fed2055dab1cc4b6934a0e03cba69eb242b9
