@@ -1,0 +1,75 @@
+skin rose
+
+header requirements.txt file generation
+
+footer Copyright © 2025 Red Hat, Inc. Author: Pavel Tisnovsky
+
+@startditaa
+
+
++------------------+
+|                  |
+| pyproject.toml   |
+| cFF9{d}          |
++--------+---------+
+         |
+         | dependencies
+         | with versions
+         | specified
+         v
++------------------+
+| pdm lock         |
+| cGRE             |
++--------+---------+
+         |
+         | generates lock file
+         | all packages+versions
+         | + names and hashes 
+         v
++------------------+
+|                  |
+| pdm.lock         |
+| cF99{d}          |
++--------+---------+
+         |
+         | dependencies
+         | with versions
+         | specified
+         v
++------------------+
+| pip compile      |
+| cGRE             |
++--------+---------+
+         |
+         | generates
+         | requirements.txt
+         | with hashes
+         v
++------------------+
+|                  |
+| requirements.txt |
+| cF99{d}          |
++--------+---------+
+         |
+         | filtering
+         |
+         v
++------------------+
+| generate package |
+| to prefetch      |
+| cGRE             |
++--------+---------+
+         |
+         | filter packages
+         | for given platform
+         | and/or architecture
+         v
++------------------+
+|                  |
+| requirements.txt |
+| cFF9{d}          |
++------------------+
+
+@endditaa
+
+
