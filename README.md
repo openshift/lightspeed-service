@@ -604,7 +604,10 @@ curl -X 'POST' 'http://127.0.0.1:8080/v1/query' -H 'accept: application/json' -H
 
 ### Swagger UI
 
-Web page with Swagger UI has the standard `/docs` endpoint. If the service is running on localhost on port 8080, Swagger UI can be accessed on address `http://localhost:8080/docs`.
+Web page with Swagger UI has the standard `/docs` endpoint. If the service is running on localhost on port 8080, Swagger UI can be accessed on the address `http://localhost:8080/docs`.
+
+It is also possible to access Redoc page with three-panel, responsive layout. This page uses `/redoc` endpoint. Again, if the service is running on localhost on port 8080, Redoc UI can be accessed on the address `http://localhost:8080/redoc`.
+
 
 ### OpenAPI
 
