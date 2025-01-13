@@ -1,5 +1,7 @@
 """Utility function for retrieving SSL version and list of ciphers for TLS secutiry profile."""
 
+# ruff: noqa:A005
+
 import logging
 from typing import Optional
 
