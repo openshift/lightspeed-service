@@ -45,7 +45,7 @@ if __name__ == "__main__":
     config.reload_from_yaml_file(cfg_file)
 
     if "--dump-config" in sys.argv:
-        with open("olsconfig.json", "w") as fout:
+        with open("olsconfig.json", "w", encoding="utf-8") as fout:
             fout.write(config.config.json())
         sys.exit()
 
