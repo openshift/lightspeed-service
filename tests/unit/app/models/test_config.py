@@ -3282,6 +3282,7 @@ def test_dev_config_defaults():
     assert dev_config.k8s_auth_token is None
     assert dev_config.run_on_localhost is False
     assert dev_config.enable_system_prompt_override is False
+    assert dev_config.uvicorn_port_number is None
 
 
 def get_dev_configs():

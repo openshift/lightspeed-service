@@ -113,6 +113,7 @@ dev_config:
   disable_tls: true
   pyroscope_url: "https://pyroscope.pyroscope.svc.cluster.local:4040"
   enable_system_prompt_override: true
+  # uvicorn_port_number: 8081
   # llm_params:
   #   temperature_override: 0
   # k8s_auth_token: optional_token_when_no_available_kube_config
