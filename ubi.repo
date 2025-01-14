@@ -1,70 +1,62 @@
-[ubi-9-baseos-rpms]
+[ubi-9-for-x86_64-baseos-rpms]
 name = Red Hat Universal Base Image 9 (RPMs) - BaseOS
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/os
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os
 enabled = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-baseos-debug-rpms]
+[ubi-9-for-x86_64-baseos-debug-rpms]
 name = Red Hat Universal Base Image 9 (Debug RPMs) - BaseOS
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/debug
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/debug
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-baseos-source]
+[ubi-9-for-x86_64-baseos-source-rpms]
 name = Red Hat Universal Base Image 9 (Source RPMs) - BaseOS
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/source/SRPMS
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-appstream-rpms]
+[ubi-9-for-x86_64-appstream-rpms]
 name = Red Hat Universal Base Image 9 (RPMs) - AppStream
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/os
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os
 enabled = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-appstream-debug-rpms]
+[ubi-9-for-x86_64-appstream-debug-rpms]
 name = Red Hat Universal Base Image 9 (Debug RPMs) - AppStream
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/debug
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/debug
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-appstream-source]
+[ubi-9-for-x86_64-appstream-source-rpms]
 name = Red Hat Universal Base Image 9 (Source RPMs) - AppStream
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/source/SRPMS
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/source/SRPMS
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-codeready-builder-rpms]
+[codeready-builder-for-ubi-9-x86_64-rpms]
 name = Red Hat Universal Base Image 9 (RPMs) - CodeReady Builder
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/os
-enabled = 0
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-gpgcheck = 1
-
-[ubi-9-codeready-builder]
-name = Red Hat Universal Base Image 9 (RPMs) - CodeReady Builder
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/os
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/codeready-builder/os
 enabled = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-
-[ubi-9-codeready-builder-debug-rpms]
+[codeready-builder-for-ubi-9-x86_64-debug-rpms]
 name = Red Hat Universal Base Image 9 (Debug RPMs) - CodeReady Builder
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/debug
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/codeready-builder/debug
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 
-[ubi-9-codeready-builder-source]
+[codeready-builder-for-ubi-9-x86_64-source-rpms]
 name = Red Hat Universal Base Image 9 (Source RPMs) - CodeReady Builder
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/source/SRPMS
+baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/codeready-builder/source/SRPMS
 enabled = 0
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
