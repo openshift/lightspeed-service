@@ -978,6 +978,7 @@ class DevConfig(BaseModel):
     k8s_auth_token: Optional[str] = None
     run_on_localhost: bool = False
     enable_system_prompt_override: bool = False
+    uvicorn_port_number: Optional[int] = None
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
