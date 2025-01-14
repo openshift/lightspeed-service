@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import requests
 
+from ols import config
 from ols.src.ui.gradio_ui import GradioUI
 from ols.utils.logging_configurator import LoggingConfig, configure_logging
 
@@ -26,6 +27,29 @@ def test_gradio_ui_constructor():
     assert ui is not None
     assert ui.ols_url == url
     assert ui.conversation_id == conversation_id
+
+    assert len(ui.ui.additional_inputs) == 3
+    assert ui.ui.additional_inputs[0].label == "Use history"
+    assert ui.ui.additional_inputs[1].label == "Provider"
+    assert ui.ui.additional_inputs[2].label == "Model"
+
+
+def test_gradio_ui_prompt_override_enabled():
+    """Test if GradioUI is able to create text area for system prompt."""
+    url = "locahost:8080"
+    conversation_id = "01234567-89ab-cdef-0123-456789abcdef"
+    config.dev_config.enable_system_prompt_override = True
+
+    ui = GradioUI(ols_url=url, conversation_id=conversation_id)
+    assert ui is not None
+    assert ui.ols_url == url
+    assert ui.conversation_id == conversation_id
+
+    assert len(ui.ui.additional_inputs) == 4
+    assert ui.ui.additional_inputs[0].label == "Use history"
+    assert ui.ui.additional_inputs[1].label == "Provider"
+    assert ui.ui.additional_inputs[2].label == "Model"
+    assert ui.ui.additional_inputs[3].label == "System prompt"
 
 
 def test_chat_ui_handler_ok_response(caplog):
