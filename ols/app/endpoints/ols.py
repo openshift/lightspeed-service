@@ -89,6 +89,8 @@ def conversation_request(
         timestamps,
     ) = process_request(auth, llm_request)
 
+    summarizer_response: SummarizerResponse | Generator
+
     if not valid:
         summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
@@ -98,7 +100,7 @@ def conversation_request(
     else:
         summarizer_response = generate_response(
             conversation_id, llm_request, previous_input
-        )  # type: ignore[assignment]
+        )
 
     timestamps["generate response"] = time.time()
 
@@ -362,13 +364,13 @@ def generate_response(
     except Exception as summarizer_error:
         logger.error("Error while obtaining answer for user question")
         logger.exception(summarizer_error)
-        status_code, response, cause = errors_parsing.parse_generic_llm_error(  # type: ignore[assignment]
+        status_code, response_text, cause = errors_parsing.parse_generic_llm_error(
             summarizer_error
         )
         raise HTTPException(
             status_code=status_code,
             detail={
-                "response": response,
+                "response": response_text,
                 "cause": cause,
             },
         )
