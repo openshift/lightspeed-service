@@ -196,6 +196,11 @@ def test_list_after_delete(cache):
     assert conversation_id_1 not in conversations
 
 
+def test_ready(cache):
+    """Test if in memory cache always report ready."""
+    assert cache.ready()
+
+
 improper_user_uuids = [
     None,
     "",
