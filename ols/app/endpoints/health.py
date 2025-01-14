@@ -66,6 +66,13 @@ def index_is_ready() -> bool:
     return True
 
 
+def cache_is_ready() -> bool:
+    """Check if the cache is ready."""
+    if config.conversation_cache is None:
+        return False
+    return config.conversation_cache.ready()
+
+
 get_readiness_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Service is ready",
@@ -97,6 +104,15 @@ def readiness_probe_get_method() -> ReadinessResponse:
                 "cause": "LLM is not ready",
             },
         )
+    if not cache_is_ready():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "response": "Service is not ready",
+                "cause": "Cache is not ready",
+            },
+        )
+
     return ReadinessResponse(ready=True, reason="service is ready")
 
 

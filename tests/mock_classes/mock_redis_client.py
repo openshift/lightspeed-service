@@ -41,3 +41,7 @@ class MockRedisClient:
         assert isinstance(value, (str, bytes, int, float))
 
         self.cache[key] = value
+
+    def ping(self):
+        """Return PONG."""
+        return "PONG"
