@@ -45,12 +45,10 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
         PROVIDER_FAKE,
     }
 )
-
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
 
+
 # models
-
-
 class ModelFamily(StrEnum):
     """Different LLM models family/group."""
 
@@ -219,3 +217,7 @@ DEFAULT_CONFIGURATION_FILE = "olsconfig.yaml"
 # Environment variable containing configuration file name to override default
 # configuration file
 CONFIGURATION_FILE_NAME_ENV_VARIABLE = "OLS_CONFIG_FILE"
+
+# Response streaming media types
+MEDIA_TYPE_TEXT = "text/plain"
+MEDIA_TYPE_JSON = "application/json"
