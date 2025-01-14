@@ -32,7 +32,7 @@ import csv
 import logging
 import sys
 
-import pygsheets
+import pygsheets  # pylint: disable=E0401
 
 logger = logging.getLogger("CSV uploader")
 
