@@ -89,11 +89,15 @@ class TestLLM:
             response=response,
             referenced_documents=referenced_documents,
             truncated=False,
+            input_tokens=123,
+            output_tokens=456,
         )
 
         assert llm_response.conversation_id == conversation_id
         assert llm_response.response == response
         assert llm_response.referenced_documents == referenced_documents
+        assert llm_response.input_tokens == 123
+        assert llm_response.output_tokens == 456
         assert not llm_response.truncated
 
     @staticmethod

@@ -32,6 +32,8 @@ def test_invalid_question():
         json_response = response.json()
         assert json_response["conversation_id"] == cid
         assert json_response["referenced_documents"] == []
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
         assert not json_response["truncated"]
         # LLM shouldn't answer non-ocp queries or
         # at least acknowledges that query is non-ocp.
@@ -60,6 +62,8 @@ def test_invalid_question_without_conversation_id():
         json_response = response.json()
         assert json_response["referenced_documents"] == []
         assert json_response["truncated"] is False
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
         # Query classification is disabled by default,
         # and we rely on the model (controlled by prompt) to reject non-ocp queries.
         # Randomness in response is expected.
@@ -226,6 +230,8 @@ def test_valid_question() -> None:
             json_response["response"],
             re.IGNORECASE,
         )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
 
 
 @pytest.mark.rag

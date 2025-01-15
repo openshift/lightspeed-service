@@ -175,12 +175,16 @@ class LLMResponse(BaseModel):
         referenced_documents: The optional URLs and titles for the documents used
                               to generate the response.
         truncated: Set to True if conversation history was truncated to be within context window.
+        input_tokens: Number of tokens sent to LLM
+        output_tokens: Number of tokens received from LLM
     """
 
     conversation_id: str
     response: str
     referenced_documents: list[ReferencedDocument]
     truncated: bool
+    input_tokens: int
+    output_tokens: int
 
     # provides examples for /docs endpoint
     model_config = {
@@ -197,6 +201,8 @@ class LLMResponse(BaseModel):
                         },
                     ],
                     "truncated": False,
+                    "input_tokens": 123,
+                    "output_tokens": 456,
                 }
             ]
         }

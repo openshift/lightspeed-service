@@ -7,7 +7,7 @@ streaming queries.
 import json
 import logging
 import time
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -29,6 +29,7 @@ from ols.app.models.models import (
     RagChunk,
     ReferencedDocument,
     SummarizerResponse,
+    TokenCounter,
     UnauthorizedResponse,
 )
 from ols.constants import MEDIA_TYPE_TEXT
@@ -138,13 +139,16 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(ref_docs: list[dict], truncated: bool, media_type: str) -> str:
+def stream_end_event(
+    ref_docs: list[dict], truncated: bool, media_type: str, token_counter: TokenCounter
+) -> str:
     """Yield the end of the data stream.
 
     Args:
         ref_docs: Referenced documents.
         truncated: Indicates if the history was truncated.
         media_type: Media type of the response (e.g. text or JSON).
+        token_counter: Token counter for the whole stream.
     """
     if media_type == constants.MEDIA_TYPE_JSON:
         return json.dumps(
@@ -153,6 +157,12 @@ def stream_end_event(ref_docs: list[dict], truncated: bool, media_type: str) -> 
                 "data": {
                     "referenced_documents": ref_docs,
                     "truncated": truncated,
+                    "input_tokens": (
+                        0 if token_counter is None else token_counter.input_tokens
+                    ),
+                    "output_tokens": (
+                        0 if token_counter is None else token_counter.output_tokens
+                    ),
                 },
             }
         )
@@ -320,11 +330,14 @@ async def response_processing_wrapper(
     rag_chunks = []
     history_truncated = False
     idx = 0
+    token_counter: Optional[TokenCounter] = None
+
     try:
         async for item in generator:
             if isinstance(item, SummarizerResponse):
                 rag_chunks = item.rag_chunks
                 history_truncated = item.history_truncated
+                token_counter = item.token_counter
                 break
 
             response += item
@@ -354,7 +367,7 @@ async def response_processing_wrapper(
     )
 
     yield stream_end_event(
-        build_referenced_docs(rag_chunks), history_truncated, media_type
+        build_referenced_docs(rag_chunks), history_truncated, media_type, token_counter
     )
 
     timestamps["add references"] = time.time()

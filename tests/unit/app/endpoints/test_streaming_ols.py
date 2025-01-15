@@ -14,7 +14,7 @@ from ols.app.endpoints.streaming_ols import (
     stream_end_event,
     stream_start_event,
 )
-from ols.app.models.models import RagChunk
+from ols.app.models.models import RagChunk, TokenCounter
 from ols.utils import suid
 
 conversation_id = suid.get_suid()
@@ -98,12 +98,12 @@ def test_stream_end_event():
     truncated = False
 
     assert (
-        stream_end_event(ref_docs, truncated, constants.MEDIA_TYPE_TEXT)
+        stream_end_event(ref_docs, truncated, constants.MEDIA_TYPE_TEXT, None)
         == "\n\n---\n\ntitle_1: doc_url_1"
     )
 
     assert stream_end_event(
-        ref_docs, truncated, constants.MEDIA_TYPE_JSON
+        ref_docs, truncated, constants.MEDIA_TYPE_JSON, None
     ) == json.dumps(
         {
             "event": "end",
@@ -112,6 +112,25 @@ def test_stream_end_event():
                     {"doc_title": "title_1", "doc_url": "doc_url_1"}
                 ],
                 "truncated": truncated,
+                "input_tokens": 0,
+                "output_tokens": 0,
+            },
+        }
+    )
+
+    token_counter = TokenCounter(input_tokens=123, output_tokens=456)
+    assert stream_end_event(
+        ref_docs, truncated, constants.MEDIA_TYPE_JSON, token_counter
+    ) == json.dumps(
+        {
+            "event": "end",
+            "data": {
+                "referenced_documents": [
+                    {"doc_title": "title_1", "doc_url": "doc_url_1"}
+                ],
+                "truncated": truncated,
+                "input_tokens": 123,
+                "output_tokens": 456,
             },
         }
     )
