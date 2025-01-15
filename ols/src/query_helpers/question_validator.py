@@ -80,9 +80,9 @@ class QuestionValidator(QueryHelper):
             llm=bare_llm,
             provider=provider_config.type,
             model=self.model,
-        ) as token_counter:
+        ) as generic_token_counter:
             response = llm_chain.invoke(
-                input={"query": query}, config={"callbacks": [token_counter]}
+                input={"query": query}, config={"callbacks": [generic_token_counter]}
             )
         clean_response = str(response["text"]).strip()
 

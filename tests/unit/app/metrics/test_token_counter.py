@@ -24,41 +24,41 @@ def test_on_llm_start():
     llm = MockLLM()
 
     # initialize new token counter
-    token_counter = GenericTokenCounter(llm)
+    generic_token_counter = GenericTokenCounter(llm)
 
     # a beginning the counters should be zeroed
-    assert token_counter.llm_calls == 0
-    assert token_counter.input_tokens_counted == 0
+    assert generic_token_counter.token_counter.llm_calls == 0
+    assert generic_token_counter.token_counter.input_tokens_counted == 0
 
     # check the textual representation as well
     expected = (
         "GenericTokenCounter: input_tokens: 0 output_tokens: 0 counted: 0 LLM calls: 0"
     )
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected
 
     # token count for empty input
-    token_counter.on_llm_start({}, [])
+    generic_token_counter.on_llm_start({}, [])
 
     # token counter needs to be zero as mocked LLM does not process anything
-    assert token_counter.llm_calls == 1
-    assert token_counter.input_tokens_counted == 0
+    assert generic_token_counter.token_counter.llm_calls == 1
+    assert generic_token_counter.token_counter.input_tokens_counted == 0
 
     # check the textual representation as well
     expected = (
         "GenericTokenCounter: input_tokens: 0 output_tokens: 0 counted: 0 LLM calls: 1"
     )
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected
 
     # now the prompt will be tokenized into 5 tokens
-    token_counter.on_llm_start({}, ["this is just a test"])
-    assert token_counter.llm_calls == 2
-    assert token_counter.input_tokens_counted == 5
+    generic_token_counter.on_llm_start({}, ["this is just a test"])
+    assert generic_token_counter.token_counter.llm_calls == 2
+    assert generic_token_counter.token_counter.input_tokens_counted == 5
 
     # check the textual representation as well
     expected = (
         "GenericTokenCounter: input_tokens: 0 output_tokens: 0 counted: 5 LLM calls: 2"
     )
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected
 
 
 class MockResult:
@@ -91,39 +91,39 @@ def test_on_llm_end():
     llm = MockLLM()
 
     # initialize new token counter
-    token_counter = GenericTokenCounter(llm)
-    assert token_counter.input_tokens == 0
-    assert token_counter.output_tokens == 0
+    generic_token_counter = GenericTokenCounter(llm)
+    assert generic_token_counter.token_counter.input_tokens == 0
+    assert generic_token_counter.token_counter.output_tokens == 0
 
     # check the textual representation as well
     expected = (
         "GenericTokenCounter: input_tokens: 0 output_tokens: 0 counted: 0 LLM calls: 0"
     )
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected
 
     # empty response
     response = MockLLMResult([])
-    token_counter.on_llm_end(response)
+    generic_token_counter.on_llm_end(response)
 
     # for empty response, counters should not change
-    assert token_counter.input_tokens == 0
-    assert token_counter.output_tokens == 0
+    assert generic_token_counter.token_counter.input_tokens == 0
+    assert generic_token_counter.token_counter.output_tokens == 0
 
     # check the textual representation as well
     expected = (
         "GenericTokenCounter: input_tokens: 0 output_tokens: 0 counted: 0 LLM calls: 0"
     )
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected
 
     # non-empty response
     x = MockResult(10, 20)
     response = MockLLMResult([x])
-    token_counter.on_llm_end(response)
+    generic_token_counter.on_llm_end(response)
 
     # for non-empty response, counters should change
-    assert token_counter.input_tokens == 10
-    assert token_counter.output_tokens == 20
+    assert generic_token_counter.token_counter.input_tokens == 10
+    assert generic_token_counter.token_counter.output_tokens == 20
 
     # check the textual representation as well
     expected = "GenericTokenCounter: input_tokens: 10 output_tokens: 20 counted: 0 LLM calls: 0"
-    assert str(token_counter) == expected
+    assert str(generic_token_counter) == expected

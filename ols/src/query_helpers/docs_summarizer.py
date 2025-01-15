@@ -143,10 +143,10 @@ class DocsSummarizer(QueryHelper):
             llm=self.bare_llm,
             provider=self.provider_config.type,
             model=self.model,
-        ) as token_counter:
+        ) as generic_token_counter:
             summary = chat_engine.invoke(
                 input=llm_input_values,
-                config={"callbacks": [token_counter]},
+                config={"callbacks": [generic_token_counter]},
             )
 
         # retrieve text response returned from LLM, strip whitespace characters from beginning/end
@@ -155,7 +155,9 @@ class DocsSummarizer(QueryHelper):
         # Recently watsonx/granite-13b started adding stop token to response.
         response = response.replace("<|endoftext|>", "")
 
-        return SummarizerResponse(response, rag_chunks, truncated)
+        return SummarizerResponse(
+            response, rag_chunks, truncated, generic_token_counter.token_counter
+        )
 
     async def generate_response(
         self,
@@ -172,10 +174,10 @@ class DocsSummarizer(QueryHelper):
             llm=self.bare_llm,
             provider=self.provider_config.type,
             model=self.model,
-        ) as token_counter:
+        ) as generic_token_counter:
             async for chunk in self.bare_llm.astream(
                 final_prompt.format_prompt(**llm_input_values).to_messages(),
-                config={"callbacks": [token_counter]},
+                config={"callbacks": [generic_token_counter]},
             ):
                 # TODO: it is bad to have provider specific code here
                 # the reason we have provider classes is to hide specific
@@ -188,4 +190,4 @@ class DocsSummarizer(QueryHelper):
                     chunk_content = chunk_content.replace("<|endoftext|>", "")
                 yield chunk_content
 
-        yield SummarizerResponse("", rag_chunks, truncated)  # type: ignore[misc]
+        yield SummarizerResponse("", rag_chunks, truncated, generic_token_counter.token_counter)  # type: ignore[misc]

@@ -92,10 +92,12 @@ def conversation_request(
     summarizer_response: SummarizerResponse | Generator
 
     if not valid:
+        # response containing info about query that can not be validated
         summarizer_response = SummarizerResponse(
             constants.INVALID_QUERY_RESP,
             [],
             False,
+            None,
         )
     else:
         summarizer_response = generate_response(
