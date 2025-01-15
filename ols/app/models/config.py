@@ -767,13 +767,13 @@ class LoggingConfig(BaseModel):
     suppress_metrics_in_log: bool = False
     suppress_auth_checks_warning_in_log: bool = False
 
-    def __init__(self, **data: Optional[dict]) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize configuration and perform basic validation."""
         # convert input strings (level names, eg. debug/info,...) to
         # logging level names (integer values) for defined model fields
         for field in filter(lambda x: x.endswith("_log_level"), self.model_fields):
             if field in data:
-                data[field] = checks.get_log_level(data[field])  # type: ignore[assignment]
+                data[field] = checks.get_log_level(data[field])
         super().__init__(**data)
 
 
@@ -1007,12 +1007,12 @@ class UserDataCollectorConfig(BaseModel):
     ingress_env: Literal["stage", "prod"] = "prod"
     cp_offline_token: Optional[str] = None
 
-    def __init__(self, **data: Optional[dict]) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize configuration."""
         # convert input strings (level names, eg. debug/info,...) to
         # logging level name (integer values)
         if "log_level" in data:
-            data["log_level"] = checks.get_log_level(data["log_level"])  # type: ignore[assignment]
+            data["log_level"] = checks.get_log_level(data["log_level"])
         super().__init__(**data)
 
     @model_validator(mode="after")
