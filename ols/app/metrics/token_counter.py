@@ -7,6 +7,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.llms.base import LLM
 from langchain_core.outputs.llm_result import LLMResult
 
+from ols.app.models.models import TokenCounter
 from ols.utils.token_handler import TokenHandler
 
 from .metrics import llm_calls_total, llm_token_received_total, llm_token_sent_total
@@ -18,9 +19,10 @@ logger = logging.getLogger(__name__)
 class GenericTokenCounter(BaseCallbackHandler):
     """A callback handler to count tokens sent and received by the LLM.
 
-    It provides 3 counters:
+    It provides 3 counters via TokenCounter dataclass stored as an attribute:
     - input_tokens: number of tokens sent to LLM
     - output_tokens: number of tokens received from LLM
+    - input_tokens_counted: number of input tokens counted by the handler
     - llm_calls: number of LLM calls
 
     Example usage:
@@ -52,21 +54,18 @@ class GenericTokenCounter(BaseCallbackHandler):
         Args:
             llm: The LLM instance.
         """
-        self.llm = llm  # LLM instance
-        self.input_tokens = 0  # number of tokens sent to LLM
-        self.output_tokens = 0  # number of tokens received from LLM
-        self.input_tokens_counted = 0  # number of input tokens counted by the handler
-        self.llm_calls = 0  # number of LLM calls
+        self.token_counter = TokenCounter()
+        self.token_counter.llm = llm  # actual LLM instance
         self.token_handler = TokenHandler()  # used for counting input and output tokens
 
     def on_llm_start(
         self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
     ) -> None:
         """Run when LLM starts running."""
-        self.llm_calls += 1
-        self.input_tokens_counted = 0
+        self.token_counter.llm_calls += 1
+        self.token_counter.input_tokens_counted = 0
         for p in prompts:
-            self.input_tokens_counted += self.tokens_count(p)
+            self.token_counter.input_tokens_counted += self.tokens_count(p)
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Run when LLM completes running."""
@@ -80,22 +79,22 @@ class GenericTokenCounter(BaseCallbackHandler):
                     input_tokens_llm_reported += token_usage["prompt_tokens"]
 
                 if "completion_tokens" in token_usage:
-                    self.output_tokens += token_usage["completion_tokens"]
+                    self.token_counter.output_tokens += token_usage["completion_tokens"]
                 else:
                     # fallback to token counting if counter is not provided by LLM
                     text = r.generations[0][0].text
-                    self.output_tokens += self.tokens_count(text)
+                    self.token_counter.output_tokens += self.tokens_count(text)
 
             else:
                 # fallback to token counting if LLM does not return token_usage metadata
                 text = r.generations[0][0].text
-                self.output_tokens += self.tokens_count(text)
+                self.token_counter.output_tokens += self.tokens_count(text)
 
         # override the input tokens count if we have a value from LLM response
         if input_tokens_llm_reported > 0:
-            self.input_tokens += input_tokens_llm_reported
+            self.token_counter.input_tokens += input_tokens_llm_reported
         else:
-            self.input_tokens += self.input_tokens_counted
+            self.token_counter.input_tokens += self.token_counter.input_tokens_counted
 
     def tokens_count(self, text: str) -> int:
         """Compute tokens count for given input text."""
@@ -105,10 +104,10 @@ class GenericTokenCounter(BaseCallbackHandler):
         """Textual representation of GenericTokenCounter instance."""
         return (
             f"{self.__class__.__name__}: "
-            + f"input_tokens: {self.input_tokens} "
-            + f"output_tokens: {self.output_tokens} "
-            + f"counted: {self.input_tokens_counted} "
-            + f"LLM calls: {self.llm_calls}"
+            + f"input_tokens: {self.token_counter.input_tokens} "
+            + f"output_tokens: {self.token_counter.output_tokens} "
+            + f"counted: {self.token_counter.input_tokens_counted} "
+            + f"LLM calls: {self.token_counter.llm_calls}"
         )
 
 
@@ -160,11 +159,11 @@ class TokenMetricUpdater:
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         """Update the metrics when exiting the context."""
         llm_calls_total.labels(provider=self.provider, model=self.model).inc(
-            self.token_counter.llm_calls
+            self.token_counter.token_counter.llm_calls
         )
         llm_token_sent_total.labels(provider=self.provider, model=self.model).inc(
-            self.token_counter.input_tokens
+            self.token_counter.token_counter.input_tokens
         )
         llm_token_received_total.labels(provider=self.provider, model=self.model).inc(
-            self.token_counter.output_tokens
+            self.token_counter.token_counter.output_tokens
         )

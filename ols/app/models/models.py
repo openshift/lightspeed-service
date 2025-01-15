@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from typing import Optional, Self
 
+from langchain.llms.base import LLM
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
@@ -526,6 +527,25 @@ class RagChunk:
 
 
 @dataclass
+class TokenCounter:
+    """Model representing token counter.
+
+    Attributes:
+        llm: LLM instance
+        input_tokens: number of tokens sent to LLM
+        output_tokens: number of tokens received from LLM
+        input_tokens_counted: number of input tokens counted by the handler
+        llm_calls: number of LLM calls
+    """
+
+    llm: Optional[LLM] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    input_tokens_counted: int = 0
+    llm_calls: int = 0
+
+
+@dataclass
 class SummarizerResponse:
     """Model representing a response from the summarizer.
 
@@ -533,11 +553,13 @@ class SummarizerResponse:
         response: The response from the summarizer.
         rag_chunks: The RAG chunks.
         history_truncated: Whether the history was truncated.
+        token_counter: Input and output tokens counters.
     """
 
     response: str
     rag_chunks: list[RagChunk]
     history_truncated: bool
+    token_counter: Optional[TokenCounter]
 
 
 class CacheEntry(BaseModel):

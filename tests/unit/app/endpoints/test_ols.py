@@ -635,6 +635,7 @@ def test_conversation_request(
         response=mock_response,
         rag_chunks=[],
         history_truncated=False,
+        token_counter=None,
     )
     llm_request = LLMRequest(query="Tell me about Kubernetes")
     response = ols.conversation_request(llm_request, auth)
@@ -685,6 +686,7 @@ def test_conversation_request_dedup_ref_docs(
         response="some response",
         rag_chunks=mock_rag_chunk,
         history_truncated=False,
+        token_counter=None,
     )
     llm_request = LLMRequest(query="some query")
     response = ols.conversation_request(llm_request, auth)
@@ -758,6 +760,7 @@ def test_no_question_validation_in_follow_up_conversation(mock_summarize, auth):
         "some elaborate answer",
         [],
         False,
+        token_counter=None,
     )
     conversation_id = suid.get_suid()
     query = "some elaborate question"
@@ -794,6 +797,7 @@ def test_generate_response_valid_subject(mock_summarize):
         mock_response,
         [],
         False,
+        token_counter=None,
     )
 
     # prepare arguments for DocsSummarizer
@@ -867,7 +871,7 @@ def test_transcripts_are_not_stored_when_disabled(transcripts_location, auth):
         ),
         patch(
             "ols.app.endpoints.ols.generate_response",
-            return_value=SummarizerResponse("something", [], False),
+            return_value=SummarizerResponse("something", [], False, None),
         ),
         patch(
             "ols.app.endpoints.ols.store_conversation_history",
