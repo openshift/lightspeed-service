@@ -731,6 +731,14 @@
                     "truncated": {
                         "type": "boolean",
                         "title": "Truncated"
+                    },
+                    "input_tokens": {
+                        "type": "integer",
+                        "title": "Input Tokens"
+                    },
+                    "output_tokens": {
+                        "type": "integer",
+                        "title": "Output Tokens"
                     }
                 },
                 "type": "object",
@@ -738,13 +746,17 @@
                     "conversation_id",
                     "response",
                     "referenced_documents",
-                    "truncated"
+                    "truncated",
+                    "input_tokens",
+                    "output_tokens"
                 ],
                 "title": "LLMResponse",
-                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.",
+                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.\n    input_tokens: Number of tokens sent to LLM\n    output_tokens: Number of tokens received from LLM",
                 "examples": [
                     {
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "input_tokens": 123,
+                        "output_tokens": 456,
                         "referenced_documents": [
                             {
                                 "docs_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html",

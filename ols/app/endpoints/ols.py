@@ -139,6 +139,16 @@ def conversation_request(
         response=summarizer_response.response,
         referenced_documents=referenced_documents,
         truncated=summarizer_response.history_truncated,
+        input_tokens=(
+            0
+            if summarizer_response.token_counter is None
+            else summarizer_response.token_counter.input_tokens
+        ),
+        output_tokens=(
+            0
+            if summarizer_response.token_counter is None
+            else summarizer_response.token_counter.output_tokens
+        ),
     )
 
 
