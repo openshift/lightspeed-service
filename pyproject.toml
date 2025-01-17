@@ -45,12 +45,12 @@ dev = [
     "fastparquet",  # Required for model evaluation (runtime, if parquet qna file is used)
     "httpx",
     "mypy",
-    "packaging==24.1",
-    "pytest==8.3.2",
-    "pytest-cov==5.0.0",
-    "pytest-asyncio==0.24.0",
+    "packaging",
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
     "pydantic==2.9.2",
-    "rouge-score==0.1.2",  # Required for model evaluation
+    "rouge-score",  # Required for model evaluation
     "ruff==0.8.0",
     "bandit==1.7.9",
     "types-requests==2.32.0.20240622",
