@@ -49,7 +49,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
-    "pydantic==2.9.2",
+    "pydantic",
     "rouge-score",  # Required for model evaluation
     "ruff==0.8.0",
     "bandit==1.7.9",
@@ -65,7 +65,7 @@ dev = [
     "pytest-subtests",
     "build",
     "twine",
-    "pylint==3.3.2",
+    "pylint",
 ]
 
 # The following section is needed only for torch[cpu] variant on Linux,
