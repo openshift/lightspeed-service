@@ -13,10 +13,6 @@ target-version = "py311"
 lint.pydocstyle.convention = "google"
 line-length = 100
 
-[tool.pdm.version]
-source = "file"
-path = "ols/version.py"
-
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
 fail_under = 90
@@ -37,45 +33,25 @@ exclude_dirs = ["tests", "scripts"]
 
 [tool.pdm]
 distribution = true
+[tool.pdm.version]
+source = "file"
+path = "ols/version.py"
 
-[tool.pdm.dev-dependencies]
-dev = [
-    "black",
-    "pydocstyle",
-    "fastparquet",  # Required for model evaluation (runtime, if parquet qna file is used)
-    "httpx",
-    "mypy",
-    "packaging",
-    "pytest",
-    "pytest-cov",
-    "pytest-asyncio",
-    "pydantic",
-    "rouge-score",  # Required for model evaluation
-    "ruff==0.8.0",
-    "bandit==1.7.9",
-    "types-requests",
-    "gradio",
-    "boto3",
-    "pyroscope-io",
-    "memray",
-    "reportportal-client",
-    "pytest-reportportal",
-    "pytest-benchmark[histogram]>=4.0.0",
-    "typing-extensions",
-    "pytest-subtests",
-    "build",
-    "twine",
-    "pylint",
-]
-
-# The following section is needed only for torch[cpu] variant on Linux,
-# because this variant need to be downloaded from external link, not from
-# standard Python package index:
-#
-# [[tool.pdm.source]]
-# type = "find_links"
-# url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
-# name = "torch"
+[tool.pdm.scripts]
+start = "pdm run make run"
+test = "pdm run make test"
+test-unit = "pdm run make test-unit"
+test-integration = "pdm run make test-integration"
+test-e2e = "pdm run make test-e2e"
+coverage-report = "pdm run make coverage-report"
+unit-tests-coverage-report = "pdm run make unit-tests-coverage-report"
+integration-tests-coverage-report = "pdm run make integration-tests-coverage-report"
+check-types = "pdm run make check-types"
+generate-schema = "pdm run make schema"
+security-check = "pdm run make security-check"
+benchmarks = "pdm run make benchmarks"
+requirements = "pdm run make requirements.txt"
+version = "pdm run make print-version"
 
 
 [build-system]
@@ -142,25 +118,40 @@ license = {file = "LICENSE"}
 Homepage = "https://github.com/openshift/lightspeed-service"
 Issues = "https://github.com/openshift/lightspeed-service/issues"
 
-[tool.pdm.scripts]
-start = "pdm run make run"
-test = "pdm run make test"
-test-unit = "pdm run make test-unit"
-test-integration = "pdm run make test-integration"
-test-e2e = "pdm run make test-e2e"
-coverage-report = "pdm run make coverage-report"
-unit-tests-coverage-report = "pdm run make unit-tests-coverage-report"
-integration-tests-coverage-report = "pdm run make integration-tests-coverage-report"
-check-types = "pdm run make check-types"
-generate-schema = "pdm run make schema"
-security-check = "pdm run make security-check"
-benchmarks = "pdm run make benchmarks"
-requirements = "pdm run make requirements.txt"
-version = "pdm run make print-version"
-
 [tool.setuptools]
 packages = ["ols"]
 
 [tool.pylint."MESSAGES CONTROL"]
 good-names = ["e"]
 disable = ["C0301", "C0302", "E0602", "E0611", "E1101", "R0902", "R0903", "R0913", "R0914", "W0102", "W0212", "W0511", "W0613", "W0621", "W0707", "W0718", "W0719", "R0801", "R0917"]
+
+[dependency-groups]
+dev = [
+    "black",
+    "pydocstyle",
+    "fastparquet",
+    "httpx",
+    "mypy",
+    "packaging",
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "pydantic",
+    "rouge-score",
+    "ruff==0.8.0",
+    "bandit==1.7.9",
+    "types-requests",
+    "gradio",
+    "boto3",
+    "pyroscope-io",
+    "memray",
+    "reportportal-client",
+    "pytest-reportportal",
+    "pytest-benchmark[histogram]>=4.0.0",
+    "typing-extensions",
+    "pytest-subtests",
+    "build",
+    "twine",
+    "pylint",
+    "matplotlib>=3.10.0",
+]
