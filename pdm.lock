@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:d934991b551c5f79e0a28d6971be855736034820210721d01fa3c235fe65da65"
+content_hash = "sha256:a01f68093ee23fcad05d1d0ee523f6c74728c8737ebf6548ad7aeba779b954e9"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.8"
@@ -236,7 +236,7 @@ version = "1.2.0"
 requires_python = ">=3.8"
 summary = "Backport of CPython tarfile module"
 groups = ["dev"]
-marker = "python_version < \"3.12\""
+marker = "(platform_machine != \"ppc64le\" and platform_machine != \"s390x\") and python_version < \"3.12\""
 files = [
     {file = "backports.tarfile-1.2.0-py3-none-any.whl", hash = "sha256:77e284d754527b01fb1e6fa8a1afe577858ebe4e9dad8919e34c862cb399bc34"},
     {file = "backports_tarfile-1.2.0.tar.gz", hash = "sha256:d75e02c268746e1b8144c278978b6e98e85de6ad16f8e4b0844a154557eca991"},
@@ -479,7 +479,7 @@ version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
 groups = ["default", "dev"]
-marker = "platform_system == \"Windows\" or os_name == \"nt\" or sys_platform == \"win32\""
+marker = "platform_system == \"Windows\" or sys_platform == \"win32\" or os_name == \"nt\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -1275,6 +1275,7 @@ version = "3.4.0"
 requires_python = ">=3.8"
 summary = "Utility functions for Python class constructs"
 groups = ["dev"]
+marker = "platform_machine != \"ppc64le\" and platform_machine != \"s390x\""
 dependencies = [
     "more-itertools",
 ]
@@ -1289,6 +1290,7 @@ version = "6.0.1"
 requires_python = ">=3.8"
 summary = "Useful decorators and context managers"
 groups = ["dev"]
+marker = "platform_machine != \"ppc64le\" and platform_machine != \"s390x\""
 dependencies = [
     "backports-tarfile; python_version < \"3.12\"",
 ]
@@ -1303,6 +1305,7 @@ version = "4.1.0"
 requires_python = ">=3.8"
 summary = "Functools like those found in stdlib"
 groups = ["dev"]
+marker = "platform_machine != \"ppc64le\" and platform_machine != \"s390x\""
 dependencies = [
     "more-itertools",
 ]
@@ -1317,7 +1320,7 @@ version = "0.8.0"
 requires_python = ">=3.7"
 summary = "Low-level, pure Python DBus protocol wrapper."
 groups = ["dev"]
-marker = "sys_platform == \"linux\""
+marker = "(platform_machine != \"ppc64le\" and platform_machine != \"s390x\") and sys_platform == \"linux\""
 files = [
     {file = "jeepney-0.8.0-py3-none-any.whl", hash = "sha256:c0a454ad016ca575060802ee4d590dd912e35c122fa04e70306de3d076cce755"},
     {file = "jeepney-0.8.0.tar.gz", hash = "sha256:5efe48d255973902f6badc3ce55e2aa6c5c3b3bc642059ef3a91247bcfcc5806"},
@@ -1424,6 +1427,7 @@ version = "25.6.0"
 requires_python = ">=3.9"
 summary = "Store and access your passwords safely."
 groups = ["dev"]
+marker = "platform_machine != \"ppc64le\" and platform_machine != \"s390x\""
 dependencies = [
     "SecretStorage>=3.2; sys_platform == \"linux\"",
     "importlib-metadata>=4.11.4; python_version < \"3.12\"",
@@ -2053,6 +2057,7 @@ version = "10.5.0"
 requires_python = ">=3.8"
 summary = "More routines for operating on iterables, beyond itertools"
 groups = ["dev"]
+marker = "platform_machine != \"ppc64le\" and platform_machine != \"s390x\""
 files = [
     {file = "more-itertools-10.5.0.tar.gz", hash = "sha256:5482bfef7849c25dc3c6dd53a6173ae4795da2a41a80faea6700d9f5846c5da6"},
     {file = "more_itertools-10.5.0-py3-none-any.whl", hash = "sha256:037b0d3203ce90cca8ab1defbbdac29d5f993fc20131f3664dc8d6acfa872aef"},
@@ -3189,35 +3194,33 @@ files = [
 
 [[package]]
 name = "pytest-reportportal"
-version = "5.4.1"
+version = "5.4.7"
 summary = "Agent for Reporting results of tests to the Report Portal"
 groups = ["dev"]
 dependencies = [
     "aenum>=3.1.0",
     "dill>=0.3.6",
     "pytest>=3.8.0",
-    "reportportal-client~=5.5.4",
-    "requests>=2.28.0",
+    "reportportal-client~=5.5.10",
 ]
 files = [
-    {file = "pytest-reportportal-5.4.1.tar.gz", hash = "sha256:5af38667cb922695a0c73fdab472cdc75a9d9be255b51053b354d8f1a5a49d33"},
-    {file = "pytest_reportportal-5.4.1-py2.py3-none-any.whl", hash = "sha256:77503398d19044e62faa392792b92944e8846b40d0983d6b82e02eb52cafa512"},
+    {file = "pytest_reportportal-5.4.7-py2.py3-none-any.whl", hash = "sha256:9ac17a19e39a3839b0b0ffb3d75bd2f309aa906456ca1368693aa9c2820e713a"},
+    {file = "pytest_reportportal-5.4.7.tar.gz", hash = "sha256:0bda05ef674d934ac423d62c5c494970b68de1a0cfc13453a6e2efe4c9bd9ef8"},
 ]
 
 [[package]]
 name = "pytest-subtests"
-version = "0.13.1"
-requires_python = ">=3.7"
+version = "0.14.1"
+requires_python = ">=3.9"
 summary = "unittest subTest() support and subtests fixture"
 groups = ["dev"]
 dependencies = [
     "attrs>=19.2.0",
-    "pytest>=7.0",
-    "typing-extensions; python_version < \"3.8\"",
+    "pytest>=7.4",
 ]
 files = [
-    {file = "pytest_subtests-0.13.1-py3-none-any.whl", hash = "sha256:ab616a22f64cd17c1aee65f18af94dbc30c444f8683de2b30895c3778265e3bd"},
-    {file = "pytest_subtests-0.13.1.tar.gz", hash = "sha256:989e38f0f1c01bc7c6b2e04db7d9fd859db35d77c2c1a430c831a70cbf3fde2d"},
+    {file = "pytest_subtests-0.14.1-py3-none-any.whl", hash = "sha256:e92a780d98b43118c28a16044ad9b841727bd7cb6a417073b38fd2d7ccdf052d"},
+    {file = "pytest_subtests-0.14.1.tar.gz", hash = "sha256:350c00adc36c3aff676a66135c81aed9e2182e15f6c3ec8721366918bbbf7580"},
 ]
 
 [[package]]
@@ -3287,7 +3290,7 @@ version = "0.2.3"
 requires_python = ">=3.6"
 summary = "A (partial) reimplementation of pywin32 using ctypes/cffi"
 groups = ["dev"]
-marker = "sys_platform == \"win32\""
+marker = "(platform_machine != \"ppc64le\" and platform_machine != \"s390x\") and sys_platform == \"win32\""
 files = [
     {file = "pywin32-ctypes-0.2.3.tar.gz", hash = "sha256:d162dc04946d704503b2edc4d55f3dba5c1d539ead017afa00142c38b9885755"},
     {file = "pywin32_ctypes-0.2.3-py3-none-any.whl", hash = "sha256:8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8"},
@@ -3393,18 +3396,18 @@ files = [
 
 [[package]]
 name = "reportportal-client"
-version = "5.5.6"
+version = "5.5.10"
 summary = "Python client for ReportPortal v5."
 groups = ["dev"]
 dependencies = [
     "aenum",
-    "aiohttp>=3.8.3",
-    "certifi>=2023.7.22",
-    "requests>=2.28.0",
+    "aiohttp>=3.8.6",
+    "certifi>=2024.8.30",
+    "requests>=2.31.0",
 ]
 files = [
-    {file = "reportportal-client-5.5.6.tar.gz", hash = "sha256:10a5099a84b9f1acb768393110f6466aade8c738ac66dd5ed22c921b37745152"},
-    {file = "reportportal_client-5.5.6-py2.py3-none-any.whl", hash = "sha256:dabde0857a8ea2b1ebfbe655caaaec6d2bda17b3b457a90171bc1252780f1a08"},
+    {file = "reportportal_client-5.5.10-py2.py3-none-any.whl", hash = "sha256:245c2997933cec5244d01193113aa6e3f04b7161dc9bc20664614cc93216552d"},
+    {file = "reportportal_client-5.5.10.tar.gz", hash = "sha256:b453e811dc7ed333ff0da5ea4ddc7aac752b8d5a5f3cc00411e767198e688bd4"},
 ]
 
 [[package]]
@@ -3661,7 +3664,7 @@ version = "3.3.3"
 requires_python = ">=3.6"
 summary = "Python bindings to FreeDesktop.org Secret Service API"
 groups = ["dev"]
-marker = "sys_platform == \"linux\""
+marker = "(platform_machine != \"ppc64le\" and platform_machine != \"s390x\") and sys_platform == \"linux\""
 dependencies = [
     "cryptography>=2.0",
     "jeepney>=0.6",
@@ -4115,14 +4118,14 @@ files = [
 
 [[package]]
 name = "twine"
-version = "5.1.1"
+version = "6.0.1"
 requires_python = ">=3.8"
 summary = "Collection of utilities for publishing packages on PyPI"
 groups = ["dev"]
 dependencies = [
-    "importlib-metadata>=3.6",
-    "keyring>=15.1",
-    "pkginfo<1.11",
+    "importlib-metadata>=3.6; python_version < \"3.10\"",
+    "keyring>=15.1; platform_machine != \"ppc64le\" and platform_machine != \"s390x\"",
+    "packaging",
     "pkginfo>=1.8.1",
     "readme-renderer>=35.0",
     "requests-toolbelt!=0.9.0,>=0.8.0",
@@ -4132,8 +4135,8 @@ dependencies = [
     "urllib3>=1.26.0",
 ]
 files = [
-    {file = "twine-5.1.1-py3-none-any.whl", hash = "sha256:215dbe7b4b94c2c50a7315c0275d2258399280fbb7d04182c7e55e24b5f93997"},
-    {file = "twine-5.1.1.tar.gz", hash = "sha256:9aa0825139c02b3434d913545c7b847a21c835e11597f5255842d457da2322db"},
+    {file = "twine-6.0.1-py3-none-any.whl", hash = "sha256:9c6025b203b51521d53e200f4a08b116dee7500a38591668c6a6033117bdc218"},
+    {file = "twine-6.0.1.tar.gz", hash = "sha256:36158b09df5406e1c9c1fb8edb24fc2be387709443e7376689b938531582ee27"},
 ]
 
 [[package]]
