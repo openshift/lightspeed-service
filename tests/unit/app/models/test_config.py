@@ -2275,6 +2275,110 @@ def test_ols_config_with_tls_security_profile(tmpdir):
     )
 
 
+def get_ols_configs():
+    """Construct two instances of OLSConfig class."""
+    ols_config_1 = OLSConfig()
+    ols_config_2 = OLSConfig()
+    return ols_config_1, ols_config_2
+
+
+def test_ols_config_equality(subtests):
+    """Check the equality operator of OLSConfig class."""
+    # default configurations
+    ols_config_1, ols_config_2 = get_ols_configs()
+
+    # compare the same configs
+    assert ols_config_1 == ols_config_2
+
+    # compare two objects with different content (attributes)
+
+    # system_prompt attribute (str)
+    with subtests.test(msg="Different attribute: system_prompt"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.system_prompt = "new system prompt"
+        assert ols_config_1 != ols_config_2
+
+    # system_prompt_path attribute (str)
+    with subtests.test(msg="Different attribute: system_prompt_path"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.system_prompt_path = "foo"
+        assert ols_config_1 != ols_config_2
+
+    # default_provider attribute (str)
+    with subtests.test(msg="Different attribute: default_provider"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.default_provider = "my_own_provider"
+        assert ols_config_1 != ols_config_2
+
+    # default_model attribute (str)
+    with subtests.test(msg="Different attribute: default_model"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.default_model = "my_own_model"
+        assert ols_config_1 != ols_config_2
+
+    # certificate_directory attribute (str/dir)
+    with subtests.test(msg="Different attribute: certificate_directory"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.certificate_directory = "/dev/none"
+        assert ols_config_1 != ols_config_2
+
+    # max_workers attribute (int)
+    with subtests.test(msg="Different attribute: max_workers"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.max_workers = 42
+        assert ols_config_1 != ols_config_2
+
+    # expire_llm_is_ready_persistent_state attribute (int)
+    with subtests.test(msg="Different attribute: expire_llm_is_ready_persistent_state"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.expire_llm_is_ready_persistent_state = 42
+        assert ols_config_1 != ols_config_2
+
+    # logging_config attribute (LoggingConfig)
+    with subtests.test(msg="Different attribute: logging_config"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.logging_config = LoggingConfig()
+        assert ols_config_1 != ols_config_2
+
+    # reference_content attribute (ReferenceContent)
+    with subtests.test(msg="Different attribute: reference_content"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.reference_content = ReferenceContent()
+        assert ols_config_1 != ols_config_2
+
+    # authentication_config attribute (AuthenticationConfig)
+    with subtests.test(msg="Different attribute: authentication_config"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.authentication_config = AuthenticationConfig(
+            skip_tls_verification=True
+        )
+        assert ols_config_1 != ols_config_2
+
+    # tls_config attribute (TLSConfig)
+    with subtests.test(msg="Different attribute: tls_config"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.tls_config = TLSConfig(
+            {
+                "tls_certificate_path": "tests/config/empty_cert.crt",
+                "tls_key_path": "tests/config/key",
+                "tls_key_password_path": "tests/config/password",
+            }
+        )
+        assert ols_config_1 != ols_config_2
+
+    # conversation_cache attribute (ConversationCacheConfig)
+    with subtests.test(msg="Different attribute: conversation_cache_config"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.conversation_cache = ConversationCacheConfig()
+        assert ols_config_1 != ols_config_2
+
+    # tls_security_profile attribute (TLSSecurityProfile)
+    with subtests.test(msg="Different attribute: conversation_cache_config"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.tls_security_profile = TLSSecurityProfile()
+        assert ols_config_1 != ols_config_2
+
+
 def test_config():
     """Test the Config model of the Global service configuration."""
     config = Config(
