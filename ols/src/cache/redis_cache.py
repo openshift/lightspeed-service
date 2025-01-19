@@ -8,8 +8,10 @@ import redis
 from redis.backoff import ExponentialBackoff
 from redis.exceptions import (
     BusyLoadingError,
-    ConnectionError,  # noqa: A004
     RedisError,
+)
+from redis.exceptions import (
+    ConnectionError as RedisConnectionError,
 )
 from redis.retry import Retry
 
@@ -52,7 +54,7 @@ class RedisCache(Cache):
 
         retry_on_error: Optional[list[type[RedisError]]] = None
         if config.retry_on_error:
-            retry_on_error = [BusyLoadingError, ConnectionError]
+            retry_on_error = [BusyLoadingError, RedisConnectionError]
 
         # initialize Redis client
         # pylint: disable=W0201

@@ -27,11 +27,11 @@ def mock_llm_chain(retval):
         def __call__(self, *args, **kwargs):
             return retval
 
-        def invoke(self, input, config=None, **kwargs):  # noqa: A002
+        def invoke(self, input_data, config=None, **kwargs):
             """Perform invocation of the LLM chain."""
             if retval is not None:
                 return retval
-            input["text"] = input["query"]
-            return input
+            input_data["text"] = input_data["query"]
+            return input_data
 
     return MockLLMChain
