@@ -9,7 +9,7 @@ OC_COMMAND_RETRY_COUNT = 120
 
 
 def run_oc(
-    args: list[str], command=None, ignore_existing_resource=False  # noqa: A002
+    args: list[str], command=None, ignore_existing_resource=False
 ) -> subprocess.CompletedProcess:
     """Run a command in the OpenShift cluster."""
     try:
