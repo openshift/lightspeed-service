@@ -4,6 +4,7 @@ import logging
 
 from fastapi import Request
 
+from ols import config
 from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
 
 from .auth_dependency_interface import AuthDependencyInterface
@@ -27,8 +28,23 @@ class AuthDependency(AuthDependencyInterface):
         Returns:
             The user's UID and username if authentication and authorization succeed.
         """
+        if config.dev_config.disable_auth:
+            if (
+                config.ols_config.logging_config is None
+                or not config.ols_config.logging_config.suppress_auth_checks_warning_in_log
+            ):
+                logger.warning("Auth checks disabled, skipping")
+            # Use constant user ID and user name in case auth. is disabled
+            # It will be needed for testing purposes because (for example)
+            # conversation history and user feedback depend on having any
+            # user ID (identity) in proper format (UUID)
+            return DEFAULT_USER_UID, DEFAULT_USER_NAME
+
         logger.warning("Using no-op dependency authentication!")
         logger.warning(
             "The service is in insecure mode meant only to be used in devel environment"
         )
-        return DEFAULT_USER_UID, DEFAULT_USER_NAME
+        # try to read user ID from request
+        user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
+        logger.info("User ID: %s", user_id)
+        return user_id, DEFAULT_USER_NAME
