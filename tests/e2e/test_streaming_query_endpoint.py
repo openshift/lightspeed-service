@@ -15,7 +15,7 @@ from tests.e2e.utils.decorators import retry
 
 from . import test_api
 
-endpoint = "/v1/streaming_query"
+STREAMING_QUERY_ENDPOINT = "/v1/streaming_query"
 
 
 def parse_streaming_response_to_events(response: str) -> list[dict]:
@@ -34,11 +34,13 @@ def construct_response_from_streamed_events(events: dict) -> str:
 
 def test_invalid_question():
     """Check the endpoint POST method for invalid question."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         cid = suid.get_suid()
 
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "how to make burger?",
@@ -59,9 +61,11 @@ def test_invalid_question():
 
 def test_invalid_question_without_conversation_id():
     """Check the endpoint POST method for generating new conversation_id."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "how to make burger?",
                 "media_type": constants.MEDIA_TYPE_JSON,
@@ -82,11 +86,11 @@ def test_query_call_without_payload():
     """Check the endpoint with POST HTTP method when no payload is provided."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
@@ -101,11 +105,11 @@ def test_query_call_with_improper_payload():
     """Check the endpoint with POST HTTP method when improper payload is provided."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"parameter": "this-is-unknown-parameter"},
             timeout=test_api.NON_LLM_REST_API_TIMEOUT,
         )
@@ -121,11 +125,11 @@ def test_valid_question_improper_conversation_id() -> None:
     """Check the endpoint with POST HTTP method for improper conversation ID."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.internal_server_error,
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -149,12 +153,12 @@ def test_too_long_question() -> None:
 
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.ok,
     ):
         cid = suid.get_suid()
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": query,
@@ -177,10 +181,12 @@ def test_too_long_question() -> None:
 @pytest.mark.rag
 def test_valid_question() -> None:
     """Check the endpoint with POST HTTP method for valid question and no yaml."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         cid = suid.get_suid()
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": cid, "query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -199,10 +205,12 @@ def test_valid_question() -> None:
 @pytest.mark.rag
 def test_ocp_docs_version_same_as_cluster_version() -> None:
     """Check that the version of OCP docs matches the cluster we're on."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         cid = suid.get_suid()
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "welcome openshift container platform documentation",
@@ -230,11 +238,13 @@ def test_valid_question_tokens_counter() -> None:
     )
 
     with (
-        metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
+        metrics_utils.RestAPICallCounterChecker(
+            pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+        ),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"query": "what is kubernetes?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -249,11 +259,13 @@ def test_invalid_question_tokens_counter() -> None:
     )
 
     with (
-        metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint),
+        metrics_utils.RestAPICallCounterChecker(
+            pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+        ),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"query": "how to make burger?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -270,7 +282,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
     with (
         metrics_utils.RestAPICallCounterChecker(
             pytest.metrics_client,
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             status_code=requests.codes.unprocessable_entity,
         ),
         metrics_utils.TokenCounterChecker(
@@ -282,7 +294,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
         ),
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
@@ -298,7 +310,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
     with (
         metrics_utils.RestAPICallCounterChecker(
             pytest.metrics_client,
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             status_code=requests.codes.unprocessable_entity,
         ),
         metrics_utils.TokenCounterChecker(
@@ -310,7 +322,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         ),
     ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"parameter": "this-is-not-proper-question-my-friend"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -322,9 +334,11 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
 @retry(max_attempts=3, wait_between_runs=10)
 def test_rag_question() -> None:
     """Ensure responses include rag references."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "what is openshift virtualization?",
                 "media_type": constants.MEDIA_TYPE_JSON,
@@ -352,10 +366,12 @@ def test_rag_question() -> None:
 @pytest.mark.cluster
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         query = "what is foo in bar?"
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={"query": query},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -395,9 +411,11 @@ def test_query_filter() -> None:
 @retry(max_attempts=3, wait_between_runs=10)
 def test_conversation_history() -> None:
     """Ensure conversations include previous query history."""
-    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "what is ingress in kubernetes?",
                 "media_type": constants.MEDIA_TYPE_JSON,
@@ -419,7 +437,7 @@ def test_conversation_history() -> None:
         assert events[0]["event"] == "start"
         cid = events[0]["data"]["conversation_id"]
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "what?",
@@ -443,12 +461,12 @@ def test_query_with_provider_but_not_model() -> None:
     """Check the endpoint with POST HTTP method for provider specified, but no model."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         # just the provider is explicitly specified, but model selection is missing
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
@@ -472,12 +490,12 @@ def test_query_with_model_but_not_provider() -> None:
     """Check the endpoint with POST HTTP method for model specified, but no provider."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         # just model is explicitly specified, but provider selection is missing
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
@@ -503,12 +521,12 @@ def test_query_with_unknown_provider() -> None:
 
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         # provider is unknown
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
@@ -540,12 +558,12 @@ def test_query_with_unknown_model() -> None:
 
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
-        endpoint,
+        STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
         # model is unknown
         response = pytest.client.post(
-            endpoint,
+            STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
