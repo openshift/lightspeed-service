@@ -667,9 +667,9 @@ ibm-generative-ai==3.0.0 \
     --hash=sha256:0d86297371a5bb7c41d143a8c770e068f37489b5ca88e6bd56dca61a4f6dc1a8 \
     --hash=sha256:e0c39a5c84356f7408de31988ee055349a4ab7ec7030f313fa1c19d76b2b6d85
     # via ols (pyproject.toml)
-ibm-watsonx-ai==1.1.25 \
-    --hash=sha256:1b31cf1cefd762fcee405605dc68fb1e7728edca7ba117218383df02359d9cb9 \
-    --hash=sha256:fcb404ddcf2fe5e0ab2d2c73408a7a4082149d25e09300e96f66d4f33208458d
+ibm-watsonx-ai==1.2.1 \
+    --hash=sha256:233127034dc672c3d928ae363058479ad0f3b9ef1bc7e339c4964331f0e9e313 \
+    --hash=sha256:b858641b316f805b6f2ef574b730600bd407b4952eb174cc447b76ee7584567c
     # via
     #   langchain-ibm
     #   ols (pyproject.toml)
