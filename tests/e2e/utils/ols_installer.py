@@ -66,7 +66,7 @@ def update_ols_config() -> None:
     updated_configmap = yaml.dump(configmap)
 
     cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
-    cluster_utils.run_oc(["apply", "-f", "-"], input=updated_configmap)
+    cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
 
 
 def replace_ols_image(ols_image: str) -> None:
