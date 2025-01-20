@@ -365,6 +365,7 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "OpenShift" in deserialized[3].content
 
 
+@pytest.mark.not_konflux
 @pytest.mark.cluster
 def test_user_data_collection():
     """Test user data collection.
