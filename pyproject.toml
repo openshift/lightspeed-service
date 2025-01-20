@@ -130,7 +130,6 @@ dev = [
     "black",
     "pydocstyle",
     "fastparquet",
-    "httpx==0.27.2",
     "mypy",
     "packaging",
     "pytest",
