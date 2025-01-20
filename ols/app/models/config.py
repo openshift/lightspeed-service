@@ -936,6 +936,7 @@ class OLSConfig(BaseModel):
                 and self.tls_config == other.tls_config
                 and self.certificate_directory == other.certificate_directory
                 and self.system_prompt == other.system_prompt
+                and self.system_prompt_path == other.system_prompt_path
                 and self.tls_security_profile == other.tls_security_profile
                 and self.authentication_config == other.authentication_config
                 and self.expire_llm_is_ready_persistent_state
