@@ -8,7 +8,7 @@ from pathlib import Path
 
 PREFIX = "[report-json]"
 
-json_raw_data = ""
+json_raw_data = ""  # pylint: disable=C0103
 
 if len(sys.argv) < 2:
     print("Usage: print_ec_failures.py log_file_name.log")
