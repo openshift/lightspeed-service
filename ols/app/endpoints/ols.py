@@ -68,13 +68,16 @@ query_responses: dict[int | str, dict[str, Any]] = {
 
 @router.post("/query", responses=query_responses)
 def conversation_request(
-    llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
+    llm_request: LLMRequest,
+    auth: Any = Depends(auth_dependency),
+    user_id: Optional[str] = None,
 ) -> LLMResponse:
     """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The request containing a query, conversation ID, and optional attachments.
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        user_id: Optional user ID used only when no-op auth is enabled.
 
     Returns:
         Response containing the processed information.

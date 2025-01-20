@@ -69,13 +69,16 @@ query_responses: dict[int | str, dict[str, Any]] = {
 
 @router.post("/streaming_query", responses=query_responses)
 def conversation_request(
-    llm_request: LLMRequest, auth: Any = Depends(auth_dependency)
+    llm_request: LLMRequest,
+    auth: Any = Depends(auth_dependency),
+    user_id: Optional[str] = None,
 ) -> StreamingResponse:
     """Handle conversation requests for the OLS endpoint.
 
     Args:
         llm_request: The incoming request containing query details.
         auth: The authentication context, provided by dependency injection.
+        user_id: Optional user ID used only when no-op auth is enabled.
 
     Returns:
         StreamingResponse: The streaming response generated for the query.
