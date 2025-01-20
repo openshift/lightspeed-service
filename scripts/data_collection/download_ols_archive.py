@@ -61,10 +61,10 @@ if len(sys.argv) <= 1:
     sys.exit(1)
 
 name = sys.argv[1]
-filename = construct_filename(name)
+FILENAME = construct_filename(name)
 
-print(f"Downloading object {name} into {filename}")
+print(f"Downloading object {name} into {FILENAME}")
 data = client.get_object(Bucket=bucket_name, Key=name)
 
-with open(filename, "wb") as fout:
+with open(FILENAME, "wb") as fout:
     fout.write(data["Body"].read())

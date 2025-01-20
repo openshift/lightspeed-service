@@ -65,8 +65,8 @@ if __name__ == "__main__":
 
         # Initialize the K8sClientSingleton with cluster id during module load.
         # We want the application to fail early if the cluster ID is not available.
-        cluster_id = K8sClientSingleton.get_cluster_id()
-        logger.info("running on cluster with ID '%s'", cluster_id)
+        CLUSTER_ID = K8sClientSingleton.get_cluster_id()
+        logger.info("running on cluster with ID '%s'", CLUSTER_ID)
 
     # init loading of query redactor
     config.query_redactor  # pylint: disable=W0104
