@@ -41,6 +41,8 @@ configure model, and connect to it.
         * [Red Hat OpenShift AI](#red-hat-openshift-ai)
         * [Local *ollama* server](#local-ollama-server)
     * [3. Configure OLS Authentication](#3-configure-ols-authentication)
+        * [3.1. K8S-based auth mechanism](#31-k8s-based-auth-mechanism)
+        * [3.2. no-op auth mechanism](#32-no-op-auth-mechanism)
     * [4. Configure OLS TLS communication](#4-configure-ols-tls-communication)
     * [5. (Optional) Configure the local document store](#5-optional-configure-the-local-document-store)
     * [6. (Optional) Configure conversation cache](#6-optional-configure-conversation-cache)
@@ -310,9 +312,11 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 ## 3. Configure OLS Authentication
 
    [!NOTE]
-   Currently, only K8S-based authentication can be used. In future versions, more authentication mechanisms will be configurable.
+   Currently, only K8S-based authentication and the so called no-op authentication can be used. It is possible to configure which mechanism should be used. The K8S-based authentication is selected by default if the auth. method is not specified in configuration.
 
-   This section provides guidance on how to configure authentication within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
+### 3.1. K8S-based auth mechanism
+
+   This section provides guidance on how to configure authentication based on K8S within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
 
    1. Enabling and Disabling Authentication
    
@@ -354,6 +358,19 @@ Depends on configuration, but usually it is not needed to generate or use API ke
             k8s_auth_token: your-user-token
       ```
       **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
+
+   
+### 3.2. no-op auth mechanism
+
+      This auth mechanism can be selected by the following configuration parameter:
+
+      ```yaml
+         ols_config:
+            authentication_config:
+              module: "noop"
+      ```
+
+      In this case it is possible to pass `user-id` optional when calling REST API query endpoints. If the `user-id` won't be passed, the default one will be used: `00000000-0000-0000-0000-000000000000`
 
 ## 4. Configure OLS TLS communication
 
@@ -723,7 +740,7 @@ Handles REST API requests from clients (mainly from UI console, but can be any R
 
 ### Authorization checker
 
-Manages authentication flow for REST API endpoints. Currently K8S/OCL-based authorization is used, but in the future it will be implemented in a more modular way to allow registering other auth. checkers.
+Manages authentication flow for REST API endpoints. Currently K8S/OCL-based authorization or no-op authorization can be used. The selection of authorization mechanism can be done via configuration file.
 
 ### Query handler
 
