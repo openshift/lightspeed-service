@@ -140,8 +140,9 @@ config.puml: ## Generate PlantUML class diagram for configuration
 	mv docs/classes.puml docs/config.puml
 
 llms.puml: ## Generate PlantUML class diagram for LLM plugin system
-	pyreverse ols/src/llms/ --output puml --output-directory=docs
+	pyreverse ols/src/llms/ --output puml --output-directory=docs/
 	mv docs/classes.puml docs/llms_classes.uml
+	mv docs/packages.puml docs/llms_packages.uml
 
 distribution-archives: ## Generate distribution archives to be uploaded into Python registry
 	pdm run python -m build
