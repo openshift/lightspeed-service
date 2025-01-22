@@ -113,10 +113,10 @@ def min_tls_version(
     tls_profile: TLSProfiles,
 ) -> Optional[ssl.TLSVersion]:
     """Retrieve minimal TLS version for the profile or for the current profile configuration."""
-    min_tls_version = specified_tls_version
-    if min_tls_version is None:
+    min_tls_version_specified = specified_tls_version
+    if min_tls_version_specified is None:
         return MIN_TLS_VERSIONS[tls_profile]
-    return min_tls_version
+    return min_tls_version_specified
 
 
 def ciphers_from_list(ciphers: Optional[list[str]]) -> Optional[str]:
@@ -136,7 +136,7 @@ def ciphers_as_string(
     ciphers: Optional[list[str]], tls_profile: TLSProfiles
 ) -> Optional[str]:
     """Retrieve ciphers as one string for custom list of TLS profile-based list."""
-    ciphers_as_string = ciphers_from_list(ciphers)
-    if ciphers_as_string is None:
+    ciphers_as_str = ciphers_from_list(ciphers)
+    if ciphers_as_str is None:
         return ciphers_for_tls_profile(tls_profile)
-    return ciphers_as_string
+    return ciphers_as_str

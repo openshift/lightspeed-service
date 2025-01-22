@@ -84,8 +84,8 @@ def feedback_status() -> StatusResponse:
         Response indicating the status of the feedback.
     """
     logger.debug("feedback status request received")
-    feedback_status = is_feedback_enabled()
-    return StatusResponse(functionality="feedback", status={"enabled": feedback_status})
+    feedback_status_enabled = is_feedback_enabled()
+    return StatusResponse(functionality="feedback", status={"enabled": feedback_status_enabled})
 
 
 post_feedback_responses: dict[int | str, dict[str, Any]] = {
