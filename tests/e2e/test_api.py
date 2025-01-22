@@ -91,8 +91,8 @@ def teardown_module(module):
         must_gather()
 
 
-@pytest.fixture(scope="module")
-def postgres_connection():
+@pytest.fixture(name="postgres_connection", scope="module")
+def fixture_postgres_connection():
     """Fixture with Postgres connection."""
     return retrieve_connection()
 
