@@ -83,3 +83,13 @@ class InMemoryCache(Cache):
                 old_value.append(value)
                 self.cache[key] = old_value
             self.deque.appendleft(key)
+
+    def ready(self) -> bool:
+        """Check if the cache is ready.
+
+           In memory cache is always ready.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """
+        return True
