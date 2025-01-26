@@ -37,7 +37,7 @@ class DocsSummarizer(QueryHelper):
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: self.model_config.parameters.max_tokens_for_response  # noqa: E501
         }
         self.bare_llm = self.llm_loader(
-            self.provider, self.model, self.generic_llm_params
+            self.provider, self.model, self.generic_llm_params, self.streaming
         )
 
     def _get_system_prompt(self) -> None:
