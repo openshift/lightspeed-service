@@ -157,6 +157,8 @@ security-check = "pdm run make security-check"
 benchmarks = "pdm run make benchmarks"
 requirements = "pdm run make requirements.txt"
 version = "pdm run make print-version"
+verify-sources = "pdm run make verify"
+verify-packages = " pdm run make verify-packages-completeness"
 
 [tool.setuptools]
 packages = ["ols"]
