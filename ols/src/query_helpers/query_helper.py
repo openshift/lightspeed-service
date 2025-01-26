@@ -21,7 +21,7 @@ class QueryHelper:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         generic_llm_params: Optional[dict] = None,
-        llm_loader: Optional[Callable[[str, str, dict], LLM]] = None,
+        llm_loader: Optional[Callable[[str, str, dict, bool], LLM]] = None,
         system_prompt: Optional[str] = None,
         streaming: Optional[bool] = None,
     ) -> None:

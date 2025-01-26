@@ -5,13 +5,23 @@ from unittest.mock import ANY, patch
 import pytest
 
 from ols import config
-from ols.src.query_helpers.docs_summarizer import DocsSummarizer, QueryHelper
-from ols.utils import suid
-from tests import constants
-from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-from tests.mock_classes.mock_llama_index import MockLlamaIndex
-from tests.mock_classes.mock_llm_chain import mock_llm_chain
-from tests.mock_classes.mock_llm_loader import mock_llm_loader
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+
+from ols.src.query_helpers.docs_summarizer import (  # noqa:E402
+    DocsSummarizer,
+    QueryHelper,
+)
+from ols.utils import suid  # noqa:E402
+from tests import constants  # noqa:E402
+from tests.mock_classes.mock_langchain_interface import (  # noqa:E402
+    mock_langchain_interface,
+)
+from tests.mock_classes.mock_llama_index import MockLlamaIndex  # noqa:E402
+from tests.mock_classes.mock_llm_chain import mock_llm_chain  # noqa:E402
+from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa:E402
 
 conversation_id = suid.get_suid()
 
@@ -45,6 +55,18 @@ def test_if_system_prompt_was_updated():
     # expected prompt was loaded during configuration phase
     expected_prompt = config.ols_config.system_prompt
     assert summarizer.system_prompt == expected_prompt
+
+
+def test_docs_summarizer_streaming_parameter():
+    """Test if optional streaming parameter is stored."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer.streaming is False
+
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), streaming=False)
+    assert summarizer.streaming is False
+
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), streaming=True)
+    assert summarizer.streaming is True
 
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)

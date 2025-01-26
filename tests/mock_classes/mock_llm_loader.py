@@ -27,7 +27,7 @@ def mock_llm_loader(llm=None, expected_params=None):
         # if expected params are provided, check if (mocked) LLM loader
         # was called with expected parameters
         if expected_params is not None:
-            assert expected_params == args
+            assert expected_params == args, expected_params
         return MockLLMLoader(llm)
 
     return loader
