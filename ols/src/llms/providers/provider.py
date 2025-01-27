@@ -48,7 +48,6 @@ AzureOpenAIParameters = {
     ProviderParameter("model_kwargs", dict),
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
-    ProviderParameter("streaming", bool),
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
@@ -65,7 +64,6 @@ OpenAIParameters = {
     ProviderParameter("model_kwargs", dict),
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
-    ProviderParameter("streaming", bool),
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
@@ -81,7 +79,6 @@ RHOAIVLLMParameters = {
     ProviderParameter("model_kwargs", dict),
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
-    ProviderParameter("streaming", bool),
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
@@ -97,7 +94,6 @@ RHELAIVLLMParameters = {
     ProviderParameter("model_kwargs", dict),
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
-    ProviderParameter("streaming", bool),
     ProviderParameter("temperature", float),
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
@@ -210,7 +206,11 @@ class LLMProvider(AbstractLLMProvider):
     """LLM provider base class."""
 
     def __init__(
-        self, model: str, provider_config: ProviderConfig, params: Optional[dict] = None
+        self,
+        model: str,
+        provider_config: ProviderConfig,
+        params: Optional[dict] = None,
+        streaming: bool = False,
     ) -> None:
         """Initialize LLM provider.
 
@@ -224,6 +224,9 @@ class LLMProvider(AbstractLLMProvider):
         params = self._override_params(params or {})
         params = self._remap_to_llm_params(params)
         self.params = self._validate_parameters(params)
+        # "streaming" is a special parameter that should be set only when sending
+        # data via special streaming REST API endpoint
+        self.params["streaming"] = streaming
 
     def _remap_to_llm_params(
         self, generic_llm_params: dict[str, Any]

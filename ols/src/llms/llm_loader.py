@@ -98,4 +98,4 @@ def load_llm(
     logger.debug("loading LLM model '%s' from provider '%s'", model, provider)
 
     llm_provider = llm_providers_reg.llm_providers[provider_config.type]
-    return llm_provider(model, provider_config, generic_llm_params or {}).load()
+    return llm_provider(model, provider_config, generic_llm_params or {}, streaming).load()
