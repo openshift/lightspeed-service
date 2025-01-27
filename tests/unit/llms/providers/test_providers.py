@@ -84,11 +84,17 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
     assert my_provider.params["streaming"] is False
 
     my_provider_with_streaming_disabled = MyProvider(
-        model="bla", params={"provider-param": 2}, provider_config=None, streaming=False
+        model="bla",
+        params={"provider-param": 2},
+        provider_config=None,
+        streaming=False,
     )
 
     assert my_provider_with_streaming_disabled.params["provider-param"] == 2
-    assert my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_disabled.params["streaming"] is False
 
     my_provider_with_streaming_enabled = MyProvider(
@@ -96,7 +102,10 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
     )
 
     assert my_provider_with_streaming_enabled.params["provider-param"] == 2
-    assert my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_enabled.params["streaming"] is True
 
 
@@ -124,7 +133,10 @@ def test_llm_provider_params_order__config_overrides_everything():
     )
 
     assert my_provider_with_streaming_disabled.params["provider-param"] == 3
-    assert my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_disabled.params["streaming"] is False
 
     my_provider_with_streaming_enabled = MyProvider(
@@ -132,7 +144,10 @@ def test_llm_provider_params_order__config_overrides_everything():
     )
 
     assert my_provider_with_streaming_enabled.params["provider-param"] == 3
-    assert my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_enabled.params["streaming"] is True
 
 
@@ -162,7 +177,10 @@ def test_llm_provider_params_order__no_provider_type():
     )
 
     assert my_provider_with_streaming_disabled.params["provider-param"] == 3
-    assert my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_disabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_disabled.params["streaming"] is False
 
     my_provider_with_streaming_enabled = MyProvider(
@@ -170,5 +188,8 @@ def test_llm_provider_params_order__no_provider_type():
     )
 
     assert my_provider_with_streaming_enabled.params["provider-param"] == 3
-    assert my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"] == "foo"
+    assert (
+        my_provider_with_streaming_enabled.params["not-to-be-overwritten-param"]
+        == "foo"
+    )
     assert my_provider_with_streaming_enabled.params["streaming"] is True

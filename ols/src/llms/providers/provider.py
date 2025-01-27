@@ -218,15 +218,28 @@ class LLMProvider(AbstractLLMProvider):
             model: The model name.
             provider_config: The provider configuration.
             params: The optional parameters that will be converted into LLM specific ones.
+            streaming: Enables streaming response.
         """
         self.model = model
         self.provider_config = provider_config
         params = self._override_params(params or {})
         params = self._remap_to_llm_params(params)
         self.params = self._validate_parameters(params)
+
         # "streaming" is a special parameter that should be set only when sending
         # data via special streaming REST API endpoint
-        self.params["streaming"] = streaming
+        # It is valid just for OpenAI-compatible LLM providers
+        if self.provider_config is None or (
+            self.provider_config is not None
+            and self.provider_config.type
+            in {
+                PROVIDER_AZURE_OPENAI,
+                PROVIDER_OPENAI,
+                PROVIDER_RHELAI_VLLM,
+                PROVIDER_RHOAI_VLLM,
+            }
+        ):
+            self.params["streaming"] = streaming
 
     def _remap_to_llm_params(
         self, generic_llm_params: dict[str, Any]
