@@ -68,7 +68,6 @@ class AzureOpenAI(LLMProvider):
             "frequency_penalty": 1.03,
             "organization": None,
             "cache": None,
-            "streaming": True,
             "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
