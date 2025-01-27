@@ -42,12 +42,11 @@ class "DevConfig" as ols.app.models.config.DevConfig {
   llm_params : dict
   pyroscope_url : Optional[str]
   run_on_localhost : bool
+  uvicorn_port_number : Optional[int]
 }
 class "InMemoryCacheConfig" as ols.app.models.config.InMemoryCacheConfig {
   max_entries : Optional[int]
   {abstract}validate_yaml() -> None
-}
-class "<color:red>InvalidConfigurationError</color>" as ols.app.models.config.InvalidConfigurationError {
 }
 class "LLMProviders" as ols.app.models.config.LLMProviders {
   providers : dict[str, ProviderConfig]
@@ -80,6 +79,7 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   conversation_cache : Optional[ConversationCacheConfig]
   default_model : Optional[str]
   default_provider : Optional[str]
+  expire_llm_is_ready_persistent_state : Optional[int]
   extra_ca : list[FilePath]
   logging_config : Optional[LoggingConfig]
   max_workers : Optional[int]
@@ -135,7 +135,7 @@ class "ProviderConfig" as ols.app.models.config.ProviderConfig {
 class "ProviderSpecificConfig" as ols.app.models.config.ProviderSpecificConfig {
   api_key : Optional[str]
   token : Optional[Any]
-  url : Annotated
+  url : AnyHttpUrl
 }
 class "QueryFilter" as ols.app.models.config.QueryFilter {
   name : Optional[str]
