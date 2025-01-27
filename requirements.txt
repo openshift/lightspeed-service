@@ -803,9 +803,9 @@ langchain==0.3.12 \
     # via
     #   langchain-community
     #   ols (pyproject.toml)
-langchain-community==0.3.5 \
-    --hash=sha256:03736105700960fa0acbd72bff678d1c97c49e38e9f8af3012b712d64e992982 \
-    --hash=sha256:345febbc972a08c97f09cce6cc07d039aa7d1348fe8efdace85335be6ac9cb7d
+langchain-community==0.3.15 \
+    --hash=sha256:5b6ac359f75922a826566f94eb9a9b5c763cc78f395f0baf2f5638e62fdae1dd \
+    --hash=sha256:c2fee46a0ea1b94c475bd4263edb53d5615dbe37c5263480bf55cb8e465ac235
     # via ols (pyproject.toml)
 langchain-core==0.3.29 \
     --hash=sha256:773d6aeeb612e7ce3d996c0be403433d8c6a91e77bbb7a7461c13e15cfbe5b06 \
