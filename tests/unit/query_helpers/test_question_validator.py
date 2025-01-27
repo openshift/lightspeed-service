@@ -6,9 +6,16 @@ import pytest
 
 from ols import config
 from ols.constants import GenericLLMParameters
-from ols.src.query_helpers.question_validator import QueryHelper, QuestionValidator
-from tests.mock_classes.mock_llm_chain import mock_llm_chain
-from tests.mock_classes.mock_llm_loader import mock_llm_loader
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+from ols.src.query_helpers.question_validator import (  # noqa: E402
+    QueryHelper,
+    QuestionValidator,
+)
+from tests.mock_classes.mock_llm_chain import mock_llm_chain  # noqa: E402
+from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
 
 
 @pytest.fixture
@@ -67,7 +74,12 @@ def test_validate_question_llm_loader():
     # be performed
     llm_loader = mock_llm_loader(
         None,
-        expected_params=("p1", "m1", {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4}),
+        expected_params=(
+            "p1",
+            "m1",
+            {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4},
+            False,
+        ),
     )
 
     # check that LLM loader was called with expected parameters

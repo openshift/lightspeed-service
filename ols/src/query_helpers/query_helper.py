@@ -21,8 +21,9 @@ class QueryHelper:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         generic_llm_params: Optional[dict] = None,
-        llm_loader: Optional[Callable[[str, str, dict], LLM]] = None,
+        llm_loader: Optional[Callable[[str, str, dict, bool], LLM]] = None,
         system_prompt: Optional[str] = None,
+        streaming: Optional[bool] = None,
     ) -> None:
         """Initialize query helper."""
         # NOTE: As signature of this method is evaluated before the config,
@@ -32,6 +33,7 @@ class QueryHelper:
         self.model = model or config.ols_config.default_model
         self.generic_llm_params = generic_llm_params or {}
         self.llm_loader = llm_loader or load_llm
+        self.streaming = streaming or False
 
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)

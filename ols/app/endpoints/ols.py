@@ -356,6 +356,7 @@ def generate_response(
             provider=llm_request.provider,
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
+            streaming=streaming,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
