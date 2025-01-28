@@ -54,7 +54,7 @@ def test_if_system_prompt_was_updated():
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     # expected prompt was loaded during configuration phase
     expected_prompt = config.ols_config.system_prompt
-    assert summarizer.system_prompt == expected_prompt
+    assert summarizer._system_prompt == expected_prompt
 
 
 def test_docs_summarizer_streaming_parameter():
