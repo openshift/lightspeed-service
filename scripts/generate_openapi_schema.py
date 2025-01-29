@@ -2,14 +2,16 @@
 
 import json
 import os.path
+import pprint
 import sys
 
 from fastapi.openapi.utils import get_openapi
 
 # we need to import OLS app from directory above, so it is needed to update
 # search path accordingly
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+# it needs to go into the 1st place to be used first
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
 )
 
 # pylint: disable-next=C0413
@@ -35,6 +37,15 @@ if __name__ == "__main__":
         sys.exit(1)
 
     filename = sys.argv[1]
+
+    print("Service metadata:")
+    print(app.title)
+    print(app.description)
+
+    print()
+
+    print("Routes:")
+    pprint.pprint(app.routes)
 
     # retrieve OpenAPI schema via initialized app
     open_api = get_openapi(
