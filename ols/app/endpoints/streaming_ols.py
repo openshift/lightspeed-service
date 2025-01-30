@@ -126,13 +126,19 @@ async def invalid_response_generator() -> AsyncGenerator[str, None]:
     yield constants.INVALID_QUERY_RESP
 
 
+def format_stream_data(d: dict) -> str:
+    """Format outbound data in the Event Stream Format if required."""
+    data = json.dumps(d)
+    return f"data: {data}\n\n" if config.ols_config.enable_event_stream_format else data
+
+
 def stream_start_event(conversation_id: str) -> str:
     """Yield the start of the data stream.
 
     Args:
         conversation_id: The conversation ID (UUID).
     """
-    return json.dumps(
+    return format_stream_data(
         {
             "event": "start",
             "data": {
@@ -154,7 +160,7 @@ def stream_end_event(
         token_counter: Token counter for the whole stream.
     """
     if media_type == constants.MEDIA_TYPE_JSON:
-        return json.dumps(
+        return format_stream_data(
             {
                 "event": "end",
                 "data": {
@@ -200,7 +206,7 @@ def prompt_too_long_error(error: PromptTooLongError, media_type: str) -> str:
     logger.error("Prompt is too long: %s", error)
     if media_type == MEDIA_TYPE_TEXT:
         return f"Prompt is too long: {error}"
-    return json.dumps(
+    return format_stream_data(
         {
             "event": "error",
             "data": {
@@ -227,7 +233,7 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
 
     if media_type == MEDIA_TYPE_TEXT:
         return f"{response}: {cause}"
-    return json.dumps(
+    return format_stream_data(
         {
             "event": "error",
             "data": {
@@ -251,7 +257,12 @@ def build_yield_item(item: str, idx: int, media_type: str) -> str:
     """
     if media_type == MEDIA_TYPE_TEXT:
         return item
-    return json.dumps({"event": "token", "data": {"id": idx, "token": item}})
+    return format_stream_data(
+        {
+            "event": "token",
+            "data": {"id": idx, "token": item},
+        }
+    )
 
 
 def store_data(

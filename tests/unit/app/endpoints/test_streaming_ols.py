@@ -8,6 +8,7 @@ from ols import config, constants
 from ols.app.endpoints.streaming_ols import (
     build_referenced_docs,
     build_yield_item,
+    format_stream_data,
     generic_llm_error,
     invalid_response_generator,
     prompt_too_long_error,
@@ -148,3 +149,26 @@ def test_build_referenced_docs():
         {"doc_title": "title_1", "doc_url": "url_1"},
         {"doc_title": "title_2", "doc_url": "url_2"},
     ]
+
+
+@pytest.mark.usefixtures("_load_config")
+def test_format_stream_data():
+    """Test format_stream_data function."""
+    stream_data = {
+        "event": "token",
+        "data": {"id": "ABC-123456", "token": "***TOKEN***"},
+    }
+    stringified_data = json.dumps(stream_data)
+    data_in_event_stream_data_format = f"data: {stringified_data}\n\n"
+
+    saved_value = config.ols_config.enable_event_stream_format
+    try:
+        config.ols_config.enable_event_stream_format = False
+        output = format_stream_data((stream_data))
+        assert output == stringified_data
+
+        config.ols_config.enable_event_stream_format = True
+        output = format_stream_data((stream_data))
+        assert output == data_in_event_stream_data_format
+    finally:
+        config.ols_config.enable_event_stream_format = saved_value

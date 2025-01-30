@@ -73,6 +73,7 @@ ols_config:
   default_provider: my_bam
   default_model: ibm/granite-3-8b-instruct
   expire_llm_is_ready_persistent_state: -1
+  enable_event_stream_format: true
   # query_filters:
   #   - name: foo_filter
   #     pattern: '\b(?:foo)\b'
