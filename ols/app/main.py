@@ -116,7 +116,7 @@ async def log_requests_responses(
     logger.debug(response_headers_log_message)
 
     async def stream_response_body(
-        response_body: AsyncGenerator[bytes, None]
+        response_body: AsyncGenerator[bytes, None],
     ) -> AsyncGenerator[bytes, None]:
         async for chunk in response_body:
             logger.debug(
