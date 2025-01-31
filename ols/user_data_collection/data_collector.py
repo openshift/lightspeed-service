@@ -133,8 +133,7 @@ def get_cloud_openshift_pull_secret() -> str:
         logger.error("failed to get token from cluster pull-secret, missing keys")
     except TypeError:
         logger.error(
-            "failed to get token from cluster pull-secret, unexpected "
-            "object type: %s",
+            "failed to get token from cluster pull-secret, unexpected object type: %s",
             str(type(dockerconfig)),
         )
     except kubernetes.client.exceptions.ApiException as e:
