@@ -5,10 +5,7 @@ import os
 from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import (
-    AnyHttpUrl,
-    FilePath,
-)
+from pydantic import AnyHttpUrl, FilePath
 
 
 class InvalidConfigurationError(Exception):

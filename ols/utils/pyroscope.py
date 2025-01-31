@@ -15,7 +15,6 @@ def start_with_pyroscope_enabled(
 ) -> None:
     """Start the application using pyroscope."""
     try:
-
         response = requests.get(config.dev_config.pyroscope_url, timeout=60)
         if response.status_code == requests.codes.ok:
             logger.info(

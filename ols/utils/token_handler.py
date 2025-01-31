@@ -103,7 +103,7 @@ class TokenHandler:
             context_window_size - max_tokens_for_response - prompt_token_count
         )
 
-        if available_tokens <= 0:
+        if available_tokens < 0:
             limit = context_window_size - max_tokens_for_response
             raise PromptTooLongError(
                 f"Prompt length {prompt_token_count} exceeds LLM "
@@ -128,7 +128,6 @@ class TokenHandler:
         rag_chunks = []
 
         for node in retrieved_nodes:
-
             score = float(node.get_score(raise_error=False))
             if score < RAG_SIMILARITY_CUTOFF:
                 logger.debug(
@@ -199,4 +198,4 @@ class TokenHandler:
                 return formatted_history[::-1], True
             formatted_history.append(message)
 
-        return formatted_history[::-1], False
+        return formatted_history[::-1], False  # reverse back to original order
