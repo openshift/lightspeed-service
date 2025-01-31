@@ -84,6 +84,11 @@ def test_get_nonexistent_user(cache):
     assert cache.get("ffffffff-ffff-ffff-ffff-ffffffffffff", conversation_id) is None
 
 
+def test_ready(cache):
+    """Test if in memory cache always report ready."""
+    assert cache.ready()
+
+
 improper_user_uuids = [
     None,
     "",
