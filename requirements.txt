@@ -650,8 +650,8 @@ huggingface-hub[inference]==0.26.1 \
     #   sentence-transformers
     #   tokenizers
     #   transformers
-ibm-cos-sdk==2.13.6 \
-    --hash=sha256:171cf2ae4ab662a4b8ab58dcf4ac994b0577d6c92d78490295fd7704a83978f6
+ibm-cos-sdk==2.14.0 \
+    --hash=sha256:732fb5cdf6cc58f954bd78612d317187cd36dff48801b0b937a81df3ece2c4be
     # via
     #   ibm-watsonx-ai
     #   ols (pyproject.toml)
