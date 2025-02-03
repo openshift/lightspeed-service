@@ -120,6 +120,21 @@ def test_chat_ui_handler_use_with_provider(caplog):
     assert "Using provider: PROVIDER" in captured_out
 
 
+def test_chat_ui_handler_with_system_prompt(caplog):
+    """Test the UI handler for proper REST API response when system prompt is setup."""
+    ok_response = requests.Response()
+    ok_response.status_code = requests.codes.ok
+    ok_response.json = lambda: {"response": "this is response"}
+
+    with patch("ols.src.ui.gradio_ui.requests.post", return_value=ok_response):
+        ui = GradioUI()
+        ret = ui.chat_ui("prompt", [], True, model="MODEL", system_prompt="xyzzy")
+        assert ret == "this is response"
+
+    captured_out = caplog.text
+    assert "Using system prompt: xyzzy" in captured_out
+
+
 def test_chat_ui_handler_use_with_model(caplog):
     """Test the UI handler for proper REST API response when model is setup."""
     ok_response = requests.Response()
