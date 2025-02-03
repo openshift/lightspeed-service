@@ -150,6 +150,11 @@ distribution-archives: ## Generate distribution archives to be uploaded into Pyt
 upload-distribution-archives: ## Upload distribution archives into Python registry
 	pdm run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
+shellcheck: ## Run shellcheck
+	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" | tar -xJv \
+	shellcheck --version
+	shellcheck -- */*.sh
+
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''
