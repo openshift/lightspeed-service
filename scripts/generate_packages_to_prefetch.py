@@ -83,8 +83,10 @@ def shell(command, directory):
 
 def copy_project_stub(directory):
     """Copy all files that represent project stub into specified directory."""
+    os.makedirs(directory + "/ols", exist_ok=True)
     for project_file in PROJECT_FILES:
         shutil.copy(project_file, directory)
+    shutil.copy("ols/version.py", directory + "/ols")
 
 
 def remove_torch_dependency(directory):
