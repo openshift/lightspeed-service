@@ -11,6 +11,15 @@ ARG APP_ROOT=/app-root
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
 
+# Install the OpenShift CLI and verify installation
+RUN microdnf install -y tar gzip && \
+    curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
+    tar -xvf openshift-client-linux.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/oc && \
+    rm -f openshift-client-linux.tar.gz && \
+    microdnf remove -y tar gzip
+RUN oc version --client
+
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip legacy locales and use UTF-8 mode
