@@ -60,7 +60,9 @@ def test_retrieve_conversation_id_existing_id():
 def test_retrieve_previous_input_no_previous_history():
     """Check how function to retrieve previous input handle empty history."""
     llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id=None)
-    llm_input = ols.retrieve_previous_input(constants.DEFAULT_USER_UID, llm_request)
+    llm_input = ols.retrieve_previous_input(
+        constants.DEFAULT_USER_UID, llm_request.conversation_id
+    )
     assert llm_input == []
 
 
@@ -73,9 +75,9 @@ def test_retrieve_previous_input_empty_user_id():
     )
     # cache must check if user ID is correct
     with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.retrieve_previous_input("", llm_request)
+        ols.retrieve_previous_input("", llm_request.conversation_id)
     with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.retrieve_previous_input(None, llm_request)
+        ols.retrieve_previous_input(None, llm_request.conversation_id)
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -87,7 +89,7 @@ def test_retrieve_previous_input_improper_user_id():
     )
     # cache must check if user ID is correct
     with pytest.raises(HTTPException, match="Invalid user ID improper_user_id"):
-        ols.retrieve_previous_input("improper_user_id", llm_request)
+        ols.retrieve_previous_input("improper_user_id", llm_request.conversation_id)
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -100,7 +102,7 @@ def test_retrieve_previous_input_for_previous_history(get):
         query="Tell me about Kubernetes", conversation_id=conversation_id
     )
     previous_input = ols.retrieve_previous_input(
-        constants.DEFAULT_USER_UID, llm_request
+        constants.DEFAULT_USER_UID, llm_request.conversation_id
     )
     assert previous_input == "input"
 
