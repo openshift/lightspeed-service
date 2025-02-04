@@ -41,7 +41,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
-
 query_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Query is valid and correct response from LLM is returned",
@@ -188,7 +187,7 @@ def process_request(
     # Log incoming request (after redaction)
     logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
 
-    previous_input = retrieve_previous_input(user_id, llm_request)
+    previous_input = retrieve_previous_input(user_id, llm_request.conversation_id)
     timestamps["retrieve previous input"] = time.time()
 
     # Retrieve attachments from the request
@@ -277,19 +276,17 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(user_id: str, llm_request: LLMRequest) -> list[CacheEntry]:
+def retrieve_previous_input(user_id: str, conversation_id: str) -> list[CacheEntry]:
     """Retrieve previous user input, if exists."""
     try:
         previous_input = []
-        if llm_request.conversation_id:
-            cache_content = config.conversation_cache.get(
-                user_id, llm_request.conversation_id
-            )
+        if conversation_id:
+            cache_content = config.conversation_cache.get(user_id, conversation_id)
             if cache_content is not None:
                 previous_input = cache_content
             logger.info(
                 "%s Previous conversation input: %s",
-                llm_request.conversation_id,
+                conversation_id,
                 previous_input,
             )
         return previous_input
@@ -573,7 +570,6 @@ def _validate_question_keyword(query: str) -> bool:
 def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
     """Validate user question."""
     match config.ols_config.query_validation_method:
-
         case constants.QueryValidationMethod.LLM:
             logger.debug("LLM based query validation.")
             return _validate_question_llm(conversation_id, llm_request)
