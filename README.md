@@ -856,6 +856,8 @@ The context window size is limited for all supported LLMs which means that token
 │ test-integration                  │ cmd  │ pdm run make test-integration                  │
 │ test-unit                         │ cmd  │ pdm run make test-unit                         │
 │ unit-tests-coverage-report        │ cmd  │ pdm run make unit-tests-coverage-report        │
+│ verify-packages                   │ cmd  │ pdm run make verify-packages-completeness      │
+│ verify-sources                    │ cmd  │ pdm run make verify                            │
 │ version                           │ cmd  │ pdm run make print-version                     │
 ╰───────────────────────────────────┴──────┴────────────────────────────────────────────────╯
 ```
