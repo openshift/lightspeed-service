@@ -1,6 +1,9 @@
 """Unit tests for the API models."""
 
+import json
+
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 
 from ols.app.models.models import (
@@ -11,6 +14,8 @@ from ols.app.models.models import (
     LivenessResponse,
     LLMRequest,
     LLMResponse,
+    MessageDecoder,
+    MessageEncoder,
     RagChunk,
     ReadinessResponse,
     ReferencedDocument,
@@ -455,3 +460,70 @@ def test_ref_docs_from_rag_chunks():
     ]
 
     assert ref_docs == expected
+
+
+def test_message_encoder_human_message():
+    """Test encoding Human message into string containing JSON representation."""
+    msg = HumanMessage(content="Hello")
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    assert type(encoded) is str
+    assert (
+        encoded
+        == '{"type": "human", "content": "Hello", "response_metadata": {}, "additional_kwargs": {}}'
+    )
+
+
+def test_message_encoder_ai_message():
+    """Test encoding AI message into string containing JSON representation."""
+    msg = AIMessage(content="Hello")
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    assert type(encoded) is str
+    assert (
+        encoded
+        == '{"type": "ai", "content": "Hello", "response_metadata": {}, "additional_kwargs": {}}'
+    )
+
+
+def test_message_encoder_other_message():
+    """Test encoding any message into string containing JSON representation."""
+    msg = {"content": "Hello"}
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    assert type(encoded) is str
+    assert encoded == '{"content": "Hello"}'
+
+
+def test_message_decoder_human_message():
+    """Test decoding Human message object from JSON."""
+    msg = json.loads(
+        '{"type": "human", "content": "Hello",'
+        + '"additional_kwargs": {}, "response_metadata": {}}',
+        cls=MessageDecoder,
+    )
+    assert msg is not None
+    assert type(msg) is HumanMessage
+    assert msg.content == "Hello"
+
+
+def test_message_decoder_ai_message():
+    """Test decoding AI message object from JSON."""
+    msg = json.loads(
+        '{"type": "ai", "content": "Hello",'
+        + '"additional_kwargs": {}, "response_metadata": {}}',
+        cls=MessageDecoder,
+    )
+    assert msg is not None
+    assert type(msg) is AIMessage
+    assert msg.content == "Hello"
+
+
+def test_message_decoder_other_message():
+    """Test decoding different message object from JSON."""
+    msg = json.loads('{"foo": 1, "bar": 2}')
+    assert msg is not None
+    assert type(msg) is dict
