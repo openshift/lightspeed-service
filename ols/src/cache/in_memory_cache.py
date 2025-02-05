@@ -35,17 +35,20 @@ class InMemoryCache(Cache):
         self.deque: deque[str] = deque()
         self.cache: dict[str, list[dict[str, Any]]] = {}
 
-    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
+    def get(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
+    ) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
           user_id: User identification.
           conversation_id: Conversation ID unique for given user.
+          skip_user_id_check: Skip user_id suid check.
 
         Returns:
           The value associated with the key, or `None` if the key is not present.
         """
-        key = super().construct_key(user_id, conversation_id)
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
 
         if key not in self.cache:
             return None
@@ -60,6 +63,7 @@ class InMemoryCache(Cache):
         user_id: str,
         conversation_id: str,
         cache_entry: CacheEntry,
+        skip_user_id_check: bool = False,
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 
@@ -67,8 +71,9 @@ class InMemoryCache(Cache):
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             cache_entry: The `CacheEntry` object to store.
+            skip_user_id_check: Skip user_id suid check.
         """
-        key = super().construct_key(user_id, conversation_id)
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
         value = cache_entry.to_dict()
 
         with self._lock:

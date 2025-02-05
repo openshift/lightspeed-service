@@ -499,10 +499,12 @@ class AuthorizationResponse(BaseModel):
     Attributes:
         user_id: The ID of the logged in user.
         username: The name of the logged in user.
+        skip_user_id_check: Skip user_id suid check.
     """
 
     user_id: str
     username: str
+    skip_user_id_check: bool
 
     # provides examples for /docs endpoint
     model_config = {
@@ -511,6 +513,7 @@ class AuthorizationResponse(BaseModel):
                 {
                     "user_id": "123e4567-e89b-12d3-a456-426614174000",
                     "username": "user1",
+                    "skip_user_id_check": False,
                 }
             ]
         }

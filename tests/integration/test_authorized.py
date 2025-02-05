@@ -58,6 +58,7 @@ def test_post_authorized_disabled(caplog):
     assert response.json() == {
         "user_id": constants.DEFAULT_USER_UID,
         "username": constants.DEFAULT_USER_NAME,
+        "skip_user_id_check": False,
     }
 
     # check if the auth checks warning message is found in the log
@@ -83,6 +84,7 @@ def test_post_authorized_disabled_with_logging_suppressed(caplog):
     assert response.json() == {
         "user_id": constants.DEFAULT_USER_UID,
         "username": constants.DEFAULT_USER_NAME,
+        "skip_user_id_check": False,
     }
 
     # check if the auth checks warning message is NOT found in the log
@@ -118,7 +120,11 @@ def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
     print(response.json())
 
     # check the response payload
-    assert response.json() == {"user_id": "valid-uid", "username": "valid-user"}
+    assert response.json() == {
+        "user_id": "valid-uid",
+        "username": "valid-user",
+        "skip_user_id_check": False,
+    }
 
 
 @pytest.mark.usefixtures("_enabled_auth")

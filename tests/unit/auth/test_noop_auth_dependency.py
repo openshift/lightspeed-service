@@ -23,11 +23,12 @@ async def test_noop_auth_dependency_call():
     auth_dependency = noop.AuthDependency(virtual_path=path)
     # Simulate a request without a token nor user_id parameter
     request = Request(scope={"type": "http", "headers": [], "query_string": ""})
-    user_uid, username = await auth_dependency(request)
+    user_uid, username, skip_user_id_check = await auth_dependency(request)
 
     # Check if the correct user info has been returned
     assert user_uid == DEFAULT_USER_UID
     assert username == DEFAULT_USER_NAME
+    assert skip_user_id_check is True
 
 
 @pytest.mark.asyncio
@@ -38,11 +39,12 @@ async def test_noop_auth_dependency_call_disable_auth():
     auth_dependency = noop.AuthDependency(virtual_path=path)
     # Simulate a request without a token nor user_id parameter
     request = Request(scope={"type": "http", "headers": [], "query_string": ""})
-    user_uid, username = await auth_dependency(request)
+    user_uid, username, skip_user_id_check = await auth_dependency(request)
 
     # Check if the correct user info has been returned
     assert user_uid == DEFAULT_USER_UID
     assert username == DEFAULT_USER_NAME
+    assert skip_user_id_check is True
 
 
 @pytest.mark.asyncio
@@ -59,8 +61,9 @@ async def test_noop_auth_dependency_call_with_user_id():
             "query_string": f"user_id={user_id_in_request}",
         }
     )
-    user_uid, username = await auth_dependency(request)
+    user_uid, username, skip_user_id_check = await auth_dependency(request)
 
     # Check if the correct user info has been returned
     assert user_uid == user_id_in_request
     assert username == DEFAULT_USER_NAME
+    assert skip_user_id_check is True

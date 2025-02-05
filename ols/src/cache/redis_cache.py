@@ -71,17 +71,20 @@ class RedisCache(Cache):
         self.redis_client.config_set("maxmemory", config.max_memory)
         self.redis_client.config_set("maxmemory-policy", config.max_memory_policy)
 
-    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
+    def get(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
+    ) -> list[CacheEntry]:
         """Get the value associated with the given key.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
+            skip_user_id_check: Skip user_id suid check.
 
         Returns:
             The value associated with the key, or None if not found.
         """
-        key = super().construct_key(user_id, conversation_id)
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
 
         value = self.redis_client.get(key)
         if value is None:
@@ -94,6 +97,7 @@ class RedisCache(Cache):
         user_id: str,
         conversation_id: str,
         cache_entry: CacheEntry,
+        skip_user_id_check: bool = False,
     ) -> None:
         """Set the value associated with the given key.
 
@@ -101,15 +105,16 @@ class RedisCache(Cache):
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             cache_entry: The `CacheEntry` object to store.
+            skip_user_id_check: Skip user_id suid check.
 
         Raises:
             OutOfMemoryError: If item is evicted when Redis allocated
                 memory is higher than maxmemory.
         """
-        key = super().construct_key(user_id, conversation_id)
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
 
         with self._lock:
-            old_value = self.get(user_id, conversation_id)
+            old_value = self.get(user_id, conversation_id, skip_user_id_check)
             if old_value:
                 old_value.append(cache_entry)
                 self.redis_client.set(

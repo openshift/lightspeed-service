@@ -510,17 +510,23 @@
                     "username": {
                         "type": "string",
                         "title": "Username"
+                    },
+                    "skip_user_id_check": {
+                        "type": "boolean",
+                        "title": "Skip User Id Check"
                     }
                 },
                 "type": "object",
                 "required": [
                     "user_id",
-                    "username"
+                    "username",
+                    "skip_user_id_check"
                 ],
                 "title": "AuthorizationResponse",
-                "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.",
+                "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.\n    skip_user_id_check: Skip user_id suid check.",
                 "examples": [
                     {
+                        "skip_user_id_check": false,
                         "user_id": "123e4567-e89b-12d3-a456-426614174000",
                         "username": "user1"
                     }

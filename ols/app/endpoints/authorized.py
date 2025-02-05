@@ -55,8 +55,9 @@ def is_user_authorized(
         HTTPException: If authentication fails or the user does not have access.
 
     """
-    user_id, username = asyncio.run(auth_dependency(request))
+    user_id, username, skip_user_id_check = asyncio.run(auth_dependency(request))
     return AuthorizationResponse(
         user_id=user_id,
         username=username,
+        skip_user_id_check=skip_user_id_check,
     )
