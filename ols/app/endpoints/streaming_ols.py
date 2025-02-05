@@ -91,6 +91,7 @@ def conversation_request(
         attachments,
         valid,
         timestamps,
+        skip_user_id_check,
     ) = process_request(auth, llm_request)
 
     summarizer_response = (
@@ -112,6 +113,7 @@ def conversation_request(
             query_without_attachments,
             llm_request.media_type,
             timestamps,
+            skip_user_id_check,
         ),
         media_type=llm_request.media_type,
     )
@@ -276,6 +278,7 @@ def store_data(
     rag_chunks: list[RagChunk],
     history_truncated: bool,
     timestamps: dict[str, float],
+    skip_user_id_check: bool,
 ) -> None:
     """Store conversation history and transcript if enabled.
 
@@ -290,9 +293,15 @@ def store_data(
         rag_chunks: list of RAG (Retrieve-And-Generate) chunks used in the response.
         history_truncated: Indicates if the conversation history was truncated.
         timestamps: Dictionary tracking timestamps for various stages.
+        skip_user_id_check: Skip user_id usid check.
     """
     store_conversation_history(
-        user_id, conversation_id, llm_request, response, attachments
+        user_id,
+        conversation_id,
+        llm_request,
+        response,
+        attachments,
+        skip_user_id_check,
     )
 
     if not config.ols_config.user_data_collection.transcripts_disabled:
@@ -320,6 +329,7 @@ async def response_processing_wrapper(
     query_without_attachments: str,
     media_type: str,
     timestamps: dict[str, float],
+    skip_user_id_check: bool,
 ) -> AsyncGenerator[str, None]:
     """Process the response from the generator and handle metadata and errors.
 
@@ -333,6 +343,7 @@ async def response_processing_wrapper(
         query_without_attachments: Query content excluding attachments.
         media_type: Media type of the response (e.g. text or JSON).
         timestamps: Dictionary tracking timestamps for various stages.
+        skip_user_id_check: Skip user_id usid check.
 
     Yields:
         str: The response items or error messages.
@@ -378,6 +389,7 @@ async def response_processing_wrapper(
         rag_chunks,
         history_truncated,
         timestamps,
+        skip_user_id_check,
     )
 
     yield stream_end_event(

@@ -89,6 +89,7 @@ def conversation_request(
         attachments,
         valid,
         timestamps,
+        skip_user_id_check,
     ) = process_request(auth, llm_request)
 
     summarizer_response: SummarizerResponse | Generator
@@ -109,7 +110,12 @@ def conversation_request(
     timestamps["generate response"] = time.time()
 
     store_conversation_history(
-        user_id, conversation_id, llm_request, summarizer_response.response, attachments
+        user_id,
+        conversation_id,
+        llm_request,
+        summarizer_response.response,
+        attachments,
+        skip_user_id_check,
     )
 
     if config.ols_config.user_data_collection.transcripts_disabled:
@@ -156,7 +162,9 @@ def conversation_request(
 
 def process_request(
     auth: Any, llm_request: LLMRequest
-) -> tuple[str, str, str, list[CacheEntry], list[Attachment], bool, dict[str, float]]:
+) -> tuple[
+    str, str, str, list[CacheEntry], list[Attachment], bool, dict[str, float], str
+]:
     """Process incoming request.
 
     Args:
@@ -166,7 +174,7 @@ def process_request(
     Returns:
         Tuple containing the processed information.
         User ID, conversation ID, query without attachments, previous input,
-        attachments, validation result and timestamps.
+        attachments, validation result, timestamps and skip_user_id_check
     """
     timestamps = {"start": time.time()}
 
@@ -176,6 +184,8 @@ def process_request(
 
     conversation_id = retrieve_conversation_id(llm_request)
     timestamps["retrieve conversation"] = time.time()
+
+    skip_user_id_check = retrieve_skip_user_id_check(auth)
 
     # Important note: Redact the query before attempting to do any
     # logging of the query to avoid leaking PII into logs.
@@ -187,7 +197,9 @@ def process_request(
     # Log incoming request (after redaction)
     logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
 
-    previous_input = retrieve_previous_input(user_id, llm_request.conversation_id)
+    previous_input = retrieve_previous_input(
+        user_id, llm_request.conversation_id, skip_user_id_check
+    )
     timestamps["retrieve previous input"] = time.time()
 
     # Retrieve attachments from the request
@@ -221,6 +233,7 @@ def process_request(
         attachments,
         valid,
         timestamps,
+        skip_user_id_check,
     )
 
 
@@ -264,6 +277,11 @@ def retrieve_user_id(auth: Any) -> str:
     return auth[0]
 
 
+def retrieve_skip_user_id_check(auth: Any) -> bool:
+    """Retrieve skip user_id check from the token processed by auth. mechanism."""
+    return auth[2]
+
+
 def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     """Retrieve conversation ID based on existing ID or on newly generated one."""
     conversation_id = llm_request.conversation_id
@@ -276,12 +294,16 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(user_id: str, conversation_id: str) -> list[CacheEntry]:
+def retrieve_previous_input(
+    user_id: str, conversation_id: str, skip_user_id_check: bool = False
+) -> list[CacheEntry]:
     """Retrieve previous user input, if exists."""
     try:
         previous_input = []
         if conversation_id:
-            cache_content = config.conversation_cache.get(user_id, conversation_id)
+            cache_content = config.conversation_cache.get(
+                user_id, conversation_id, skip_user_id_check
+            )
             if cache_content is not None:
                 previous_input = cache_content
             logger.info(
@@ -414,6 +436,7 @@ def store_conversation_history(
     llm_request: LLMRequest,
     response: Optional[str],
     attachments: list[Attachment],
+    skip_user_id_check: bool = False,
 ) -> None:
     """Store conversation history into selected cache.
 
@@ -434,6 +457,7 @@ def store_conversation_history(
                 user_id,
                 conversation_id,
                 cache_entry,
+                skip_user_id_check,
             )
     except Exception as e:
         logger.error(

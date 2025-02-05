@@ -20,8 +20,10 @@ class Cache(ABC):
     COMPOUND_KEY_SEPARATOR = ":"
 
     @staticmethod
-    def _check_user_id(user_id: str) -> None:
+    def _check_user_id(user_id: str, skip_user_id_check: bool) -> None:
         """Check if given user ID is valid."""
+        if skip_user_id_check:
+            return
         if not check_suid(user_id):
             raise ValueError(f"Invalid user ID {user_id}")
 
@@ -32,19 +34,24 @@ class Cache(ABC):
             raise ValueError(f"Invalid conversation ID {conversation_id}")
 
     @staticmethod
-    def construct_key(user_id: str, conversation_id: str) -> str:
+    def construct_key(
+        user_id: str, conversation_id: str, skip_user_id_check: bool
+    ) -> str:
         """Construct key to cache."""
-        Cache._check_user_id(user_id)
+        Cache._check_user_id(user_id, skip_user_id_check)
         Cache._check_conversation_id(conversation_id)
         return f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}{conversation_id}"
 
     @abstractmethod
-    def get(self, user_id: str, conversation_id: str) -> list[CacheEntry]:
+    def get(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool
+    ) -> list[CacheEntry]:
         """Abstract method to retrieve a value from the cache.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
+            skip_user_id_check: Skip user_id suid check.
 
         Returns:
             The value (CacheEntry(s)) associated with the key, or None if not found.
@@ -56,6 +63,7 @@ class Cache(ABC):
         user_id: str,
         conversation_id: str,
         cache_entry: CacheEntry,
+        skip_user_id_check: bool,
     ) -> None:
         """Abstract method to store a value in the cache.
 
@@ -63,4 +71,5 @@ class Cache(ABC):
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             cache_entry: The value to store.
+            skip_user_id_check: Skip user_id suid check.
         """
