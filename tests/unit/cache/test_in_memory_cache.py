@@ -9,6 +9,7 @@ from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
 
 conversation_id = suid.get_suid()
+user_provided_user_id = "test-user1"
 cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
 cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
 
@@ -31,6 +32,18 @@ def test_insert_or_append(cache):
     )
 
     assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == [cache_entry_1]
+
+
+def test_insert_or_append_skip_user_id_check(cache):
+    """Test the behavior of insert_or_append method."""
+    skip_user_id_check = True
+    cache.insert_or_append(
+        user_provided_user_id, conversation_id, cache_entry_1, skip_user_id_check
+    )
+
+    assert cache.get(user_provided_user_id, conversation_id, skip_user_id_check) == [
+        cache_entry_1
+    ]
 
 
 def test_insert_or_append_existing_key(cache):

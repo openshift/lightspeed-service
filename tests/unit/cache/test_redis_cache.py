@@ -14,6 +14,7 @@ from tests.mock_classes.mock_redis_client import MockRedisClient
 conversation_id = suid.get_suid()
 cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
 cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
+user_provided_user_id = "test-user1"
 
 
 @pytest.fixture
@@ -49,6 +50,24 @@ def test_insert_or_append_existing_key(cache):
     cache.insert_or_append(user_uuid, conversation_id, cache_entry_2)
 
     assert cache.get(user_uuid, conversation_id) == [cache_entry_1, cache_entry_2]
+
+
+def test_insert_or_append_skip_user_id_check(cache):
+    """Test the behavior of insert_or_append method for existing item."""
+    skip_user_id_check = True
+    assert cache.get(user_provided_user_id, conversation_id, skip_user_id_check) is None
+
+    cache.insert_or_append(
+        user_provided_user_id, conversation_id, cache_entry_1, skip_user_id_check
+    )
+    cache.insert_or_append(
+        user_provided_user_id, conversation_id, cache_entry_2, skip_user_id_check
+    )
+
+    assert cache.get(user_provided_user_id, conversation_id, skip_user_id_check) == [
+        cache_entry_1,
+        cache_entry_2,
+    ]
 
 
 def test_get_nonexistent_key(cache):

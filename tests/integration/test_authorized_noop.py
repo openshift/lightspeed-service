@@ -46,3 +46,4 @@ def test_authorized():
     assert response is not None
     assert response.user_id == user_id_in_request
     assert response.username == constants.DEFAULT_USER_NAME
+    assert response.skip_user_id_check is True
