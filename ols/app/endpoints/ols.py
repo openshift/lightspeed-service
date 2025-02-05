@@ -31,6 +31,7 @@ from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
+from ols.src.query_helpers.llm_function_call import OLSAgent
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.utils import errors_parsing, suid
 from ols.utils.keywords import KEYWORDS
@@ -352,11 +353,12 @@ def generate_response(
         SummarizerResponse or Generator, depending on the streaming flag.
     """
     try:
-        docs_summarizer = DocsSummarizer(
+        # docs_summarizer = DocsSummarizer(
+        docs_summarizer = OLSAgent(
             provider=llm_request.provider,
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
-            streaming=streaming,
+            streaming=False,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
