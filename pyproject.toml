@@ -43,8 +43,8 @@ dev = [
     "black==25.1.0",
     "pydocstyle>=6.3.0",
     "fastparquet>=2024.11.0",  # Required for model evaluation (runtime, if parquet qna file is used)
-    "httpx==0.27.2",
-    "mypy==1.14.1",  # Usually needs to be set to latest stable version available
+    "httpx>=0.27.2",
+    "mypy>=1.14.1",  # Usually needs to be set to latest stable version available
     "packaging>=24.2",
     "pytest>=8.3.4 ",
     "pytest-cov>=6.0.0",
