@@ -12,12 +12,13 @@ RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
 
 # Install the OpenShift CLI and verify installation
-RUN microdnf install -y tar gzip && \
-    curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
-    tar -xvf openshift-client-linux.tar.gz -C /usr/local/bin && \
-    chmod +x /usr/local/bin/oc && \
-    rm -f openshift-client-linux.tar.gz && \
-    microdnf remove -y tar gzip
+# RUN microdnf install -y tar gzip && \
+#     curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
+#     tar -xvf openshift-client-linux.tar.gz -C /usr/local/bin && \
+#     chmod +x /usr/local/bin/oc && \
+#     rm -f openshift-client-linux.tar.gz && \
+#     microdnf remove -y tar gzip
+RUN microdnf install -y openshift-clients
 RUN oc version --client
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
