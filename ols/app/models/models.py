@@ -686,6 +686,8 @@ class MessageDecoder(json.JSONDecoder):
             Union[HumanMessage, AIMessage, dict]: A Message object if the input
             dictionary represents a message, otherwise returns the original dictionary.
         """
+        message: Union[HumanMessage, AIMessage, dict[str, Any]]
+
         if "type" in dct:
             if dct["type"] == "human":
                 message = HumanMessage(content=dct["content"])
