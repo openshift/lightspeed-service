@@ -229,7 +229,7 @@ class AuthDependency(AuthDependencyInterface):
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path = virtual_path
 
-    async def __call__(self, request: Request) -> tuple[str, str, bool]:
+    async def __call__(self, request: Request) -> tuple[str, str, bool, str]:
         """Validate FastAPI Requests for authentication and authorization.
 
         Validates the bearer token from the request,
@@ -241,6 +241,8 @@ class AuthDependency(AuthDependencyInterface):
         Returns:
             The user's UID and username if authentication and authorization succeed.
             user_id check should never be skipped with K8s authentication
+            If user_id check should be skipped - always return False for k8s
+            User's token
 
         Raises:
             HTTPException: If authentication fails or the user does not have access.
@@ -255,7 +257,7 @@ class AuthDependency(AuthDependencyInterface):
             # It will be needed for testing purposes because (for example)
             # conversation history and user feedback depend on having any
             # user ID (identity) in proper format (UUID)
-            return DEFAULT_USER_UID, DEFAULT_USER_NAME, False
+            return DEFAULT_USER_UID, DEFAULT_USER_NAME, False, ""
         authorization_header = request.headers.get("Authorization")
         if not authorization_header:
             raise HTTPException(
@@ -295,4 +297,4 @@ class AuthDependency(AuthDependencyInterface):
             logger.error("API exception during SubjectAccessReview: %s", e)
             raise HTTPException(status_code=403, detail="Internal server error") from e
 
-        return user_info.user.uid, user_info.user.username, False
+        return user_info.user.uid, user_info.user.username, False, token
