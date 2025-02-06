@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 import requests
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config, constants
 from ols.app.models.config import (
@@ -426,7 +427,7 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
     from ols.app.endpoints.ols import retrieve_previous_input  # pylint: disable=C0415
     from ols.app.models.models import CacheEntry  # pylint: disable=C0415
 
-    actual_returned_history = None
+    actual_returned_history = []
 
     def capture_return_value(*args, **kwargs):
         nonlocal actual_returned_history
@@ -468,9 +469,21 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
         )
         assert response.status_code == requests.codes.ok
         chat_history_expected = [
-            CacheEntry(query="Query1", response="Query1", attachments=[])
+            CacheEntry(
+                query=HumanMessage("Query1"),
+                response=AIMessage("Query1"),
+                attachments=[],
+            )
         ]
-        assert actual_returned_history == chat_history_expected
+        # cannot test exact timestamp, test the existence
+        assert (
+            actual_returned_history[0].query.content
+            == chat_history_expected[0].query.content
+        )
+        assert (
+            actual_returned_history[0].response.content
+            == chat_history_expected[0].response.content
+        )
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
