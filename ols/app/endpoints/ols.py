@@ -180,7 +180,8 @@ def process_request(
     timestamps = {"start": time.time()}
 
     user_id = retrieve_user_id(auth)
-    logger.info("User ID %s", user_id)
+    logger.info("Auth module: %s", config.ols_config.authentication_config.module)
+    logger.info("User ID: %s", user_id)
     timestamps["retrieve user"] = time.time()
 
     conversation_id = retrieve_conversation_id(llm_request)
@@ -196,7 +197,9 @@ def process_request(
     timestamps["redact query"] = time.time()
 
     # Log incoming request (after redaction)
-    logger.info("%s Incoming request: %s", conversation_id, llm_request.query)
+    logger.info(
+        "Conversation ID: %s Incoming request: %s", conversation_id, llm_request.query
+    )
 
     previous_input = retrieve_previous_input(
         user_id, llm_request.conversation_id, skip_user_id_check
@@ -308,7 +311,7 @@ def retrieve_previous_input(
             if cache_content is not None:
                 previous_input = cache_content
             logger.info(
-                "%s Previous conversation input: %s",
+                "Conversation ID: %s Previous conversation input: %s",
                 conversation_id,
                 previous_input,
             )
