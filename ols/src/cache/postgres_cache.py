@@ -7,7 +7,7 @@ from typing import Any
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
-from ols.app.models.models import CacheEntry
+from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
 
@@ -155,14 +155,14 @@ class PostgresCache(Cache):
                         cursor,
                         user_id,
                         conversation_id,
-                        json.dumps(old_value).encode("utf-8"),
+                        json.dumps(old_value, cls=MessageEncoder).encode("utf-8"),
                     )
                 else:
                     PostgresCache._insert(
                         cursor,
                         user_id,
                         conversation_id,
-                        json.dumps([value]).encode("utf-8"),
+                        json.dumps([value], cls=MessageEncoder).encode("utf-8"),
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
@@ -193,7 +193,7 @@ class PostgresCache(Cache):
             raise ValueError("Invalid value read from cache:", value)
 
         # try to deserialize the value
-        return json.loads(value[0])
+        return json.loads(value[0], cls=MessageDecoder)
 
     @staticmethod
     def _update(

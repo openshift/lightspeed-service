@@ -16,7 +16,7 @@ from redis.exceptions import (
 from redis.retry import Retry
 
 from ols.app.models.config import RedisConfig
-from ols.app.models.models import CacheEntry
+from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
 from ols.src.cache.cache import Cache
 
 
@@ -90,7 +90,10 @@ class RedisCache(Cache):
         if value is None:
             return None
 
-        return [CacheEntry.from_dict(cache_entry) for cache_entry in json.loads(value)]
+        return [
+            CacheEntry.from_dict(cache_entry)
+            for cache_entry in json.loads(value, cls=MessageDecoder)
+        ]
 
     def insert_or_append(
         self,
@@ -118,7 +121,12 @@ class RedisCache(Cache):
             if old_value:
                 old_value.append(cache_entry)
                 self.redis_client.set(
-                    key, json.dumps(old_value, default=lambda o: o.to_dict())
+                    key,
+                    json.dumps(
+                        [entry.to_dict() for entry in old_value], cls=MessageEncoder
+                    ),
                 )
             else:
-                self.redis_client.set(key, json.dumps([cache_entry.to_dict()]))
+                self.redis_client.set(
+                    key, json.dumps([cache_entry.to_dict()], cls=MessageEncoder)
+                )
