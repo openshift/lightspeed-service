@@ -56,7 +56,7 @@ def load_llm(
     provider: str,
     model: str,
     generic_llm_params: Optional[dict] = None,
-    streaming: Optional[bool] = None,
+    streaming: Optional[bool] = False,
 ) -> LLM:
     """Load LLM according to input provider and model.
 
