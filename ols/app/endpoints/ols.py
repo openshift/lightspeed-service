@@ -90,6 +90,8 @@ def conversation_request(
         valid,
         timestamps,
         skip_user_id_check,
+        # not needed now - it is prepared here to be used in agent/tools
+        user_token,  # pylint: disable=W0612
     ) = process_request(auth, llm_request)
 
     summarizer_response: SummarizerResponse | Generator
@@ -163,7 +165,7 @@ def conversation_request(
 def process_request(
     auth: Any, llm_request: LLMRequest
 ) -> tuple[
-    str, str, str, list[CacheEntry], list[Attachment], bool, dict[str, float], str
+    str, str, str, list[CacheEntry], list[Attachment], bool, dict[str, float], str, str
 ]:
     """Process incoming request.
 
@@ -174,7 +176,7 @@ def process_request(
     Returns:
         Tuple containing the processed information.
         User ID, conversation ID, query without attachments, previous input,
-        attachments, validation result, timestamps and skip_user_id_check
+        attachments, validation result, timestamps, skip_user_id_check and user token
     """
     timestamps = {"start": time.time()}
 
@@ -186,6 +188,8 @@ def process_request(
     timestamps["retrieve conversation"] = time.time()
 
     skip_user_id_check = retrieve_skip_user_id_check(auth)
+
+    user_token = retrieve_user_token(auth)
 
     # Important note: Redact the query before attempting to do any
     # logging of the query to avoid leaking PII into logs.
@@ -234,6 +238,7 @@ def process_request(
         valid,
         timestamps,
         skip_user_id_check,
+        user_token,
     )
 
 
@@ -280,6 +285,11 @@ def retrieve_user_id(auth: Any) -> str:
 def retrieve_skip_user_id_check(auth: Any) -> bool:
     """Retrieve skip user_id check from the token processed by auth. mechanism."""
     return auth[2]
+
+
+def retrieve_user_token(auth: Any) -> str:
+    """Retrieve user token from the token processed by auth. mechanism."""
+    return auth[3]
 
 
 def retrieve_conversation_id(llm_request: LLMRequest) -> str:
