@@ -179,10 +179,10 @@ class TokenHandler:
 
     def limit_conversation_history(
         self, history: list[BaseMessage], model: str, limit: int = 0
-    ) -> tuple[list[str], bool]:
+    ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        formatted_history: list[str] = []
+        formatted_history: list[BaseMessage] = []
 
         for original_message in reversed(history):
             # Restructure messages as per model

@@ -43,9 +43,9 @@ def restructure_history(message: BaseMessage, model: str) -> BaseMessage:
     new_message = copy(message)
     # Granite specific formatting for history
     if isinstance(message, HumanMessage):
-        new_message.content = "\n<|user|>\n" + message.content
+        new_message.content = "\n<|user|>\n" + str(message.content)
     else:
-        new_message.content = "\n<|assistant|>\n" + message.content
+        new_message.content = "\n<|assistant|>\n" + str(message.content)
     return new_message
 
 
@@ -102,7 +102,9 @@ class GeneratePrompt:
 
         if len(self._history) > 0:
             prompt_message = prompt_message + "\n" + USE_HISTORY_INSTRUCTION.strip()
-            llm_input_values["chat_history"] = "".join(self._history)
+            llm_input_values["chat_history"] = ""
+            for message in self._history:
+                llm_input_values["chat_history"] += str(message.content)
 
         if "context" in llm_input_values:
             prompt_message = prompt_message + "\n{context}"
