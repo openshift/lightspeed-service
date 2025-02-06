@@ -3,7 +3,7 @@ ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-con
 
 FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:e408de45e95eed0539fe821d31aa4288fe430d94f09a24c13c567bf99044dace
+FROM registry.redhat.io/ubi9/ubi-minimal@sha256:a9c41b5bff991254fc62846fd1cd377ce1967dfd66dc2c76432610ab2586b29b
 
 ARG VERSION
 ARG APP_ROOT=/app-root
