@@ -59,7 +59,7 @@ function run_suites() {
   run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
-  run_suite "model_eval" "model_evaluation" "wasonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
+  run_suite "model_eval" "model_evaluation" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
   set -e
