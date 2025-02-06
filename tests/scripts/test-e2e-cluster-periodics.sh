@@ -45,7 +45,7 @@ function run_suites() {
   run_suite "openai" "not model_evaluation and not azure_entra_id and not certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" " not azure_entra_id and not certificates" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
+  run_suite "watsonx" "not model_evaluation and not azure_entra_id and not certificates" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider
@@ -56,7 +56,10 @@ function run_suites() {
   run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE"
   (( rc = rc || $? ))
   
-  run_suite "openai" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE"
+  run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE"
+  (( rc = rc || $? ))
+
+  run_suite "model_eval" "model_evaluation" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
   (( rc = rc || $? ))
 
   set -e
