@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config, constants
 from ols.app.endpoints import ols
@@ -217,7 +218,7 @@ def test_store_conversation_history(insert_or_append):
         constants.DEFAULT_USER_UID, conversation_id, llm_request, response, []
     )
 
-    expected_history = CacheEntry(query="Tell me about Kubernetes")
+    expected_history = CacheEntry(query=HumanMessage(query))
     insert_or_append.assert_called_with(
         constants.DEFAULT_USER_UID,
         conversation_id,
@@ -242,7 +243,7 @@ def test_store_conversation_history_some_response(insert_or_append):
     )
 
     expected_history = CacheEntry(
-        query="Tell me about Kubernetes", response="*response*"
+        query=HumanMessage(query), response=AIMessage(response)
     )
     insert_or_append.assert_called_with(
         user_id, conversation_id, expected_history, skip_user_id_check
@@ -762,7 +763,7 @@ def test_question_validation_in_conversation_start(auth):
 @pytest.mark.usefixtures("_load_config")
 @patch(
     "ols.app.endpoints.ols.retrieve_previous_input",
-    new=Mock(return_value=[CacheEntry(query="some question")]),
+    new=Mock(return_value=[CacheEntry(query=HumanMessage("some question"))]),
 )
 @patch(
     "ols.app.endpoints.ols.validate_question",

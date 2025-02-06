@@ -3,6 +3,7 @@
 import logging
 from math import ceil
 
+from langchain_core.messages import BaseMessage
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -177,17 +178,18 @@ class TokenHandler:
         return rag_chunks, max_tokens
 
     def limit_conversation_history(
-        self, history: list[str], model: str, limit: int = 0
-    ) -> tuple[list[str], bool]:
+        self, history: list[BaseMessage], model: str, limit: int = 0
+    ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        formatted_history: list[str] = []
+        formatted_history: list[BaseMessage] = []
 
         for original_message in reversed(history):
             # Restructure messages as per model
             message = restructure_history(original_message, model)
-
-            message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
+            message_length = TokenHandler._get_token_count(
+                self.text_to_tokens(f"{message.type}: {message.content}")
+            )
             total_length += message_length
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)

@@ -5,7 +5,7 @@ from collections import OrderedDict
 from typing import Any, Optional, Self, Union
 
 from langchain.llms.base import LLM
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
@@ -581,16 +581,16 @@ class CacheEntry(BaseModel):
         response: The response string.
     """
 
-    query: str
-    response: Optional[str] = ""
+    query: HumanMessage
+    response: Optional[AIMessage] = AIMessage("")
     attachments: list[Attachment] = []
 
     @field_validator("response")
     @classmethod
-    def set_none_response_to_empty_string(cls, v: Optional[str]) -> str:
+    def set_none_response_to_empty_string(cls, v: Optional[AIMessage]) -> AIMessage:
         """Convert None response to an empty string."""
         if v is None:
-            return ""
+            return AIMessage("")
         return v
 
     def to_dict(self) -> dict:
@@ -613,13 +613,17 @@ class CacheEntry(BaseModel):
         )
 
     @staticmethod
-    def cache_entries_to_history(cache_entries: list["CacheEntry"]) -> list[str]:
+    def cache_entries_to_history(
+        cache_entries: list["CacheEntry"],
+    ) -> list[BaseMessage]:
         """Convert cache entries to a history."""
-        history = []
+        history: list[BaseMessage] = []
         for entry in cache_entries:
-            history.append(f"human: {entry.query.strip()}")
+            entry.query.content = entry.query.content.strip()
+            entry.response.content = entry.response.content.strip()
+            history.append(entry.query)
             # the real response or empty string when response is not recorded
-            history.append(f"ai: {str(entry.response).strip()}")
+            history.append(entry.response)
 
         return history
 

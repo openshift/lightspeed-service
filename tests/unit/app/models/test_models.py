@@ -349,25 +349,29 @@ class TestCacheEntry:
     @staticmethod
     def test_basic_interface():
         """Test the CacheEntry model."""
-        cache_entry = CacheEntry(query="query")
-        assert cache_entry.query == "query"
-        assert cache_entry.response == ""
+        cache_entry = CacheEntry(query=HumanMessage("query"))
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("")
 
-        cache_entry = CacheEntry(query="query", response=None)
-        assert cache_entry.query == "query"
-        assert cache_entry.response == ""
+        cache_entry = CacheEntry(query=HumanMessage("query"), response=None)
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("")
 
-        cache_entry = CacheEntry(query="query", response="response")
-        assert cache_entry.query == "query"
-        assert cache_entry.response == "response"
+        cache_entry = CacheEntry(
+            query=HumanMessage("query"), response=AIMessage("response")
+        )
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("response")
 
     @staticmethod
     def test_to_dict():
         """Test the to_dict method of the CacheEntry model."""
-        cache_entry = CacheEntry(query="query", response="response")
+        cache_entry = CacheEntry(
+            query=HumanMessage("query"), response=AIMessage("response")
+        )
         assert cache_entry.to_dict() == {
-            "human_query": "query",
-            "ai_response": "response",
+            "human_query": HumanMessage("query"),
+            "ai_response": AIMessage("response"),
             "attachments": [],
         }
 
@@ -381,64 +385,67 @@ class TestCacheEntry:
         )
         cache_entry = CacheEntry.from_dict(
             {
-                "human_query": "query",
-                "ai_response": "response",
+                "human_query": HumanMessage("query"),
+                "ai_response": AIMessage("response"),
                 "attachments": [attachment.model_dump()],
             }
         )
-        assert cache_entry.query == "query"
-        assert cache_entry.response == "response"
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("response")
         assert cache_entry.attachments == [attachment]
 
     @staticmethod
     def test_cache_entries_to_history():
         """Test the cache_entries_to_history method of the CacheEntry model."""
         cache_entries = [
-            CacheEntry(query="query1", response="response1"),
-            CacheEntry(query="query2", response="response2"),
+            CacheEntry(query=HumanMessage("query1"), response=AIMessage("response1")),
+            CacheEntry(query=HumanMessage("query2"), response=AIMessage("response2")),
         ]
         history = CacheEntry.cache_entries_to_history(cache_entries)
         assert history == [
-            "human: query1",
-            "ai: response1",
-            "human: query2",
-            "ai: response2",
+            HumanMessage("query1"),
+            AIMessage("response1"),
+            HumanMessage("query2"),
+            AIMessage("response2"),
         ]
 
     @staticmethod
     def test_cache_entries_to_history_no_whitespace():
         """Test content is stripped."""
         cache_entries = [
-            CacheEntry(query="\ngood\nmorning\n", response="\ngood\nnight\n"),
+            CacheEntry(
+                query=HumanMessage("\ngood\nmorning\n"),
+                response=AIMessage("\ngood\nnight\n"),
+            ),
         ]
         history = CacheEntry.cache_entries_to_history(cache_entries)
         assert history == [
-            "human: good\nmorning",
-            "ai: good\nnight",
+            HumanMessage("good\nmorning"),
+            AIMessage("good\nnight"),
         ]
 
     @staticmethod
     def test_cache_entries_to_history_no_content():
         """Test empty AI response is handled."""
         cache_entries = [
-            CacheEntry(query="what?", response=""),
+            CacheEntry(query=HumanMessage("what?"), response=AIMessage("")),
         ]
         history = CacheEntry.cache_entries_to_history(cache_entries)
         assert history == [
-            "human: what?",
-            "ai: ",
+            HumanMessage("what?"),
+            AIMessage(""),
         ]
 
     @staticmethod
     def test_cache_entries_to_history_no_response():
         """Test no AI response is handled."""
         cache_entries = [
-            CacheEntry(query="what?", response=None),
+            CacheEntry(query=HumanMessage("what?"), response=None),
         ]
         history = CacheEntry.cache_entries_to_history(cache_entries)
         assert history == [
-            "human: what?",
-            "ai: ",
+            HumanMessage("what?"),
+            AIMessage(""),
         ]
 
 

@@ -11,6 +11,7 @@ from typing import Any, Generator, Optional, Union
 
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config, constants
 from ols.app import metrics
@@ -446,11 +447,20 @@ def store_conversation_history(
     ```
     """
     try:
+        if response is None:
+            response = ""
         if config.conversation_cache is not None:
             logger.info("%s Storing conversation history", conversation_id)
+            query_message = HumanMessage(content=llm_request.query)
+            response_message = AIMessage(content=response)
+            if llm_request.provider:
+                response_message.response_metadata["provider"] = llm_request.provider
+            if llm_request.model:
+                response_message.response_metadata["model"] = llm_request.model
+
             cache_entry = CacheEntry(
-                query=llm_request.query,
-                response=response,
+                query=query_message,
+                response=response_message,
                 attachments=attachments,
             )
             config.conversation_cache.insert_or_append(

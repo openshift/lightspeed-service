@@ -8,6 +8,7 @@ from langchain.prompts import (
     PromptTemplate,
     SystemMessagePromptTemplate,
 )
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols.constants import ModelFamily
 from ols.src.prompts.prompt_generator import (
@@ -24,7 +25,10 @@ Answer user queries in the context of openshift.
 """
 query = "What is Kubernetes?"
 rag_context = ["context 1", "context 2"]
-conversation_history = ["human: First human message", "ai: First AI message"]
+conversation_history = [
+    HumanMessage("First human message"),
+    AIMessage("First AI message"),
+]
 
 
 def _restructure_prompt_input(rag_context, conversation_history, model):

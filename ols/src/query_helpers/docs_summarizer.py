@@ -4,6 +4,7 @@ import logging
 from typing import Any, AsyncGenerator, Optional
 
 from langchain.chains import LLMChain
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from llama_index.core import VectorStoreIndex
 
@@ -42,7 +43,7 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         vector_index: Optional[VectorStoreIndex] = None,
-        history: Optional[list[str]] = None,
+        history: Optional[list[BaseMessage]] = None,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
@@ -55,6 +56,10 @@ class DocsSummarizer(QueryHelper):
             A tuple containing the final prompt, input values, RAG chunks,
             and a flag for truncated history.
         """
+        # if history is not provided, initialize to empty history
+        if history is None:
+            history = []
+
         settings_string = (
             f"query: {query}, "
             f"provider: {self.provider}, "
@@ -68,7 +73,12 @@ class DocsSummarizer(QueryHelper):
         # Use sample text for context/history to get complete prompt
         # instruction. This is used to calculate available tokens.
         temp_prompt, temp_prompt_input = GeneratePrompt(
-            query, ["sample"], ["ai: sample"], self._system_prompt
+            # Sample prompt's context/history must be re-structured for the given model,
+            # to ensure the further right available token calculation.
+            query,
+            ["sample"],
+            [AIMessage("sample")],
+            self._system_prompt,
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),

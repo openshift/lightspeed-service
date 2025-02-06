@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import constants
 from ols.app.models.config import RedisConfig
@@ -12,8 +13,12 @@ from ols.utils import suid
 from tests.mock_classes.mock_redis_client import MockRedisClient
 
 conversation_id = suid.get_suid()
-cache_entry_1 = CacheEntry(query="user message1", response="ai message1")
-cache_entry_2 = CacheEntry(query="user message2", response="ai message2")
+cache_entry_1 = CacheEntry(
+    query=HumanMessage("user message1"), response=AIMessage("ai message1")
+)
+cache_entry_2 = CacheEntry(
+    query=HumanMessage("user message2"), response=AIMessage("ai message2")
+)
 user_provided_user_id = "test-user1"
 
 

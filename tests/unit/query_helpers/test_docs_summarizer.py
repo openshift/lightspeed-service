@@ -3,6 +3,7 @@
 from unittest.mock import ANY, patch
 
 import pytest
+from langchain_core.messages import HumanMessage
 
 from ols import config
 
@@ -133,7 +134,7 @@ def test_summarize_truncation():
     rag_index = MockLlamaIndex()
 
     # too long history
-    history = ["human: What is Kubernetes?"] * 10000
+    history = [HumanMessage("What is Kubernetes?")] * 10000
     summary = summarizer.create_response(question, rag_index, history)
 
     # truncation should be done
