@@ -14,12 +14,13 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
+from ols.app.models.models import TokenCounter
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
-from tests.mock_classes.mock_llm_chain import mock_llm_chain
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
+from tests.mock_classes.mock_tools import mock_tools_map
 
 
 @pytest.fixture(scope="function")
@@ -303,10 +304,6 @@ def test_post_question_on_noyaml_response_type(_setup, endpoint) -> None:
     ml = mock_langchain_interface("test response")
     with (
         patch(
-            "ols.src.query_helpers.docs_summarizer.LLMChain",
-            new=mock_llm_chain(None),
-        ),
-        patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
         ),
@@ -335,10 +332,6 @@ def test_post_question_with_keyword(mock_llm_validation, _setup, endpoint) -> No
 
     ml = mock_langchain_interface(None)
     with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.LLMChain",
-            new=mock_llm_chain(None),
-        ),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -386,10 +379,6 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
         ml = mock_langchain_interface("test response")
         with (
             patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
-            patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
@@ -436,10 +425,6 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 
     ml = mock_langchain_interface("test response")
     with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.LLMChain",
-            new=mock_llm_chain(None),
-        ),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -509,10 +494,6 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
         ml = mock_langchain_interface("test response")
         with (
             patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
-            patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
@@ -552,10 +533,6 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -597,10 +574,6 @@ def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -655,10 +628,6 @@ def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -722,10 +691,6 @@ def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -810,10 +775,6 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -
         ml = mock_langchain_interface("test response")
         with (
             patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
-            patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
@@ -874,10 +835,6 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -941,10 +898,6 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> Non
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -1011,10 +964,6 @@ logs:
     ):
         ml = mock_langchain_interface("test response")
         with (
-            patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
             patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
@@ -1084,10 +1033,6 @@ def _post_with_system_prompt_override(_setup, caplog, query, system_prompt):
         ml = mock_langchain_interface("test response")
         with (
             patch(
-                "ols.src.query_helpers.docs_summarizer.LLMChain",
-                new=mock_llm_chain(None),
-            ),
-            patch(
                 "ols.src.query_helpers.query_helper.load_llm",
                 new=mock_llm_loader(ml()),
             ),
@@ -1146,3 +1091,55 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     # Specified system prompt should NOT appear in query_helper debug log outputs
     # as enable_system_prompt_override is set to False.
     assert caplog.text.count("System prompt: " + system_prompt) == 0
+
+
+@patch("ols.src.query_helpers.docs_summarizer.tools_map", mock_tools_map)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
+def test_tool_calling(mock_invoke, _setup, caplog) -> None:
+    """Check the REST API query endpoints when tool calling is enabled."""
+    endpoint = "/v1/query"
+    caplog.set_level(10)
+    config.ols_config.introspection_enabled = True
+
+    mock_invoke.side_effect = [
+        (
+            AIMessage(
+                content="",
+                response_metadata={"finish_reason": "tool_calls"},
+                tool_calls=[
+                    {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                ],
+            ),
+            TokenCounter(),
+        ),
+        (
+            AIMessage(
+                content="You have 1 namespace.",
+                response_metadata={"finish_reason": "stop"},
+            ),
+            TokenCounter(),
+        ),
+    ]
+
+    with (
+        patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(None),
+        ),
+    ):
+        conversation_id = suid.get_suid()
+        response = pytest.client.post(
+            endpoint,
+            json={
+                "conversation_id": conversation_id,
+                "query": "How many namespaces are there in my cluster ?",
+            },
+        )
+        assert mock_invoke.call_count == 2
+
+        assert "tool name: get_namespaces_mock" in caplog.text
+        tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
+        assert f"tool_output: {tool_output}" in caplog.text
+
+        assert response.status_code == requests.codes.ok
+        assert response.json()["response"] == "You have 1 namespace."

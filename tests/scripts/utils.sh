@@ -44,13 +44,14 @@ function cleanup_ols_operator() {
 # $4 PROVIDER_KEY_PATH
 # $5 MODEL
 # $6 OLS_IMAGE
+# $7 INTROSPECTION_ENABLED
 function run_suite() {
   echo "Preparing to run suite $1"
 
   cleanup_ols_operator
   
   # Run e2e tests with response evaluation.
-  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
+  SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 INTROSPECTION_ENABLED=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-e2e
 
   local rc=$?
   return $rc
