@@ -222,3 +222,115 @@ def test_insert_or_append_operation_on_exception(mock_connect):
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
         cache.insert_or_append(user_id, conversation_id, history)
+
+
+@patch("psycopg2.connect")
+def test_list_operation(mock_connect):
+    """Test the Cache.list operation."""
+    # Mock conversation IDs to be returned by the database
+    mock_conversation_ids = ["conversation_1", "conversation_2", "conversation_3"]
+
+    # Mock the database cursor behavior
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [(cid,) for cid in mock_conversation_ids]
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # Initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # Call the "list" operation
+    conversation_ids = cache.list(user_id)
+
+    # Verify the result
+    assert conversation_ids == mock_conversation_ids
+
+    # Verify the query execution
+    mock_cursor.execute.assert_called_once_with(
+        PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)
+    )
+    mock_cursor.fetchall.assert_called_once()
+
+
+@patch("psycopg2.connect")
+def test_list_operation_on_exception(mock_connect):
+    """Test the Cache.list operation when an exception is raised."""
+    # Mock the database cursor behavior to raise an exception
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.side_effect = psycopg2.DatabaseError("PLSQL error")
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # Initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # Verify that the exception is raised
+    with pytest.raises(CacheError, match="PLSQL error"):
+        cache.list(user_id)
+
+
+@patch("psycopg2.connect")
+def test_delete_operation(mock_connect):
+    """Test the Cache.delete operation."""
+    # Mock the database cursor behavior
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = True
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # Initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # Call the "delete" operation
+    result = cache.delete(user_id, conversation_id)
+
+    # Verify the result
+    assert result is True
+
+    # Verify the query execution
+    mock_cursor.execute.assert_called_once_with(
+        PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT, (user_id, conversation_id)
+    )
+    mock_cursor.fetchone.assert_called_once()
+
+
+@patch("psycopg2.connect")
+def test_delete_operation_not_found(mock_connect):
+    """Test the Cache.delete operation when the conversation is not found."""
+    # Mock the database cursor behavior to simulate no row found
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # Initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # Call the "delete" operation
+    result = cache.delete(user_id, conversation_id)
+
+    # Verify the result
+    assert result is False
+
+    # Verify the query execution
+    mock_cursor.execute.assert_called_once_with(
+        PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT, (user_id, conversation_id)
+    )
+    mock_cursor.fetchone.assert_called_once()
+
+
+@patch("psycopg2.connect")
+def test_delete_operation_on_exception(mock_connect):
+    """Test the Cache.delete operation when an exception is raised."""
+    # Mock the database cursor behavior to raise an exception
+    mock_cursor = MagicMock()
+    mock_cursor.execute.side_effect = psycopg2.DatabaseError("PLSQL error")
+    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # Initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # Verify that the exception is raised
+    with pytest.raises(CacheError, match="PLSQL error"):
+        cache.delete(user_id, conversation_id)

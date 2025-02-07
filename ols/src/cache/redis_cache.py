@@ -130,3 +130,45 @@ class RedisCache(Cache):
                 self.redis_client.set(
                     key, json.dumps([cache_entry.to_dict()], cls=MessageEncoder)
                 )
+
+    def delete(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
+    ) -> bool:
+        """Delete conversation history for a given user_id and conversation_id.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            bool: True if the conversation was deleted, False if not found.
+        """
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
+        # Redis del() returns the number of keys that were removed
+        return bool(self.redis_client.delete(key))
+
+    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+        """List all conversations for a given user_id.
+
+        Args:
+            user_id: User identification.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            A list of conversation ids from the cache
+        """
+        # Get all keys matching the user_id prefix
+        super()._check_user_id(user_id, skip_user_id_check)
+        prefix = f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}"
+        pattern = f"{prefix}*"
+        keys = self.redis_client.keys(pattern)
+
+        # Extract conversation_ids from the keys
+        user_conversation_ids = []
+        for key in keys:
+            # Remove the prefix to get just the conversation_id
+            conversation_id = key[len(prefix) :]
+            user_conversation_ids.append(conversation_id)
+
+        return user_conversation_ids

@@ -76,6 +76,18 @@ class PostgresCache(Cache):
         SELECT count(*) FROM cache;
         """
 
+    DELETE_SINGLE_CONVERSATION_STATEMENT = """
+        DELETE FROM cache
+         WHERE user_id=%s AND conversation_id=%s
+        """
+
+    LIST_CONVERSATIONS_STATEMENT = """
+        SELECT conversation_id
+        FROM cache
+        WHERE user_id=%s
+        ORDER BY updated_at DESC
+    """
+
     def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
         # initialize connection to DB
@@ -170,6 +182,47 @@ class PostgresCache(Cache):
                 logger.error("PostgresCache.insert_or_append: %s", e)
                 raise CacheError("PostgresCache.insert_or_append", e) from e
 
+    def delete(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
+    ) -> bool:
+        """Delete conversation history for a given user_id and conversation_id.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            bool: True if the conversation was deleted, False if not found.
+
+        """
+        with self.conn.cursor() as cursor:
+            try:
+                return PostgresCache._delete(cursor, user_id, conversation_id)
+            except psycopg2.DatabaseError as e:
+                logger.error("PostgresCache.delete: %s", e)
+                raise CacheError("PostgresCache.delete", e) from e
+
+    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+        """List all conversations for a given user_id.
+
+        Args:
+            user_id: User identification.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            A list of conversation ids from the cache
+
+        """
+        with self.conn.cursor() as cursor:
+            try:
+                cursor.execute(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,))
+                rows = cursor.fetchall()
+                return [row[0] for row in rows]
+            except psycopg2.DatabaseError as e:
+                logger.error("PostgresCache.list: %s", e)
+                raise CacheError("PostgresCache.list", e) from e
+
     @staticmethod
     def _select(
         cursor: psycopg2.extensions.cursor,
@@ -233,3 +286,14 @@ class PostgresCache(Cache):
                 cursor.execute(
                     f"{PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT} {count - capacity})"
                 )
+
+    @staticmethod
+    def _delete(
+        cursor: psycopg2.extensions.cursor, user_id: str, conversation_id: str
+    ) -> bool:
+        """Delete conversation history for given user_id and conversation_id."""
+        cursor.execute(
+            PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        )
+        return cursor.fetchone() is not None
