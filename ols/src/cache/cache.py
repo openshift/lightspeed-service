@@ -73,3 +73,30 @@ class Cache(ABC):
             cache_entry: The value to store.
             skip_user_id_check: Skip user_id suid check.
         """
+
+    @abstractmethod
+    def delete(
+        self, user_id: str, conversation_id: str, skip_user_id_check: bool
+    ) -> bool:
+        """Delete all entries for a given conversation.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            bool: True if entries were deleted, False if key wasn't found.
+        """
+
+    @abstractmethod
+    def list(self, user_id: str, skip_user_id_check: bool) -> list[str]:
+        """List all conversations for a given user_id.
+
+        Args:
+            user_id: User identification.
+            skip_user_id_check: Skip user_id suid check.
+
+        Returns:
+            A list of conversation ids from the cache
+        """
