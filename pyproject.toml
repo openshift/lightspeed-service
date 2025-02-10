@@ -120,7 +120,7 @@ dependencies = [
     "huggingface_hub>=0.28.1",
     "ibm-watsonx-ai>=1.2.4",
     "certifi>=2024.12.14",
-    "cryptography>=44.0.0",
+    "cryptography==44.0.0",  # newer version fail with rust toolchain
     "urllib3>=2.3.0",
     "nltk>=3.9.1",
     "aiohttp>=3.11.11",
