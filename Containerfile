@@ -1,9 +1,9 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:3e96332648a6f8ff1879c7ae11c818ea7f1c8d5b8a99c4bff406c98c8a7d4541
 
-FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
+FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:e014f6a342c3790a07b771209b35713e3e4095ff631e4d8bb84966fab3d099e6
+FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
 
 ARG VERSION
 ARG APP_ROOT=/app-root
@@ -31,7 +31,10 @@ COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY runner.py requirements.txt ./
 
-RUN for a in 1 2 3 4 5; do pip3.11 install --no-cache-dir -r requirements.txt && break || sleep 15; done
+RUN pip3.11 --version && \
+    pip3.11 install --upgrade pip && \
+    pip3.11 --version && \
+    pip3.11 install --no-cache-dir -r requirements.txt
 
 COPY ols ./ols
 
