@@ -1337,9 +1337,9 @@ pandas==2.1.4 \
     #   llama-index-legacy
     #   llama-index-readers-file
     #   ols (pyproject.toml)
-pbs-installer==2025.1.6 \
-    --hash=sha256:0eb974ed142298f0dcc3adff5938b49fb219c4f81dbeae9fe609f7374a0cbcc8 \
-    --hash=sha256:69cc3fab5bb36eac678af9228bdd288a25610bc7aaee7b3f3b0c31562fe206d4
+pbs-installer==2025.2.5 \
+    --hash=sha256:8494fa6499ec10243fdd79e874aef756777b2cd0e5ca0c1df69a2d768b42dab4 \
+    --hash=sha256:e2d75530fe49b814dc98baf6bbd960a21f43521006439c4f5bebe4d4ab8c07da
     # via pdm
 pdm==2.21.0 \
     --hash=sha256:9c928d6db62d104ab86318fe09aaf9bdfc6f616176af407e4df00f59e001930f \
