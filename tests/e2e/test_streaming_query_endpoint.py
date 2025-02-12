@@ -18,6 +18,19 @@ from . import test_api
 STREAMING_QUERY_ENDPOINT = "/v1/streaming_query"
 
 
+# NOTE: This approach forces the connection to close after the request,
+# aligning with HTTP/1.0 behavior and potentially preventing incomplete
+# chunked reads, that results in tests "flakiness".
+def post_with_defaults(endpoint, **kwargs):
+    """Send POST request with HTTP/1.0 header and timeout (if not in kwargs)."""
+    return pytest.client.post(
+        endpoint,
+        headers={"Connection": "close"},
+        timeout=kwargs.pop("timeout", test_api.NON_LLM_REST_API_TIMEOUT),
+        **kwargs,
+    )
+
+
 def parse_streaming_response_to_events(response: str) -> list[dict]:
     """Parse streaming response to events."""
     return json.loads(f'[{response.replace("}{", "},{")}]')
@@ -39,14 +52,13 @@ def test_invalid_question():
     ):
         cid = suid.get_suid()
 
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "how to make burger?",
                 "media_type": constants.MEDIA_TYPE_TEXT,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
 
         assert response.status_code == requests.codes.ok
@@ -64,13 +76,12 @@ def test_invalid_question_without_conversation_id():
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "how to make burger?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -89,9 +100,8 @@ def test_query_call_without_payload():
         STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
 
@@ -108,7 +118,7 @@ def test_query_call_with_improper_payload():
         STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.unprocessable_entity,
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"parameter": "this-is-unknown-parameter"},
             timeout=test_api.NON_LLM_REST_API_TIMEOUT,
@@ -128,10 +138,9 @@ def test_valid_question_improper_conversation_id() -> None:
         STREAMING_QUERY_ENDPOINT,
         status_code=requests.codes.internal_server_error,
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.internal_server_error
 
@@ -157,14 +166,13 @@ def test_too_long_question() -> None:
         status_code=requests.codes.ok,
     ):
         cid = suid.get_suid()
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": query,
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
@@ -185,10 +193,9 @@ def test_valid_question() -> None:
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
         cid = suid.get_suid()
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": cid, "query": "what is kubernetes?"},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
@@ -209,14 +216,13 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
         cid = suid.get_suid()
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "welcome openshift container platform documentation",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
 
@@ -243,10 +249,9 @@ def test_valid_question_tokens_counter() -> None:
         ),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"query": "what is kubernetes?"},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
@@ -264,10 +269,9 @@ def test_invalid_question_tokens_counter() -> None:
         ),
         metrics_utils.TokenCounterChecker(pytest.metrics_client, model, provider),
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"query": "how to make burger?"},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
@@ -293,9 +297,8 @@ def test_token_counters_for_query_call_without_payload() -> None:
             expect_received_change=False,
         ),
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -321,10 +324,9 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
             expect_received_change=False,
         ),
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"parameter": "this-is-not-proper-question-my-friend"},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -337,13 +339,12 @@ def test_rag_question() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "what is openshift virtualization?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -370,10 +371,9 @@ def test_query_filter() -> None:
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
         query = "what is foo in bar?"
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"query": query},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
@@ -414,13 +414,12 @@ def test_conversation_history() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "query": "what is ingress in kubernetes?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         scenario_fail_msg = "First call to LLM without conversation history has failed"
         assert response.status_code == requests.codes.ok, scenario_fail_msg
@@ -436,14 +435,13 @@ def test_conversation_history() -> None:
         # get the conversation id so we can reuse it for the follow up question
         assert events[0]["event"] == "start"
         cid = events[0]["data"]["conversation_id"]
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
                 "query": "what?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
 
         scenario_fail_msg = "Second call to LLM with conversation history has failed"
@@ -465,14 +463,13 @@ def test_query_with_provider_but_not_model() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # just the provider is explicitly specified, but model selection is missing
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
                 "provider": "bam",
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -494,14 +491,13 @@ def test_query_with_model_but_not_provider() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # just model is explicitly specified, but provider selection is missing
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
                 "model": "ibm/granite-13b-chat-v2",
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -525,7 +521,7 @@ def test_query_with_unknown_provider() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # provider is unknown
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
@@ -533,7 +529,6 @@ def test_query_with_unknown_provider() -> None:
                 "provider": "foo",
                 "model": model,
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
@@ -562,7 +557,7 @@ def test_query_with_unknown_model() -> None:
         status_code=requests.codes.unprocessable_entity,
     ):
         # model is unknown
-        response = pytest.client.post(
+        response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": "",
@@ -570,7 +565,6 @@ def test_query_with_unknown_model() -> None:
                 "provider": provider,
                 "model": "bar",
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.unprocessable_entity
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
