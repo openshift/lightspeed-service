@@ -166,14 +166,14 @@ class ResponseEvaluation:
         provider,
         model,
         eval_mode,
-        retry_attemps=MAX_RETRY_ATTEMPTS,
+        retry_attempts=MAX_RETRY_ATTEMPTS,
         time_to_breath=TIME_TO_BREATH,
     ):
         """Get api response for a question/query."""
         # try to retrieve response even when model is not responding reliably
         # in 100% cases
         # it fixes OLS-858 e2e test failure - test_model_response response validation
-        for retry_counter in range(retry_attemps):
+        for retry_counter in range(retry_attempts):
             print(f"Call attempt: {retry_counter}")
             try:
                 response = get_model_response(
@@ -185,7 +185,7 @@ class ResponseEvaluation:
                 )
                 break
             except Exception:
-                if retry_counter == retry_attemps - 1:
+                if retry_counter == retry_attempts - 1:
                     raise
             # model is not realiable if it's overloaded, so take some time between requests
             sleep(time_to_breath)
@@ -272,18 +272,26 @@ class ResponseEvaluation:
         for provider_model_id in self._args.eval_provider_model_id:
             for eval_mode in self._args.eval_modes:
                 print(f"Model evaluation for {provider_model_id}; Mode: {eval_mode}")
-                qna_pool_df = self._get_inscope_qna(provider_model_id)
-                qna_pool_df = self._get_model_response(
-                    qna_pool_df, provider_model_id, eval_mode
-                )
-                qna_pool_df = self._get_evaluation_score(qna_pool_df)
-                qna_pool_df["eval_mode"] = eval_mode
-                qna_pool_df["provider_model_id"] = provider_model_id
-                qna_pool_df.to_csv(
-                    f"{self._result_dir}/temp_score-{eval_mode}-"
-                    f"{provider_model_id.replace('/', '-')}.csv",
-                    index=False,
-                )
+                try:
+                    qna_pool_df = read_csv(
+                        f"{self._result_dir}/temp_score-{eval_mode}-"
+                        f"{provider_model_id.replace('/', '-')}.csv"
+                    )
+                    print("Temp score file exists. Proceeding without calculation.")
+                except Exception:
+                    print("Temp score doesn't exist. Proceeding with calculation.")
+                    qna_pool_df = self._get_inscope_qna(provider_model_id)
+                    qna_pool_df = self._get_model_response(
+                        qna_pool_df, provider_model_id, eval_mode
+                    )
+                    qna_pool_df = self._get_evaluation_score(qna_pool_df)
+                    qna_pool_df["eval_mode"] = eval_mode
+                    qna_pool_df["provider_model_id"] = provider_model_id
+                    qna_pool_df.to_csv(
+                        f"{self._result_dir}/temp_score-{eval_mode}-"
+                        f"{provider_model_id.replace('/', '-')}.csv",
+                        index=False,
+                    )
                 result_dfs.append(qna_pool_df)
         return concat(result_dfs)
 

@@ -21,11 +21,11 @@ class AnswerSimilarityScore:
         question,
         answer,
         response,
-        retry_attemps=MAX_RETRY_ATTEMPTS,
+        retry_attempts=MAX_RETRY_ATTEMPTS,
         time_to_breath=TIME_TO_BREATH,
     ):
         """Generate similarity score."""
-        for _ in range(retry_attemps):
+        for retry_counter in range(retry_attempts):
             try:
                 result = self._judge_llm.invoke(
                     {
@@ -36,9 +36,11 @@ class AnswerSimilarityScore:
                 )
                 score = float(result.content) / 10
                 break
-            except Exception:
-                # Continue with score as None
-                score = None
+            except Exception as e:
+                if retry_counter == retry_attempts - 1:
+                    print(f"error_answer_relevancy: {e}")
+                    # Continue with score as None
+                    score = None
 
             sleep(time_to_breath)
 
