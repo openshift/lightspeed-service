@@ -119,7 +119,7 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
-def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
     is_konflux = os.getenv("KONFLUX_BOOL")
@@ -248,11 +248,16 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915
     except subprocess.CalledProcessError:
         print("olsconfig does not yet exist. Creating it.")
 
+    crd_yml_name = f"olsconfig.crd.{provider}"
+    if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
+        print("Cluster introspection is enabled.")
+        crd_yml_name += "_introspection"
+
     cluster_utils.run_oc(
         [
             "create",
             "-f",
-            f"tests/config/operator_install/olsconfig.crd.{provider}.yaml",
+            f"tests/config/operator_install/{crd_yml_name}.yaml",
         ],
         ignore_existing_resource=True,
     )

@@ -98,6 +98,7 @@ def fixture_postgres_connection():
 
 
 @pytest.mark.smoketest
+@pytest.mark.introspection
 @retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
@@ -110,6 +111,7 @@ def test_readiness():
 
 
 @pytest.mark.smoketest
+@pytest.mark.introspection
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"

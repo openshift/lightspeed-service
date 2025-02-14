@@ -1,13 +1,13 @@
-"""Mocked WatsonxLLM class to avoid accessing real Watsonx API."""
+"""Mocked ChatWatsonx class to avoid accessing real Watsonx API."""
 
 from langchain.llms.base import LLM
 
 
-class WatsonxLLM(LLM):
-    """Mocked WatsonxLLM class to avoid accessing real Watsonx API."""
+class ChatWatsonx(LLM):
+    """Mocked ChatWatsonx class to avoid accessing real Watsonx API."""
 
     def __init__(self):
-        """Initialize mocked WatsonxLLM."""
+        """Initialize mocked ChatWatsonx."""
 
     def _call(self, prompt, stop=None, run_manager=None, **kwargs):
         """Override abstract method from LLM abstract class."""

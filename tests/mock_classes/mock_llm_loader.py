@@ -2,8 +2,10 @@
 
 from types import SimpleNamespace
 
+from langchain_core.runnables import Runnable
 
-class MockLLMLoader:
+
+class MockLLMLoader(Runnable):
     """Mock for LLMLoader."""
 
     def __init__(self, llm=None):
@@ -14,10 +16,19 @@ class MockLLMLoader:
             llm.model = "mock_model"
         self.llm = llm
 
-    async def astream(self, llm_input, **kwargs):
+    def invoke(self, *args, **kwargs):
+        """Mock model invoke."""
+        return args[0].messages[1]
+
+    @classmethod
+    def bind_tools(cls, *args, **kwargs):
+        """Mock bind tools."""
+        return cls()
+
+    async def astream(self, *args, **kwargs):
         """Return query result."""
         # yield input prompt/user query
-        yield llm_input[1].content
+        yield args[0][1].content
 
 
 def mock_llm_loader(llm=None, expected_params=None):
