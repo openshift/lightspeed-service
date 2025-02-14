@@ -25,40 +25,40 @@ class AnswerRelevancyScore:
         self,
         question,
         response,
-        retry_attemps=MAX_RETRY_ATTEMPTS,
+        retry_attempts=MAX_RETRY_ATTEMPTS,
         time_to_breath=TIME_TO_BREATH,
     ):
         """Calculate relevancy score."""
         # Generate relevant questions.
-        for retry_counter in range(retry_attemps):
+        for retry_counter in range(retry_attempts):
             try:
                 out = self._judge_llm.invoke(
                     {"answer": response, "num_questions": N_QUESTIONS}
                 )
+                valid_flag = out["Valid"]
+                gen_questions = out["Question"]
+                score = 0
+                if valid_flag == 1:
+                    org_vec = self._embedding_model.get_text_embedding(question)
+                    score = mean(
+                        [
+                            1
+                            - cosine(
+                                org_vec,
+                                self._embedding_model.get_text_embedding(gen_question),
+                            )
+                            for gen_question in gen_questions
+                        ]
+                    )
+                gen_questions = "\n".join(gen_questions)
                 break
-            except Exception:
-                if retry_counter == retry_attemps - 1:
-                    out = None  ## Continue with without result
+
+            except Exception as e:
+                if retry_counter == retry_attempts - 1:
+                    print(f"error_answer_relevancy: {e}")
+                    score, valid_flag, gen_questions = None, None, None
                     # raise
+
             sleep(time_to_breath)
 
-        if out:
-            valid_flag = out["Valid"]
-            gen_questions = out["Question"]
-            score = 0
-            if valid_flag == 1:
-                org_vec = self._embedding_model.get_text_embedding(question)
-                score = mean(
-                    [
-                        1
-                        - cosine(
-                            org_vec,
-                            self._embedding_model.get_text_embedding(gen_question),
-                        )
-                        for gen_question in gen_questions
-                    ]
-                )
-
-            return score, valid_flag, "\n".join(gen_questions)
-
-        return None, None, None
+        return score, valid_flag, gen_questions
