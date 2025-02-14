@@ -31,7 +31,7 @@ COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY runner.py requirements.txt ./
 
-RUN for a in 1 2 3 4 5; do pip3.11 install --no-cache-dir -r requirements.txt && break || sleep 15; done
+RUN pip3.11 install --no-cache-dir -r requirements.txt
 
 COPY ols ./ols
 
