@@ -11,6 +11,25 @@ ARG APP_ROOT=/app-root
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
 
+# tar gzip are required for OpenShift CLI installation
+RUN microdnf install -y tar gzip
+
+# conditional installation of OpenShift CLI
+RUN if [ -f /cachi2/output/deps/generic/openshift-clients.tar.gz ]; then \
+      echo "Using pre-fetched OpenShift CLI from /cachi2"; \
+      tar -xvf /cachi2/output/deps/generic/openshift-clients.tar.gz -C /usr/local/bin; \
+    else \
+      echo "Pre-fetched OpenShift CLI not found. Downloading via curl."; \
+      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
+      tar -xvf openshift-client-linux.tar.gz -C /usr/local/bin && \
+      rm -f openshift-client-linux.tar.gz; \
+    fi
+
+# finish and verify installation
+RUN chmod +x /usr/local/bin/oc
+RUN microdnf remove -y tar gzip
+RUN oc version --client
+
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip legacy locales and use UTF-8 mode
