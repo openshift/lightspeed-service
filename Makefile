@@ -116,6 +116,7 @@ verify:	install-woke install-deps-test ## Verify the code using various linters
 	pdm run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 	./woke . --exit-1-on-failure
 	pylint ols scripts tests runner.py
+	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
