@@ -22,6 +22,15 @@ Here are some basic facts about OpenShift:
 - OpenShift is a distribution of Kubernetes. Everything Kubernetes can do, OpenShift can do and more.
 """
 
+# Currently only additional instructions are concatenated to original
+# doc summarizer prompt. Depending upon performance dedicated prompt will be used.
+AGENT_SYSTEM_INSTRUCTION = """
+* Given the user's query you must decide what to do with it based on the \
+list of tools provided to you.
+* Execute as many tools as possible to gather all information. When you are \
+satisfied with all the details then answer user query.
+"""
+
 USE_CONTEXT_INSTRUCTION = """
 Use the retrieved document to answer the question.
 """

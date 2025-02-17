@@ -66,6 +66,10 @@ class GenericLLMParameters:
     TEMPERATURE = "temperature"
 
 
+# Max Iteration for tool calling
+MAX_ITERATIONS = 5
+
+
 # Token related constants
 
 # It is important to set correct context window, otherwise there will be potential

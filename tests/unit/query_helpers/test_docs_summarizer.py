@@ -3,9 +3,11 @@
 from unittest.mock import ANY, patch
 
 import pytest
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config
+from ols.app.models.models import TokenCounter
+from tests.mock_classes.mock_tools import mock_tools_map
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
@@ -21,7 +23,6 @@ from tests.mock_classes.mock_langchain_interface import (  # noqa:E402
     mock_langchain_interface,
 )
 from tests.mock_classes.mock_llama_index import MockLlamaIndex  # noqa:E402
-from tests.mock_classes.mock_llm_chain import mock_llm_chain  # noqa:E402
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa:E402
 
 conversation_id = suid.get_suid()
@@ -72,7 +73,6 @@ def test_docs_summarizer_streaming_parameter():
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 1)
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
@@ -85,7 +85,6 @@ def test_summarize_empty_history():
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_history():
     """Basic test for DocsSummarizer using mocked index and query engine, no history is provided."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
@@ -98,7 +97,6 @@ def test_summarize_no_history():
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 @patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_history_provided():
     """Basic test for DocsSummarizer using mocked index and query engine, history is provided."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
@@ -126,7 +124,6 @@ def test_summarize_history_provided():
 
 
 @patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
@@ -141,7 +138,6 @@ def test_summarize_truncation():
     assert summary.history_truncated
 
 
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 def test_summarize_no_reference_content():
     """Basic test for DocsSummarizer using mocked index and query engine."""
     summarizer = DocsSummarizer(
@@ -155,7 +151,6 @@ def test_summarize_no_reference_content():
 
 
 @pytest.mark.asyncio
-@patch("ols.src.query_helpers.docs_summarizer.LLMChain", new=mock_llm_chain(None))
 async def test_response_generator():
     """Test response generator method."""
     summarizer = DocsSummarizer(
@@ -170,3 +165,94 @@ async def test_response_generator():
             generated_content += item
 
     assert generated_content == question
+
+
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
+def test_tool_calling_one_iteration(mock_invoke):
+    """Test tool calling - stops after one iteration."""
+    config.ols_config.introspection_enabled = True
+    question = "How many namespaces are there in my cluster ?"
+
+    mock_invoke.side_effect = [
+        (
+            AIMessage(content="XYZ", response_metadata={"finish_reason": "stop"}),
+            TokenCounter(),
+        )
+    ]
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    summarizer.create_response(question)
+    assert mock_invoke.call_count == 1
+
+
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
+def test_tool_calling_two_iteration(mock_invoke):
+    """Test tool calling - stops after two iterations."""
+    config.ols_config.introspection_enabled = True
+    question = "How many namespaces are there in my cluster ?"
+
+    mock_invoke.side_effect = [
+        (
+            AIMessage(content="", response_metadata={"finish_reason": "tool_calls"}),
+            TokenCounter(),
+        ),
+        (
+            AIMessage(content="XYZ", response_metadata={"finish_reason": "stop"}),
+            TokenCounter(),
+        ),
+    ]
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    summarizer.create_response(question)
+    assert mock_invoke.call_count == 2
+
+
+@patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 3)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
+def test_tool_calling_force_stop(mock_invoke):
+    """Test tool calling - force stop."""
+    config.ols_config.introspection_enabled = True
+    question = "How many namespaces are there in my cluster ?"
+
+    mock_invoke.side_effect = [
+        (
+            AIMessage(content="", response_metadata={"finish_reason": "tool_calls"}),
+            TokenCounter(),
+        )
+    ] * 4
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    summarizer.create_response(question)
+    assert mock_invoke.call_count == 3
+
+
+@patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2)
+@patch("ols.src.query_helpers.docs_summarizer.tools_map", mock_tools_map)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
+def test_tool_calling_tool_execution(mock_invoke, caplog):
+    """Test tool calling - tool execution."""
+    caplog.set_level(10)  # Set debug level
+    config.ols_config.introspection_enabled = True
+
+    question = "How many namespaces are there in my cluster ?"
+
+    mock_invoke.return_value = (
+        AIMessage(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[
+                {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                {"name": "invalid_function_name", "args": {}, "id": "call_id2"},
+            ],
+        ),
+        TokenCounter(),
+    )
+
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    summarizer.create_response(question)
+
+    assert "tool name: get_namespaces_mock" in caplog.text
+    tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
+    assert f"tool_output: {tool_output}" in caplog.text
+
+    assert "tool name: invalid_function_name" in caplog.text
+    assert "tool_output: error while executing invalid_function_name" in caplog.text
+
+    assert mock_invoke.call_count == 2

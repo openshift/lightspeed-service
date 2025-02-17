@@ -197,6 +197,7 @@ def test_too_long_question() -> None:
 
 
 @pytest.mark.smoketest
+@pytest.mark.introspection
 @pytest.mark.rag
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
@@ -580,3 +581,36 @@ def test_query_with_unknown_model() -> None:
         ), "Improper response format: 'detail' node is missing"
         assert "Unable to process this request" in json_response["detail"]["response"]
         assert "Model 'bar' is not a valid model " in json_response["detail"]["cause"]
+
+
+@pytest.mark.introspection
+def test_tool_calling() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "How many namespaces are there in my cluster ?",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        # TODO: Currently using sample tool which mocks the tool output
+        # TODO: Optimization required for granite
+        assert re.search(
+            r"(2|default|namespace1|get_namespaces)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
