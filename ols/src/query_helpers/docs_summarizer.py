@@ -3,17 +3,20 @@
 import logging
 from typing import Any, AsyncGenerator, Optional
 
-from langchain.chains import LLMChain
-from langchain_core.messages import AIMessage, BaseMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain.globals import set_debug
+from langchain.llms.base import LLM
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.runnables.base import RunnableBinding
 from llama_index.core import VectorStoreIndex
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import RagChunk, SummarizerResponse
-from ols.constants import RAG_CONTENT_LIMIT, GenericLLMParameters
+from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter
+from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.src.tools.tools import tools_map
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,8 @@ class DocsSummarizer(QueryHelper):
         super().__init__(*args, **kwargs)
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
+        self._introspection_enabled = config.ols_config.introspection_enabled
+        set_debug(self.verbose)
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
@@ -79,6 +84,7 @@ class DocsSummarizer(QueryHelper):
             ["sample"],
             [AIMessage("sample")],
             self._system_prompt,
+            self._introspection_enabled,
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -105,7 +111,11 @@ class DocsSummarizer(QueryHelper):
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
-            query, rag_context, history, self._system_prompt
+            query,
+            rag_context,
+            history,
+            self._system_prompt,
+            self._introspection_enabled,
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
@@ -119,6 +129,27 @@ class DocsSummarizer(QueryHelper):
 
         return final_prompt, llm_input_values, rag_chunks, truncated
 
+    def _invoke_llm(
+        self,
+        llm: LLM | RunnableBinding,
+        prompt: PromptTemplate | ChatPromptTemplate,
+        prompt_input: dict,
+    ) -> tuple[AIMessage, TokenCounter]:
+        """Invoke LLM to get response."""
+        with TokenMetricUpdater(
+            llm=self.bare_llm,
+            provider=self.provider_config.type,
+            model=self.model,
+        ) as generic_token_counter:
+            # Create chain using runnables
+            chain = prompt | llm
+            # Get model response
+            out = chain.invoke(
+                input=prompt_input,
+                config={"callbacks": [generic_token_counter]},
+            )
+        return out, generic_token_counter.token_counter
+
     def create_response(
         self,
         query: str,
@@ -130,30 +161,62 @@ class DocsSummarizer(QueryHelper):
             query, vector_index, history
         )
 
-        chat_engine = LLMChain(
-            llm=self.bare_llm,
-            prompt=final_prompt,
-            verbose=self.verbose,
-        )
+        messages = final_prompt.copy()
 
-        with TokenMetricUpdater(
-            llm=self.bare_llm,
-            provider=self.provider_config.type,
-            model=self.model,
-        ) as generic_token_counter:
-            summary = chat_engine.invoke(
-                input=llm_input_values,
-                config={"callbacks": [generic_token_counter]},
+        # TODO: Tune system prompt
+        # TODO: Handle context for each iteration
+        # TODO: Handle tokens for tool response
+        # TODO: Improvement for granite
+        # TODO: Add tool info to transcript
+        for i in range(MAX_ITERATIONS):
+
+            # Force model to give final response (by not sending any tool),
+            # when introspection is disabled or max iteration is reached.
+            if (not self._introspection_enabled) or (i == MAX_ITERATIONS - 1):
+                # TODO: Modify the sys instruction when max iteration is reached.
+                out, token_counter = self._invoke_llm(
+                    self.bare_llm, messages, llm_input_values
+                )
+                response = out.content
+                break
+
+            llm_with_tools = self.bare_llm.bind_tools(tools_map.values())
+            out, token_counter = self._invoke_llm(
+                llm_with_tools, messages, llm_input_values
             )
-        # retrieve text response returned from LLM, strip whitespace characters from beginning/end
-        response = summary["text"].strip()
-        # TODO: Better handling of stop token.
-        # Recently watsonx/granite-13b started adding stop token to response.
-        response = response.replace("<|endoftext|>", "")
 
-        return SummarizerResponse(
-            response, rag_chunks, truncated, generic_token_counter.token_counter
-        )
+            # Check if model is ready with final response
+            # if (not ai_msg.tool_calls) and (ai_msg.content):
+            if out.response_metadata["finish_reason"] == "stop":
+                response = out.content
+                break
+
+            # Before we can add tool output to messages,
+            # we need to add complete model response
+            messages.append(out)
+
+            # TODO: Parallelization of tool execution
+            # Iterate through tool calls, Model may support parallel tool calls
+            for tool_call in out.tool_calls:
+
+                # Fetch tool name and required args
+                tool_name = tool_call["name"].lower()
+                tool_args = tool_call["args"]
+                # Execute tool/function
+                try:
+                    tool_output = tools_map[tool_name].invoke(tool_args)
+                except Exception:
+                    tool_output = f"error while executing {tool_name}"
+
+                logger.debug(
+                    "tool name: %s\ntool args: %s\ntool_output: %s",
+                    tool_name,
+                    tool_args,
+                    tool_output,
+                )
+                messages.append(ToolMessage(tool_output, tool_call_id=tool_call["id"]))
+
+        return SummarizerResponse(response, rag_chunks, truncated, token_counter)
 
     async def generate_response(
         self,

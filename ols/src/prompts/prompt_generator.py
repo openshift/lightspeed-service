@@ -14,6 +14,7 @@ from langchain_core.prompts import (
 from ols.constants import ModelFamily
 
 from .prompts import (
+    AGENT_SYSTEM_INSTRUCTION,
     QUERY_SYSTEM_INSTRUCTION,
     USE_CONTEXT_INSTRUCTION,
     USE_HISTORY_INSTRUCTION,
@@ -58,18 +59,23 @@ class GeneratePrompt:
         rag_context: list[str] = [],
         history: list[BaseMessage] = [],
         system_instruction: str = QUERY_SYSTEM_INSTRUCTION,
+        tool_call: bool = False,
     ):
         """Initialize prompt generator."""
         self._query = query
         self._rag_context = rag_context
         self._history = history
         self._sys_instruction = system_instruction
+        self._tool_call = tool_call
 
     def _generate_prompt_gpt(self) -> tuple[ChatPromptTemplate, dict]:
         """Generate prompt for GPT."""
         prompt_message = []
         sys_intruction = self._sys_instruction.strip() + "\n"
         llm_input_values: dict = {"query": self._query}
+
+        if self._tool_call:
+            sys_intruction = sys_intruction + "\n" + AGENT_SYSTEM_INSTRUCTION.strip()
 
         if len(self._rag_context) > 0:
             llm_input_values["context"] = "".join(self._rag_context)
@@ -118,6 +124,12 @@ class GeneratePrompt:
         self, model: str
     ) -> tuple[ChatPromptTemplate | PromptTemplate, dict]:
         """Generate prompt."""
+        # For tool call, by default openai schema is considered.
+        # Depending upon performance other prompt format will be considered.
+        if self._tool_call:
+            return self._generate_prompt_gpt()
+
+        # TODO: Use provider, instead of model (Ex: granite with vllm uses openai schema)
         if ModelFamily.GRANITE in model:
             return self._generate_prompt_granite()
         return self._generate_prompt_gpt()

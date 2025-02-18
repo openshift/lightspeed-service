@@ -1,7 +1,7 @@
 """LLM backend libraries loader."""
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from langchain.llms.base import LLM
 
@@ -57,7 +57,7 @@ def load_llm(
     model: str,
     generic_llm_params: Optional[dict] = None,
     streaming: Optional[bool] = None,
-) -> LLM:
+) -> LLM | Any:  # Temporarily using Any, as mypy gives error for missing bind_tools
     """Load LLM according to input provider and model.
 
     Args:
@@ -79,7 +79,6 @@ def load_llm(
 
         bare_llm = load_llm(provider="openai", model="gpt-4o-mini",
                             generic_llm_params=generic_llm_params).llm
-        llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
         ```
     """
     providers_config = config.config.llm_providers

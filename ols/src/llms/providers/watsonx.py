@@ -7,7 +7,7 @@ from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
 from langchain.llms.base import LLM
-from langchain_ibm.llms import WatsonxLLM
+from langchain_ibm import ChatWatsonx
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
@@ -59,7 +59,7 @@ class Watsonx(LLMProvider):
         if self.project_id is None:
             raise ValueError("Project ID must be specified")
 
-        return WatsonxLLM(
+        return ChatWatsonx(
             model_id=self.model,
             url=self.url,
             apikey=self.credentials,
