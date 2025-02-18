@@ -4,17 +4,19 @@ import json
 import sys
 
 
-def write_go_coverage_format(file_path, file_data, output_file):
+def write_go_coverage_format(
+    file_path: str, file_data: dict, output_file_name: str
+) -> None:
     """Write coverage information in a format similar to GO test report to a file.
 
     Args:
         file_path (str): Path of the file.
         file_data (dict): Coverage information for the file.
-        output_file (str): Path of the output file.
+        output_file_name (str): Path of the output file.
     """
     executed_lines = file_data.get("executed_lines", [])
     missing_lines = file_data.get("missing_lines", [])
-    with open(output_file, "a", encoding="utf-8") as f:
+    with open(output_file_name, "a", encoding="utf-8") as f:
         for line in executed_lines:
             f.write(f"{file_path}:{line}.0,{line + 1}.0 1 1\n")
 
@@ -22,12 +24,12 @@ def write_go_coverage_format(file_path, file_data, output_file):
             f.write(f"{file_path}:{line}.0,{line + 1}.0 1 0\n")
 
 
-def parse_coverage_json(json_content, output_file):
+def parse_coverage_json(json_content: str, output_file_name: str) -> None:
     """Parse the content of a Python coverage report in JSON format and write to a file.
 
     Args:
         json_content (str): The JSON content of the coverage report.
-        output_file (str): Path of the output file.
+        output_file_name (str): Path of the output file.
 
     Returns:
         None: Writes information to the output file.
@@ -42,7 +44,7 @@ def parse_coverage_json(json_content, output_file):
             write_go_coverage_format(
                 f"github.com/openshift/lightspeed-service/{file_path}",
                 file_data,
-                output_file,
+                output_file_name,
             )
 
     except json.JSONDecodeError as e:
@@ -62,8 +64,8 @@ if __name__ == "__main__":
             output_file.write("mode: set\n")
 
         with open(json_file_path, "r", encoding="utf-8") as json_file:
-            json_content = json_file.read()
-            parse_coverage_json(json_content, output_file_path)
+            json_file_content = json_file.read()
+            parse_coverage_json(json_file_content, output_file_path)
 
     except FileNotFoundError:
         print(f"File not found: {json_file_path}")
