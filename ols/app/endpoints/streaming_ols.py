@@ -92,6 +92,8 @@ def conversation_request(
         valid,
         timestamps,
         skip_user_id_check,
+        # not needed now - it is prepared here to be used in agent/tools
+        user_token,  # pylint: disable=W0612
     ) = process_request(auth, llm_request)
 
     summarizer_response = (

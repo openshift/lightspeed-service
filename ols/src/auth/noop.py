@@ -5,7 +5,7 @@ import logging
 from fastapi import Request
 
 from ols import config
-from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
+from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, NO_USER_TOKEN
 
 from .auth_dependency_interface import AuthDependencyInterface
 
@@ -21,7 +21,7 @@ class AuthDependency(AuthDependencyInterface):
         # skip user_id suid check if noop auth to allow consumers provide user_id
         self.skip_userid_check = True
 
-    async def __call__(self, request: Request) -> tuple[str, str, bool]:
+    async def __call__(self, request: Request) -> tuple[str, str, bool, str]:
         """Validate FastAPI Requests for authentication and authorization.
 
         Args:
@@ -30,7 +30,10 @@ class AuthDependency(AuthDependencyInterface):
         Returns:
             The user's UID and username if authentication and authorization succeed
             user_id check is skipped with noop auth to allow consumers provide user_id
+            If user_id check should be skipped
+            User's token
         """
+        user_token = NO_USER_TOKEN  # no-op auth yield no token
         if config.dev_config.disable_auth:
             if (
                 config.ols_config.logging_config is None
@@ -41,7 +44,12 @@ class AuthDependency(AuthDependencyInterface):
             # It will be needed for testing purposes because (for example)
             # conversation history and user feedback depend on having any
             # user ID (identity) in proper format (UUID)
-            return DEFAULT_USER_UID, DEFAULT_USER_NAME, self.skip_userid_check
+            return (
+                DEFAULT_USER_UID,
+                DEFAULT_USER_NAME,
+                self.skip_userid_check,
+                user_token,
+            )
 
         logger.warning("Using no-op dependency authentication!")
         logger.warning(
@@ -50,4 +58,4 @@ class AuthDependency(AuthDependencyInterface):
         # try to read user ID from request
         user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
         logger.info("User ID: %s", user_id)
-        return user_id, DEFAULT_USER_NAME, self.skip_userid_check
+        return user_id, DEFAULT_USER_NAME, self.skip_userid_check, user_token
