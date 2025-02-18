@@ -7,9 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
-from ibm_watsonx_ai.metanames import (
-    GenTextParamsMetaNames as GenParams,
-)
+from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 from langchain.llms.base import LLM
 
 from ols import config
