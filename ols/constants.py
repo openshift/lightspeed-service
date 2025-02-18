@@ -221,3 +221,6 @@ CONFIGURATION_FILE_NAME_ENV_VARIABLE = "OLS_CONFIG_FILE"
 # Response streaming media types
 MEDIA_TYPE_TEXT = "text/plain"
 MEDIA_TYPE_JSON = "application/json"
+
+# default value for token when no token is provided
+NO_USER_TOKEN = ""

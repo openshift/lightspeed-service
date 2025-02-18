@@ -36,7 +36,7 @@ def _load_config():
 def auth():
     """Tuple containing user ID and user name, mocking auth. output."""
     # we can use any UUID, so let's use randomly generated one
-    return ("2a3dfd17-1f42-4831-aaa6-e28e7cb8e26b", "name", False)
+    return ("2a3dfd17-1f42-4831-aaa6-e28e7cb8e26b", "name", False, "fake-token")
 
 
 @pytest.mark.usefixtures("_load_config")
