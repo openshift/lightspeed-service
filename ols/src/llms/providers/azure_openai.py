@@ -138,6 +138,5 @@ class AzureOpenAI(LLMProvider):
 def raise_missing_attribute_error(attribute_name: str) -> None:
     """Raise exception when some attribute is missing in configuration."""
     raise ValueError(
-        f"{attribute_name} should be set in azure_openai_config in order to retrieve "
-        "access token."
+        f"{attribute_name} should be set in azure_openai_config in order to retrieve access token."
     )
