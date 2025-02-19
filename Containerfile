@@ -19,10 +19,10 @@ RUN if [ -f /cachi2/output/deps/generic/openshift-clients.tar.gz ]; then \
       echo "Using pre-fetched OpenShift CLI from /cachi2"; \
       tar -xvf /cachi2/output/deps/generic/openshift-clients.tar.gz -C /usr/local/bin; \
     else \
-      echo "Pre-fetched OpenShift CLI not found. Downloading via curl."; \
-      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz" && \
-      tar -xvf openshift-client-linux.tar.gz -C /usr/local/bin && \
-      rm -f openshift-client-linux.tar.gz; \
+      OC_CLIENT_TAR_GZ=openshift-client-linux-amd64-rhel9-4.17.9.tar.gz; \
+      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.9/${OC_CLIENT_TAR_GZ}" && \
+      tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
+      rm -f ${OC_CLIENT_TAR_GZ}; \
     fi
 
 # finish and verify installation
