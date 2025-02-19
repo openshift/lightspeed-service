@@ -504,6 +504,7 @@ class PostgresConfig(BaseModel):
     password_path: Optional[FilePath] = None
     password: Optional[str] = None
     ssl_mode: str = constants.POSTGRES_CACHE_SSL_MODE
+    gss_encmode: str = constants.POSTGRES_CACHE_GSSENCMODE
     ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
 

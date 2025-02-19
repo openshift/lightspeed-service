@@ -141,6 +141,10 @@ POSTGRES_CACHE_MAX_ENTRIES = 1000
 # for all possible options
 POSTGRES_CACHE_SSL_MODE = "prefer"
 
+# look at https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE
+# for all possible options
+POSTGRES_CACHE_GSSENCMODE = "prefer"
+
 
 # default indentity for local testing and deployment
 # "nil" UUID is used on purpose, because it will be easier to
