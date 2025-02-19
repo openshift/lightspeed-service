@@ -303,6 +303,7 @@ def store_data(
         llm_request,
         response,
         attachments,
+        timestamps,
         skip_user_id_check,
     )
 
