@@ -215,7 +215,12 @@ def test_store_conversation_history(insert_or_append):
     response = ""
 
     ols.store_conversation_history(
-        constants.DEFAULT_USER_UID, conversation_id, llm_request, response, []
+        constants.DEFAULT_USER_UID,
+        conversation_id,
+        llm_request,
+        response,
+        [],
+        [],
     )
 
     expected_history = CacheEntry(query=HumanMessage(query))
