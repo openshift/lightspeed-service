@@ -1,5 +1,8 @@
 """Benchmarks for the token handler."""
 
+from langchain_core.messages import AIMessage, HumanMessage
+
+from ols.constants import ModelFamily
 from ols.utils.token_handler import TokenHandler
 
 
@@ -47,7 +50,7 @@ def benchmark_limit_conversation_history(benchmark, history, limit=1000):
     """Benchmark the method to calculate available tokens."""
     token_handler = TokenHandler()
 
-    benchmark(token_handler.limit_conversation_history, history, limit)
+    benchmark(token_handler.limit_conversation_history, history, ModelFamily.GPT, limit)
 
 
 def test_limit_conversation_history_no_history(benchmark):
@@ -60,12 +63,12 @@ def test_limit_conversation_history_short_history(benchmark):
     """Benchark for limiting conversation history."""
     # short conversation history with just 3 questions and 3 answers
     history = [
-        "first message from human",
-        "first answer from AI",
-        "second message from human",
-        "second answer from AI",
-        "third message from human",
-        "third answer from AI",
+        HumanMessage("first message from human"),
+        AIMessage("first answer from AI"),
+        HumanMessage("second message from human"),
+        AIMessage("second answer from AI"),
+        HumanMessage("third message from human"),
+        AIMessage("third answer from AI"),
     ]
 
     benchmark_limit_conversation_history(benchmark, history)
@@ -75,12 +78,12 @@ def test_limit_conversation_history_long_history(benchmark):
     """Benchark for limiting conversation history."""
     # longer history with 600 messages in overall
     history = [
-        "first message from human",
-        "first answer from AI",
-        "second message from human",
-        "second answer from AI",
-        "third message from human",
-        "third answer from AI",
+        HumanMessage("first message from human"),
+        AIMessage("first answer from AI"),
+        HumanMessage("second message from human"),
+        AIMessage("second answer from AI"),
+        HumanMessage("third message from human"),
+        AIMessage("third answer from AI"),
     ] * 100
 
     benchmark_limit_conversation_history(benchmark, history)
@@ -90,12 +93,12 @@ def test_limit_conversation_history_huge_history(benchmark):
     """Benchark for limiting conversation history."""
     # huge history consisting of 60000 messages
     history = [
-        "first message from human",
-        "first answer from AI",
-        "second message from human",
-        "second answer from AI",
-        "third message from human",
-        "third answer from AI",
+        HumanMessage("first message from human"),
+        AIMessage("first answer from AI"),
+        HumanMessage("second message from human"),
+        AIMessage("second answer from AI"),
+        HumanMessage("third message from human"),
+        AIMessage("third answer from AI"),
     ] * 10000
 
     benchmark_limit_conversation_history(benchmark, history)
