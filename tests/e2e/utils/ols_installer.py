@@ -252,15 +252,23 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
     if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
         print("Cluster introspection is enabled.")
         crd_yml_name += "_introspection"
-
-    cluster_utils.run_oc(
-        [
-            "create",
-            "-f",
-            f"tests/config/operator_install/{crd_yml_name}.yaml",
-        ],
-        ignore_existing_resource=True,
-    )
+    try:
+        cluster_utils.run_oc(
+            [
+                "create",
+                "-f",
+                f"tests/config/operator_install/{crd_yml_name}.yaml",
+            ],
+            ignore_existing_resource=True,
+        )
+    except subprocess.CalledProcessError as e:
+        csv = cluster_utils.run_oc(
+            ["get", "clusterserviceversion", "-o", "jsonpath={.items[0].status}"]
+        )
+        print(
+            f"Error creating olsconfig: {e}, stdout: {e.output}, stderr: {e.stderr}, csv: {csv}"
+        )
+        raise
     cluster_utils.run_oc(
         [
             "scale",
