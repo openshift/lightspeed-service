@@ -83,39 +83,31 @@ def conversation_request(
     Returns:
         StreamingResponse: The streaming response generated for the query.
     """
-    (
-        user_id,
-        conversation_id,
-        query_without_attachments,
-        previous_input,
-        attachments,
-        valid,
-        timestamps,
-        skip_user_id_check,
-        # not needed now - it is prepared here to be used in agent/tools
-        user_token,  # pylint: disable=W0612
-    ) = process_request(auth, llm_request)
+    processed_request = process_request(auth, llm_request)
 
     summarizer_response = (
         invalid_response_generator()
-        if not valid
+        if not processed_request.valid
         else generate_response(
-            conversation_id, llm_request, previous_input, streaming=True
+            processed_request.conversation_id,
+            llm_request,
+            processed_request.previous_input,
+            streaming=True,
         )
     )
 
     return StreamingResponse(
         response_processing_wrapper(
             summarizer_response,
-            user_id,
-            conversation_id,
+            processed_request.user_id,
+            processed_request.conversation_id,
             llm_request,
-            attachments,
-            valid,
-            query_without_attachments,
+            processed_request.attachments,
+            processed_request.valid,
+            processed_request.query_without_attachments,
             llm_request.media_type,
-            timestamps,
-            skip_user_id_check,
+            processed_request.timestamps,
+            processed_request.skip_user_id_check,
         ),
         media_type=llm_request.media_type,
     )
