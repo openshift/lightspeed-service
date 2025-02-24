@@ -657,6 +657,13 @@ class MessageEncoder(json.JSONEncoder):
                 "response_metadata": o.response_metadata,
                 "additional_kwargs": o.additional_kwargs,
             }
+        if isinstance(o, CacheEntry):
+            return {
+                "__type__": "CacheEntry",
+                "query": self.default(o.query),  # Handle nested Message object
+                "response": self.default(o.response) if o.response else None,
+                "attachments": o.attachments,
+            }
         return super().default(o)
 
 
@@ -680,7 +687,7 @@ class MessageDecoder(json.JSONDecoder):
 
     def _decode_message(
         self, dct: dict[str, Any]
-    ) -> Union[HumanMessage, AIMessage, dict[str, Any]]:
+    ) -> Union[HumanMessage, AIMessage, CacheEntry, dict[str, Any]]:
         """Decode JSON dictionary into Message objects if applicable.
 
         Args:
@@ -690,9 +697,17 @@ class MessageDecoder(json.JSONDecoder):
             Union[HumanMessage, AIMessage, dict]: A Message object if the input
             dictionary represents a message, otherwise returns the original dictionary.
         """
-        message: Union[HumanMessage, AIMessage, dict[str, Any]]
-
+        if "__type__" in dct and dct["__type__"] == "CacheEntry":
+            # Handle CacheEntry reconstruction
+            return CacheEntry(
+                query=self._decode_message(dct["query"]),
+                response=(
+                    self._decode_message(dct["response"]) if dct["response"] else None
+                ),
+                attachments=dct["attachments"],
+            )
         if "type" in dct:
+            message: Union[HumanMessage, AIMessage]
             if dct["type"] == "human":
                 message = HumanMessage(content=dct["content"])
             elif dct["type"] == "ai":
