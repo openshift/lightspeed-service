@@ -38,18 +38,26 @@ package "OpenShift LightSpeed service" as ols {
 }
 
 component "User data collector" as collector
+component "Quota\nlimiter" as quota_limiter
+component "Revocation\nscheduler" as quota_revocation
 
 database "RAG\ndatabase" as rag
 database "Conversation\ncache" as cache
+database "Quota\nstorage" as quota_storage
 collections "LLM" as llm
 collections "Auth.modules" as auth_modules
 collections "Cache interface" as cache_interface
 database "Transcripts" as transcripts
+collections "Quota limiter\ninterface" as quota_limiter_interface
 document_summarizer --> rag
 history --> cache_interface : unified cache interface
 cache_interface --> cache : configured cache\nimplementation
 llm_register --> llm : call selected LLM
 handler -> transcripts
+handler --> quota_limiter_interface
+quota_limiter_interface -> quota_limiter
+quota_limiter -> quota_storage
+quota_revocation -u-> quota_storage
 transcripts -> collector
 component "Prometheus"
 component "Grafana"
