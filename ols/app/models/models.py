@@ -718,3 +718,29 @@ class MessageDecoder(json.JSONDecoder):
             message.response_metadata = dct["response_metadata"]
             return message
         return dct
+
+
+class ProcessedRequest(BaseModel):
+    """Model representing processed request w/o LLM response.
+
+    Attributes:
+        user_id: The ID of the logged in user.
+        conversation_id: Conversation ID.
+        query_without_attachments: Query to LLM without attachments.
+        previous_input: Previous query to LLM.
+        attachments: List of all attachments.
+        valid: Whether the query is valid or not.
+        timestamps: Timestamps for all operations.
+        skip_user_id_check: Flag to skip user ID checking in handler.
+        user_token: User token (if provided).
+    """
+
+    user_id: str
+    conversation_id: str
+    query_without_attachments: str
+    previous_input: list[CacheEntry]
+    attachments: list[Attachment]
+    valid: bool
+    timestamps: dict[str, float]
+    skip_user_id_check: bool
+    user_token: str

@@ -747,7 +747,7 @@ def test_conversation_request_on_wrong_configuration(
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=None))
+@patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=[]))
 @patch(
     "ols.app.endpoints.ols.validate_question",
     new=Mock(return_value=False),

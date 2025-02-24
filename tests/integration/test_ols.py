@@ -109,7 +109,7 @@ def test_post_question_on_invalid_question(_setup, endpoint):
 def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint):
     """Check the REST API query endpoints when generic response type is returned."""
     # let's pretend the question is valid and generic one
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     with (
         patch(
             "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
@@ -274,7 +274,7 @@ def test_post_question_improper_conversation_id(_setup, endpoint) -> None:
     """Check the REST API query endpoints with improper conversation ID."""
     assert config.dev_config is not None
     config.dev_config.disable_auth = True
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
     ):
@@ -359,7 +359,7 @@ def test_post_question_with_keyword(mock_llm_validation, _setup, endpoint) -> No
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
 def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
     """Check the REST API query endpoints with query filters."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
 
     query_filters = [
         QueryFilter(
@@ -478,7 +478,7 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 )
 def test_post_question_without_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints without attachments."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -518,7 +518,7 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
 @pytest.mark.attachment
 def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints with empty list of attachments."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -559,7 +559,7 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
 )
 def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -613,7 +613,7 @@ this is attachment
 )
 def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with YAML attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -676,7 +676,7 @@ metadata:
 )
 def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints with two YAML attachments."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -759,7 +759,7 @@ metadata:
 )
 def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one YAML without kind attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -820,7 +820,7 @@ metadata:
 )
 def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one YAML without name attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -883,7 +883,7 @@ metadata:
 )
 def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one invalid YAML attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
     query_passed = None
 
     def validate_question(_conversation_id, query):
@@ -942,7 +942,7 @@ kind: Pod
 @pytest.mark.attachment
 def test_post_question_with_large_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with large attachment."""
-    answer = constants.SUBJECT_ALLOWED
+    answer = True
 
     def validate_question(_conversation_id, _query):
         """Closure called indirectly to validate the question."""
@@ -1028,7 +1028,7 @@ def _post_with_system_prompt_override(_setup, caplog, query, system_prompt):
 
     with patch(
         "ols.app.endpoints.ols.QuestionValidator.validate_question",
-        side_effect=lambda x, y: constants.SUBJECT_ALLOWED,
+        side_effect=lambda x, y: True,
     ):
         ml = mock_langchain_interface("test response")
         with (
