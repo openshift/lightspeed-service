@@ -707,6 +707,7 @@ class MessageDecoder(json.JSONDecoder):
                 attachments=dct["attachments"],
             )
         if "type" in dct:
+            message: Union[HumanMessage, AIMessage]
             if dct["type"] == "human":
                 message = HumanMessage(content=dct["content"])
             elif dct["type"] == "ai":
