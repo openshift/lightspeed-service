@@ -495,6 +495,22 @@ def test_message_encoder_ai_message():
     )
 
 
+def test_message_encoder_cache_entry():
+    """Test encoding cache entry into string containing JSON representation."""
+    msg = CacheEntry(query=HumanMessage("Hello"))
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    assert type(encoded) is str
+    expected = (
+        '{"__type__": "CacheEntry", '
+        + '"query": {"type": "human", "content": "Hello", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
+        + '"response": {"type": "ai", "content": "", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
+        + '"attachments": []}'
+    )
+    assert encoded == expected
+
+
 def test_message_encoder_other_message():
     """Test encoding any message into string containing JSON representation."""
     msg = {"content": "Hello"}
@@ -503,6 +519,30 @@ def test_message_encoder_other_message():
     assert encoded is not None
     assert type(encoded) is str
     assert encoded == '{"content": "Hello"}'
+
+
+def test_message_encoder_no_serializable():
+    """Test if non-serializable exception is thrown."""
+
+    # no serializable class
+    class Foo:
+        def __init__(self):
+            pass
+
+    msg = Foo()
+
+    with pytest.raises(TypeError, match="Object of type Foo is not JSON serializable"):
+        json.dumps(msg, cls=MessageEncoder)
+
+
+def test_message_encoder_nil_message():
+    """Test encoding empty message into string containing JSON representation."""
+    msg = None
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    assert type(encoded) is str
+    assert encoded == "null"
 
 
 def test_message_decoder_human_message():
@@ -527,6 +567,32 @@ def test_message_decoder_ai_message():
     assert msg is not None
     assert type(msg) is AIMessage
     assert msg.content == "Hello"
+
+
+def test_message_decoder_typed_message():
+    """Test decoding message object from JSON."""
+    msg = json.loads(
+        '{"type": "other", "content": "Hello",'
+        + '"additional_kwargs": {}, "response_metadata": {}}',
+        cls=MessageDecoder,
+    )
+    assert msg is not None
+    assert type(msg) is dict
+    assert msg["content"] == "Hello"
+
+
+def test_message_decoder_cache_entry():
+    """Test decoding cache entry object from JSON."""
+    msg = json.loads(
+        '{"__type__": "CacheEntry", '
+        + '"query": {"type": "human", "content": "Hello", "response_metadata": {}, '
+        + '"additional_kwargs": {}}, '
+        + '"response": {"type": "ai", "content": "", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
+        + '"attachments": []}',
+        cls=MessageDecoder,
+    )
+    assert msg is not None
+    assert type(msg) is CacheEntry
 
 
 def test_message_decoder_other_message():
