@@ -100,6 +100,8 @@ def conversation_request(
             processed_request.conversation_id,
             llm_request,
             processed_request.previous_input,
+            streaming=False,
+            user_token=processed_request.user_token,
         )
 
     processed_request.timestamps["generate response"] = time.time()
@@ -361,6 +363,7 @@ def generate_response(
     llm_request: LLMRequest,
     previous_input: list[CacheEntry],
     streaming: bool = False,
+    user_token: Optional[str] = None,
 ) -> Union[SummarizerResponse, Generator]:
     """Generate response based on validation result, previous input, and model output.
 
@@ -369,6 +372,7 @@ def generate_response(
         llm_request: The request containing a query.
         previous_input: The history of the conversation (if available).
         streaming: The flag indicating if the response should be streamed.
+        user_token: The user token used for authorization.
 
     Returns:
         SummarizerResponse or Generator, depending on the streaming flag.
@@ -386,7 +390,7 @@ def generate_response(
                 llm_request.query, config.rag_index, history
             )
         response = docs_summarizer.create_response(
-            llm_request.query, config.rag_index, history
+            llm_request.query, config.rag_index, history, user_token
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response
