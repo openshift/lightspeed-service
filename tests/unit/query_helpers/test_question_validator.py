@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pytest
+from langchain_core.messages import AIMessage
 
 from ols import config
 from ols.constants import GenericLLMParameters
@@ -14,7 +15,6 @@ from ols.src.query_helpers.question_validator import (  # noqa: E402
     QueryHelper,
     QuestionValidator,
 )
-from tests.mock_classes.mock_llm_chain import mock_llm_chain  # noqa: E402
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
 
 
@@ -63,12 +63,14 @@ def test_passing_parameters():
     )
 
 
-@patch("ols.src.query_helpers.question_validator.LLMChain", new=mock_llm_chain(None))
-def test_validate_question_llm_loader():
+@patch("ols.src.query_helpers.question_validator.QuestionValidator._invoke_llm")
+def test_validate_question_llm_loader(mock_invoke):
     """Test that LLM is loaded within validate_question method with proper parameters."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
     config.reload_from_yaml_file("tests/config/valid_config.yaml")
+
+    mock_invoke.return_value = AIMessage(content="REJECTED")
 
     # when the LLM will be initialized the check for provided parameters will
     # be performed

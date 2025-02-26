@@ -3,8 +3,9 @@
 import logging
 from typing import Any
 
-from langchain.chains import LLMChain
+from langchain.globals import set_debug
 from langchain.prompts import PromptTemplate
+from langchain_core.messages import AIMessage
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
@@ -29,17 +30,43 @@ class QuestionValidator(QueryHelper):
         generic_llm_params = {
             GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: self.max_tokens_for_response
         }
+
         super().__init__(*args, **dict(kwargs, generic_llm_params=generic_llm_params))
 
-    def validate_question(
-        self, conversation_id: str, query: str, verbose: bool = False
-    ) -> bool:
+        self.bare_llm = self.llm_loader(
+            self.provider, self.model, self.generic_llm_params, self.streaming
+        )
+        self.provider_config = config.llm_config.providers.get(self.provider)
+        self.model_config = self.provider_config.models.get(self.model)
+
+        self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
+        set_debug(self.verbose)
+
+    def _invoke_llm(
+        self, prompt: PromptTemplate, prompt_input: dict[str, str]
+    ) -> AIMessage:
+        """Invoke LLM to get response."""
+        # Create chain using runnables
+        llm_chain = prompt | self.bare_llm
+
+        with TokenMetricUpdater(
+            llm=self.bare_llm,
+            provider=self.provider_config.type,
+            model=self.model,
+        ) as generic_token_counter:
+            # Get model response
+            out = llm_chain.invoke(
+                input=prompt_input,
+                config={"callbacks": [generic_token_counter]},
+            )
+        return out
+
+    def validate_question(self, conversation_id: str, query: str) -> bool:
         """Validate a question and provides a one-word response.
 
         Args:
           conversation_id: The identifier for the conversation or task context.
           query: The question to be validated.
-          verbose: If `LLMChain` should be verbose. Defaults to `False`.
 
         Returns:
             bool: true/false indicating if the question was deemed valid
@@ -49,7 +76,7 @@ class QuestionValidator(QueryHelper):
             f"query: {query}, "
             f"provider: {self.provider}, "
             f"model: {self.model}, "
-            f"verbose: {verbose}"
+            f"verbose: {self.verbose}"
         )
         logger.info("%s call settings: %s", conversation_id, settings_string)
 
@@ -57,36 +84,18 @@ class QuestionValidator(QueryHelper):
             QUESTION_VALIDATOR_PROMPT_TEMPLATE
         )
 
-        bare_llm = self.llm_loader(
-            self.provider, self.model, self.generic_llm_params, self.streaming
-        )
-
         # Tokens-check: We trigger the computation of the token count
         # without care about the return value. This is to ensure that
         # the query is within the token limit.
-        provider_config = config.llm_config.providers.get(self.provider)
-        model_config = provider_config.models.get(self.model)
         TokenHandler().calculate_and_check_available_tokens(
-            query, model_config.context_window_size, self.max_tokens_for_response
-        )
-
-        llm_chain = LLMChain(
-            llm=bare_llm,
-            prompt=prompt_instructions,
-            verbose=verbose,
+            query, self.model_config.context_window_size, self.max_tokens_for_response
         )
 
         logger.debug("%s validating user query: %s", conversation_id, query)
 
-        with TokenMetricUpdater(
-            llm=bare_llm,
-            provider=provider_config.type,
-            model=self.model,
-        ) as generic_token_counter:
-            response = llm_chain.invoke(
-                input={"query": query}, config={"callbacks": [generic_token_counter]}
-            )
-        clean_response = str(response["text"]).strip()
+        clean_response = self._invoke_llm(
+            prompt_instructions, {"query": query}
+        ).content.strip()
 
         logger.debug(
             "%s query validation response: %s", conversation_id, clean_response
