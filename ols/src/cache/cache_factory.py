@@ -16,7 +16,7 @@ class CacheFactory:
         """Create an instance of Cache based on loaded configuration.
 
         Returns:
-            An instance of `Cache` (either `RedisCache` or `InMemoryCache`).
+            An instance of `Cache` (either `RedisCache`, `PostgresCache` or `InMemoryCache`).
         """
         match config.type:
             case constants.CACHE_TYPE_REDIS:
