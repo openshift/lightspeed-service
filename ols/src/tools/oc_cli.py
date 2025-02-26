@@ -10,6 +10,7 @@ from langchain.tools import tool
 logger = logging.getLogger(__name__)
 
 
+# TODO: OLS-1443
 # TODO: might also sanitize the case when llm sends the full command instead
 # of just args, eg. [oc get pods -n bla] -> [pods -n bla]
 def sanitize_oc_args(args: list[str]) -> list[str]:
