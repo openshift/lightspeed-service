@@ -14,6 +14,8 @@ from fastapi.responses import StreamingResponse
 
 from ols import config, constants
 from ols.app.endpoints.ols import (
+    calc_input_tokens,
+    calc_output_tokens,
     generate_response,
     log_processing_durations,
     process_request,
@@ -162,12 +164,8 @@ def stream_end_event(
                 "data": {
                     "referenced_documents": ref_docs,
                     "truncated": truncated,
-                    "input_tokens": (
-                        0 if token_counter is None else token_counter.input_tokens
-                    ),
-                    "output_tokens": (
-                        0 if token_counter is None else token_counter.output_tokens
-                    ),
+                    "input_tokens": calc_input_tokens(token_counter),
+                    "output_tokens": calc_output_tokens(token_counter),
                 },
             }
         )

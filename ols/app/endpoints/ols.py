@@ -27,6 +27,7 @@ from ols.app.models.models import (
     RagChunk,
     ReferencedDocument,
     SummarizerResponse,
+    TokenCounter,
     UnauthorizedResponse,
 )
 from ols.src.auth.auth import get_auth_dependency
@@ -145,17 +146,23 @@ def conversation_request(
         response=summarizer_response.response,
         referenced_documents=referenced_documents,
         truncated=summarizer_response.history_truncated,
-        input_tokens=(
-            0
-            if summarizer_response.token_counter is None
-            else summarizer_response.token_counter.input_tokens
-        ),
-        output_tokens=(
-            0
-            if summarizer_response.token_counter is None
-            else summarizer_response.token_counter.output_tokens
-        ),
+        input_tokens=calc_input_tokens(summarizer_response.token_counter),
+        output_tokens=calc_output_tokens(summarizer_response.token_counter),
     )
+
+
+def calc_input_tokens(token_counter: Optional[TokenCounter]) -> int:
+    """Calculate input tokens."""
+    if token_counter is None:
+        return 0
+    return token_counter.input_tokens
+
+
+def calc_output_tokens(token_counter: Optional[TokenCounter]) -> int:
+    """Calculate output tokens."""
+    if token_counter is None:
+        return 0
+    return token_counter.output_tokens
 
 
 def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
