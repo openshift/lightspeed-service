@@ -241,8 +241,7 @@ It is also possible to use it inside the test implementation as context manager:
 
 ```python
 def test_xyz():
-    ml = mock_llm_chain({"text": retval})
-    with patch("ols.src.query_helpers.question_validator.LLMChain", new=ml):
+    with patch("ols.config", new=Mock()):
         ...
         ...
         ...

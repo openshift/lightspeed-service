@@ -79,7 +79,7 @@ def load_llm(
 
         bare_llm = load_llm(provider="openai", model="gpt-4o-mini",
                             generic_llm_params=generic_llm_params).llm
-        llm_chain = LLMChain(llm=bare_llm, prompt=prompt)
+        llm_chain = prompt | bare_llm
         ```
     """
     providers_config = config.config.llm_providers

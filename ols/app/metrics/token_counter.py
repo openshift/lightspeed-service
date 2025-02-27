@@ -31,11 +31,7 @@ class GenericTokenCounter(BaseCallbackHandler):
             self.provider, self.model, llm_params=self.llm_params
         )
         token_counter = GenericTokenCounter(bare_llm)
-        llm_chain = LLMChain(
-            llm=bare_llm,
-            prompt=prompt_instructions,
-            verbose=verbose,
-        )
+        llm_chain = prompt_instructions | bare_llm
         response = llm_chain.invoke(
             input={"query": query}, config={"callbacks": [token_counter]}
         )
@@ -124,11 +120,7 @@ class TokenMetricUpdater:
         bare_llm = self.llm_loader(
             self.provider, self.model, llm_params=self.llm_params
         )
-        llm_chain = LLMChain(
-            llm=bare_llm,
-            prompt=prompt_instructions,
-            verbose=verbose,
-        )
+        llm_chain = prompt_instructions | bare_llm
         with TokenMetricUpdater(
             llm=bare_llm,
             provider=self.provider,
