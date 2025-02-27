@@ -592,7 +592,7 @@ def test_tool_calling() -> None:
             QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "How many namespaces are there in my cluster ?",
+                "query": "Is there openshift-lightspeed namespace in the cluster?",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -605,12 +605,6 @@ def test_tool_calling() -> None:
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
 
-        # TODO: Currently using sample tool which mocks the tool output
-        # TODO: Optimization required for granite
-        assert re.search(
-            r"(2|default|namespace1|get_namespaces)",
-            json_response["response"],
-            re.IGNORECASE,
-        )
+        assert "yes" in json_response["response"]
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0

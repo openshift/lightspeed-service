@@ -1093,9 +1093,9 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     assert caplog.text.count("System prompt: " + system_prompt) == 0
 
 
-@patch("ols.src.query_helpers.docs_summarizer.tools_map", mock_tools_map)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
-def test_tool_calling(mock_invoke, _setup, caplog) -> None:
+def test_tool_calling(mock_invoke, tools_mock, _setup, caplog) -> None:
     """Check the REST API query endpoints when tool calling is enabled."""
     endpoint = "/v1/query"
     caplog.set_level(10)
@@ -1120,6 +1120,7 @@ def test_tool_calling(mock_invoke, _setup, caplog) -> None:
             TokenCounter(),
         ),
     ]
+    tools_mock.return_value = mock_tools_map
 
     with (
         patch(
@@ -1137,9 +1138,9 @@ def test_tool_calling(mock_invoke, _setup, caplog) -> None:
         )
         assert mock_invoke.call_count == 2
 
-        assert "tool name: get_namespaces_mock" in caplog.text
+        assert "Tool call: get_namespaces_mock" in caplog.text
         tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-        assert f"tool_output: {tool_output}" in caplog.text
+        assert f"Output: {tool_output}" in caplog.text
 
         assert response.status_code == requests.codes.ok
         assert response.json()["response"] == "You have 1 namespace."

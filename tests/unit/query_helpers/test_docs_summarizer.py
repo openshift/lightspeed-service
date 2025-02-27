@@ -224,9 +224,9 @@ def test_tool_calling_force_stop(mock_invoke):
 
 
 @patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2)
-@patch("ols.src.query_helpers.docs_summarizer.tools_map", mock_tools_map)
+@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools")
 @patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm")
-def test_tool_calling_tool_execution(mock_invoke, caplog):
+def test_tool_calling_tool_execution(mock_invoke, tools_mock, caplog):
     """Test tool calling - tool execution."""
     caplog.set_level(10)  # Set debug level
     config.ols_config.introspection_enabled = True
@@ -244,15 +244,16 @@ def test_tool_calling_tool_execution(mock_invoke, caplog):
         ),
         TokenCounter(),
     )
+    tools_mock.return_value = mock_tools_map
 
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     summarizer.create_response(question)
 
-    assert "tool name: get_namespaces_mock" in caplog.text
+    assert "Tool call: get_namespaces_mock" in caplog.text
     tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-    assert f"tool_output: {tool_output}" in caplog.text
+    assert f"Output: {tool_output}" in caplog.text
 
-    assert "tool name: invalid_function_name" in caplog.text
-    assert "tool_output: error while executing invalid_function_name" in caplog.text
+    assert "Tool call: invalid_function_name" in caplog.text
+    assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
     assert mock_invoke.call_count == 2
