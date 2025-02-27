@@ -1,5 +1,7 @@
 """Utility for evaluation."""
 
+from langchain_core.messages import AIMessage
+
 from ols import config
 from ols.constants import RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import GeneratePrompt
@@ -10,7 +12,7 @@ def retrieve_rag_chunks(query, model, model_config):
     """Retrieve rag chunks."""
     token_handler = TokenHandler()
     temp_prompt, temp_prompt_input = GeneratePrompt(
-        query, ["sample"], ["ai: sample"]
+        query, ["sample"], [AIMessage(content="sample")]
     ).generate_prompt(model)
     available_tokens = token_handler.calculate_and_check_available_tokens(
         temp_prompt.format(**temp_prompt_input),
