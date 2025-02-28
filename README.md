@@ -90,9 +90,7 @@ configure model, and connect to it.
     * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
         * [Path](#path)
         * [Usage](#usage-1)
-    * [Utility to generate `requirements.*` files](#utility-to-generate-requirements-files)
-        * [Path](#path-1)
-        * [Usage](#usage-2)
+    * [Generating requirements.txt file](#generating-requirements.txt-file)
         * [Known issue](#known-issue)
     * [Uploading artifact containing the pytest results and configuration to an s3 bucket.](#uploading-artifact-containing-the-pytest-results-and-configuration-to-an-s3-bucket)
         * [Path](#path-2)
@@ -891,55 +889,17 @@ This script re-generated OpenAPI schema for the Lightspeed Service REST API.
 ### Usage
 
 ```
-pdm generate-schema`
+pdm generate-schema
 ```
 
-## Utility to generate `requirements.*` files
+## Generating requirements.txt file
 
-Generate list of packages to be prefetched in Cachi2 and used in Konflux for hermetic build.
+For Konflux hermetic builds, Cachi2 uses the `requirements.txt` format to generate a list of packages to prefetch.  
 
-This script performs several steps:
+To generate the `requirements.txt` file, follow these steps:  
 
-1. removes torch+cpu dependency from project file
-2. generates requirements.txt file from pyproject.toml + pdm.lock
-3. removes all torch dependencies (including CUDA/Nvidia packages)
-4. downloads torch+cpu wheel
-5. computes hashes for this wheel
-6. adds the URL to wheel + hash to resulting requirements.txt file
-7. downloads script `pip_find_builddeps` from the Cachito project
-8. generated requirements-build.in file
-9. compiles requirements-build.in file into requirements-build.txt file
-
-Please note that this script depends on tool that is downloaded from repository containing
-Cachito system. This tool is run locally w/o any additional security checks etc. so some
-care is needed (run this script from within containerized environment etc.).
-
-### Path
-
-[scripts/generate_packages_to_prefetch.py](scripts/generate_packages_to_prefetch.py)
-
-### Usage
-
-```
-usage: generate_packages_to_prefetch.py [-h] [-p]
-
-options:
-  -h, --help            show this help message and exit
-  -p, --process-special-packages
-                        Enable or disable processing special packages like torch etc.
-  -c, --cleanup         Enable or disable work directory cleanup
-  -w WORK_DIRECTORY, --work-directory WORK_DIRECTORY
-                        Work directory to store files generated during different stages
-                        of processing
-```
-
-### Known issue
-
-When SQLAlchemy package is not locked to latest version in `pyproject.toml` and `pdm.lock`, this script will fail due to issue in `pip`. To fix this issue it is needed to follow those steps:
-
-1. Look at https://pypi.org/project/SQLAlchemy/ to retrieve latest SQLAlchemy version
-1. Update `pyproject.toml` file accordingly using `SQLAlchemy=={latest_version}`
-1. Run `pdm update sqlalchemy`
+1. Run `pdm update` – updates dependencies to their latest versions allowed by our `pyproject.toml` pins, this also creates/updates a `pdm.lock`.
+2. Run `make requirements.txt` – generates the `requirements.txt` (contains wheel for all platforms/archs).
 
 
 ## Uploading artifact containing the pytest results and configuration to an s3 bucket.
