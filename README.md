@@ -621,6 +621,8 @@ curl -X 'POST' 'http://127.0.0.1:8080/v1/query' -H 'accept: application/json' -H
 
 > You can use the `/v1/streaming_query` (with the same parameters) to get the streaming response (SSE/HTTP chunking). By default, it streams text, but you can also yield events as JSONs via additional `"media_type": "application/json"` parameter in the payload data.
 
+> The format of individual events is `"data: {JSON}\n\n"`.
+
 > In the devel environment where authentication module is set to `noop` it is possible to specify an optional query parameter `user_id` with the user identification. This parameter can be set to any value, but currently it is preferred to use UUID.
 
 
