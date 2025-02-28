@@ -125,9 +125,9 @@ async def invalid_response_generator() -> AsyncGenerator[str, None]:
 
 
 def format_stream_data(d: dict) -> str:
-    """Format outbound data in the Event Stream Format if required."""
+    """Format outbound data in the Event Stream Format."""
     data = json.dumps(d)
-    return f"data: {data}\n\n" if config.ols_config.enable_event_stream_format else data
+    return f"data: {data}\n\n"
 
 
 def stream_start_event(conversation_id: str) -> str:
