@@ -850,10 +850,14 @@ def test_valid_config_file():
                     "default_model": "m1",
                     "certificate_directory": "/foo/bar/baz/xyzzy",
                     "system_prompt_path": "tests/config/system_prompt.txt",
+                    "user_data_collection": {"transcripts_disabled": True},
                 },
             }
         )
         assert config.config == expected_config
+        assert config.user_data_collector_config is not None
+        assert config.ols_config.user_data_collection is not None
+        assert config.ols_config.user_data_collection.feedback_disabled is True
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
