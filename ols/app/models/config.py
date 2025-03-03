@@ -948,6 +948,7 @@ class OLSConfig(BaseModel):
                 and self.authentication_config == other.authentication_config
                 and self.expire_llm_is_ready_persistent_state
                 == other.expire_llm_is_ready_persistent_state
+                and self.enable_event_stream_format == other.enable_event_stream_format
             )
         return False
 
