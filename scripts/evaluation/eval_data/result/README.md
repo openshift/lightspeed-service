@@ -6,13 +6,17 @@
 - [Instruction to run eval script](../../README.md)
 
 ## Result
-- Last Execution date: `2024-11-30`
+- Last Execution date: `2025-03-02`
 - Evaluated Provider/Models:
-    - (watsonx) ibm/granite-3-8b-instruct
-    - (openai) gpt-4o-mini (Model Version: 2024-07-18)
+    - (watsonx) ibm/granite-3-8b-instruct (API Version: 2024-11-27)
     - (azure) gpt-4o-mini (Model Version: 2024-07-18, API Version: 2024-02-15-preview)
-- Judge provider/model (LLM based eval): (openai) gpt-4o-mini
+- Judge provider/model (LLM based eval): (watsonx) llama-3-1-8b-instruct
 - QnA evaluation dataset: [QnAs from OCP doc](../ocp_doc_qna-edited.parquet)
+- RAG SHA: e4420ab37f9ad90daeab93ba6717db6d388c69a357d0eeb486d1d2d0bc15e085
+    - Embedding model: all-mpnet-base-v2
+    - Splitter: Normal (chunk: 380)
+    - Vector DB: faiss
+    - Retrieval: Top 5 (cosine similarilty)
 
 ### Scores
 Please look at below box-plots to have an idea about overall score for QnAs. `Ideal result`: Box should be as condense as possible and near to right side (close to 1).
