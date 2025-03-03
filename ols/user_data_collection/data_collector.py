@@ -32,6 +32,8 @@ from ols.constants import (  # pylint: disable=C0413
     DEFAULT_CONFIGURATION_FILE,
 )
 
+OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MiB
+
 cfg_file = os.environ.get(
     CONFIGURATION_FILE_NAME_ENV_VARIABLE, DEFAULT_CONFIGURATION_FILE
 )
@@ -44,14 +46,6 @@ udc_config = config.user_data_collector_config  # shortcut
 # pylint: disable-next=C0413
 from ols.src.auth.k8s import K8sClientSingleton  # noqa: E402
 
-INITIAL_WAIT = 60 * 5  # 5 minutes in seconds
-INGRESS_TIMEOUT = 30  # seconds
-INGRESS_BASE_DELAY = 60  # exponential backoff parameter
-INGRESS_MAX_RETRIES = 3  # exponential backoff parameter
-REDHAT_SSO_TIMEOUT = 5  # seconds
-
-OLS_USER_DATA_MAX_SIZE = 100 * 1024 * 1024  # 100 MiB
-USER_AGENT = "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
 logging.basicConfig(
     level=udc_config.log_level,
     stream=sys.stdout,
@@ -106,7 +100,9 @@ def access_token_from_offline_token(offline_token: str) -> str:
         "refresh_token": offline_token,
     }
 
-    response = requests.post(url + endpoint, data=data, timeout=REDHAT_SSO_TIMEOUT)
+    response = requests.post(
+        url + endpoint, data=data, timeout=udc_config.access_token_generation_timeout
+    )
     try:
         if response.status_code == requests.codes.ok:
             return response.json()["access_token"]
@@ -220,7 +216,7 @@ def exponential_backoff_decorator(max_retries: int, base_delay: int) -> Callable
 
 
 @exponential_backoff_decorator(
-    max_retries=INGRESS_MAX_RETRIES, base_delay=INGRESS_BASE_DELAY
+    max_retries=udc_config.ingress_max_retries, base_delay=udc_config.ingress_base_delay
 )
 def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
     """Upload the tarball to a Ingress.
@@ -254,7 +250,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         cluster_id = K8sClientSingleton.get_cluster_id()
         token = get_cloud_openshift_pull_secret()
         headers = {
-            "User-Agent": USER_AGENT.format(cluster_id=cluster_id),
+            "User-Agent": udc_config.user_agent.format(cluster_id=cluster_id),
             "Authorization": f"Bearer {token}",
         }
 
@@ -264,7 +260,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         response = s.post(
             url=url,
             files=payload,
-            timeout=INGRESS_TIMEOUT,
+            timeout=udc_config.ingress_timeout,
         )
 
     if response.status_code != requests.codes.accepted:
@@ -405,9 +401,9 @@ if __name__ == "__main__":
     if not udc_config.run_without_initial_wait:
         logger.info(
             "collection script started, waiting %d seconds before first collection",
-            INITIAL_WAIT,
+            udc_config.initial_wait,
         )
-        time.sleep(INITIAL_WAIT)
+        time.sleep(udc_config.initial_wait)
     while True:
         if not disabled_by_file():
             gather_ols_user_data(udc_config.data_storage.as_posix())
