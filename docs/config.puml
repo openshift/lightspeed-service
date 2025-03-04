@@ -79,7 +79,6 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   conversation_cache : Optional[ConversationCacheConfig]
   default_model : Optional[str]
   default_provider : Optional[str]
-  enable_event_stream_format : bool
   expire_llm_is_ready_persistent_state : Optional[int]
   extra_ca : list[FilePath]
   introspection_enabled : Optional[bool]

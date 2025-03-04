@@ -33,7 +33,11 @@ def post_with_defaults(endpoint, **kwargs):
 
 def parse_streaming_response_to_events(response: str) -> list[dict]:
     """Parse streaming response to events."""
-    return json.loads(f'[{response.replace("}{", "},{")}]')
+    json_objects = [
+        line.replace("data: ", "") for line in response.split("\n") if line.strip()
+    ]
+    json_array = "[" + ",".join(json_objects) + "]"
+    return json.loads(json_array)
 
 
 def construct_response_from_streamed_events(events: dict) -> str:
