@@ -15,7 +15,7 @@ from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter
 from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.oc_cli import log_to_oc
+from ols.src.tools.oc_cli import token_works_for_oc
 from ols.src.tools.tools import default_tools, execute_tool_calls, oc_tools
 from ols.utils.token_handler import TokenHandler
 
@@ -165,14 +165,20 @@ class DocsSummarizer(QueryHelper):
 
         tools_map = default_tools
 
-        if user_token and log_to_oc(user_token):
-            logger.info(
-                "Succesfully authenticated to 'oc' CLI with user token "
-                "- adding 'oc' tools"
+        if not user_token or not user_token.strip():
+            logger.warning(
+                "No valid user token provided, only default tools will be available"
             )
-            # TODO: when we are adding additional tools, ensure we are
-            # not overwriting the existing tools - currently depends on
-            # the tool name
+            return tools_map
+
+        if token_works_for_oc(user_token):
+            logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
+
+            # Ensure no tool name is overwritten
+            for tool_name in oc_tools:
+                if tool_name in tools_map:
+                    logger.warning(f"Tool '{tool_name}' is overriding an existing tool")
+
             tools_map = {**tools_map, **oc_tools}
 
         return tools_map
