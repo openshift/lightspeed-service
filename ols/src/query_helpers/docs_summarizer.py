@@ -16,7 +16,7 @@ from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameter
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.oc_cli import token_works_for_oc
-from ols.src.tools.tools import default_tools, execute_tool_calls, oc_tools
+from ols.src.tools.tools import execute_oc_tool_calls, oc_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -163,25 +163,11 @@ class DocsSummarizer(QueryHelper):
 
         logger.info("Introspection enabled - using default tools selection")
 
-        tools_map = default_tools
-
-        if not user_token or not user_token.strip():
-            logger.warning(
-                "No valid user token provided, only default tools will be available"
-            )
-            return tools_map
-
-        if token_works_for_oc(user_token):
+        if user_token and user_token.strip() and token_works_for_oc(user_token):
             logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
+            return oc_tools
 
-            # Ensure no tool name is overwritten
-            for tool_name in oc_tools:
-                if tool_name in tools_map:
-                    logger.warning(f"Tool '{tool_name}' is overriding an existing tool")
-
-            tools_map = {**tools_map, **oc_tools}
-
-        return tools_map
+        return {}
 
     def create_response(
         self,
@@ -229,7 +215,9 @@ class DocsSummarizer(QueryHelper):
             messages.append(out)
 
             # TODO: explicit check for {"finish_reson": "tool_call"}?
-            tool_calls_messages = execute_tool_calls(tools_map, out.tool_calls)
+            tool_calls_messages = execute_oc_tool_calls(
+                tools_map, out.tool_calls, user_token
+            )
             messages.extend(tool_calls_messages)
 
         return SummarizerResponse(response, rag_chunks, truncated, token_counter)
