@@ -1007,7 +1007,11 @@ class DevConfig(BaseModel):
 
 
 class UserDataCollectorConfig(BaseModel):
-    """User data collection configuration."""
+    """User data collection configuration.
+
+    All time information is given in seconds.
+
+    """
 
     data_storage: Optional[DirectoryPath] = None
     log_level: int = logging.INFO
@@ -1015,6 +1019,14 @@ class UserDataCollectorConfig(BaseModel):
     run_without_initial_wait: bool = False
     ingress_env: Literal["stage", "prod"] = "prod"
     cp_offline_token: Optional[str] = None
+    initial_wait: int = 60 * 5  # 5 minutes in seconds
+    ingress_timeout: int = 30
+    ingress_base_delay: int = 60  # exponential backoff parameter
+    ingress_max_retries: int = 3  # exponential backoff parameter
+    access_token_generation_timeout: int = 5
+    user_agent: str = (
+        "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
+    )
 
     def __init__(self, **data: Any) -> None:
         """Initialize configuration."""
@@ -1029,6 +1041,11 @@ class UserDataCollectorConfig(BaseModel):
         """Check that cp_offline_token is set when env is stage."""
         if self.ingress_env == "stage" and self.cp_offline_token is None:
             raise ValueError("cp_offline_token is required in stage environment")
+        if "{cluster_id}" not in self.user_agent:
+            raise ValueError(
+                "user_agent must contain a {cluster_id} substring, "
+                "as a placeholder for k8s cluster ID"
+            )
         return self
 
 
