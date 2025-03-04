@@ -56,9 +56,7 @@ cd lightspeed-service
 # setup your environment with pdm
 pdm install
 
-# now either do (with backticks)
-`pdm venv activate`
-# which will active the venv where you can further work, or prefix the rest of commands with `pdm run`, eg. `pdm run make test`
+# Now you can run test commands trough make targets, or prefix the rest of commands with `pdm run`, eg. `pdm run make test`
 
 # run unit+integration tests
 pdm run test-unit && pdm run test-integration
@@ -196,10 +194,10 @@ Three groups of software tests are used in this repository, each group from the 
 1. Integration Tests
 1. End to End tests (e2e)
 
-Unit tests followed by integration tests can be started by using the following command:
+Unit tests followed by integration and e2e tests can be started by using the following command:
 
 ```
-make tests
+make test
 ```
 
 It is also possible to run just one selected group of tests:
