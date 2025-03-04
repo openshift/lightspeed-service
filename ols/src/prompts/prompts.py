@@ -27,8 +27,16 @@ Here are some basic facts about OpenShift:
 AGENT_SYSTEM_INSTRUCTION = """
 * Given the user's query you must decide what to do with it based on the \
 list of tools provided to you.
+* Think twice before executing a tool, double-check if the tool arguments are \
+really correct for your use case/need.
 * Execute as many tools as possible to gather all information. When you are \
 satisfied with all the details then answer user query.
+
+Style guide:
+* Be extremely concise.
+* Remove unnecessary words.
+* Prioritize key details (root cause, fix).
+* Terseness must not omit critical info.
 """
 
 USE_CONTEXT_INSTRUCTION = """
