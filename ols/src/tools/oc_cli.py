@@ -37,24 +37,14 @@ def sanitize_oc_args(args: list[str]) -> list[str]:
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run `oc` CLI with provided arguments and command."""
-    try:
-        res = subprocess.run(  # noqa: S603
-            ["oc", *args],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
-            shell=False,
-        )
-        return res
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            "Error running oc command %s: %s, stdout: %s, stderr: %s",
-            args,
-            e,
-            e.stdout,
-            e.stderr,
-        )
-        raise
+    res = subprocess.run(  # noqa: S603
+        ["oc", *args],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+        shell=False,
+    )
+    return res
 
 
 # TODO: server address configurable via request?
@@ -131,7 +121,7 @@ def oc_get(command_args: list[str]) -> str:
         oc get rc,services
     """
     result = run_oc(["get", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -162,7 +152,7 @@ def oc_describe(command_args: list[str]) -> str:
     oc describe pods frontend
     """
     result = run_oc(["describe", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -191,7 +181,7 @@ def oc_logs(command_args: list[str]) -> str:
     oc logs -f pod/backend -c ruby-container
     """
     result = run_oc(["logs", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -216,7 +206,7 @@ def oc_status(command_args: list[str]) -> str:
     oc --suggest
     """
     result = run_oc(["status", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -236,4 +226,4 @@ def oc_adm_top(command_args: list[str]) -> str:
     pod          Display Resource (CPU/Memory/Storage) usage of pods
     """
     result = run_oc(["adm", "top", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
