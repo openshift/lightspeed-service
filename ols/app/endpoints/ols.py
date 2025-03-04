@@ -148,6 +148,8 @@ def conversation_request(
         truncated=summarizer_response.history_truncated,
         input_tokens=calc_input_tokens(summarizer_response.token_counter),
         output_tokens=calc_output_tokens(summarizer_response.token_counter),
+        tools_execution_result=summarizer_response.tools_execution_result,
+        iterations=summarizer_response.iterations
     )
 
 

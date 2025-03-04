@@ -209,22 +209,6 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         ) from e
 
 
-def _extract_bearer_token(header: str) -> str:
-    """Extract the bearer token from an HTTP authorization header.
-
-    Args:
-        header: The authorization header containing the token.
-
-    Returns:
-        The extracted token if present, else an empty string.
-    """
-    try:
-        scheme, token = header.split(" ", 1)
-        return token if scheme.lower() == "bearer" else ""
-    except ValueError:
-        return ""
-
-
 class AuthDependency(AuthDependencyInterface):
     """Create an AuthDependency Class that allows customizing the acces Scope path to check."""
 
@@ -263,12 +247,7 @@ class AuthDependency(AuthDependencyInterface):
             # conversation history and user feedback depend on having any
             # user ID (identity) in proper format (UUID)
             return DEFAULT_USER_UID, DEFAULT_USER_NAME, False, NO_USER_TOKEN
-        authorization_header = request.headers.get("Authorization")
-        if not authorization_header:
-            raise HTTPException(
-                status_code=401, detail="Unauthorized: No auth header found"
-            )
-        token = _extract_bearer_token(authorization_header)
+        token = self._extract_token_from_request(request)
         if not token:
             raise HTTPException(
                 status_code=401,

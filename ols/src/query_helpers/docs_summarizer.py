@@ -11,7 +11,7 @@ from llama_index.core import VectorStoreIndex
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter
+from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter, ToolCallResult
 from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -182,6 +182,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         messages = final_prompt.model_copy()
+        tools_execution_result = []
 
         # TODO: for the specific tools type (oc) we need specific additional
         # context (user_token) to get the tools, we need to think how to make
@@ -204,8 +205,6 @@ class DocsSummarizer(QueryHelper):
                 messages, llm_input_values, tools_map, is_final_round
             )
 
-            # Check if model is ready with final response
-            # if (not ai_msg.tool_calls) and (ai_msg.content):
             if is_final_round or out.response_metadata["finish_reason"] == "stop":
                 response = out.content
                 break
@@ -215,12 +214,11 @@ class DocsSummarizer(QueryHelper):
             messages.append(out)
 
             # TODO: explicit check for {"finish_reson": "tool_call"}?
-            tool_calls_messages = execute_oc_tool_calls(
-                tools_map, out.tool_calls, user_token
-            )
+            tool_calls_messages, tools_execution = execute_oc_tool_calls(tools_map, out.tool_calls, user_token)
+            tools_execution_result.extend(tools_execution)
             messages.extend(tool_calls_messages)
 
-        return SummarizerResponse(response, rag_chunks, truncated, token_counter)
+        return SummarizerResponse(response, rag_chunks, truncated, token_counter, tools_execution_result, i)
 
     async def generate_response(
         self,

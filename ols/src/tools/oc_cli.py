@@ -35,6 +35,13 @@ def sanitize_oc_args(args: list[str]) -> list[str]:
     return sanitized_args
 
 
+def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
+    """Return stdout if successful, stderr otherwise."""
+    if result.stdout != '':
+        return result.stdout
+    return result.stderr
+
+
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run `oc` CLI with provided arguments and command."""
     res = subprocess.run(  # noqa: S603
@@ -90,6 +97,8 @@ def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
 def oc_get(command_args: list[str]) -> str:
     """Display one or many resources from OpenShift cluster using `oc get <args>` command.
 
+    Standard `oc` flags and options are valid.
+    
     Examples:
         # List all pods in ps output format.
         oc get pods
@@ -207,20 +216,49 @@ def oc_status(command_args: list[str]) -> str:
 
 
 @tool
+def show_pods(command_args: list[str]) -> str:
+    """Shows resource usage (CPU and memory) for all pods accross all namespaces.
+
+    Usecases:
+    - Generic usage statistics.
+    - Resource allocation monitoring.
+    - Average resources consumption.
+
+    No command_args are required.
+
+    The output format is:
+    NAMESPACE    NAME                                              CPU(cores)  MEMORY(bytes)
+    kube-system  konnectivity-agent-qwnsd                          1m          24Mi
+    kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
+    """
+    result = run_oc(["adm", "top", "pods", "-A"])
+    return stdout_or_stderr(result)
+
+
+@tool
 def oc_adm_top(command_args: list[str]) -> str:
     """Show usage statistics of resources on the server.
 
     This command analyzes resources managed by the platform and presents
     current usage statistics.
+    
+    When no options are provided, the command will list given resource
+    in default namespace.
+
+    To get the resources across namespaces, use `-A` flag.
 
     Usage:
-    oc adm top [flags]
+    oc adm top [commands] [options]
 
     Available Commands:
     images       Show usage statistics for Images
     imagestreams Show usage statistics for ImageStreams
     node         Display Resource (CPU/Memory/Storage) usage of nodes
     pod          Display Resource (CPU/Memory/Storage) usage of pods
+
+    Options:
+    --namespace <namespace>
+        Lists resources for specified namespace.
     """
     result = run_oc(["adm", "top", *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)

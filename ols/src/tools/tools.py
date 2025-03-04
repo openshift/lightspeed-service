@@ -6,8 +6,8 @@ import os
 from langchain_core.messages import ToolMessage
 from langchain_core.messages.tool import ToolCall
 from langchain_core.tools.base import BaseTool
-
-from ols.src.tools.oc_cli import oc_adm_top, oc_describe, oc_get, oc_logs, oc_status
+import os
+from ols.src.tools.oc_cli import oc_adm_top, oc_describe, oc_get, oc_logs, oc_status, show_pods
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ oc_tools = {
     "oc_logs": oc_logs,
     "oc_adm_top": oc_adm_top,
     "oc_status": oc_status,
+    "show_pods": show_pods,
 }
 
 
@@ -36,10 +37,10 @@ def execute_oc_tool_calls(
     tool_calls: list[ToolCall],
     token: str,
     server: str = os.getenv("KUBERNETES_SERVICE_HOST", ""),
-) -> tuple[list[ToolMessage], list[dict]]:
-    """Execute tool calls and return ToolMessages and execution details."""
+) -> list[ToolMessage]:
+    """Execute tool calls and return ToolMessages."""
     tool_messages = []
-
+    tools_execution = []
     for tool_call in tool_calls:
         tool_name = tool_call.get("name", "").lower()
         tool_args = tool_call.get("args", {})
@@ -69,5 +70,6 @@ def execute_oc_tool_calls(
         )
 
         tool_messages.append(ToolMessage(tool_output, tool_call_id=tool_call.get("id")))
+        tools_execution.append({"name": tool_name, "args": tool_args, "output": tool_output})
 
-    return tool_messages
+    return tool_messages, tools_execution

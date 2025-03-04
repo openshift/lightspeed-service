@@ -2,10 +2,11 @@
 
 import logging
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from ols import config
 from ols.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, NO_USER_TOKEN
+from ols.src.auth.auth_dependency_interface import _extract_token_from_request
 
 from .auth_dependency_interface import AuthDependencyInterface
 
@@ -33,7 +34,12 @@ class AuthDependency(AuthDependencyInterface):
             If user_id check should be skipped
             User's token
         """
-        user_token = NO_USER_TOKEN  # no-op auth yield no token
+        # the user token is optional in the noop auth, if there is no token we
+        # use our default value for this scenario
+        try:
+            user_token = _extract_token_from_request(request)
+        except HTTPException:
+            user_token = NO_USER_TOKEN
         if config.dev_config.disable_auth:
             if (
                 config.ols_config.logging_config is None
@@ -58,4 +64,9 @@ class AuthDependency(AuthDependencyInterface):
         # try to read user ID from request
         user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
         logger.info("User ID: %s", user_id)
-        return user_id, DEFAULT_USER_NAME, self.skip_userid_check, user_token
+        return (
+            user_id,
+            DEFAULT_USER_NAME,
+            self.skip_userid_check,
+            user_token,
+        )

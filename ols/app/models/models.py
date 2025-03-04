@@ -187,6 +187,8 @@ class LLMResponse(BaseModel):
     truncated: bool
     input_tokens: int
     output_tokens: int
+    tools_execution_result: list
+    iterations: int
 
     # provides examples for /docs endpoint
     model_config = {
@@ -557,6 +559,19 @@ class TokenCounter:
 
 
 @dataclass
+class ToolCallResult:
+    """Model representing a tool call result."""
+    name: str
+    args: dict
+    status: str
+    result: str
+
+    @classmethod
+    def from_tool_message(cls, msg):
+        return cls()
+
+
+@dataclass
 class SummarizerResponse:
     """Model representing a response from the summarizer.
 
@@ -571,6 +586,8 @@ class SummarizerResponse:
     rag_chunks: list[RagChunk]
     history_truncated: bool
     token_counter: Optional[TokenCounter]
+    tools_execution_result: list
+    iterations: int
 
 
 class CacheEntry(BaseModel):

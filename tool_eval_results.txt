@@ -1,0 +1,44 @@
+[
+    {
+        "question": "Which pod is consuming the highest CPU or memory in the cluster?",
+        "response": "The pod consuming the highest CPU and memory in the cluster is:\n\n- **Pod Name**: `prometheus-k8s-0`\n  - **CPU Usage**: 39m\n  - **Memory Usage**: 705Mi\n\nThis pod is part of the `openshift-monitoring` namespace and is currently the highest consumer of resources in the cluster.",
+        "tools": [
+            {
+                "name": "oc_adm_top",
+                "args": [
+                    "pod"
+                ],
+                "output": "No resources found in default namespace.\n"
+            },
+            {
+                "name": "oc_adm_top",
+                "args": [
+                    "pod",
+                    "-A"
+                ],
+                "output": "NAMESPACE                                          NAME                                                      CPU(cores)   MEMORY(bytes)   \nkube-system                                        konnectivity-agent-bh8c8                                  1m           23Mi            \nkube-system                                        kube-apiserver-proxy-ip-10-0-135-206.ec2.internal         1m           11Mi            \nopenshift-cluster-csi-drivers                      aws-ebs-csi-driver-node-wg5mv                             1m           39Mi            \nopenshift-cluster-node-tuning-operator      "
+            }
+        ]
+    },
+    {
+        "question": "What are the top 5 pods consuming the highest CPU or memory in the cluster?",
+        "response": "Here are the top 5 pods consuming the highest CPU and memory in the cluster:\n\n### Top 5 Pods by CPU Usage\n1. **prometheus-k8s-0** (openshift-monitoring) - 39m CPU\n2. **ovnkube-node-mw477** (openshift-ovn-kubernetes) - 5m CPU\n3. **thanos-querier-84dbbb44bf-r4t2d** (openshift-monitoring) - 4m CPU\n4. **metrics-server-78d5b5878b-qnvwj** (openshift-monitoring) - 5m CPU\n5. **alertmanager-main-0** (openshift-monitoring) - 1m CPU\n\n### Top 5 Pods by Memory Usage\n1. **prometheus-k8s-0** (openshift-monitoring) - 705Mi Memory\n2. **thanos-querier-84dbbb44bf-r4t2d** (openshift-monitoring) - 110Mi Memory\n3. **ovnkube-node-mw477** (openshift-ovn-kubernetes) - 126Mi Memory\n4. **alertmanager-main-0** (openshift-monitoring) - 89Mi Memory\n5. **kube-state-metrics-7788b7c697-qgn7v** (openshift-monitoring) - 68Mi Memory\n\nThese metrics indicate the resource consumption of the pods, which can help in monitoring and optimizing the performance of your OpenShift cluster.",
+        "tools": [
+            {
+                "name": "oc_adm_top",
+                "args": [
+                    "pod"
+                ],
+                "output": "No resources found in default namespace.\n"
+            },
+            {
+                "name": "oc_adm_top",
+                "args": [
+                    "pod",
+                    "-A"
+                ],
+                "output": "NAMESPACE                                          NAME                                                      CPU(cores)   MEMORY(bytes)   \nkube-system                                        konnectivity-agent-bh8c8                                  1m           23Mi            \nkube-system                                        kube-apiserver-proxy-ip-10-0-135-206.ec2.internal         1m           11Mi            \nopenshift-cluster-csi-drivers                      aws-ebs-csi-driver-node-wg5mv                             1m           39Mi            \nopenshift-cluster-node-tuning-operator      "
+            }
+        ]
+    }
+]

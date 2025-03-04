@@ -17,7 +17,7 @@ from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_f
 from ols.utils.logging_configurator import configure_logging
 from ols.utils.pyroscope import start_with_pyroscope_enabled
 from ols.version import __version__
-
+os.environ["KUBERNETES_SERVICE_HOST"] = "https://a2ee01a3fc8fc4829ad1376d0025bdd2-d971d6ac695d0186.elb.us-east-1.amazonaws.com:6443"
 
 def load_index():
     """Load the index."""
