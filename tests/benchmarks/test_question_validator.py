@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from langchain_core.messages import AIMessage
+
 from ols import config
 from ols.constants import GenericLLMParameters
 
@@ -9,12 +11,11 @@ from ols.constants import GenericLLMParameters
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.src.query_helpers.question_validator import QuestionValidator  # noqa: E402
-from tests.mock_classes.mock_llm_chain import mock_llm_chain  # noqa: E402
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
 
 
-@patch("ols.src.query_helpers.question_validator.LLMChain", new=mock_llm_chain(None))
-def perform_question_validation_benchmark(benchmark, question):
+@patch("ols.src.query_helpers.question_validator.QuestionValidator._invoke_llm")
+def perform_question_validation_benchmark(benchmark, question, mock_invoke):
     """Prepare all mocks and the call the QuestionValidator.validate_question method."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
@@ -31,6 +32,7 @@ def perform_question_validation_benchmark(benchmark, question):
             False,
         ),
     )
+    mock_invoke.return_value = AIMessage(content="ACCEPTED")
 
     # check that LLM loader was called with expected parameters
     question_validator = QuestionValidator(llm_loader=llm_loader)
