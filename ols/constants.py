@@ -232,3 +232,7 @@ MEDIA_TYPE_JSON = "application/json"
 
 # default value for token when no token is provided
 NO_USER_TOKEN = ""
+
+# quota limiters constants
+USER_QUOTA_LIMITER = "user_limiter"
+CLUSTER_QUOTA_LIMITER = "cluster_limiter"

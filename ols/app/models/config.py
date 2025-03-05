@@ -847,6 +847,66 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class SchedulerConfig(BaseModel):
+    """Scheduler configuration."""
+
+    frequency: int
+
+
+class LimiterConfig(BaseModel):
+    """Configuration for one quota limiter."""
+
+    type: Optional[str]
+    initial_quota: Optional[int]
+    quota_increase: Optional[int]
+    period: Optional[str]
+
+
+class LimitersConfig(BaseModel):
+    """Configuration for all quota limiters."""
+
+    limiters: dict[str, LimiterConfig] = {}
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is None:
+            return
+        # convert list of limiters into a dictionary
+        for limiter in data:
+            if "name" not in limiter:
+                raise checks.InvalidConfigurationError("limiter name is missing")
+            limiter_config = LimiterConfig(**limiter)
+            self.limiters[limiter["name"]] = limiter_config
+
+
+class QuotaLimiterConfig(BaseModel):
+    """Quota limiter configuration."""
+
+    storage: Optional[PostgresConfig] = None
+    scheduler: Optional[SchedulerConfig] = None
+    limiters: Optional[LimitersConfig] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is None:
+            return
+        # check the content
+        if "storage" not in data:
+            raise checks.InvalidConfigurationError(
+                "Missing storage configuration for quota limiters"
+            )
+        if "scheduler" not in data:
+            raise checks.InvalidConfigurationError(
+                "Missing scheduler configuration for quota limiters"
+            )
+        # setup all subcategories
+        self.storage = PostgresConfig(**data.get("storage"))
+        self.scheduler = SchedulerConfig(**data.get("scheduler"))
+        self.limiters = LimitersConfig(data.get("limiters", None))
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
