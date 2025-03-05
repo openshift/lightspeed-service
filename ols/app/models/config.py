@@ -932,6 +932,8 @@ class OLSConfig(BaseModel):
     extra_ca: list[FilePath] = []
     certificate_directory: Optional[str] = None
 
+    quota_limiter: Optional[QuotaLimiterConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -983,6 +985,7 @@ class OLSConfig(BaseModel):
         self.tls_security_profile = TLSSecurityProfile(
             data.get("tlsSecurityProfile", None)
         )
+        self.quota_limiter = QuotaLimiterConfig(data.get("quota_limiter", None))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1005,6 +1008,7 @@ class OLSConfig(BaseModel):
                 and self.authentication_config == other.authentication_config
                 and self.expire_llm_is_ready_persistent_state
                 == other.expire_llm_is_ready_persistent_state
+                and self.quota_limiter == other.quota_limiter
             )
         return False
 
