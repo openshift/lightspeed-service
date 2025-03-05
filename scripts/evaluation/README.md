@@ -6,6 +6,8 @@ Currently we have 2 types of evaluations.
 
 2. `model`: Ability to compare responses against single ground-truth answer. Here we can do evaluation for more than one provider+model at a time. This creates a json file as summary report with scores (f1-score) for each provider+model. Along with selected QnAs from above json file, we can also provide additional QnAs using a parquet file (optional). [Sample QnA set (parquet)](eval_data/interview_qna_30_per_title.parquet) with 30 queries per OCP documentation title.
 
+    ![Evaluation Metric & flow](response_eval_flow.png)
+
 **Notes**
 - QnAs should `not` be used for model training or tuning. This is created only for evaluation purpose.
 - QnAs were generated from OCP docs by LLMs. It is possible that some of the questions/answers are not entirely correct. We are constantly trying to verify both Questions & Answers manually. If you find any QnA pair to be modified or removed, please create a PR.
