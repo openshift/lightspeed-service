@@ -8,16 +8,58 @@ import tempfile
 import uuid
 
 import pytest
+from httpx import Client
 from pytest import TestReport
 from reportportal_client import RPLogger
 
 from scripts.upload_artifact_s3 import upload_artifact_s3
-from tests.e2e import test_api
+from tests.e2e.utils import client as client_utils
+from tests.e2e.utils import ols_installer
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 aws_env: dict[str, str] = {}
 
 # this flag is set to True when synthetic test report was already generated
 pytest.makereport_called = False
+
+# generic HTTP client for talking to OLS, when OLS is run on a cluster
+# this client will be preconfigured with a valid user token header.
+pytest.client: Client = None
+pytest.metrics_client: Client = None
+OLS_READY = False
+
+
+def pytest_sessionstart():
+    """Set up common artifacts used by all e2e tests."""
+    global OLS_READY  # pylint: disable=W0603
+    provider = os.getenv("PROVIDER")
+
+    # OLS_URL env only needs to be set when running against a local ols instance,
+    # when ols is run against a cluster the url is retrieved from the cluster.
+    ols_url = os.getenv("OLS_URL", "")
+    if "localhost" not in ols_url:
+        pytest.on_cluster = True
+
+    if pytest.on_cluster:
+        try:
+            ols_url, token, metrics_token = ols_installer.install_ols()
+        except Exception as e:
+            print(f"Error setting up OLS on cluster: {e}")
+            raise e
+    else:
+        print("Setting up for standalone test execution\n")
+        # these variables must be created, but does not have to contain
+        # anything relevant for local testing (values are optional)
+        token = None
+        metrics_token = None
+
+    pytest.client = client_utils.get_http_client(ols_url, token)
+    pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+
+    # Wait for OLS to be ready
+    print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
+    OLS_READY = wait_for_ols(ols_url)
+    print(f"OLS is ready: {OLS_READY}")
 
 
 def pytest_runtest_makereport(item, call) -> TestReport:
@@ -28,7 +70,7 @@ def pytest_runtest_makereport(item, call) -> TestReport:
     """
     # The first time we try to generate a test report, check if OLS timed out on startup
     # if so, generate a synthetic test report for the wait_for_ols timeout.
-    if not test_api.OLS_READY and not pytest.makereport_called:
+    if not OLS_READY and not pytest.makereport_called:
         pytest.makereport_called = True
         return TestReport(
             "test_wait_for_ols",
@@ -44,7 +86,7 @@ def pytest_runtest_makereport(item, call) -> TestReport:
     # OLS didn't come up)
     # There is no clean way to return the synthetic test report above *and* exit pytest
     # in a single invocation
-    if not test_api.OLS_READY:
+    if not OLS_READY:
         pytest.exit("OLS did not become ready!", 1)
     # If OLS did come up cleanly during setup, then just generate normal test reports for all tests
     return TestReport.from_item_and_call(item, call)
