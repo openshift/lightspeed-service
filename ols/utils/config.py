@@ -9,6 +9,8 @@ import yaml
 import ols.app.models.config as config_model
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
+from ols.src.quota.quota_limiter import QuotaLimiter
+from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
@@ -39,6 +41,7 @@ class AppConfig:
         self._query_filters: Optional[Redactor] = None
         self._rag_index: Optional[BaseIndex] = None
         self._conversation_cache: Optional[Cache] = None
+        self._quota_limiters: Optional[list[QuotaLimiter]] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -68,6 +71,15 @@ class AppConfig:
                 self.ols_config.conversation_cache
             )
         return self._conversation_cache
+
+    @property
+    def quota_limiters(self) -> list[QuotaLimiter]:
+        """Return all quota limiters."""
+        if self._quota_limiters is None:
+            self._quota_limiters = QuotaLimiterFactory.quota_limiters(
+                self.ols_config.quota_limiter
+            )
+        return self._quota_limiters
 
     @property
     def query_redactor(self) -> Redactor:
