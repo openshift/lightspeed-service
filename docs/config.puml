@@ -52,6 +52,15 @@ class "LLMProviders" as ols.app.models.config.LLMProviders {
   providers : dict[str, ProviderConfig]
   validate_yaml() -> None
 }
+class "LimiterConfig" as ols.app.models.config.LimiterConfig {
+  initial_quota : Optional[int]
+  period : Optional[str]
+  quota_increase : Optional[int]
+  type : Optional[str]
+}
+class "LimitersConfig" as ols.app.models.config.LimitersConfig {
+  limiters : dict[str, LimiterConfig]
+}
 class "LoggingConfig" as ols.app.models.config.LoggingConfig {
   app_log_level : int
   lib_log_level : int
@@ -86,6 +95,7 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   max_workers : Optional[int]
   query_filters : Optional[list[QueryFilter]]
   query_validation_method : Optional[str]
+  quota_limiter : Optional[QuotaLimiterConfig]
   reference_content : Optional[ReferenceContent]
   system_prompt : Optional[str]
   system_prompt_path : Optional[str]
@@ -145,6 +155,11 @@ class "QueryFilter" as ols.app.models.config.QueryFilter {
   replace_with : Optional[str]
   validate_yaml() -> None
 }
+class "QuotaLimiterConfig" as ols.app.models.config.QuotaLimiterConfig {
+  limiters : Optional[LimitersConfig]
+  scheduler : Optional[SchedulerConfig]
+  storage : Optional[PostgresConfig]
+}
 class "RHELAIVLLMConfig" as ols.app.models.config.RHELAIVLLMConfig {
   credentials_path : str
 }
@@ -169,6 +184,9 @@ class "ReferenceContent" as ols.app.models.config.ReferenceContent {
   product_docs_index_path : Optional[FilePath]
   validate_yaml() -> None
 }
+class "SchedulerConfig" as ols.app.models.config.SchedulerConfig {
+  frequency : int
+}
 class "TLSConfig" as ols.app.models.config.TLSConfig {
   tls_certificate_path : Optional[FilePath]
   tls_key_password : Optional[str]
@@ -189,12 +207,18 @@ class "UserDataCollection" as ols.app.models.config.UserDataCollection {
   check_storage_location_is_set_when_needed() -> Self
 }
 class "UserDataCollectorConfig" as ols.app.models.config.UserDataCollectorConfig {
+  access_token_generation_timeout : int
   collection_interval : int
   cp_offline_token : Optional[str]
   data_storage : Optional[DirectoryPath]
+  ingress_base_delay : int
   ingress_env : Literal['stage', 'prod']
+  ingress_max_retries : int
+  ingress_timeout : int
+  initial_wait : int
   log_level : int
   run_without_initial_wait : bool
+  user_agent : str
   validate_token_is_set_when_needed() -> Self
 }
 class "WatsonxConfig" as ols.app.models.config.WatsonxConfig {
@@ -214,15 +238,19 @@ ols.app.models.config.ConversationCacheConfig --* ols.app.models.config.OLSConfi
 ols.app.models.config.DevConfig --* ols.app.models.config.Config : dev_config
 ols.app.models.config.InMemoryCacheConfig --* ols.app.models.config.ConversationCacheConfig : memory
 ols.app.models.config.LLMProviders --* ols.app.models.config.Config : llm_providers
+ols.app.models.config.LimitersConfig --* ols.app.models.config.QuotaLimiterConfig : limiters
 ols.app.models.config.LoggingConfig --* ols.app.models.config.OLSConfig : logging_config
 ols.app.models.config.ModelParameters --* ols.app.models.config.ModelConfig : parameters
 ols.app.models.config.OLSConfig --* ols.app.models.config.Config : ols_config
 ols.app.models.config.OpenAIConfig --* ols.app.models.config.ProviderConfig : openai_config
 ols.app.models.config.PostgresConfig --* ols.app.models.config.ConversationCacheConfig : postgres
+ols.app.models.config.PostgresConfig --* ols.app.models.config.QuotaLimiterConfig : storage
+ols.app.models.config.QuotaLimiterConfig --* ols.app.models.config.OLSConfig : quota_limiter
 ols.app.models.config.RHELAIVLLMConfig --* ols.app.models.config.ProviderConfig : rhelai_vllm_config
 ols.app.models.config.RHOAIVLLMConfig --* ols.app.models.config.ProviderConfig : rhoai_vllm_config
 ols.app.models.config.RedisConfig --* ols.app.models.config.ConversationCacheConfig : redis
 ols.app.models.config.ReferenceContent --* ols.app.models.config.OLSConfig : reference_content
+ols.app.models.config.SchedulerConfig --* ols.app.models.config.QuotaLimiterConfig : scheduler
 ols.app.models.config.TLSConfig --* ols.app.models.config.OLSConfig : tls_config
 ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.OLSConfig : tls_security_profile
 ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.ProviderConfig : tls_security_profile
