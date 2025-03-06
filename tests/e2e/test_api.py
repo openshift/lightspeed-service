@@ -1,14 +1,12 @@
 """Integration tests for basic OLS REST API endpoints."""
 
 import json
-import os
 import re
 import time
 from argparse import Namespace
 
 import pytest
 import requests
-from httpx import Client
 
 from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.utils import suid
@@ -16,7 +14,6 @@ from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
-from tests.e2e.utils import ols_installer
 from tests.e2e.utils import response as response_utils
 from tests.e2e.utils.constants import (
     BASIC_ENDPOINTS_TIMEOUT,
@@ -33,62 +30,10 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
-from tests.e2e.utils.wait_for_ols import wait_for_ols
-from tests.scripts.must_gather import must_gather
 
 # on_cluster attribute is set to true when the tests are being run
 # against ols running on a cluster
 pytest.on_cluster: bool = False
-
-
-# generic HTTP client for talking to OLS, when OLS is run on a cluster
-# this client will be preconfigured with a valid user token header.
-pytest.client: Client = None
-pytest.metrics_client: Client = None
-
-OLS_READY = False
-
-
-def setup_module(module):
-    """Set up common artifacts used by all e2e tests."""
-    global OLS_READY  # pylint: disable=W0603
-    provider = os.getenv("PROVIDER")
-
-    # OLS_URL env only needs to be set when running against a local ols instance,
-    # when ols is run against a cluster the url is retrieved from the cluster.
-    ols_url = os.getenv("OLS_URL", "")
-    if "localhost" not in ols_url:
-        pytest.on_cluster = True
-
-    if pytest.on_cluster:
-        try:
-            ols_url, token, metrics_token = ols_installer.install_ols()
-        except Exception as e:
-            print(f"Error setting up OLS on cluster: {e}")
-            must_gather()
-            raise e
-    else:
-        print("Setting up for standalone test execution\n")
-        # these variables must be created, but does not have to contain
-        # anything relevant for local testing (values are optional)
-        token = None
-        metrics_token = None
-
-    pytest.client = client_utils.get_http_client(ols_url, token)
-    pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
-
-    # Wait for OLS to be ready
-    print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
-    OLS_READY = wait_for_ols(ols_url)
-    print(f"OLS is ready: {OLS_READY}")
-    if not OLS_READY:
-        must_gather()
-
-
-def teardown_module(module):
-    """Clean up the environment after all tests are executed."""
-    if pytest.on_cluster:
-        must_gather()
 
 
 @pytest.fixture(name="postgres_connection", scope="module")
@@ -98,7 +43,6 @@ def fixture_postgres_connection():
 
 
 @pytest.mark.smoketest
-@pytest.mark.introspection
 @retry(max_attempts=3, wait_between_runs=10)
 def test_readiness():
     """Test handler for /readiness REST API endpoint."""
@@ -111,7 +55,6 @@ def test_readiness():
 
 
 @pytest.mark.smoketest
-@pytest.mark.introspection
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"

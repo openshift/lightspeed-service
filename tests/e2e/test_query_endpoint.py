@@ -197,7 +197,6 @@ def test_too_long_question() -> None:
 
 
 @pytest.mark.smoketest
-@pytest.mark.introspection
 @pytest.mark.rag
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
