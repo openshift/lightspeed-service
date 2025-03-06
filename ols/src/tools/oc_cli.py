@@ -37,13 +37,19 @@ def sanitize_oc_args(args: list[str]) -> list[str]:
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run `oc` CLI with provided arguments and command."""
-    res = subprocess.run(  # noqa: S603
-        ["oc", *args],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=False,
-        shell=False,
-    )
+    logger.info("Running OC.........")
+    try:
+        res = subprocess.run(  # noqa: S603
+            ["oc", *args],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=False,
+            shell=False,
+            timeout=100,
+        )
+    except Exception as e:
+        logger.info(f"Error Running OC done: {e} ")
+    logger.info("Running OC done.........")
     return res
 
 
@@ -58,8 +64,11 @@ def token_works_for_oc(token: str, server: Optional[str] = None) -> bool:
     Returns:
         True if user token works, False otherwise.
     """
+    logger.info("checking token.........")
     if server is None:
         server = os.getenv("KUBERNETES_SERVICE_HOST", "")
+    logger.info(f"server: {server}")
+    logger.info(f"token: {token[0]}")
     if server == "":
         logger.error(
             "Server URL not provided or KUBERNETES_SERVICE_HOST env is not set"

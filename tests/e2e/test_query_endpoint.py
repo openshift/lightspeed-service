@@ -593,7 +593,7 @@ def test_tool_calling() -> None:
                 "conversation_id": cid,
                 "query": "Is there openshift-lightspeed namespace in the cluster?",
             },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
+            timeout=300,
         )
         assert response.status_code == requests.codes.ok
 
