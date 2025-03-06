@@ -58,6 +58,7 @@ def token_works_for_oc(token: str, server: Optional[str] = None) -> bool:
     Returns:
         True if user token works, False otherwise.
     """
+    logger.info("checking token.........")
     if server is None:
         server = os.getenv("KUBERNETES_SERVICE_HOST", "")
     if server == "":
