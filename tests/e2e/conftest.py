@@ -16,6 +16,7 @@ from scripts.upload_artifact_s3 import upload_artifact_s3
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import ols_installer
 from tests.e2e.utils.wait_for_ols import wait_for_ols
+from tests.scripts.must_gather import must_gather
 
 aws_env: dict[str, str] = {}
 
@@ -27,24 +28,27 @@ pytest.makereport_called = False
 pytest.client: Client = None
 pytest.metrics_client: Client = None
 OLS_READY = False
+# on_cluster attribute is set to true when the tests are being run
+# against ols running on a cluster
+on_cluster: bool = False
 
 
 def pytest_sessionstart():
     """Set up common artifacts used by all e2e tests."""
     global OLS_READY  # pylint: disable=W0603
+    global on_cluster  # pylint: disable=W0603
     provider = os.getenv("PROVIDER")
-
     # OLS_URL env only needs to be set when running against a local ols instance,
     # when ols is run against a cluster the url is retrieved from the cluster.
     ols_url = os.getenv("OLS_URL", "")
-    if "localhost" not in ols_url:
-        pytest.on_cluster = True
 
-    if pytest.on_cluster:
+    if "localhost" not in ols_url:
+        on_cluster = True
         try:
             ols_url, token, metrics_token = ols_installer.install_ols()
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
+            must_gather()
             raise e
     else:
         print("Setting up for standalone test execution\n")
@@ -60,6 +64,9 @@ def pytest_sessionstart():
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
     OLS_READY = wait_for_ols(ols_url)
     print(f"OLS is ready: {OLS_READY}")
+    # Gather OLS artifacts in case OLS does not become ready
+    if not OLS_READY:
+        must_gather()
 
 
 def pytest_runtest_makereport(item, call) -> TestReport:
@@ -255,6 +262,9 @@ def get_secret_value(env: str) -> str:
 
 def pytest_sessionfinish(session):
     """Create datarouter compatible archive to upload into report portal."""
+    # Gather OLS artifacts at the end of tests
+    if on_cluster:
+        must_gather()
     # Sending reports to report portal
     try:
         datarouter_config = create_datarouter_config_file(session)
