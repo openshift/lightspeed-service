@@ -1138,7 +1138,7 @@ def test_tool_calling(mock_invoke, tools_mock, _setup, caplog) -> None:
         )
         assert mock_invoke.call_count == 2
 
-        assert "Tool call: get_namespaces_mock" in caplog.text
+        assert "Tool: get_namespaces_mock" in caplog.text
         tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
         assert f"Output: {tool_output}" in caplog.text
 

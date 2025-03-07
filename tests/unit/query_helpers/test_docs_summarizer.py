@@ -249,11 +249,11 @@ def test_tool_calling_tool_execution(mock_invoke, tools_mock, caplog):
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     summarizer.create_response(question)
 
-    assert "Tool call: get_namespaces_mock" in caplog.text
+    assert "Tool: get_namespaces_mock" in caplog.text
     tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
     assert f"Output: {tool_output}" in caplog.text
 
-    assert "Tool call: invalid_function_name" in caplog.text
+    assert "Tool: invalid_function_name" in caplog.text
     assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
     assert mock_invoke.call_count == 2
