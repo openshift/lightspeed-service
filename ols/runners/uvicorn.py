@@ -7,9 +7,13 @@ import uvicorn
 import ols.app.models.config as config_model
 from ols.utils import ssl
 
+logger: logging.Logger = logging.getLogger(__name__)
+
 
 def start_uvicorn(config: config_model.Config) -> None:
     """Start Uvicorn-based REST API service."""
+    logger.info("Starting Uvicorn")
+
     # use workers=1 so config loaded can be accessed from other modules
     host = (
         "localhost"
