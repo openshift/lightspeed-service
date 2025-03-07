@@ -37,10 +37,9 @@ def pytest_sessionstart():
     # OLS_URL env only needs to be set when running against a local ols instance,
     # when ols is run against a cluster the url is retrieved from the cluster.
     ols_url = os.getenv("OLS_URL", "")
+    pytest.on_cluster = False
     if "localhost" not in ols_url:
         pytest.on_cluster = True
-
-    if pytest.on_cluster:
         try:
             ols_url, token, metrics_token = ols_installer.install_ols()
         except Exception as e:

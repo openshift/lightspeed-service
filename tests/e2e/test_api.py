@@ -31,10 +31,6 @@ from tests.e2e.utils.postgres import (
     retrieve_connection,
 )
 
-# on_cluster attribute is set to true when the tests are being run
-# against ols running on a cluster
-pytest.on_cluster: bool = False
-
 
 @pytest.fixture(name="postgres_connection", scope="module")
 def fixture_postgres_connection():
