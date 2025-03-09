@@ -23,6 +23,8 @@ These evaluations are also part of **e2e test cases**. Currently *consistency* e
 python -m scripts.evaluation.driver
 ```
 
+> If dependecies are missing, install those via `pdm install --group evaluation`.
+
 ### Input Data/QnA pool
 [Json file](eval_data/question_answer_pair.json)
 
