@@ -135,3 +135,13 @@ class InMemoryCache(Cache):
                     conversation_ids.append(conversation_id)
 
         return conversation_ids
+
+    def ready(self) -> bool:
+        """Check if the cache is ready.
+
+           In memory cache is always ready.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """
+        return True

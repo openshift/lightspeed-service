@@ -1,9 +1,10 @@
 """Unit tests for RedisCache class."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
+from redis.exceptions import ConnectionError  # noqa: A004
 
 from ols import constants
 from ols.app.models.config import RedisConfig
@@ -342,3 +343,16 @@ def test_initialize_redis_retry_settings():
         assert cache.redis_client.kwargs["retry_on_timeout"] is True
         assert cache.redis_client.kwargs["retry_on_error"] is not None
         assert cache.redis_client.kwargs["retry"]._retries == 10
+
+
+def test_ready():
+    """Test the ready method."""
+    with patch("redis.StrictRedis", new=MockRedisClient):
+        config = RedisConfig({})
+        cache = RedisCache(config)
+        assert cache.ready()
+
+        cache.redis_client.ping = MagicMock(
+            side_effect=ConnectionError("Redis connection error")
+        )
+        assert not cache.ready()
