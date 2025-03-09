@@ -29,7 +29,7 @@ install-tools:	install-woke ## Install required utilities/tools
 	pip show setuptools
 	export PIP_DEFAULT_TIMEOUT=100
 	# install all dependencies, including devel ones
-	@for a in 1 2 3 4 5; do pdm install --dev --fail-fast -v && break || sleep 15; done
+	@for a in 1 2 3 4 5; do pdm install --group default,dev,evaluation --fail-fast -v && break || sleep 15; done
 	# check that correct mypy version is installed
 	# mypy --version
 	pdm run mypy --version
@@ -49,13 +49,12 @@ pdm-lock-check: ## Check that the pdm.lock file is in a good shape
 
 install-deps: install-tools pdm-lock-check ## Install all required dependencies needed to run the service, according to pdm.lock
 	@for a in 1 2 3 4 5; do pdm sync && break || sleep 15; done
-	
+
 install-deps-test: install-tools pdm-lock-check ## Install all required dev dependencies needed to test the service, according to pdm.lock
 	@for a in 1 2 3 4 5; do pdm sync --dev && break || sleep 15; done
 
 update-deps: ## Check pyproject.toml for changes, update the lock file if needed, then sync.
-	pdm install
-	pdm install --dev
+	pdm update
 
 run: ## Run the service locally
 	python runner.py
@@ -123,7 +122,7 @@ schema:	## Generate OpenAPI schema file
 	python scripts/generate_openapi_schema.py docs/openapi.json
 
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
-	pdm export --prod --format requirements --output requirements.txt --no-extras
+	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
 
 verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
