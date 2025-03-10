@@ -23,11 +23,13 @@ class QuotaLimiter(ABC):
         """Increase quota for given user."""
 
     @abstractmethod
-    def ensure_available_quota(self) -> None:
+    def ensure_available_quota(self, subject_id: str = "") -> None:
         """Ensure that there's avaiable quota left."""
 
     @abstractmethod
-    def consume_tokens(self, input_tokens: int, output_tokens: int) -> None:
+    def consume_tokens(
+        self, input_tokens: int, output_tokens: int, subject_id: str = ""
+    ) -> None:
         """Consume tokens by given user."""
 
     # pylint: disable=W0201
