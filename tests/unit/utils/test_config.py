@@ -786,7 +786,7 @@ ols_config:
         quota_increase: 100
         period: "5 minutes"
     scheduler:
-      frequency: 100
+      period: 100
   certificate_directory: '/foo/bar/baz'
   system_prompt_path: 'tests/config/system_prompt.txt'
   tlsSecurityProfile:

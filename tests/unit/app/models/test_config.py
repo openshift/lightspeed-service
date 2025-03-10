@@ -22,6 +22,7 @@ from ols.app.models.config import (
     PostgresConfig,
     ProviderConfig,
     QueryFilter,
+    QuotaLimiterConfig,
     RedisConfig,
     ReferenceContent,
     TLSConfig,
@@ -2381,6 +2382,12 @@ def test_ols_config_equality(subtests):
         ols_config_1.tls_security_profile = TLSSecurityProfile()
         assert ols_config_1 != ols_config_2
 
+    # quota limiters attribute (QuotaLimiterConfig)
+    with subtests.test(msg="Different attribute: quota_limiter"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.quota_limiter = QuotaLimiterConfig()
+        assert ols_config_1 != ols_config_2
+
     # compare OLSConfig with other object
     assert ols_config_1 != "foo"
     assert ols_config_2 != {}
@@ -3619,5 +3626,255 @@ def test_ols_config_with_non_readable_system_prompt(tmpdir):
                     "logging_level": "INFO",
                 },
                 "system_prompt_path": "tests/config/",
+            }
+        )
+
+
+def test_ols_config_with_quota_limiter_section():
+    """Test OLSConfig model with quota limiters section specified."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "quota_limiter": {
+                "storage": {
+                    "host": "",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "password_path": "tests/config/postgres_password.txt",
+                    "ssl_mode": "disable",
+                },
+                "limiters": [
+                    {
+                        "name": "user_monthly_limits",
+                        "type": "user_limiter",
+                        "initial_quota": 1000,
+                        "quota_increase": 10,
+                        "period": "5 minutes",
+                    },
+                    {
+                        "name": "cluster_monthly_limits",
+                        "type": "cluster_limiter",
+                        "initial_quota": 2000,
+                        "quota_increase": 100,
+                        "period": "5 minutes",
+                    },
+                ],
+                "scheduler": {
+                    "period": 100,
+                },
+            },
+        }
+    )
+    assert ols_config.quota_limiter is not None
+    assert ols_config.quota_limiter.scheduler is not None
+    assert ols_config.quota_limiter.storage is not None
+    assert ols_config.quota_limiter.limiters is not None
+
+
+def test_ols_config_with_quota_limiter_section_without_storage():
+    """Test OLSConfig model with quota limiters section specified but w/o storage part."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Missing storage configuration for quota limiters",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "quota_limiter": {
+                    "limiters": [
+                        {
+                            "name": "user_monthly_limits",
+                            "type": "user_limiter",
+                            "initial_quota": 1000,
+                            "quota_increase": 10,
+                            "period": "5 minutes",
+                        },
+                        {
+                            "name": "cluster_monthly_limits",
+                            "type": "cluster_limiter",
+                            "initial_quota": 2000,
+                            "quota_increase": 100,
+                            "period": "5 minutes",
+                        },
+                    ],
+                    "scheduler": {
+                        "period": 100,
+                    },
+                },
+            }
+        )
+
+
+def test_ols_config_with_quota_limiter_section_without_scheduler():
+    """Test OLSConfig model with quota limiters section specified but w/o scheduler part."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Missing scheduler configuration for quota limiters",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "quota_limiter": {
+                    "storage": {
+                        "host": "",
+                        "port": 5432,
+                        "dbname": "test",
+                        "user": "tester",
+                        "password_path": "postgres_password.txt",
+                        "ssl_mode": "disable",
+                    },
+                    "limiters": [
+                        {
+                            "name": "user_monthly_limits",
+                            "type": "user_limiter",
+                            "initial_quota": 1000,
+                            "quota_increase": 10,
+                            "period": "5 minutes",
+                        },
+                        {
+                            "name": "cluster_monthly_limits",
+                            "type": "cluster_limiter",
+                            "initial_quota": 2000,
+                            "quota_increase": 100,
+                            "period": "5 minutes",
+                        },
+                    ],
+                },
+            }
+        )
+
+
+def test_ols_config_with_quota_limiter_section_without_limiters():
+    """Test OLSConfig model with quota limiters section specified w/o limiters section."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "quota_limiter": {
+                "storage": {
+                    "host": "",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "password_path": "tests/config/postgres_password.txt",
+                    "ssl_mode": "disable",
+                },
+                "scheduler": {
+                    "period": 100,
+                },
+            },
+        }
+    )
+    assert ols_config.quota_limiter is not None
+    assert ols_config.quota_limiter.scheduler is not None
+    assert ols_config.quota_limiter.storage is not None
+    assert ols_config.quota_limiter.limiters is not None
+
+
+def test_ols_config_with_quota_limiter_section_empty_limiters():
+    """Test OLSConfig model with quota limiters section specified with empty limiters section."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {
+                    "max_entries": 100,
+                },
+            },
+            "quota_limiter": {
+                "limiters": [],
+                "storage": {
+                    "host": "",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "password_path": "tests/config/postgres_password.txt",
+                    "ssl_mode": "disable",
+                },
+                "scheduler": {
+                    "period": 100,
+                },
+            },
+        }
+    )
+    assert ols_config.quota_limiter is not None
+    assert ols_config.quota_limiter.scheduler is not None
+    assert ols_config.quota_limiter.storage is not None
+    assert ols_config.quota_limiter.limiters is not None
+
+
+def test_ols_config_with_quota_limiter_missing_name():
+    """Test OLSConfig model with quota limiters section specified."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="limiter name is missing",
+    ):
+        OLSConfig(
+            {
+                "default_provider": "test_default_provider",
+                "default_model": "test_default_model",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {
+                        "max_entries": 100,
+                    },
+                },
+                "quota_limiter": {
+                    "storage": {
+                        "host": "",
+                        "port": 5432,
+                        "dbname": "test",
+                        "user": "tester",
+                        "password_path": "tests/config/postgres_password.txt",
+                        "ssl_mode": "disable",
+                    },
+                    "limiters": [
+                        {
+                            "type": "user_limiter",
+                            "initial_quota": 1000,
+                            "quota_increase": 10,
+                            "period": "5 minutes",
+                        },
+                        {
+                            "type": "cluster_limiter",
+                            "initial_quota": 2000,
+                            "quota_increase": 100,
+                            "period": "5 minutes",
+                        },
+                    ],
+                    "scheduler": {
+                        "period": 100,
+                    },
+                },
             }
         )
