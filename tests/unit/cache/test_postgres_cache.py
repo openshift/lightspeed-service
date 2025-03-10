@@ -334,3 +334,32 @@ def test_delete_operation_on_exception(mock_connect):
     # Verify that the exception is raised
     with pytest.raises(CacheError, match="PLSQL error"):
         cache.delete(user_id, conversation_id)
+
+
+@patch("psycopg2.connect")
+def test_ready(mock_connect):
+    """Test the Cache.ready operation."""
+    # initialize Postgres cache
+    config = PostgresConfig()
+    cache = PostgresCache(config)
+
+    # mock the connection state 0 - open
+    cache.conn.closed = 0
+    # patch the poll function to return POLL_OK
+    cache.conn.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
+    # cache is ready
+    assert cache.ready()
+
+    # mock the connection state 1 - closed
+    cache.conn.closed = 1
+    # cache is not ready
+    assert not cache.ready()
+
+    # mock the connection state 0 - open
+    cache.conn.closed = 0
+    # patch the poll function to raise OperationalError
+    cache.conn.poll = MagicMock(
+        side_effect=psycopg2.OperationalError("Connection closed")
+    )
+    # cache is not ready
+    assert not cache.ready()
