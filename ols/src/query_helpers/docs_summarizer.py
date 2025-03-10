@@ -15,8 +15,8 @@ from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter
 from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.oc_cli import log_to_oc
-from ols.src.tools.tools import default_tools, execute_tool_calls, oc_tools
+from ols.src.tools.oc_cli import token_works_for_oc
+from ols.src.tools.tools import execute_oc_tool_calls, oc_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -163,19 +163,11 @@ class DocsSummarizer(QueryHelper):
 
         logger.info("Introspection enabled - using default tools selection")
 
-        tools_map = default_tools
+        if user_token and user_token.strip() and token_works_for_oc(user_token):
+            logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
+            return oc_tools
 
-        if user_token and log_to_oc(user_token):
-            logger.info(
-                "Succesfully authenticated to 'oc' CLI with user token "
-                "- adding 'oc' tools"
-            )
-            # TODO: when we are adding additional tools, ensure we are
-            # not overwriting the existing tools - currently depends on
-            # the tool name
-            tools_map = {**tools_map, **oc_tools}
-
-        return tools_map
+        return {}
 
     def create_response(
         self,
@@ -223,7 +215,9 @@ class DocsSummarizer(QueryHelper):
             messages.append(out)
 
             # TODO: explicit check for {"finish_reson": "tool_call"}?
-            tool_calls_messages = execute_tool_calls(tools_map, out.tool_calls)
+            tool_calls_messages = execute_oc_tool_calls(
+                tools_map, out.tool_calls, user_token
+            )
             messages.extend(tool_calls_messages)
 
         return SummarizerResponse(response, rag_chunks, truncated, token_counter)
