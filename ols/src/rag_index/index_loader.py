@@ -44,9 +44,12 @@ class IndexLoader:
 
         if self._index_config is None:
             logger.warning("Config for reference content is not set.")
+        elif self._index_config.indexes is None or len(self._index_config.indexes) == 0:
+            logger.warning("Indexes are not set in the config for reference content.")
         else:
-            self._index_path = self._index_config.product_docs_index_path
-            self._index_id = self._index_config.product_docs_index_id
+            # todo: handle multiple indexes
+            self._index_path = self._index_config.indexes[0].product_docs_index_path
+            self._index_id = self._index_config.indexes[0].product_docs_index_id
 
             self._embed_model_path = self._index_config.embeddings_model_path
             self._embed_model = self._get_embed_model()
