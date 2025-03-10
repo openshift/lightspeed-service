@@ -2382,6 +2382,12 @@ def test_ols_config_equality(subtests):
         ols_config_1.tls_security_profile = TLSSecurityProfile()
         assert ols_config_1 != ols_config_2
 
+    # quota limiters attribute (QuotaLimiterConfig)
+    with subtests.test(msg="Different attribute: quota_limiter"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.quota_limiter = QuotaLimiterConfig()
+        assert ols_config_1 != ols_config_2
+
     # compare OLSConfig with other object
     assert ols_config_1 != "foo"
     assert ols_config_2 != {}
