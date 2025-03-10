@@ -850,7 +850,7 @@ class UserDataCollection(BaseModel):
 class SchedulerConfig(BaseModel):
     """Scheduler configuration."""
 
-    frequency: int
+    period: int
 
 
 class LimiterConfig(BaseModel):
