@@ -142,7 +142,9 @@ class DocsSummarizer(QueryHelper):
             if is_final_round or not tools_map
             else self.bare_llm.bind_tools(tools_map.values())
         )
-
+        print("=====================+")
+        print(self._introspection_enabled)
+        print("=====================+")
         with TokenMetricUpdater(
             llm=self.bare_llm,
             provider=self.provider_config.type,
