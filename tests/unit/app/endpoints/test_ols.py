@@ -11,20 +11,25 @@ from fastapi import HTTPException
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config, constants
-from ols.app.endpoints import ols
-from ols.app.models.config import UserDataCollection
-from ols.app.models.models import (
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+from ols.app.endpoints import ols  # noqa:E402
+from ols.app.models.config import UserDataCollection  # noqa:E402
+from ols.app.models.models import (  # noqa:E402
     Attachment,
     CacheEntry,
     LLMRequest,
     RagChunk,
     SummarizerResponse,
+    TokenCounter,
 )
-from ols.src.llms.llm_loader import LLMConfigurationError
-from ols.utils import suid
-from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE
-from ols.utils.redactor import Redactor, RegexFilter
-from ols.utils.token_handler import PromptTooLongError
+from ols.src.llms.llm_loader import LLMConfigurationError  # noqa:E402
+from ols.utils import suid  # noqa:E402
+from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
+from ols.utils.redactor import Redactor, RegexFilter  # noqa:E402
+from ols.utils.token_handler import PromptTooLongError  # noqa:E402
 
 
 @pytest.fixture(scope="function")
@@ -989,3 +994,133 @@ def test_store_transcript(transcripts_location):
             }
         ],
     }
+
+
+def test_calc_input_tokens_no_token_counter():
+    """Test the helper function calc_input_tokens."""
+    token_counter = None
+    tokens = ols.calc_input_tokens(token_counter)
+    assert tokens == 0
+
+
+def test_calc_input_tokens_for_token_counter():
+    """Test the helper function calc_input_tokens."""
+    token_counter = TokenCounter(input_tokens=100)
+    tokens = ols.calc_input_tokens(token_counter)
+    assert tokens == 100
+
+
+def test_calc_output_tokens_no_token_counter():
+    """Test the helper function calc_output_tokens."""
+    token_counter = None
+    tokens = ols.calc_output_tokens(token_counter)
+    assert tokens == 0
+
+
+def test_calc_output_tokens_for_token_counter():
+    """Test the helper function calc_output_tokens."""
+    token_counter = TokenCounter(output_tokens=100)
+    tokens = ols.calc_output_tokens(token_counter)
+    assert tokens == 100
+
+
+def test_consume_tokens_no_quota_limiters():
+    """Test the function consume_tokens if no quota limiters are configured."""
+    quota_limiters = None
+    ols.consume_tokens(quota_limiters, "user_id", 1, 1)
+
+
+def test_consume_tokens_empty_quota_limiters():
+    """Test the function consume_tokens if empty list of quota limiters are configured."""
+    quota_limiters = []
+    ols.consume_tokens(quota_limiters, "user_id", 1, 1)
+
+
+def test_consume_tokens_with_existing_quota_limiter():
+    """Test the function consume_tokens for configured quota limiter."""
+
+    class MockQuotaLimiter:
+        def consume_tokens(self, input_tokens=0, output_tokens=0, subject_id=""):
+            self._input_tokens = input_tokens
+            self._output_tokens = output_tokens
+            self._subject_id = subject_id
+
+    mock_quota_limiter = MockQuotaLimiter()
+
+    quota_limiters = [mock_quota_limiter]
+    input_tokens = 1
+    output_tokens = 2
+    user_id = "user_id"
+    ols.consume_tokens(quota_limiters, user_id, input_tokens, output_tokens)
+    assert mock_quota_limiter._input_tokens == input_tokens
+    assert mock_quota_limiter._output_tokens == output_tokens
+    assert mock_quota_limiter._subject_id == user_id
+
+
+def test_consume_tokens_multiple_quota_limiters():
+    """Test the function consume_tokens for more configured quota limiter."""
+
+    class MockQuotaLimiter:
+        def consume_tokens(self, input_tokens=0, output_tokens=0, subject_id=""):
+            self._input_tokens = input_tokens
+            self._output_tokens = output_tokens
+            self._subject_id = subject_id
+
+    mock_quota_limiter1 = MockQuotaLimiter()
+    mock_quota_limiter2 = MockQuotaLimiter()
+
+    quota_limiters = [mock_quota_limiter1, mock_quota_limiter2]
+    input_tokens = 1
+    output_tokens = 2
+    user_id = "user_id"
+    ols.consume_tokens(quota_limiters, user_id, input_tokens, output_tokens)
+
+    for mock_quota_limiter in [mock_quota_limiter1, mock_quota_limiter2]:
+        assert mock_quota_limiter._input_tokens == input_tokens
+        assert mock_quota_limiter._output_tokens == output_tokens
+        assert mock_quota_limiter._subject_id == user_id
+
+
+def test_check_token_available_no_quota_limiters():
+    """Test the function check_tokens_available if no quota limiters are configured."""
+    quota_limiters = None
+    ols.check_tokens_available(quota_limiters, "user_id")
+
+
+def test_check_token_available_empty_limiters():
+    """Test the function check_tokens_available if emply list of quota limiters are configured."""
+    quota_limiters = []
+    ols.check_tokens_available(quota_limiters, "user_id")
+
+
+def test_check_token_available_configured_quota_limiter():
+    """Test the function check_tokens_available if one quota limiter is configured."""
+
+    class MockQuotaLimiter:
+        def ensure_available_quota(self, subject_id=""):
+            self._subject_id = subject_id
+
+    mock_quota_limiter = MockQuotaLimiter()
+    quota_limiters = [mock_quota_limiter]
+    user_id = "user_id"
+
+    ols.check_tokens_available(quota_limiters, user_id)
+    assert mock_quota_limiter._subject_id == user_id
+
+
+def test_check_token_available_on_exceed_error():
+    """Test the function check_tokens_available if quota exceed error is thrown."""
+
+    class MockQuotaLimiter:
+        def ensure_available_quota(self, subject_id=""):
+            raise Exception("Raised exception")
+
+    mock_quota_limiter = MockQuotaLimiter()
+    quota_limiters = [mock_quota_limiter]
+    user_id = "user_id"
+
+    expected = (
+        "500: {'response': 'The quota has been exceeded', 'cause': 'Raised exception'}"
+    )
+    with pytest.raises(HTTPException, match=expected):
+        ols.check_tokens_available(quota_limiters, user_id)
