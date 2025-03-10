@@ -27,7 +27,6 @@ from ols.app.models.models import (
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
-    PromptTooLongResponse,
     RagChunk,
     ReferencedDocument,
     SummarizerResponse,
