@@ -24,6 +24,7 @@ from ols.app.models.config import (
     QueryFilter,
     RedisConfig,
     ReferenceContent,
+    ReferenceContentIndex,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -2803,17 +2804,90 @@ def test_logging_config_equality():
     assert logging_config_1 != other_value
 
 
+def test_reference_content_index_constructor():
+    """Test the ReferenceContentIndex constructor."""
+    reference_content_index = ReferenceContentIndex(
+        {
+            "product_docs_index_id": "id",
+            "product_docs_index_path": "/path/",
+        }
+    )
+    assert reference_content_index.product_docs_index_id == "id"
+    assert reference_content_index.product_docs_index_path == "/path/"
+
+
+def test_reference_content_index_equality():
+    """Test the ReferenceContentIndex equality check."""
+    reference_content_index_1 = ReferenceContentIndex()
+    reference_content_index_2 = ReferenceContentIndex()
+
+    # compare the same configs
+    assert reference_content_index_1 == reference_content_index_2
+
+    # compare different configs
+    reference_content_index_2.product_docs_index_id = "id"
+    assert reference_content_index_1 != reference_content_index_2
+
+    reference_content_index_2 = ReferenceContentIndex()
+    reference_content_index_2.product_docs_index_path = "/path/"
+    assert reference_content_index_1 != reference_content_index_2
+
+    # compare with value of different type
+    other_value = "foo"
+    assert reference_content_index_1 != other_value
+
+
+def test_reference_content_index_yaml_validation():
+    """Test the ReferenceContentIndex YAML validation method."""
+    reference_content_index = ReferenceContentIndex()
+    # should not raise an exception
+    reference_content_index.validate_yaml()
+
+    # existing docs index path with set up product ID
+    reference_content_index.product_docs_index_path = "."
+    reference_content_index.product_docs_index_id = "foo"
+    reference_content_index.validate_yaml()
+
+    # existing docs index path, but no product ID
+    reference_content_index.product_docs_index_path = "."
+    reference_content_index.product_docs_index_id = None
+    with pytest.raises(InvalidConfigurationError):
+        reference_content_index.validate_yaml()
+
+    # non-existing docs index path
+    reference_content_index.product_docs_index_path = "foo"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content_index.validate_yaml()
+
+    # docs index does not point to a proper directory
+    # but to special file
+    reference_content_index.product_docs_index_path = "/dev/null"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content_index.validate_yaml()
+
+    # docs index point to a proper directory, that is not
+    # readable by the service
+    reference_content_index.product_docs_index_path = "/root"
+    with pytest.raises(InvalidConfigurationError):
+        reference_content_index.validate_yaml()
+
+
 def test_reference_content_constructor():
     """Test the ReferenceContent constructor."""
     reference_content = ReferenceContent(
         {
-            "product_docs_index_id": "id",
-            "product_docs_index_path": "/path/1/",
             "embeddings_model_path": "/path/2/",
+            "indexes": [
+                {
+                    "product_docs_index_id": "id",
+                    "product_docs_index_path": "/path/1/",
+                },
+            ],
         }
     )
-    assert reference_content.product_docs_index_id == "id"
-    assert reference_content.product_docs_index_path == "/path/1/"
+    assert reference_content.indexes[0] == ReferenceContentIndex(
+        {"product_docs_index_id": "id", "product_docs_index_path": "/path/1/"}
+    )
     assert reference_content.embeddings_model_path == "/path/2/"
 
 
@@ -2826,7 +2900,15 @@ def test_reference_content_equality():
     assert reference_content_1 == reference_content_2
 
     # compare different configs
-    reference_content_2.product_docs_index_path = "foo"
+    reference_content_2.embeddings_model_path = "foo"
+    assert reference_content_1 != reference_content_2
+
+    reference_content_2 = ReferenceContent()
+    reference_content_2.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "foo", "product_docs_index_path": "."},
+        ),
+    ]
     assert reference_content_1 != reference_content_2
 
     # compare with value of different type
@@ -2840,31 +2922,20 @@ def test_reference_content_yaml_validation():
     # should not raise an exception
     reference_content.validate_yaml()
 
-    # existing docs index path with set up product ID
-    reference_content.product_docs_index_path = "."
-    reference_content.product_docs_index_id = "foo"
+    # valid indexes
+    reference_content.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "foo", "product_docs_index_path": "."}
+        )
+    ]
     reference_content.validate_yaml()
 
-    # existing docs index path, but no product ID
-    reference_content.product_docs_index_path = "."
-    reference_content.product_docs_index_id = None
-    with pytest.raises(InvalidConfigurationError):
-        reference_content.validate_yaml()
-
-    # non-existing docs index path
-    reference_content.product_docs_index_path = "foo"
-    with pytest.raises(InvalidConfigurationError):
-        reference_content.validate_yaml()
-
-    # docs index does not point to a proper directory
-    # but to special file
-    reference_content.product_docs_index_path = "/dev/null"
-    with pytest.raises(InvalidConfigurationError):
-        reference_content.validate_yaml()
-
-    # docs index point to a proper directory, that is not
-    # readable by the service
-    reference_content.product_docs_index_path = "/root"
+    # invalid indexes
+    reference_content.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "foo", "product_docs_index_path": "/dev/null"}
+        )
+    ]
     with pytest.raises(InvalidConfigurationError):
         reference_content.validate_yaml()
 
