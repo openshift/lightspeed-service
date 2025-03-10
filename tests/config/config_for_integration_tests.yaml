@@ -19,8 +19,8 @@ llm_providers:
     tlsSecurityProfile:
       type: Custom
       ciphers:
-          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       minTLSVersion: VersionTLS13
   - name: p2
     type: openai
@@ -74,8 +74,9 @@ llm_providers:
 ols_config:
   max_workers: 1
   reference_content:
-    product_docs_index_path: "tests/config"
-    product_docs_index_id: product
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
@@ -109,8 +110,8 @@ ols_config:
   tlsSecurityProfile:
     type: Custom
     ciphers:
-        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     minTLSVersion: VersionTLS13
 dev_config:
   enable_dev_ui: true
