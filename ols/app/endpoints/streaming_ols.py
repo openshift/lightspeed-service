@@ -27,7 +27,6 @@ from ols.app.models.models import (
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
-    PromptTooLongResponse,
     RagChunk,
     ReferencedDocument,
     SummarizerResponse,
@@ -57,10 +56,6 @@ query_responses: dict[int | str, dict[str, Any]] = {
     403: {
         "description": "Client does not have permission to access resource",
         "model": ForbiddenResponse,
-    },
-    413: {
-        "description": "Prompt is too long",
-        "model": PromptTooLongResponse,
     },
     500: {
         "description": "Query can not be validated, LLM is not accessible or other internal error",
@@ -204,6 +199,7 @@ def prompt_too_long_error(error: PromptTooLongError, media_type: str) -> str:
         {
             "event": "error",
             "data": {
+                "status_code": 413,
                 "response": "Prompt is too long",
                 "cause": str(error),
             },

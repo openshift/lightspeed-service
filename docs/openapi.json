@@ -174,16 +174,6 @@
                             }
                         }
                     },
-                    "413": {
-                        "description": "Prompt is too long",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptTooLongResponse"
-                                }
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Query can not be validated, LLM is not accessible or other internal error",
                         "content": {
