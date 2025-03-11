@@ -5,7 +5,11 @@ import json
 import pytest
 
 from ols import config, constants
-from ols.app.endpoints.streaming_ols import (
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+from ols.app.endpoints.streaming_ols import (  # noqa:E402
     build_referenced_docs,
     build_yield_item,
     format_stream_data,
@@ -15,8 +19,8 @@ from ols.app.endpoints.streaming_ols import (
     stream_end_event,
     stream_start_event,
 )
-from ols.app.models.models import RagChunk, TokenCounter
-from ols.utils import suid
+from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
+from ols.utils import suid  # noqa:E402
 
 conversation_id = suid.get_suid()
 
@@ -72,7 +76,14 @@ def test_prompt_too_long_error():
     assert prompt_too_long_error(
         "error", constants.MEDIA_TYPE_JSON
     ) == format_stream_data(
-        {"event": "error", "data": {"response": "Prompt is too long", "cause": "error"}}
+        {
+            "event": "error",
+            "data": {
+                "status_code": 413,
+                "response": "Prompt is too long",
+                "cause": "error",
+            },
+        }
     )
 
 
