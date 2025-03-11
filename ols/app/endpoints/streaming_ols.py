@@ -9,7 +9,7 @@ import logging
 import time
 from typing import Any, AsyncGenerator, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 
 from ols import config, constants
@@ -106,6 +106,7 @@ def conversation_request(
             processed_request.timestamps,
             processed_request.skip_user_id_check,
         ),
+        status_code=status.HTTP_200_OK,
         media_type=llm_request.media_type,
     )
 
