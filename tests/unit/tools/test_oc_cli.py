@@ -37,7 +37,7 @@ def test_token_works_for_oc_missing_server():
         assert not token_works_for_oc("some-token")
 
     # env is not set and server is not provided
-    with patch.dict(os.environ, {}):
+    with patch.dict(os.environ, {}, clear=True):
         assert not token_works_for_oc("some-token")
 
 
