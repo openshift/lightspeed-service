@@ -2,24 +2,27 @@
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:1646c92afe6a235fadc36e37480abf0c96aeb94eb08812da008ac8ecc56658e8
 ARG HERMETIC=false
 
-FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
+FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:86c6e45fcf6b6e74ff219967bbecaebe4376074d2f347fe8068b035812a0adf9
+FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
 ARG HERMETIC=false
 ARG VERSION
 ARG APP_ROOT=/app-root
+ARG BUILDARCH
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
 
 # conditional installation of OpenShift CLI
-ENV HERMETIC=$HERMETIC
+
+ENV BUILDARCH=${BUILDARCH}
+ENV HERMETIC=${HERMETIC}
 RUN if [ "$HERMETIC" == "true" ]; then \
       microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs openshift-clients; \
     else \
-      OC_CLIENT_TAR_GZ=openshift-client-linux-amd64-rhel9-4.17.9.tar.gz; \
+      OC_CLIENT_TAR_GZ=openshift-client-linux-${BUILDARCH}-rhel9-4.17.16.tar.gz; \
       microdnf install -y tar gzip && \
-      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.9/${OC_CLIENT_TAR_GZ}" && \
+      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.16/${OC_CLIENT_TAR_GZ}" && \
       tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
       rm -f ${OC_CLIENT_TAR_GZ} && \
       chmod +x /usr/local/bin/oc && \
