@@ -1,3 +1,3 @@
-packages: [python3.11, python3.11-devel, python3.11-pip, tar, gzip]
+packages: [python3.11, python3.11-devel, python3.11-pip, tar, gzip, openshift-clients]
 contentOrigin:
-  repofiles: ["./ubi.repo"]
+  repofiles: ["./ubi.repo", "./redhat.repo"]

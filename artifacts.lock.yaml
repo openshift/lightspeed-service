@@ -1,6 +1,0 @@
-metadata:
-  version: "1.0"
-artifacts:
-  - download_url: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.9/openshift-client-linux-amd64-rhel9-4.17.9.tar.gz"
-    checksum: "sha256:30e663aec2a15a00b6e5eda47bb6ba69d629df915ffc45f49909491a2eb311d7"
-    filename: "openshift-clients.tar.gz"
