@@ -36,5 +36,62 @@ Here is the real answer:
 You are grading the following predicted answer:
 {response}
 What grade do you give from 0 to 10, where 0 is the lowest (very low similarity) and 10 is the highest (very high similarity)?
-Only give the score value.
+Consider the following criteria when grading:
+1. Semantic similarity: How closely the predicted answer matches the meaning of the real answer.
+2. Factual accuracy: Whether the predicted answer is factually correct.
+3. Relevance: Whether the predicted answer is relevant to the question.
+4. Completeness: Whether the predicted answer covers all key points of the real answer.
+
+Only give the score value as final response.
+"""
+
+# TODO: Will add alternate approach, once we have expected context.
+RAG_RELEVANCY_PROMPT1 = """You are an expert in validating search result.
+Your task is to evaluate different search results against actual search query.
+
+What score do you give from 0 to 10, where 0 is the lowest and 10 is the highest ?
+Provide score for each of the below aspects:
+* Relevance: The search result contains relevant information to address the query.
+* Completeness: The search result contains complete information.
+* Conciseness: The search result contains only related information.
+
+Provide scores & summarized explaination.
+Use below json format for your response. Do not add any additional text apart from json output.
+
+Output format:
+{{
+    "explaination": [Summarized explaination for search result 1, Summarized explaination for search result 2 ...],
+    "relevance_score": [Relevance score for search result 1, Relevance score for search result 2 ...],
+    "completeness_score": [Completeness score for search result 1, Completeness score for search result 2 ...],
+    "conciseness_score": [Conciseness score for search result 1, Conciseness score for search result 2 ...]
+}}
+
+Actual search query: "{query}"
+You are evaluating below {n_results} search results:
+```
+{retrieval_texts}
+```
+"""
+
+# Keeping it simpler
+RAG_RELEVANCY_PROMPT2 = """You are an expert in validating search result.
+Your task is to evaluate different search results against actual search query.
+
+What score do you give from 0 to 10, where 0 is the lowest and 10 is the highest ?
+Consider below aspects to give a final score :
+* Relevance: The search result contains relevant information to address the query.
+* Completeness: The search result contains complete information.
+
+Provide final score & your explaination.
+Use below json format for your response. Do not add any additional text apart from json output.
+{{
+    "explaination": [Explaination behind the score for search result 1, Explaination behind the score for search result 2 ...],
+    "final_score": [Final score for search result 1, Final score for search result 2 ...]
+}}
+
+Actual search query: "{query}"
+You are evaluating below {n_results} search results:
+```
+{retrieval_texts}
+```
 """
