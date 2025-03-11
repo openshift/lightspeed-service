@@ -1,9 +1,9 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:0dd622460166fb51348a63c52fa86bb1e472c981e68d7d16cc83c885466fab60
 
-FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
+FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:fb77e447ab97f3fecd15d2fa5361a99fe2f34b41422e8ebb3612eecd33922fa0
+FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
 
 ARG VERSION
 ARG APP_ROOT=/app-root
@@ -15,12 +15,15 @@ RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
 RUN microdnf install -y tar gzip
 
 # conditional installation of OpenShift CLI
-RUN if [ -f /cachi2/output/deps/generic/openshift-clients.tar.gz ]; then \
+ARG BUILDARCH
+ENV BUILDARCH=${BUILDARCH}
+RUN if [ -f /cachi2/output/deps/generic/openshift-clients-${BUILDARCH}.tar.gz ]; then \
       echo "Using pre-fetched OpenShift CLI from /cachi2"; \
-      tar -xvf /cachi2/output/deps/generic/openshift-clients.tar.gz -C /usr/local/bin; \
+      tar xvfz /cachi2/output/deps/generic/openshift-clients-${BUILDARCH}.tar.gz -C /usr/local/bin; \
     else \
-      OC_CLIENT_TAR_GZ=openshift-client-linux-amd64-rhel9-4.17.9.tar.gz; \
-      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.9/${OC_CLIENT_TAR_GZ}" && \
+      echo "Pre-fetched OpenShift CLI not found. Downloading via curl."; \
+      OC_CLIENT_TAR_GZ=openshift-client-linux-${BUILDARCH}-rhel9-4.17.16.tar.gz; \
+      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.16/${OC_CLIENT_TAR_GZ}" && \
       tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
       rm -f ${OC_CLIENT_TAR_GZ}; \
     fi
