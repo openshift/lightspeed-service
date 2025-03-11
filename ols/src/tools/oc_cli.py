@@ -37,65 +37,52 @@ def sanitize_oc_args(args: list[str]) -> list[str]:
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run `oc` CLI with provided arguments and command."""
-    try:
-        res = subprocess.run(  # noqa: S603
-            ["oc", *args],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
-            shell=False,
-        )
-        return res
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            "Error running oc command %s: %s, stdout: %s, stderr: %s",
-            args,
-            e,
-            e.stdout,
-            e.stderr,
-        )
-        raise
+    res = subprocess.run(  # noqa: S603
+        ["oc", *args],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+        shell=False,
+    )
+    return res
 
 
 # TODO: server address configurable via request?
-def log_to_oc(
-    token: str, server: Optional[str] = os.getenv("KUBERNETES_SERVICE_HOST")
-) -> bool:
-    """Log in to `oc` CLI via provided token.
+def token_works_for_oc(token: str, server: Optional[str] = None) -> bool:
+    """Check if the token can be used with `oc` CLI.
 
     Args:
-        token: OpenShift token.
+        token: OpenShift user token.
         server: OpenShift server address.
 
     Returns:
-        True if login was successful, False otherwise.
+        True if user token works, False otherwise.
     """
-    if server in (None, ""):
+    if server is None:
+        server = os.getenv("KUBERNETES_SERVICE_HOST", "")
+    if server == "":
         logger.error(
             "Server URL not provided or KUBERNETES_SERVICE_HOST env is not set"
         )
         return False
-    try:
-        run_oc(
-            [
-                "login",
-                server,  # type: ignore[list-item]
-                "--token",
-                token,
-                # TODO: remove tls skip when possible, but it might hold the
-                # prompt for user input "y/n" without it
-                # So verify certs first?
-                "--insecure-skip-tls-verify=true",
-            ],
-        )
-        logger.info("Successfully logged in to OpenShift")
+
+    r = run_oc(["version", f"--token={token}", f"--server={server}"])
+
+    if r.returncode == 0:
+        logger.info("Token is usable for oc CLI")
         return True
-    except subprocess.CalledProcessError as e:
-        # TODO: not ideal - the message can change in future
-        if any(substring in e.stderr for substring in ("token", "invalid", "expired")):
-            logger.error("Error logging in to OpenShift: token is invalid or expired")
-            return False
-        raise e
+
+    logger.error(
+        "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
+        r.stdout,
+        r.stderr,
+    )
+    return False
+
+
+def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
+    """Return stdout if return code is 0, otherwise return stderr."""
+    return result.stdout if result.returncode == 0 else result.stderr
 
 
 # NOTE: tools description comes from oc cli --help for each subcommand (shortened)
@@ -131,7 +118,7 @@ def oc_get(command_args: list[str]) -> str:
         oc get rc,services
     """
     result = run_oc(["get", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -162,7 +149,7 @@ def oc_describe(command_args: list[str]) -> str:
     oc describe pods frontend
     """
     result = run_oc(["describe", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -191,7 +178,7 @@ def oc_logs(command_args: list[str]) -> str:
     oc logs -f pod/backend -c ruby-container
     """
     result = run_oc(["logs", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -216,7 +203,7 @@ def oc_status(command_args: list[str]) -> str:
     oc --suggest
     """
     result = run_oc(["status", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
 
 
 @tool
@@ -236,4 +223,4 @@ def oc_adm_top(command_args: list[str]) -> str:
     pod          Display Resource (CPU/Memory/Storage) usage of pods
     """
     result = run_oc(["adm", "top", *sanitize_oc_args(command_args)])
-    return result.stdout
+    return stdout_or_stderr(result)
