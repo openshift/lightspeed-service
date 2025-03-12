@@ -1,16 +1,19 @@
 """Integration tests for runners."""
 
-import pytest
 import ssl
 from unittest.mock import patch
 
+import pytest
+
 from ols import config
-from ols.runners.uvicorn import start_uvicorn
 from ols.runners.quota_scheduler import start_quota_scheduler
+from ols.runners.uvicorn import start_uvicorn
 
 MINIMAL_CONFIG_FILE = "tests/config/valid_config.yaml"
 CORRECT_CONFIG_FILE = "tests/config/config_for_integration_tests.yaml"
-QUOTA_LIMITERS_CONFIG_FILE = "tests/config/config_for_integration_tests_quota_limiters.yaml"
+QUOTA_LIMITERS_CONFIG_FILE = (
+    "tests/config/config_for_integration_tests_quota_limiters.yaml"
+)
 
 
 @patch("uvicorn.run")
