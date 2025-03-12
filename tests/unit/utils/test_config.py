@@ -766,7 +766,7 @@ ols_config:
     level: info
   default_provider: p1
   default_model: m1
-  quota_limiter:
+  quota_handlers:
     storage:
       host: ""
       port: "5432"
@@ -879,7 +879,7 @@ def test_valid_config_file():
         assert config.user_data_collector_config is not None
         assert config.ols_config.user_data_collection is not None
         assert config.ols_config.user_data_collection.feedback_disabled is True
-        assert config.ols_config.quota_limiter is not None
+        assert config.ols_config.quota_handlers is not None
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1469,8 +1469,8 @@ def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
-def test_quota_limiter_property():
-    """Check the quota limiter property."""
+def test_quota_limiters_property():
+    """Check the quota handler property."""
     config.reload_empty()
     assert config is not None
     config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")

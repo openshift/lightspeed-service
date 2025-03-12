@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.app.models.config import LimitersConfig, PostgresConfig, QuotaLimiterConfig
+from ols.app.models.config import LimitersConfig, PostgresConfig, QuotaHandlersConfig
 from ols.src.quota.cluster_quota_limiter import ClusterQuotaLimiter
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 from ols.src.quota.user_quota_limiter import UserQuotaLimiter
@@ -12,7 +12,7 @@ from ols.src.quota.user_quota_limiter import UserQuotaLimiter
 
 def test_quota_limiters_no_storage():
     """Test the quota limiters creating when no storage is configured."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = None
     limiters = QuotaLimiterFactory.quota_limiters(config)
     assert limiters == []
@@ -20,7 +20,7 @@ def test_quota_limiters_no_storage():
 
 def test_quota_limiters_no_limiters():
     """Test the quota limiters creating when no limiters are specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = None
     limiters = QuotaLimiterFactory.quota_limiters(config)
@@ -29,7 +29,7 @@ def test_quota_limiters_no_limiters():
 
 def test_quota_limiters_empty_limiters():
     """Test the quota limiters creating when no limiters are specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = LimitersConfig()
     limiters = QuotaLimiterFactory.quota_limiters(config)
@@ -39,7 +39,7 @@ def test_quota_limiters_empty_limiters():
 @patch("psycopg2.connect")
 def test_quota_limiters_user_quota_limiter(postgres_mock):
     """Test the quota limiters creating when one limiter is specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = LimitersConfig(
         [
@@ -60,7 +60,7 @@ def test_quota_limiters_user_quota_limiter(postgres_mock):
 @patch("psycopg2.connect")
 def test_quota_limiters_cluster_quota_limiter(postgres_mock):
     """Test the quota limiters creating when one limiter is specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = LimitersConfig(
         [
@@ -81,7 +81,7 @@ def test_quota_limiters_cluster_quota_limiter(postgres_mock):
 @patch("psycopg2.connect")
 def test_quota_limiters_two_limiters(postgres_mock):
     """Test the quota limiters creating when two limiters are specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = LimitersConfig(
         [
@@ -110,7 +110,7 @@ def test_quota_limiters_two_limiters(postgres_mock):
 @patch("psycopg2.connect")
 def test_quota_limiters_unknown_limiter(postgres_mock):
     """Test the quota limiters creating when the limiter type is unknown."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.limiters = LimitersConfig(
         [

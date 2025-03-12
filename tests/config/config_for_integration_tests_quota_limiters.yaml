@@ -118,7 +118,7 @@ ols_config:
         - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
         - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     minTLSVersion: VersionTLS13
-  quota_limiter:
+  quota_handlers:
     storage:
       host: ""
       port: "5432"

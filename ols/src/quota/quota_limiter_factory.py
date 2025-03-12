@@ -3,7 +3,7 @@
 import logging
 
 from ols import constants
-from ols.app.models.config import PostgresConfig, QuotaLimiterConfig
+from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 from ols.src.quota.cluster_quota_limiter import ClusterQuotaLimiter
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.user_quota_limiter import UserQuotaLimiter
@@ -15,7 +15,7 @@ class QuotaLimiterFactory:
     """Quota limiter factory class."""
 
     @staticmethod
-    def quota_limiters(config: QuotaLimiterConfig) -> list[QuotaLimiter]:
+    def quota_limiters(config: QuotaHandlersConfig) -> list[QuotaLimiter]:
         """Create instances of quota limiters based on loaded configuration.
 
         Returns:

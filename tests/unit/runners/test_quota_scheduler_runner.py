@@ -10,7 +10,7 @@ from ols.app.models.config import (
     LimiterConfig,
     LimitersConfig,
     PostgresConfig,
-    QuotaLimiterConfig,
+    QuotaHandlersConfig,
     SchedulerConfig,
 )
 from ols.runners.quota_scheduler import (
@@ -39,7 +39,7 @@ def test_quota_scheduler_no_config():
 def test_quota_scheduler_connection_not_setup(mock_connect):
     """Test the quota_scheduler function when connection is not setup."""
     mock_connect.return_value = None
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
 
     # storage configuration is not provided
     config.storage = None
@@ -52,7 +52,7 @@ def test_quota_scheduler_connection_not_setup(mock_connect):
 def test_quota_scheduler_no_connection(mock_connect):
     """Test the quota_scheduler function when connection can not be established."""
     mock_connect.return_value = None
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
 
     # connection won't be established
     config.storage = PostgresConfig()
@@ -64,7 +64,7 @@ def test_quota_scheduler_no_connection(mock_connect):
 @patch("psycopg2.connect")
 def test_quota_scheduler_no_limiters(mock_connect):
     """Test the quota_scheduler function when limiters are not setup."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.scheduler = SchedulerConfig(period=10)
 
@@ -75,7 +75,7 @@ def test_quota_scheduler_no_limiters(mock_connect):
 @patch("psycopg2.connect")
 def test_quota_scheduler_empty_list_of_limiters(mock_connect):
     """Test the quota_scheduler function when empty list of limiters are setup."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.scheduler = SchedulerConfig(period=10)
     config.limiters = LimitersConfig()
@@ -90,7 +90,7 @@ def test_quota_scheduler_empty_list_of_limiters(mock_connect):
 @patch("psycopg2.connect")
 def test_quota_scheduler_non_empty_list_of_limiters(mock_connect):
     """Test the quota_scheduler function when non empty list of limiters are setup."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.scheduler = SchedulerConfig(period=10)
     config.limiters = LimitersConfig(
@@ -115,7 +115,7 @@ def test_quota_scheduler_non_empty_list_of_limiters(mock_connect):
 @patch("psycopg2.connect")
 def test_quota_scheduler_limiter_without_type(mock_connect):
     """Test the quota_scheduler function when limiter type is not specified."""
-    config = QuotaLimiterConfig()
+    config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
     config.scheduler = SchedulerConfig(period=10)
     config.limiters = LimitersConfig(

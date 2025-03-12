@@ -77,7 +77,7 @@ class AppConfig:
         """Return all quota limiters."""
         if self._quota_limiters is None:
             self._quota_limiters = QuotaLimiterFactory.quota_limiters(
-                self.ols_config.quota_limiter
+                self.ols_config.quota_handlers
             )
         return self._quota_limiters
 

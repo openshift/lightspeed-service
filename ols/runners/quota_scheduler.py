@@ -9,7 +9,7 @@ import psycopg2
 
 import ols.app.models.config as config_model
 from ols import constants
-from ols.app.models.config import LimiterConfig, PostgresConfig, QuotaLimiterConfig
+from ols.app.models.config import LimiterConfig, PostgresConfig, QuotaHandlersConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ RESET_QUOTA_STATEMENT = """
     """
 
 
-def quota_scheduler(config: Optional[QuotaLimiterConfig]) -> bool:
+def quota_scheduler(config: Optional[QuotaHandlersConfig]) -> bool:
     """Quota scheduler task."""
     if config is None:
         logger.warning("Quota limiters are not configured, skipping")
@@ -177,6 +177,6 @@ def start_quota_scheduler(config: config_model.Config) -> None:
     """Start user and cluster quota scheduler in separate thread."""
     logger.info("Starting quota scheduler")
     thread = Thread(
-        target=quota_scheduler, daemon=True, args=(config.ols_config.quota_limiter,)
+        target=quota_scheduler, daemon=True, args=(config.ols_config.quota_handlers,)
     )
     thread.start()
