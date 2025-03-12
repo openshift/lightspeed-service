@@ -1,11 +1,11 @@
 """Unit test for the index loader module."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 from ols import config
 from ols.app.models.config import ReferenceContent, ReferenceContentIndex
 from ols.src.rag_index.index_loader import IndexLoader
+from tests.mock_classes.mock_composable_graph import MockComposableGraph
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
 
 
@@ -40,13 +40,20 @@ def test_index_loader_no_id(storage_context):
 
 @patch("llama_index.core.StorageContext.from_defaults")
 @patch("llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir")
+@patch(
+    "llama_index.core.indices.composability.graph.ComposableGraph.from_indices",
+    new=MockComposableGraph,
+)
 @patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex)
 def test_index_loader(storage_context, from_persist_dir):
     """Test index loader."""
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.indexes = [
         ReferenceContentIndex(
-            {"product_docs_index_path": "./some_dir", "product_docs_index_id": "./some_id"}
+            {
+                "product_docs_index_path": "./some_dir",
+                "product_docs_index_id": "./some_id",
+            }
         )
     ]
     from_persist_dir.return_value = None
