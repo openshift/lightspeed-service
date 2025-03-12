@@ -1,5 +1,5 @@
 # vim: set filetype=dockerfile
-ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:0dd622460166fb51348a63c52fa86bb1e472c981e68d7d16cc83c885466fab60
+ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:1646c92afe6a235fadc36e37480abf0c96aeb94eb08812da008ac8ecc56658e8
 ARG HERMETIC=false
 
 FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
