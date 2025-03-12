@@ -3,11 +3,17 @@
 import ssl
 from unittest.mock import patch
 
+import pytest
+
 from ols import config
+from ols.runners.quota_scheduler import start_quota_scheduler
 from ols.runners.uvicorn import start_uvicorn
 
 MINIMAL_CONFIG_FILE = "tests/config/valid_config.yaml"
 CORRECT_CONFIG_FILE = "tests/config/config_for_integration_tests.yaml"
+QUOTA_LIMITERS_CONFIG_FILE = (
+    "tests/config/config_for_integration_tests_quota_limiters.yaml"
+)
 
 
 @patch("uvicorn.run")
@@ -48,3 +54,13 @@ def test_start_uvicorn_full_setup(mocked_runner):
         ssl_ciphers="TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
         access_log=False,
     )
+
+
+@pytest.mark.filterwarnings("ignore")
+@patch("psycopg2.connect")
+def test_start_quota_scheduler(mock_connect):
+    """Test the function to start Quota scheduler."""
+    config.reload_from_yaml_file(QUOTA_LIMITERS_CONFIG_FILE)
+    with patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()):
+        # just try to enter the endless loop
+        start_quota_scheduler(config)
