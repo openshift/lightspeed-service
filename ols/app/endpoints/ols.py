@@ -518,10 +518,12 @@ def generate_response(
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
             return docs_summarizer.generate_response(
-                llm_request.query, config.rag_index, history
+                llm_request.query, config.rag_index_loader.get_retriever(), history
             )
         response = docs_summarizer.create_response(
-            llm_request.query, config.rag_index, history
+            llm_request.query,
+            config.rag_index_loader.get_retriever(),
+            history,
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response

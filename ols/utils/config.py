@@ -40,7 +40,7 @@ class AppConfig:
         """Initialize the class instance."""
         self.config = config_model.Config()
         self._query_filters: Optional[Redactor] = None
-        self._rag_index: Optional[BaseIndex] = None
+        self._rag_index_loader: Optional[IndexLoader] = None
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
         self._token_usage_history: Optional[TokenUsageHistory] = None
@@ -113,11 +113,14 @@ class AppConfig:
     def rag_index(self) -> Optional[BaseIndex]:
         """Return the RAG index."""
         # TODO: OLS-380 Config object mirrors configuration
-        if self._rag_index is None:
-            self._rag_index = IndexLoader(
-                self.ols_config.reference_content
-            ).vector_index
-        return self._rag_index
+        return self.rag_index_loader.vector_indexes
+
+    @property
+    def rag_index_loader(self) -> Optional[IndexLoader]:
+        """Return the RAG index loader."""
+        if self._rag_index_loader is None:
+            self._rag_index_loader = IndexLoader(self.ols_config.reference_content)
+        return self._rag_index_loader
 
     def reload_empty(self) -> None:
         """Reload the configuration with empty values."""
@@ -150,7 +153,7 @@ class AppConfig:
             # reset the query filters and rag index to not use cached
             # values
             self._query_filters = None
-            self._rag_index = None
+            self._rag_index_loader = None
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
