@@ -3,9 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from ibm_watsonx_ai.metanames import (
-    GenTextParamsMetaNames as GenParams,
-)
+from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 
 from ols.app.models.config import ProviderConfig
 from ols.constants import GenericLLMParameters

@@ -9,10 +9,7 @@ from azure.core.credentials import AccessToken
 from langchain_openai import AzureChatOpenAI
 
 from ols.app.models.config import ProviderConfig
-from ols.src.llms.providers.azure_openai import (
-    AzureOpenAI,
-    token_is_expired,
-)
+from ols.src.llms.providers.azure_openai import AzureOpenAI, token_is_expired
 
 
 @pytest.fixture

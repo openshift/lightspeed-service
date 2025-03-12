@@ -3,7 +3,7 @@
 import pytest
 
 from ols import config, constants
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import ProviderConfig, TLSSecurityProfile
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import (
     LLMProvidersRegistry,
@@ -193,3 +193,29 @@ def test_llm_provider_params_order__no_provider_type():
         == "foo"
     )
     assert my_provider_with_streaming_enabled.params["streaming"] is True
+
+
+def test_construct_httpx_client():
+    """Test the HTTPX client construction."""
+
+    class MyProvider(LLMProvider):
+        @property
+        def default_params(self):
+            return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
+
+        def load(self):
+            return
+
+    # set up provider configuration with type set to None
+    provider_config = ProviderConfig()
+    provider_config.type = None
+    provider_config.tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": "VersionTLS12",
+            "ciphers": None,
+        }
+    )
+    llm_provider = MyProvider("model", provider_config)
+    client = llm_provider._construct_httpx_client(False)
+    assert client is not None
