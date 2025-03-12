@@ -65,7 +65,7 @@ def pytest_sessionstart():
     OLS_READY = wait_for_ols(ols_url)
     print(f"OLS is ready: {OLS_READY}")
     # Gather OLS artifacts in case OLS does not become ready
-    if not OLS_READY:
+    if on_cluster and not OLS_READY:
         must_gather()
 
 
