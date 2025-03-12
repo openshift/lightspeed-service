@@ -1,33 +1,31 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/openshift-lightspeed/lightspeed-rag-content@sha256:0dd622460166fb51348a63c52fa86bb1e472c981e68d7d16cc83c885466fab60
+ARG HERMETIC=false
 
 FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
 FROM registry.redhat.io/ubi9/ubi-minimal@sha256:fb77e447ab97f3fecd15d2fa5361a99fe2f34b41422e8ebb3612eecd33922fa0
-
+ARG HERMETIC=false
 ARG VERSION
 ARG APP_ROOT=/app-root
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
 
-# tar gzip are required for OpenShift CLI installation
-RUN microdnf install -y tar gzip
-
 # conditional installation of OpenShift CLI
-RUN if [ -f /cachi2/output/deps/generic/openshift-clients.tar.gz ]; then \
-      echo "Using pre-fetched OpenShift CLI from /cachi2"; \
-      tar -xvf /cachi2/output/deps/generic/openshift-clients.tar.gz -C /usr/local/bin; \
+ENV HERMETIC=$HERMETIC
+RUN if [ "$HERMETIC" == "true" ]; then \
+      microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs openshift-clients; \
     else \
       OC_CLIENT_TAR_GZ=openshift-client-linux-amd64-rhel9-4.17.9.tar.gz; \
+      microdnf install -y tar gzip && \
       curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.9/${OC_CLIENT_TAR_GZ}" && \
       tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
-      rm -f ${OC_CLIENT_TAR_GZ}; \
+      rm -f ${OC_CLIENT_TAR_GZ} && \
+      chmod +x /usr/local/bin/oc && \
+      microdnf remove -y tar gzip; \
     fi
 
-# finish and verify installation
-RUN chmod +x /usr/local/bin/oc
-RUN microdnf remove -y tar gzip
 RUN oc version --client
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
