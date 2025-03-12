@@ -376,7 +376,7 @@ class ResponseEvaluation:
                 col.removesuffix(f"_{score_type}") for col in temp_result_df.columns
             ]
             plot_file = f"{self._result_dir}/model_evaluation_result-{score_type}.png"
-            plot_score(temp_result_df, score_type, plot_file)
+            plot_score(temp_result_df, SCORE_DESCRIPTION[score_type], plot_file)
             summary_score[score_type] = temp_result_df.describe().T.to_dict()
 
         summary_result = {

@@ -3,13 +3,11 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import BASE_COLORS
 
-from .constants import SCORE_DESCRIPTION
-
 
 def plot_score(results_df, score_name, out_file_path=None):
     """Plot score."""
     _, ax = plt.subplots(figsize=(14, 8))
-    ax.set_xlabel(SCORE_DESCRIPTION[score_name])
+    ax.set_xlabel(score_name)
     ax.set_xlim(0, 1)
 
     ax.axvline(x=0.25, linewidth=2, color="red")

@@ -36,6 +36,7 @@ EVAL_MODES = {
 }
 
 DEFAULT_QNA_FILE = "question_answer_pair.json"
+PARQUET_QNA_FILE = "ocp_doc_qna-edited.parquet"
 DEFAULT_CONFIG_FILE = "olsconfig.yaml"
 
 DEFAULT_INPUT_DIR = "eval_data"
