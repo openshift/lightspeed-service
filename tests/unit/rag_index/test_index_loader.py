@@ -1,11 +1,11 @@
 """Unit test for the index loader module."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 from ols import config
 from ols.app.models.config import ReferenceContent, ReferenceContentIndex
 from ols.src.rag_index.index_loader import IndexLoader
+from tests.mock_classes.mock_composable_graph import MockComposableGraph
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
 
 
