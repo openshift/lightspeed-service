@@ -224,6 +224,25 @@ class PostgresCache(Cache):
                 logger.error("PostgresCache.list: %s", e)
                 raise CacheError("PostgresCache.list", e) from e
 
+    def ready(self) -> bool:
+        """Check if the cache is ready.
+
+        Postgres cache checks if the connection is alive.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """
+        # TODO: when the connection is closed and the database is back online,
+        # we need to reestablish the connection => implement this
+        if not self.conn or self.conn.closed == 1:
+            return False
+        try:
+            return self.conn.poll() == psycopg2.extensions.POLL_OK
+        except (psycopg2.OperationalError, psycopg2.InterfaceError):
+            # OperationalError - the once alive connection is closed
+            # InterfaceError - cannot reach the database server
+            return False
+
     @staticmethod
     def _select(
         cursor: psycopg2.extensions.cursor,

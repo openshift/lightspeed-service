@@ -100,3 +100,11 @@ class Cache(ABC):
         Returns:
             A list of conversation ids from the cache
         """
+
+    @abstractmethod
+    def ready(self) -> bool:
+        """Check if the cache is ready.
+
+        Returns:
+            True if the cache is ready, False otherwise.
+        """

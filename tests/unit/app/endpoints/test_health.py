@@ -1,7 +1,7 @@
 """Unit tests for health endpoints handlers."""
 
 import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -14,7 +14,18 @@ from ols.app.endpoints.health import (
     llm_is_ready,
     readiness_probe_get_method,
 )
+from ols.app.models.config import InMemoryCacheConfig
 from ols.app.models.models import LivenessResponse, ReadinessResponse
+from ols.src.cache.in_memory_cache import InMemoryCache
+
+
+def mock_cache():
+    """Fixture with constructed and initialized in memory cache object."""
+    mc = InMemoryCacheConfig({"max_entries": "10"})
+    mc_kls = Mock(InMemoryCache)
+    c = mc_kls(mc)
+    c.initialize_cache(mc)
+    return c
 
 
 class MockedLLM:
@@ -53,6 +64,7 @@ def test_readiness_probe_llm_check__llm_unexpected_response(mocked_load_llm):
     assert not llm_is_ready()
 
 
+@patch("ols.config._conversation_cache", create=True, new=mock_cache())
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
 @patch("ols.app.endpoints.health.load_llm")
 def test_readiness_probe_llm_check__state_cache(mocked_load_llm):
@@ -69,6 +81,7 @@ def test_readiness_probe_llm_check__state_cache(mocked_load_llm):
     assert mocked_load_llm.call_count == 1
 
 
+@patch("ols.config._conversation_cache", create=True, new=mock_cache())
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
 @patch("ols.app.endpoints.health.load_llm")
 def test_readiness_probe_llm_check__state_cache_not_expired(mocked_load_llm):
@@ -91,6 +104,7 @@ def test_readiness_probe_llm_check__state_cache_not_expired(mocked_load_llm):
         config.ols_config.expire_llm_is_ready_persistent_state = -1
 
 
+@patch("ols.config._conversation_cache", create=True, new=mock_cache())
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
 @patch("ols.app.endpoints.health.load_llm")
 def test_readiness_probe_llm_check__state_cache_expired(mocked_load_llm):
@@ -123,6 +137,7 @@ def test_readiness_probe_llm_check__llm_raise(mocked_load_llm):
     assert not llm_is_ready()
 
 
+@patch("ols.config._conversation_cache", create=True, new=mock_cache())
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=False)
 @patch("ols.app.endpoints.health.load_llm")
 def test_readiness_probe_get_method_service_is_ready(mocked_load_llm):
@@ -133,6 +148,7 @@ def test_readiness_probe_get_method_service_is_ready(mocked_load_llm):
     assert response == ReadinessResponse(ready=True, reason="service is ready")
 
 
+@patch("ols.config._conversation_cache", create=True, new=mock_cache())
 @patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=True)
 def test_readiness_probe_get_method_index_is_ready():
     """Test the readiness_probe function when index is loaded."""
@@ -161,6 +177,21 @@ def test_readiness_probe_get_method_index_not_ready():
     assert not index_is_ready()
     with pytest.raises(HTTPException, match="Service is not ready"):
         readiness_probe_get_method()
+
+
+def test_readiness_probe_get_method_cache_not_ready():
+    """Test the readiness_probe function when cache is not ready."""
+    # simulate that the cache is not ready
+    with patch("ols.config._conversation_cache", new=None) as mocked_cache:
+        with pytest.raises(HTTPException, match="Service is not ready"):
+            readiness_probe_get_method()
+
+    with patch(
+        "ols.config._conversation_cache", create=True, new=mock_cache()
+    ) as mocked_cache:
+        mocked_cache.ready.return_value = False
+        with pytest.raises(HTTPException, match="Service is not ready"):
+            readiness_probe_get_method()
 
 
 def test_liveness_probe_get_method():

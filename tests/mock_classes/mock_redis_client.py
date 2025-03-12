@@ -62,3 +62,7 @@ class MockRedisClient:
         # Use fnmatch to match keys against the pattern
         matching_keys = [key for key in self.cache if fnmatch.fnmatch(key, pattern)]
         return matching_keys
+
+    def ping(self):
+        """Return PONG."""
+        return "PONG"
