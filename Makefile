@@ -9,6 +9,7 @@ SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-4o-mini")
 INTROSPECTION_ENABLED := $(if $(INTROSPECTION_ENABLED),$(INTROSPECTION_ENABLED),"n")
+PATH_TO_PLANTUML := ~/bin
 
 # Python registry to where the package should be uploaded
 PYTHON_REGISTRY = testpypi
@@ -137,6 +138,12 @@ get-rag: ## Download a copy of the RAG embedding model and vector database
 config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
+
+docs/config.png:	docs/config.puml ## Generate an image with configuration graph
+	pushd docs && \
+	java -jar ${PATH_TO_PLANTUML}/plantuml.jar --theme rose config.puml && \
+	mv classes.png config.png && \
+	popd
 
 llms.puml: ## Generate PlantUML class diagram for LLM plugin system
 	pyreverse ols/src/llms/ --output puml --output-directory=docs/
