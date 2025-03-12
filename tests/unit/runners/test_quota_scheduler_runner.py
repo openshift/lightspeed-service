@@ -130,7 +130,7 @@ def test_quota_scheduler_limiter_without_type(mock_connect):
         ]
     )
     # this will cause quota_revocation function to raise an Exception
-    config.limiters.limiters["foo"].type=None
+    config.limiters.limiters["foo"].type = None
 
     # we need to be able to end the endless loop by raising exception
     with patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()):
