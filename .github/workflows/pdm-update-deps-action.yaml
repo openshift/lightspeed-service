@@ -1,0 +1,22 @@
+name: Update dependencies
+on:
+  schedule:
+    - cron: "0 0 * * *"
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update dependencies
+        uses: pdm-project/update-deps-action@main
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          commit-message: "pdm: Update deps"
+          pr-title: "Update dependencies"
+          update-strategy: reuse
+          # The save strategy, can 'compatible', 'wildcard', 'exact' or 'minimum'
+          save-strategy: minimum
+          unconstrained: false
+          install-plugins: "false"
+          sign-off-commit: "false"
+          sign-commits: "true"
