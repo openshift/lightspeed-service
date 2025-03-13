@@ -16,6 +16,7 @@ from ols import config, constants
 from ols.app.endpoints.ols import (
     calc_input_tokens,
     calc_output_tokens,
+    consume_tokens,
     generate_response,
     log_processing_durations,
     process_request,
@@ -384,6 +385,16 @@ async def response_processing_wrapper(
 
     yield stream_end_event(
         build_referenced_docs(rag_chunks), history_truncated, media_type, token_counter
+    )
+
+    input_tokens = calc_input_tokens(token_counter)
+    output_tokens = calc_output_tokens(token_counter)
+
+    consume_tokens(
+        config.quota_limiters,
+        user_id,
+        input_tokens,
+        output_tokens,
     )
 
     timestamps["add references"] = time.time()
