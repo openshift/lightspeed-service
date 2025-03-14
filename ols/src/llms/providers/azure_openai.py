@@ -2,6 +2,7 @@
 
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from azure.core.credentials import AccessToken
@@ -17,23 +18,27 @@ from ols.src.llms.providers.registry import register_llm_provider_as
 logger = logging.getLogger(__name__)
 
 
+TOKEN_EXPIRATION_LEEWAY = 30  # seconds
+
+
+@dataclass
 class TokenCache:
-    """Store access token and its expiration time.
+    """Token cache for Azure OpenAI provider."""
 
-    Attributes:
-        access_token: access token to be stored
-        expires_on: unix time when the token expires
-    """
-
-    access_token: Optional[str]
+    access_token: Optional[str] = None
     expires_on: int = 0
 
+    def is_expired(self) -> bool:
+        """Check if token has expired."""
+        return self.expires_on == 0 or time.time() > self.expires_on
 
-def token_is_expired() -> bool:
-    """Check if the cached token is still valid."""
-    if TokenCache.expires_on == 0:
-        return True
-    return time.time() > TokenCache.expires_on
+    def update_token(self, token: str, expires_on: int) -> None:
+        """Update token and expiration time."""
+        self.access_token = token
+        self.expires_on = expires_on - TOKEN_EXPIRATION_LEEWAY
+
+
+TOKEN_CACHE = TokenCache()  # per-process/worker cache
 
 
 @register_llm_provider_as(constants.PROVIDER_AZURE_OPENAI)
@@ -90,20 +95,17 @@ class AzureOpenAI(LLMProvider):
         return AzureChatOpenAI(**self.params)
 
     def resolve_access_token(self, azure_config: AzureOpenAIConfig) -> Optional[str]:
-        """Resolve access token to call Azure OpenAI."""
-        if token_is_expired():
+        """Retrieve and cache Azure OpenAI access token."""
+        if TOKEN_CACHE.is_expired():
+            logger.info(
+                "Cached AD token has expired (or missing) - generating a new one"
+            )
             access_token = self.retrieve_access_token(azure_config)
-            # set up active directory token to access Azure services, including OpenAI one
-            if access_token is None:
-                # we are unable to retrieve access token
-                TokenCache.access_token = access_token  # None
+            if access_token:
+                TOKEN_CACHE.update_token(access_token.token, access_token.expires_on)
             else:
-                TokenCache.access_token = access_token.token
-                # Update expires_on to current time + expires_in,
-                # minus a small leeway. Default expiration seems to
-                # be 1 hour.
-                TokenCache.expires_on = int(time.time() + access_token.expires_on - 30)
-        return TokenCache.access_token
+                return None
+        return TOKEN_CACHE.access_token
 
     def retrieve_access_token(
         self, azure_config: AzureOpenAIConfig
