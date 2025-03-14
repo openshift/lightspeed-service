@@ -1057,7 +1057,7 @@ def test_provider_model_default_tokens_limit(provider_name):
 def test_provider_config_explicit_tokens():
     """Test the ProviderConfig model when explicit tokens are specified."""
     # Note: context window should be >= 1024 (default) response token limit
-    context_window_size = 1025
+    context_window_size = 4097
 
     provider_config = ProviderConfig(
         {

@@ -75,7 +75,7 @@ class WatsonxVanilla(Watsonx):
     def default_params(self):
         """Construct and return structure with default LLM params."""
         return {
-            GenTextParamsMetaNames.MAX_NEW_TOKENS: 1024,
+            GenTextParamsMetaNames.MAX_NEW_TOKENS: 4096,
         }
 
 

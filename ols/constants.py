@@ -76,14 +76,14 @@ MAX_ITERATIONS = 5
 # error due to context window limit or unnecessary truncation may happen.
 # For Provider and Model-specific context window size, Please refer
 # their official documentations. If not set, default value will be used.
-DEFAULT_CONTEXT_WINDOW_SIZE = 8192
+DEFAULT_CONTEXT_WINDOW_SIZE = 128000
 
 # Max tokens reserved for response may also vary depending upon provider/model & query.
 # Ex: Larger models tends give more descriptive response,
 # Also response with YAML generally uses more tokens (when large model is used)
 # It should be in reasonable proportion to context window limit; otherwise unnecessary
 # truncation will happen. If not set, default value will be used.
-DEFAULT_MAX_TOKENS_FOR_RESPONSE = 1024
+DEFAULT_MAX_TOKENS_FOR_RESPONSE = 4096
 
 
 # Tokenizer model to generate tokens (for an approximated token calculation)
