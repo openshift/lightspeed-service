@@ -4,7 +4,7 @@ ARG HERMETIC=false
 
 FROM ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:86c6e45fcf6b6e74ff219967bbecaebe4376074d2f347fe8068b035812a0adf9
+FROM registry.redhat.io/ubi9/ubi-minimal@sha256:8b314e254e9ab9a7a08b675fcfd3ed66a2943eeda7b26395210d451569976b9b
 ARG HERMETIC=false
 ARG VERSION
 ARG APP_ROOT=/app-root
