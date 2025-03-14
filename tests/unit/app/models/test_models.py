@@ -20,6 +20,8 @@ from ols.app.models.models import (
     ReadinessResponse,
     ReferencedDocument,
     StatusResponse,
+    SummarizerResponse,
+    ToolCall,
 )
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from ols.utils import suid
@@ -600,3 +602,45 @@ def test_message_decoder_other_message():
     msg = json.loads('{"foo": 1, "bar": 2}')
     assert msg is not None
     assert type(msg) is dict
+
+
+class TestToolCallModel:
+    """Unit tests for the ToolCall model."""
+
+    @staticmethod
+    def test_basic_interface():
+        """Test the basic interface of the ToolCall model."""
+        tool_call = ToolCall(name="tool", args={"args": "bla"})
+        assert tool_call.name == "tool"
+        assert tool_call.args == {"args": "bla"}
+
+        # name is required
+        with pytest.raises(ValidationError, match="Field required"):
+            ToolCall(args={"args": "bla"})
+
+        # args are required
+        with pytest.raises(ValidationError, match="Field required"):
+            ToolCall(name="tool")
+
+    @staticmethod
+    def test_from_langchain_tool_call():
+        """Test the from_langchain_tool_call method of the ToolCall model."""
+        tool_call_message = {"name": "tool", "args": {"args": "bla"}}
+        tool_call = ToolCall.from_langchain_tool_call(tool_call_message)
+        assert tool_call.name == "tool"
+        assert tool_call.args == {"args": "bla"}
+
+
+class TestSummarizerResponse:
+    """Unit tests for the SummarizerResponse model."""
+
+    @staticmethod
+    def test_tool_calls_default():
+        """Test the default value of the tool_calls field."""
+        summarizer_response = SummarizerResponse(
+            response="response",
+            rag_chunks=[],
+            history_truncated=False,
+            token_counter=None,
+        )
+        assert summarizer_response.tool_calls == []
