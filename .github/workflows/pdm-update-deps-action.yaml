@@ -1,0 +1,34 @@
+name: Update dependencies
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: PDM installation
+        run: pip install --user pdm
+      - name: Bump deps
+        run: pdm update --no-sync --update-reuse --save-minimum 
+      - name: Generate requirements.txt
+        run: make requirements.txt
+      - name: Raise a PR
+        uses: pdm-project/update-deps-action@main
+        with:
+          token: ${{ secrets.PDM_DEPS_UPDATE_TOKEN }}
+          commit-message: "pdm: Update deps"
+          pr-title: "pdm: Automatic dependencies update"
+          update-strategy: reuse
+          save-strategy: minimum
+          unconstrained: false
+          install-plugins: "false"
+          sign-off-commit: "false"
+          sign-commits: "true"
+# Bump deps step is doing the same thing as the Raise a PR step, but
+# we first need to do that to generate the requirements.txt from the
+# updated pdm.lock. Not the best way, but good enough.
