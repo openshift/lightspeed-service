@@ -19,8 +19,8 @@ llm_providers:
     tlsSecurityProfile:
       type: Custom
       ciphers:
-          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       minTLSVersion: VersionTLS13
   - name: p2
     type: openai
@@ -67,8 +67,9 @@ llm_providers:
       - name: granite-3-8b-instruct
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config"
-    product_docs_index_id: product
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
   logging_config:
     app_log_level: info
     lib_log_level: warning
@@ -83,6 +84,6 @@ ols_config:
   tlsSecurityProfile:
     type: Custom
     ciphers:
-        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     minTLSVersion: VersionTLS13

@@ -569,8 +569,9 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_path: "./invalid_dir"
-    product_docs_index_id: product
+    indexes:
+    - product_docs_index_path: "./invalid_dir"
+      product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
@@ -582,7 +583,7 @@ dev_config:
 
 """,
         InvalidConfigurationError,
-        "Reference content path './invalid_dir' does not exist",
+        "Reference content index path './invalid_dir' does not exist",
     )
 
     check_expected_exception(
@@ -625,7 +626,8 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_path: "/tmp"
+    indexes:
+    - product_docs_index_path: "/tmp"
   conversation_cache:
     type: memory
     memory:
@@ -652,7 +654,8 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_id: "product"
+    indexes:
+    - product_docs_index_id: "product"
   conversation_cache:
     type: memory
     memory:
@@ -678,7 +681,8 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config/secret/apitoken"
+    indexes:
+    - product_docs_index_path: "tests/config/secret/apitoken"
   conversation_cache:
     type: memory
     memory:
@@ -689,7 +693,7 @@ dev_config:
 
 """,
         InvalidConfigurationError,
-        "Reference content path 'tests/config/secret/apitoken' is not a directory",
+        "Reference content index path 'tests/config/secret/apitoken' is not a directory",
     )
 
 
@@ -855,8 +859,12 @@ def test_valid_config_file():
                 "ols_config": {
                     "max_workers": 1,
                     "reference_content": {
-                        "product_docs_index_path": "tests/config",
-                        "product_docs_index_id": "product",
+                        "indexes": [
+                            {
+                                "product_docs_index_path": "tests/config",
+                                "product_docs_index_id": "product",
+                            }
+                        ],
                     },
                     "conversation_cache": {
                         "type": "memory",
@@ -932,8 +940,12 @@ def test_valid_config_file_without_certificate_directory():
                 ],
                 "ols_config": {
                     "reference_content": {
-                        "product_docs_index_path": "tests/config",
-                        "product_docs_index_id": "product",
+                        "indexes": [
+                            {
+                                "product_docs_index_path": "tests/config",
+                                "product_docs_index_id": "product",
+                            }
+                        ],
                     },
                     "conversation_cache": {
                         "type": "memory",
@@ -979,8 +991,12 @@ def test_valid_config_file_with_postgres():
                 ],
                 "ols_config": {
                     "reference_content": {
-                        "product_docs_index_path": "tests/config",
-                        "product_docs_index_id": "product",
+                        "indexes": [
+                            {
+                                "product_docs_index_path": "tests/config",
+                                "product_docs_index_id": "product",
+                            }
+                        ],
                     },
                     "conversation_cache": {
                         "type": "postgres",
@@ -1031,8 +1047,12 @@ def test_valid_config_file_with_redis():
                 ],
                 "ols_config": {
                     "reference_content": {
-                        "product_docs_index_path": "tests/config",
-                        "product_docs_index_id": "product",
+                        "indexes": [
+                            {
+                                "product_docs_index_path": "tests/config",
+                                "product_docs_index_id": "product",
+                            },
+                        ],
                     },
                     "conversation_cache": {
                         "type": "redis",
