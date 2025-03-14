@@ -1,10 +1,15 @@
 """Unit tests for auth/auth module."""
 
 import pytest
+from fastapi import HTTPException, Request
 
 from ols.app.models.config import AuthenticationConfig, OLSConfig
 from ols.src.auth import k8s, noop
 from ols.src.auth.auth import get_auth_dependency, use_k8s_auth
+from ols.src.auth.auth_dependency_interface import (
+    extract_bearer_token,
+    extract_token_from_request,
+)
 
 
 def test_use_k8s_auth_no_auth_config():
@@ -78,3 +83,24 @@ def test_get_auth_dependency_unknown_module():
         Exception, match="Invalid/unknown auth. module was configured: foo"
     ):
         get_auth_dependency(ols_config, "/path")
+
+
+def test_extract_bearer_token():
+    """Test the function extract_bearer_token."""
+    # good value
+    assert extract_bearer_token("Bearer token") == "token"
+
+    # bad values
+    assert extract_bearer_token("Bearer") == ""
+    assert extract_bearer_token("sha256~aaaaaa") == ""
+
+
+def test_extract_token_from_request():
+    """Test the function extract_token_from_request."""
+    request = Request(
+        scope={"type": "http", "headers": [(b"authorization", b"Bearer token")]}
+    )
+    assert extract_token_from_request(request) == "token"
+
+    with pytest.raises(HTTPException, match="Unauthorized: No auth header found"):
+        extract_token_from_request(Request(scope={"type": "http", "headers": []}))
