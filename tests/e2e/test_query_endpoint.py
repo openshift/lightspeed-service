@@ -185,7 +185,7 @@ def test_too_long_question() -> None:
         response = pytest.client.post(
             QUERY_ENDPOINT,
             json={"conversation_id": cid, "query": query},
-            timeout=test_api.LLM_REST_API_TIMEOUT,
+            timeout=300,
         )
         assert response.status_code == requests.codes.request_entity_too_large
 
