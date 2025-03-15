@@ -387,9 +387,9 @@ llama-index-agent-openai==0.4.1; python_full_version >= "3.11.1" and python_full
 llama-index-cli==0.4.1; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:3f97f1f8f5f401dfb5b6bc7170717c176dcd981538017430073ef12ffdcbddfa \
     --hash=sha256:6dfc931aea5b90c256e476b48dfac76f48fb2308fdf656bb02ee1e4f2cab8b06
-llama-index-core==0.12.23.post2; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
-    --hash=sha256:3665583d69ca9859b019aacf9496af29ec2fa3b24d031344ddeeefb0dbd00e26 \
-    --hash=sha256:b8e8abc2c11c2fa26bbfeebc79b00d8d12aaba370e43e3450045b50048744b90
+llama-index-core==0.12.24.post1; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
+    --hash=sha256:2d0ab7e819dc064a8a9256cf2719d25fe12018fc5357e681a2e97f7b5988562c \
+    --hash=sha256:cc2cb1f0508b6a7ae85dae72082a4e597e29fca349c67b7e319c2698f24cac61
 llama-index-embeddings-huggingface==0.5.2; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:8427a7b7a1ad25f3d1f1bbd8ade8ff5cc3ddac9eea5553eda7fcf9b3860aec83 \
     --hash=sha256:a8144eb7e644ecd5f2fcf1ad75262c06eebdb22cc31bad26c5f2ced40f399f67
