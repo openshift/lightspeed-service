@@ -206,9 +206,9 @@ filelock==3.17.0; python_full_version >= "3.11.1" and python_full_version <= "3.
 filetype==1.2.0; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb \
     --hash=sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25
-findpython==0.6.2; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
-    --hash=sha256:bda62477f858ea623ef2269f5e734469a018104a5f6c0fd9317ba238464ddb76 \
-    --hash=sha256:e0c75ba9f35a7f9bb4423eb31bd17358cccf15761b6837317719177aeff46723
+findpython==0.6.3; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
+    --hash=sha256:5863ea55556d8aadc693481a14ac4f3624952719efc1c5591abb0b4a9e965c94 \
+    --hash=sha256:a85bb589b559cdf1b87227cc233736eb7cad894b9e68021ee498850611939ebc
 frozenlist==1.5.0; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:000a77d6034fbad9b6bb880f7ec073027908f1b40254b5d6f26210d2dab1240e \
     --hash=sha256:03d33c2ddbc1816237a67f66336616416e2bbb6beb306e5f890f2eb22b959cdf \
