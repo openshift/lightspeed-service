@@ -360,9 +360,9 @@ langchain-community==0.3.19; python_full_version >= "3.11.1" and python_full_ver
 langchain-core==0.3.43; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:bec60f4f5665b536434ff747b8f23375a812e82cfa529f519b54cc1e7a94a875 \
     --hash=sha256:caa6bc1f4c6ab71d3c2e400f8b62e1cd6dc5ac2c37e03f12f3e2c60befd5b273
-langchain-ibm==0.3.6; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
-    --hash=sha256:419fcb29d7b1665cfa02828ac14b9f55ec4a885bd3ba0284f054df32f09cffca \
-    --hash=sha256:447c9c5ab4375ea1259277fa9a207cf10087e15c0dcf61b27afb9d068e494b9f
+langchain-ibm==0.3.8; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
+    --hash=sha256:a3eb4465a50c59aa8f7253d2b500e4cf303c7e2bf6358487def9732abb51a5db \
+    --hash=sha256:b8e606f1581c2bed9a078bae6335f2f70b6f9b25e07736b61f763966be3405bc
 langchain-openai==0.3.8; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:4d73727eda8102d1d07a2ca036278fccab0bb5e0abf353cec9c3973eb72550ec \
     --hash=sha256:9004dc8ef853aece0d8f0feca7753dc97f710fa3e53874c8db66466520436dbb
