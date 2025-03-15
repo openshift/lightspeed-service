@@ -283,9 +283,9 @@ httpx==0.27.2; python_full_version >= "3.11.1" and python_full_version <= "3.12.
 httpx-sse==0.4.0; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721 \
     --hash=sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f
-huggingface-hub==0.29.2; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
-    --hash=sha256:590b29c0dcbd0ee4b7b023714dc1ad8563fe4a68a91463438b74e980d28afaf3 \
-    --hash=sha256:c56f20fca09ef19da84dcde2b76379ecdaddf390b083f59f166715584953307d
+huggingface-hub==0.29.3; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
+    --hash=sha256:0b25710932ac649c08cdbefa6c6ccb8e88eef82927cacdb048efb726429453aa \
+    --hash=sha256:64519a25716e0ba382ba2d3fb3ca082e7c7eb4a2fc634d200e8380006e0760e5
 ibm-cos-sdk==2.13.6; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
     --hash=sha256:171cf2ae4ab662a4b8ab58dcf4ac994b0577d6c92d78490295fd7704a83978f6
 ibm-cos-sdk-core==2.13.6; python_full_version >= "3.11.1" and python_full_version <= "3.12.8" \
