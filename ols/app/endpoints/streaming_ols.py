@@ -392,9 +392,12 @@ async def response_processing_wrapper(
 
     consume_tokens(
         config.quota_limiters,
+        config.token_usage_history,
         user_id,
         input_tokens,
         output_tokens,
+        llm_request.provider or config.ols_config.default_provider,
+        llm_request.model or config.ols_config.default_model,
     )
 
     timestamps["add references"] = time.time()

@@ -1027,13 +1027,13 @@ def test_calc_output_tokens_for_token_counter():
 def test_consume_tokens_no_quota_limiters():
     """Test the function consume_tokens if no quota limiters are configured."""
     quota_limiters = None
-    ols.consume_tokens(quota_limiters, "user_id", 1, 1)
+    ols.consume_tokens(quota_limiters, None, "user_id", 1, 1, "", "")
 
 
 def test_consume_tokens_empty_quota_limiters():
     """Test the function consume_tokens if empty list of quota limiters are configured."""
     quota_limiters = []
-    ols.consume_tokens(quota_limiters, "user_id", 1, 1)
+    ols.consume_tokens(quota_limiters, None, "user_id", 1, 1, "", "")
 
 
 def test_consume_tokens_with_existing_quota_limiter():
@@ -1048,10 +1048,21 @@ def test_consume_tokens_with_existing_quota_limiter():
     mock_quota_limiter = MockQuotaLimiter()
 
     quota_limiters = [mock_quota_limiter]
+    token_usage_history = None
     input_tokens = 1
     output_tokens = 2
     user_id = "user_id"
-    ols.consume_tokens(quota_limiters, user_id, input_tokens, output_tokens)
+    provider = "provider"
+    model = "model"
+    ols.consume_tokens(
+        quota_limiters,
+        token_usage_history,
+        user_id,
+        input_tokens,
+        output_tokens,
+        provider,
+        model,
+    )
     assert mock_quota_limiter._input_tokens == input_tokens
     assert mock_quota_limiter._output_tokens == output_tokens
     assert mock_quota_limiter._subject_id == user_id
@@ -1070,10 +1081,21 @@ def test_consume_tokens_multiple_quota_limiters():
     mock_quota_limiter2 = MockQuotaLimiter()
 
     quota_limiters = [mock_quota_limiter1, mock_quota_limiter2]
+    token_usage_history = None
     input_tokens = 1
     output_tokens = 2
     user_id = "user_id"
-    ols.consume_tokens(quota_limiters, user_id, input_tokens, output_tokens)
+    provider = "provider"
+    model = "model"
+    ols.consume_tokens(
+        quota_limiters,
+        token_usage_history,
+        user_id,
+        input_tokens,
+        output_tokens,
+        provider,
+        model,
+    )
 
     for mock_quota_limiter in [mock_quota_limiter1, mock_quota_limiter2]:
         assert mock_quota_limiter._input_tokens == input_tokens

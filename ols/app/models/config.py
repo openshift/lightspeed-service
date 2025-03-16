@@ -886,6 +886,7 @@ class QuotaHandlersConfig(BaseModel):
     storage: Optional[PostgresConfig] = None
     scheduler: Optional[SchedulerConfig] = None
     limiters: Optional[LimitersConfig] = None
+    enable_token_history: Optional[bool] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -905,6 +906,7 @@ class QuotaHandlersConfig(BaseModel):
         self.storage = PostgresConfig(**data.get("storage"))
         self.scheduler = SchedulerConfig(**data.get("scheduler"))
         self.limiters = LimitersConfig(data.get("limiters", None))
+        self.enable_token_history = data.get("enable_token_history", False)
 
 
 class OLSConfig(BaseModel):

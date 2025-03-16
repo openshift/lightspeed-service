@@ -36,6 +36,7 @@ from ols.src.query_helpers.attachment_appender import append_attachments_to_quer
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.quota.quota_limiter import QuotaLimiter
+from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
 from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
@@ -146,7 +147,13 @@ def conversation_request(
     output_tokens = calc_output_tokens(summarizer_response.token_counter)
 
     consume_tokens(
-        config.quota_limiters, processed_request.user_id, input_tokens, output_tokens
+        config.quota_limiters,
+        config.token_usage_history,
+        processed_request.user_id,
+        input_tokens,
+        output_tokens,
+        llm_request.provider or config.ols_config.default_provider,
+        llm_request.model or config.ols_config.default_model,
     )
 
     return LLMResponse(
@@ -175,19 +182,28 @@ def calc_output_tokens(token_counter: Optional[TokenCounter]) -> int:
 
 def consume_tokens(
     quota_limiters: Optional[list[QuotaLimiter]],
+    token_usage_history: Optional[TokenUsageHistory],
     user_id: str,
     input_tokens: int,
     output_tokens: int,
+    provider: str,
+    model: str,
 ) -> None:
     """Consume tokens from cluster and/or user quotas."""
-    # no quota limiters specified
-    if quota_limiters is None:
-        return
-
-    for quota_limiter in quota_limiters:
-        quota_limiter.consume_tokens(
-            input_tokens=input_tokens, output_tokens=output_tokens, subject_id=user_id
+    # check if token usage history is configured
+    if token_usage_history is not None:
+        token_usage_history.consume_tokens(
+            user_id, provider, model, input_tokens, output_tokens
         )
+
+    # check if any quota limiter is configured
+    if quota_limiters is not None:
+        for quota_limiter in quota_limiters:
+            quota_limiter.consume_tokens(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                subject_id=user_id,
+            )
 
 
 def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
