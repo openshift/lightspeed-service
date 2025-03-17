@@ -174,7 +174,7 @@ def test_valid_question_missing_conversation_id() -> None:
 def test_too_long_question() -> None:
     """Check the REST API /v1/query with too long question."""
     # let's make the query really large, larger that context window size
-    query = "what is kubernetes?" * 10000
+    query = "what is kubernetes?" * 25000
 
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
