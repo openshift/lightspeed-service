@@ -11,6 +11,7 @@ from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
+from ols.src.quota.token_usage_history import TokenUsageHistory
 
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
@@ -42,6 +43,7 @@ class AppConfig:
         self._rag_index: Optional[BaseIndex] = None
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
+        self._token_usage_history: Optional[TokenUsageHistory] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -80,6 +82,19 @@ class AppConfig:
                 self.ols_config.quota_handlers
             )
         return self._quota_limiters
+
+    @property
+    def token_usage_history(self) -> Optional[TokenUsageHistory]:
+        """Return token usage history object."""
+        if (
+            self._token_usage_history is None
+            and self.ols_config.quota_handlers is not None
+            and self.ols_config.quota_handlers.enable_token_history
+        ):
+            self._token_usage_history = TokenUsageHistory(
+                self.ols_config.quota_handlers.storage
+            )
+        return self._token_usage_history
 
     @property
     def query_redactor(self) -> Redactor:
