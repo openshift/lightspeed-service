@@ -158,6 +158,10 @@ def conversation_request(
         llm_request.model or config.ols_config.default_model,
     )
 
+    available_quotas = get_available_quotas(
+        config.quota_limiters, processed_request.user_id
+    )
+
     return LLMResponse(
         conversation_id=processed_request.conversation_id,
         response=summarizer_response.response,
@@ -165,6 +169,7 @@ def conversation_request(
         truncated=summarizer_response.history_truncated,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
+        available_quotas=available_quotas,
     )
 
 
@@ -180,6 +185,21 @@ def calc_output_tokens(token_counter: Optional[TokenCounter]) -> int:
     if token_counter is None:
         return 0
     return token_counter.output_tokens
+
+
+def get_available_quotas(
+    quota_limiters: Optional[list[QuotaLimiter]],
+    user_id: str,
+) -> dict[str, int]:
+    """Get quota available from all quota limiters."""
+    available_quotas: dict[str, int] = {}
+    # check if any quota limiter is configured
+    if quota_limiters is not None:
+        for quota_limiter in quota_limiters:
+            name = quota_limiter.__class__.__name__
+            available_quota = quota_limiter.available_quota(user_id)
+            available_quotas[name] = available_quota
+    return available_quotas
 
 
 def consume_tokens(
