@@ -36,8 +36,7 @@ def test_quota_limiters_empty_limiters():
     assert limiters == []
 
 
-@patch("psycopg2.connect")
-def test_quota_limiters_user_quota_limiter(postgres_mock):
+def test_quota_limiters_user_quota_limiter():
     """Test the quota limiters creating when one limiter is specified."""
     config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
@@ -52,13 +51,14 @@ def test_quota_limiters_user_quota_limiter(postgres_mock):
             }
         ]
     )
-    limiters = QuotaLimiterFactory.quota_limiters(config)
-    assert len(limiters) == 1
-    assert isinstance(limiters[0], UserQuotaLimiter)
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        limiters = QuotaLimiterFactory.quota_limiters(config)
+        assert len(limiters) == 1
+        assert isinstance(limiters[0], UserQuotaLimiter)
 
 
-@patch("psycopg2.connect")
-def test_quota_limiters_cluster_quota_limiter(postgres_mock):
+def test_quota_limiters_cluster_quota_limiter():
     """Test the quota limiters creating when one limiter is specified."""
     config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
@@ -73,13 +73,14 @@ def test_quota_limiters_cluster_quota_limiter(postgres_mock):
             }
         ]
     )
-    limiters = QuotaLimiterFactory.quota_limiters(config)
-    assert len(limiters) == 1
-    assert isinstance(limiters[0], ClusterQuotaLimiter)
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        limiters = QuotaLimiterFactory.quota_limiters(config)
+        assert len(limiters) == 1
+        assert isinstance(limiters[0], ClusterQuotaLimiter)
 
 
-@patch("psycopg2.connect")
-def test_quota_limiters_two_limiters(postgres_mock):
+def test_quota_limiters_two_limiters():
     """Test the quota limiters creating when two limiters are specified."""
     config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
@@ -101,14 +102,15 @@ def test_quota_limiters_two_limiters(postgres_mock):
             },
         ]
     )
-    limiters = QuotaLimiterFactory.quota_limiters(config)
-    assert len(limiters) == 2
-    assert isinstance(limiters[0], UserQuotaLimiter)
-    assert isinstance(limiters[1], ClusterQuotaLimiter)
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        limiters = QuotaLimiterFactory.quota_limiters(config)
+        assert len(limiters) == 2
+        assert isinstance(limiters[0], UserQuotaLimiter)
+        assert isinstance(limiters[1], ClusterQuotaLimiter)
 
 
-@patch("psycopg2.connect")
-def test_quota_limiters_unknown_limiter(postgres_mock):
+def test_quota_limiters_unknown_limiter():
     """Test the quota limiters creating when the limiter type is unknown."""
     config = QuotaHandlersConfig()
     config.storage = PostgresConfig()
@@ -123,5 +125,7 @@ def test_quota_limiters_unknown_limiter(postgres_mock):
             }
         ]
     )
-    with pytest.raises(ValueError, match="Invalid limiter type: UNKNOWN."):
-        QuotaLimiterFactory.quota_limiters(config)
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        with pytest.raises(ValueError, match="Invalid limiter type: UNKNOWN."):
+            QuotaLimiterFactory.quota_limiters(config)
