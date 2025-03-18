@@ -24,6 +24,7 @@ from ols.app.models.models import (  # noqa:E402
     RagChunk,
     SummarizerResponse,
     TokenCounter,
+    ToolCall,
 )
 from ols.src.llms.llm_loader import LLMConfigurationError  # noqa:E402
 from ols.utils import suid  # noqa:E402
@@ -937,6 +938,15 @@ def test_store_transcript(transcripts_location):
         RagChunk("text2", "url2", "title2"),
     ]
     truncated = True
+    tool_calls = [
+        [
+            ToolCall(name="tool1", args={"arg": "bla"}),
+        ],
+        [
+            ToolCall(name="tool2", args={"arg": "bla"}),
+            ToolCall(name="tool3", args={"arg": "bla"}),
+        ],
+    ]
     attachments = [
         Attachment(
             attachment_type="log",
@@ -954,6 +964,7 @@ def test_store_transcript(transcripts_location):
         response,
         rag_chunks,
         truncated,
+        tool_calls,
         attachments,
     )
 
@@ -986,6 +997,15 @@ def test_store_transcript(transcripts_location):
             {"text": "text2", "doc_url": "url2", "doc_title": "title2"},
         ],
         "truncated": truncated,
+        "tool_calls": [
+            [
+                {"name": "tool1", "args": {"arg": "bla"}},
+            ],
+            [
+                {"name": "tool2", "args": {"arg": "bla"}},
+                {"name": "tool3", "args": {"arg": "bla"}},
+            ],
+        ],
         "attachments": [
             {
                 "attachment_type": "log",

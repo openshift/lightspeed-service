@@ -28,6 +28,7 @@ from ols.app.models.models import (
     ReferencedDocument,
     SummarizerResponse,
     TokenCounter,
+    ToolCall,
     UnauthorizedResponse,
 )
 from ols.src.auth.auth import get_auth_dependency
@@ -131,6 +132,7 @@ def conversation_request(
             summarizer_response.response,
             summarizer_response.rag_chunks,
             summarizer_response.history_truncated,
+            summarizer_response.tool_calls,
             processed_request.attachments,
         )
 
@@ -728,6 +730,7 @@ def store_transcript(
     response: str,
     rag_chunks: list[RagChunk],
     truncated: bool,
+    tool_calls: list[list[ToolCall]],
     attachments: list[Attachment],
 ) -> None:
     """Store transcript in the local filesystem.
@@ -741,6 +744,7 @@ def store_transcript(
         response: The response to store.
         rag_chunks: The list of `RagChunk` objects.
         truncated: The flag indicating if the history was truncated.
+        tool_calls: The list of list of `ToolCall` objects.
         attachments: The list of `Attachment` objects.
     """
     # Creates transcripts path only if it doesn't exist. The `exist_ok=True` prevents
@@ -762,6 +766,10 @@ def store_transcript(
         "llm_response": response,
         "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
         "truncated": truncated,
+        "tool_calls": [
+            [dataclasses.asdict(tool_call) for tool_call in step_tool_calls]
+            for step_tool_calls in tool_calls
+        ],
         "attachments": [attachment.model_dump() for attachment in attachments],
     }
 

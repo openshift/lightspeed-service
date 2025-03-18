@@ -32,6 +32,7 @@ from ols.app.models.models import (
     ReferencedDocument,
     SummarizerResponse,
     TokenCounter,
+    ToolCall,
     UnauthorizedResponse,
 )
 from ols.constants import MEDIA_TYPE_TEXT
@@ -262,6 +263,7 @@ def store_data(
     conversation_id: str,
     llm_request: LLMRequest,
     response: str,
+    tool_calls: list[list[ToolCall]],
     attachments: list[Attachment],
     valid: bool,
     query_without_attachments: str,
@@ -277,6 +279,7 @@ def store_data(
         conversation_id: The conversation ID (UUID).
         llm_request: The original request.
         response: The generated response.
+        tool_calls: List of tool calls made during the response generation.
         attachments: list of attachments included in the query.
         valid: Indicates if the query was valid.
         query_without_attachments: Query content excluding attachments.
@@ -305,6 +308,7 @@ def store_data(
             response,
             rag_chunks,
             history_truncated,
+            tool_calls,
             attachments,
         )
     timestamps["store transcripts"] = time.time()
@@ -344,6 +348,7 @@ async def response_processing_wrapper(
 
     response = ""
     rag_chunks = []
+    tool_calls = []
     history_truncated = False
     idx = 0
     token_counter: Optional[TokenCounter] = None
@@ -354,6 +359,7 @@ async def response_processing_wrapper(
                 rag_chunks = item.rag_chunks
                 history_truncated = item.history_truncated
                 token_counter = item.token_counter
+                tool_calls = item.tool_calls
                 break
 
             response += item
@@ -374,6 +380,7 @@ async def response_processing_wrapper(
         conversation_id,
         llm_request,
         response,
+        tool_calls,
         attachments,
         valid,
         query_without_attachments,

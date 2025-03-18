@@ -11,7 +11,7 @@ from llama_index.core import VectorStoreIndex
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
-from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter
+from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter, ToolCall
 from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -182,6 +182,7 @@ class DocsSummarizer(QueryHelper):
         )
 
         messages = final_prompt.model_copy()
+        tool_calls = []
 
         # TODO: for the specific tools type (oc) we need specific additional
         # context (user_token) to get the tools, we need to think how to make
@@ -192,7 +193,6 @@ class DocsSummarizer(QueryHelper):
         # TODO: Handle context for each iteration
         # TODO: Handle tokens for tool response
         # TODO: Improvement for granite
-        # TODO: Add tool info to transcript
         for i in range(MAX_ITERATIONS):
 
             # Force llm to give final response when introspection is disabled
@@ -215,12 +215,17 @@ class DocsSummarizer(QueryHelper):
             messages.append(out)
 
             # TODO: explicit check for {"finish_reson": "tool_call"}?
+            tool_calls.append(
+                [ToolCall.from_langchain_tool_call(t) for t in out.tool_calls]
+            )
             tool_calls_messages = execute_oc_tool_calls(
                 tools_map, out.tool_calls, user_token
             )
             messages.extend(tool_calls_messages)
 
-        return SummarizerResponse(response, rag_chunks, truncated, token_counter)
+        return SummarizerResponse(
+            response, rag_chunks, truncated, token_counter, tool_calls
+        )
 
     async def generate_response(
         self,
@@ -253,4 +258,6 @@ class DocsSummarizer(QueryHelper):
                     chunk_content = chunk_content.replace("<|endoftext|>", "")
                 yield chunk_content
 
+        # NOTE: we are not providing tool calls here as it is not currently
+        # supported for streaming response
         yield SummarizerResponse("", rag_chunks, truncated, generic_token_counter.token_counter)  # type: ignore[misc]

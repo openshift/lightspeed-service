@@ -204,6 +204,7 @@ def test_transcripts_storing_cluster():
         }
     ]
     assert transcript["attachments"] == expected_attachment_node
+    assert transcript["tool_calls"] == []
 
 
 @retry(max_attempts=3, wait_between_runs=10)

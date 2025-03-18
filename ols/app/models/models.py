@@ -2,6 +2,7 @@
 
 import json
 from collections import OrderedDict
+from dataclasses import field
 from typing import Any, Optional, Self, Union
 
 from langchain.llms.base import LLM
@@ -557,6 +558,24 @@ class TokenCounter:
 
 
 @dataclass
+class ToolCall:
+    """Model representing a tool call.
+
+    Attributes:
+        name: The name of the tool.
+        args: The arguments for the tool.
+    """
+
+    name: str
+    args: dict
+
+    @classmethod
+    def from_langchain_tool_call(cls, message: dict) -> "ToolCall":
+        """Create a ToolCall from a langchain tool call."""
+        return cls(name=message["name"], args=message["args"])
+
+
+@dataclass
 class SummarizerResponse:
     """Model representing a response from the summarizer.
 
@@ -565,12 +584,14 @@ class SummarizerResponse:
         rag_chunks: The RAG chunks.
         history_truncated: Whether the history was truncated.
         token_counter: Input and output tokens counters.
+        tool_calls: List of list of tool calls (per iteration).
     """
 
     response: str
     rag_chunks: list[RagChunk]
     history_truncated: bool
     token_counter: Optional[TokenCounter]
+    tool_calls: list[list[ToolCall]] = field(default_factory=list)
 
 
 class CacheEntry(BaseModel):

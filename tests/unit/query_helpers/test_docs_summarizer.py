@@ -43,6 +43,7 @@ def check_summary_result(summary, question):
         in summary.rag_chunks[0].doc_url
     )
     assert summary.history_truncated is False
+    assert summary.tool_calls == []
 
 
 @pytest.fixture(scope="function", autouse=True)
