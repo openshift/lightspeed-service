@@ -64,19 +64,23 @@ def test_conversation_cache_in_memory(in_memory_cache_config):
     assert isinstance(cache, InMemoryCache)
 
 
-@patch("redis.StrictRedis", new=MockRedisClient)
 def test_conversation_cache_in_redis(redis_cache_config):
     """Check if RedisCache is returned by factory with proper configuration."""
-    cache = CacheFactory.conversation_cache(redis_cache_config)
+    # do not use real Redis client
+    with patch("redis.StrictRedis", new=MockRedisClient):
+        cache = CacheFactory.conversation_cache(redis_cache_config)
+
     assert cache is not None
     # check if the object has the right type
     assert isinstance(cache, RedisCache), type(cache)
 
 
-@patch("psycopg2.connect")
-def test_conversation_cache_in_postgres(mock, postgres_cache_config):
+def test_conversation_cache_in_postgres(postgres_cache_config):
     """Check if PostgresCache is returned by factory with proper configuration."""
-    cache = CacheFactory.conversation_cache(postgres_cache_config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        cache = CacheFactory.conversation_cache(postgres_cache_config)
+
     assert cache is not None
     # check if the object has the right type
     assert isinstance(cache, PostgresCache), type(cache)
