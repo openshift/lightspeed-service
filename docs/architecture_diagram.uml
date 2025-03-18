@@ -41,18 +41,24 @@ component "User data collector" as collector
 component "Quota\nlimiter" as quota_limiter
 component "Revocation\nscheduler" as quota_revocation
 
+collections "Agent\nAPI" as agent_api
+collections "RAG\ninterface" as rag_interface
+document_summarizer -[hidden]> rag_interface
 database "RAG\ndatabase" as rag
 database "Conversation\ncache" as cache
 database "Quota\nstorage" as quota_storage
-collections "LLM" as llm
+collections "LLM\ninterface" as llm_interface
+component "LLM" as llm
 collections "Auth.modules" as auth_modules
-collections "Cache interface" as cache_interface
+collections "Cache\ninterface" as cache_interface
 database "Transcripts" as transcripts
 collections "Quota limiter\ninterface" as quota_limiter_interface
-document_summarizer --> rag
+document_summarizer -d-> rag_interface
+rag_interface --> rag
 history --> cache_interface : unified cache interface
 cache_interface --> cache : configured cache\nimplementation
-llm_register --> llm : call selected LLM
+llm_register --> llm_interface : call LLM
+llm_interface --> llm : call selected LLM
 handler -> transcripts
 handler --> quota_limiter_interface
 quota_limiter_interface -> quota_limiter
@@ -61,10 +67,17 @@ quota_revocation -u-> quota_storage
 transcripts -> collector
 component "Prometheus"
 component "Grafana"
+handler --> agent_api
+component "Agent#1" as agent_1
+component "Agent#2" as agent_2
+agent_api --> agent_1
+agent_api --> agent_2
 
 auth -u-> auth_modules : "call selected authentication\nmodule to retrieve\nuser ID and user name"
 
+collections "Flow control" as flow_control
 configuration -u-> config_loader
+flow_control -u-> config_loader
 
 package "Red Hat VPN" {
    [Ingress] as ingress
