@@ -23,34 +23,40 @@ cache_entry_2 = CacheEntry(
 )
 
 
-@patch("psycopg2.connect")
-def test_init_cache_failure_detection(mock_connect):
+def test_init_cache_failure_detection():
     """Test the exception handling for Cache.initialize_cache operation."""
     exception_message = "Exception during initializing the cache."
-    mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
-        exception_message
-    )
 
-    # try to connect to mocked Postgres
-    config = PostgresConfig()
-    with pytest.raises(Exception, match=exception_message):
-        PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
+            exception_message
+        )
 
-    # connection must be closed in case of exception
-    mock_connect.return_value.close.assert_called_once_with()
+        # try to connect to mocked Postgres
+        config = PostgresConfig()
+        with pytest.raises(Exception, match=exception_message):
+            PostgresCache(config)
+
+        # connection must be closed in case of exception
+        mock_connect.return_value.close.assert_called_once_with()
 
 
-@patch("psycopg2.connect")
-def test_get_operation_on_empty_cache(mock_connect):
+def test_get_operation_on_empty_cache():
     """Test the Cache.get operation on empty cache."""
     # mock the query result - empty cache
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
 
     # call the "get" operation
     conversation = cache.get(user_id, conversation_id)
@@ -61,21 +67,25 @@ def test_get_operation_on_empty_cache(mock_connect):
     mock_cursor.fetchone.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_get_operation_invalid_value(mock_connect):
+def test_get_operation_invalid_value():
     """Test the Cache.get operation when invalid value is returned from cache."""
     # mock the query result
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = "Invalid value"
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # call the "get" operation
-    with pytest.raises(ValueError, match="Invalid value read from cache:"):
-        cache.get(user_id, conversation_id)
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # call the "get" operation
+        with pytest.raises(ValueError, match="Invalid value read from cache:"):
+            cache.get(user_id, conversation_id)
 
     # DB operation SELECT must be performed
     mock_cursor.execute.assert_called_once_with(
@@ -84,8 +94,7 @@ def test_get_operation_invalid_value(mock_connect):
     mock_cursor.fetchone.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_get_operation_valid_value(mock_connect):
+def test_get_operation_valid_value():
     """Test the Cache.get operation when valid value is returned from cache."""
     history = [
         cache_entry_1,
@@ -96,11 +105,16 @@ def test_get_operation_valid_value(mock_connect):
     # mock the query result
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (conversation,)
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
 
     # call the "get" operation
     # unjsond history should be returned
@@ -113,25 +127,28 @@ def test_get_operation_valid_value(mock_connect):
     mock_cursor.fetchone.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_get_operation_on_exception(mock_connect):
+def test_get_operation_on_exception():
     """Test the Cache.get operation when exception is thrown."""
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
-
     # mock the query
     mock_cursor = MagicMock()
     mock_cursor.fetchone.side_effect = psycopg2.DatabaseError("PLSQL error")
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
 
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
         cache.get(user_id, conversation_id)
 
 
-@patch("psycopg2.connect")
-def test_insert_or_append_operation(mock_connect):
+def test_insert_or_append_operation():
     """Test the Cache.insert_or_append operation for first item to be inserted."""
     history = cache_entry_1
     conversation = json.dumps([history.to_dict()], cls=MessageEncoder)
@@ -139,15 +156,20 @@ def test_insert_or_append_operation(mock_connect):
     # mock the query result
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # call the "insert_or_append" operation
-    # to insert new conversation history
-    cache.insert_or_append(user_id, conversation_id, history)
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # call the "insert_or_append" operation
+        # to insert new conversation history
+        cache.insert_or_append(user_id, conversation_id, history)
 
     # multiple DB operations must be performed
     calls = [
@@ -164,8 +186,7 @@ def test_insert_or_append_operation(mock_connect):
     mock_cursor.execute.assert_has_calls(calls, any_order=True)
 
 
-@patch("psycopg2.connect")
-def test_insert_or_append_operation_append_item(mock_connect):
+def test_insert_or_append_operation_append_item():
     """Test the Cache.insert_or_append operation for more item to be inserted."""
     stored_history = cache_entry_1
 
@@ -181,15 +202,20 @@ def test_insert_or_append_operation_append_item(mock_connect):
     # mock the query result
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (old_conversation,)
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # call the "insert_or_append" operation
-    # to append new history to the old one
-    cache.insert_or_append(user_id, conversation_id, appended_history)
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # call the "insert_or_append" operation
+        # to append new history to the old one
+        cache.insert_or_append(user_id, conversation_id, appended_history)
 
     # multiple DB operations must be performed
     calls = [
@@ -205,45 +231,62 @@ def test_insert_or_append_operation_append_item(mock_connect):
     mock_cursor.execute.assert_has_calls(calls, any_order=True)
 
 
-@patch("psycopg2.connect")
-def test_insert_or_append_operation_on_exception(mock_connect):
+def test_insert_or_append_operation_on_exception():
     """Test the Cache.insert_or_append operation when exception is thrown."""
     history = cache_entry_1
 
     # mock the query result
     mock_cursor = MagicMock()
     mock_cursor.fetchone.side_effect = psycopg2.DatabaseError("PLSQL error")
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # error must be raised during cache operation
-    with pytest.raises(CacheError, match="PLSQL error"):
-        cache.insert_or_append(user_id, conversation_id, history)
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # error must be raised during cache operation
+        with pytest.raises(CacheError, match="PLSQL error"):
+            cache.insert_or_append(user_id, conversation_id, history)
 
 
-@patch("psycopg2.connect")
-def test_list_operation(mock_connect):
+def test_list_operation():
     """Test the Cache.list operation."""
-    # Mock conversation IDs to be returned by the database
-    mock_conversation_ids = ["conversation_1", "conversation_2", "conversation_3"]
+    # Mock conversation data to be returned by the database
+    mock_conversations = [
+        ("conversation_1", "First topic"),
+        ("conversation_2", "Second topic"),
+        ("conversation_3", "Third topic"),
+    ]
 
     # Mock the database cursor behavior
     mock_cursor = MagicMock()
-    mock_cursor.fetchall.return_value = [(cid,) for cid in mock_conversation_ids]
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = mock_conversations
 
-    # Initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # Call the "list" operation
-    conversation_ids = cache.list(user_id)
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
 
-    # Verify the result
-    assert conversation_ids == mock_conversation_ids
+        # Call the "list" operation
+        result = cache.list(user_id)
+
+    # Verify the result matches the expected format
+    expected_result = [
+        "conversation_1",
+        "conversation_2",
+        "conversation_3",
+    ]
+    assert result == expected_result
 
     # Verify the query execution
     mock_cursor.execute.assert_called_once_with(
@@ -252,37 +295,45 @@ def test_list_operation(mock_connect):
     mock_cursor.fetchall.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_list_operation_on_exception(mock_connect):
+def test_list_operation_on_exception():
     """Test the Cache.list operation when an exception is raised."""
     # Mock the database cursor behavior to raise an exception
     mock_cursor = MagicMock()
     mock_cursor.fetchall.side_effect = psycopg2.DatabaseError("PLSQL error")
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # Initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # Verify that the exception is raised
-    with pytest.raises(CacheError, match="PLSQL error"):
-        cache.list(user_id)
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Verify that the exception is raised
+        with pytest.raises(CacheError, match="PLSQL error"):
+            cache.list(user_id)
 
 
-@patch("psycopg2.connect")
-def test_delete_operation(mock_connect):
+def test_delete_operation():
     """Test the Cache.delete operation."""
     # Mock the database cursor behavior
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = True
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # Initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # Call the "delete" operation
-    result = cache.delete(user_id, conversation_id)
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Call the "delete" operation
+        result = cache.delete(user_id, conversation_id)
 
     # Verify the result
     assert result is True
@@ -294,20 +345,24 @@ def test_delete_operation(mock_connect):
     mock_cursor.fetchone.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_delete_operation_not_found(mock_connect):
+def test_delete_operation_not_found():
     """Test the Cache.delete operation when the conversation is not found."""
     # Mock the database cursor behavior to simulate no row found
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # Initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # Call the "delete" operation
-    result = cache.delete(user_id, conversation_id)
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Call the "delete" operation
+        result = cache.delete(user_id, conversation_id)
 
     # Verify the result
     assert result is False
@@ -319,47 +374,88 @@ def test_delete_operation_not_found(mock_connect):
     mock_cursor.fetchone.assert_called_once()
 
 
-@patch("psycopg2.connect")
-def test_delete_operation_on_exception(mock_connect):
+def test_delete_operation_on_exception():
     """Test the Cache.delete operation when an exception is raised."""
     # Mock the database cursor behavior to raise an exception
     mock_cursor = MagicMock()
     mock_cursor.execute.side_effect = psycopg2.DatabaseError("PLSQL error")
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # Initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
 
-    # Verify that the exception is raised
-    with pytest.raises(CacheError, match="PLSQL error"):
-        cache.delete(user_id, conversation_id)
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Verify that the exception is raised
+        with pytest.raises(CacheError, match="PLSQL error"):
+            cache.delete(user_id, conversation_id)
 
 
-@patch("psycopg2.connect")
-def test_ready(mock_connect):
+def test_cleanup_method_when_clean_not_needed():
+    """Test the static method that cleans up PG cache."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (200,)
+    capacity = 1000
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        PostgresCache._cleanup(mock_cursor, capacity)
+
+    # Verify the query execution
+    mock_cursor.execute.assert_called_once_with(PostgresCache.QUERY_CACHE_SIZE)
+
+
+def test_cleanup_method_when_clean_performed():
+    """Test the static method that cleans up PG cache."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (200,)
+    capacity = 100
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        PostgresCache._cleanup(mock_cursor, capacity)
+
+    # Verify the query execution
+    calls = [
+        call(
+            PostgresCache.QUERY_CACHE_SIZE,
+        ),
+        call(
+            PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT + " 100)",
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+
+
+def test_ready():
     """Test the Cache.ready operation."""
-    # initialize Postgres cache
-    config = PostgresConfig()
-    cache = PostgresCache(config)
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
 
-    # mock the connection state 0 - open
-    cache.conn.closed = 0
-    # patch the poll function to return POLL_OK
-    cache.conn.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
-    # cache is ready
-    assert cache.ready()
+        # mock the connection state 0 - open
+        cache.conn.closed = 0
+        # patch the poll function to return POLL_OK
+        cache.conn.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
+        # cache is ready
+        assert cache.ready()
 
-    # mock the connection state 1 - closed
-    cache.conn.closed = 1
-    # cache is not ready
-    assert not cache.ready()
+        # mock the connection state 1 - closed
+        cache.conn.closed = 1
+        # cache is not ready
+        assert not cache.ready()
 
-    # mock the connection state 0 - open
-    cache.conn.closed = 0
-    # patch the poll function to raise OperationalError
-    cache.conn.poll = MagicMock(
-        side_effect=psycopg2.OperationalError("Connection closed")
-    )
-    # cache is not ready
-    assert not cache.ready()
+        # mock the connection state 0 - open
+        cache.conn.closed = 0
+        # patch the poll function to raise OperationalError
+        cache.conn.poll = MagicMock(
+            side_effect=psycopg2.OperationalError("Connection closed")
+        )
+        # cache is not ready
+        assert not cache.ready()
