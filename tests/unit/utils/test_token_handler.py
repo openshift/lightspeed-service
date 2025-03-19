@@ -21,22 +21,22 @@ class TestTokenHandler(TestCase):
             {
                 "text": "a text text text text",
                 "score": 0.6,
-                "metadata": {"docs_url": "data/doc1.pdf", "title": "Doc1"},
+                "metadata": {"doc_url": "data/doc1.pdf", "doc_title": "Doc1"},
             },
             {
                 "text": "b text text text text",
                 "score": 0.55,
-                "metadata": {"docs_url": "data/doc2.pdf", "title": "Doc2"},
+                "metadata": {"doc_url": "data/doc2.pdf", "doc_title": "Doc2"},
             },
             {
                 "text": "c text text text text",
                 "score": 0.55,
-                "metadata": {"docs_url": "data/doc3.pdf", "title": "Doc3"},
+                "metadata": {"doc_url": "data/doc3.pdf", "doc_title": "Doc3"},
             },
             {
                 "text": "d text text text text",
                 "score": 0.4,
-                "metadata": {"docs_url": "data/doc4.pdf", "title": "Doc4"},
+                "metadata": {"doc_url": "data/doc4.pdf", "doc_title": "Doc4"},
             },
         ]
         self._mock_retrieved_obj = [MockRetrievedNode(data) for data in node_data]
@@ -128,8 +128,7 @@ class TestTokenHandler(TestCase):
                 == "\nDocument:\n" + self._mock_retrieved_obj[i].get_text() + "\n"
             )
             assert (
-                rag_chunks[i].doc_url
-                == self._mock_retrieved_obj[i].metadata["docs_url"]
+                rag_chunks[i].doc_url == self._mock_retrieved_obj[i].metadata["doc_url"]
             )
         assert available_tokens == 473
 

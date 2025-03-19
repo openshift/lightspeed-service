@@ -145,12 +145,12 @@ class ReferencedDocument:
     """RAG referenced document.
 
     Attributes:
-    docs_url: URL of the corresponding OCP documentation page
-    title: Title of the corresponding OCP documentation page
+    doc_url: URL of the corresponding OCP documentation page
+    doc_title: Title of the corresponding OCP documentation page
     """
 
-    docs_url: str
-    title: str
+    doc_url: str
+    doc_title: str
 
     @staticmethod
     def from_rag_chunks(rag_chunks: list["RagChunk"]) -> list["ReferencedDocument"]:
@@ -200,9 +200,9 @@ class LLMResponse(BaseModel):
                     "response": "Operator Lifecycle Manager (OLM) helps users install...",
                     "referenced_documents": [
                         {
-                            "docs_url": "https://docs.openshift.com/container-platform/4.15/operators/"
+                            "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/"
                             "understanding/olm/olm-understanding-olm.html",
-                            "title": "Operator Lifecycle Manager concepts and resources",
+                            "doc_title": "Operator Lifecycle Manager concepts and resources",
                         },
                     ],
                     "truncated": False,

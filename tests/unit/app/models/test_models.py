@@ -87,7 +87,7 @@ class TestLLM:
         response = "response"
         referenced_documents = [
             ReferencedDocument(
-                docs_url="https://foo.bar.com/index.html", title="Foo Bar"
+                doc_url="https://foo.bar.com/index.html", doc_title="Foo Bar"
             )
         ]
 
@@ -471,9 +471,9 @@ def test_ref_docs_from_rag_chunks():
         [rag_chunk_1, rag_chunk_2, rag_chunk_3, rag_chunk_4]
     )
     expected = [
-        ReferencedDocument(docs_url="url2", title="title2"),
-        ReferencedDocument(docs_url="url1", title="title1"),
-        ReferencedDocument(docs_url="url3", title="title3"),
+        ReferencedDocument(doc_url="url2", doc_title="title2"),
+        ReferencedDocument(doc_url="url1", doc_title="title1"),
+        ReferencedDocument(doc_url="url3", doc_title="title3"),
     ]
 
     assert ref_docs == expected

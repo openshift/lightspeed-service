@@ -247,7 +247,9 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         major, minor = cluster_utils.get_cluster_version()
 
         assert len(json_response["referenced_documents"]) > 1
-        assert f"{major}.{minor}" in json_response["referenced_documents"][0]["title"]
+        assert (
+            f"{major}.{minor}" in json_response["referenced_documents"][0]["doc_title"]
+        )
 
 
 def test_valid_question_tokens_counter() -> None:
@@ -362,9 +364,9 @@ def test_rag_question() -> None:
         json_response = response.json()
         assert "conversation_id" in json_response
         assert len(json_response["referenced_documents"]) > 1
-        assert "virt" in json_response["referenced_documents"][0]["docs_url"]
-        assert "https://" in json_response["referenced_documents"][0]["docs_url"]
-        assert json_response["referenced_documents"][0]["title"]
+        assert "virt" in json_response["referenced_documents"][0]["doc_url"]
+        assert "https://" in json_response["referenced_documents"][0]["doc_url"]
+        assert json_response["referenced_documents"][0]["doc_title"]
 
         # Length should be same, as there won't be duplicate entry
         doc_urls_list = [rd["docs_url"] for rd in json_response["referenced_documents"]]
