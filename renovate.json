@@ -1,0 +1,13 @@
+{
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "groupName": "All Dependency Updates"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "schedule": ["before 4am"],
+  "timezone": "Europe/Prague"
+}
