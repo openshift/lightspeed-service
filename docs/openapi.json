@@ -3,7 +3,7 @@
     "info": {
         "title": "Swagger OpenShift LightSpeed Service - OpenAPI",
         "description": "OpenShift LightSpeed Service API specification.",
-        "version": "0.3.1"
+        "version": "0.3.2"
     },
     "paths": {
         "/v1/query": {
