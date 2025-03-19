@@ -104,8 +104,8 @@ if __name__ == "__main__":
         for node in nodes:
             result["query"].append(query)
             result["score"].append(node.score)
-            result["title"].append(node.metadata.get("title", None))
-            result["docs_url"].append(node.metadata.get("docs_url", None))
+            result["title"].append(node.metadata.get("doc_title", None))
+            result["docs_url"].append(node.metadata.get("doc_url", None))
             result["doc_text"].append(node.get_text())
 
     result_df = DataFrame.from_dict(result)

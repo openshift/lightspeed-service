@@ -168,8 +168,8 @@ class TokenHandler:
             rag_chunks.append(
                 RagChunk(
                     text=node_text,
-                    doc_url=node.metadata.get("doc_url", ""),
-                    doc_title=node.metadata.get("doc_title", ""),
+                    doc_url=node.metadata.get("docs_url", ""),
+                    doc_title=node.metadata.get("title", ""),
                 )
             )
 

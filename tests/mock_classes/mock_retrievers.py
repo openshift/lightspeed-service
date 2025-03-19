@@ -26,9 +26,9 @@ class MockRetriever:
                     "text": "a text text text text",
                     "score": 0.6,
                     "metadata": {
-                        "doc_url": f"{constants.OCP_DOCS_ROOT_URL}/"
+                        "docs_url": f"{constants.OCP_DOCS_ROOT_URL}/"
                         f"{constants.OCP_DOCS_VERSION}/docs/test.html",
-                        "doc_title": "Docs Test",
+                        "title": "Docs Test",
                     },
                 }
             )

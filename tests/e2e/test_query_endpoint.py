@@ -369,7 +369,7 @@ def test_rag_question() -> None:
         assert json_response["referenced_documents"][0]["doc_title"]
 
         # Length should be same, as there won't be duplicate entry
-        doc_urls_list = [rd["docs_url"] for rd in json_response["referenced_documents"]]
+        doc_urls_list = [rd["doc_url"] for rd in json_response["referenced_documents"]]
         assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
