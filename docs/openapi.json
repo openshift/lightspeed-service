@@ -799,6 +799,13 @@
                     "output_tokens": {
                         "type": "integer",
                         "title": "Output Tokens"
+                    },
+                    "available_quotas": {
+                        "additionalProperties": {
+                            "type": "integer"
+                        },
+                        "type": "object",
+                        "title": "Available Quotas"
                     }
                 },
                 "type": "object",
@@ -808,12 +815,17 @@
                     "referenced_documents",
                     "truncated",
                     "input_tokens",
-                    "output_tokens"
+                    "output_tokens",
+                    "available_quotas"
                 ],
                 "title": "LLMResponse",
-                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.\n    input_tokens: Number of tokens sent to LLM\n    output_tokens: Number of tokens received from LLM",
+                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.\n    input_tokens: Number of tokens sent to LLM\n    output_tokens: Number of tokens received from LLM\n    available_quotas: Quota available as measured by all configured quota limiters",
                 "examples": [
                     {
+                        "available_quotas": {
+                            "ClusterQuotaLimiter": 998911,
+                            "UserQuotaLimiter": 998911
+                        },
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "input_tokens": 123,
                         "output_tokens": 456,

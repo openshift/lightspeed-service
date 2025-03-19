@@ -98,6 +98,10 @@ class TestLLM:
             truncated=False,
             input_tokens=123,
             output_tokens=456,
+            available_quotas={
+                "Limiter1": 10,
+                "Limiter2": 20,
+            },
         )
 
         assert llm_response.conversation_id == conversation_id
@@ -105,6 +109,10 @@ class TestLLM:
         assert llm_response.referenced_documents == referenced_documents
         assert llm_response.input_tokens == 123
         assert llm_response.output_tokens == 456
+        assert llm_response.available_quotas == {
+            "Limiter1": 10,
+            "Limiter2": 20,
+        }
         assert not llm_response.truncated
 
     @staticmethod

@@ -55,6 +55,8 @@ class RevokableQuotaLimiter(QuotaLimiter):
 
     def available_quota(self, subject_id: str = "") -> int:
         """Retrieve available quota for given subject."""
+        if self.subject_type == "c":
+            subject_id = ""
         with self.connection.cursor() as cursor:
             cursor.execute(
                 RevokableQuotaLimiter.SELECT_QUOTA,

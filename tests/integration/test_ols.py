@@ -95,6 +95,7 @@ def test_post_question_on_invalid_question(_setup, endpoint):
                 "truncated": False,
                 "input_tokens": 0,
                 "output_tokens": 0,
+                "available_quotas": {},
             }
             actual_response = response.json()
         else:

@@ -11,7 +11,7 @@ class QuotaLimiter(ABC):
     """Abstract class that is parent for all quota limiter implementations."""
 
     @abstractmethod
-    def available_quota(self) -> int:
+    def available_quota(self, subject_id: str) -> int:
         """Retrieve available quota for given user."""
 
     @abstractmethod
