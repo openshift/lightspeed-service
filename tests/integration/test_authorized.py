@@ -101,47 +101,51 @@ def test_post_authorized_no_token():
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_valid_token():
     """Tests the is_user_authorized function with a mocked valid-token."""
-    # Setup mock responses for valid token
-    mock_authn_api.return_value.create_token_review.side_effect = (
-        mock_token_review_response
-    )
-    mock_authz_api.return_value.create_subject_access_review.side_effect = (
-        mock_subject_access_review_response
-    )
-    response = pytest.client.post(
-        "/authorized",
-        headers=[(b"authorization", b"Bearer valid-token")],
-    )
-    assert response.status_code == requests.codes.ok
-    print(response.json())
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api") as mock_authn_api,
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+    ):
+        # Setup mock responses for valid token
+        mock_authn_api.return_value.create_token_review.side_effect = (
+            mock_token_review_response
+        )
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
+        response = pytest.client.post(
+            "/authorized",
+            headers=[(b"authorization", b"Bearer valid-token")],
+        )
+        assert response.status_code == requests.codes.ok
+        print(response.json())
 
-    # check the response payload
-    assert response.json() == {
-        "user_id": "valid-uid",
-        "username": "valid-user",
-        "skip_user_id_check": False,
-    }
+        # check the response payload
+        assert response.json() == {
+            "user_id": "valid-uid",
+            "username": "valid-user",
+            "skip_user_id_check": False,
+        }
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_invalid_token():
     """Test the is_user_authorized function with a mocked invalid-token."""
-    # Setup mock responses for invalid token
-    mock_authn_api.return_value.create_token_review.side_effect = (
-        mock_token_review_response
-    )
-    mock_authz_api.return_value.create_subject_access_review.side_effect = (
-        mock_subject_access_review_response
-    )
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api") as mock_authn_api,
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+    ):
+        # Setup mock responses for invalid token
+        mock_authn_api.return_value.create_token_review.side_effect = (
+            mock_token_review_response
+        )
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
 
-    response = pytest.client.post(
-        "/authorized",
-        headers=[(b"authorization", b"Bearer invalid-token")],
-    )
-    assert response.status_code == 403
+        response = pytest.client.post(
+            "/authorized",
+            headers=[(b"authorization", b"Bearer invalid-token")],
+        )
+        assert response.status_code == 403
