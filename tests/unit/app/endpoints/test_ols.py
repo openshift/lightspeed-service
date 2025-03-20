@@ -721,10 +721,10 @@ def test_conversation_request_dedup_ref_docs(
     response = ols.conversation_request(llm_request, auth)
 
     assert len(response.referenced_documents) == 2
-    assert response.referenced_documents[0].docs_url == "url-b"
-    assert response.referenced_documents[0].title == "title-b"
-    assert response.referenced_documents[1].docs_url == "url-a"
-    assert response.referenced_documents[1].title == "title-a"
+    assert response.referenced_documents[0].doc_url == "url-b"
+    assert response.referenced_documents[0].doc_title == "title-b"
+    assert response.referenced_documents[1].doc_url == "url-a"
+    assert response.referenced_documents[1].doc_title == "title-a"
 
 
 @pytest.mark.usefixtures("_load_config")

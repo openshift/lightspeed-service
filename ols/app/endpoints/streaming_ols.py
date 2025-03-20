@@ -185,10 +185,10 @@ def build_referenced_docs(rag_chunks: list[RagChunk]) -> list[dict]:
     referenced_documents = ReferencedDocument.from_rag_chunks(rag_chunks)
     return [
         {
-            "doc_title": doc.title,
-            "doc_url": doc.docs_url,
+            "doc_title": document.doc_title,
+            "doc_url": document.doc_url,
         }
-        for doc in referenced_documents
+        for document in referenced_documents
     ]
 
 

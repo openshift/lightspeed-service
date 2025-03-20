@@ -831,8 +831,8 @@
                         "output_tokens": 456,
                         "referenced_documents": [
                             {
-                                "docs_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html",
-                                "title": "Operator Lifecycle Manager concepts and resources"
+                                "doc_title": "Operator Lifecycle Manager concepts and resources",
+                                "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html"
                             }
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install...",
@@ -942,22 +942,22 @@
             },
             "ReferencedDocument": {
                 "properties": {
-                    "docs_url": {
+                    "doc_url": {
                         "type": "string",
-                        "title": "Docs Url"
+                        "title": "Doc Url"
                     },
-                    "title": {
+                    "doc_title": {
                         "type": "string",
-                        "title": "Title"
+                        "title": "Doc Title"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "docs_url",
-                    "title"
+                    "doc_url",
+                    "doc_title"
                 ],
                 "title": "ReferencedDocument",
-                "description": "RAG referenced document.\n\nAttributes:\ndocs_url: URL of the corresponding OCP documentation page\ntitle: Title of the corresponding OCP documentation page"
+                "description": "RAG referenced document.\n\nAttributes:\ndoc_url: URL of the corresponding OCP documentation page\ndoc_title: Title of the corresponding OCP documentation page"
             },
             "StatusResponse": {
                 "properties": {
