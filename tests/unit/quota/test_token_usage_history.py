@@ -28,8 +28,7 @@ def test_init_storage_failure_detection():
         mock_connect.return_value.close.assert_called_once_with()
 
 
-@patch("ols.src.quota.token_usage_history.datetime")
-def test_consume_tokens(mock_datetime):
+def test_consume_tokens():
     """Test the operation to consume tokens."""
     input_tokens = 10
     output_tokens = 20
@@ -41,24 +40,26 @@ def test_consume_tokens(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (None,)
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.token_usage_history.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = TokenUsageHistory(config)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = TokenUsageHistory(config)
-
-        # try to consume tokens
-        q.consume_tokens(user_id, provider, model, input_tokens, output_tokens)
+            # try to consume tokens
+            q.consume_tokens(user_id, provider, model, input_tokens, output_tokens)
 
     mock_cursor.execute.assert_called_once_with(
         TokenUsageHistory.CONSUME_TOKENS_FOR_USER,

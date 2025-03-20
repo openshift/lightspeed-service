@@ -28,8 +28,7 @@ def test_init_storage_failure_detection():
         mock_connect.return_value.close.assert_called_once_with()
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_init_quota(mock_datetime):
+def test_init_quota():
     """Test the init quota operation."""
     quota_limit = 100
     user_id = "1234"
@@ -39,24 +38,26 @@ def test_init_quota(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # init quota for given user
-        q._init_quota(user_id)
+            # init quota for given user
+            q._init_quota(user_id)
 
     # new record should be inserted into storage
     mock_cursor.execute.assert_called_once_with(
@@ -96,8 +97,7 @@ def test_available_quota_with_data():
     assert available == available_quota
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_available_quota_no_data(mock_datetime):
+def test_available_quota_no_data():
     """Test the get available quota operation."""
     quota_limit = 100
     user_id = "1234"
@@ -107,24 +107,26 @@ def test_available_quota_no_data(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to retrieve available quota for given user
-        available = q.available_quota(user_id)
+            # try to retrieve available quota for given user
+            available = q.available_quota(user_id)
 
     # quota for given user should be read from storage
     # and the initialization of new record should be made
@@ -139,8 +141,7 @@ def test_available_quota_no_data(mock_datetime):
     assert available == quota_limit
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_revoke_quota(mock_datetime):
+def test_revoke_quota():
     """Test the operation to revoke quota."""
     quota_limit = 100
     user_id = "1234"
@@ -150,24 +151,26 @@ def test_revoke_quota(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to revoke quota
-        q.revoke_quota(user_id)
+            # try to revoke quota
+            q.revoke_quota(user_id)
 
     # quota for given user should be written into the storage
     mock_cursor.execute.assert_called_once_with(
@@ -176,8 +179,7 @@ def test_revoke_quota(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_consume_tokens_not_enough(mock_datetime):
+def test_consume_tokens_not_enough():
     """Test the operation to consume tokens."""
     to_be_consumed = 100
     available_tokens = 50
@@ -189,24 +191,26 @@ def test_consume_tokens_not_enough(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (available_tokens,)
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to consume tokens
-        q.consume_tokens(to_be_consumed, 0, user_id)
+            # try to consume tokens
+            q.consume_tokens(to_be_consumed, 0, user_id)
 
     # quota for given user should be updated in storage
     mock_cursor.execute.assert_called_once_with(
@@ -215,8 +219,7 @@ def test_consume_tokens_not_enough(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_consume_input_tokens_enough_tokens(mock_datetime):
+def test_consume_input_tokens_enough_tokens():
     """Test the operation to consume tokens."""
     to_be_consumed = 50
     available_tokens = 100
@@ -228,24 +231,26 @@ def test_consume_input_tokens_enough_tokens(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (available_tokens,)
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to consume tokens
-        q.consume_tokens(to_be_consumed, 0, user_id)
+            # try to consume tokens
+            q.consume_tokens(to_be_consumed, 0, user_id)
 
     mock_cursor.execute.assert_called_once_with(
         UserQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
@@ -253,8 +258,7 @@ def test_consume_input_tokens_enough_tokens(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_consume_output_tokens_enough_tokens(mock_datetime):
+def test_consume_output_tokens_enough_tokens():
     """Test the operation to consume tokens."""
     to_be_consumed = 50
     available_tokens = 100
@@ -266,24 +270,26 @@ def test_consume_output_tokens_enough_tokens(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (available_tokens,)
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to consume tokens
-        q.consume_tokens(0, to_be_consumed, user_id)
+            # try to consume tokens
+            q.consume_tokens(0, to_be_consumed, user_id)
 
     mock_cursor.execute.assert_called_once_with(
         UserQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
@@ -291,8 +297,7 @@ def test_consume_output_tokens_enough_tokens(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_consume_input_and_output_tokens_enough_tokens(mock_datetime):
+def test_consume_input_and_output_tokens_enough_tokens():
     """Test the operation to consume tokens."""
     input_tokens = 30
     output_tokens = 20
@@ -306,24 +311,26 @@ def test_consume_input_and_output_tokens_enough_tokens(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = (available_tokens,)
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        # try to consume tokens
-        q.consume_tokens(input_tokens, output_tokens, user_id)
+            # try to consume tokens
+            q.consume_tokens(input_tokens, output_tokens, user_id)
 
     mock_cursor.execute.assert_called_once_with(
         UserQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
@@ -331,8 +338,7 @@ def test_consume_input_and_output_tokens_enough_tokens(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_consume_tokens_on_no_record(mock_datetime):
+def test_consume_tokens_on_no_record():
     """Test the operation to consume tokens."""
     to_be_consumed = 100
     quota_limit = 100
@@ -343,23 +349,25 @@ def test_consume_tokens_on_no_record(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit)
-
-        q.consume_tokens(to_be_consumed, 0, user_id)
+            q.consume_tokens(to_be_consumed, 0, user_id)
 
     # quota for given user should be read from storage
     mock_cursor.execute.assert_called_once_with(
@@ -368,8 +376,7 @@ def test_consume_tokens_on_no_record(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_increase_quota(mock_datetime):
+def test_increase_quota():
     """Test the operation to increase quota."""
     quota_limit = 100
     additional_quota = 10
@@ -380,24 +387,26 @@ def test_increase_quota(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit, additional_quota)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit, additional_quota)
-
-        # try to increase quota
-        q.increase_quota(user_id)
+            # try to increase quota
+            q.increase_quota(user_id)
 
     # quota for given user should be written into the storage
     mock_cursor.execute.assert_called_once_with(
@@ -406,8 +415,7 @@ def test_increase_quota(mock_datetime):
     )
 
 
-@patch("ols.src.quota.revokable_quota_limiter.datetime")
-def test_ensure_available_quota(mock_datetime):
+def test_ensure_available_quota():
     """Test the operation to increase quota."""
     quota_limit = 0
     additional_quota = 0
@@ -417,24 +425,26 @@ def test_ensure_available_quota(mock_datetime):
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
 
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
 
-        # mock for real timestamp
-        timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
 
-        # mock function to retrieve timestamp
-        mock_datetime.now = lambda: timestamp
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = UserQuotaLimiter(config, quota_limit, additional_quota)
 
-        # initialize Postgres storage
-        config = PostgresConfig()
-        q = UserQuotaLimiter(config, quota_limit, additional_quota)
+            exception_message = "User 1234 has no available tokens"
 
-        exception_message = "User 1234 has no available tokens"
-
-        # check available quota
-        with pytest.raises(Exception, match=exception_message):
-            q.ensure_available_quota(user_id)
+            # check available quota
+            with pytest.raises(Exception, match=exception_message):
+                q.ensure_available_quota(user_id)
