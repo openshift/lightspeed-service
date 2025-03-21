@@ -14,36 +14,38 @@ from ols.src.query_helpers.question_validator import QuestionValidator  # noqa: 
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
 
 
-@patch("ols.src.query_helpers.question_validator.QuestionValidator._invoke_llm")
-def perform_question_validation_benchmark(benchmark, question, mock_invoke):
+def perform_question_validation_benchmark(benchmark, question):
     """Prepare all mocks and the call the QuestionValidator.validate_question method."""
     # it is needed to initialize configuration in order to be able
     # to construct QuestionValidator instance
     config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
-    # when the LLM will be initialized the check for provided parameters will
-    # be performed
-    llm_loader = mock_llm_loader(
-        None,
-        expected_params=(
-            "p1",
-            "m1",
-            {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4},
-            False,
-        ),
-    )
-    mock_invoke.return_value = AIMessage(content="ACCEPTED")
+    with patch(
+        "ols.src.query_helpers.question_validator.QuestionValidator._invoke_llm"
+    ) as mock_invoke:
+        # when the LLM will be initialized the check for provided parameters will
+        # be performed
+        llm_loader = mock_llm_loader(
+            None,
+            expected_params=(
+                "p1",
+                "m1",
+                {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4},
+                False,
+            ),
+        )
+        mock_invoke.return_value = AIMessage(content="ACCEPTED")
 
-    # check that LLM loader was called with expected parameters
-    question_validator = QuestionValidator(llm_loader=llm_loader)
+        # check that LLM loader was called with expected parameters
+        question_validator = QuestionValidator(llm_loader=llm_loader)
 
-    # just run the validation for the provided question, we just need to check
-    # parameters passed to LLM that is performed in mock object
-    benchmark(
-        question_validator.validate_question,
-        "123e4567-e89b-12d3-a456-426614174000",
-        question,
-    )
+        # just run the validation for the provided question, we just need to check
+        # parameters passed to LLM that is performed in mock object
+        benchmark(
+            question_validator.validate_question,
+            "123e4567-e89b-12d3-a456-426614174000",
+            question,
+        )
 
 
 def test_validate_question_short_question(benchmark):
