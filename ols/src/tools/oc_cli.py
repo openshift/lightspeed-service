@@ -1,9 +1,7 @@
 """OpenShift CLI tools."""
 
 import logging
-import os
 import subprocess
-from typing import Optional
 
 from langchain.tools import tool
 
@@ -47,26 +45,16 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     return res
 
 
-# TODO: server address configurable via request?
-def token_works_for_oc(token: str, server: Optional[str] = None) -> bool:
+def token_works_for_oc(token: str) -> bool:
     """Check if the token can be used with `oc` CLI.
 
     Args:
         token: OpenShift user token.
-        server: OpenShift server address.
 
     Returns:
         True if user token works, False otherwise.
     """
-    if server is None:
-        server = os.getenv("KUBERNETES_SERVICE_HOST", "")
-    if server == "":
-        logger.error(
-            "Server URL not provided or KUBERNETES_SERVICE_HOST env is not set"
-        )
-        return False
-
-    r = run_oc(["version", f"--token={token}", f"--server={server}"])
+    r = run_oc(["version", f"--token={token}"])
 
     if r.returncode == 0:
         logger.info("Token is usable for oc CLI")
@@ -224,8 +212,8 @@ def show_pods(command_args: list[str]) -> str:
     kube-system  konnectivity-agent-qwnsd                          1m          24Mi
     kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
-    # the tool is not accepting any options, but we are adding extra args with
-    # token and server outside of what llm figures out
+    # the tool is not accepting any options, but we are adding extra arg
+    # with token outside of what llm figures out
     result = run_oc([*["adm", "top", "pods", "-A"], *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)
 
