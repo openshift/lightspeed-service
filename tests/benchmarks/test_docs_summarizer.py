@@ -46,37 +46,36 @@ def rag_index():
     return MockLlamaIndex()
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_empty_history(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer using mocked index and query engine."""
     question = "What's the ultimate question with answer 42?"
     history = []  # empty history
 
-    # run the benchmark
-    benchmark(summarizer.create_response, question, rag_index, history)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # run the benchmark
+        benchmark(summarizer.create_response, question, rag_index, history)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_no_history(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer using mocked index and query engine, no history is provided."""
     question = "What's the ultimate question with answer 42?"
 
-    # no history is passed into summarize() method
-    # run the benchmark
-    benchmark(summarizer.create_response, question, rag_index)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # no history is passed into summarize() method
+        # run the benchmark
+        benchmark(summarizer.create_response, question, rag_index)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_history_provided(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer using mocked index and query engine, history is provided."""
     question = "What's the ultimate question with answer 42?"
     history = [HumanMessage("What is Kubernetes?")]
 
-    # first call with history provided
-    benchmark(summarizer.create_response, question, rag_index, history)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # first call with history provided
+        benchmark(summarizer.create_response, question, rag_index, history)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_history_truncation(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer to check if truncation is done."""
     question = "What's the ultimate question with answer 42?"
@@ -84,8 +83,9 @@ def test_summarize_history_truncation(benchmark, rag_index, summarizer):
     # too long history
     history = [HumanMessage("What is Kubernetes?")] * 10
 
-    # run the benchmark
-    benchmark(summarizer.create_response, question, rag_index, history)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # run the benchmark
+        benchmark(summarizer.create_response, question, rag_index, history)
 
 
 def try_to_run_summarizer(summarizer, question, rag_index, history):
@@ -94,7 +94,6 @@ def try_to_run_summarizer(summarizer, question, rag_index, history):
         summarizer.summarize(conversation_id, question, rag_index, history)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_too_long_question(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer to check if truncation is done."""
     question = "What's the ultimate question with answer 42?" * 10000
@@ -102,11 +101,11 @@ def test_summarize_too_long_question(benchmark, rag_index, summarizer):
     # short history
     history = ["What is Kubernetes?"]
 
-    # run the benchmark
-    benchmark(try_to_run_summarizer, summarizer, question, rag_index, history)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # run the benchmark
+        benchmark(try_to_run_summarizer, summarizer, question, rag_index, history)
 
 
-@patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
 def test_summarize_too_long_question_long_history(benchmark, rag_index, summarizer):
     """Benchmark for DocsSummarizer to check if truncation is done."""
     question = "What's the ultimate question with answer 42?" * 10000
@@ -114,8 +113,9 @@ def test_summarize_too_long_question_long_history(benchmark, rag_index, summariz
     # too long history
     history = ["What is Kubernetes?"] * 10000
 
-    # run the benchmark
-    benchmark(try_to_run_summarizer, summarizer, question, rag_index, history)
+    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+        # run the benchmark
+        benchmark(try_to_run_summarizer, summarizer, question, rag_index, history)
 
 
 def test_summarize_no_reference_content(benchmark, summarizer_no_reference_content):
