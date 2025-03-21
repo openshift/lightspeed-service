@@ -31,7 +31,7 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self._introspection_enabled = config.ols_config.introspection_enabled
-        set_debug(self.verbose)
+        set_debug(True)
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
@@ -142,7 +142,6 @@ class DocsSummarizer(QueryHelper):
             if is_final_round or not tools_map
             else self.bare_llm.bind_tools(tools_map.values())
         )
-
         with TokenMetricUpdater(
             llm=self.bare_llm,
             provider=self.provider_config.type,
@@ -162,10 +161,26 @@ class DocsSummarizer(QueryHelper):
             return {}
 
         logger.info("Introspection enabled - using default tools selection")
+        logger.info(user_token is not None)
+        logger.info(len(user_token.strip()) > 0)
+        logger.info("--------------1a")
+        logger.info(token_works_for_oc(user_token))
+        logger.info("--------------1b")
+        if user_token:
+            logger.info("--------------1")
+        if user_token.strip():
+            logger.info("--------------2")
+        logger.info("--------------2a")
+        if token_works_for_oc(user_token):
+            logger.info("--------------3")
+        logger.info("--------------4")
+
 
         if user_token and user_token.strip() and token_works_for_oc(user_token):
             logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
             return oc_tools
+        logger.info("Not using tools")
+
 
         return {}
 
