@@ -10,9 +10,7 @@ from ols import config, constants
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
 
-from ols.app.endpoints.authorized import (  # noqa:E402
-    is_user_authorized,
-)
+from ols.app.endpoints.authorized import is_user_authorized  # noqa:E402
 from ols.app.models.models import AuthorizationResponse  # noqa:E402
 from tests.mock_classes.mock_k8s_api import (  # noqa:E402
     mock_subject_access_review_response,
@@ -62,50 +60,60 @@ def test_is_user_authorized_false_no_bearer_token():
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_valid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_valid_token():
     """Tests the is_user_authorized function with a mocked valid-token."""
-    # Setup mock responses for valid token
-    mock_authn_api.return_value.create_token_review.side_effect = (
-        mock_token_review_response
-    )
-    mock_authz_api.return_value.create_subject_access_review.side_effect = (
-        mock_subject_access_review_response
-    )
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api") as mock_authn_api,
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+    ):
+        # Setup mock responses for valid token
+        mock_authn_api.return_value.create_token_review.side_effect = (
+            mock_token_review_response
+        )
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
 
-    # Simulate a request with a valid token
-    request = Request(
-        scope={"type": "http", "headers": [(b"authorization", b"Bearer valid-token")]}
-    )
+        # Simulate a request with a valid token
+        request = Request(
+            scope={
+                "type": "http",
+                "headers": [(b"authorization", b"Bearer valid-token")],
+            }
+        )
 
-    response = is_user_authorized(request)
-    assert response == AuthorizationResponse(
-        user_id="valid-uid", username="valid-user", skip_user_id_check=False
-    )
+        response = is_user_authorized(request)
+        assert response == AuthorizationResponse(
+            user_id="valid-uid", username="valid-user", skip_user_id_check=False
+        )
 
 
 @pytest.mark.usefixtures("_enabled_auth")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api")
-@patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api")
-def test_is_user_authorized_invalid_token(mock_authz_api, mock_authn_api):
+def test_is_user_authorized_invalid_token():
     """Test the is_user_authorized function with a mocked invalid-token."""
-    # Setup mock responses for invalid token
-    mock_authn_api.return_value.create_token_review.side_effect = (
-        mock_token_review_response
-    )
-    mock_authz_api.return_value.create_subject_access_review.side_effect = (
-        mock_subject_access_review_response
-    )
+    with (
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authn_api") as mock_authn_api,
+        patch("ols.src.auth.k8s.K8sClientSingleton.get_authz_api") as mock_authz_api,
+    ):
+        # Setup mock responses for invalid token
+        mock_authn_api.return_value.create_token_review.side_effect = (
+            mock_token_review_response
+        )
+        mock_authz_api.return_value.create_subject_access_review.side_effect = (
+            mock_subject_access_review_response
+        )
 
-    # Simulate a request with an invalid token
-    request = Request(
-        scope={"type": "http", "headers": [(b"authorization", b"Bearer invalid-token")]}
-    )
+        # Simulate a request with an invalid token
+        request = Request(
+            scope={
+                "type": "http",
+                "headers": [(b"authorization", b"Bearer invalid-token")],
+            }
+        )
 
-    # Expect an HTTPException for invalid tokens
-    with pytest.raises(HTTPException) as exc_info:
-        is_user_authorized(request)
+        # Expect an HTTPException for invalid tokens
+        with pytest.raises(HTTPException) as exc_info:
+            is_user_authorized(request)
 
-    # Check if the correct status code is returned for unauthenticated access
-    assert exc_info.value.status_code == 403
+        # Check if the correct status code is returned for unauthenticated access
+        assert exc_info.value.status_code == 403

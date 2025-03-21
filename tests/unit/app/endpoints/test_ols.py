@@ -100,18 +100,18 @@ def test_retrieve_previous_input_improper_user_id():
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.config.conversation_cache.get")
-def test_retrieve_previous_input_for_previous_history(get):
+def test_retrieve_previous_input_for_previous_history():
     """Check how function to retrieve previous input handle existing history."""
     conversation_id = suid.get_suid()
-    get.return_value = "input"
-    llm_request = LLMRequest(
-        query="Tell me about Kubernetes", conversation_id=conversation_id
-    )
-    previous_input = ols.retrieve_previous_input(
-        constants.DEFAULT_USER_UID, llm_request.conversation_id
-    )
-    assert previous_input == "input"
+    with patch("ols.config.conversation_cache.get") as get:
+        get.return_value = "input"
+        llm_request = LLMRequest(
+            query="Tell me about Kubernetes", conversation_id=conversation_id
+        )
+        previous_input = ols.retrieve_previous_input(
+            constants.DEFAULT_USER_UID, llm_request.conversation_id
+        )
+        assert previous_input == "input"
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -211,8 +211,7 @@ def test_retrieve_attachments_on_improper_content_type():
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.config.conversation_cache.insert_or_append")
-def test_store_conversation_history(insert_or_append):
+def test_store_conversation_history():
     """Test if operation to store conversation history to cache is called."""
     conversation_id = suid.get_suid()
     skip_user_id_check = False
@@ -220,27 +219,27 @@ def test_store_conversation_history(insert_or_append):
     llm_request = LLMRequest(query=query)
     response = ""
 
-    ols.store_conversation_history(
-        constants.DEFAULT_USER_UID,
-        conversation_id,
-        llm_request,
-        response,
-        [],
-        [],
-    )
+    with patch("ols.config.conversation_cache.insert_or_append") as insert_or_append:
+        ols.store_conversation_history(
+            constants.DEFAULT_USER_UID,
+            conversation_id,
+            llm_request,
+            response,
+            [],
+            [],
+        )
 
-    expected_history = CacheEntry(query=HumanMessage(query))
-    insert_or_append.assert_called_with(
-        constants.DEFAULT_USER_UID,
-        conversation_id,
-        expected_history,
-        skip_user_id_check,
-    )
+        expected_history = CacheEntry(query=HumanMessage(query))
+        insert_or_append.assert_called_with(
+            constants.DEFAULT_USER_UID,
+            conversation_id,
+            expected_history,
+            skip_user_id_check,
+        )
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.config.conversation_cache.insert_or_append")
-def test_store_conversation_history_some_response(insert_or_append):
+def test_store_conversation_history_some_response():
     """Test if operation to store conversation history to cache is called."""
     user_id = "1234"
     conversation_id = suid.get_suid()
@@ -249,9 +248,10 @@ def test_store_conversation_history_some_response(insert_or_append):
     response = "*response*"
     skip_user_id_check = False
 
-    ols.store_conversation_history(
-        user_id, conversation_id, llm_request, response, [], skip_user_id_check
-    )
+    with patch("ols.config.conversation_cache.insert_or_append") as insert_or_append:
+        ols.store_conversation_history(
+            user_id, conversation_id, llm_request, response, [], skip_user_id_check
+        )
 
     expected_history = CacheEntry(
         query=HumanMessage(query), response=AIMessage(response)
@@ -301,125 +301,149 @@ def test_store_conversation_history_improper_conversation_id():
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.KEYWORD,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_valid_kw(llm_validate_question_mock):
+def test_validate_question_valid_kw():
     """Check the behaviour of validate_question function using valid keyword."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    resp = ols.validate_question(conversation_id, llm_request)
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.KEYWORD,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as llm_validate_question_mock,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        resp = ols.validate_question(conversation_id, llm_request)
 
-    assert resp
-    assert llm_validate_question_mock.call_count == 0
+        assert resp
+        assert llm_validate_question_mock.call_count == 0
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch(
-    "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
-    side_effect=PromptTooLongError("Prompt length 10000 exceeds LLM"),
-)
-def test_validate_question_too_long_query(llm_validate_question_mock):
+def test_validate_question_too_long_query():
     """Check the behaviour of validate_question function with too long query."""
     # This test case is applicable only for LLM based query validation.
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes?"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    # PromptTooLongError should be caught and HTTPException needs to be raised
-    with pytest.raises(HTTPException, match="413: {'response': 'Prompt is too long'"):
-        ols.validate_question(conversation_id, llm_request)
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
+            side_effect=PromptTooLongError("Prompt length 10000 exceeds LLM"),
+        ),
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        # PromptTooLongError should be caught and HTTPException needs to be raised
+        with pytest.raises(
+            HTTPException, match="413: {'response': 'Prompt is too long'"
+        ):
+            ols.validate_question(conversation_id, llm_request)
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.KEYWORD,
-)
 def test_validate_question_invalid_kw():
     """Check the behaviour of validate_question function using invalid keyword."""
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    resp = ols.validate_question(conversation_id, llm_request)
-    assert not resp
+    with patch(
+        "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+        constants.QueryValidationMethod.KEYWORD,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        resp = ols.validate_question(conversation_id, llm_request)
+        assert not resp
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_llm(validate_question_mock):
+def test_validate_question_llm():
     """Check the behaviour of validate_question function with LLM."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    ols.validate_question(conversation_id, llm_request)
-    validate_question_mock.assert_called_with(conversation_id, query)
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as validate_question_mock,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        ols.validate_question(conversation_id, llm_request)
+        validate_question_mock.assert_called_with(conversation_id, query)
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_on_configuration_error_llm(validate_question_mock):
+def test_validate_question_on_configuration_error_llm():
     """Check the behaviour of validate_question function when wrong configuration is detected."""
     # This test case is applicable only for LLM based query validation.
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    validate_question_mock.side_effect = LLMConfigurationError
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as validate_question_mock,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        validate_question_mock.side_effect = LLMConfigurationError
 
-    # HTTP exception should be raises
-    with pytest.raises(HTTPException, match="Unable to process this request"):
-        ols.validate_question(conversation_id, llm_request)
+        # HTTP exception should be raises
+        with pytest.raises(HTTPException, match="Unable to process this request"):
+            ols.validate_question(conversation_id, llm_request)
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_on_validation_error(validate_question_mock):
+def test_validate_question_on_validation_error():
     """Check the behaviour of validate_question function when query is not validated properly."""
     conversation_id = suid.get_suid()
     query = "Tell me about Kubernetes"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    validate_question_mock.side_effect = (
-        ValueError  # any exception except HTTPException can be used there
-    )
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as validate_question_mock,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        validate_question_mock.side_effect = (
+            ValueError  # any exception except HTTPException can be used there
+        )
 
-    # HTTP exception should be raises
-    with pytest.raises(HTTPException, match="Error while validating question"):
-        ols.validate_question(conversation_id, llm_request)
+        # HTTP exception should be raises
+        with pytest.raises(HTTPException, match="Error while validating question"):
+            ols.validate_question(conversation_id, llm_request)
 
 
-@patch("ols.app.endpoints.ols._validate_question_keyword")
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-def test_validate_question_disabled(
-    validate_question_llm_mock, validate_question_kw_mock
-):
+def test_validate_question_disabled():
     """Check the behaviour of validate_question function when it is disabled."""
     # This is the default behavior; no query validation.
     conversation_id = suid.get_suid()
     query = "What does 42 signify ?"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
-    resp = ols.validate_question(conversation_id, llm_request)
+    with (
+        patch(
+            "ols.app.endpoints.ols._validate_question_keyword"
+        ) as validate_question_kw_mock,
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as validate_question_llm_mock,
+    ):
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+        resp = ols.validate_question(conversation_id, llm_request)
 
-    assert validate_question_llm_mock.call_count == 0
-    assert validate_question_kw_mock.call_count == 0
-    assert resp
+        assert validate_question_llm_mock.call_count == 0
+        assert validate_question_kw_mock.call_count == 0
+        assert resp
 
 
 @pytest.mark.usefixtures("_load_config")
@@ -641,241 +665,257 @@ def test_attachments_redact_on_redact_error():
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
-@patch("ols.config.conversation_cache.get")
-def test_conversation_request(
-    mock_conversation_cache_get,
-    mock_summarize,
-    mock_validate_question,
-    auth,
-):
+def test_conversation_request(auth):
     """Test conversation request API endpoint."""
-    # valid question
-    mock_validate_question.return_value = True
-    mock_response = (
-        "Kubernetes is an open-source container-orchestration system..."  # summary
-    )
-    mock_summarize.return_value = SummarizerResponse(
-        response=mock_response,
-        rag_chunks=[],
-        history_truncated=False,
-        token_counter=None,
-    )
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
-    response = ols.conversation_request(llm_request, auth)
-    assert (
-        response.response
-        == "Kubernetes is an open-source container-orchestration system..."
-    )
-    assert suid.check_suid(
-        response.conversation_id
-    ), "Improper conversation ID returned"
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as mock_validate_question,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
+        ) as mock_summarize,
+        patch("ols.config.conversation_cache.get"),
+    ):
+        # valid question
+        mock_validate_question.return_value = True
+        mock_response = (
+            "Kubernetes is an open-source container-orchestration system..."  # summary
+        )
+        mock_summarize.return_value = SummarizerResponse(
+            response=mock_response,
+            rag_chunks=[],
+            history_truncated=False,
+            token_counter=None,
+        )
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
+        response = ols.conversation_request(llm_request, auth)
+        assert (
+            response.response
+            == "Kubernetes is an open-source container-orchestration system..."
+        )
+        assert suid.check_suid(
+            response.conversation_id
+        ), "Improper conversation ID returned"
 
-    # invalid question
-    mock_validate_question.return_value = False
-    llm_request = LLMRequest(query="Generate a yaml")
-    response = ols.conversation_request(llm_request, auth)
-    assert response.response == constants.INVALID_QUERY_RESP
-    assert suid.check_suid(
-        response.conversation_id
-    ), "Improper conversation ID returned"
-
-    # validation failure
-    mock_validate_question.side_effect = HTTPException
-    with pytest.raises(HTTPException) as excinfo:
+        # invalid question
+        mock_validate_question.return_value = False
         llm_request = LLMRequest(query="Generate a yaml")
         response = ols.conversation_request(llm_request, auth)
-        assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-        assert len(response.conversation_id) == 0
+        assert response.response == constants.INVALID_QUERY_RESP
+        assert suid.check_suid(
+            response.conversation_id
+        ), "Improper conversation ID returned"
+
+        # validation failure
+        mock_validate_question.side_effect = HTTPException
+        with pytest.raises(HTTPException) as excinfo:
+            llm_request = LLMRequest(query="Generate a yaml")
+            response = ols.conversation_request(llm_request, auth)
+            assert excinfo.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+            assert len(response.conversation_id) == 0
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
-@patch("ols.config.conversation_cache.get")
-def test_conversation_request_dedup_ref_docs(
-    mock_conversation_cache_get,
-    mock_summarize,
-    mock_validate_question,
-    auth,
-):
+def test_conversation_request_dedup_ref_docs(auth):
     """Test deduplication of referenced docs."""
-    mock_rag_chunk = [
-        RagChunk("text1", "url-b", "title-b"),
-        RagChunk("text2", "url-b", "title-b"),  # duplicate doc
-        RagChunk("text3", "url-a", "title-a"),
-    ]
-    mock_validate_question.return_value = True
-    mock_summarize.return_value = SummarizerResponse(
-        response="some response",
-        rag_chunks=mock_rag_chunk,
-        history_truncated=False,
-        token_counter=None,
-    )
-    llm_request = LLMRequest(query="some query")
-    response = ols.conversation_request(llm_request, auth)
+    with (
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as mock_validate_question,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
+        ) as mock_summarize,
+        patch("ols.config.conversation_cache.get"),
+    ):
+        mock_rag_chunk = [
+            RagChunk("text1", "url-b", "title-b"),
+            RagChunk("text2", "url-b", "title-b"),  # duplicate doc
+            RagChunk("text3", "url-a", "title-a"),
+        ]
+        mock_validate_question.return_value = True
+        mock_summarize.return_value = SummarizerResponse(
+            response="some response",
+            rag_chunks=mock_rag_chunk,
+            history_truncated=False,
+            token_counter=None,
+        )
+        llm_request = LLMRequest(query="some query")
+        response = ols.conversation_request(llm_request, auth)
 
-    assert len(response.referenced_documents) == 2
-    assert response.referenced_documents[0].doc_url == "url-b"
-    assert response.referenced_documents[0].doc_title == "title-b"
-    assert response.referenced_documents[1].doc_url == "url-a"
-    assert response.referenced_documents[1].doc_title == "title-a"
+        assert len(response.referenced_documents) == 2
+        assert response.referenced_documents[0].doc_url == "url-b"
+        assert response.referenced_documents[0].doc_title == "title-b"
+        assert response.referenced_documents[1].doc_url == "url-a"
+        assert response.referenced_documents[1].doc_title == "title-a"
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-    constants.QueryValidationMethod.LLM,
-)
-@patch("ols.src.query_helpers.question_validator.QuestionValidator.validate_question")
-@patch("ols.config.conversation_cache.get")
-def test_conversation_request_on_wrong_configuration(
-    mock_conversation_cache_get,
-    mock_validate_question,
-    auth,
-):
+def test_conversation_request_on_wrong_configuration(auth):
     """Test conversation request API endpoint."""
-    # mock invalid configuration
-    message = "wrong model is configured"
-    mock_validate_question.side_effect = Mock(
-        side_effect=LLMConfigurationError(message)
-    )
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    with (
+        patch(
+            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
+            constants.QueryValidationMethod.LLM,
+        ),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
+        ) as mock_validate_question,
+        patch("ols.config.conversation_cache.get"),
+    ):
+        # mock invalid configuration
+        message = "wrong model is configured"
+        mock_validate_question.side_effect = Mock(
+            side_effect=LLMConfigurationError(message)
+        )
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
 
-    # call must fail because we mocked invalid configuration state
-    with pytest.raises(HTTPException, match="Unable to process this request"):
-        ols.conversation_request(llm_request, auth)
+        # call must fail because we mocked invalid configuration state
+        with pytest.raises(HTTPException, match="Unable to process this request"):
+            ols.conversation_request(llm_request, auth)
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=[]))
-@patch(
-    "ols.app.endpoints.ols.validate_question",
-    new=Mock(return_value=False),
-)
 def test_question_validation_in_conversation_start(auth):
     """Test if question validation is skipped in follow-up conversation."""
-    # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
-    # this should resolve in rejection in summarization
-    conversation_id = suid.get_suid()
-    query = "some elaborate question"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    with (
+        patch(
+            "ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=[])
+        ),
+        patch(
+            "ols.app.endpoints.ols.validate_question",
+            new=Mock(return_value=False),
+        ),
+    ):
+        # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
+        # this should resolve in rejection in summarization
+        conversation_id = suid.get_suid()
+        query = "some elaborate question"
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
-    response = ols.conversation_request(llm_request, auth)
+        response = ols.conversation_request(llm_request, auth)
 
-    assert response.response.startswith(constants.INVALID_QUERY_RESP)
+        assert response.response.startswith(constants.INVALID_QUERY_RESP)
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch(
-    "ols.app.endpoints.ols.retrieve_previous_input",
-    new=Mock(return_value=[CacheEntry(query=HumanMessage("some question"))]),
-)
-@patch(
-    "ols.app.endpoints.ols.validate_question",
-    new=Mock(return_value=constants.SUBJECT_REJECTED),
-)
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
-def test_no_question_validation_in_follow_up_conversation(mock_summarize, auth):
+def test_no_question_validation_in_follow_up_conversation(auth):
     """Test if question validation is skipped in follow-up conversation."""
-    # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
-    # but as it is not the first question, it should proceed to summarization
-    mock_summarize.return_value = SummarizerResponse(
-        "some elaborate answer",
-        [],
-        False,
-        token_counter=None,
-    )
-    conversation_id = suid.get_suid()
-    query = "some elaborate question"
-    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    with (
+        patch(
+            "ols.app.endpoints.ols.retrieve_previous_input",
+            new=Mock(return_value=[CacheEntry(query=HumanMessage("some question"))]),
+        ),
+        patch(
+            "ols.app.endpoints.ols.validate_question",
+            new=Mock(return_value=constants.SUBJECT_REJECTED),
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
+        ) as mock_summarize,
+    ):
+        # note the `validate_question` is patched to always return as `SUBJECT_REJECTED`
+        # but as it is not the first question, it should proceed to summarization
+        mock_summarize.return_value = SummarizerResponse(
+            "some elaborate answer",
+            [],
+            False,
+            token_counter=None,
+        )
+        conversation_id = suid.get_suid()
+        query = "some elaborate question"
+        llm_request = LLMRequest(query=query, conversation_id=conversation_id)
 
-    response = ols.conversation_request(llm_request, auth)
+        response = ols.conversation_request(llm_request, auth)
 
-    assert response.response == "some elaborate answer"
+        assert response.response == "some elaborate answer"
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.app.endpoints.ols.validate_question")
-def test_conversation_request_invalid_subject(mock_validate, auth):
+def test_conversation_request_invalid_subject(auth):
     """Test how generate_response function checks validation results."""
-    # prepare arguments for DocsSummarizer
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
+    with (patch("ols.app.endpoints.ols.validate_question") as mock_validate,):
+        # prepare arguments for DocsSummarizer
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
 
-    mock_validate.return_value = False
-    response = ols.conversation_request(llm_request, auth)
-    assert response.response == constants.INVALID_QUERY_RESP
-    assert len(response.referenced_documents) == 0
-    assert not response.truncated
+        mock_validate.return_value = False
+        response = ols.conversation_request(llm_request, auth)
+        assert response.response == constants.INVALID_QUERY_RESP
+        assert len(response.referenced_documents) == 0
+        assert not response.truncated
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
-def test_generate_response_valid_subject(mock_summarize):
+def test_generate_response_valid_subject():
     """Test how generate_response function checks validation results."""
     # mock the DocsSummarizer
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    mock_summarize.return_value = SummarizerResponse(
-        mock_response,
-        [],
-        False,
-        token_counter=None,
-    )
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
+    ) as mock_summarize:
+        mock_summarize.return_value = SummarizerResponse(
+            mock_response,
+            [],
+            False,
+            token_counter=None,
+        )
 
-    # prepare arguments for DocsSummarizer
-    conversation_id = suid.get_suid()
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
-    previous_input = []
+        # prepare arguments for DocsSummarizer
+        conversation_id = suid.get_suid()
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
+        previous_input = []
 
-    # try to get response
-    summarizer_response = ols.generate_response(
-        conversation_id, llm_request, previous_input
-    )
+        # try to get response
+        summarizer_response = ols.generate_response(
+            conversation_id, llm_request, previous_input
+        )
 
-    # check the response
-    assert "Kubernetes" in summarizer_response.response
-    assert summarizer_response.rag_chunks == []
-    assert summarizer_response.history_truncated is False
+        # check the response
+        assert "Kubernetes" in summarizer_response.response
+        assert summarizer_response.rag_chunks == []
+        assert summarizer_response.history_truncated is False
 
 
 @pytest.mark.usefixtures("_load_config")
-@patch("ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response")
-def test_generate_response_on_summarizer_error(mock_summarize):
+def test_generate_response_on_summarizer_error():
     """Test how generate_response function checks validation results."""
-    # mock the DocsSummarizer
-    mock_summarize.side_effect = Exception  # any exception might occur
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
+    ) as mock_summarize:
+        # mock the DocsSummarizer
+        mock_summarize.side_effect = Exception  # any exception might occur
 
+        # prepare arguments for DocsSummarizer
+        conversation_id = suid.get_suid()
+
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
+        previous_input = None
+
+        # try to get response
+        with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
+            ols.generate_response(conversation_id, llm_request, previous_input)
+
+
+def test_generate_response_unknown_validation_result():
+    """Test how generate_response function checks validation results."""
     # prepare arguments for DocsSummarizer
     conversation_id = suid.get_suid()
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
-    previous_input = None
 
-    # try to get response
-    with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
-        ols.generate_response(conversation_id, llm_request, previous_input)
+    with patch(
+        "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
+        side_effect=Exception("mocked exception"),
+    ):
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
+        previous_input = None
 
-
-@patch(
-    "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
-    side_effect=Exception("mocked exception"),
-)
-def test_generate_response_unknown_validation_result(exc):
-    """Test how generate_response function checks validation results."""
-    # prepare arguments for DocsSummarizer
-    conversation_id = suid.get_suid()
-    llm_request = LLMRequest(query="Tell me about Kubernetes")
-    previous_input = None
-
-    # try to get response
-    with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
-        ols.generate_response(conversation_id, llm_request, previous_input)
+        # try to get response
+        with pytest.raises(HTTPException, match=DEFAULT_ERROR_MESSAGE):
+            ols.generate_response(conversation_id, llm_request, previous_input)
 
 
 @pytest.fixture
