@@ -593,7 +593,7 @@ def test_tool_calling() -> None:
             QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "Is there openshift-lightspeed namespace in the cluster?",
+                "query": "What is my openshift cluster version?",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )

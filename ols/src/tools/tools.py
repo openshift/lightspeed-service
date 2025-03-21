@@ -1,7 +1,6 @@
 """Functions/Tools definition."""
 
 import logging
-import os
 
 from langchain_core.messages import ToolMessage
 from langchain_core.messages.tool import ToolCall
@@ -35,7 +34,6 @@ def execute_oc_tool_calls(
     tools_map: dict,
     tool_calls: list[ToolCall],
     token: str,
-    server: str = os.getenv("KUBERNETES_SERVICE_HOST", ""),
 ) -> tuple[list[ToolMessage], list[dict]]:
     """Execute tool calls and return ToolMessages and execution details."""
     tool_messages = []
@@ -55,8 +53,6 @@ def execute_oc_tool_calls(
                         *tool_args.get("command_args", []),
                         "--token",
                         token,
-                        "--server",
-                        server,
                     ]
                 }
                 tool_output = tool.invoke(args_with_token_and_server)
