@@ -7,8 +7,12 @@ from unittest.mock import patch
 import pytest
 
 from ols import config
-from ols.app.endpoints import feedback
-from ols.app.models.config import UserDataCollection
+
+# needs to be setup there before is_user_authorized is imported
+config.ols_config.authentication_config.module = "k8s"
+
+from ols.app.endpoints import feedback  # noqa:E402
+from ols.app.models.config import UserDataCollection  # noqa:E402
 
 
 @pytest.fixture
@@ -44,19 +48,19 @@ def test_get_feedback_status(feedback_location):
     assert not feedback.is_feedback_enabled()
 
 
-@patch("ols.app.endpoints.feedback.datetime")
-def test_store_feedback(mocked_datetime, feedback_location):
+def test_store_feedback(feedback_location):
     """Test store_feedback function."""
     user_id = "12345678-abcd-0000-0123-456789abcdef"
     feedback_data = {"testy": "test"}
 
-    mocked_datetime.utcnow = lambda: datetime(2000, 1, 1, 1, 23, 45)
-    with patch("ols.app.endpoints.feedback.get_suid", return_value="fake-uuid"):
-        feedback.store_feedback(user_id, feedback_data)
+    with patch("ols.app.endpoints.feedback.datetime") as mocked_datetime:
+        mocked_datetime.utcnow = lambda: datetime(2000, 1, 1, 1, 23, 45)
+        with patch("ols.app.endpoints.feedback.get_suid", return_value="fake-uuid"):
+            feedback.store_feedback(user_id, feedback_data)
 
-    stored_data = load_fake_feedback("fake-uuid")
-    assert stored_data == {
-        "user_id": "12345678-abcd-0000-0123-456789abcdef",
-        "timestamp": "2000-01-01 01:23:45",
-        **feedback_data,
-    }
+        stored_data = load_fake_feedback("fake-uuid")
+        assert stored_data == {
+            "user_id": "12345678-abcd-0000-0123-456789abcdef",
+            "timestamp": "2000-01-01 01:23:45",
+            **feedback_data,
+        }
