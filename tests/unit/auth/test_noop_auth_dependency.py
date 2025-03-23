@@ -33,20 +33,20 @@ async def test_noop_auth_dependency_call():
 
 
 @pytest.mark.asyncio
-@patch("ols.config.dev_config.disable_auth", True)
 async def test_noop_auth_dependency_call_disable_auth():
     """Check that the no-op auth. dependency returns default user ID and name as expected."""
     path = "/ols-access"
-    auth_dependency = noop.AuthDependency(virtual_path=path)
-    # Simulate a request without a token nor user_id parameter
-    request = Request(scope={"type": "http", "headers": [], "query_string": ""})
-    user_uid, username, skip_user_id_check, token = await auth_dependency(request)
+    with patch("ols.config.dev_config.disable_auth", True):
+        auth_dependency = noop.AuthDependency(virtual_path=path)
+        # Simulate a request without a token nor user_id parameter
+        request = Request(scope={"type": "http", "headers": [], "query_string": ""})
+        user_uid, username, skip_user_id_check, token = await auth_dependency(request)
 
-    # Check if the correct user info has been returned
-    assert user_uid == DEFAULT_USER_UID
-    assert username == DEFAULT_USER_NAME
-    assert skip_user_id_check is True
-    assert token == NO_USER_TOKEN
+        # Check if the correct user info has been returned
+        assert user_uid == DEFAULT_USER_UID
+        assert username == DEFAULT_USER_NAME
+        assert skip_user_id_check is True
+        assert token == NO_USER_TOKEN
 
 
 @pytest.mark.asyncio
