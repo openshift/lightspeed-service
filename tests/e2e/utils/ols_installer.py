@@ -9,6 +9,7 @@ from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
 from tests.e2e.utils.retry import retry_until_timeout_or_success
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
@@ -151,6 +152,51 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
+def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
+    """Create secrets for models.
+
+    Args:
+        provider_name (str): the name of the provider.
+        creds (str): string containing credentials for provider
+        provider_size (int): size of the provider to create llm creds whenever we have only one
+
+    Returns:
+        Nothing.
+    """
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                provider_name + "creds",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("llmcreds secret does not yet exist. Creating it.")
+    if provider_size == 1:
+        cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "llmcreds",
+                f"--from-file=apitoken={creds}",
+            ],
+            ignore_existing_resource=True,
+        )
+    else:
+        cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                provider_name.replace("_", "-") + "creds",
+                f"--from-file=apitoken={creds}",
+            ],
+            ignore_existing_resource=True,
+        )
+
+
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
@@ -230,30 +276,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         return None
     print("Operator installed successfully")
 
-    provider = os.getenv("PROVIDER")
-
+    provider = os.getenv("PROVIDER", "openai")
+    creds = os.getenv("PROVIDER_KEY_PATH")
     # create the llm api key secret ols will mount
-    keypath = os.getenv("PROVIDER_KEY_PATH")
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                "llmcreds",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("llmcreds secret does not yet exist. Creating it.")
-    cluster_utils.run_oc(
-        [
-            "create",
-            "secret",
-            "generic",
-            "llmcreds",
-            f"--from-file=apitoken={keypath}",
-        ],
-        ignore_existing_resource=True,
-    )
+    provider_list = provider.split()
+    creds_list = creds.split()
+    for i, prov in enumerate(provider_list):
+        create_secrets(prov, creds_list[i], len(provider_list))
 
     if provider == "azure_openai":
         # create extra secrets with Entra ID
@@ -283,18 +312,29 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         print("olsconfig does not yet exist. Creating it.")
 
     crd_yml_name = f"olsconfig.crd.{provider}"
-    if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
-        print("Cluster introspection is enabled.")
-        crd_yml_name += "_introspection"
     try:
-        cluster_utils.run_oc(
-            [
-                "create",
-                "-f",
-                f"tests/config/operator_install/{crd_yml_name}.yaml",
-            ],
-            ignore_existing_resource=True,
-        )
+        if len(provider_list) == 1:
+            crd_yml_name = f"olsconfig.crd.{provider}"
+            if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
+                print("Cluster introspection is enabled.")
+                crd_yml_name += "_introspection"
+            cluster_utils.run_oc(
+                [
+                    "create",
+                    "-f",
+                    f"tests/config/operator_install/{crd_yml_name}.yaml",
+                ],
+                ignore_existing_resource=True,
+            )
+        else:
+            cluster_utils.run_oc(
+                [
+                    "create",
+                    "-f",
+                    "tests/config/operator_install/olsconfig.crd.evaluation.yaml",
+                ],
+                ignore_existing_resource=True,
+            )
     except subprocess.CalledProcessError as e:
         csv = cluster_utils.run_oc(
             ["get", "clusterserviceversion", "-o", "jsonpath={.items[0].status}"]
@@ -427,4 +467,5 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
     ).stdout.strip("'")
     ols_url = f"https://{url}"
+    wait_for_ols(ols_url)
     return ols_url, token, metrics_token

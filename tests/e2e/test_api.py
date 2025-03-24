@@ -3,7 +3,6 @@
 import json
 import re
 import time
-from argparse import Namespace
 
 import pytest
 import requests
@@ -11,7 +10,6 @@ import requests
 from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.customize import metadata
 from ols.utils import suid
-from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
@@ -441,28 +439,6 @@ def test_http_header_redaction():
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
         assert f'"{header}":"XXXXX"' in container_log
         assert f'"{header}":"some_value"' not in container_log
-
-
-@pytest.mark.response_evaluation
-def test_model_response(request) -> None:
-    """Evaluate model response."""
-    args = Namespace(**vars(request.config.option))
-    args.eval_provider_model_id = [f"{args.eval_provider}+{args.eval_model}"]
-    args.eval_type = "consistency"
-
-    val_success_flag = ResponseEvaluation(args, pytest.client).validate_response()
-    # If flag is False, then response(s) is not consistent,
-    # And score is more than cut-off score.
-    # Please check eval_result/response_evaluation_* csv file in artifact folder or
-    # Check the log to find out exact file path.
-    assert val_success_flag
-
-
-@pytest.mark.model_evaluation
-def test_model_evaluation(request) -> None:
-    """Evaluate model."""
-    # TODO: Use this to assert.
-    ResponseEvaluation(request.config.option, pytest.client).evaluate_models()
 
 
 @pytest.mark.azure_entra_id
