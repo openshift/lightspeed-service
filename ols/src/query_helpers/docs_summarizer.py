@@ -31,7 +31,9 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self._introspection_enabled = config.ols_config.introspection_enabled
-        set_debug(self.verbose)
+
+        # disabled - leaks token to logs when set to True
+        set_debug(False)
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""

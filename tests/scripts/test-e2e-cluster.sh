@@ -59,12 +59,12 @@ function run_suites() {
   # TODO: Enable below test cases once flag is added to operator CRD. Update flag name in CRD yaml (if different name is used)
   # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
   # Run tool calling - Enable introspection
-  # run_suite "azure_openai_introspection" "introspection" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
-  # (( rc = rc || $? ))
-  # run_suite "openai_introspection" "introspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
-  # (( rc = rc || $? ))
-  # run_suite "watsonx_introspection" "introspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "y"
-  # (( rc = rc || $? ))
+  run_suite "azure_openai_introspection" "introspection" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
+  (( rc = rc || $? ))
+  run_suite "openai_introspection" "introspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
+  (( rc = rc || $? ))
+  run_suite "watsonx_introspection" "introspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "y"
+  (( rc = rc || $? ))
 
   set -e
 

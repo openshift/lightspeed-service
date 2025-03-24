@@ -48,3 +48,24 @@ def test_execute_tool_calls():
     assert len(tool_messages) == 2
     assert tool_messages[0].content == "Tool 1 called"
     assert tool_messages[1].content == "Error executing tool2: Tool 2 error"
+
+
+def test_execute_oc_tool_calls_not_leaks_token_into_logs(caplog):
+    """Test execute_oc_tool_calls does not leak token into logs."""
+    caplog.set_level(10)  # set debug level
+
+    @tool
+    def tool1(some_arg: str):
+        """Tool 1."""
+        return "Tool 1 called"
+
+    tools_map = {"tool1": tool1}
+    tool_calls = [{"id": 1, "name": "tool1", "args": {"some_arg": "blah"}}]
+
+    execute_oc_tool_calls(tools_map, tool_calls, "fake-token")
+
+    assert (
+        "Tool: tool1 | Args: {'some_arg': 'blah'} | Output: Tool 1 called"
+        in caplog.text
+    )
+    assert "fake-token" not in caplog.text

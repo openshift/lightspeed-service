@@ -1,11 +1,17 @@
 """OpenShift CLI tools."""
 
+# Debug note: to debug the tools in local service instance, eg. against
+# cluster, use the KUBECONFIG env variable to point to the kubeconfig
+# file with the cluster configuration, as the oc CLI checks this when no
+# server is provided in the command.
+
+
 import logging
-import os
 import subprocess
-from typing import Optional
+from typing import Annotated
 
 from langchain.tools import tool
+from langchain_core.tools import InjectedToolArg
 
 logger = logging.getLogger(__name__)
 
@@ -47,26 +53,16 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     return res
 
 
-# TODO: server address configurable via request?
-def token_works_for_oc(token: str, server: Optional[str] = None) -> bool:
+def token_works_for_oc(token: str) -> bool:
     """Check if the token can be used with `oc` CLI.
 
     Args:
         token: OpenShift user token.
-        server: OpenShift server address.
 
     Returns:
         True if user token works, False otherwise.
     """
-    if server is None:
-        server = os.getenv("KUBERNETES_SERVICE_HOST", "")
-    if server == "":
-        logger.error(
-            "Server URL not provided or KUBERNETES_SERVICE_HOST env is not set"
-        )
-        return False
-
-    r = run_oc(["version", f"--token={token}", f"--server={server}"])
+    r = run_oc(["version", f"--token={token}"])
 
     if r.returncode == 0:
         logger.info("Token is usable for oc CLI")
@@ -87,7 +83,7 @@ def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
 
 # NOTE: tools description comes from oc cli --help for each subcommand (shortened)
 @tool
-def oc_get(command_args: list[str]) -> str:
+def oc_get(command_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Display one or many resources from OpenShift cluster using `oc get <args>` command.
 
     Standard `oc` flags and options are valid.
@@ -119,12 +115,12 @@ def oc_get(command_args: list[str]) -> str:
         # List all replication controllers and services together in ps output format.
         oc get rc,services
     """
-    result = run_oc(["get", *sanitize_oc_args(command_args)])
+    result = run_oc(["get", *sanitize_oc_args(command_args), "--token", token])
     return stdout_or_stderr(result)
 
 
 @tool
-def oc_describe(command_args: list[str]) -> str:
+def oc_describe(command_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Show details of a specific resource or group of resources.
 
     Print a detailed description of the selected resources, including related
@@ -150,12 +146,12 @@ def oc_describe(command_args: list[str]) -> str:
     # Describe all pods managed by the 'frontend' replication controller
     oc describe pods frontend
     """
-    result = run_oc(["describe", *sanitize_oc_args(command_args)])
+    result = run_oc(["describe", *sanitize_oc_args(command_args), "--token", token])
     return stdout_or_stderr(result)
 
 
 @tool
-def oc_logs(command_args: list[str]) -> str:
+def oc_logs(command_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Print the logs for a resource.
 
     Supported resources are builds, build configs (bc), deployment configs
@@ -179,12 +175,12 @@ def oc_logs(command_args: list[str]) -> str:
     # Start streaming of ruby-container logs from pod backend.
     oc logs -f pod/backend -c ruby-container
     """
-    result = run_oc(["logs", *sanitize_oc_args(command_args)])
+    result = run_oc(["logs", *sanitize_oc_args(command_args), "--token", token])
     return stdout_or_stderr(result)
 
 
 @tool
-def oc_status(command_args: list[str]) -> str:
+def oc_status(command_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Show a high level overview of the current project.
 
     This command will show services, deployment configs, build configurations,
@@ -204,12 +200,12 @@ def oc_status(command_args: list[str]) -> str:
     # identified issues.
     oc --suggest
     """
-    result = run_oc(["status", *sanitize_oc_args(command_args)])
+    result = run_oc(["status", *sanitize_oc_args(command_args), "--token", token])
     return stdout_or_stderr(result)
 
 
 @tool
-def show_pods(command_args: list[str]) -> str:
+def show_pods(token: Annotated[str, InjectedToolArg]) -> str:
     """Show resource usage (CPU and memory) for all pods accross all namespaces.
 
     Usecases:
@@ -217,21 +213,19 @@ def show_pods(command_args: list[str]) -> str:
     - Resource allocation monitoring.
     - Average resources consumption.
 
-    No command_args are required.
-
     The output format is:
     NAMESPACE    NAME                                              CPU(cores)  MEMORY(bytes)
     kube-system  konnectivity-agent-qwnsd                          1m          24Mi
     kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
-    # the tool is not accepting any options, but we are adding extra args with
-    # token and server outside of what llm figures out
-    result = run_oc([*["adm", "top", "pods", "-A"], *sanitize_oc_args(command_args)])
+    # the tool is not accepting any options, but we are adding extra arg
+    # with token outside of what llm figures out
+    result = run_oc([*["adm", "top", "pods", "-A"], "--token", token])
     return stdout_or_stderr(result)
 
 
 @tool
-def oc_adm_top(command_args: list[str]) -> str:
+def oc_adm_top(command_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Show usage statistics of resources on the server.
 
     This command analyzes resources managed by the platform and presents
@@ -255,5 +249,5 @@ def oc_adm_top(command_args: list[str]) -> str:
     --namespace <namespace>
         Lists resources for specified namespace.
     """
-    result = run_oc(["adm", "top", *sanitize_oc_args(command_args)])
+    result = run_oc(["adm", "top", *sanitize_oc_args(command_args), "--token", token])
     return stdout_or_stderr(result)

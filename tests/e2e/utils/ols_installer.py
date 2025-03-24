@@ -35,6 +35,36 @@ def create_and_config_sas() -> tuple[str, str]:
         "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
     )
     print("test service account permissions granted")
+
+    # grant pod listing permission to test-user - to test the tools,
+    # more specifically the we need the test-user be able to see pods
+    # in the namespace
+    cluster_utils.run_oc(
+        [
+            "create",
+            "role",
+            "pod-reader",
+            "--verb=get,list",
+            "--resource=pods",
+            "--namespace=openshift-lightspeed",
+        ],
+        ignore_existing_resource=True,
+    )
+
+    cluster_utils.run_oc(
+        [
+            "create",
+            "rolebinding",
+            "test-user-pod-reader",
+            "--role=pod-reader",
+            "--serviceaccount=openshift-lightspeed:test-user",
+            "--namespace=openshift-lightspeed",
+        ],
+        ignore_existing_resource=True,
+    )
+
+    print("Granted test-user permission to list pods.")
+
     return token, metrics_token
 
 
