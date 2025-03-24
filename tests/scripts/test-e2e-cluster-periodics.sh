@@ -35,17 +35,17 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image
   # empty test_tags means run all tests
-  run_suite "azure_openai" "not model_evaluation and not certificates and not (introspection and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
+  run_suite "azure_openai" "not certificates and not (introspection and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
   # BAM is currently not working, commenting for now
-  # run_suite "bam" "not model_evaluation" "bam" "$BAM_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
+  # run_suite "bam" "" "bam" "$BAM_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
   # (( rc = rc || $? ))
 
-  run_suite "openai" "not model_evaluation and not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
+  run_suite "openai" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" "not model_evaluation and not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
+  run_suite "watsonx" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider
@@ -57,9 +57,6 @@ function run_suites() {
   (( rc = rc || $? ))
   
   run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
-  (( rc = rc || $? ))
-
-  run_suite "model_eval" "model_evaluation" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
   # TODO: Enable below test cases once flag is added to operator CRD. Update flag name in CRD yaml (if different name is used)
