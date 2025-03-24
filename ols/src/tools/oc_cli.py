@@ -92,6 +92,9 @@ def oc_get(command_args: list[str]) -> str:
 
     Standard `oc` flags and options are valid.
 
+    Args:
+        command_args: oc arguments
+
     Examples:
         # List all pods in ps output format.
         oc get pods
@@ -108,12 +111,10 @@ def oc_get(command_args: list[str]) -> str:
         # List a single replication controller with specified NAME in ps output format.
         oc get replicationcontroller web
 
-        # List deployments in JSON output format, in the "v1" version of the
-        # "apps" API group:
+        # List deployments in JSON output format, in the "v1" version of the "apps" API group:
         oc get deployments.v1.apps -o json
 
-        # List a pod identified by type and name specified in "pod.yaml" in JSON
-        # output format.
+        # List a pod identified by type and name specified in "pod.yaml" in JSON output format.
         oc get -f pod.yaml -o json
 
         # List all replication controllers and services together in ps output format.
@@ -127,29 +128,31 @@ def oc_get(command_args: list[str]) -> str:
 def oc_describe(command_args: list[str]) -> str:
     """Show details of a specific resource or group of resources.
 
-    Print a detailed description of the selected resources, including related
-    resources such as events or controllers. You may select a single object by
-    name, all objects of that type, provide a name prefix, or label selector.
+    Print a detailed description of the selected resources, including related resources such as events or controllers.
+    You may select a single object by name, all objects of that type, provide a name prefix, or label selector.
+
+    Args:
+        command_args: oc arguments
 
     Examples:
-    # Describe a node
-    oc describe nodes kubernetes-node-emt8.c.myproject.internal
+        # Describe a node
+        oc describe nodes kubernetes-node-emt8.c.myproject.internal
 
-    # Describe a pod
-    oc describe pods/nginx
+        # Describe a pod
+        oc describe pods/nginx
 
-    # Describe a pod identified by type and name in "pod.json"
-    oc describe -f pod.json
+        # Describe a pod identified by type and name in "pod.json"
+        oc describe -f pod.json
 
-    # Describe all pods
-    oc describe pods
+        # Describe all pods
+        oc describe pods
 
-    # Describe pods by label name=myLabel
-    oc describe po -l name=myLabel
+        # Describe pods by label name=myLabel
+        oc describe po -l name=myLabel
 
-    # Describe all pods managed by the 'frontend' replication controller
-    oc describe pods frontend
-    """
+        # Describe all pods managed by the 'frontend' replication controller
+        oc describe pods frontend
+    """  # noqa: E501
     result = run_oc(["describe", *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)
 
@@ -158,27 +161,26 @@ def oc_describe(command_args: list[str]) -> str:
 def oc_logs(command_args: list[str]) -> str:
     """Print the logs for a resource.
 
-    Supported resources are builds, build configs (bc), deployment configs
-    (dc), and pods. When a pod is specified and has more than one container,
-    the container name should be specified via -c. When a build config or
-    deployment config is specified, you can view the logs for a particular
-    version of it
-    via --version.
+    Supported resources are builds, build configs (bc), deployment configs (dc), and pods.
+    When a pod is specified and has more than one container, the container name should be specified via -c.
+    When a build config or deployment config is specified, you can view the logs for a particular version of it via --version.
+
+    Args:
+        command_args: oc arguments
 
     Examples:
-    # Start streaming the logs of the most recent build of the openldap build
-    # config.
-    oc logs -f bc/openldap
+        # Start streaming the logs of the most recent build of the openldap build config.
+        oc logs -f bc/openldap
 
-    # Get the logs of the first deployment for the mysql deployment config.
-    oc logs --version=1 dc/mysql
+        # Get the logs of the first deployment for the mysql deployment config.
+        oc logs --version=1 dc/mysql
 
-    # Return a snapshot of ruby-container logs from pod backend.
-    oc logs backend -c ruby-container
+        # Return a snapshot of ruby-container logs from pod backend.
+        oc logs backend -c ruby-container
 
-    # Start streaming of ruby-container logs from pod backend.
-    oc logs -f pod/backend -c ruby-container
-    """
+        # Start streaming of ruby-container logs from pod backend.
+        oc logs -f pod/backend -c ruby-container
+    """  # noqa: E501
     result = run_oc(["logs", *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)
 
@@ -187,42 +189,47 @@ def oc_logs(command_args: list[str]) -> str:
 def oc_status(command_args: list[str]) -> str:
     """Show a high level overview of the current project.
 
-    This command will show services, deployment configs, build configurations,
-    and active deployments. If you have any misconfigured components
-    information about them will be shown. For more information about individual
-    items, use the describe command (e.g. oc describe buildconfig, oc describe
-    deploymentconfig, oc describe service).
+    This command will show services, deployment configs, build configurations, & active deployments.
+    If you have any misconfigured components information about them will be shown.
+    For more information about individual items, use the describe command \
+    (e.g. oc describe buildconfig, oc describe deploymentconfig, oc describe service).
+
+    Args:
+        command_args: oc arguments
 
     Examples:
-    # See an overview of the current project.
-    oc status
+        # See an overview of the current project.
+        oc status
 
-    # Export the overview of the current project in an svg file.
-    oc status -o dot | dot -T svg -o project.svg
+        # Export the overview of the current project in an svg file.
+        oc status -o dot | dot -T svg -o project.svg
 
-    # See an overview of the current project including details for any
-    # identified issues.
-    oc --suggest
+        # See an overview of the current project including details for any identified issues.
+        oc --suggest
     """
     result = run_oc(["status", *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)
 
 
+# TODO: Remove arguments, if it is not required for Model.
 @tool
 def show_pods(command_args: list[str]) -> str:
     """Show resource usage (CPU and memory) for all pods accross all namespaces.
 
+    Args:
+        command_args: oc arguments
+
     Usecases:
-    - Pods resource usage monitoring.
-    - Resource allocation monitoring.
-    - Average resources consumption.
+        - Pods resource usage monitoring.
+        - Resource allocation monitoring.
+        - Average resources consumption.
 
     No command_args are required.
 
     The output format is:
-    NAMESPACE    NAME                                              CPU(cores)  MEMORY(bytes)
-    kube-system  konnectivity-agent-qwnsd                          1m          24Mi
-    kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
+        NAMESPACE    NAME                                              CPU(cores)  MEMORY(bytes)
+        kube-system  konnectivity-agent-qwnsd                          1m          24Mi
+        kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
     # the tool is not accepting any options, but we are adding extra args with
     # token and server outside of what llm figures out
@@ -234,26 +241,26 @@ def show_pods(command_args: list[str]) -> str:
 def oc_adm_top(command_args: list[str]) -> str:
     """Show usage statistics of resources on the server.
 
-    This command analyzes resources managed by the platform and presents
-    current usage statistics.
+    This command analyzes resources managed by the platform and presents current usage statistics.
 
-    When no options are provided, the command will list given resource
-    in default namespace.
-
+    When no options are provided, the command will list given resource in default namespace.
     To get the resources across namespaces, use `-A` flag.
 
+    Args:
+        command_args: oc arguments
+
     Usage:
-    oc adm top [commands] [options]
+        oc adm top [commands] [options]
 
     Available Commands:
-    images       Show usage statistics for Images
-    imagestreams Show usage statistics for ImageStreams
-    node         Display Resource (CPU/Memory/Storage) usage of nodes
-    pod          Display Resource (CPU/Memory/Storage) usage of pods
+        images       Show usage statistics for Images
+        imagestreams Show usage statistics for ImageStreams
+        node         Display Resource (CPU/Memory/Storage) usage of nodes
+        pod          Display Resource (CPU/Memory/Storage) usage of pods
 
     Options:
-    --namespace <namespace>
-        Lists resources for specified namespace.
+        --namespace <namespace>
+            Lists resources for specified namespace.
     """
     result = run_oc(["adm", "top", *sanitize_oc_args(command_args)])
     return stdout_or_stderr(result)

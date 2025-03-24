@@ -24,6 +24,28 @@ Here are some basic facts about OpenShift:
 
 # Currently only additional instructions are concatenated to original
 # doc summarizer prompt. Depending upon performance dedicated prompt will be used.
+AGENT_INSTRUCTION_GRANITE = """
+You have been given set of functions/tools.
+Your task is to produce a list of function calls necessary to generate response to the user utterance.
+Add `<tool_call>` before list of functions.
+Don't expose/add internal tool definition for your final response. 
+"""
+AGENT_INSTRUCTION_GRANITE = """
+You have been given set of functions/tools.
+Do not use function calls if the user query do not need real time cluster data (Use retrieved docs instead).
+Your task is to decide if tool call is needed and produce a list of function calls required to generate response to the user utterance.
+When you request/produce function calls, add `<tool_call>` at the beginning, so that function calls can be identified.
+"""
+AGENT_INSTRUCTION_GRANITE = """
+You have been also given set of functions/tools.
+Your task is to decide if tool call is needed and produce a list of function calls required to generate response to the user utterance.
+When you request/produce function calls, add `<tool_call>` at the beginning, so that function calls can be identified.
+ - Example: `<tool_call>[{"arguments": {"oc_commands": ["pods", "-A"]}, "name": "oc_adm_top"}]`
+Do not use function calls for below kind of queries (These kind of queries don not require real time cluster data):
+ - User is asking about general information about Openshift/Kubernetes
+ - User is asking "how-to" kind of queries for which you can refer retrieved documents.
+ """
+# AGENT_INSTRUCTION_GRANITE = ""
 AGENT_SYSTEM_INSTRUCTION = """
 * Given the user's query you must decide what to do with it based on the \
 list of tools provided to you.
@@ -31,6 +53,7 @@ list of tools provided to you.
 really correct for your use case/need.
 * Execute as many tools as possible to gather all information. When you are \
 satisfied with all the details then answer user query.
+* Do not request same tool with same argument multiple times.
 
 Style guide:
 * Be extremely concise.
@@ -40,7 +63,10 @@ Style guide:
 """
 
 USE_CONTEXT_INSTRUCTION = """
-Use the retrieved document to answer the question.
+Use the retrieved documents to answer the question.
+"""
+USE_CONTEXT_INSTRUCTION = """
+Refer the retrieved documents to find relevant information.
 """
 
 USE_HISTORY_INSTRUCTION = """

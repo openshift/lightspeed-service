@@ -1,53 +1,73 @@
 """Prompt generator based on model / context."""
 
-from copy import copy
+from ast import literal_eval
+from json import dumps
 
-from langchain_core.messages import BaseMessage, HumanMessage
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    PromptTemplate,
-    SystemMessagePromptTemplate,
-)
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-from ols.constants import ModelFamily
+from ols.constants import PROVIDER_WATSONX, ModelFamily
 
 from .prompts import (
+    AGENT_INSTRUCTION_GRANITE,
     AGENT_SYSTEM_INSTRUCTION,
     QUERY_SYSTEM_INSTRUCTION,
     USE_CONTEXT_INSTRUCTION,
     USE_HISTORY_INSTRUCTION,
 )
+SYSTEM_PROMPT_S = """
+You are a helpful assistant with access to the following function calls. 
+Your task is to produce a list of function calls necessary to generate response to the user utterance.
+Use tools only if it is required. 
+Execute as many tools as required to find out correct answer.
+Use the following function calls as required.
+"""
+
+PROMPT_TAGS = {
+    ModelFamily.GRANITE: {
+        "role_prefix": "<|start_of_role|>",
+        "role_suffix": "<|end_of_role|>",
+        "msg_suffix": "<|end_of_text|>",
+    }
+}
 
 
-def restructure_rag_context_pre(text: str, model: str) -> str:
-    """Restructure rag text - pre truncation."""
-    if ModelFamily.GRANITE in model:
-        return "\n[End]\n[Document]\n" + text
-    return "\n\nDocument:\n" + text
+def format_retrieved_chunk(rag_content: str, n_order=int) -> str:
+    """Format RAG Docs."""
+    # return f"Document {n_order + 1}:\n{rag_content}"
+    return f"[Document]\n{rag_content}[END]"
 
 
-def restructure_rag_context_post(text: str, model: str) -> str:
-    """Restructure rag text - post truncation."""
-    if ModelFamily.GRANITE in model:
-        return text.removeprefix("\n[End]") + "\n[End]"
-    return "\n" + text.lstrip("\n") + "\n"
+def format_prompt_message_granite(message):
+    """Format prompt message for granite."""
+    prompt_tags = PROMPT_TAGS[ModelFamily.GRANITE]
+    role_prefix = prompt_tags["role_prefix"]
+    role_suffix = prompt_tags["role_suffix"]
+    msg_suffix = prompt_tags["msg_suffix"]
 
+    role = message.type
+    content = message.content
 
-def restructure_history(message: BaseMessage, model: str) -> BaseMessage:
-    """Restructure history."""
-    if ModelFamily.GRANITE not in model:
-        # No processing required here for gpt.
-        return message
-
-    new_message = copy(message)
-    # Granite specific formatting for history
-    if isinstance(message, HumanMessage):
-        new_message.content = "\n<|user|>\n" + str(message.content)
+    msg = role_prefix
+    if role == "system":
+        msg += "system" + role_suffix + content
+    elif role == "human":
+        msg += "user" + role_suffix + content
+    elif role == "ai":
+        msg += "assistant" + role_suffix
+        if content.startswith("<tool_call>"):
+            content = content.lstrip("<tool_call>")
+            msg += "<tool_call>" + dumps(literal_eval(content), indent=4)
+        msg += content
+    elif role == "tools":
+        # Tools input definition
+        msg += "tools" + role_suffix + content
+    elif role == "tool":
+        # Tools output
+        msg += "tool_response" + role_suffix + content
     else:
-        new_message.content = "\n<|assistant|>\n" + str(message.content)
-    return new_message
+        raise Exception("Invalid message role")
+
+    return msg + msg_suffix
 
 
 class GeneratePrompt:
@@ -68,68 +88,72 @@ class GeneratePrompt:
         self._sys_instruction = system_instruction
         self._tool_call = tool_call
 
-    def _generate_prompt_gpt(self) -> tuple[ChatPromptTemplate, dict]:
-        """Generate prompt for GPT."""
-        prompt_message = []
-        sys_intruction = self._sys_instruction.strip() + "\n"
-        llm_input_values: dict = {"query": self._query}
+    def _generate_prompt(self, provider, model) -> list:
+        """Generate prompt."""
+        prompt_messages = []
+        sys_intruction = self._sys_instruction.strip()
 
-        if self._tool_call:
-            sys_intruction = sys_intruction + "\n" + AGENT_SYSTEM_INSTRUCTION.strip()
-
-        if len(self._rag_context) > 0:
-            llm_input_values["context"] = "".join(self._rag_context)
+        if self._rag_context:
             sys_intruction = sys_intruction + "\n" + USE_CONTEXT_INSTRUCTION.strip()
 
-        if len(self._history) > 0:
-            llm_input_values["chat_history"] = self._history
-
+        if self._history:
             sys_intruction = sys_intruction + "\n" + USE_HISTORY_INSTRUCTION.strip()
-
-        if "context" in llm_input_values:
-            sys_intruction = sys_intruction + "\n{context}"
-
-        prompt_message.append(SystemMessagePromptTemplate.from_template(sys_intruction))
-
-        if "chat_history" in llm_input_values:
-            prompt_message.append(MessagesPlaceholder("chat_history"))
-
-        prompt_message.append(HumanMessagePromptTemplate.from_template("{query}"))
-        return ChatPromptTemplate.from_messages(prompt_message), llm_input_values
-
-    def _generate_prompt_granite(self) -> tuple[PromptTemplate, dict]:
-        """Generate prompt for Granite."""
-        prompt_message = "<|system|>\n" + self._sys_instruction.strip() + "\n"
-        llm_input_values = {"query": self._query}
-
-        if len(self._rag_context) > 0:
-            llm_input_values["context"] = "".join(self._rag_context)
-            prompt_message = prompt_message + "\n" + USE_CONTEXT_INSTRUCTION.strip()
-
-        if len(self._history) > 0:
-            prompt_message = prompt_message + "\n" + USE_HISTORY_INSTRUCTION.strip()
-            llm_input_values["chat_history"] = ""
-            for message in self._history:
-                llm_input_values["chat_history"] += str(message.content)
-
-        if "context" in llm_input_values:
-            prompt_message = prompt_message + "\n{context}"
-        if "chat_history" in llm_input_values:
-            prompt_message = prompt_message + "\n{chat_history}"
-
-        prompt_message = prompt_message + "\n<|user|>\n{query}\n<|assistant|>\n"
-        return PromptTemplate.from_template(prompt_message), llm_input_values
-
-    def generate_prompt(
-        self, model: str
-    ) -> tuple[ChatPromptTemplate | PromptTemplate, dict]:
-        """Generate prompt."""
-        # For tool call, by default openai schema is considered.
-        # Depending upon performance other prompt format will be considered.
         if self._tool_call:
-            return self._generate_prompt_gpt()
+            agent_instructions = AGENT_SYSTEM_INSTRUCTION.strip()
+            if provider == PROVIDER_WATSONX and ModelFamily.GRANITE in model:
+                agent_instructions = (
+                    AGENT_INSTRUCTION_GRANITE.strip() + "\n" + agent_instructions
+                    # AGENT_INSTRUCTION_GRANITE.strip()
+                )
+            sys_intruction = sys_intruction + "\n" + agent_instructions
+        # prompt_messages.append(SystemMessage(sys_intruction))
 
-        # TODO: Use provider, instead of model (Ex: granite with vllm uses openai schema)
-        if ModelFamily.GRANITE in model:
-            return self._generate_prompt_granite()
-        return self._generate_prompt_gpt()
+        if self._rag_context:
+            # sys_intruction = "Retrieved Context:"
+            sys_intruction = sys_intruction + "\n" + "\n".join(self._rag_context)
+            # prompt_messages.append(HumanMessage(sys_intruction))
+            # print("\n".join(
+            #     [
+            #         format_retrieved_chunk(chunk, idx)
+            #         for idx, chunk in enumerate(self._rag_context)
+            #     ]
+            # ))
+        # if self._tool_call:
+        #     agent_instructions = AGENT_SYSTEM_INSTRUCTION.strip()
+        #     if provider == PROVIDER_WATSONX and ModelFamily.GRANITE in model:
+        #         agent_instructions = (
+        #             # AGENT_INSTRUCTION_GRANITE.strip() + "\n" + agent_instructions
+        #             agent_instructions + "\n" + AGENT_INSTRUCTION_GRANITE.strip()
+        #         )
+        #     sys_intruction = sys_intruction + "\n" + agent_instructions
+        # TODO: Use generic template
+        # prompt_messages.append(SystemMessage(SYSTEM_PROMPT_S))
+        prompt_messages.append(SystemMessage(sys_intruction))
+
+        prompt_messages.extend(self._history)
+
+        prompt_messages.append(HumanMessage(self._query))
+        return prompt_messages
+
+    def generate_prompt(self, provider: str, model: str) -> list | str:
+        """Generate prompt."""
+        prompt_message = self._generate_prompt(provider, model)
+        # if provider == PROVIDER_WATSONX and ModelFamily.GRANITE in model:
+            # from langchain_core.messages import convert_to_openai_messages
+            # prompt_message = convert_to_openai_messages(prompt_message)
+            # new_msg = []
+            # for i in prompt_message:
+            #     if i.type == "human":
+            #         i.type = "user"
+            #     if i.type == "ai":
+            #         i.type = "assistant"
+
+            # prompt_message = "\n".join(
+            #     format_prompt_message_granite(message) for message in prompt_message
+            # )
+            # prompt_tags = PROMPT_TAGS[ModelFamily.GRANITE]
+            # role_prefix = prompt_tags["role_prefix"]
+            # role_suffix = prompt_tags["role_suffix"]
+            # prompt_message += "\n" + role_prefix + "assistant" + role_suffix
+
+        return prompt_message

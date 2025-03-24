@@ -11,13 +11,14 @@ from ols.app.models.models import RagChunk
 from ols.constants import (
     DEFAULT_TOKENIZER_MODEL,
     MINIMUM_CONTEXT_TOKEN_LIMIT,
+    PROVIDER_WATSONX,
     RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
+    ModelFamily,
 )
 from ols.src.prompts.prompt_generator import (
-    restructure_history,
-    restructure_rag_context_post,
-    restructure_rag_context_pre,
+    format_prompt_message_granite,
+    format_retrieved_chunk,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,7 @@ class TokenHandler:
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
     def calculate_and_check_available_tokens(
-        self, prompt: str, context_window_size: int, max_tokens_for_response: int
+        self, prompt: list | str, context_window_size: int, max_tokens_for_response: int
     ) -> int:
         """Get available tokens that can be used for prompt augmentation.
 
@@ -92,6 +93,8 @@ class TokenHandler:
             max_tokens_for_response,
         )
 
+        if isinstance(prompt, list):
+            prompt = "\n".join([f"{msg.type}: {msg.content}" for msg in prompt])
         prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
         logger.debug("Prompt tokens: %d", prompt_token_count)
 
@@ -114,13 +117,12 @@ class TokenHandler:
         return available_tokens
 
     def truncate_rag_context(
-        self, retrieved_nodes: list[NodeWithScore], model: str, max_tokens: int = 500
+        self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
     ) -> tuple[list[RagChunk], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
             retrieved_nodes: retrieved nodes object from index
-            model: model name; required for adding proper tags
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
@@ -128,7 +130,7 @@ class TokenHandler:
         """
         rag_chunks = []
 
-        for node in retrieved_nodes:
+        for idx, node in enumerate(retrieved_nodes):
             score = float(node.get_score(raise_error=False))
             if score < RAG_SIMILARITY_CUTOFF:
                 logger.debug(
@@ -138,24 +140,13 @@ class TokenHandler:
                 )
                 break
 
-            # Prepend all model specific tags, so that those will be considered for
-            # token calculation. This requires formatting again after truncation,
-            # whenever there are tags required at the end.
-            # Alternative to this is to calculate tokens for special tags before
-            # and add the number accordingly.
-            # Example: Once token is calculated;
-            # ```
-            # if "granite" in model:
-            #    tokens_count += 7
-            # else:
-            #    tokens_count += 3
-            # ```
             node_text = node.get_text()
-            node_text = restructure_rag_context_pre(node_text, model)
+            node_text = format_retrieved_chunk(node_text, idx)
             tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
             logger.debug("RAG content tokens count: %d.", tokens_count)
 
+            tokens_count += 1  # for newline
             available_tokens = min(tokens_count, max_tokens)
             logger.debug("Available tokens: %d.", tokens_count)
 
@@ -164,7 +155,6 @@ class TokenHandler:
                 break
 
             node_text = self.tokens_to_text(tokens[:available_tokens])
-            node_text = restructure_rag_context_post(node_text, model)
             rag_chunks.append(
                 RagChunk(
                     text=node_text,
@@ -178,26 +168,29 @@ class TokenHandler:
         return rag_chunks, max_tokens
 
     def limit_conversation_history(
-        self, history: list[BaseMessage], model: str, limit: int = 0
+        self, history: list[BaseMessage], provider: str, model: str, limit: int = 0
     ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        formatted_history: list[BaseMessage] = []
+        index = 0
 
         for original_message in reversed(history):
             # Restructure messages as per model
-            message = restructure_history(original_message, model)
-            message_length = TokenHandler._get_token_count(
-                self.text_to_tokens(f"{message.type}: {message.content}")
-            )
-            total_length += message_length
+            # This is done only to calculate tokens, but returns original message.
+            if provider == PROVIDER_WATSONX and ModelFamily.GRANITE in model:
+                message = format_prompt_message_granite(original_message)
+            else:
+                message = f"{original_message.type}: {original_message.content}"
+            message_length = TokenHandler._get_token_count(self.text_to_tokens(message))
+            total_length += message_length + 1  # 1 for newline
+
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)
             if total_length > limit:
                 logger.debug(
                     "History truncated, it exceeds available %d tokens.", limit
                 )
-                return formatted_history[::-1], True
-            formatted_history.append(message)
+                return history[len(history) - index :], True
+            index += 1
 
-        return formatted_history[::-1], False  # reverse back to original order
+        return history, False
