@@ -1,13 +1,30 @@
 {
   "packageRules": [
-    {
-      "matchPackagePatterns": ["*"],
-      "groupName": "All Dependency Updates"
-    }
+      {
+          "matchPackageNames": [
+              "*"
+          ],
+          "groupName": "All Dependency Updates"
+      }
   ],
   "lockFileMaintenance": {
-    "enabled": true
+      "enabled": true,
+      "schedule": [
+          "before 4am"
+      ]
   },
-  "schedule": ["before 4am"],
+  "schedule": [
+      "before 4am"
+  ],
+  "pep621": {
+      "schedule": [
+          "before 4am"
+      ]
+  },
+  "pip_requirements": {
+      "schedule": [
+          "before 4am"
+      ]
+  },
   "timezone": "Europe/Prague"
 }
