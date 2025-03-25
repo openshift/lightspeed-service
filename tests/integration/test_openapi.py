@@ -12,23 +12,21 @@ from ols import config
 from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
 
 
-# we need to patch the config file path to point to the test
-# config file before we import anything from main.py
 @pytest.fixture(scope="function", autouse=True)
-@patch.dict(
-    os.environ,
-    {
-        CONFIGURATION_FILE_NAME_ENV_VARIABLE: "tests/config/config_for_integration_tests.yaml"
-    },
-)
 def _setup():
     """Setups the test client."""
     config.reload_from_yaml_file("tests/config/config_for_integration_tests.yaml")
 
-    # app.main need to be imported after the configuration is read
-    from ols.app.main import app  # pylint: disable=C0415
-
-    pytest.client = TestClient(app)
+    # we need to patch the config file path to point to the test
+    # config file before we import anything from main.py
+    with patch.dict(
+        os.environ,
+        {
+            CONFIGURATION_FILE_NAME_ENV_VARIABLE: "tests/config/config_for_integration_tests.yaml"
+        },
+    ):
+        # app.main need to be imported after the configuration is read
+        from ols.app.main import app  # pylint: disable=C0415
 
 
 def test_openapi_endpoint():
