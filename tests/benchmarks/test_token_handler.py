@@ -2,7 +2,6 @@
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from ols.constants import ModelFamily
 from ols.utils.token_handler import TokenHandler
 
 
@@ -50,7 +49,7 @@ def benchmark_limit_conversation_history(benchmark, history, limit=1000):
     """Benchmark the method to calculate available tokens."""
     token_handler = TokenHandler()
 
-    benchmark(token_handler.limit_conversation_history, history, ModelFamily.GPT, limit)
+    benchmark(token_handler.limit_conversation_history, history, limit)
 
 
 def test_limit_conversation_history_no_history(benchmark):

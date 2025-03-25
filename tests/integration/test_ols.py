@@ -1123,6 +1123,7 @@ def test_tool_calling(_setup, caplog) -> None:
     config.ols_config.introspection_enabled = True
 
     with (
+        patch("ols.src.prompts.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools"
         ) as tools_mock,
