@@ -60,18 +60,6 @@ def test_if_system_prompt_was_updated():
     assert summarizer._system_prompt == expected_prompt
 
 
-def test_docs_summarizer_streaming_parameter():
-    """Test if optional streaming parameter is stored."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    assert summarizer.streaming is False
-
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), streaming=False)
-    assert summarizer.streaming is False
-
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), streaming=True)
-    assert summarizer.streaming is True
-
-
 def test_summarize_empty_history():
     """Basic test for DocsSummarizer using mocked index and query engine."""
     with (
