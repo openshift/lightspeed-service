@@ -98,7 +98,7 @@ class DocsSummarizer(QueryHelper):
         if vector_index:
             retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
             rag_chunks, available_tokens = token_handler.truncate_rag_context(
-                retriever.retrieve(query), self.model, available_tokens
+                retriever.retrieve(query), available_tokens
             )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
@@ -109,7 +109,7 @@ class DocsSummarizer(QueryHelper):
 
         # Truncate history
         history, truncated = token_handler.limit_conversation_history(
-            history or [], self.model, available_tokens
+            history or [], available_tokens
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
@@ -207,7 +207,6 @@ class DocsSummarizer(QueryHelper):
             )
 
             # Check if model is ready with final response
-            # if (not ai_msg.tool_calls) and (ai_msg.content):
             if is_final_round or out.response_metadata["finish_reason"] == "stop":
                 response = out.content
                 break

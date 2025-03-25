@@ -105,7 +105,7 @@ def test_summarize_history_provided():
             return_value=([], False),
         ) as token_handler:
             summary1 = summarizer.create_response(question, rag_index, history)
-            token_handler.assert_called_once_with(history, ANY, ANY)
+            token_handler.assert_called_once_with(history, ANY)
             check_summary_result(summary1, question)
 
         # second call without history provided
@@ -114,7 +114,7 @@ def test_summarize_history_provided():
             return_value=([], False),
         ) as token_handler:
             summary2 = summarizer.create_response(question, rag_index)
-            token_handler.assert_called_once_with([], ANY, ANY)
+            token_handler.assert_called_once_with([], ANY)
             check_summary_result(summary2, question)
 
 
