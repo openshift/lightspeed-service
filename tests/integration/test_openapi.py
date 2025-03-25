@@ -28,6 +28,8 @@ def _setup():
         # app.main need to be imported after the configuration is read
         from ols.app.main import app  # pylint: disable=C0415
 
+        pytest.client = TestClient(app)
+
 
 def test_openapi_endpoint():
     """Check if REST API provides endpoint with OpenAPI specification."""
