@@ -35,64 +35,91 @@ def test_quota_scheduler_no_config():
     assert quota_scheduler(config) is False
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_connection_not_setup(mock_connect):
+def test_quota_scheduler_connection_not_setup():
     """Test the quota_scheduler function when connection is not setup."""
-    mock_connect.return_value = None
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
 
     # storage configuration is not provided
     config.storage = None
 
-    # quota scheduler should not start
-    assert quota_scheduler(config) is False
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value = None
+
+        # quota scheduler should not start
+        assert quota_scheduler(config) is False
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_no_connection(mock_connect):
+def test_quota_scheduler_no_connection():
     """Test the quota_scheduler function when connection can not be established."""
-    mock_connect.return_value = None
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
 
     # connection won't be established
     config.storage = PostgresConfig()
 
-    # quota scheduler should not start
-    assert quota_scheduler(config) is False
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value = None
+
+        # quota scheduler should not start
+        assert quota_scheduler(config) is False
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_no_limiters(mock_connect):
+def test_quota_scheduler_no_limiters():
     """Test the quota_scheduler function when limiters are not setup."""
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
+
+    # connection won't be established
     config.storage = PostgresConfig()
+
+    # scheduler configuration
     config.scheduler = SchedulerConfig(period=10)
 
-    # quota scheduler should not start
-    assert quota_scheduler(config) is False
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect"):
+        # quota scheduler should not start
+        assert quota_scheduler(config) is False
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_empty_list_of_limiters(mock_connect):
+def test_quota_scheduler_empty_list_of_limiters():
     """Test the quota_scheduler function when empty list of limiters are setup."""
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
+
+    # connection won't be established
     config.storage = PostgresConfig()
+
+    # scheduler configuration
     config.scheduler = SchedulerConfig(period=10)
+
+    # quota limiters configuration
     config.limiters = LimitersConfig()
 
     # we need to be able to end the endless loop by raising exception
-    with patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()):
+    with (
+        patch("psycopg2.connect"),
+        patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()),
+    ):
         # just try to enter the endless loop
         with pytest.raises(Exception):
             quota_scheduler(config)
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_non_empty_list_of_limiters(mock_connect):
+def test_quota_scheduler_non_empty_list_of_limiters():
     """Test the quota_scheduler function when non empty list of limiters are setup."""
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
+
+    # connection won't be established
     config.storage = PostgresConfig()
+
+    # scheduler configuration
     config.scheduler = SchedulerConfig(period=10)
+
+    # quota limiters configuration
     config.limiters = LimitersConfig(
         [
             {
@@ -106,18 +133,27 @@ def test_quota_scheduler_non_empty_list_of_limiters(mock_connect):
     )
 
     # we need to be able to end the endless loop by raising exception
-    with patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()):
+    with (
+        patch("psycopg2.connect"),
+        patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()),
+    ):
         # just try to enter the endless loop
         with pytest.raises(Exception):
             quota_scheduler(config)
 
 
-@patch("psycopg2.connect")
-def test_quota_scheduler_limiter_without_type(mock_connect):
+def test_quota_scheduler_limiter_without_type():
     """Test the quota_scheduler function when limiter type is not specified."""
+    # default quota handlers configuration
     config = QuotaHandlersConfig()
+
+    # connection won't be established
     config.storage = PostgresConfig()
+
+    # scheduler configuration
     config.scheduler = SchedulerConfig(period=10)
+
+    # quota limiters configuration
     config.limiters = LimitersConfig(
         [
             {
@@ -133,26 +169,32 @@ def test_quota_scheduler_limiter_without_type(mock_connect):
     config.limiters.limiters["foo"].type = None
 
     # we need to be able to end the endless loop by raising exception
-    with patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()):
+    with (
+        patch("psycopg2.connect"),
+        patch("ols.runners.quota_scheduler.sleep", side_effect=Exception()),
+    ):
         # just try to enter the endless loop
         with pytest.raises(Exception):
             quota_scheduler(config)
 
 
-@patch("psycopg2.connect")
-def test_connect(mock_connect):
+def test_connect():
     """Test the connection to Postgres."""
     exception_message = "Exception during PostgreSQL storage."
-    mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
-        exception_message
-    )
 
-    # try to connect to mocked Postgres
+    # connection won't be established
     config = PostgresConfig()
-    connection = connect(config)
 
-    # connection should not be established
-    assert connection is not None
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
+            exception_message
+        )
+        # try to connect to mocked Postgres
+        connection = connect(config)
+
+        # connection should not be established
+        assert connection is not None
 
 
 def test_get_subject_id():
@@ -162,54 +204,69 @@ def test_get_subject_id():
     assert get_subject_id("foobar") == "?"
 
 
-@patch("psycopg2.connect")
-def test_increase_quota(mock_connect):
+def test_increase_quota():
     """Check the function that increases quota for given subject."""
     # mock the query result - no data
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # try to connect to mocked Postgres
+    # connection won't be established
     config = PostgresConfig()
-    connection = connect(config)
 
+    # parameters for increasing quota
     subject_id = "u"
     increase_by = 10
     period = "5 days"
-    increase_quota(connection, subject_id, increase_by, period)
 
-    # quota should be increased in mocked database
-    mock_cursor.execute.assert_called_once_with(
-        INCREASE_QUOTA_STATEMENT, (increase_by, subject_id, period)
-    )
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # try to connect to mocked Postgres
+        connection = connect(config)
+
+        increase_quota(connection, subject_id, increase_by, period)
+
+        # quota should be increased in mocked database
+        mock_cursor.execute.assert_called_once_with(
+            INCREASE_QUOTA_STATEMENT, (increase_by, subject_id, period)
+        )
 
 
-@patch("psycopg2.connect")
-def test_reset_quota(mock_connect):
+def test_reset_quota():
     """Check the function that resets quota for given subject."""
     # mock the query result - no data
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
-    mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
 
-    # try to connect to mocked Postgres
+    # connection won't be established
     config = PostgresConfig()
-    connection = connect(config)
 
+    # parameters for resetting quota
     subject_id = "u"
     reset_to = 1000
     period = "5 days"
-    reset_quota(connection, subject_id, reset_to, period)
 
-    # quota should be reset in mocked database
-    mock_cursor.execute.assert_called_once_with(
-        RESET_QUOTA_STATEMENT, (reset_to, subject_id, period)
-    )
+    # don't connect to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        # try to connect to mocked Postgres
+        connection = connect(config)
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+        reset_quota(connection, subject_id, reset_to, period)
+
+        # quota should be reset in mocked database
+        mock_cursor.execute.assert_called_once_with(
+            RESET_QUOTA_STATEMENT, (reset_to, subject_id, period)
+        )
 
 
 def test_quota_revocation_no_limiter_type():
     """Test the quota_revocation function when limiter type is not specified."""
+    # quota limiter configuration
     quota_limiter = LimiterConfig(
         type=None, initial_quota=10, quota_increase=10, period="3 days"
     )
@@ -222,6 +279,7 @@ def test_quota_revocation_no_limiter_type():
 
 def test_quota_revocation_no_limiter_period():
     """Test the quota_revocation function when limiter period is not specified."""
+    # quota limiter configuration
     quota_limiter = LimiterConfig(
         type=constants.USER_QUOTA_LIMITER,
         initial_quota=10,

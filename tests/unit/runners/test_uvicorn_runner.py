@@ -35,80 +35,84 @@ def default_config():
     )
 
 
-@patch("uvicorn.run")
-def test_start_uvicorn(mocked_run, default_config):
+def test_start_uvicorn(default_config):
     """Test the function to start Uvicorn server."""
-    start_uvicorn(default_config)
-    mocked_run.assert_called_once_with(
-        "ols.app.main:app",
-        host="0.0.0.0",  # noqa: S104
-        port=8080,
-        workers=1,
-        log_level=30,
-        ssl_keyfile=None,
-        ssl_certfile=None,
-        ssl_keyfile_password=None,
-        ssl_version=17,
-        ssl_ciphers="TLSv1",
-        access_log=False,
-    )
+    # don't start real Uvicorn server
+    with patch("uvicorn.run") as mocked_run:
+        start_uvicorn(default_config)
+        mocked_run.assert_called_once_with(
+            "ols.app.main:app",
+            host="0.0.0.0",  # noqa: S104
+            port=8080,
+            workers=1,
+            log_level=30,
+            ssl_keyfile=None,
+            ssl_certfile=None,
+            ssl_keyfile_password=None,
+            ssl_version=17,
+            ssl_ciphers="TLSv1",
+            access_log=False,
+        )
 
 
-@patch("uvicorn.run")
-def test_start_uvicorn_with_tls(mocked_run, default_config):
+def test_start_uvicorn_with_tls(default_config):
     """Test the function to start Uvicorn server."""
     default_config.dev_config.disable_tls = False
-    start_uvicorn(default_config)
-    mocked_run.assert_called_once_with(
-        "ols.app.main:app",
-        host="0.0.0.0",  # noqa: S104
-        port=8443,
-        workers=1,
-        log_level=30,
-        ssl_keyfile=None,
-        ssl_certfile=None,
-        ssl_keyfile_password=None,
-        ssl_version=17,
-        ssl_ciphers="TLSv1",
-        access_log=False,
-    )
+    # don't start real Uvicorn server
+    with patch("uvicorn.run") as mocked_run:
+        start_uvicorn(default_config)
+        mocked_run.assert_called_once_with(
+            "ols.app.main:app",
+            host="0.0.0.0",  # noqa: S104
+            port=8443,
+            workers=1,
+            log_level=30,
+            ssl_keyfile=None,
+            ssl_certfile=None,
+            ssl_keyfile_password=None,
+            ssl_version=17,
+            ssl_ciphers="TLSv1",
+            access_log=False,
+        )
 
 
-@patch("uvicorn.run")
-def test_start_uvicorn_on_localhost(mocked_run, default_config):
+def test_start_uvicorn_on_localhost(default_config):
     """Test the function to start Uvicorn server."""
     default_config.dev_config.run_on_localhost = True
-    start_uvicorn(default_config)
-    mocked_run.assert_called_once_with(
-        "ols.app.main:app",
-        host="localhost",
-        port=8080,
-        workers=1,
-        log_level=30,
-        ssl_keyfile=None,
-        ssl_certfile=None,
-        ssl_keyfile_password=None,
-        ssl_version=17,
-        ssl_ciphers="TLSv1",
-        access_log=False,
-    )
+    # don't start real Uvicorn server
+    with patch("uvicorn.run") as mocked_run:
+        start_uvicorn(default_config)
+        mocked_run.assert_called_once_with(
+            "ols.app.main:app",
+            host="localhost",
+            port=8080,
+            workers=1,
+            log_level=30,
+            ssl_keyfile=None,
+            ssl_certfile=None,
+            ssl_keyfile_password=None,
+            ssl_version=17,
+            ssl_ciphers="TLSv1",
+            access_log=False,
+        )
 
 
-@patch("uvicorn.run")
-def test_start_uvicorn_on_non_default_port(mocked_run, default_config):
+def test_start_uvicorn_on_non_default_port(default_config):
     """Test the function to start Uvicorn server on a non-default port."""
     default_config.dev_config.uvicorn_port_number = 8081
-    start_uvicorn(default_config)
-    mocked_run.assert_called_once_with(
-        "ols.app.main:app",
-        host="0.0.0.0",  # noqa: S104
-        port=8081,
-        workers=1,
-        log_level=30,
-        ssl_keyfile=None,
-        ssl_certfile=None,
-        ssl_keyfile_password=None,
-        ssl_version=17,
-        ssl_ciphers="TLSv1",
-        access_log=False,
-    )
+    # don't start real Uvicorn server
+    with patch("uvicorn.run") as mocked_run:
+        start_uvicorn(default_config)
+        mocked_run.assert_called_once_with(
+            "ols.app.main:app",
+            host="0.0.0.0",  # noqa: S104
+            port=8081,
+            workers=1,
+            log_level=30,
+            ssl_keyfile=None,
+            ssl_certfile=None,
+            ssl_keyfile_password=None,
+            ssl_version=17,
+            ssl_ciphers="TLSv1",
+            access_log=False,
+        )
