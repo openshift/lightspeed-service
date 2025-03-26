@@ -150,20 +150,16 @@ def test_rest_api_call_counter_ok_status():
 
 
 def test_rest_api_call_counter_not_found_status():
-    """Check if REST API call counter works as expected, label with 404 NotFound status."""
+    """Check if REST API call counter ignore metrics for non-existing endpoint."""
     endpoint = "/this-does-not-exists"
 
-    # initialize counter with label
+    # call the non-existent REST API endpoint
     pytest.client.get(endpoint)
-    old = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "404")
-
-    # call some REST API endpoint
-    pytest.client.get(endpoint)
-    new = get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "404")
-
-    # compare counters
-    # just the NotFound value should change
-    assert new == old + 1, "Counter for 404 NotFound  has not been updated properly"
+    # expect Exception about not finding "ols_rest_api_calls_total" in metrics
+    with pytest.raises(
+        Exception, match="Counter ols_rest_api_calls_total was not found in metrics"
+    ):
+        get_counter_value(pytest.client, "ols_rest_api_calls_total", endpoint, "404")
 
 
 def test_metrics_duration():
