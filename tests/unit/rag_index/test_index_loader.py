@@ -19,33 +19,38 @@ def test_index_loader_empty_config(caplog):
     assert index is None
 
 
-@patch("llama_index.core.StorageContext.from_defaults")
-def test_index_loader_no_id(storage_context):
+def test_index_loader_no_id():
     """Test index loader without index id."""
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = Path("./some_dir")
 
-    index_loader_obj = IndexLoader(config.ols_config.reference_content)
-    index = index_loader_obj.vector_index
+    with patch("llama_index.core.StorageContext.from_defaults"):
+        index_loader_obj = IndexLoader(config.ols_config.reference_content)
+        index = index_loader_obj.vector_index
 
-    assert (
-        index_loader_obj._embed_model == "local:sentence-transformers/all-mpnet-base-v2"
-    )
-    assert index is None
+        assert (
+            index_loader_obj._embed_model
+            == "local:sentence-transformers/all-mpnet-base-v2"
+        )
+        assert index is None
 
 
-@patch("llama_index.core.StorageContext.from_defaults")
-@patch("llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir")
-@patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex)
-def test_index_loader(storage_context, from_persist_dir):
+def test_index_loader():
     """Test index loader."""
     config.ols_config.reference_content = ReferenceContent(None)
     config.ols_config.reference_content.product_docs_index_path = Path("./some_dir")
     config.ols_config.reference_content.product_docs_index_id = "./some_id"
 
-    from_persist_dir.return_value = None
+    with (
+        patch("llama_index.core.StorageContext.from_defaults"),
+        patch(
+            "llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir"
+        ) as from_persist_dir,
+        patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex),
+    ):
+        from_persist_dir.return_value = None
 
-    index_loader_obj = IndexLoader(config.ols_config.reference_content)
-    index = index_loader_obj.vector_index
+        index_loader_obj = IndexLoader(config.ols_config.reference_content)
+        index = index_loader_obj.vector_index
 
-    assert isinstance(index, MockLlamaIndex)
+        assert isinstance(index, MockLlamaIndex)
