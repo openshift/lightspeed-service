@@ -33,8 +33,8 @@ function run_suites() {
 
   set +e
   # runsuite arguments:
-  # suiteid provider provider_keypath model ols_image
-  run_suite "model_eval" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
+  # suiteid provider_model_id provider_keypath ols_image
+  run_suite "model_eval" ("watsonx+ibm/granite-3-8b-instruct" "openai+gpt-4o-mini" "azure_openai+gpt-4o-mini") ("$WATSONX_PROVIDER_KEY_PATH" "$OPENAI_PROVIDER_KEY_PATH" "$AZURE_OPENAI_PROVIDER_KEY_PATH") "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
   set -e
 
