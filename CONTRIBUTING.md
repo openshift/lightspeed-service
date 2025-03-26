@@ -220,22 +220,11 @@ As specified in Definition of Done, new changes need to be covered by tests.
 
 #### Patching
 
-For patching, for example introducing mock objects instead of real objects, it is
-possible to use `patch` imported from `unittest.mock`. It is usually used as
-decorator put before test implementation:
+**WARNING**:
+Since tests are executed using Pytest, which relies heavily on fixtures,
+we discourage use of `patch` decorators in all test code, as they may interact with one another.
 
-```python
-@patch("redis.StrictRedis", new=MockRedis)
-def test_conversation_cache_in_redis(redis_cache_config):
-   ...
-   ...
-   ...
-```
-
-- `new=` allow us to use different function or class
-- `return_value=` allow us to define return value (no mock will be called)
-
-It is also possible to use it inside the test implementation as context manager:
+It is possible to use patching inside the test implementation as a context manager:
 
 ```python
 def test_xyz():
@@ -244,6 +233,10 @@ def test_xyz():
         ...
         ...
 ```
+
+- `new=` allow us to use different function or class
+- `return_value=` allow us to define return value (no mock will be called)
+
 
 #### Verifying that some exception is thrown
 
