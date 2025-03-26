@@ -50,9 +50,7 @@ class TokenHandler:
         Returns:
             List of tokens, ex: [1, 2, 3, 4]
         """
-        # return self._encoder.encode(text)
-        # TODO: Better handling of stop token.
-        return self._encoder.encode(text, allowed_special={"<|endoftext|>"})
+        return self._encoder.encode(text)
 
     def tokens_to_text(self, tokens: list) -> str:
         """Convert tokens to text.
