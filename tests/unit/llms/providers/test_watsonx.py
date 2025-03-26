@@ -99,16 +99,17 @@ def provider_config_with_specific_params():
     )
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_basic_interface(provider_config):
     """Test basic interface."""
-    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
-    assert watsonx.default_params
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model", params={}, provider_config=provider_config
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
+        assert watsonx.default_params
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_params_handling(provider_config):
     """Test that not allowed parameters are removed before model init."""
     # first two parameters should be removed before model init
@@ -121,69 +122,69 @@ def test_params_handling(provider_config):
         "temperature": 0.3,
     }
 
-    watsonx = Watsonx(
-        model="uber-model", params=params, provider_config=provider_config
-    )
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
-    assert watsonx.default_params
-    assert watsonx.params
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model", params=params, provider_config=provider_config
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
+        assert watsonx.default_params
+        assert watsonx.params
 
-    # taken from configuration
-    assert watsonx.url == "https://us-south.ml.cloud.ibm.com"
-    assert watsonx.credentials == "secret_key"
-    assert watsonx.project_id == "01234567-89ab-cdef-0123-456789abcdef"
+        # taken from configuration
+        assert watsonx.url == "https://us-south.ml.cloud.ibm.com"
+        assert watsonx.credentials == "secret_key"
+        assert watsonx.project_id == "01234567-89ab-cdef-0123-456789abcdef"
 
-    # known parameters should be there
-    assert GenParams.DECODING_METHOD in watsonx.params
-    assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
+        # known parameters should be there
+        assert GenParams.DECODING_METHOD in watsonx.params
+        assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
 
-    assert GenParams.MAX_NEW_TOKENS in watsonx.params
-    assert watsonx.params[GenParams.MAX_NEW_TOKENS] == 10
+        assert GenParams.MAX_NEW_TOKENS in watsonx.params
+        assert watsonx.params[GenParams.MAX_NEW_TOKENS] == 10
 
-    # unknown parameters should be filtered out
-    assert "unknown_parameter" not in watsonx.params
-    assert "verbose" not in watsonx.params
+        # unknown parameters should be filtered out
+        assert "unknown_parameter" not in watsonx.params
+        assert "verbose" not in watsonx.params
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_credentials_key_in_directory_handling(provider_config_credentials_directory):
     """Test that credentials in directory is handled as expected."""
     params = {}
 
-    watsonx = Watsonx(
-        model="uber-model",
-        params=params,
-        provider_config=provider_config_credentials_directory,
-    )
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model",
+            params=params,
+            provider_config=provider_config_credentials_directory,
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
 
-    # taken from configuration
-    assert watsonx.credentials == "secret_key"
+        # taken from configuration
+        assert watsonx.credentials == "secret_key"
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_params_handling_specific_params(provider_config_with_specific_params):
     """Test that provider-specific parameters take precedence."""
-    watsonx = Watsonx(
-        model="uber-model",
-        params={},
-        provider_config=provider_config_with_specific_params,
-    )
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
-    assert watsonx.default_params
-    assert watsonx.params
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model",
+            params={},
+            provider_config=provider_config_with_specific_params,
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
+        assert watsonx.default_params
+        assert watsonx.params
 
-    # parameters taken from provier-specific configuration
-    # which takes precedence over regular configuration
-    assert watsonx.url == "http://bam.com/"
-    assert watsonx.credentials == "secret_key_2"
-    assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
+        # parameters taken from provier-specific configuration
+        # which takes precedence over regular configuration
+        assert watsonx.url == "http://bam.com/"
+        assert watsonx.credentials == "secret_key_2"
+        assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_params_handling_none_values(provider_config):
     """Test handling parameters with None values."""
     # first three parameters should be removed before model init
@@ -196,54 +197,56 @@ def test_params_handling_none_values(provider_config):
         "max_new_tokens": None,
     }
 
-    watsonx = Watsonx(
-        model="uber-model", params=params, provider_config=provider_config
-    )
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
-    assert watsonx.default_params
-    assert watsonx.params
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model", params=params, provider_config=provider_config
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
+        assert watsonx.default_params
+        assert watsonx.params
 
-    # known parameters should be there
-    assert GenParams.MIN_NEW_TOKENS in watsonx.params
-    assert watsonx.params[GenParams.MIN_NEW_TOKENS] is None
+        # known parameters should be there
+        assert GenParams.MIN_NEW_TOKENS in watsonx.params
+        assert watsonx.params[GenParams.MIN_NEW_TOKENS] is None
 
-    assert GenParams.MAX_NEW_TOKENS in watsonx.params
-    assert watsonx.params[GenParams.MAX_NEW_TOKENS] is None
+        assert GenParams.MAX_NEW_TOKENS in watsonx.params
+        assert watsonx.params[GenParams.MAX_NEW_TOKENS] is None
 
-    assert GenParams.TEMPERATURE in watsonx.params
-    assert watsonx.params[GenParams.TEMPERATURE] is None
+        assert GenParams.TEMPERATURE in watsonx.params
+        assert watsonx.params[GenParams.TEMPERATURE] is None
 
-    # unknown parameters should be filtered out
-    assert "unknown_parameter" not in watsonx.params
-    assert "verbose" not in watsonx.params
+        # unknown parameters should be filtered out
+        assert "unknown_parameter" not in watsonx.params
+        assert "verbose" not in watsonx.params
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_params_replace_default_values_with_none(provider_config):
     """Test if default values are replaced by None values."""
-    # provider initialization with empty set of params
-    watsonx = Watsonx(model="uber-model", params={}, provider_config=provider_config)
-    watsonx.load()
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        # provider initialization with empty set of params
+        watsonx = Watsonx(
+            model="uber-model", params={}, provider_config=provider_config
+        )
+        watsonx.load()
 
-    # check default value
-    assert GenParams.DECODING_METHOD in watsonx.params
-    assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
+        # check default value
+        assert GenParams.DECODING_METHOD in watsonx.params
+        assert watsonx.params[GenParams.DECODING_METHOD] == "sample"
 
-    # provider initialization where default parameter is overriden
-    params = {"decoding_method": None}
+        # provider initialization where default parameter is overriden
+        params = {"decoding_method": None}
 
-    watsonx = Watsonx(
-        model="uber-model", params=params, provider_config=provider_config
-    )
-    watsonx.load()
+        watsonx = Watsonx(
+            model="uber-model", params=params, provider_config=provider_config
+        )
+        watsonx.load()
 
-    # check default value overrided by None
-    assert GenParams.DECODING_METHOD in watsonx.params
-    assert watsonx.params[GenParams.DECODING_METHOD] is None
+        # check default value overrided by None
+        assert GenParams.DECODING_METHOD in watsonx.params
+        assert watsonx.params[GenParams.DECODING_METHOD] is None
 
 
-@patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx())
 def test_generic_parameter_mappings(provider_config):
     """Test generic parameter mapping to provider parameter list."""
     # some non-default values for generic LLM parameters
@@ -255,25 +258,28 @@ def test_generic_parameter_mappings(provider_config):
         GenericLLMParameters.TEMPERATURE: 42.0,
     }
 
-    watsonx = Watsonx(
-        model="uber-model", params=generic_llm_params, provider_config=provider_config
-    )
-    llm = watsonx.load()
-    assert isinstance(llm, ChatWatsonx)
-    assert watsonx.default_params
-    assert watsonx.params
+    with patch("ols.src.llms.providers.watsonx.ChatWatsonx", new=ChatWatsonx()):
+        watsonx = Watsonx(
+            model="uber-model",
+            params=generic_llm_params,
+            provider_config=provider_config,
+        )
+        llm = watsonx.load()
+        assert isinstance(llm, ChatWatsonx)
+        assert watsonx.default_params
+        assert watsonx.params
 
-    # generic parameters should be remapped to Watsonx-specific parameters
-    assert GenParams.MIN_NEW_TOKENS in watsonx.params
-    assert GenParams.MAX_NEW_TOKENS in watsonx.params
-    assert GenParams.TOP_K in watsonx.params
-    assert GenParams.TOP_P in watsonx.params
-    assert GenParams.TEMPERATURE in watsonx.params
-    assert watsonx.params[GenParams.MIN_NEW_TOKENS] == 100
-    assert watsonx.params[GenParams.MAX_NEW_TOKENS] == 200
-    assert watsonx.params[GenParams.TOP_K] == 10
-    assert watsonx.params[GenParams.TOP_P] == 1.5
-    assert watsonx.params[GenParams.TEMPERATURE] == 42.0
+        # generic parameters should be remapped to Watsonx-specific parameters
+        assert GenParams.MIN_NEW_TOKENS in watsonx.params
+        assert GenParams.MAX_NEW_TOKENS in watsonx.params
+        assert GenParams.TOP_K in watsonx.params
+        assert GenParams.TOP_P in watsonx.params
+        assert GenParams.TEMPERATURE in watsonx.params
+        assert watsonx.params[GenParams.MIN_NEW_TOKENS] == 100
+        assert watsonx.params[GenParams.MAX_NEW_TOKENS] == 200
+        assert watsonx.params[GenParams.TOP_K] == 10
+        assert watsonx.params[GenParams.TOP_P] == 1.5
+        assert watsonx.params[GenParams.TEMPERATURE] == 42.0
 
 
 def test_missing_credentials_check(provider_config_without_credentials):
