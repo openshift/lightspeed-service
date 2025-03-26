@@ -14,7 +14,7 @@ from reportportal_client import RPLogger
 
 from scripts.upload_artifact_s3 import upload_artifact_s3
 from tests.e2e.utils import client as client_utils
-from tests.e2e.utils import ols_installer
+from tests.e2e.utils import evaluation_installer
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -37,7 +37,6 @@ def pytest_sessionstart():
     """Set up common artifacts used by all e2e tests."""
     global OLS_READY  # pylint: disable=W0603
     global on_cluster  # pylint: disable=W0603
-    provider = os.getenv("PROVIDER")
     # OLS_URL env only needs to be set when running against a local ols instance,
     # when ols is run against a cluster the url is retrieved from the cluster.
     ols_url = os.getenv("OLS_URL", "")
@@ -45,7 +44,7 @@ def pytest_sessionstart():
     if "localhost" not in ols_url:
         on_cluster = True
         try:
-            ols_url, token, metrics_token = ols_installer.install_ols()
+            ols_url, token, metrics_token = evaluation_installer.install_ols()
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
             must_gather()
