@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from starlette.datastructures import Headers
 from starlette.responses import StreamingResponse
-from starlette.routing import Route, WebSocketRoute, Mount
+from starlette.routing import Mount, Route, WebSocketRoute
 
 from ols import config, constants, version
 from ols.app import metrics, routers
@@ -149,7 +149,5 @@ routers.include_routers(app)
 app_routes_paths = [
     route.path
     for route in app.routes
-    if isinstance(route, Route)
-    or isinstance(route, Mount)
-    or isinstance(route, WebSocketRoute)
+    if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
