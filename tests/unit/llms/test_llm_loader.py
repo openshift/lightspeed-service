@@ -58,7 +58,6 @@ def test_model_config_missing_error():
         load_llm(provider="bam", model="bla")
 
 
-@patch("ols.src.llms.llm_loader.LLMProvidersRegistry", new=MagicMock())
 def test_unsupported_provider_error():
     """Test raise when provider is not in the registry (not implemented)."""
     providers = LLMProviders(
@@ -66,27 +65,30 @@ def test_unsupported_provider_error():
     )
     config.config.llm_providers = providers
 
-    with pytest.raises(UnsupportedProviderError):
+    with (
+        patch("ols.src.llms.llm_loader.LLMProvidersRegistry", new=MagicMock()),
+        pytest.raises(UnsupportedProviderError),
+    ):
         load_llm(provider="some-provider", model="model")
 
 
 @pytest.mark.usefixtures("_registered_fake_provider")
-@patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"])
 def test_load_llm():
     """Test load_llm function."""
-    providers = LLMProviders(
-        [
-            {
-                "name": "fake-provider",
-                "type": "fake-provider",
-                "models": [{"name": "model"}],
-            }
-        ]
-    )
-    config.config.llm_providers = providers
+    with patch("ols.constants.SUPPORTED_PROVIDER_TYPES", new=["fake-provider"]):
+        providers = LLMProviders(
+            [
+                {
+                    "name": "fake-provider",
+                    "type": "fake-provider",
+                    "models": [{"name": "model"}],
+                }
+            ]
+        )
+        config.config.llm_providers = providers
 
-    llm = load_llm(provider="fake-provider", model="model")
-    assert llm == "fake_llm"
+        llm = load_llm(provider="fake-provider", model="model")
+        assert llm == "fake_llm"
 
 
 def test_load_llm_no_provider_config():

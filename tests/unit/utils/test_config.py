@@ -693,11 +693,11 @@ dev_config:
     )
 
 
-@patch("os.access", return_value=False)
-def test_unreadable_directory(mock_access):
+def test_unreadable_directory():
     """Check if an unredable directory is reported correctly."""
-    check_expected_exception(
-        """
+    with patch("os.access", return_value=False):
+        check_expected_exception(
+            """
 ---
 llm_providers:
   - name: p1
@@ -720,9 +720,9 @@ dev_config:
   disable_tls: true
 
 """,
-        InvalidConfigurationError,
-        "Embeddings model path 'tests/config' is not readable",
-    )
+            InvalidConfigurationError,
+            "Embeddings model path 'tests/config' is not readable",
+        )
 
 
 def test_valid_config_stream():
