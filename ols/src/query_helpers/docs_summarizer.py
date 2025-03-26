@@ -256,8 +256,6 @@ class DocsSummarizer(QueryHelper):
 
                 # openai returns an `AIMessageChunk` while Watsonx plain string
                 chunk_content = chunk.content if hasattr(chunk, "content") else chunk
-                if "<|endoftext|>" in chunk_content:
-                    chunk_content = chunk_content.replace("<|endoftext|>", "")
                 yield chunk_content
 
         # NOTE: we are not providing tool calls here as it is not currently
