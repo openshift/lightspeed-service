@@ -12,7 +12,7 @@
 skin rose
 
 header Architecture diagram for OpenShift LightSpeed
-footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
+footer Copyright © 2025 Red Hat, Inc. Author: Pavel Tisnovsky
 
 collections "Configuration" as configuration
 
@@ -24,14 +24,14 @@ package "OpenShift LightSpeed service" as ols {
     component "Redactor" as redactor
     component "Question\nvalidator" as question_validator
     component "Document\nsummarizer" as document_summarizer
-    component "LLM providers registry" as llm_register
+    component "LLM providers\nregistry" as llm_register
     component "Configuration\nloader" as config_loader
     http -> auth
     auth -> handler
-    handler --> history
-    handler --> redactor
-    handler --> question_validator
-    handler --> document_summarizer
+    handler -d-> history
+    handler -d-> redactor
+    handler -d-> question_validator
+    handler -d-> document_summarizer
     question_validator --> llm_register
     document_summarizer --> llm_register
     llm_register -[hidden]> config_loader
@@ -53,18 +53,18 @@ collections "Auth.modules" as auth_modules
 collections "Cache\ninterface" as cache_interface
 database "Transcripts" as transcripts
 collections "Quota limiter\ninterface" as quota_limiter_interface
-document_summarizer -d-> rag_interface
-rag_interface --> rag
-history --> cache_interface : unified cache interface
-cache_interface --> cache : configured cache\nimplementation
-llm_register --> llm_interface : call LLM
-llm_interface --> llm : call selected LLM
-handler -> transcripts
+document_summarizer <-d-> rag_interface
+rag_interface <--> rag : configured\nRAG\nindexes
+history <--> cache_interface : unified cache interface
+cache_interface <--> cache : configured cache\nimplementation
+llm_register <--> llm_interface : call LLM
+llm_interface <--> llm : call selected LLM
+handler -r-> transcripts : written into\nJSON files
 handler --> quota_limiter_interface
 quota_limiter_interface -> quota_limiter
 quota_limiter -> quota_storage
 quota_revocation -u-> quota_storage
-transcripts -> collector
+transcripts -> collector : reads from\nJSON files
 component "Prometheus"
 component "Grafana"
 handler --> agent_api
@@ -73,11 +73,12 @@ component "Agent#2" as agent_2
 agent_api --> agent_1
 agent_api --> agent_2
 
-auth -u-> auth_modules : "call selected authentication\nmodule to retrieve\nuser ID and user name"
+auth <-u-> auth_modules : "call selected authentication\nmodule to retrieve\nuser ID and user name"
 
 collections "Flow control" as flow_control
 configuration -u-> config_loader
 flow_control -u-> config_loader
+configuration -r[hidden]-> flow_control
 
 package "Red Hat VPN" {
    [Ingress] as ingress
@@ -87,8 +88,8 @@ package "Red Hat VPN" {
    pipeline --> ceph : tarball
 }
 
-collector -> ingress
-http -u-> Prometheus : "expose metrics"
+collector -> ingress : REST API\ncall
+http -u-> Prometheus : "expose\nconfigured\nmetrics"
 Prometheus -u-> Grafana : visualization
 
 @enduml
