@@ -151,6 +151,53 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
+def create_secrets(provider_name: str, single_provider: bool= False) -> None:
+    """ Create secrets for models.
+    
+    Args:
+        secret_name (str): the name of the provider.
+
+    Returns:
+        Nothing.
+    """
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                provider_name+"creds",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("llmcreds secret does not yet exist. Creating it.")
+    
+    creds = os.getenv("PROVIDER_KEY_PATH")
+    if not creds:
+        creds = os.getenv(f"{provider_name.upper()}_PROVIDER_KEY_PATH")
+    if single_provider:
+       cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "llmcreds",
+                f"--from-file=apitoken={creds}",
+            ],
+            ignore_existing_resource=True,
+        )
+    else:
+        cluster_utils.run_oc(
+                [
+                    "create",
+                    "secret",
+                    "generic",
+                    provider_name+"creds",
+                    f"--from-file=apitoken={creds}",
+                ],
+                ignore_existing_resource=True,
+            )
+
+
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
@@ -233,27 +280,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
     provider = os.getenv("PROVIDER")
 
     # create the llm api key secret ols will mount
-    keypath = os.getenv("PROVIDER_KEY_PATH")
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                "llmcreds",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("llmcreds secret does not yet exist. Creating it.")
-    cluster_utils.run_oc(
-        [
-            "create",
-            "secret",
-            "generic",
-            "llmcreds",
-            f"--from-file=apitoken={keypath}",
-        ],
-        ignore_existing_resource=True,
-    )
+    if not provider:
+        provider = "openai"
+    single_provider = True
+    if len(provider.split()) > 1:
+        single_provider = False
+    for prv in provider.split():
+        create_secrets(prv, single_provider)
 
     if provider == "azure_openai":
         # create extra secrets with Entra ID
@@ -287,14 +320,25 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         print("Cluster introspection is enabled.")
         crd_yml_name += "_introspection"
     try:
-        cluster_utils.run_oc(
-            [
-                "create",
-                "-f",
-                f"tests/config/operator_install/{crd_yml_name}.yaml",
-            ],
-            ignore_existing_resource=True,
-        )
+        if single_provider:
+            crd_yml_name = f"olsconfig.crd.{provider}"
+            cluster_utils.run_oc(
+                    [
+                        "create",
+                        "-f",
+                        f"tests/config/operator_install/{crd_yml_name}.yaml",
+                    ],
+                    ignore_existing_resource=True,
+                )
+        else:
+            cluster_utils.run_oc(
+                [
+                    "create",
+                    "-f",
+                    f"tests/config/operator_install/olsconfig.crd.evaluation.yaml",
+                ],
+                ignore_existing_resource=True,
+            )
     except subprocess.CalledProcessError as e:
         csv = cluster_utils.run_oc(
             ["get", "clusterserviceversion", "-o", "jsonpath={.items[0].status}"]
