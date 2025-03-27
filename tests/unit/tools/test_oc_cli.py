@@ -1,6 +1,5 @@
 """Test cases for the oc_cli module."""
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,28 +25,13 @@ def test_sanitize_oc_args(input_args, expected_output):
     assert sanitize_oc_args(input_args) == expected_output
 
 
-def test_token_works_for_oc_missing_server():
-    """Test token_works_for_oc with missing server."""
-    # env is not set and empty string is provided as server
-    with patch.dict(os.environ, {}):
-        assert not token_works_for_oc("some-token", "")
-
-    # env is empty string and server is not provided
-    with patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": ""}):
-        assert not token_works_for_oc("some-token")
-
-    # env is not set and server is not provided
-    with patch.dict(os.environ, {}, clear=True):
-        assert not token_works_for_oc("some-token")
-
-
 def test_token_works_for_oc_failure():
     """Test token_works_for_oc failure scenario."""
     with patch("ols.src.tools.oc_cli.run_oc") as mock_run_oc:
         mock_process = MagicMock()
         mock_process.returncode = 1  # simulate failure
         mock_run_oc.return_value = mock_process
-        assert not token_works_for_oc("some-token", "http://bad-server")
+        assert not token_works_for_oc("some-token")
 
 
 def test_token_works_for_oc_success():
@@ -56,7 +40,7 @@ def test_token_works_for_oc_success():
         mock_process = MagicMock()
         mock_process.returncode = 0  # simulate success
         mock_run_oc.return_value = mock_process
-        assert token_works_for_oc("some-token", "some-server")
+        assert token_works_for_oc("some-token")
 
 
 def test_stdout_or_stderr():

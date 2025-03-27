@@ -593,7 +593,11 @@ def test_tool_calling() -> None:
             QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "Is there openshift-lightspeed namespace in the cluster?",
+                "query": (
+                    "In my cluster, is there a 'lightspeed-app-server' pod in "
+                    "'openshift-lightspeed' namespace? Please, explicitely "
+                    "say 'yes' or 'no'."
+                ),
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -606,6 +610,6 @@ def test_tool_calling() -> None:
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
 
-        assert "yes" in json_response["response"]
+        assert "yes" in json_response["response"].lower()
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
