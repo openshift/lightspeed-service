@@ -60,7 +60,7 @@ def pytest_sessionstart():
     pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
 
     # Wait for OLS to be ready
-    print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
+    print(f"Waiting for OLS to be ready at url: {ols_url}")
     OLS_READY = wait_for_ols(ols_url)
     print(f"OLS is ready: {OLS_READY}")
     # Gather OLS artifacts in case OLS does not become ready
