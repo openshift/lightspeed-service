@@ -2,9 +2,9 @@
 
 import os
 import subprocess
-
+import ipdb
 import yaml
-
+import json
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
@@ -87,8 +87,53 @@ def replace_ols_image(ols_image: str) -> None:
         ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
     )
 
+def create_secrets(provider_name: str, provider_set: bool= False) -> None:
+    """ Create secrets for models.
+    
+    Args:
+        secret_name (str): the name of the provider.
 
-def install_ols(evaluation: bool = False) -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
+    Returns:
+        Nothing.
+    """
+    try:
+        cluster_utils.run_oc(
+            [
+                "delete",
+                "secret",
+                provider_name+"creds",
+            ],
+        )
+    except subprocess.CalledProcessError:
+        print("llmcreds secret does not yet exist. Creating it.")
+    creds = os.getenv("PROVIDER_KEY_PATH")
+    if not creds:
+        creds = os.getenv(f"{provider_name.upper()}_PROVIDER_KEY_PATH")
+    if provider_set:
+       cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "llmcreds",
+                f"--from-file=apitoken={creds}",
+            ],
+            ignore_existing_resource=True,
+        )
+    else:
+        cluster_utils.run_oc(
+                [
+                    "create",
+                    "secret",
+                    "generic",
+                    provider_name+"creds",
+                    f"--from-file=apitoken={creds}",
+                ],
+                ignore_existing_resource=True,
+            )
+
+
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
     print("Setting up for on cluster test execution")
     bundle_image = os.getenv(
@@ -165,47 +210,17 @@ def install_ols(evaluation: bool = False) -> tuple[str, str, str]:  # pylint: di
         print("Timed out waiting for OLS operator to install successfully")
         return None
     print("Operator installed successfully")
-
-    providers = os.getenv("PROVIDER_MODEL_ID")
-
+    ipdb.set_trace()
+    
     # create the llm api key secret ols will mount
-    keypaths = os.getenv("PROVIDER_KEY_PATH")
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "secret",
-                "llmcreds",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("llmcreds secret does not yet exist. Creating it.")
-    for key in enumerate(keypaths):
-        cluster_utils.run_oc(
-            [
-                "create",
-                "secret",
-                "generic",
-                f"{providers[key].split('+')[0]}creds",
-                f"--from-file=apitoken={keypaths[key]}",
-            ],
-            ignore_existing_resource=True,
-        )
-
-    if provider == "azure_openai":
-        # create extra secrets with Entra ID
-        cluster_utils.run_oc(
-            [
-                "create",
-                "secret",
-                "generic",
-                "azure-entra-id",
-                f"--from-literal=tenant_id={os.environ['AZUREOPENAI_ENTRA_ID_TENANT_ID']}",
-                f"--from-literal=client_id={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_ID']}",
-                f"--from-literal=client_secret={os.environ['AZUREOPENAI_ENTRA_ID_CLIENT_SECRET']}",
-            ],
-            ignore_existing_resource=True,
-        )
+    provider = os.getenv("PROVIDER")
+    if provider:
+        create_secrets(provider, True)
+    else:
+        create_secrets("watsonx")
+        create_secrets("azure_openai")
+        create_secrets("openai")
+    
 
     # create the olsconfig operand
     try:
@@ -218,27 +233,25 @@ def install_ols(evaluation: bool = False) -> tuple[str, str, str]:  # pylint: di
         )
     except subprocess.CalledProcessError:
         print("olsconfig does not yet exist. Creating it.")
-
-    crd_yml_name = f"olsconfig.crd.{provider}"
-    if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
-        print("Cluster introspection is enabled.")
-        crd_yml_name += "_introspection"
+    
+    
     try:
-        if evaluation:
+        if provider:
+            crd_yml_name = f"olsconfig.crd.{provider}"
             cluster_utils.run_oc(
-                [
-                    "create",
-                    "-f",
-                    f"tests/config/operator_install/olsconfig.crd.evaluation.yaml",
-                ],
-                ignore_existing_resource=True,
-            )
+                    [
+                        "create",
+                        "-f",
+                        f"tests/config/operator_install/{crd_yml_name}.yaml",
+                    ],
+                    ignore_existing_resource=True,
+                )
         else:
             cluster_utils.run_oc(
                 [
                     "create",
                     "-f",
-                    f"tests/config/operator_install/{crd_yml_name}.yaml",
+                    f"tests/config/operator_install/olsconfig.crd.evaluation.yaml",
                 ],
                 ignore_existing_resource=True,
             )
@@ -304,28 +317,6 @@ def install_ols(evaluation: bool = False) -> tuple[str, str, str]:  # pylint: di
     if new_ols_image != "":
         replace_ols_image(new_ols_image)
 
-    # Scale down server pod. If image is replaced, it won't do anything
-    # otherwise, it enables the config modification and subsequent
-    # scaling up
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "0",
-        ]
-    )
-    update_ols_config()
-    # scale the ols app server up
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-app-server",
-            "--replicas",
-            "1",
-        ]
-    )
-    print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
     cluster_utils.wait_for_running_pod()
 
