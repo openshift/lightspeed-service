@@ -5,7 +5,6 @@ import os
 from collections import defaultdict
 from datetime import UTC, datetime
 from time import sleep
-
 from pandas import DataFrame, concat, read_csv, read_parquet
 from tqdm import tqdm
 
@@ -362,7 +361,7 @@ class ResponseEvaluation:
         result_df = self._condense_eval_df(result_df)
         result_df.to_csv(f"{self._result_dir}/model_evaluation_result.csv")
 
-        result_df = result_df.groupby(level="query_id").max()
+        result_df = result_df.groupby(level="query_id").max(numeric_only=True)
 
         summary_score = {}
         for score_type in self._args.eval_metrics:
