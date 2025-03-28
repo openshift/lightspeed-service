@@ -32,9 +32,11 @@ function run_suites() {
   local rc=0
 
   set +e
+  # If changes are done in this file, please make sure they reflect in test-e2e-cluster-periodics.sh and test-e2e-cluster.sh
+
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image
-  run_suite "model_eval" "watsonx openai azure_openai" "$WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH $AZURE_OPENAI_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct gpt-4o-mini gpt-4o-mini" "$OLS_IMAGE" "n"
+  run_suite "model_eval" "" "watsonx openai azure_openai" "$WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct gpt-4o-mini gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
   set -e
 
