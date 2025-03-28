@@ -34,7 +34,7 @@ class QuestionValidator(QueryHelper):
         super().__init__(*args, **dict(kwargs, generic_llm_params=generic_llm_params))
 
         self.bare_llm = self.llm_loader(
-            self.provider, self.model, self.generic_llm_params, self.streaming
+            self.provider, self.model, self.generic_llm_params
         )
         self.provider_config = config.llm_config.providers.get(self.provider)
         self.model_config = self.provider_config.models.get(self.model)

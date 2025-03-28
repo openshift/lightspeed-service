@@ -15,7 +15,6 @@ def test_defaults_used():
     assert qh.model == config.ols_config.default_model
     assert qh.llm_loader is load_llm
     assert qh.generic_llm_params == {}
-    assert qh.streaming is False
 
 
 def test_inputs_are_used():
@@ -26,12 +25,3 @@ def test_inputs_are_used():
 
     assert qh.provider == test_provider
     assert qh.model == test_model
-
-
-def test_streaming_parameter():
-    """Test that the optional streaming parameter is stored."""
-    qh = QueryHelper(streaming=False)
-    assert qh.streaming is False
-
-    qh = QueryHelper(streaming=True)
-    assert qh.streaming is True
