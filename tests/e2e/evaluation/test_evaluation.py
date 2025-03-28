@@ -1,7 +1,8 @@
+"""Model response and model evaluation tests."""
+
 from argparse import Namespace
 
 import pytest
-
 
 from scripts.evaluation.response_evaluation import ResponseEvaluation
 
