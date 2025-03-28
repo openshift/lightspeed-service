@@ -69,3 +69,30 @@ def test_execute_oc_tool_calls_not_leaks_token_into_logs(caplog):
         in caplog.text
     )
     assert "fake-token" not in caplog.text
+
+
+def test_execute_oc_tool_calls_not_leaks_token_into_output(caplog):
+    """Test execute_oc_tool_calls does not leak token into output."""
+    caplog.set_level(10)  # set debug level
+
+    @tool
+    def tool1(some_args: list):
+        """Tool 1."""
+        return "bla"
+
+    tools_map = {"tool1": tool1}
+
+    # missing args
+    tool_calls = [{"id": 1, "name": "tool1"}]
+    tool_messages = execute_oc_tool_calls(tools_map, tool_calls, "fake-token")
+    assert len(tool_messages) == 1
+    assert "fake-token" not in tool_messages[0].content
+
+    # unknown args
+    tool_calls = [{"id": 1, "name": "tool1", "args": {"unknown_args": "blo"}}]
+    tool_messages = execute_oc_tool_calls(tools_map, tool_calls, "fake-token")
+    assert len(tool_messages) == 1
+    assert "fake-token" not in tool_messages[0].content
+
+    # ensure the token is also not in the logs
+    assert "fake-token" not in caplog.text
