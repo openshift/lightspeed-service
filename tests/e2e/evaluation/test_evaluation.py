@@ -1,7 +1,8 @@
+"""Model response and model evaluation tests."""
+
 from argparse import Namespace
 
 import pytest
-
 
 from scripts.evaluation.response_evaluation import ResponseEvaluation
 
@@ -9,7 +10,7 @@ from scripts.evaluation.response_evaluation import ResponseEvaluation
 def test_model_response(request) -> None:
     """Evaluate model response."""
     args = Namespace(**vars(request.config.option))
-    if args.eval_provider_model_id == []:
+    if not args.eval_provider_model_id:
         args.eval_provider_model_id = [f"{args.eval_provider}+{args.eval_model}"]
     args.eval_type = "consistency"
 
