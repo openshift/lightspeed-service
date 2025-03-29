@@ -79,7 +79,7 @@
                     ]
                 },
                 "watsonx+ibm/granite-3-8b-instruct+with_rag": {
-                    "cutoff_score": 0.3,
+                    "cutoff_score": 0.35,
                     "text": [
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through various consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, and live migrating virtual machines between nodes. An enhanced web console provides a graphical portal to manage these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
                     ]

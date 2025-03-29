@@ -5,6 +5,7 @@ import logging
 from langchain_core.messages import ToolMessage
 from langchain_core.messages.tool import ToolCall
 from langchain_core.tools.base import BaseTool
+from pydantic import ValidationError
 
 from ols.src.tools.oc_cli import oc_adm_top, oc_describe, oc_get, oc_logs, oc_status
 
@@ -53,9 +54,21 @@ def execute_oc_tool_calls(
                 tool_args["token"] = token
                 tool_output = tool.invoke(tool_args)
                 del tool_args["token"]
+            except ValidationError:
+                tool_output = (
+                    f"Error executing {tool_name}: tool arguments are in wrong format"
+                )
+                # don't log as exception because it contains traceback
+                # with sensitive information
+                logger.error(tool_output)
             except Exception as e:
                 tool_output = f"Error executing {tool_name}: {e}"
                 logger.exception(tool_output)
+            finally:
+                # remove token from tool args if it was not removed
+                # in the try block
+                if "token" in tool_args:
+                    del tool_args["token"]
 
         logger.debug(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
