@@ -1163,6 +1163,94 @@ def test_consume_tokens_multiple_quota_limiters():
         assert mock_quota_limiter._subject_id == user_id
 
 
+def test_consume_tokens_token_usage_history():
+    """Test the function consume_tokens when token_usage_history is setup."""
+
+    class MockTokenUsageHistory:
+        def consume_tokens(
+            self, user_id="", provider="", model="", input_tokens=0, output_tokens=0
+        ):
+            self._user_id = user_id
+            self._provider = provider
+            self._model = model
+            self._input_tokens = input_tokens
+            self._output_tokens = output_tokens
+
+    quota_limiters = []
+    token_usage_history = MockTokenUsageHistory()
+    input_tokens = 1
+    output_tokens = 2
+    user_id = "user_id"
+    provider = "provider"
+    model = "model"
+    ols.consume_tokens(
+        quota_limiters,
+        token_usage_history,
+        user_id,
+        input_tokens,
+        output_tokens,
+        provider,
+        model,
+    )
+
+    assert token_usage_history._user_id == user_id
+    assert token_usage_history._provider == provider
+    assert token_usage_history._model == model
+    assert token_usage_history._input_tokens == input_tokens
+    assert token_usage_history._output_tokens == output_tokens
+
+
+def test_consume_tokens_token_limiters_and_token_usage_history():
+    """Test the function consume_tokens when token_usage_history is setup."""
+
+    class MockQuotaLimiter:
+        def consume_tokens(self, input_tokens=0, output_tokens=0, subject_id=""):
+            self._input_tokens = input_tokens
+            self._output_tokens = output_tokens
+            self._subject_id = subject_id
+
+    class MockTokenUsageHistory:
+        def consume_tokens(
+            self, user_id="", provider="", model="", input_tokens=0, output_tokens=0
+        ):
+            self._user_id = user_id
+            self._provider = provider
+            self._model = model
+            self._input_tokens = input_tokens
+            self._output_tokens = output_tokens
+
+    mock_quota_limiter1 = MockQuotaLimiter()
+    mock_quota_limiter2 = MockQuotaLimiter()
+
+    quota_limiters = [mock_quota_limiter1, mock_quota_limiter2]
+    token_usage_history = MockTokenUsageHistory()
+    input_tokens = 1
+    output_tokens = 2
+    user_id = "user_id"
+    provider = "provider"
+    model = "model"
+    ols.consume_tokens(
+        quota_limiters,
+        token_usage_history,
+        user_id,
+        input_tokens,
+        output_tokens,
+        provider,
+        model,
+    )
+
+    assert token_usage_history._user_id == user_id
+    assert token_usage_history._provider == provider
+    assert token_usage_history._model == model
+    assert token_usage_history._input_tokens == input_tokens
+    assert token_usage_history._output_tokens == output_tokens
+
+    for mock_quota_limiter in [mock_quota_limiter1, mock_quota_limiter2]:
+        assert mock_quota_limiter._input_tokens == input_tokens
+        assert mock_quota_limiter._output_tokens == output_tokens
+        assert mock_quota_limiter._subject_id == user_id
+
+
 def test_check_token_available_no_quota_limiters():
     """Test the function check_tokens_available if no quota limiters are configured."""
     quota_limiters = None
