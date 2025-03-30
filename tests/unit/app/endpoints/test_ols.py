@@ -1294,3 +1294,54 @@ def test_check_token_available_on_exceed_error():
     )
     with pytest.raises(HTTPException, match=expected):
         ols.check_tokens_available(quota_limiters, user_id)
+
+
+def test_get_available_quotas_no_quota_limiters():
+    """Test the function get_available_quotas when no quota limiters are setup."""
+    quotas = ols.get_available_quotas(None, "user_id")
+    assert quotas == {}
+
+
+def test_get_available_quotas_one_quota_limiter():
+    """Test the function get_available_quotas when one quota limiter is setup."""
+
+    class MockQuotaLimiter:
+        def __init__(self, available_quota=0):
+            self._available_quota = available_quota
+
+        def available_quota(self, subject_id=""):
+            return self._available_quota
+
+    mock_quota_limiter = MockQuotaLimiter(10)
+    quotas = ols.get_available_quotas([mock_quota_limiter], "user_id")
+    assert quotas == {
+        "MockQuotaLimiter": 10,
+    }
+
+
+def test_get_available_quotas_two_quota_limiters():
+    """Test the function get_available_quotas when two quota limiters are setup."""
+
+    class MockQuotaLimiter1:
+        def __init__(self, available_quota=0):
+            self._available_quota = available_quota
+
+        def available_quota(self, subject_id=""):
+            return self._available_quota
+
+    class MockQuotaLimiter2:
+        def __init__(self, available_quota=0):
+            self._available_quota = available_quota
+
+        def available_quota(self, subject_id=""):
+            return self._available_quota
+
+    mock_quota_limiter_1 = MockQuotaLimiter1(10)
+    mock_quota_limiter_2 = MockQuotaLimiter2(20)
+    quotas = ols.get_available_quotas(
+        [mock_quota_limiter_1, mock_quota_limiter_2], "user_id"
+    )
+    assert quotas == {
+        "MockQuotaLimiter1": 10,
+        "MockQuotaLimiter2": 20,
+    }
