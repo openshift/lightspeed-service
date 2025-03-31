@@ -208,7 +208,13 @@ class DocsSummarizer(QueryHelper):
 
             # Check if model is ready with final response
             if is_final_round or out.response_metadata["finish_reason"] == "stop":
-                response = out.content
+                # Temporary fix for fake-llm (load test) which gives output as string.
+                # Currently every method that we use gives us proper output, except fake-llm.
+                # We need to move to a different fake-llm (or custom fake-llm) which can
+                # handle streaming/non-streaming & tool calling and gives response not as string.
+                # Even below temp fix will fail for tool calling.
+                # (load test can be run with tool calling set to False till we have a permanent fix)
+                response = out.content if hasattr(out, "content") else out
                 break
 
             # Before we can add tool output to messages, we need to add
