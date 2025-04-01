@@ -261,3 +261,5 @@ class DocsSummarizer(QueryHelper):
         # NOTE: we are not providing tool calls here as it is not currently
         # supported for streaming response
         yield SummarizerResponse("", rag_chunks, truncated, generic_token_counter.token_counter)  # type: ignore[misc]
+
+# testy test
