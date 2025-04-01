@@ -101,10 +101,11 @@ def test_get_operation_valid_value():
         cache_entry_2,
     ]
     conversation = json.dumps([ce.to_dict() for ce in history], cls=MessageEncoder)
+    as_memview = memoryview(bytearray(conversation, "utf-8"))
 
     # mock the query result
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = (conversation,)
+    mock_cursor.fetchone.return_value = (as_memview,)
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
@@ -191,6 +192,7 @@ def test_insert_or_append_operation_append_item():
     stored_history = cache_entry_1
 
     old_conversation = json.dumps([stored_history.to_dict()], cls=MessageEncoder)
+    as_memview = memoryview(bytearray(old_conversation, "utf-8"))
 
     appended_history = cache_entry_2
 
@@ -201,7 +203,7 @@ def test_insert_or_append_operation_append_item():
 
     # mock the query result
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = (old_conversation,)
+    mock_cursor.fetchone.return_value = (as_memview,)
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
