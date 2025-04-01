@@ -131,12 +131,16 @@ class PostgresCache(Cache):
         Returns:
             The value associated with the key, or None if not found.
         """
+        # just check if user_id and conversation_id are UUIDs
+        super().construct_key(user_id, conversation_id, skip_user_id_check)
+
         with self.conn.cursor() as cursor:
             try:
                 value = PostgresCache._select(cursor, user_id, conversation_id)
                 if value is None:
                     return []
-                return [CacheEntry.from_dict(cache_entry) for cache_entry in value]
+                history = [CacheEntry.from_dict(cache_entry) for cache_entry in value]
+                return history
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.get %s", e)
                 raise CacheError("PostgresCache.get", e) from e
@@ -265,8 +269,12 @@ class PostgresCache(Cache):
         if len(value) != 1:
             raise ValueError("Invalid value read from cache:", value)
 
+        # convert from memoryview object to a string
+        text_value = str(value[0], "utf-8")
+        deserialized = json.loads(text_value, cls=MessageDecoder)
+
         # try to deserialize the value
-        return json.loads(value[0], cls=MessageDecoder)
+        return deserialized
 
     @staticmethod
     def _update(
