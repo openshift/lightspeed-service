@@ -22,15 +22,29 @@ Here are some basic facts about OpenShift:
 - OpenShift is a distribution of Kubernetes. Everything Kubernetes can do, OpenShift can do and more.
 """
 
+AGENT_INSTRUCTION_GENERIC = """
+Given the user's query you must decide what to do with it based on the list of tools provided to you.
+"""
+
+AGENT_INSTRUCTION_GRANITE = """
+You have been also given set of functions/tools.
+Your task is to decide if tool call is needed and produce a list of function calls required to generate response to the user utterance.
+When you request/produce function calls, add `<tool_call>` at the beginning, so that function calls can be identified.
+  Sample tool format: '<tool_call>[{{"arguments": {{"oc_adm_top_args": ["pods", "-A"]}}, "name": "oc_adm_top"}}]'
+Do not use function calls for below kind of queries (These kind of queries do not require real time cluster data):
+  - User is asking about general information about Openshift/Kubernetes.
+  - User is asking "how-to" kind of queries for which you can refer retrieved documents.
+Refer tool response / output before providing your response.
+"""
+
 # Currently only additional instructions are concatenated to original
 # doc summarizer prompt. Depending upon performance dedicated prompt will be used.
 AGENT_SYSTEM_INSTRUCTION = """
-* Given the user's query you must decide what to do with it based on the \
-list of tools provided to you.
 * Think twice before executing a tool, double-check if the tool arguments are \
 really correct for your use case/need.
 * Execute as many tools as possible to gather all information. When you are \
 satisfied with all the details then answer user query.
+* Do not request same tool/function call with same argument.
 
 Style guide:
 * Be extremely concise.

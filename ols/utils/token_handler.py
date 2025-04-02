@@ -14,11 +14,7 @@ from ols.constants import (
     RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
 )
-from ols.src.prompts.prompt_generator import (
-    restructure_history,
-    restructure_rag_context_post,
-    restructure_rag_context_pre,
-)
+from ols.src.prompts.prompt_generator import format_retrieved_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +35,7 @@ class TokenHandler:
         """Initialize the class instance."""
         # Note: We need an approximate tokens count.
         # For different models, exact tokens may vary due to different tokenizer.
+        # Also the provider may add model specific tags.
         self._encoder = get_encoding(encoding_name)
 
     def text_to_tokens(self, text: str) -> list[int]:
@@ -112,13 +109,12 @@ class TokenHandler:
         return available_tokens
 
     def truncate_rag_context(
-        self, retrieved_nodes: list[NodeWithScore], model: str, max_tokens: int = 500
+        self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
     ) -> tuple[list[RagChunk], int]:
         """Process retrieved node text and truncate if required.
 
         Args:
             retrieved_nodes: retrieved nodes object from index
-            model: model name; required for adding proper tags
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
@@ -136,22 +132,11 @@ class TokenHandler:
                 )
                 break
 
-            # Prepend all model specific tags, so that those will be considered for
-            # token calculation. This requires formatting again after truncation,
-            # whenever there are tags required at the end.
-            # Alternative to this is to calculate tokens for special tags before
-            # and add the number accordingly.
-            # Example: Once token is calculated;
-            # ```
-            # if "granite" in model:
-            #    tokens_count += 7
-            # else:
-            #    tokens_count += 3
-            # ```
             node_text = node.get_text()
-            node_text = restructure_rag_context_pre(node_text, model)
+            node_text = format_retrieved_chunk(node_text)
             tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
+            tokens_count += 1  # for new-line char
             logger.debug("RAG content tokens count: %d.", tokens_count)
 
             available_tokens = min(tokens_count, max_tokens)
@@ -162,7 +147,6 @@ class TokenHandler:
                 break
 
             node_text = self.tokens_to_text(tokens[:available_tokens])
-            node_text = restructure_rag_context_post(node_text, model)
             rag_chunks.append(
                 RagChunk(
                     text=node_text,
@@ -176,26 +160,25 @@ class TokenHandler:
         return rag_chunks, max_tokens
 
     def limit_conversation_history(
-        self, history: list[BaseMessage], model: str, limit: int = 0
+        self, history: list[BaseMessage], limit: int = 0
     ) -> tuple[list[BaseMessage], bool]:
         """Limit conversation history to specified number of tokens."""
         total_length = 0
-        formatted_history: list[BaseMessage] = []
+        index = 0
 
-        for original_message in reversed(history):
-            # Restructure messages as per model
-            message = restructure_history(original_message, model)
+        for message in reversed(history):
             message_length = TokenHandler._get_token_count(
                 self.text_to_tokens(f"{message.type}: {message.content}")
             )
-            total_length += message_length
+            total_length += message_length + 1  # 1 for new-line char
+
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)
             if total_length > limit:
                 logger.debug(
                     "History truncated, it exceeds available %d tokens.", limit
                 )
-                return formatted_history[::-1], True
-            formatted_history.append(message)
+                return history[len(history) - index :], True
+            index += 1
 
-        return formatted_history[::-1], False  # reverse back to original order
+        return history, False

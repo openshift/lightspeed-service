@@ -6,8 +6,7 @@ from unittest import TestCase, mock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from ols.constants import TOKEN_BUFFER_WEIGHT, ModelFamily
-from ols.src.prompts.prompt_generator import restructure_history
+from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
 
@@ -117,15 +116,15 @@ class TestTokenHandler(TestCase):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
         rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes, ModelFamily.GPT
+            retrieved_nodes
         )
 
         assert len(rag_chunks) == 3
         for i in range(3):
-            # Additionally tag and new line are added to have proper token calculation.
+            # New-line character is considered during calculation.
             assert (
                 rag_chunks[i].text
-                == "\nDocument:\n" + self._mock_retrieved_obj[i].get_text() + "\n"
+                == "Document:\n" + self._mock_retrieved_obj[i].get_text()
             )
             assert (
                 rag_chunks[i].doc_url
@@ -140,13 +139,11 @@ class TestTokenHandler(TestCase):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
         rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes, ModelFamily.GPT
+            retrieved_nodes
         )
-
         assert len(rag_chunks) == 1
         assert (
-            rag_chunks[0].text
-            == "\nDocument:\n" + self._mock_retrieved_obj[0].get_text() + "\n"
+            rag_chunks[0].text == "Document:\n" + self._mock_retrieved_obj[0].get_text()
         )
         assert available_tokens == 491
 
@@ -155,14 +152,16 @@ class TestTokenHandler(TestCase):
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     def test_token_handler_token_limit(self):
         """Test token handler when token limit is reached."""
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            self._mock_retrieved_obj, ModelFamily.GPT, 13
-        )
+        # Calculation for each chunk:
+        # `Document:\n` -> 3 tokens for format, Actual text -> 5, new-line -> 1, total -> 9
 
+        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+            self._mock_retrieved_obj, 13
+        )
         assert len(rag_chunks) == 2
         assert (
             rag_chunks[1].text
-            == "\nDocument:\n" + self._mock_retrieved_obj[1].get_text()[:1] + "\n"
+            == "Document:\n" + self._mock_retrieved_obj[1].get_text()[:6]
         )
         assert available_tokens == 0
 
@@ -172,25 +171,23 @@ class TestTokenHandler(TestCase):
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
         rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            self._mock_retrieved_obj, ModelFamily.GPT, 10
+            self._mock_retrieved_obj, 10
         )
-
         assert len(rag_chunks) == 1
         assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
         rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            [], ModelFamily.GRANITE, 5
+            [], 5
         )
-
         assert rag_chunks == []
         assert available_tokens == 5
 
     def test_limit_conversation_history_when_no_history_exists(self):
         """Check the behaviour of limiting conversation history if it does not exists."""
         history, truncated = self._token_handler_obj.limit_conversation_history(
-            [], ModelFamily.GPT, 1000
+            [], 1000
         )
         # history must be empty
         assert history == []
@@ -207,14 +204,12 @@ class TestTokenHandler(TestCase):
             HumanMessage("third message from human"),
             AIMessage("third answer from AI"),
         ]
-        # for each of the above actual messages the tokens count is 4.
-        # then 2 tokens for the tags. Total tokens are 6.
-        # As tokens are increased by 5% (ceil), final count becomes 7 per message.
+        # for each of the above actual messages the tokens counts as below
+        # `role:` -> 2, Actual content -> 4, new-line -> 1, total -> 7
+        # As tokens are increased by 5% (ceil), final count becomes 8 per message.
 
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 1000
-            )
+            self._token_handler_obj.limit_conversation_history(history, 1000)
         )
         # history must remain the same and truncate flag should be False
         assert truncated_history == history
@@ -222,9 +217,7 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to 28 tokens
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 28
-            )
+            self._token_handler_obj.limit_conversation_history(history, 32)
         )
         # history should truncate to 4 newest messages only and flag should be True
         assert len(truncated_history) == 4
@@ -233,9 +226,7 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to 14 tokens
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 14
-            )
+            self._token_handler_obj.limit_conversation_history(history, 16)
         )
         # history should truncate to 2 messages only and flag should be True
         assert len(truncated_history) == 2
@@ -244,9 +235,7 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to 13 tokens
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 13
-            )
+            self._token_handler_obj.limit_conversation_history(history, 13)
         )
         # history should truncate to 1 message
         assert len(truncated_history) == 1
@@ -255,9 +244,7 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to 7 tokens - this means just one message
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 7
-            )
+            self._token_handler_obj.limit_conversation_history(history, 8)
         )
         # history should truncate to one message only and flag should be True
         assert len(truncated_history) == 1
@@ -266,9 +253,7 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to zero tokens
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 0
-            )
+            self._token_handler_obj.limit_conversation_history(history, 0)
         )
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
@@ -276,19 +261,8 @@ class TestTokenHandler(TestCase):
 
         # try to truncate to one token, but the 1st message is already longer than 1 token
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(
-                history, ModelFamily.GPT, 1
-            )
+            self._token_handler_obj.limit_conversation_history(history, 1)
         )
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
-        assert truncated
-
-        # Test formatted history for granite
-        model = ModelFamily.GRANITE
-        truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, model, 22)
-        )
-        assert len(truncated_history) == 1
-        assert truncated_history[-1] == restructure_history(history[-1], model)
         assert truncated
