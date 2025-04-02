@@ -5,7 +5,7 @@ ignore_files:
   - '**/*.cache'         # Exclude files ending with .cache
   - '__pycache__/**/*'   # Exclude Python cache directories
   - '.*'                 # Exclude all files starting with .
-  - 'ols/utils/keywords.py'
+  - 'ols/customize/ols/keywords.py'
 
 rules:
   - name: abort
