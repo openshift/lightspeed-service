@@ -31,6 +31,7 @@ from ols.app.models.models import (
     ToolCall,
     UnauthorizedResponse,
 )
+from ols.customize import keywords
 from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
@@ -39,8 +40,9 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
-from ols.utils.keywords import KEYWORDS
 from ols.utils.token_handler import PromptTooLongError
+
+KEYWORDS = keywords.KEYWORDS
 
 logger = logging.getLogger(__name__)
 
