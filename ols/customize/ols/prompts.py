@@ -5,6 +5,12 @@
 
 from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
 
+# Default responses
+INVALID_QUERY_RESP = (
+    "Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, "
+    "please ask me a question related to OpenShift."
+)
+
 QUERY_SYSTEM_INSTRUCTION = """
 You are OpenShift Lightspeed - an intelligent assistant for question-answering tasks \
 related to the OpenShift container orchestration platform.

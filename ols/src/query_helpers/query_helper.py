@@ -7,8 +7,8 @@ from typing import Optional
 from langchain.llms.base import LLM
 
 from ols import config
+from ols.customize import prompts
 from ols.src.llms.llm_loader import load_llm
-from ols.src.prompts import prompts
 
 logger = logging.getLogger(__name__)
 

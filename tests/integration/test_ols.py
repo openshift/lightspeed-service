@@ -14,6 +14,7 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
+from ols.customize import prompts
 from ols.app.models.models import TokenCounter
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
@@ -21,6 +22,8 @@ from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 from tests.mock_classes.mock_tools import mock_tools_map
+
+INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 
 @pytest.fixture(scope="function")
@@ -90,7 +93,7 @@ def test_post_question_on_invalid_question(_setup, endpoint):
             # non-streaming responses return JSON
             expected_response = {
                 "conversation_id": conversation_id,
-                "response": constants.INVALID_QUERY_RESP,
+                "response": INVALID_QUERY_RESP,
                 "referenced_documents": [],
                 "truncated": False,
                 "input_tokens": 0,
@@ -100,7 +103,7 @@ def test_post_question_on_invalid_question(_setup, endpoint):
             actual_response = response.json()
         else:
             # streaming_query returns bytes
-            expected_response = constants.INVALID_QUERY_RESP
+            expected_response = INVALID_QUERY_RESP
             actual_response = response.text
 
         assert actual_response == expected_response
@@ -1123,7 +1126,7 @@ def test_tool_calling(_setup, caplog) -> None:
     config.ols_config.introspection_enabled = True
 
     with (
-        patch("ols.src.prompts.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools"
         ) as tools_mock,

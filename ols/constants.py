@@ -19,13 +19,6 @@ SUBJECT_REJECTED = "REJECTED"
 SUBJECT_ALLOWED = "ALLOWED"
 
 
-# Default responses
-INVALID_QUERY_RESP = (
-    "Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, "
-    "please ask me a question related to OpenShift."
-)
-
-
 # providers
 PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
