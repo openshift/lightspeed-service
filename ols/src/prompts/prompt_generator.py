@@ -9,15 +9,7 @@ from langchain_core.prompts import (
 )
 
 from ols.constants import ModelFamily
-
-from .prompts import (
-    AGENT_INSTRUCTION_GENERIC,
-    AGENT_INSTRUCTION_GRANITE,
-    AGENT_SYSTEM_INSTRUCTION,
-    QUERY_SYSTEM_INSTRUCTION,
-    USE_CONTEXT_INSTRUCTION,
-    USE_HISTORY_INSTRUCTION,
-)
+from ols.customize import prompts
 
 
 def format_retrieved_chunk(rag_content: str) -> str:
@@ -33,7 +25,7 @@ class GeneratePrompt:
         query: str,
         rag_context: list[str] = [],
         history: list[BaseMessage] = [],
-        system_instruction: str = QUERY_SYSTEM_INSTRUCTION,
+        system_instruction: str = prompts.QUERY_SYSTEM_INSTRUCTION,
         tool_call: bool = False,
     ):
         """Initialize prompt generator."""
@@ -50,22 +42,26 @@ class GeneratePrompt:
         llm_input_values: dict = {"query": self._query}
 
         if self._tool_call:
-            agent_instructions = AGENT_INSTRUCTION_GENERIC.strip()
+            agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()
             if ModelFamily.GRANITE in model:
-                agent_instructions = AGENT_INSTRUCTION_GRANITE.strip()
+                agent_instructions = prompts.AGENT_INSTRUCTION_GRANITE.strip()
             agent_instructions = (
-                agent_instructions + "\n" + AGENT_SYSTEM_INSTRUCTION.strip()
+                agent_instructions + "\n" + prompts.AGENT_SYSTEM_INSTRUCTION.strip()
             )
             sys_intruction = sys_intruction + "\n" + agent_instructions
 
         if len(self._rag_context) > 0:
             llm_input_values["context"] = "\n".join(self._rag_context)
-            sys_intruction = sys_intruction + "\n" + USE_CONTEXT_INSTRUCTION.strip()
+            sys_intruction = (
+                sys_intruction + "\n" + prompts.USE_CONTEXT_INSTRUCTION.strip()
+            )
 
         if len(self._history) > 0:
             llm_input_values["chat_history"] = self._history
 
-            sys_intruction = sys_intruction + "\n" + USE_HISTORY_INSTRUCTION.strip()
+            sys_intruction = (
+                sys_intruction + "\n" + prompts.USE_HISTORY_INSTRUCTION.strip()
+            )
 
         if "context" in llm_input_values:
             sys_intruction = sys_intruction + "\n{context}"

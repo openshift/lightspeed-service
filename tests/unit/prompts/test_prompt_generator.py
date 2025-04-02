@@ -176,15 +176,15 @@ def test_generate_prompt_with_tool_call(model):
 
     with (
         patch(
-            "ols.src.prompts.prompt_generator.AGENT_INSTRUCTION_GRANITE",
+            "ols.customize.prompts.AGENT_INSTRUCTION_GRANITE",
             agent_instruction_granite,
         ),
         patch(
-            "ols.src.prompts.prompt_generator.AGENT_INSTRUCTION_GENERIC",
+            "ols.customize.prompts.AGENT_INSTRUCTION_GENERIC",
             agent_instruction_generic,
         ),
         patch(
-            "ols.src.prompts.prompt_generator.AGENT_SYSTEM_INSTRUCTION",
+            "ols.customize.prompts.AGENT_SYSTEM_INSTRUCTION",
             agent_system_instruction,
         ),
     ):

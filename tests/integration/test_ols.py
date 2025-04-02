@@ -14,8 +14,8 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
-from ols.customize import prompts
 from ols.app.models.models import TokenCounter
+from ols.customize import prompts
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from ols.utils.logging_configurator import configure_logging
