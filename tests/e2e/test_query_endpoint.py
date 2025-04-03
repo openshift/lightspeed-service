@@ -196,6 +196,7 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
+@pytest.mark.introspection
 @pytest.mark.smoketest
 @pytest.mark.rag
 def test_valid_question() -> None:
@@ -347,6 +348,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
+@pytest.mark.introspection
 @pytest.mark.rag
 @retry(max_attempts=3, wait_between_runs=10)
 def test_rag_question() -> None:
