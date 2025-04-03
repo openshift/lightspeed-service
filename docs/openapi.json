@@ -966,6 +966,7 @@
                         "title": "Functionality"
                     },
                     "status": {
+                        "additionalProperties": true,
                         "type": "object",
                         "title": "Status"
                     }
