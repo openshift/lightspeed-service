@@ -187,7 +187,7 @@ def create_secrets(provider_name: str, creds: str, single_provider: bool = True)
                 "create",
                 "secret",
                 "generic",
-                provider_name + "creds",
+                provider_name.replace("_","") + "creds",
                 f"--from-file=apitoken={creds}",
             ],
             ignore_existing_resource=True,
