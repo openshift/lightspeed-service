@@ -24,7 +24,6 @@ from ols.app.models.models import (  # noqa:E402
     RagChunk,
     SummarizerResponse,
     TokenCounter,
-    ToolCall,
 )
 from ols.customize import prompts  # noqa:E402
 from ols.src.llms.llm_loader import LLMConfigurationError  # noqa:E402
@@ -979,14 +978,17 @@ def test_store_transcript(transcripts_location):
         RagChunk("text2", "url2", "title2"),
     ]
     truncated = True
-    tool_calls = [
-        [
-            ToolCall(name="tool1", args={"arg": "bla"}),
-        ],
-        [
-            ToolCall(name="tool2", args={"arg": "bla"}),
-            ToolCall(name="tool3", args={"arg": "bla"}),
-        ],
+    tools_calls = [
+        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"},
+    ]
+    tools_results = [
+        {
+            "id": "1",
+            "status": "success",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 0,
+        }
     ]
     attachments = [
         Attachment(
@@ -1005,7 +1007,8 @@ def test_store_transcript(transcripts_location):
         response,
         rag_chunks,
         truncated,
-        tool_calls,
+        tools_calls,
+        tools_results,
         attachments,
     )
 
@@ -1039,13 +1042,15 @@ def test_store_transcript(transcripts_location):
         ],
         "truncated": truncated,
         "tool_calls": [
-            [
-                {"name": "tool1", "args": {"arg": "bla"}},
-            ],
-            [
-                {"name": "tool2", "args": {"arg": "bla"}},
-                {"name": "tool3", "args": {"arg": "bla"}},
-            ],
+            {
+                "name": "tool1",
+                "args": {},
+                "id": "1",
+                "type": "tool_result",
+                "status": "success",
+                "content": "bla",
+                "round": 0,
+            }
         ],
         "attachments": [
             {
@@ -1345,4 +1350,48 @@ def test_get_available_quotas_two_quota_limiters():
     assert quotas == {
         "MockQuotaLimiter1": 10,
         "MockQuotaLimiter2": 20,
+    }
+
+
+def test_merge_tools_info():
+    """Test the function merge_tools_info."""
+    tools_calls = [
+        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"},
+        {"name": "tool2", "args": {}, "id": "2", "type": "tool_call"},
+    ]
+    tools_results = [
+        {
+            "id": "1",
+            "status": "success",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 0,
+        },
+        {
+            "id": "2",
+            "status": "error",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 0,
+        },
+    ]
+    merged_tools = ols.merge_tools_info(tools_calls, tools_results)
+    assert len(merged_tools) == 2
+    assert merged_tools[0] == {
+        "name": "tool1",
+        "args": {},
+        "id": "1",
+        "type": "tool_result",
+        "status": "success",
+        "content": "bla",
+        "round": 0,
+    }
+    assert merged_tools[1] == {
+        "name": "tool2",
+        "args": {},
+        "id": "2",
+        "type": "tool_result",
+        "status": "error",
+        "content": "bla",
+        "round": 0,
     }
