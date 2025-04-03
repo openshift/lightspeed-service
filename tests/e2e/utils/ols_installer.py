@@ -149,7 +149,7 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
-def create_secrets(provider_name: str, single_provider: bool = True) -> None:
+def create_secrets(provider_name: str, creds: str, single_provider: bool = True) -> None:
     """Create secrets for models.
 
     Args:
@@ -169,10 +169,7 @@ def create_secrets(provider_name: str, single_provider: bool = True) -> None:
         )
     except subprocess.CalledProcessError:
         print("llmcreds secret does not yet exist. Creating it.")
-
-    creds = os.getenv("PROVIDER_KEY_PATH")
-    if not creds:
-        creds = os.getenv(f"{provider_name.upper()}_PROVIDER_KEY_PATH")
+    
     if single_provider:
         cluster_utils.run_oc(
             [
@@ -283,8 +280,11 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
     single_provider = True
     if len(provider.split()) > 1:
         single_provider = False
-    for prv in provider.split():
-        create_secrets(prv, single_provider)
+    provider_list = provider.split()
+    creds = os.getenv("PROVIDER_KEY_PATH")
+    creds_list = creds.split()
+    for i in range(len(provider_list)):
+        create_secrets(provider_list[i], creds_list[i], single_provider)
 
     if provider == "azure_openai":
         # create extra secrets with Entra ID
