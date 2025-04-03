@@ -14,6 +14,8 @@ class MockRedisClient:
         or within test function or test method:
         with patch("redis.StrictRedis", new=MockRedis):
             some test steps
+
+    Note: it is better to use context manager to patch StrictRedis, compared to `patch` decorator
     """
 
     def __init__(self, **kwargs):
