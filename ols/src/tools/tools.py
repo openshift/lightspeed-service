@@ -49,11 +49,8 @@ def execute_oc_tool_calls(
             logger.error(tool_output)
         else:
             try:
-                # inject token into tool args and immediately remove it
-                # to avoid leaking
-                tool_args["token"] = token
-                tool_output = tool.invoke(tool_args)
-                del tool_args["token"]
+                # create a new dict with the tool args and the token
+                tool_output = tool.invoke({**tool_args, "token": token})
             except ValidationError:
                 tool_output = (
                     f"Error executing {tool_name}: tool arguments are in wrong format"
@@ -64,11 +61,6 @@ def execute_oc_tool_calls(
             except Exception as e:
                 tool_output = f"Error executing {tool_name}: {e}"
                 logger.exception(tool_output)
-            finally:
-                # remove token from tool args if it was not removed
-                # in the try block
-                if "token" in tool_args:
-                    del tool_args["token"]
 
         logger.debug(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
