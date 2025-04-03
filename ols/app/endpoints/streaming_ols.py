@@ -37,15 +37,17 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.constants import MEDIA_TYPE_TEXT
+from ols.customize import prompts
 from ols.src.auth.auth import get_auth_dependency
 from ols.utils import errors_parsing
 from ols.utils.token_handler import PromptTooLongError
+
+INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
-
 
 query_responses: dict[int | str, dict[str, Any]] = {
     200: {
@@ -120,7 +122,7 @@ async def invalid_response_generator() -> AsyncGenerator[str, None]:
     Yields:
         str: The response indicating invalid query.
     """
-    yield constants.INVALID_QUERY_RESP
+    yield INVALID_QUERY_RESP
 
 
 def format_stream_data(d: dict) -> str:

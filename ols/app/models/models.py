@@ -11,7 +11,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
-from ols.src.prompts import prompts
+from ols.customize import prompts
 from ols.utils import suid
 
 

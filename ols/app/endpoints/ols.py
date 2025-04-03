@@ -31,7 +31,7 @@ from ols.app.models.models import (
     ToolCall,
     UnauthorizedResponse,
 )
-from ols.customize import keywords
+from ols.customize import keywords, prompts
 from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
@@ -43,6 +43,7 @@ from ols.utils import errors_parsing, suid
 from ols.utils.token_handler import PromptTooLongError
 
 KEYWORDS = keywords.KEYWORDS
+INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def conversation_request(
     if not processed_request.valid:
         # response containing info about query that can not be validated
         summarizer_response = SummarizerResponse(
-            constants.INVALID_QUERY_RESP,
+            INVALID_QUERY_RESP,
             [],
             False,
             None,

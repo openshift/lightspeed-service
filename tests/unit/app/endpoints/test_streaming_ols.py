@@ -20,6 +20,7 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
     stream_start_event,
 )
 from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
+from ols.customize import prompts  # noqa:E402
 from ols.utils import suid  # noqa:E402
 
 conversation_id = suid.get_suid()
@@ -55,7 +56,7 @@ async def test_invalid_response_generator():
 
     response = await drain_generator(generator)
 
-    assert response == constants.INVALID_QUERY_RESP
+    assert response == prompts.INVALID_QUERY_RESP
 
 
 def test_build_yield_item():
