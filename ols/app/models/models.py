@@ -181,6 +181,8 @@ class LLMResponse(BaseModel):
         input_tokens: Number of tokens sent to LLM
         output_tokens: Number of tokens received from LLM
         available_quotas: Quota available as measured by all configured quota limiters
+        tools_calls: List of tool requests.
+        tools_results: List of tool results.
     """
 
     conversation_id: str
@@ -190,6 +192,8 @@ class LLMResponse(BaseModel):
     input_tokens: int
     output_tokens: int
     available_quotas: dict[str, int]
+    tools_calls: list
+    tools_results: list
 
     # provides examples for /docs endpoint
     model_config = {
@@ -212,6 +216,18 @@ class LLMResponse(BaseModel):
                         "UserQuotaLimiter": 998911,
                         "ClusterQuotaLimiter": 998911,
                     },
+                    "tools_calls": [
+                        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"}
+                    ],
+                    "tools_results": [
+                        {
+                            "id": "1",
+                            "status": "success",
+                            "content": "bla",
+                            "type": "tool_result",
+                            "round": 0,
+                        }
+                    ],
                 }
             ]
         }
@@ -552,14 +568,12 @@ class TokenCounter:
         llm: LLM instance
         input_tokens: number of tokens sent to LLM
         output_tokens: number of tokens received from LLM
-        input_tokens_counted: number of input tokens counted by the handler
         llm_calls: number of LLM calls
     """
 
     llm: Optional[LLM] = None
     input_tokens: int = 0
     output_tokens: int = 0
-    input_tokens_counted: int = 0
     llm_calls: int = 0
 
 
@@ -590,14 +604,16 @@ class SummarizerResponse:
         rag_chunks: The RAG chunks.
         history_truncated: Whether the history was truncated.
         token_counter: Input and output tokens counters.
-        tool_calls: List of list of tool calls (per iteration).
+        tools_calls: List of tool requests.
+        tools_results: List of tool results.
     """
 
     response: str
     rag_chunks: list[RagChunk]
     history_truncated: bool
     token_counter: Optional[TokenCounter]
-    tool_calls: list[list[ToolCall]] = field(default_factory=list)
+    tools_calls: list[dict] = field(default_factory=list)
+    tools_results: list[dict] = field(default_factory=list)
 
 
 class CacheEntry(BaseModel):

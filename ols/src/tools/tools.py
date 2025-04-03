@@ -1,15 +1,24 @@
 """Functions/Tools definition."""
 
 import logging
+from typing import Optional
 
 from langchain_core.messages import ToolMessage
-from langchain_core.messages.tool import ToolCall
 from langchain_core.tools.base import BaseTool
 from pydantic import ValidationError
 
-from ols.src.tools.oc_cli import oc_adm_top, oc_describe, oc_get, oc_logs, oc_status
+from ols.src.tools.oc_cli import (
+    oc_adm_top,
+    oc_describe,
+    oc_get,
+    oc_logs,
+    oc_status,
+    show_pods,
+    token_works_for_oc,
+)
 
 logger = logging.getLogger(__name__)
+
 
 oc_tools = {
     "oc_get": oc_get,
@@ -17,7 +26,28 @@ oc_tools = {
     "oc_logs": oc_logs,
     "oc_adm_top": oc_adm_top,
     "oc_status": oc_status,
+    "show_pods": show_pods,
 }
+
+
+def get_available_tools(
+    introspection_enabled: bool, user_token: Optional[str] = None
+) -> dict[str, BaseTool]:
+    """Get available tools based on introspection and user token."""
+    if not introspection_enabled:
+        logger.info("Introspection disabled; no tools available")
+        return {}
+
+    if user_token is None or (isinstance(user_token, str) and user_token == ""):
+        logger.warning("No user token provided; no oc tools available")
+        return {}
+
+    if token_works_for_oc(user_token):
+        logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
+        return oc_tools
+
+    logger.error("User token not working for 'oc' CLI; no tools available")
+    return {}
 
 
 def check_tool_description_length(tool: BaseTool) -> None:
@@ -33,13 +63,14 @@ for tool in oc_tools.values():
 
 def execute_oc_tool_calls(
     tools_map: dict,
-    tool_calls: list[ToolCall],
+    tool_calls: list[dict],
     token: str,
 ) -> tuple[list[ToolMessage], list[dict]]:
     """Execute tool calls and return ToolMessages and execution details."""
     tool_messages = []
 
     for tool_call in tool_calls:
+        status = "error"
         tool_name = tool_call.get("name", "").lower()
         tool_args = tool_call.get("args", {})
         tool = tools_map.get(tool_name)
@@ -51,6 +82,7 @@ def execute_oc_tool_calls(
             try:
                 # create a new dict with the tool args and the token
                 tool_output = tool.invoke({**tool_args, "token": token})
+                status = "success"
             except ValidationError:
                 tool_output = (
                     f"Error executing {tool_name}: tool arguments are in wrong format"
@@ -66,6 +98,10 @@ def execute_oc_tool_calls(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
         )
 
-        tool_messages.append(ToolMessage(tool_output, tool_call_id=tool_call.get("id")))
+        tool_messages.append(
+            ToolMessage(
+                content=tool_output, status=status, tool_call_id=tool_call.get("id")
+            )
+        )
 
     return tool_messages

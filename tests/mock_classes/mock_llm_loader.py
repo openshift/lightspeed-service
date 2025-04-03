@@ -28,7 +28,7 @@ class MockLLMLoader(Runnable):
     async def astream(self, *args, **kwargs):
         """Return query result."""
         # yield input prompt/user query
-        yield args[0][1].content
+        yield args[0].messages[1]
 
 
 def mock_llm_loader(llm=None, expected_params=None):
