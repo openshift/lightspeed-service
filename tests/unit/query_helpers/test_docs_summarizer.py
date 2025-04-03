@@ -1,5 +1,6 @@
 """Unit tests for DocsSummarizer class."""
 
+import logging
 from unittest.mock import ANY, patch
 
 import pytest
@@ -13,11 +14,13 @@ from tests.mock_classes.mock_tools import mock_tools_map
 config.ols_config.authentication_config.module = "k8s"
 
 
+from ols.app.models.config import LoggingConfig  # noqa:E402
 from ols.src.query_helpers.docs_summarizer import (  # noqa:E402
     DocsSummarizer,
     QueryHelper,
 )
 from ols.utils import suid  # noqa:E402
+from ols.utils.logging_configurator import configure_logging  # noqa:E402
 from tests import constants  # noqa:E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa:E402
     mock_langchain_interface,
@@ -143,6 +146,29 @@ def test_summarize_no_reference_content():
     assert question in summary.response
     assert summary.rag_chunks == []
     assert not summary.history_truncated
+
+
+def test_summarize_reranker(caplog):
+    """Basic test to make sure the reranker is called as expected."""
+    logging_config = LoggingConfig(app_log_level="debug")
+
+    configure_logging(logging_config)
+    logger = logging.getLogger("ols")
+    logger.handlers = [caplog.handler]  # add caplog handler to logger
+
+    with (
+        patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
+        patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3),
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        question = "What's the ultimate question with answer 42?"
+        rag_index = MockLlamaIndex()
+        # no history is passed into create_response() method
+        summary = summarizer.create_response(question, rag_index)
+        check_summary_result(summary, question)
+
+        # Check captured log text to see if reranker was called.
+        assert "reranker.rerank() is called with 1 result(s)." in caplog.text
 
 
 @pytest.mark.asyncio
