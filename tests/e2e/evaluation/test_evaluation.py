@@ -2,6 +2,7 @@
 
 from argparse import Namespace
 
+import os
 import pytest
 
 from scripts.evaluation.response_evaluation import ResponseEvaluation
@@ -11,7 +12,11 @@ def test_model_response(request) -> None:
     """Evaluate model response."""
     args = Namespace(**vars(request.config.option))
     if not args.eval_provider_model_id:
-        args.eval_provider_model_id = [f"{args.eval_provider}+{args.eval_model}"]
+        args.eval_provider_model_id = []
+        providers = os.getenv("PROVIDER")
+        models = os.getenv("MODEL")
+        for i in range(len(providers)):
+            args.eval_provider_model_id.append(f"{providers[i]}+{models[i]}")
     args.eval_type = "consistency"
 
     val_success_flag = ResponseEvaluation(args, pytest.client).validate_response()

@@ -34,7 +34,7 @@ spec:
         type: watsonx
   ols:
     defaultModel: gpt-4o-mini
-    defaultProvider: azure_openai
+    defaultProvider: openai
     deployment:
       replicas: 1
     disableAuth: false

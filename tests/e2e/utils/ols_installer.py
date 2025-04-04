@@ -151,7 +151,9 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
 
-def create_secrets(provider_name: str, creds: str, single_provider: bool = True) -> None:
+def create_secrets(
+    provider_name: str, creds: str, single_provider: bool = True
+) -> None:
     """Create secrets for models.
 
     Args:
@@ -171,7 +173,7 @@ def create_secrets(provider_name: str, creds: str, single_provider: bool = True)
         )
     except subprocess.CalledProcessError:
         print("llmcreds secret does not yet exist. Creating it.")
-    
+
     if single_provider:
         cluster_utils.run_oc(
             [
@@ -189,7 +191,7 @@ def create_secrets(provider_name: str, creds: str, single_provider: bool = True)
                 "create",
                 "secret",
                 "generic",
-                provider_name.replace("_","") + "creds",
+                provider_name.replace("_", "") + "creds",
                 f"--from-file=apitoken={creds}",
             ],
             ignore_existing_resource=True,
