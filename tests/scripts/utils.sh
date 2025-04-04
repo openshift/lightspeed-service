@@ -50,7 +50,7 @@ function run_suite() {
 
   cleanup_ols_operator
   
-  if [$1=="model_eval"]; then
+  if [ "$1" = "model_eval" ]; then
   # Run eval tests
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 INTROSPECTION_ENABLED=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-eval
   else
