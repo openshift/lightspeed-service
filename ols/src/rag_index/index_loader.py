@@ -24,18 +24,20 @@ def load_llama_index_deps() -> None:
     global BaseIndex
     global resolve_llm
     global FaissVectorStore
-    global ComposableGraph
     global VectorStoreIndex
+    global SummaryIndex
+    global IndexNode
     from llama_index.core import (
         Settings,
         StorageContext,
+        SummaryIndex,
         VectorStoreIndex,
         load_index_from_storage,
     )
     from llama_index.core.embeddings.utils import EmbedType
     from llama_index.core.indices.base import BaseIndex
-    from llama_index.core.indices.composability.graph import ComposableGraph
     from llama_index.core.llms.utils import resolve_llm
+    from llama_index.core.schema import IndexNode
     from llama_index.vector_stores.faiss import FaissVectorStore
 
 
@@ -82,8 +84,7 @@ class IndexLoader:
         Settings.embed_model = self._embed_model
         Settings.llm = resolve_llm(None)
 
-        indexes = []
-        summaries = []
+        index_nodes = []
         for i, index_config in enumerate(self._index_config.indexes):
             if index_config.product_docs_index_path is None:
                 logger.warning("Index path is not set for index #%d, skip loading.", i)
@@ -102,23 +103,22 @@ class IndexLoader:
                     storage_context=storage_context,
                     index_id=index_config.product_docs_index_id,
                 )
-                indexes.append(index)
-                # todo: check whether we need summary for index in config?
-                summaries.append(index_config.product_docs_index_id)
+                index_nodes.append(
+                    IndexNode(
+                        index_id=index_config.product_docs_index_id,
+                        obj=index.as_retriever(similarity_top_k=5),
+                        text=index_config.product_docs_index_id,
+                    )
+                )
                 logger.info("Vector index #%d is loaded.", i)
             except Exception as err:
                 logger.exception("Error loading vector index #%d:\n%s", i, err)
 
         logger.info("All indexes are loaded, merging them into a single graph.")
-        if len(indexes) == 0:
+        if len(index_nodes) == 0:
             logger.warning("No index is eligible for merging. Index is not ready.")
             return
-        graph = ComposableGraph.from_indices(
-            VectorStoreIndex,
-            indexes,
-            index_summaries=summaries,
-        )
-        self._index = graph.get_index()
+        self._index = SummaryIndex(objects=index_nodes)
         logger.info("Index is ready.")
 
     @property
