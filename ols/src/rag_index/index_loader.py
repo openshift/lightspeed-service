@@ -57,7 +57,6 @@ class IndexLoader:
         elif self._index_config.indexes is None or len(self._index_config.indexes) == 0:
             logger.warning("Indexes are not set in the config for reference content.")
         else:
-
             self._embed_model_path = self._index_config.embeddings_model_path
             self._embed_model = self._get_embed_model()
             self._load_index()
@@ -84,7 +83,7 @@ class IndexLoader:
         Settings.embed_model = self._embed_model
         Settings.llm = resolve_llm(None)
 
-        index_nodes = []
+        indexes = []
         for i, index_config in enumerate(self._index_config.indexes):
             if index_config.product_docs_index_path is None:
                 logger.warning("Index path is not set for index #%d, skip loading.", i)
@@ -99,26 +98,17 @@ class IndexLoader:
                     persist_dir=index_config.product_docs_index_path,
                 )
                 logger.info("Loading vector index #%d...", i)
-                index = load_index_from_storage(
-                    storage_context=storage_context,
-                    index_id=index_config.product_docs_index_id,
-                )
-                index_nodes.append(
-                    IndexNode(
-                        index_id=index_config.product_docs_index_id,
-                        obj=index.as_retriever(similarity_top_k=5),
-                        text=index_config.product_docs_index_id,
-                    )
-                )
+                index = load_index_from_storage(storage_context=storage_context)
+                indexes.append(index)
                 logger.info("Vector index #%d is loaded.", i)
             except Exception as err:
                 logger.exception("Error loading vector index #%d:\n%s", i, err)
 
         logger.info("All indexes are loaded, merging them into a single graph.")
-        if len(index_nodes) == 0:
+        if len(indexes) == 0:
             logger.warning("No index is eligible for merging. Index is not ready.")
             return
-        self._index = SummaryIndex(objects=index_nodes)
+        self._index = indexes
         logger.info("Index is ready.")
 
     @property

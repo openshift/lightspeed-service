@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.base import BaseTool
 from llama_index.core import VectorStoreIndex
+from llama_index.core.retrievers import QueryFusionRetriever
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
@@ -97,7 +98,10 @@ class DocsSummarizer(QueryHelper):
 
         # Retrieve RAG content
         if vector_index:
-            retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
+            retriever = QueryFusionRetriever(
+                [index.as_retriever() for index in vector_index],
+                similarity_top_k=RAG_CONTENT_LIMIT,
+            )
             retrieved_nodes = retriever.retrieve(query)
             retrieved_nodes = reranker.rerank(retrieved_nodes)
             rag_chunks, available_tokens = token_handler.truncate_rag_context(
