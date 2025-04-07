@@ -23,6 +23,8 @@ def perform_question_validation_benchmark(benchmark, question):
     with patch(
         "ols.src.query_helpers.question_validator.QuestionValidator._invoke_llm"
     ) as mock_invoke:
+        mock_invoke.return_value = AIMessage(content="ACCEPTED")
+
         # when the LLM will be initialized the check for provided parameters will
         # be performed
         llm_loader = mock_llm_loader(
@@ -31,10 +33,8 @@ def perform_question_validation_benchmark(benchmark, question):
                 "p1",
                 "m1",
                 {GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: 4},
-                False,
             ),
         )
-        mock_invoke.return_value = AIMessage(content="ACCEPTED")
 
         # check that LLM loader was called with expected parameters
         question_validator = QuestionValidator(llm_loader=llm_loader)
