@@ -13,6 +13,23 @@ from ols.src.llms.providers.registry import register_llm_provider_as
 logger = logging.getLogger(__name__)
 
 
+class ChatInstructLab(ChatOpenAI):
+    """Workaround to support max_tokens."""
+
+    # Overriding ChatOpenAI's default bahaviour.
+    def _get_request_payload(
+        self,
+        input_, #: LanguageModelInput,
+        *,
+        stop, #: Optional[List[str]] = None,
+        **kwargs, #: Any,
+    ) -> dict:
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        if "max_completion_tokens" in payload:
+            payload["max_tokens"] = payload.pop("max_completion_tokens")
+
+        return payload
+
 @register_llm_provider_as(constants.PROVIDER_RHELAI_VLLM)
 class RHELAIVLLM(LLMProvider):
     """RHELAI VLLM provider."""
@@ -49,4 +66,4 @@ class RHELAIVLLM(LLMProvider):
 
     def load(self) -> LLM:
         """Load LLM."""
-        return ChatOpenAI(**self.params)
+        return ChatInstructLab(**self.params)
