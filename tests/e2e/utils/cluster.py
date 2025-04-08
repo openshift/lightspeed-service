@@ -148,7 +148,7 @@ def get_ols_url(route_name: str) -> str:
         raise Exception("Error getting route hostname") from e
 
 
-def get_pods(namespace: str = "openshift-lightspeed") -> list[str]:
+def get_running_pods(namespace: str = "openshift-lightspeed") -> list[str]:
     """Get the names of all running pods in the cluster."""
     try:
         result = run_oc(
@@ -175,7 +175,7 @@ def get_pod_by_prefix(
     """Return name of the running pod(s) which match the specified prefix."""
     pods = []
     try:
-        result = get_pods(namespace)
+        result = get_running_pods(namespace)
         pods = [pod for pod in result if prefix in pod]
         if fail_not_found and not pods:
             assert False, f"No OLS api server pod found in list pods: {result}"
@@ -338,6 +338,7 @@ def wait_for_running_pod(
             ).stdout
         )
         == 1,
+        "Just one pod is in pending state",
     )
 
     # wait for new ols app pod to be created+running
@@ -351,6 +352,7 @@ def wait_for_running_pod(
             get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         )
         == 1,
+        "Waiting for service pod in running state",
     )
     if not r:
         raise Exception("Timed out waiting for new OLS pod to be ready")
@@ -369,6 +371,7 @@ def wait_for_running_pod(
             ]
         )
         == 2,
+        "Waiting for two containers in the server pod to become ready",
     )
 
 
