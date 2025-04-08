@@ -10,10 +10,11 @@ from starlette.routing import Mount, Route, WebSocketRoute
 
 from ols import config, constants, version
 from ols.app import metrics, routers
+from ols.customize import metadata
 
 app = FastAPI(
-    title="Swagger OpenShift LightSpeed Service - OpenAPI",
-    description="""OpenShift LightSpeed Service API specification.""",
+    title=f"Swagger {metadata.SERVICE_NAME} service - OpenAPI",
+    description=f"{metadata.SERVICE_NAME} service API specification.",
     version=version.__version__,
     license_info={
         "name": "Apache 2.0",
