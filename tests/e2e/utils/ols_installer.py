@@ -117,6 +117,7 @@ def replace_ols_image(ols_image: str) -> None:
         lambda: not cluster_utils.get_pod_by_prefix(
             "lightspeed-operator-controller-manager", fail_not_found=False
         ),
+        "Waiting for operator controller manager pod to be gone",
     )
 
     # scale down the ols api server so we can ensure no pods
@@ -135,6 +136,7 @@ def replace_ols_image(ols_image: str) -> None:
         OC_COMMAND_RETRY_COUNT,
         OC_COMMAND_RETRY_DELAY,
         lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
+        "Waiting for OLS API pod to be scaled down",
     )
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
@@ -221,6 +223,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
             ]
         ).stdout
         == "Succeeded",
+        "Waiting for OLS operator to install",
     )
     if not r:
         print("Timed out waiting for OLS operator to install successfully")
@@ -324,6 +327,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
             ]
         ).stdout
         == "deployment.apps/lightspeed-app-server\n",
+        "Waiting for OLS API server deployment to be created",
     )
     if not r:
         print("Timed out waiting for OLS deployment to be created")

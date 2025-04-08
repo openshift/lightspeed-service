@@ -360,7 +360,7 @@ def wait_for_running_pod(
         prefix=name, namespace=namespace, fail_not_found=False
     )[0]
     # wait for the two containers in the server pod to become ready
-    retry_until_timeout_or_success(
+    r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
         5,
         lambda: len(
@@ -373,6 +373,8 @@ def wait_for_running_pod(
         == 2,
         "Waiting for two containers in the server pod to become ready",
     )
+    if not r:
+        raise Exception("Timed out waiting for new two containers to become ready")
 
 
 def get_certificate_secret_name(
