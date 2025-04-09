@@ -3,7 +3,7 @@
 import json
 from collections import OrderedDict
 from dataclasses import field
-from typing import Any, Optional, Self, Union
+from typing import Any, Literal, Optional, Self, Union
 
 from langchain.llms.base import LLM
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -181,6 +181,8 @@ class LLMResponse(BaseModel):
         input_tokens: Number of tokens sent to LLM
         output_tokens: Number of tokens received from LLM
         available_quotas: Quota available as measured by all configured quota limiters
+        tool_calls: List of tool requests.
+        tool_results: List of tool results.
     """
 
     conversation_id: str
@@ -190,6 +192,8 @@ class LLMResponse(BaseModel):
     input_tokens: int
     output_tokens: int
     available_quotas: dict[str, int]
+    tool_calls: list
+    tool_results: list
 
     # provides examples for /docs endpoint
     model_config = {
@@ -212,6 +216,18 @@ class LLMResponse(BaseModel):
                         "UserQuotaLimiter": 998911,
                         "ClusterQuotaLimiter": 998911,
                     },
+                    "tool_calls": [
+                        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"}
+                    ],
+                    "tool_results": [
+                        {
+                            "id": "1",
+                            "status": "success",
+                            "content": "bla",
+                            "type": "tool_result",
+                            "round": 1,
+                        }
+                    ],
                 }
             ]
         }
@@ -552,14 +568,12 @@ class TokenCounter:
         llm: LLM instance
         input_tokens: number of tokens sent to LLM
         output_tokens: number of tokens received from LLM
-        input_tokens_counted: number of input tokens counted by the handler
         llm_calls: number of LLM calls
     """
 
     llm: Optional[LLM] = None
     input_tokens: int = 0
     output_tokens: int = 0
-    input_tokens_counted: int = 0
     llm_calls: int = 0
 
 
@@ -590,14 +604,16 @@ class SummarizerResponse:
         rag_chunks: The RAG chunks.
         history_truncated: Whether the history was truncated.
         token_counter: Input and output tokens counters.
-        tool_calls: List of list of tool calls (per iteration).
+        tool_calls: List of tool requests.
+        tool_results: List of tool results.
     """
 
     response: str
     rag_chunks: list[RagChunk]
     history_truncated: bool
     token_counter: Optional[TokenCounter]
-    tool_calls: list[list[ToolCall]] = field(default_factory=list)
+    tool_calls: list[dict] = field(default_factory=list)
+    tool_results: list[dict] = field(default_factory=list)
 
 
 class CacheEntry(BaseModel):
@@ -771,3 +787,18 @@ class ProcessedRequest(BaseModel):
     timestamps: dict[str, float]
     skip_user_id_check: bool
     user_token: str
+
+
+@dataclass
+class StreamedChunk:
+    """Represents a chunk of streamed data from the LLM.
+
+    Attributes:
+        type: The type of chunk (text, tool_call, tool_result, or end)
+        text: The text content of the chunk (for text chunks)
+        data: Additional data associated with the chunk (for non-text chunks)
+    """
+
+    type: Literal["text", "tool_call", "tool_result", "end"]
+    text: str = ""
+    data: dict[str, Any] = field(default_factory=dict)

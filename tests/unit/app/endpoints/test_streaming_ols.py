@@ -5,18 +5,22 @@ import json
 import pytest
 
 from ols import config, constants
+from ols.app.models.models import StreamedChunk
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints.streaming_ols import (  # noqa:E402
+    LLM_TOKEN_EVENT,
+    LLM_TOOL_CALL_EVENT,
+    LLM_TOOL_RESULT_EVENT,
     build_referenced_docs,
-    build_yield_item,
     format_stream_data,
     generic_llm_error,
     invalid_response_generator,
     prompt_too_long_error,
     stream_end_event,
+    stream_event,
     stream_start_event,
 )
 from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
@@ -28,16 +32,20 @@ conversation_id = suid.get_suid()
 
 async def drain_generator(generator) -> str:
     """Drain the async generator and return the result."""
-    result = ""
-    async for item in generator:
-        result += item
-    return result
+    return [item async for item in generator]
 
 
 @pytest.fixture(scope="function")
 def _load_config():
     """Load config before unit tests."""
     config.reload_from_yaml_file("tests/config/test_app_endpoints.yaml")
+
+
+def test_event_type_are_not_changed():
+    """Test that event types are not changed."""
+    assert LLM_TOKEN_EVENT == "token"  # noqa: S105
+    assert LLM_TOOL_CALL_EVENT == "tool_call"
+    assert LLM_TOOL_RESULT_EVENT == "tool_result"
 
 
 def test_format_stream_data():
@@ -56,14 +64,51 @@ async def test_invalid_response_generator():
 
     response = await drain_generator(generator)
 
-    assert response == prompts.INVALID_QUERY_RESP
+    assert len(response) == 1
+    assert isinstance(response[0], StreamedChunk)
+    assert response[0].text == prompts.INVALID_QUERY_RESP
 
 
-def test_build_yield_item():
-    """Test build_yield_item."""
-    assert build_yield_item("bla", 0, constants.MEDIA_TYPE_TEXT) == "bla"
-    assert build_yield_item("bla", 1, constants.MEDIA_TYPE_JSON) == format_stream_data(
-        {"event": "token", "data": {"id": 1, "token": "bla"}}
+def test_stream_event():
+    """Test stream_event."""
+    data = {"token": "hi", "idx": 1}
+
+    # text output
+    assert stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_TEXT) == "hi"
+    assert (
+        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_TEXT)
+        == '\nTool call: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
+        == '\nTool result: {"token": "hi", "idx": 1}\n'
+    )
+
+    # json output
+    assert (
+        stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "token", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "tool_call", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "tool_result", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+
+
+def test_stream_event_unknown_type(caplog):
+    """Test stream_event with unknown event type."""
+    # unknown event
+    assert stream_event({}, "bob", constants.MEDIA_TYPE_TEXT) == ""
+    assert "Unknown event type: bob" in caplog.text
+
+    # passes through json
+    assert (
+        stream_event({}, "bob", constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "bob", "data": {}}\n\n'
     )
 
 
