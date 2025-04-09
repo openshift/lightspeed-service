@@ -156,7 +156,7 @@ def must_gather():
     # pod logs
     pod_logs_dir = cluster_dir / "podlogs"
     pod_logs_dir.mkdir(exist_ok=True)
-    for pod in cluster_utils.get_pods():
+    for pod in cluster_utils.get_running_pods():
         for container in cluster_utils.get_pod_containers(pod):
             cluster_utils.run_oc_and_store_stdout(
                 [
