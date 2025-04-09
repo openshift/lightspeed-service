@@ -104,9 +104,13 @@ def test_basic_interface(provider_config, fake_certifi_store):
     # check the HTTP client parameter
     assert "http_client" in rhelai_vllm.default_params
     assert rhelai_vllm.default_params["http_client"] is not None
+    assert "http_async_client" in rhelai_vllm.default_params
+    assert rhelai_vllm.default_params["http_async_client"] is not None
 
     client = rhelai_vllm.default_params["http_client"]
     assert isinstance(client, httpx.Client)
+    client = rhelai_vllm.default_params["http_async_client"]
+    assert isinstance(client, httpx.AsyncClient)
 
 
 def test_params_handling(provider_config, fake_certifi_store):
@@ -150,6 +154,8 @@ def test_params_handling(provider_config, fake_certifi_store):
     assert rhelai_vllm.default_params["base_url"] == "test_url"
     assert "http_client" in rhelai_vllm.default_params
     assert rhelai_vllm.default_params["http_client"] is not None
+    assert "http_async_client" in rhelai_vllm.default_params
+    assert rhelai_vllm.default_params["http_async_client"] is not None
 
 
 def test_credentials_key_in_directory_handling(
