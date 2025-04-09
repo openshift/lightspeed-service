@@ -102,6 +102,8 @@ class TestLLM:
                 "Limiter1": 10,
                 "Limiter2": 20,
             },
+            tool_calls=[{"foo": "bar"}],
+            tool_results=[{"foo": "bar"}],
         )
 
         assert llm_response.conversation_id == conversation_id
@@ -114,6 +116,8 @@ class TestLLM:
             "Limiter2": 20,
         }
         assert not llm_response.truncated
+        assert llm_response.tool_calls == [{"foo": "bar"}]
+        assert llm_response.tool_results == [{"foo": "bar"}]
 
     @staticmethod
     def test_media_type():
@@ -652,3 +656,4 @@ class TestSummarizerResponse:
             token_counter=None,
         )
         assert summarizer_response.tool_calls == []
+        assert summarizer_response.tool_results == []
