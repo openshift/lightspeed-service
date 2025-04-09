@@ -9,6 +9,7 @@ import pytest
 import requests
 
 from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
+from ols.customize import metadata
 from ols.utils import suid
 from scripts.evaluation.response_evaluation import ResponseEvaluation
 from tests.e2e.utils import client as client_utils
@@ -226,7 +227,7 @@ def test_openapi_endpoint():
     # check application description
     info = payload["info"]
     assert "description" in info, "Service description not provided"
-    assert "OpenShift LightSpeed Service API specification" in info["description"]
+    assert f"{metadata.SERVICE_NAME} service API specification" in info["description"]
 
     # elementary check that all mandatory endpoints are covered
     paths = payload["paths"]
