@@ -4,7 +4,7 @@ import logging
 from typing import Any, AsyncGenerator, Optional
 
 from langchain.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.base import BaseTool
 from llama_index.core import VectorStoreIndex
@@ -14,13 +14,38 @@ from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter, ToolCall
 from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
 from ols.customize import reranker
+from ols.plugins.tools.tools import ToolProvidersRegistry, ToolsContext, ToolSetProvider
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.oc_cli import token_works_for_oc
-from ols.src.tools.tools import execute_oc_tool_calls, oc_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
+
+
+def execute_tools(
+    tool_calls: list[dict],
+    tools_map: dict[str, ToolSetProvider],
+    tools_context: ToolsContext,
+) -> list[ToolMessage]:
+    """Execute tools based on the tool calls and context."""
+    tool_messages = []
+    for tool_call in tool_calls:
+        tool_name = tool_call.get("name", "").lower()
+        tool_args = tool_call.get("args", {})
+        tool_id = tool_call.get("id")
+
+        tool_provider = tools_map.get(tool_name)
+        if tool_provider is None:
+            logger.error("Error: unknown tool '%s'", tool_name)
+            continue
+
+        tool_result, status = tool_provider.execute_tool(
+            tool_name, tool_args, tools_context
+        )
+        tool_messages.append(
+            ToolMessage(tool_result, status=status, tool_call_id=tool_id)
+        )
+    return tool_messages
 
 
 class DocsSummarizer(QueryHelper):
@@ -31,7 +56,8 @@ class DocsSummarizer(QueryHelper):
         super().__init__(*args, **kwargs)
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
-        self._introspection_enabled = config.ols_config.introspection_enabled
+
+        self.tool_registry = ToolProvidersRegistry(enabled_tools=config.config.tools)
 
         # disabled - leaks token to logs when set to True
         set_debug(False)
@@ -87,7 +113,7 @@ class DocsSummarizer(QueryHelper):
             ["sample"],
             [AIMessage("sample")],
             self._system_prompt,
-            self._introspection_enabled,
+            bool(self.tool_registry.all_tools),
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -120,7 +146,7 @@ class DocsSummarizer(QueryHelper):
             rag_context,
             history,
             self._system_prompt,
-            self._introspection_enabled,
+            bool(self.tool_registry.all_tools),
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
@@ -138,14 +164,14 @@ class DocsSummarizer(QueryHelper):
         self,
         messages: list[ChatPromptTemplate],
         llm_input_values: dict[str, str],
-        tools_map: Optional[dict] = None,
+        tools: Optional[list[BaseTool]] = None,
         is_final_round: bool = False,
     ) -> tuple[AIMessage, TokenCounter]:
         """Invoke LLM with optional tools."""
         llm = (
             self.bare_llm
-            if is_final_round or not tools_map
-            else self.bare_llm.bind_tools(tools_map.values())
+            if is_final_round or not tools
+            else self.bare_llm.bind_tools(tools)
         )
 
         with TokenMetricUpdater(
@@ -160,19 +186,6 @@ class DocsSummarizer(QueryHelper):
                 config={"callbacks": [generic_token_counter]},
             )
         return out, generic_token_counter.token_counter
-
-    def _get_available_tools(self, user_token: Optional[str]) -> dict[str, BaseTool]:
-        """Get available tools based on introspection and user token."""
-        if not self._introspection_enabled:
-            return {}
-
-        logger.info("Introspection enabled - using default tools selection")
-
-        if user_token and user_token.strip() and token_works_for_oc(user_token):
-            logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
-            return oc_tools
-
-        return {}
 
     def create_response(
         self,
@@ -189,10 +202,7 @@ class DocsSummarizer(QueryHelper):
         messages = final_prompt.model_copy()
         tool_calls = []
 
-        # TODO: for the specific tools type (oc) we need specific additional
-        # context (user_token) to get the tools, we need to think how to make
-        # it more generic to avoid low-level code changes with new tools type
-        tools_map = self._get_available_tools(user_token)
+        tools_context = ToolsContext(user_token=user_token)
 
         # TODO: Tune system prompt
         # TODO: Handle context for each iteration
@@ -200,13 +210,13 @@ class DocsSummarizer(QueryHelper):
         # TODO: Improvement for granite
         for i in range(MAX_ITERATIONS):
 
-            # Force llm to give final response when introspection is disabled
+            # Force llm to give final response when tools are not provided
             # or max iteration is reached
-            is_final_round = (not self._introspection_enabled) or (
+            is_final_round = (not self.tool_registry.all_tools) or (
                 i == MAX_ITERATIONS - 1
             )
             out, token_counter = self._invoke_llm(
-                messages, llm_input_values, tools_map, is_final_round
+                messages, llm_input_values, self.tool_registry.all_tools, is_final_round
             )
 
             # Check if model is ready with final response
@@ -228,8 +238,11 @@ class DocsSummarizer(QueryHelper):
             tool_calls.append(
                 [ToolCall.from_langchain_tool_call(t) for t in out.tool_calls]
             )
-            tool_calls_messages = execute_oc_tool_calls(
-                tools_map, out.tool_calls, user_token
+
+            tool_calls_messages = execute_tools(
+                out.tool_calls,
+                self.tool_registry.tool_to_provider_mapping,
+                tools_context,
             )
             messages.extend(tool_calls_messages)
 

@@ -538,8 +538,9 @@ In order to dump the configuration, pass `--dump-config` command line option.
 
 OLS can gather real-time information from your cluster to assist with specific queries. You can enable this feature by adding the following configuration:
 ```yaml
-ols_config:
-  introspection_enabled: true
+tool:
+  - name: "openshift"
+    type: "tool-set"
 ```
 OLS utilizes tools based on the oc CLI to collect relevant cluster context. The following safeguards are in place:
 - Tools operate in read-only mode—they can retrieve data but cannot modify the cluster.

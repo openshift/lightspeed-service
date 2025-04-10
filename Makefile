@@ -8,6 +8,7 @@ TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-4o-mini")
+# TODO: change this too
 INTROSPECTION_ENABLED := $(if $(INTROSPECTION_ENABLED),$(INTROSPECTION_ENABLED),"n")
 PATH_TO_PLANTUML := ~/bin
 

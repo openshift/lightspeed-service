@@ -10,6 +10,7 @@ from ols.constants import (
     CONFIGURATION_FILE_NAME_ENV_VARIABLE,
     DEFAULT_CONFIGURATION_FILE,
 )
+from ols.plugins import _import_modules_from_dir
 from ols.runners.quota_scheduler import start_quota_scheduler
 from ols.runners.uvicorn import start_uvicorn
 from ols.src.auth.auth import use_k8s_auth
@@ -25,6 +26,11 @@ def load_index():
     # accessing the config's rag_index property will trigger the loading
     # of the index
     config.rag_index  # pylint: disable=W0104, E0606
+
+
+def load_plugins():
+    """Load plugins."""
+    _import_modules_from_dir("tools")
 
 
 if __name__ == "__main__":
@@ -55,6 +61,9 @@ if __name__ == "__main__":
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
     logger.info("Running on Python version %s", sys.version)
     configure_hugging_face_envs(config.ols_config)
+
+    logger.info("Loading plugins")
+    load_plugins()
 
     # generate certificates file from all certificates from certifi package
     # merged with explicitly specified certificates

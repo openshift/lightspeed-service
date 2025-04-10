@@ -913,7 +913,6 @@ class OLSConfig(BaseModel):
     """OLS configuration."""
 
     conversation_cache: Optional[ConversationCacheConfig] = None
-    introspection_enabled: Optional[bool] = False
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
     authentication_config: AuthenticationConfig = AuthenticationConfig()
@@ -944,7 +943,6 @@ class OLSConfig(BaseModel):
         if data is None:
             return
 
-        self.introspection_enabled = data.get("introspection_enabled", False)
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
@@ -994,7 +992,6 @@ class OLSConfig(BaseModel):
         if isinstance(other, OLSConfig):
             return (
                 self.conversation_cache == other.conversation_cache
-                and self.introspection_enabled == other.introspection_enabled
                 and self.logging_config == other.logging_config
                 and self.reference_content == other.reference_content
                 and self.default_provider == other.default_provider
@@ -1111,6 +1108,13 @@ class UserDataCollectorConfig(BaseModel):
         return self
 
 
+class Tool(BaseModel):
+    """Tool definition."""
+
+    name: str
+    type: Literal["tool-set"]
+
+
 class Config(BaseModel):
     """Global service configuration."""
 
@@ -1118,6 +1122,7 @@ class Config(BaseModel):
     ols_config: OLSConfig = OLSConfig()
     dev_config: DevConfig = DevConfig()
     user_data_collector_config: Optional[UserDataCollectorConfig] = None
+    tools: list[Tool] = []
 
     def __init__(
         self,
@@ -1148,6 +1153,7 @@ class Config(BaseModel):
         self.user_data_collector_config = UserDataCollectorConfig(
             **data.get("user_data_collector_config", {})
         )
+        self.tools = [Tool(**tool) for tool in data.get("tools", [])]
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""

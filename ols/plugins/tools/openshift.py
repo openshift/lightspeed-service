@@ -16,6 +16,13 @@ from typing import Annotated
 
 from langchain.tools import tool
 from langchain_core.tools import InjectedToolArg
+from langchain_core.tools.base import BaseTool
+
+from ols.plugins.tools.tools import (
+    ToolsContext,
+    ToolSetProvider,
+    register_tool_provider_as,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,41 +67,12 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
         ["oc", *args],  # noqa: S607
         capture_output=True,
         text=True,
-        check=False,
+        check=True,
         shell=False,
     )
     return res
 
 
-def token_works_for_oc(token: str) -> bool:
-    """Check if the token can be used with `oc` CLI.
-
-    Args:
-        token: OpenShift user token.
-
-    Returns:
-        True if user token works, False otherwise.
-    """
-    r = run_oc(["version", f"--token={token}"])
-
-    if r.returncode == 0:
-        logger.info("Token is usable for oc CLI")
-        return True
-
-    logger.error(
-        "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
-        r.stdout,
-        r.stderr,
-    )
-    return False
-
-
-def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
-    """Return stdout if return code is 0, otherwise return stderr."""
-    return result.stdout if result.returncode == 0 else result.stderr
-
-
-# NOTE: tools description comes from oc cli --help for each subcommand (shortened)
 @tool
 def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Display one or many resources from OpenShift cluster.
@@ -130,7 +108,7 @@ def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> st
         oc get rc,services
     """
     result = run_oc(["get", *sanitize_oc_args(oc_get_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -165,7 +143,7 @@ def oc_describe(
         oc describe pods frontend
     """  # noqa: E501
     result = run_oc(["describe", *sanitize_oc_args(oc_describe_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -193,7 +171,7 @@ def oc_logs(oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]) -> 
         oc logs -f pod/backend -c ruby-container
     """  # noqa: E501
     result = run_oc(["logs", *sanitize_oc_args(oc_logs_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -219,7 +197,7 @@ def oc_status(oc_status_args: list[str], token: Annotated[str, InjectedToolArg])
         oc --suggest
     """
     result = run_oc(["status", *sanitize_oc_args(oc_status_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -237,7 +215,7 @@ def show_pods(token: Annotated[str, InjectedToolArg]) -> str:
         kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
     result = run_oc([*["adm", "top", "pods", "-A"], "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -270,4 +248,41 @@ def oc_adm_top(
     result = run_oc(
         ["adm", "top", *sanitize_oc_args(oc_adm_top_args), "--token", token]
     )
-    return stdout_or_stderr(result)
+    return result.stdout
+
+
+@register_tool_provider_as("openshift")
+class OCToolProvider(ToolSetProvider):
+    """Provider for OpenShift OC CLI tools."""
+
+    @property
+    def tools(self) -> dict[str, BaseTool]:
+        """Get all OC tools."""
+        return {
+            t.name: t
+            for t in [
+                oc_get,
+                oc_describe,
+                oc_logs,
+                oc_adm_top,
+                oc_status,
+                show_pods,
+            ]
+        }
+
+    # TODO: needs rebase for #2391
+    def execute_tool(
+        self, tool_name: str, tool_args: dict, context: ToolsContext
+    ) -> tuple[str, str]:
+        """Execute an OC tool with the given arguments and context."""
+        tool = self.tools[tool_name]
+        if not context.user_token:
+            return "Error: No user token provided", "error"
+
+        # add token to arguments
+        args_with_token = {**tool_args, "token": context.user_token}
+
+        try:
+            return tool.invoke(args_with_token), "success"
+        except Exception as e:
+            return f"Error: {e}", "error"
