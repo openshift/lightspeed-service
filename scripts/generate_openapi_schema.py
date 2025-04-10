@@ -26,7 +26,7 @@ from ols.constants import (
 
 # it is needed to read proper configuration in order to start the app to generate schema
 cfg_file = os.environ.get(
-    CONFIGURATION_FILE_NAME_ENV_VARIABLE, DEFAULT_CONFIGURATION_FILE
+    CONFIGURATION_FILE_NAME_ENV_VARIABLE, "scripts/" + DEFAULT_CONFIGURATION_FILE
 )
 config.reload_from_yaml_file(cfg_file)
 
