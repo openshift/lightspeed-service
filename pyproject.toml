@@ -139,6 +139,7 @@ evaluation = [
     "scikit-learn>=1.6.1",
     "pandas>=2.1.4",
     "rouge-score>=0.1.2",
+    "ragas>=0.2.14",
     "fastparquet>=2024.11.0",
     "tqdm>=4.67.1",
 ]
