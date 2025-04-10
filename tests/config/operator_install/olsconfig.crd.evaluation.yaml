@@ -14,7 +14,7 @@ spec:
       - name: azure_openai
         type: azure_openai
         credentialsSecretRef:
-          name: azureopenaicreds
+          name: azure-openaicreds
         deploymentName: gpt-4o-mini
         models:
           - name: gpt-4o-mini
