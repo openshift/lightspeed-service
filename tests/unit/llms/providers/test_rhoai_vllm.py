@@ -104,9 +104,13 @@ def test_basic_interface(provider_config, fake_certifi_store):
     # check the HTTP client parameter
     assert "http_client" in rhoai_vllm.default_params
     assert rhoai_vllm.default_params["http_client"] is not None
+    assert "http_async_client" in rhoai_vllm.default_params
+    assert rhoai_vllm.default_params["http_async_client"] is not None
 
     client = rhoai_vllm.default_params["http_client"]
     assert isinstance(client, httpx.Client)
+    client = rhoai_vllm.default_params["http_async_client"]
+    assert isinstance(client, httpx.AsyncClient)
 
 
 def test_params_handling(provider_config, fake_certifi_store):
@@ -150,6 +154,8 @@ def test_params_handling(provider_config, fake_certifi_store):
     assert rhoai_vllm.default_params["base_url"] == "test_url"
     assert "http_client" in rhoai_vllm.default_params
     assert rhoai_vllm.default_params["http_client"] is not None
+    assert "http_async_client" in rhoai_vllm.default_params
+    assert rhoai_vllm.default_params["http_async_client"] is not None
 
 
 def test_credentials_key_in_directory_handling(

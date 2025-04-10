@@ -85,6 +85,8 @@ def test_basic_interface(provider_config):
     # check the HTTP client parameter
     assert "http_client" in openai.default_params
     assert openai.default_params["http_client"] is not None
+    assert "http_async_client" in openai.default_params
+    assert openai.default_params["http_async_client"] is not None
 
     client = openai.default_params["http_client"]
     assert isinstance(client, httpx.Client)

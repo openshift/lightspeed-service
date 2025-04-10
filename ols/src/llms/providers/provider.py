@@ -50,6 +50,7 @@ AzureOpenAIParameters = {
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
+    ProviderParameter("http_async_client", httpx.AsyncClient),
 }
 
 OpenAIParameters = {
@@ -66,6 +67,7 @@ OpenAIParameters = {
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
+    ProviderParameter("http_async_client", httpx.AsyncClient),
 }
 
 RHOAIVLLMParameters = {
@@ -81,6 +83,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
+    ProviderParameter("http_async_client", httpx.AsyncClient),
 }
 
 RHELAIVLLMParameters = {
@@ -96,6 +99,7 @@ RHELAIVLLMParameters = {
     ProviderParameter("max_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
+    ProviderParameter("http_async_client", httpx.AsyncClient),
 }
 
 BAMParameters = {
@@ -324,16 +328,28 @@ class LLMProvider(AbstractLLMProvider):
         return updated_params
 
     def _construct_httpx_client(
-        self, use_custom_certificate_store: bool
-    ) -> httpx.Client:
+        self, use_custom_certificate_store: bool, use_async: bool
+    ) -> httpx.Client | httpx.AsyncClient:
         """Construct HTTPX client instance to be used to communicate with LLM."""
         sec_profile = self.provider_config.tls_security_profile
 
-        # if security profile is not set, use httpx.Client as is
+        # if security profile is not set, use httpx client as is
         if sec_profile is None or sec_profile.profile_type is None:
+            verify: ssl.SSLContext | bool = True
             if use_custom_certificate_store:
-                return httpx.Client(verify=self.provider_config.certificates_store)
-            return httpx.Client()
+                logger.debug(
+                    "Custom Certificate store location: %s",
+                    self.provider_config.certificates_store,
+                )
+                custom_context = ssl.create_default_context()
+                custom_context.check_hostname = False
+                custom_context.load_verify_locations(
+                    cafile=self.provider_config.certificates_store
+                )
+                verify = custom_context
+            if use_async:
+                return httpx.AsyncClient(verify=verify)
+            return httpx.Client(verify=verify)
 
         # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
@@ -357,5 +373,6 @@ class LLMProvider(AbstractLLMProvider):
 
         if use_custom_certificate_store:
             context.load_verify_locations(self.provider_config.certificates_store)
-
+        if use_async:
+            return httpx.AsyncClient(verify=context)
         return httpx.Client(verify=context)
