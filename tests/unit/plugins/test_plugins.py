@@ -47,3 +47,25 @@ def test_import_modules_from_dir(temp_module_dir):
     assert builtins.mod1_loaded is True
     assert builtins.mod2_loaded is True
     assert not hasattr(builtins, "mod3_loaded")
+
+
+def test_import_modules_when_file_is_specified(temp_module_dir):
+    """Test the behaviour when file is specified instead of directory."""
+    with pytest.raises(NotADirectoryError, match="Not a directory"):
+        # import existing file, not a directory
+        _import_modules_from_dir(temp_module_dir / "mod1.py")
+
+
+def test_import_modules_from_non_existing_dir():
+    """Test the behaviour when non existing directory is specified."""
+    with pytest.raises(FileNotFoundError, match="No such file or directory"):
+        # the directory with name "..." can not exists
+        _import_modules_from_dir("...")
+
+
+# not enabled: we run unit tests under root on CI, needs to be solved first
+def _test_import_modules_from_unreadable_dir():
+    """Test the behaviour when non readable directory is specified."""
+    with pytest.raises(PermissionError, match="Permission denied"):
+        # permission is denied accessing /root/ directory
+        _import_modules_from_dir("/root/")
