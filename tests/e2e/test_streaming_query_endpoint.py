@@ -237,7 +237,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         assert events[-1]["data"]["referenced_documents"]
         assert (
             f"{major}.{minor}"
-            in events[-1]["data"]["referenced_documents"][0]["doc_title"]
+            in events[-1]["data"]["referenced_documents"][0]["doc_url"]
         )
 
 
