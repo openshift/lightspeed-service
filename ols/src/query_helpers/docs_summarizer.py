@@ -220,9 +220,7 @@ class DocsSummarizer(QueryHelper):
         """
         for i in range(1, max_rounds + 1):
             is_final_round = (not self._introspection_enabled) or (i == max_rounds)
-            tool_calls_chunks = []
-            streaming_tool_calls = False
-
+            tool_call_chunks = []
             # invoke LLM and process response chunks
             async for chunk in self._invoke_llm(
                 messages,
@@ -247,11 +245,9 @@ class DocsSummarizer(QueryHelper):
                 if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
                     return
 
-                # Process tool calls or text chunks
-                if getattr(chunk, "tool_calls", None) or streaming_tool_calls:
-                    # collect tool call chunks from following chunks
-                    streaming_tool_calls = True
-                    tool_calls_chunks.append(chunk)
+                # collect tool chunk or yield text
+                if getattr(chunk, "tool_call_chunks", None):
+                    tool_call_chunks.append(chunk)
                 else:
                     # stream text chunks directly
                     yield StreamedChunk(type="text", text=chunk.content)
@@ -261,9 +257,9 @@ class DocsSummarizer(QueryHelper):
                 break
 
             # tool calling part
-            if tool_calls_chunks:
+            if tool_call_chunks:
                 # assess tool calls and add to messages
-                tool_calls = tool_calls_from_tool_calls_chunks(tool_calls_chunks)
+                tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
                 messages.append(AIMessage(content="", type="ai", tool_calls=tool_calls))
                 for tool_call in tool_calls:
                     yield StreamedChunk(type="tool_call", data=tool_call)
