@@ -1,9 +1,17 @@
 """Unit tests for tools module."""
 
+from unittest.mock import patch
+
 import pytest
 from langchain.tools import tool
+from langchain_core.messages import ToolMessage
 
-from ols.src.tools.tools import check_tool_description_length, execute_oc_tool_calls
+from ols.src.tools.tools import (
+    check_tool_description_length,
+    execute_oc_tool_calls,
+    get_available_tools,
+    oc_tools,
+)
 
 
 def test_check_tool_description_length():
@@ -36,7 +44,7 @@ def test_execute_tool_calls():
     @tool
     def tool2(command_args: list[str]):
         """Tool 2."""
-        raise ValueError("Tool 2 error")
+        raise ValueError("some error")
 
     tools_map = {"tool1": tool1, "tool2": tool2}
     tool_calls = [
@@ -46,8 +54,10 @@ def test_execute_tool_calls():
 
     tool_messages = execute_oc_tool_calls(tools_map, tool_calls, "fake-token")
     assert len(tool_messages) == 2
-    assert tool_messages[0].content == "Tool 1 called"
-    assert tool_messages[1].content == "Error executing tool2: Tool 2 error"
+    assert tool_messages[0] == ToolMessage(content="Tool 1 called", tool_call_id="1")
+    assert tool_messages[1] == ToolMessage(
+        content="Error executing tool2: some error", tool_call_id="2", status="error"
+    )
 
 
 def test_execute_oc_tool_calls_not_leaks_token_into_logs(caplog):
@@ -96,3 +106,33 @@ def test_execute_oc_tool_calls_not_leaks_token_into_output(caplog):
 
     # ensure the token is also not in the logs
     assert "fake-token" not in caplog.text
+
+
+def test_get_available_tools():
+    """Test get_available_tools."""
+    tools = get_available_tools(introspection_enabled=False)
+    assert tools == {}
+
+    tools = get_available_tools(introspection_enabled=True, user_token=None)
+    assert tools == {}
+
+    tools = get_available_tools(introspection_enabled=True, user_token="")
+    assert tools == {}
+
+    with patch(
+        "ols.src.tools.tools.token_works_for_oc",
+        return_value=False,
+    ):
+        tools = get_available_tools(
+            introspection_enabled=True, user_token="bla"  # noqa: S106
+        )
+        assert tools == {}
+
+    with patch(
+        "ols.src.tools.tools.token_works_for_oc",
+        return_value=True,
+    ):
+        tools = get_available_tools(
+            introspection_enabled=True, user_token="bla"  # noqa: S106
+        )
+        assert tools == oc_tools

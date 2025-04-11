@@ -60,7 +60,7 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
         ["oc", *args],  # noqa: S607
         capture_output=True,
         text=True,
-        check=False,
+        check=True,
         shell=False,
     )
     return res
@@ -75,26 +75,19 @@ def token_works_for_oc(token: str) -> bool:
     Returns:
         True if user token works, False otherwise.
     """
-    r = run_oc(["version", f"--token={token}"])
-
-    if r.returncode == 0:
+    try:
+        run_oc(["version", f"--token={token}"])
         logger.info("Token is usable for oc CLI")
         return True
-
-    logger.error(
-        "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
-        r.stdout,
-        r.stderr,
-    )
-    return False
-
-
-def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
-    """Return stdout if return code is 0, otherwise return stderr."""
-    return result.stdout if result.returncode == 0 else result.stderr
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
+            e.stdout,
+            e.stderr,
+        )
+        return False
 
 
-# NOTE: tools description comes from oc cli --help for each subcommand (shortened)
 @tool
 def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Display one or many resources from OpenShift cluster.
@@ -130,7 +123,7 @@ def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> st
         oc get rc,services
     """
     result = run_oc(["get", *sanitize_oc_args(oc_get_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -165,7 +158,7 @@ def oc_describe(
         oc describe pods frontend
     """  # noqa: E501
     result = run_oc(["describe", *sanitize_oc_args(oc_describe_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -193,7 +186,7 @@ def oc_logs(oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]) -> 
         oc logs -f pod/backend -c ruby-container
     """  # noqa: E501
     result = run_oc(["logs", *sanitize_oc_args(oc_logs_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -219,7 +212,7 @@ def oc_status(oc_status_args: list[str], token: Annotated[str, InjectedToolArg])
         oc --suggest
     """
     result = run_oc(["status", *sanitize_oc_args(oc_status_args), "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -237,7 +230,7 @@ def show_pods(token: Annotated[str, InjectedToolArg]) -> str:
         kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
     result = run_oc([*["adm", "top", "pods", "-A"], "--token", token])
-    return stdout_or_stderr(result)
+    return result.stdout
 
 
 @tool
@@ -270,4 +263,4 @@ def oc_adm_top(
     result = run_oc(
         ["adm", "top", *sanitize_oc_args(oc_adm_top_args), "--token", token]
     )
-    return stdout_or_stderr(result)
+    return result.stdout

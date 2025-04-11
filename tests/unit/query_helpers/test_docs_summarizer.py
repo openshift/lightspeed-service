@@ -4,10 +4,10 @@ import logging
 from unittest.mock import ANY, patch
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import HumanMessage
+from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.models import TokenCounter
 from tests.mock_classes.mock_tools import mock_tools_map
 
 # needs to be setup there before is_user_authorized is imported
@@ -47,6 +47,7 @@ def check_summary_result(summary, question):
     )
     assert summary.history_truncated is False
     assert summary.tool_calls == []
+    assert summary.tool_results == []
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -182,51 +183,67 @@ async def test_response_generator():
     generated_content = ""
 
     async for item in summary_gen:
-        if isinstance(item, str):
-            generated_content += item
+        generated_content += item.text
 
     assert generated_content == question
+
+
+async def async_mock_invoke(yield_values):
+    """Mock async invoke_llm function to simulate LLM behavior."""
+    for value in yield_values:
+        yield value
 
 
 def test_tool_calling_one_iteration():
     """Test tool calling - stops after one iteration."""
     config.ols_config.introspection_enabled = True
-    question = "How many namespaces are there in my cluster ?"
+    question = "How many namespaces are there in my cluster?"
 
     with patch(
         "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
     ) as mock_invoke:
-        mock_invoke.side_effect = [
-            (
-                AIMessage(content="XYZ", response_metadata={"finish_reason": "stop"}),
-                TokenCounter(),
-            )
-        ]
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})]
+        )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         summarizer.create_response(question)
         assert mock_invoke.call_count == 1
 
 
+async def fake_invoke_llm(*args, **kwargs):
+    """Fake invoke_llm function to simulate LLM behavior.
+
+    Yields depends on the number of calls
+    """
+    # use an attribute on the function to track calls
+    if not hasattr(fake_invoke_llm, "call_count"):
+        fake_invoke_llm.call_count = 0
+    fake_invoke_llm.call_count += 1
+
+    if fake_invoke_llm.call_count == 1:
+        # first call yields a message that requests tool calls
+        yield AIMessageChunk(
+            content="", response_metadata={"finish_reason": "tool_calls"}
+        )
+    elif fake_invoke_llm.call_count == 2:
+        # second call yields the final message.
+        yield AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})
+    else:
+        # extra
+        yield AIMessageChunk(
+            content="Extra", response_metadata={"finish_reason": "extra"}
+        )
+
+
 def test_tool_calling_two_iteration():
     """Test tool calling - stops after two iterations."""
     config.ols_config.introspection_enabled = True
-    question = "How many namespaces are there in my cluster ?"
+    question = "How many namespaces are there in my cluster?"
 
     with patch(
-        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+        new=fake_invoke_llm,
     ) as mock_invoke:
-        mock_invoke.side_effect = [
-            (
-                AIMessage(
-                    content="", response_metadata={"finish_reason": "tool_calls"}
-                ),
-                TokenCounter(),
-            ),
-            (
-                AIMessage(content="XYZ", response_metadata={"finish_reason": "stop"}),
-                TokenCounter(),
-            ),
-        ]
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         summarizer.create_response(question)
         assert mock_invoke.call_count == 2
@@ -235,7 +252,7 @@ def test_tool_calling_two_iteration():
 def test_tool_calling_force_stop():
     """Test tool calling - force stop."""
     config.ols_config.introspection_enabled = True
-    question = "How many namespaces are there in my cluster ?"
+    question = "How many namespaces are there in my cluster?"
 
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 3),
@@ -243,14 +260,13 @@ def test_tool_calling_force_stop():
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
     ):
-        mock_invoke.side_effect = [
-            (
-                AIMessage(
-                    content="", response_metadata={"finish_reason": "tool_calls"}
-                ),
-                TokenCounter(),
-            )
-        ] * 4
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [
+                AIMessageChunk(
+                    content="XYZ", response_metadata={"finish_reason": "tool_calls"}
+                )
+            ]
+        )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         summarizer.create_response(question)
         assert mock_invoke.call_count == 3
@@ -261,27 +277,28 @@ def test_tool_calling_tool_execution(caplog):
     caplog.set_level(10)  # Set debug level
     config.ols_config.introspection_enabled = True
 
-    question = "How many namespaces are there in my cluster ?"
+    question = "How many namespaces are there in my cluster?"
 
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools"
+            "ols.src.query_helpers.docs_summarizer.get_available_tools"
         ) as mock_tools,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
     ):
-        mock_invoke.return_value = (
-            AIMessage(
-                content="",
-                response_metadata={"finish_reason": "tool_calls"},
-                tool_calls=[
-                    {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
-                    {"name": "invalid_function_name", "args": {}, "id": "call_id2"},
-                ],
-            ),
-            TokenCounter(),
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [
+                AIMessageChunk(
+                    content="",
+                    response_metadata={"finish_reason": "tool_calls"},
+                    tool_calls=[
+                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                        {"name": "invalid_function_name", "args": {}, "id": "call_id2"},
+                    ],
+                )
+            ]
         )
         mock_tools.return_value = mock_tools_map
 

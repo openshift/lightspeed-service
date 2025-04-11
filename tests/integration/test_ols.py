@@ -7,6 +7,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config, constants
 from ols.app.models.config import (
@@ -14,7 +15,6 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
-from ols.app.models.models import TokenCounter
 from ols.customize import prompts
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
@@ -99,6 +99,8 @@ def test_post_question_on_invalid_question(_setup, endpoint):
                 "input_tokens": 0,
                 "output_tokens": 0,
                 "available_quotas": {},
+                "tool_calls": [],
+                "tool_results": [],
             }
             actual_response = response.json()
         else:
@@ -1119,6 +1121,40 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     assert caplog.text.count("System prompt: " + system_prompt) == 0
 
 
+# TODO: consolidate this and the same function in test_docs_summarizer.py
+# into some reusable fixture
+async def fake_invoke_llm(*args, **kwargs):
+    """Fake invoke_llm function to simulate LLM behavior.
+
+    Yields depends on the number of calls
+    """
+    # use an attribute on the function to track calls
+    if not hasattr(fake_invoke_llm, "call_count"):
+        fake_invoke_llm.call_count = 0
+    fake_invoke_llm.call_count += 1
+
+    if fake_invoke_llm.call_count == 1:
+        # first call yields a message that requests tool calls
+        yield AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[
+                {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+            ],
+        )
+    elif fake_invoke_llm.call_count == 2:
+        # second call yields the final message.
+        yield AIMessageChunk(
+            content="You have 1 namespace.",
+        )
+    else:
+        # the end event
+        yield AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "stop"},
+        )
+
+
 def test_tool_calling(_setup, caplog) -> None:
     """Check the REST API query endpoints when tool calling is enabled."""
     endpoint = "/v1/query"
@@ -1128,31 +1164,13 @@ def test_tool_calling(_setup, caplog) -> None:
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_available_tools"
+            "ols.src.query_helpers.docs_summarizer.get_available_tools"
         ) as tools_mock,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            new=fake_invoke_llm,
         ) as mock_invoke,
     ):
-        mock_invoke.side_effect = [
-            (
-                AIMessage(
-                    content="",
-                    response_metadata={"finish_reason": "tool_calls"},
-                    tool_calls=[
-                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
-                    ],
-                ),
-                TokenCounter(),
-            ),
-            (
-                AIMessage(
-                    content="You have 1 namespace.",
-                    response_metadata={"finish_reason": "stop"},
-                ),
-                TokenCounter(),
-            ),
-        ]
         tools_mock.return_value = mock_tools_map
 
         with (
@@ -1166,10 +1184,10 @@ def test_tool_calling(_setup, caplog) -> None:
                 endpoint,
                 json={
                     "conversation_id": conversation_id,
-                    "query": "How many namespaces are there in my cluster ?",
+                    "query": "How many namespaces are there in my cluster?",
                 },
             )
-            assert mock_invoke.call_count == 2
+            assert mock_invoke.call_count == 3
 
             assert "Tool: get_namespaces_mock" in caplog.text
             tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
