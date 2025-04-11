@@ -104,8 +104,8 @@ configure model, and connect to it.
 
 # Prerequisites
 
-* Python 3.11, Python 3.12 and Python 3.13
-    - please note that currently Python 3.14 is not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
+* Python 3.11 and Python 3.12
+    - please note that currently Python 3.13 and Python 3.14 are not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
     - all sources are made (backward) compatible with Python 3.11; it is checked on CI
 * Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
 * An LLM API key or API secret (in case of Azure OpenAI)
