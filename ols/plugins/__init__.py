@@ -27,7 +27,3 @@ def _import_modules_from_dir(dir_name: str) -> None:
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-
-
-# TODO: move providers to plugins
-# TODO: move tools to plugins
