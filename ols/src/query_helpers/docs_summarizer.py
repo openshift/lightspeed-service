@@ -7,12 +7,12 @@ from langchain.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.base import BaseTool
-from llama_index.core import VectorStoreIndex
+from llama_index.core.retrievers import BaseRetriever
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.models.models import RagChunk, SummarizerResponse, TokenCounter, ToolCall
-from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
+from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -50,14 +50,14 @@ class DocsSummarizer(QueryHelper):
     def _prepare_prompt(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[BaseMessage]] = None,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             query: The query to be summarized.
-            vector_index: Vector index to get RAG data/context.
+            rag_retriever: The retriever to get RAG data/context.
             history: The history of the conversation (if available).
 
         Returns:
@@ -96,9 +96,8 @@ class DocsSummarizer(QueryHelper):
         )
 
         # Retrieve RAG content
-        if vector_index:
-            retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
-            retrieved_nodes = retriever.retrieve(query)
+        if rag_retriever:
+            retrieved_nodes = rag_retriever.retrieve(query)
             retrieved_nodes = reranker.rerank(retrieved_nodes)
             rag_chunks, available_tokens = token_handler.truncate_rag_context(
                 retrieved_nodes, available_tokens
@@ -177,13 +176,13 @@ class DocsSummarizer(QueryHelper):
     def create_response(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[str]] = None,
         user_token: Optional[str] = None,
     ) -> SummarizerResponse:
         """Create a response for the given query based on the provided conversation context."""
         final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, vector_index, history
+            query, rag_retriever, history
         )
 
         messages = final_prompt.model_copy()
@@ -240,12 +239,12 @@ class DocsSummarizer(QueryHelper):
     async def generate_response(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[str]] = None,
     ) -> AsyncGenerator[str, SummarizerResponse]:
         """Generate a response for the given query based on the provided conversation context."""
         final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, vector_index, history
+            query, rag_retriever, history
         )
 
         with TokenMetricUpdater(

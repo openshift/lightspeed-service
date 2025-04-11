@@ -7,8 +7,9 @@ llm_providers:
       - name: ibm/granite-3-8b-instruct
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config"
-    product_docs_index_id: product
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:
