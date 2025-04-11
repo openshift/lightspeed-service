@@ -241,6 +241,7 @@ class DocsSummarizer(QueryHelper):
                 # have a permanent fix)
                 if isinstance(chunk, str):
                     yield StreamedChunk(type="text", text=chunk)
+                    break
 
                 # check if LLM has finished generating
                 if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
