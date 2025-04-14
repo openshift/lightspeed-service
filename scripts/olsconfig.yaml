@@ -4,6 +4,7 @@ llm_providers:
   - name: my_watsonx
     type: watsonx
     url: "http://wont-be-used"
+    project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
       - name: ibm/granite-3-8b-instruct
 ols_config:
