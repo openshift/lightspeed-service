@@ -101,6 +101,7 @@ def conversation_request(
             llm_request,
             processed_request.previous_input,
             streaming=True,
+            user_token=processed_request.user_token,
         )
     )
 
