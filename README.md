@@ -51,8 +51,11 @@ configure model, and connect to it.
     * [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
     * [10. TLS security profiles](#10-tls-security-profiles)
     * [11. System prompt](#11-system-prompt)
-    * [12. Configuration dump](#12-configuration-dump)
-    * [13. Cluster introspection](#13-cluster-introspection)
+    * [12. Quota limits](#12-quota-limits)
+        * [Configuration format](#configuration-format)
+        * [Tokens and token quota limits](#tokens-and-token-quota-limits)
+    * [13. Configuration dump](#12-configuration-dump)
+    * [14. Cluster introspection](#13-cluster-introspection)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -526,13 +529,59 @@ ols_config:
 Additionally an optional string parameter `system_prompt` can be specified in `/v1/query` endpoint to override the configured system prompt. This override mechanism can be used only when the `dev_config.enable_system_prompt_override` configuration options is set to `true` in the service configuration file. Please note that the default value for this option is `false`, so the system prompt cannot be changed. This means, when the `dev_config.enable_system_prompt_override` is set to `false` and `/v1/query` is invoked with the `system_prompt` parameter, the value specified in `system_prompt` parameter is ignored.
 
 
-## 12. Configuration dump
+## 12. Quota limits
+
+Activate token quota limits for the service by adding a new configuration structure into the configuration file. That structure should be added into `ols_config` section. It has the following format:
+
+### Configuration format
+
+```
+  quota_handlers: 
+    storage:
+      host: <IP_address> <1>
+      port: "5432" <2>
+      dbname: <database_name>
+      user: <user_name>
+      password_path: <file_containing_database_password>
+      ssl_mode: disable
+    limiters:
+      - name: user_monthly_limits
+        type: user_limiter
+        initial_quota: 100000 <3>
+        quota_increase: 10 <4>
+        period: 30 days
+      - name: cluster_monthly_limits
+        type: cluster_limiter
+        initial_quota: 100000 <3>
+        quota_increase: 1000000 <4>
+        period: 30 days
+    scheduler:
+      period: 300 <5>
+```
+
+<1> Specifies the IP address for the PostgresSQL database
+<2> Specifies the port for PostgresSQL database. Default port is 5432.
+<3> Specifies a token quota limit of 100,000 for each user over a period of 30 days.
+<4> Increases the token quota limit for the cluster by 100,000 over a period of 30 days.
+<5> Defines the number of seconds that the scheduler waits and then checks if the period interval is over. When the period interval is over, the scheduler stores the timestamp and resets or increases the quota limit. 300 seconds or even 600 seconds are good values.
+
+
+
+### Tokens and token quota limits
+
+Tokens are small chunks of text, which can be as small as one character or as large as one word. Tokens are the units of measurement used to quantify the amount of text that the service sends to, or receives from, a large language model (LLM). Every interaction with the Service and the LLM is counted in tokens.
+
+Token quota limits define the number of tokens that can be used in a certain timeframe. Implementing token quota limits helps control costs, encourage more efficient use of queries, and regulate system demands. In a multi-user configuration, token quota limits help provide equal access to all users ensuring everyone has an opportunity to submit queries.
+
+
+
+## 13. Configuration dump
 
 It is possible to dump the actual configuration into a JSON file for further processing. The generated configuration file will contain all the configuration attributes, including keys etc., so keep the output file in a secret.
 
 In order to dump the configuration, pass `--dump-config` command line option.
 
-## 13. Cluster introspection
+## 14. Cluster introspection
 
 > **⚠ Warning:** This feature is experimental and currently under development.
 
