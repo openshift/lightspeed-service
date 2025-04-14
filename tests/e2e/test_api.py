@@ -225,7 +225,7 @@ def test_openapi_endpoint():
     # check application description
     info = payload["info"]
     assert "description" in info, "Service description not provided"
-    assert f"{metadata.SERVICE_NAME} service API specification" in info["description"]
+    assert f"{metadata.SERVICE_NAME} Service API specification" in info["description"]
 
     # elementary check that all mandatory endpoints are covered
     paths = payload["paths"]
