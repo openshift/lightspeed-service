@@ -56,6 +56,11 @@ class AppConfig:
         return self.config.ols_config
 
     @property
+    def mcp_servers(self) -> config_model.OLSConfig:
+        """Return the MCP servers configuration."""
+        return self.config.mcp_servers
+
+    @property
     def dev_config(self) -> config_model.DevConfig:
         """Return the dev configuration."""
         return self.config.dev_config
