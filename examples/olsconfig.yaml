@@ -60,7 +60,6 @@ ols_config:
 #    product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
 #    product_docs_index_id: ocp-product-docs-4_15
 #    embeddings_model_path: "./embeddings_model"
-  introspection_enabled: true  # Default is false, OLS tool calling
   conversation_cache:
     type: memory
     memory:

@@ -90,7 +90,6 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   default_provider : Optional[str]
   expire_llm_is_ready_persistent_state : Optional[int]
   extra_ca : list[FilePath]
-  introspection_enabled : Optional[bool]
   logging_config : Optional[LoggingConfig]
   max_workers : Optional[int]
   query_filters : Optional[list[QueryFilter]]

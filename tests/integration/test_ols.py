@@ -1123,7 +1123,6 @@ def test_tool_calling(_setup, caplog) -> None:
     """Check the REST API query endpoints when tool calling is enabled."""
     endpoint = "/v1/query"
     caplog.set_level(10)
-    config.ols_config.introspection_enabled = True
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),

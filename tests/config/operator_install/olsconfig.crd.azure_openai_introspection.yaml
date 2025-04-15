@@ -22,7 +22,6 @@ spec:
   ols:
     defaultModel: gpt-4o-mini
     defaultProvider: azure_openai
-    introspectionEnabled: true
     deployment:
       replicas: 1
     disableAuth: false
@@ -34,3 +33,6 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
+tools:
+  - name: "openshift"
+    type: "tool-set"

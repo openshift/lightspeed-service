@@ -190,7 +190,6 @@ async def test_response_generator():
 
 def test_tool_calling_one_iteration():
     """Test tool calling - stops after one iteration."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster ?"
 
     with patch(
@@ -209,7 +208,6 @@ def test_tool_calling_one_iteration():
 
 def test_tool_calling_two_iteration():
     """Test tool calling - stops after two iterations."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster ?"
 
     with patch(
@@ -234,7 +232,6 @@ def test_tool_calling_two_iteration():
 
 def test_tool_calling_force_stop():
     """Test tool calling - force stop."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster ?"
 
     with (
@@ -259,7 +256,6 @@ def test_tool_calling_force_stop():
 def test_tool_calling_tool_execution(caplog):
     """Test tool calling - tool execution."""
     caplog.set_level(10)  # Set debug level
-    config.ols_config.introspection_enabled = True
 
     question = "How many namespaces are there in my cluster ?"
 
@@ -296,3 +292,6 @@ def test_tool_calling_tool_execution(caplog):
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
+
+
+# TODO: fix tests after rebase

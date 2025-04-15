@@ -21,7 +21,6 @@ spec:
   ols:
     defaultModel: ibm/granite-3-2-8b-instruct
     defaultProvider: watsonx
-    introspectionEnabled: true
     deployment:
       replicas: 1
     disableAuth: false
@@ -33,3 +32,7 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
+tools:
+  - name: "openshift"
+    type: "tool-set"
+  
