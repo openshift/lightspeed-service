@@ -14,6 +14,7 @@ PATH_TO_PLANTUML := ~/bin
 # Python registry to where the package should be uploaded
 PYTHON_REGISTRY = testpypi
 
+default: help
 
 images: ## Build container images
 	scripts/build-container.sh
