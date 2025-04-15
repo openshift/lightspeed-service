@@ -4,7 +4,7 @@ import logging
 
 from ols.app.models.config import OLSConfig
 
-from . import k8s, noop
+from . import k8s, noop, noop_with_token
 from .auth_dependency_interface import AuthDependencyInterface
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,8 @@ def get_auth_dependency(
             return k8s.AuthDependency(virtual_path=virtual_path)
         case "noop":
             return noop.AuthDependency(virtual_path=virtual_path)
+        case "noop-with-token":
+            return noop_with_token.AuthDependency(virtual_path=virtual_path)
         case _:
             # this is internal error and should not happen in reality
             raise Exception(f"Invalid/unknown auth. module was configured: {module}")
