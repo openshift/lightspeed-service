@@ -9,15 +9,15 @@
 # file with the cluster configuration, as the oc CLI checks this when no
 # server is provided in the command.
 
-
 import logging
+import os
 import subprocess
-from typing import Annotated
 
-from langchain.tools import tool
-from langchain_core.tools import InjectedToolArg
+from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
+
+mcp = FastMCP("oc_cli_tools")
 
 
 # TODO: OLS-1443
@@ -56,8 +56,11 @@ def sanitize_oc_args(args: list[str]) -> list[str]:
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     """Run `oc` CLI with provided arguments and command."""
+    # Currently user token is sent to server using env var.
+    token = os.environ.get("OC_USER_TOKEN")
+
     res = subprocess.run(  # noqa: S603
-        ["oc", *args],  # noqa: S607
+        ["oc", *args] + ["--token", token],
         capture_output=True,
         text=True,
         check=False,
@@ -66,37 +69,16 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     return res
 
 
-def token_works_for_oc(token: str) -> bool:
-    """Check if the token can be used with `oc` CLI.
-
-    Args:
-        token: OpenShift user token.
-
-    Returns:
-        True if user token works, False otherwise.
-    """
-    r = run_oc(["version", f"--token={token}"])
-
-    if r.returncode == 0:
-        logger.info("Token is usable for oc CLI")
-        return True
-
-    logger.error(
-        "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
-        r.stdout,
-        r.stderr,
-    )
-    return False
-
-
 def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
     """Return stdout if return code is 0, otherwise return stderr."""
     return result.stdout if result.returncode == 0 else result.stderr
 
 
-# NOTE: tools description comes from oc cli --help for each subcommand (shortened)
-@tool
-def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
+# NOTE: Tools description comes from oc cli --help for each subcommand (shortened)
+
+
+@mcp.tool()
+def oc_get(oc_get_args: list[str]) -> str:
     """Display one or many resources from OpenShift cluster.
 
     Standard `oc` flags and options are valid.
@@ -129,14 +111,12 @@ def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> st
         # List all replication controllers and services together in ps output format.
         oc get rc,services
     """
-    result = run_oc(["get", *sanitize_oc_args(oc_get_args), "--token", token])
+    result = run_oc(["get", *sanitize_oc_args(oc_get_args)])
     return stdout_or_stderr(result)
 
 
-@tool
-def oc_describe(
-    oc_describe_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> str:
+@mcp.tool()
+def oc_describe(oc_describe_args: list[str]) -> str:
     """Show details of a specific resource or group of resources.
 
     Print a detailed description of the selected resources, including related resources such as events or controllers.
@@ -164,12 +144,12 @@ def oc_describe(
         # Describe all pods managed by the 'frontend' replication controller
         oc describe pods frontend
     """  # noqa: E501
-    result = run_oc(["describe", *sanitize_oc_args(oc_describe_args), "--token", token])
+    result = run_oc(["describe", *sanitize_oc_args(oc_describe_args)])
     return stdout_or_stderr(result)
 
 
-@tool
-def oc_logs(oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
+@mcp.tool()
+def oc_logs(oc_logs_args: list[str]) -> str:
     """Print the logs for a resource.
 
     Supported resources are builds, build configs (bc), deployment configs (dc), and pods.
@@ -192,12 +172,12 @@ def oc_logs(oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]) -> 
         # Start streaming of ruby-container logs from pod backend.
         oc logs -f pod/backend -c ruby-container
     """  # noqa: E501
-    result = run_oc(["logs", *sanitize_oc_args(oc_logs_args), "--token", token])
+    result = run_oc(["logs", *sanitize_oc_args(oc_logs_args)])
     return stdout_or_stderr(result)
 
 
-@tool
-def oc_status(oc_status_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
+@mcp.tool()
+def oc_status(oc_status_args: list[str]) -> str:
     """Show a high level overview of the current project.
 
     This command will show services, deployment configs, build configurations, & active deployments.
@@ -218,12 +198,12 @@ def oc_status(oc_status_args: list[str], token: Annotated[str, InjectedToolArg])
         # See an overview of the current project including details for any identified issues.
         oc --suggest
     """
-    result = run_oc(["status", *sanitize_oc_args(oc_status_args), "--token", token])
+    result = run_oc(["status", *sanitize_oc_args(oc_status_args)])
     return stdout_or_stderr(result)
 
 
-@tool
-def show_pods(token: Annotated[str, InjectedToolArg]) -> str:
+@mcp.tool()
+def show_pods() -> str:
     """Show resource usage (CPU and memory) for all pods accross all namespaces.
 
     Usecases:
@@ -236,14 +216,12 @@ def show_pods(token: Annotated[str, InjectedToolArg]) -> str:
         kube-system  konnectivity-agent-qwnsd                          1m          24Mi
         kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
-    result = run_oc([*["adm", "top", "pods", "-A"], "--token", token])
+    result = run_oc(["adm", "top", "pods", "-A"])
     return stdout_or_stderr(result)
 
 
-@tool
-def oc_adm_top(
-    oc_adm_top_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> str:
+@mcp.tool()
+def oc_adm_top(oc_adm_top_args: list[str]) -> str:
     """Show usage statistics of resources on the server.
 
     This command analyzes resources managed by the platform and presents current usage statistics.
@@ -267,7 +245,9 @@ def oc_adm_top(
         --namespace <namespace>
             Lists resources for specified namespace.
     """
-    result = run_oc(
-        ["adm", "top", *sanitize_oc_args(oc_adm_top_args), "--token", token]
-    )
+    result = run_oc(["adm", "top", *sanitize_oc_args(oc_adm_top_args)])
     return stdout_or_stderr(result)
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
