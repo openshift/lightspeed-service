@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from ols.constants import (
+    CONFIGURATION_DUMP_FILE_NAME,
     CONFIGURATION_FILE_NAME_ENV_VARIABLE,
     DEFAULT_CONFIGURATION_FILE,
 )
@@ -46,8 +47,9 @@ if __name__ == "__main__":
     config.reload_from_yaml_file(cfg_file)
 
     if "--dump-config" in sys.argv:
-        with open("olsconfig.json", "w", encoding="utf-8") as fout:
-            fout.write(config.config.json())
+        print(f"Dumping configuration into {CONFIGURATION_DUMP_FILE_NAME}")
+        with open(CONFIGURATION_DUMP_FILE_NAME, "w", encoding="utf-8") as fout:
+            fout.write(config.config.model_dump_json(indent=4))
         sys.exit()
 
     logger = logging.getLogger("ols")
