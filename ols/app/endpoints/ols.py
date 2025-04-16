@@ -28,7 +28,6 @@ from ols.app.models.models import (
     ReferencedDocument,
     SummarizerResponse,
     TokenCounter,
-    ToolCall,
     UnauthorizedResponse,
 )
 from ols.customize import keywords, prompts
@@ -72,6 +71,37 @@ query_responses: dict[int | str, dict[str, Any]] = {
         "model": ErrorResponse,
     },
 }
+
+
+def merge_tools_info(tool_calls: list[dict], tool_results: list[dict]) -> list[dict]:
+    """Merge tools calls and results into a single list of dictionaries."""
+    # check if tool_calls and tool_results contains information we
+    # expect - these are highly unlikely scenarios, but if it happens
+    # we want to log it instead of failing with status code to client
+    if len(tool_calls) != len(tool_results):
+        logger.error("tool_calls and tool_results must have the same number of items")
+        return []
+    if len(tool_calls) != len({i["id"] for i in tool_calls}):
+        logger.error("tool_calls must have unique ids")
+        return []
+    if len(tool_results) != len({i["id"] for i in tool_results}):
+        logger.error("tool_results must have unique ids")
+        return []
+    if {i["id"] for i in tool_calls} != {i["id"] for i in tool_results}:
+        logger.error("tool_calls and tool_results must have the same number of ids")
+        return []
+
+    # convert tool_results to a dictionary for quick lookup
+    tools_results_dict = {item["id"]: item for item in tool_results}
+
+    # merge lists based on 'id'
+    merged_tool_info = [
+        {**item, **tools_results_dict[item["id"]]}
+        for item in tool_calls
+        if item["id"] in tools_results_dict
+    ]
+
+    return merged_tool_info
 
 
 @router.post("/query", responses=query_responses)
@@ -136,6 +166,7 @@ def conversation_request(
             summarizer_response.rag_chunks,
             summarizer_response.history_truncated,
             summarizer_response.tool_calls,
+            summarizer_response.tool_results,
             processed_request.attachments,
         )
 
@@ -173,6 +204,8 @@ def conversation_request(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         available_quotas=available_quotas,
+        tool_calls=summarizer_response.tool_calls,
+        tool_results=summarizer_response.tool_results,
     )
 
 
@@ -480,6 +513,7 @@ def generate_response(
             provider=llm_request.provider,
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
+            user_token=user_token,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
@@ -487,7 +521,7 @@ def generate_response(
                 llm_request.query, config.rag_index, history
             )
         response = docs_summarizer.create_response(
-            llm_request.query, config.rag_index, history, user_token
+            llm_request.query, config.rag_index, history
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response
@@ -752,7 +786,8 @@ def store_transcript(
     response: str,
     rag_chunks: list[RagChunk],
     truncated: bool,
-    tool_calls: list[list[ToolCall]],
+    tool_calls: list[dict],
+    tool_results: list[dict],
     attachments: list[Attachment],
 ) -> None:
     """Store transcript in the local filesystem.
@@ -766,7 +801,8 @@ def store_transcript(
         response: The response to store.
         rag_chunks: The list of `RagChunk` objects.
         truncated: The flag indicating if the history was truncated.
-        tool_calls: The list of list of `ToolCall` objects.
+        tool_calls: The list of tool requests.
+        tool_results: The list of tool results.
         attachments: The list of `Attachment` objects.
     """
     # Creates transcripts path only if it doesn't exist. The `exist_ok=True` prevents
@@ -788,10 +824,7 @@ def store_transcript(
         "llm_response": response,
         "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
         "truncated": truncated,
-        "tool_calls": [
-            [dataclasses.asdict(tool_call) for tool_call in step_tool_calls]
-            for step_tool_calls in tool_calls
-        ],
+        "tool_calls": merge_tools_info(tool_calls, tool_results),
         "attachments": [attachment.model_dump() for attachment in attachments],
     }
 

@@ -581,3 +581,52 @@ def test_query_with_unknown_model() -> None:
         ), "Improper response format: 'detail' node is missing"
         assert "Unable to process this request" in json_response["detail"]["response"]
         assert "Model 'bar' is not a valid model " in json_response["detail"]["cause"]
+
+
+@pytest.mark.introspection
+def test_tool_calling_text() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_events() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+        assert "lightspeed-app-server" in response_text

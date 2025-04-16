@@ -11,6 +11,7 @@ from typing import Any, AsyncGenerator, Optional
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import ToolMessage
 
 from ols import config, constants
 from ols.app.endpoints.ols import (
@@ -31,9 +32,8 @@ from ols.app.models.models import (
     LLMRequest,
     RagChunk,
     ReferencedDocument,
-    SummarizerResponse,
+    StreamedChunk,
     TokenCounter,
-    ToolCall,
     UnauthorizedResponse,
 )
 from ols.constants import MEDIA_TYPE_TEXT
@@ -48,6 +48,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
+
+
+LLM_TOKEN_EVENT = "token"  # noqa: S105
+LLM_TOOL_CALL_EVENT = "tool_call"
+LLM_TOOL_RESULT_EVENT = "tool_result"
+
 
 query_responses: dict[int | str, dict[str, Any]] = {
     200: {
@@ -95,6 +101,7 @@ def conversation_request(
             llm_request,
             processed_request.previous_input,
             streaming=True,
+            user_token=processed_request.user_token,
         )
     )
 
@@ -116,13 +123,13 @@ def conversation_request(
     )
 
 
-async def invalid_response_generator() -> AsyncGenerator[str, None]:
+async def invalid_response_generator() -> AsyncGenerator[StreamedChunk, None]:
     """Yield an invalid query response.
 
     Yields:
         str: The response indicating invalid query.
     """
-    yield INVALID_QUERY_RESP
+    yield StreamedChunk(type="text", text=INVALID_QUERY_RESP)
 
 
 def format_stream_data(d: dict) -> str:
@@ -143,6 +150,34 @@ def stream_start_event(conversation_id: str) -> str:
             "data": {
                 "conversation_id": conversation_id,
             },
+        }
+    )
+
+
+def stream_event(data: dict, event_type: str, media_type: str) -> str:
+    """Build an item to yield based on media type.
+
+    Args:
+        data: The data to yield.
+        event_type: The type of event (e.g. token, tool request, tool execution).
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The formatted string or JSON to yield.
+    """
+    if media_type == MEDIA_TYPE_TEXT:
+        if event_type == LLM_TOKEN_EVENT:
+            return data["token"]
+        if event_type == LLM_TOOL_CALL_EVENT:
+            return f"\nTool call: {json.dumps(data)}\n"
+        if event_type == LLM_TOOL_RESULT_EVENT:
+            return f"\nTool result: {json.dumps(data)}\n"
+        logger.error("Unknown event type: %s", event_type)
+        return ""
+    return format_stream_data(
+        {
+            "event": event_type,
+            "data": data,
         }
     )
 
@@ -246,33 +281,13 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
     )
 
 
-def build_yield_item(item: str, idx: int, media_type: str) -> str:
-    """Build an item to yield based on media type.
-
-    Args:
-        item: The token or string fragment to yield.
-        idx: Index of the current item in the stream.
-        media_type: Media type of the response (e.g. text or JSON).
-
-    Returns:
-        str: The formatted string or JSON to yield.
-    """
-    if media_type == MEDIA_TYPE_TEXT:
-        return item
-    return format_stream_data(
-        {
-            "event": "token",
-            "data": {"id": idx, "token": item},
-        }
-    )
-
-
 def store_data(
     user_id: str,
     conversation_id: str,
     llm_request: LLMRequest,
     response: str,
-    tool_calls: list[list[ToolCall]],
+    tool_calls: list[dict],
+    tool_results: list[ToolMessage],
     attachments: list[Attachment],
     valid: bool,
     query_without_attachments: str,
@@ -288,7 +303,8 @@ def store_data(
         conversation_id: The conversation ID (UUID).
         llm_request: The original request.
         response: The generated response.
-        tool_calls: List of tool calls made during the response generation.
+        tool_calls: list of tool requests made in the query.
+        tool_results: list of tool results from the query.
         attachments: list of attachments included in the query.
         valid: Indicates if the query was valid.
         query_without_attachments: Query content excluding attachments.
@@ -318,6 +334,7 @@ def store_data(
             rag_chunks,
             history_truncated,
             tool_calls,
+            tool_results,
             attachments,
         )
     timestamps["store transcripts"] = time.time()
@@ -355,25 +372,53 @@ async def response_processing_wrapper(
     if media_type == constants.MEDIA_TYPE_JSON:
         yield stream_start_event(conversation_id)
 
-    response = ""
-    rag_chunks = []
-    tool_calls = []
-    history_truncated = False
-    idx = 0
+    response: str = ""
+    rag_chunks: list = []
+    tool_calls: list = []
+    tool_results: list = []
+    history_truncated: bool = False
+    idx: int = 0
     token_counter: Optional[TokenCounter] = None
 
     try:
         async for item in generator:
-            if isinstance(item, SummarizerResponse):
-                rag_chunks = item.rag_chunks
-                history_truncated = item.history_truncated
-                token_counter = item.token_counter
-                tool_calls = item.tool_calls
-                break
-
-            response += item
-            yield build_yield_item(item, idx, media_type)
-            idx += 1
+            if not isinstance(item, StreamedChunk):
+                msg = f"Expecting StreamedChunk, but got {type(item)}: {item}"
+                logger.error(msg)
+                raise ValueError(msg)
+            if item.type == "tool_call":
+                tool_calls.append(item.data)
+                yield stream_event(
+                    data=item.data,
+                    event_type=LLM_TOOL_CALL_EVENT,
+                    media_type=media_type,
+                )
+            elif item.type == "tool_result":
+                tool_results.append(item.data)
+                yield stream_event(
+                    data=item.data,
+                    event_type=LLM_TOOL_RESULT_EVENT,
+                    media_type=media_type,
+                )
+            elif item.type == "text":
+                response += item.text
+                yield stream_event(
+                    data={"id": idx, "token": item.text},
+                    event_type=LLM_TOKEN_EVENT,
+                    media_type=media_type,
+                )
+                idx += 1
+            elif item.type == "end":
+                rag_chunks = item.data["rag_chunks"]
+                history_truncated = item.data["truncated"]
+                token_counter = item.data["token_counter"]
+            else:
+                msg = (
+                    "Yielded unknown item type from streaming generator, "
+                    f"item: {item}"
+                )
+                logger.error(msg)
+                raise ValueError(msg)
     except PromptTooLongError as summarizer_error:
         yield prompt_too_long_error(summarizer_error, media_type)
         return  # stop execution after error
@@ -390,6 +435,7 @@ async def response_processing_wrapper(
         llm_request,
         response,
         tool_calls,
+        tool_results,
         attachments,
         valid,
         query_without_attachments,

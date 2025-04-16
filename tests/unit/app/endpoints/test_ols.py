@@ -24,7 +24,6 @@ from ols.app.models.models import (  # noqa:E402
     RagChunk,
     SummarizerResponse,
     TokenCounter,
-    ToolCall,
 )
 from ols.customize import prompts  # noqa:E402
 from ols.src.llms.llm_loader import LLMConfigurationError  # noqa:E402
@@ -980,13 +979,16 @@ def test_store_transcript(transcripts_location):
     ]
     truncated = True
     tool_calls = [
-        [
-            ToolCall(name="tool1", args={"arg": "bla"}),
-        ],
-        [
-            ToolCall(name="tool2", args={"arg": "bla"}),
-            ToolCall(name="tool3", args={"arg": "bla"}),
-        ],
+        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"},
+    ]
+    tool_results = [
+        {
+            "id": "1",
+            "status": "success",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 1,
+        }
     ]
     attachments = [
         Attachment(
@@ -1006,6 +1008,7 @@ def test_store_transcript(transcripts_location):
         rag_chunks,
         truncated,
         tool_calls,
+        tool_results,
         attachments,
     )
 
@@ -1039,13 +1042,15 @@ def test_store_transcript(transcripts_location):
         ],
         "truncated": truncated,
         "tool_calls": [
-            [
-                {"name": "tool1", "args": {"arg": "bla"}},
-            ],
-            [
-                {"name": "tool2", "args": {"arg": "bla"}},
-                {"name": "tool3", "args": {"arg": "bla"}},
-            ],
+            {
+                "name": "tool1",
+                "args": {},
+                "id": "1",
+                "type": "tool_result",
+                "status": "success",
+                "content": "bla",
+                "round": 1,
+            }
         ],
         "attachments": [
             {
@@ -1346,3 +1351,76 @@ def test_get_available_quotas_two_quota_limiters():
         "MockQuotaLimiter1": 10,
         "MockQuotaLimiter2": 20,
     }
+
+
+def test_merge_tools_info():
+    """Test the function merge_tools_info."""
+    tool_calls = [
+        {"name": "tool1", "args": {}, "id": "1", "type": "tool_call"},
+        {"name": "tool2", "args": {}, "id": "2", "type": "tool_call"},
+    ]
+    tool_results = [
+        {
+            "id": "1",
+            "status": "success",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 1,
+        },
+        {
+            "id": "2",
+            "status": "error",
+            "content": "bla",
+            "type": "tool_result",
+            "round": 1,
+        },
+    ]
+    merged_tools = ols.merge_tools_info(tool_calls, tool_results)
+    assert len(merged_tools) == 2
+    assert merged_tools[0] == {
+        "name": "tool1",
+        "args": {},
+        "id": "1",
+        "type": "tool_result",
+        "status": "success",
+        "content": "bla",
+        "round": 1,
+    }
+    assert merged_tools[1] == {
+        "name": "tool2",
+        "args": {},
+        "id": "2",
+        "type": "tool_result",
+        "status": "error",
+        "content": "bla",
+        "round": 1,
+    }
+
+
+def test_merge_tools_info_failures(caplog):
+    """Test the function merge_tools_info when no tool calls are provided."""
+    tool_calls = []
+    tool_results = [{"id": "1"}]
+    merged_tools = ols.merge_tools_info(tool_calls, tool_results)
+    assert merged_tools == []
+    assert (
+        "tool_calls and tool_results must have the same number of items" in caplog.text
+    )
+
+    tool_calls = [{"id": "1"}, {"id": "1"}]
+    tool_results = [{"id": "1"}, {"id": "2"}]
+    merged_tools = ols.merge_tools_info(tool_calls, tool_results)
+    assert merged_tools == []
+    assert "tool_calls must have unique ids" in caplog.text
+
+    tool_calls = [{"id": "1"}, {"id": "2"}]
+    tool_results = [{"id": "1"}, {"id": "1"}]
+    merged_tools = ols.merge_tools_info(tool_calls, tool_results)
+    assert merged_tools == []
+    assert "tool_results must have unique ids" in caplog.text
+
+    tool_calls = [{"id": "1"}, {"id": "2"}]
+    tool_results = [{"id": "3"}, {"id": "1"}]
+    merged_tools = ols.merge_tools_info(tool_calls, tool_results)
+    assert merged_tools == []
+    assert "tool_calls and tool_results must have the same number of ids" in caplog.text

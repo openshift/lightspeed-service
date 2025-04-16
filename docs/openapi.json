@@ -806,6 +806,16 @@
                         },
                         "type": "object",
                         "title": "Available Quotas"
+                    },
+                    "tool_calls": {
+                        "items": {},
+                        "type": "array",
+                        "title": "Tool Calls"
+                    },
+                    "tool_results": {
+                        "items": {},
+                        "type": "array",
+                        "title": "Tool Results"
                     }
                 },
                 "type": "object",
@@ -816,10 +826,12 @@
                     "truncated",
                     "input_tokens",
                     "output_tokens",
-                    "available_quotas"
+                    "available_quotas",
+                    "tool_calls",
+                    "tool_results"
                 ],
                 "title": "LLMResponse",
-                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.\n    input_tokens: Number of tokens sent to LLM\n    output_tokens: Number of tokens received from LLM\n    available_quotas: Quota available as measured by all configured quota limiters",
+                "description": "Model representing a response from the LLM (Language Model).\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The optional response.\n    referenced_documents: The optional URLs and titles for the documents used\n                          to generate the response.\n    truncated: Set to True if conversation history was truncated to be within context window.\n    input_tokens: Number of tokens sent to LLM\n    output_tokens: Number of tokens received from LLM\n    available_quotas: Quota available as measured by all configured quota limiters\n    tool_calls: List of tool requests.\n    tool_results: List of tool results.",
                 "examples": [
                     {
                         "available_quotas": {
@@ -836,6 +848,23 @@
                             }
                         ],
                         "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                        "tool_calls": [
+                            {
+                                "args": {},
+                                "id": "1",
+                                "name": "tool1",
+                                "type": "tool_call"
+                            }
+                        ],
+                        "tool_results": [
+                            {
+                                "content": "bla",
+                                "id": "1",
+                                "round": 1,
+                                "status": "success",
+                                "type": "tool_result"
+                            }
+                        ],
                         "truncated": false
                     }
                 ]
