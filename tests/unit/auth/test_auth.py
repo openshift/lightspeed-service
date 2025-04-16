@@ -3,7 +3,7 @@
 import pytest
 
 from ols.app.models.config import AuthenticationConfig, OLSConfig
-from ols.src.auth import k8s, noop
+from ols.src.auth import k8s, noop, noop_with_token
 from ols.src.auth.auth import get_auth_dependency, use_k8s_auth
 
 
@@ -67,6 +67,16 @@ def test_get_auth_dependency_k8s_module():
     ols_config.authentication_config = AuthenticationConfig()
     ols_config.authentication_config.module = "k8s"
     assert isinstance(get_auth_dependency(ols_config, "/path"), k8s.AuthDependency)
+
+
+def test_get_auth_dependency_noop_with_token_module():
+    """Test the function get_auth_dependency when module is set to no-op."""
+    ols_config = OLSConfig()
+    ols_config.authentication_config = AuthenticationConfig()
+    ols_config.authentication_config.module = "noop-with-token"
+    assert isinstance(
+        get_auth_dependency(ols_config, "/path"), noop_with_token.AuthDependency
+    )
 
 
 def test_get_auth_dependency_unknown_module():

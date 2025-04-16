@@ -210,7 +210,7 @@ DEFAULT_SSL_CIPHERS = "TLSv1"
 DEFAULT_AUTHENTICATION_MODULE = "k8s"
 
 # All supported authentication modules
-SUPPORTED_AUTHENTICATION_MODULES = {"k8s", "noop"}
+SUPPORTED_AUTHENTICATION_MODULES = {"k8s", "noop", "noop-with-token"}
 
 # Default configuration file name
 DEFAULT_CONFIGURATION_FILE = "olsconfig.yaml"
