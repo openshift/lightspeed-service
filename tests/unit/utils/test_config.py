@@ -892,14 +892,15 @@ def test_valid_config_file():
                             "args": ["mcp_server_1.py"],
                             "env": {},
                             "cwd": ".",
+                            "encoding": "utf-8",
                         },
                     },
                     "bar": {
                         "transport": "sse",
                         "sse": {
                             "url": "127.0.0.1:8080",
-                            "timeout": None,
-                            "sse_read_timeout": None,
+                            "timeout": 5,
+                            "sse_read_timeout": 10,
                         },
                     },
                 },

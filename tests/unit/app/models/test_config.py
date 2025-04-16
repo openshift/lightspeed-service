@@ -205,13 +205,30 @@ def test_sse_transport_configuration_on_no_data():
         SseTransportConfig()
 
 
+def test_sse_transport_defaults():
+    """Test the SSE transport configuration defaults."""
+    sse_transport = SseTransportConfig(url="http://localhost:8080")
+    assert sse_transport.url == "http://localhost:8080"
+    assert sse_transport.timeout == constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
+    assert (
+        sse_transport.sse_read_timeout == constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
+    )
+
+
 def test_stdio_transport_configuration_on_no_data():
     """Test the STDIO transport configuration handling when no data are provided."""
     with pytest.raises(ValidationError, match=r"(?s)command.*Field required"):
         StdioTransportConfig()
 
-    with pytest.raises(ValidationError, match=r"(?s)args.*Field required"):
-        StdioTransportConfig(command="python")
+
+def test_stdio_transport_defaults():
+    """Test the STDIO transport configuration defaults."""
+    stdio_transport = StdioTransportConfig(command="python")
+    stdio_transport.command == "python"
+    stdio_transport.args == []
+    stdio_transport.env == constants.STDIO_TRANSPORT_DEFAULT_ENV
+    stdio_transport.cwd == constants.STDIO_TRANSPORT_DEFAULT_CWD
+    stdio_transport.encoding == constants.STDIO_TRANSPORT_DEFAULT_ENCODING
 
 
 def test_model_parameters():
