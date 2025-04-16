@@ -498,18 +498,18 @@ class StdioTransportConfig(BaseModel):
     """Stdio transport configuration for MCP server."""
 
     command: str
-    args: list[str]
-    env: Optional[dict[str, str | int]] = None
-    cwd: Optional[str] = None
-    encoding: Optional[str] = None
+    args: list[str] = []
+    env: dict[str, str | int] = constants.STDIO_TRANSPORT_DEFAULT_ENV
+    cwd: str = constants.STDIO_TRANSPORT_DEFAULT_CWD
+    encoding: str = constants.STDIO_TRANSPORT_DEFAULT_ENCODING
 
 
 class SseTransportConfig(BaseModel):
     """SSE transport configuration for MCP server."""
 
     url: str
-    timeout: Optional[int] = None
-    sse_read_timeout: Optional[int] = None
+    timeout: int = constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
+    sse_read_timeout: int = constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
 
 
 class MCPServerConfig(BaseModel):
