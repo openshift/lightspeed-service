@@ -500,7 +500,7 @@ class StdioTransportConfig(BaseModel):
 
     command: Optional[str] = None
     args: Optional[str] = None
-    env: Optional[str] = None
+    env: Optional[dict[str, str | int]] = None
     cwd: Optional[str] = None
     encoding: Optional[str] = None
 

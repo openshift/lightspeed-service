@@ -890,7 +890,7 @@ def test_valid_config_file():
                         "stdio": {
                             "command": "python",
                             "args": "mcp_server_1.py",
-                            "env": "",
+                            "env": {},
                             "cwd": ".",
                         },
                     },
