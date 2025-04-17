@@ -8,6 +8,7 @@ from langchain.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from llama_index.core import VectorStoreIndex
 
 from ols import config
@@ -18,7 +19,7 @@ from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameter
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.tools import execute_oc_tool_calls, get_available_tools
+from ols.src.tools.tools import execute_tool_calls, get_available_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
 
+        # TODO: remove introspection config and decide based if mcp_servers
+        # are provided
         # tools part
         self._introspection_enabled = config.ols_config.introspection_enabled
         self.tools_map = get_available_tools(self._introspection_enabled, user_token)
@@ -163,11 +166,29 @@ class DocsSummarizer(QueryHelper):
 
         return final_prompt, llm_input_values, rag_chunks, truncated
 
+    # TODO: better way
+    def mcp_config_to_client_dump(self):
+        """Unpacks config to MultiServerMCPClient expectations."""
+        servers_conf = {}
+        for server, server_conf in config.config.mcp_servers.servers.items():
+            servers_conf[server] = {
+                "transport": server_conf.transport,
+            }
+            if server_conf.stdio:
+                servers_conf[server].update(server_conf.stdio.model_dump())
+                # TODO: I'm not really happy about this solution, open
+                # for ideas
+                if server == "openshift":
+                    servers_conf[server]["env"] = {"OC_USER_TOKEN": self.user_token}
+            if server_conf.sse:
+                servers_conf[server].update(server_conf.sse.model_dump())
+        return servers_conf
+
     async def _invoke_llm(
         self,
         messages: ChatPromptTemplate,
         llm_input_values: dict[str, str],
-        tools_map: dict[str, Callable],
+        tools_map: list[Callable],
         is_final_round: bool,
         token_counter: GenericTokenCounter,
     ) -> AsyncGenerator[AIMessageChunk, None]:
@@ -187,7 +208,7 @@ class DocsSummarizer(QueryHelper):
         llm = (
             self.bare_llm
             if is_final_round or not tools_map
-            else self.bare_llm.bind_tools(tools_map.values())
+            else self.bare_llm.bind_tools(tools_map)
         )
 
         # create and execute the chain
@@ -218,68 +239,71 @@ class DocsSummarizer(QueryHelper):
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        for i in range(1, max_rounds + 1):
-            is_final_round = (not self._introspection_enabled) or (i == max_rounds)
-            tool_call_chunks = []
-            # invoke LLM and process response chunks
-            async for chunk in self._invoke_llm(
-                messages,
-                llm_input_values,
-                tools_map=tools_map,
-                is_final_round=is_final_round,
-                token_counter=token_counter,
-            ):
-                # TODO: Temporary fix for fake-llm (load test) which gives
-                # output as string. Currently every method that we use gives us
-                # proper output, except fake-llm. We need to move to a different
-                # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
-                # & tool calling and gives response not as string. Even below
-                # temp fix will fail for tool calling.
-                # (load test can be run with tool calling set to False till we
-                # have a permanent fix)
-                if isinstance(chunk, str):
-                    yield StreamedChunk(type="text", text=chunk)
+        async with MultiServerMCPClient(self.mcp_config_to_client_dump()) as mcp_client:
+            for i in range(1, max_rounds + 1):
+                is_final_round = (not self._introspection_enabled) or (i == max_rounds)
+                tool_call_chunks = []
+                # invoke LLM and process response chunks
+                async for chunk in self._invoke_llm(
+                    messages,
+                    llm_input_values,
+                    tools_map=mcp_client.get_tools(),
+                    is_final_round=is_final_round,
+                    token_counter=token_counter,
+                ):
+                    # TODO: Temporary fix for fake-llm (load test) which gives
+                    # output as string. Currently every method that we use gives us
+                    # proper output, except fake-llm. We need to move to a different
+                    # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
+                    # & tool calling and gives response not as string. Even below
+                    # temp fix will fail for tool calling.
+                    # (load test can be run with tool calling set to False till we
+                    # have a permanent fix)
+                    if isinstance(chunk, str):
+                        yield StreamedChunk(type="text", text=chunk)
+                        break
+
+                    # check if LLM has finished generating
+                    if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
+                        return
+
+                    # collect tool chunk or yield text
+                    if getattr(chunk, "tool_call_chunks", None):
+                        tool_call_chunks.append(chunk)
+                    else:
+                        # stream text chunks directly
+                        yield StreamedChunk(type="text", text=chunk.content)
+
+                # exit if this was the final round
+                if is_final_round:
                     break
 
-                # check if LLM has finished generating
-                if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                    return
-
-                # collect tool chunk or yield text
-                if getattr(chunk, "tool_call_chunks", None):
-                    tool_call_chunks.append(chunk)
-                else:
-                    # stream text chunks directly
-                    yield StreamedChunk(type="text", text=chunk.content)
-
-            # exit if this was the final round
-            if is_final_round:
-                break
-
-            # tool calling part
-            if tool_call_chunks:
-                # assess tool calls and add to messages
-                tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                messages.append(AIMessage(content="", type="ai", tool_calls=tool_calls))
-                for tool_call in tool_calls:
-                    yield StreamedChunk(type="tool_call", data=tool_call)
-
-                # execute tools and add to messages
-                tool_calls_messages = execute_oc_tool_calls(
-                    tools_map, tool_calls, self.user_token
-                )
-                messages.extend(tool_calls_messages)
-                for tool_call_message in tool_calls_messages:
-                    yield StreamedChunk(
-                        type="tool_result",
-                        data={
-                            "id": tool_call_message.tool_call_id,
-                            "status": tool_call_message.status,
-                            "content": tool_call_message.content,
-                            "type": "tool_result",
-                            "round": i,
-                        },
+                # tool calling part
+                if tool_call_chunks:
+                    # assess tool calls and add to messages
+                    tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
+                    messages.append(
+                        AIMessage(content="", type="ai", tool_calls=tool_calls)
                     )
+                    for tool_call in tool_calls:
+                        yield StreamedChunk(type="tool_call", data=tool_call)
+
+                    # execute tools and add to messages
+                    tool_calls_messages = await execute_tool_calls(
+                        mcp_client, tool_calls
+                    )
+                    messages.extend(tool_calls_messages)
+                    for tool_call_message in tool_calls_messages:
+                        yield StreamedChunk(
+                            type="tool_result",
+                            data={
+                                "id": tool_call_message.tool_call_id,
+                                "status": tool_call_message.status,
+                                "content": tool_call_message.content,
+                                "type": "tool_result",
+                                "round": i,
+                            },
+                        )
 
     async def generate_response(
         self,
