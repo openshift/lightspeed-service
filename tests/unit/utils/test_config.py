@@ -796,12 +796,13 @@ ols_config:
         - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     minTLSVersion: VersionTLS13
 mcp_servers:
-  - name: foo
+  foo:
     transport: stdio
     stdio:
       command: python
-      args: mcp_server_1.py
-  - name: bar
+      args:
+        - mcp_server_1.py
+  bar:
     transport: sse
     sse:
       url: 127.0.0.1:8080
@@ -883,19 +884,18 @@ def test_valid_config_file():
                     "system_prompt_path": "tests/config/system_prompt.txt",
                     "user_data_collection": {"transcripts_disabled": True},
                 },
-                "mcp_servers": [
-                    {
-                        "name": "foo",
+                "mcp_servers": {
+                    "foo": {
                         "transport": "stdio",
                         "stdio": {
                             "command": "python",
-                            "args": "mcp_server_1.py",
+                            "args": ["mcp_server_1.py"],
                             "env": {},
                             "cwd": ".",
+                            "encoding": "utf-8",
                         },
                     },
-                    {
-                        "name": "bar",
+                    "bar": {
                         "transport": "sse",
                         "sse": {
                             "url": "127.0.0.1:8080",
@@ -903,7 +903,7 @@ def test_valid_config_file():
                             "sse_read_timeout": 10,
                         },
                     },
-                ],
+                },
             }
         )
         assert config.config == expected_config
