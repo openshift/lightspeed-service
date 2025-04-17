@@ -1,7 +1,5 @@
 """Unit tests for tools module."""
 
-from unittest.mock import patch
-
 import pytest
 from langchain.tools import tool
 
@@ -120,24 +118,6 @@ def test_get_available_tools():
     tools = get_available_tools(introspection_enabled=True, user_token="")
     assert tools == {}
 
-    with patch(
-        "ols.src.tools.tools.token_works_for_oc",
-        return_value=False,
-    ):
-        tools = get_available_tools(
-            introspection_enabled=True, user_token="bla"  # noqa: S106
-        )
-        assert tools == {}
-
-    with patch(
-        "ols.src.tools.tools.token_works_for_oc",
-        return_value=True,
-    ):
-        tools = get_available_tools(
-            introspection_enabled=True, user_token="bla"  # noqa: S106
-        )
-        assert tools == oc_tools
-
 
 def test_execute_oc_tool_calls_not_leaks_token_on_error(caplog):
     """Test execute_oc_tool_calls does not leak token into output."""
@@ -160,3 +140,7 @@ def test_execute_oc_tool_calls_not_leaks_token_on_error(caplog):
     # ensure the token is also not in the logs
     assert "fake-token" not in caplog.text
     assert "<redacted>" in caplog.text
+    tools = get_available_tools(
+        introspection_enabled=True, user_token="token-value"  # noqa: S106
+    )
+    assert tools == oc_tools
