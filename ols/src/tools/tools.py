@@ -14,7 +14,6 @@ from ols.src.tools.oc_cli import (
     oc_logs,
     oc_status,
     show_pods,
-    token_works_for_oc,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,12 +41,8 @@ def get_available_tools(
         logger.warning("No user token provided; no oc tools available")
         return {}
 
-    if token_works_for_oc(user_token):
-        logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
-        return oc_tools
-
-    logger.error("User token not working for 'oc' CLI; no tools available")
-    return {}
+    logger.info("User token provided; adding 'oc' tools")
+    return oc_tools
 
 
 def check_tool_description_length(tool: BaseTool) -> None:

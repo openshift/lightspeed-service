@@ -1,7 +1,5 @@
 """Unit tests for tools module."""
 
-from unittest.mock import patch
-
 import pytest
 from langchain.tools import tool
 from langchain_core.messages import ToolMessage
@@ -119,20 +117,7 @@ def test_get_available_tools():
     tools = get_available_tools(introspection_enabled=True, user_token="")
     assert tools == {}
 
-    with patch(
-        "ols.src.tools.tools.token_works_for_oc",
-        return_value=False,
-    ):
-        tools = get_available_tools(
-            introspection_enabled=True, user_token="bla"  # noqa: S106
-        )
-        assert tools == {}
-
-    with patch(
-        "ols.src.tools.tools.token_works_for_oc",
-        return_value=True,
-    ):
-        tools = get_available_tools(
-            introspection_enabled=True, user_token="bla"  # noqa: S106
-        )
-        assert tools == oc_tools
+    tools = get_available_tools(
+        introspection_enabled=True, user_token="token-value"  # noqa: S106
+    )
+    assert tools == oc_tools
