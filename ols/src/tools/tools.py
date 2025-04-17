@@ -1,6 +1,7 @@
 """Functions/Tools definition."""
 
 import logging
+import traceback
 from typing import Optional
 
 from langchain_core.messages import ToolMessage
@@ -90,9 +91,15 @@ def execute_oc_tool_calls(
                 # don't log as exception because it contains traceback
                 # with sensitive information
                 logger.error(tool_output)
-            except Exception as e:
-                tool_output = f"Error executing {tool_name}: {e}"
-                logger.exception(tool_output)
+            except Exception:
+                # if token was used, redact the error to ensure it is not leaked
+                safe_traceback = (
+                    traceback.format_exc().replace(token, "<redacted>")
+                    if token
+                    else traceback.format_exc()
+                )
+                tool_output = f"Error executing {tool_name}: {safe_traceback}"
+                logger.error(tool_output)
 
         logger.debug(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
