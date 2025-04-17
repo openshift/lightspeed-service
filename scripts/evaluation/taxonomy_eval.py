@@ -213,7 +213,9 @@ class TaxonomyEval:
         else:
             result_df = self._get_custom_score()
 
-        result_df.to_csv(f"{self._result_dir}/context_eval.csv", index=False)
+        result_df.to_csv(
+            f"{self._result_dir}/context_eval-{self._args.eval_method}.csv", index=False
+        )
 
 
 def main():
