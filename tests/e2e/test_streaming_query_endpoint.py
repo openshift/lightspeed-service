@@ -627,6 +627,6 @@ def test_tool_calling_events() -> None:
         unique_events = {e["event"] for e in events}
         response_text = construct_response_from_streamed_events(events).lower()
 
+        assert "lightspeed-app-server" in response_text
         assert "tool_call" in unique_events
         assert "tool_result" in unique_events
-        assert "lightspeed-app-server" in response_text
