@@ -66,28 +66,6 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
     return res
 
 
-def token_works_for_oc(token: str) -> bool:
-    """Check if the token can be used with `oc` CLI.
-
-    Args:
-        token: OpenShift user token.
-
-    Returns:
-        True if user token works, False otherwise.
-    """
-    try:
-        run_oc(["version", f"--token={token}"])
-        logger.info("Token is usable for oc CLI")
-        return True
-    except subprocess.CalledProcessError as e:
-        logger.error(
-            "Unable to use the token for oc CLI; stdout: %s, stderr: %s",
-            e.stdout,
-            e.stderr,
-        )
-        return False
-
-
 @tool
 def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> str:
     """Display one or many resources from OpenShift cluster.
