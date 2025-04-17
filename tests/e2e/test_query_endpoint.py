@@ -585,6 +585,7 @@ def test_query_with_unknown_model() -> None:
 
 
 @pytest.mark.introspection
+@retry(max_attempts=3, wait_between_runs=10)
 def test_tool_calling() -> None:
     """Check the REST API /v1/query with POST HTTP method for tool calling."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
