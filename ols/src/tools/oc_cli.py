@@ -20,38 +20,55 @@ from langchain_core.tools import InjectedToolArg
 logger = logging.getLogger(__name__)
 
 
-# TODO: OLS-1443
-# TODO: might also sanitize the case when llm sends the full command instead
-# of just args, eg. [oc get pods -n bla] -> [pods -n bla]
-def sanitize_oc_args(args: list[str]) -> list[str]:
-    """Sanitize `oc` CLI arguments."""
-    blocked_chars = {";", "&", "|", "`", "$", "(", ")", "<", ">", "\\"}
+BLOCKED_CHARS = (";", "&", "|", "`", "$", "(", ")", "<", ">", "\\")
+BLOCKED_CHARS_DETECTED_MSG = (
+    f"Error: arguments contain blocked characters: {BLOCKED_CHARS}"
+)
+SECRET_NOT_ALLOWED_MSG = (
+    "Error: 'secret' or 'secrets' are not allowed in arguments"  # noqa: S105
+)
 
-    sanitized_args = []
-    for arg in args:
-        safe_part = []
-        for char in arg:
-            if char in blocked_chars:
-                # stop processing further characters in this argument
-                logger.warning(
-                    "Problematic character(s) found in oc tool argument '%s'", arg
-                )
-                break
-            safe_part.append(char)
 
-        if safe_part:  # only add non-empty results
-            sanitized_args.append("".join(safe_part).strip())
-
-    # Temporary workaround for granite.
+def strip_args_for_oc_command(args: list[str]) -> list[str]:
+    """Sanitize arguments for `oc` CLI commands if LLM adds it extra."""
     # Sometimes within the list we may get two args combined; ex: [top pod]
-    sanitized_args = " ".join(sanitized_args).split(" ")
+    striped_args = " ".join(args).split(" ")
     # Sometimes model gives args which are already added to the tool.
     remove_arg = ["oc", "get", "describe", "logs", "status", "adm", "top"]
     for arg in remove_arg:
-        if arg in sanitized_args:
-            sanitized_args.remove(arg)
+        if arg in striped_args:
+            logger.debug("Removing argument from sanitized args: %s", arg)
+            striped_args.remove(arg)
 
-    return sanitized_args
+    return striped_args
+
+
+def is_blocked_char_in_args(args: list[str]) -> list[str]:
+    """Check if any of the arguments contain blocked characters."""
+    arg_str = " ".join(args)
+    if any(char in arg_str for char in BLOCKED_CHARS):
+        logger.error("Blocked characters found in argument: %s", arg_str)
+        return True
+    return False
+
+
+def is_secret_in_args(args: list[str]) -> list[str]:
+    """Check if any of the arguments contain 'secret' or 'secrets'."""
+    for arg in args:
+        if "secret" in arg or "secrets" in arg:
+            logger.error(
+                "'secret' or 'secrets' found in argument: %s",
+                arg,
+            )
+            return True
+    return False
+
+
+def stdout_or_stderr(result: subprocess.CompletedProcess) -> str:
+    """Return stdout if it is not empty string, otherwise return stderr."""
+    # some commands returns empty stdout and message like "namespace not found"
+    # in stderr, but with return code 0
+    return result.stdout if result.stdout != "" else result.stderr
 
 
 def run_oc(args: list[str]) -> subprocess.CompletedProcess:
@@ -64,6 +81,17 @@ def run_oc(args: list[str]) -> subprocess.CompletedProcess:
         shell=False,
     )
     return res
+
+
+def safe_run_oc(args: list[str], token: str) -> str:
+    """Run `oc` CLI with provided arguments and command."""
+    if is_blocked_char_in_args(args):
+        return BLOCKED_CHARS_DETECTED_MSG
+    if is_secret_in_args(args):
+        return SECRET_NOT_ALLOWED_MSG
+
+    result = run_oc(["get", *strip_args_for_oc_command(args), "--token", token])
+    return stdout_or_stderr(result)
 
 
 def token_works_for_oc(token: str) -> bool:
@@ -122,8 +150,7 @@ def oc_get(oc_get_args: list[str], token: Annotated[str, InjectedToolArg]) -> st
         # List all replication controllers and services together in ps output format.
         oc get rc,services
     """
-    result = run_oc(["get", *sanitize_oc_args(oc_get_args), "--token", token])
-    return result.stdout
+    return safe_run_oc(["get", *oc_get_args], token)
 
 
 @tool
@@ -157,8 +184,7 @@ def oc_describe(
         # Describe all pods managed by the 'frontend' replication controller
         oc describe pods frontend
     """  # noqa: E501
-    result = run_oc(["describe", *sanitize_oc_args(oc_describe_args), "--token", token])
-    return result.stdout
+    return safe_run_oc(["describe", *oc_describe_args], token)
 
 
 @tool
@@ -185,8 +211,7 @@ def oc_logs(oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]) -> 
         # Start streaming of ruby-container logs from pod backend.
         oc logs -f pod/backend -c ruby-container
     """  # noqa: E501
-    result = run_oc(["logs", *sanitize_oc_args(oc_logs_args), "--token", token])
-    return result.stdout
+    return safe_run_oc(["logs", *oc_logs_args], token)
 
 
 @tool
@@ -211,8 +236,7 @@ def oc_status(oc_status_args: list[str], token: Annotated[str, InjectedToolArg])
         # See an overview of the current project including details for any identified issues.
         oc --suggest
     """
-    result = run_oc(["status", *sanitize_oc_args(oc_status_args), "--token", token])
-    return result.stdout
+    return safe_run_oc(["status", *oc_status_args], token)
 
 
 @tool
@@ -260,7 +284,4 @@ def oc_adm_top(
         --namespace <namespace>
             Lists resources for specified namespace.
     """
-    result = run_oc(
-        ["adm", "top", *sanitize_oc_args(oc_adm_top_args), "--token", token]
-    )
-    return result.stdout
+    return safe_run_oc(["adm", "top", *oc_adm_top_args], token)
