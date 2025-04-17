@@ -5,7 +5,7 @@ from typing import Optional
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.base import BaseTool
-from pydantic import ValidationError
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from ols.src.tools.oc_cli import (
     oc_adm_top,
@@ -61,42 +61,46 @@ for tool in oc_tools.values():
     check_tool_description_length(tool)
 
 
-def execute_oc_tool_calls(
-    tools_map: dict,
+def get_tool_by_name(tool_name: str, mcp_client: MultiServerMCPClient):
+    """Get a tool by its name from the MCP client."""
+    tool = [tool for tool in mcp_client.get_tools() if tool.name == tool_name]
+    if len(tool) == 0:
+        raise ValueError(f"Tool '{tool_name}' not found.")
+    if len(tool) > 1:
+        raise ValueError(f"Multiple tools found with name '{tool_name}'.")
+    return tool[0]
+
+
+async def execute_tool_call(tool_call: dict, mcp_client: MultiServerMCPClient):
+    """Execute a tool call and return the output and status."""
+    tool_name = tool_call.get("name", "")
+    tool_args = tool_call.get("args", {})
+    try:
+        tool = get_tool_by_name(tool_name, mcp_client)
+        tool_output = await tool.arun(tool_args)
+        status = "success"
+        logger.debug(
+            "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
+        )
+    except Exception as e:
+        # catching generic exception here - if it contains something it
+        # shouldn't (eg. token in openshift tools), it is responsibility
+        # of the mcp/openshift tools to ensure nothing is leaked
+        tool_output = f"Error executing tool '{tool_call['name']}': {e}"
+        status = "error"
+        logger.exception(tool_output)
+    return tool_output, status
+
+
+async def execute_tool_calls(
+    mcp_client: MultiServerMCPClient,
     tool_calls: list[dict],
-    token: str,
 ) -> tuple[list[ToolMessage], list[dict]]:
     """Execute tool calls and return ToolMessages and execution details."""
     tool_messages = []
 
     for tool_call in tool_calls:
-        status = "error"
-        tool_name = tool_call.get("name", "").lower()
-        tool_args = tool_call.get("args", {})
-        tool = tools_map.get(tool_name)
-
-        if not tool:
-            tool_output = f"Error: Tool '{tool_name}' not found."
-            logger.error(tool_output)
-        else:
-            try:
-                # create a new dict with the tool args and the token
-                tool_output = tool.invoke({**tool_args, "token": token})
-                status = "success"
-            except ValidationError:
-                tool_output = (
-                    f"Error executing {tool_name}: tool arguments are in wrong format"
-                )
-                # don't log as exception because it contains traceback
-                # with sensitive information
-                logger.error(tool_output)
-            except Exception as e:
-                tool_output = f"Error executing {tool_name}: {e}"
-                logger.exception(tool_output)
-
-        logger.debug(
-            "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
-        )
+        tool_output, status = await execute_tool_call(tool_call, mcp_client)
 
         tool_messages.append(
             ToolMessage(
