@@ -2,6 +2,7 @@
 
 import copy
 import logging
+import os
 
 import pytest
 from pydantic import ValidationError
@@ -23,6 +24,7 @@ from ols.app.models.config import (
     OLSConfig,
     PostgresConfig,
     ProviderConfig,
+    ProxyConfig,
     QueryFilter,
     QuotaHandlersConfig,
     RedisConfig,
@@ -4117,3 +4119,54 @@ def test_ols_config_with_quota_handlesr_missing_name():
                 },
             }
         )
+
+
+def test_proxy_config_default_values():
+    """Test the ProxyConfig model default values."""
+    proxy_config = ProxyConfig()
+    os_proxy = os.getenv("https_proxy")
+    if os_proxy is None:
+        os_proxy = os.getenv("HTTPS_PROXY")
+    assert proxy_config.proxy_url == os_proxy
+    assert proxy_config.proxy_ca_cert_path is None
+
+
+def test_proxy_config_correct_values():
+    """Test the ProxyConfig model customized values."""
+    proxy_config = ProxyConfig(
+        {
+            "proxy_url": "http://proxy.example.com:1234",
+            "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+        }
+    )
+    assert proxy_config.proxy_ca_cert_path == "tests/config/empty_cert.crt"
+    assert proxy_config.proxy_url == "http://proxy.example.com:1234"
+    proxy_config.validate_yaml()
+
+
+def test_proxy_config_invalid_url():
+    """Test the ProxyConfig model with invalid URL."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Proxy URL is invalid.+",
+    ):
+        ProxyConfig(
+            {
+                "proxy_url": "invalid-url",
+                "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+            }
+        ).validate_yaml()
+
+
+def test_proxy_config_invalid_ca_cert_path():
+    """Test the ProxyConfig model with invalid CA certificate path."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Proxy CA certificate 'invalid/path/to/cert.crt' is not a file",
+    ):
+        ProxyConfig(
+            {
+                "proxy_url": "http://proxy.example.com:1234",
+                "proxy_ca_cert_path": "invalid/path/to/cert.crt",
+            }
+        ).validate_yaml()

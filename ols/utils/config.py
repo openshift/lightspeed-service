@@ -119,6 +119,11 @@ class AppConfig:
             ).vector_index
         return self._rag_index
 
+    @property
+    def proxy_config(self) -> Optional[config_model.ProxyConfig]:
+        """Return the proxy configuration."""
+        return self.config.proxy_config
+
     def reload_empty(self) -> None:
         """Reload the configuration with empty values."""
         self.config = config_model.Config()
