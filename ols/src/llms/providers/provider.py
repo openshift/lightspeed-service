@@ -373,6 +373,20 @@ class LLMProvider(AbstractLLMProvider):
 
         if use_custom_certificate_store:
             context.load_verify_locations(self.provider_config.certificates_store)
+
+        # set up proxy context if proxy is configured.
+        if config.ols_config.proxy_config:
+            proxy_context = ssl.create_default_context(
+                cafile=config.ols_config.proxy_config.proxy_ca_cert_path
+            )
+            proxy = httpx.Proxy(
+                url=config.ols_config.proxy_config.proxy_url, ssl_context=proxy_context
+            )
+            if use_async:
+                return httpx.AsyncClient(proxies=proxy, verify=context)
+            return httpx.Client(proxies=proxy, verify=context)
+
+        # no proxy
         if use_async:
             return httpx.AsyncClient(verify=context)
         return httpx.Client(verify=context)
