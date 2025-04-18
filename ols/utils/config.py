@@ -122,6 +122,11 @@ class AppConfig:
             self._rag_index_loader = IndexLoader(self.ols_config.reference_content)
         return self._rag_index_loader
 
+    @property
+    def proxy_config(self) -> Optional[config_model.ProxyConfig]:
+        """Return the proxy configuration."""
+        return self.config.proxy_config  # type: ignore[attr-defined]
+
     def reload_empty(self) -> None:
         """Reload the configuration with empty values."""
         self.config = config_model.Config()
