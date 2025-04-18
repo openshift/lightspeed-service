@@ -1,7 +1,7 @@
 ---
 llm_providers:
   - name: p1
-    type: bam_invalid  # this is invalid
+    type: bam_invalid # this is invalid
     url: "https://url1"
     credentials_path: tests/config/secret/apitoken
     models:
@@ -23,8 +23,9 @@ llm_providers:
         url: "https://murl2"
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config"
-    product_docs_index_id: product
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
   conversation_cache:
     type: memory
     memory:

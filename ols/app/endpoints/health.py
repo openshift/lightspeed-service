@@ -62,7 +62,7 @@ def llm_is_ready() -> bool:
 
 def index_is_ready() -> bool:
     """Check if the index is loaded."""
-    if config._rag_index is None and config.ols_config.reference_content is not None:
+    if config.rag_index is None and config.ols_config.reference_content is not None:
         return False
     return True
 

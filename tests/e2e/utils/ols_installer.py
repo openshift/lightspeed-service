@@ -93,6 +93,34 @@ def update_ols_config() -> None:
         "ingress_env": "stage",
         "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
     }
+
+    # patch reference content config for new format
+    # Todo: remove this when the operator PR is merged:
+    # https://github.com/openshift/lightspeed-operator/pull/668
+    if (
+        "reference_content" in olsconfig["ols_config"]
+        and "indexes" not in olsconfig["ols_config"]["reference_content"]
+    ):
+        old_rag_config = olsconfig["ols_config"]["reference_content"]
+        product_docs_index_id = ""
+        product_docs_index_path = ""
+        embeddings_model_path = ""
+        if "embeddings_model_path" in old_rag_config:
+            embeddings_model_path = old_rag_config["embeddings_model_path"]
+        if "product_docs_index_id" in old_rag_config:
+            product_docs_index_id = old_rag_config["product_docs_index_id"]
+        if "product_docs_index_path" in old_rag_config:
+            product_docs_index_path = old_rag_config["product_docs_index_path"]
+        olsconfig["ols_config"]["reference_content"] = {
+            "embeddings_model_path": embeddings_model_path,
+            "indexes": [
+                {
+                    "product_docs_index_id": product_docs_index_id,
+                    "product_docs_index_path": product_docs_index_path,
+                }
+            ],
+        }
+
     configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
     updated_configmap = yaml.dump(configmap)
 

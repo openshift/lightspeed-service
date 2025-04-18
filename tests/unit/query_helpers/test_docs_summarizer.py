@@ -25,8 +25,8 @@ from tests import constants  # noqa:E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa:E402
     mock_langchain_interface,
 )
-from tests.mock_classes.mock_llama_index import MockLlamaIndex  # noqa:E402
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa:E402
+from tests.mock_classes.mock_retrievers import MockRetriever  # noqa:E402
 
 conversation_id = suid.get_suid()
 
@@ -72,9 +72,9 @@ def test_summarize_empty_history():
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        rag_index = MockLlamaIndex()
+        rag_retriever = MockRetriever()
         history = []  # empty history
-        summary = summarizer.create_response(question, rag_index, history)
+        summary = summarizer.create_response(question, rag_retriever, history)
         check_summary_result(summary, question)
 
 
@@ -86,9 +86,9 @@ def test_summarize_no_history():
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        rag_index = MockLlamaIndex()
+        rag_retriever = MockRetriever()
         # no history is passed into summarize() method
-        summary = summarizer.create_response(question, rag_index)
+        summary = summarizer.create_response(question, rag_retriever)
         check_summary_result(summary, question)
 
 
@@ -101,14 +101,14 @@ def test_summarize_history_provided():
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
         history = ["human: What is Kubernetes?"]
-        rag_index = MockLlamaIndex()
+        rag_retriever = MockRetriever()
 
         # first call with history provided
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary1 = summarizer.create_response(question, rag_index, history)
+            summary1 = summarizer.create_response(question, rag_retriever, history)
             token_handler.assert_called_once_with(history, ANY)
             check_summary_result(summary1, question)
 
@@ -117,7 +117,7 @@ def test_summarize_history_provided():
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary2 = summarizer.create_response(question, rag_index)
+            summary2 = summarizer.create_response(question, rag_retriever)
             token_handler.assert_called_once_with([], ANY)
             check_summary_result(summary2, question)
 
@@ -127,11 +127,11 @@ def test_summarize_truncation():
     with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        rag_index = MockLlamaIndex()
+        rag_retriever = MockRetriever()
 
         # too long history
         history = [HumanMessage("What is Kubernetes?")] * 10000
-        summary = summarizer.create_response(question, rag_index, history)
+        summary = summarizer.create_response(question, rag_retriever, history)
 
         # truncation should be done
         assert summary.history_truncated
@@ -163,9 +163,9 @@ def test_summarize_reranker(caplog):
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        rag_index = MockLlamaIndex()
+        rag_retriever = MockRetriever()
         # no history is passed into create_response() method
-        summary = summarizer.create_response(question, rag_index)
+        summary = summarizer.create_response(question, rag_retriever)
         check_summary_result(summary, question)
 
         # Check captured log text to see if reranker was called.

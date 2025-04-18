@@ -8,13 +8,13 @@ from langchain.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
-from llama_index.core import VectorStoreIndex
+from llama_index.core.retrievers import BaseRetriever
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
-from ols.constants import MAX_ITERATIONS, RAG_CONTENT_LIMIT, GenericLLMParameters
+from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -87,14 +87,14 @@ class DocsSummarizer(QueryHelper):
     def _prepare_prompt(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[BaseMessage]] = None,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             query: The query to be summarized.
-            vector_index: Vector index to get RAG data/context.
+            rag_retriever: The retriever to get RAG data/context.
             history: The history of the conversation (if available).
 
         Returns:
@@ -125,9 +125,8 @@ class DocsSummarizer(QueryHelper):
         )
 
         # Retrieve RAG content
-        if vector_index:
-            retriever = vector_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
-            retrieved_nodes = retriever.retrieve(query)
+        if rag_retriever:
+            retrieved_nodes = rag_retriever.retrieve(query)
             retrieved_nodes = reranker.rerank(retrieved_nodes)
             rag_chunks, available_tokens = token_handler.truncate_rag_context(
                 retrieved_nodes, available_tokens
@@ -284,21 +283,21 @@ class DocsSummarizer(QueryHelper):
     async def generate_response(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[BaseMessage]] = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
         Args:
             query: The query to be answered
-            vector_index: Optional vector index for RAG context
+            rag_retriever: Retriever for RAG context
             history: Optional conversation history
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
         final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, vector_index, history
+            query, rag_retriever, history
         )
         messages = final_prompt.model_copy()
 
@@ -328,7 +327,7 @@ class DocsSummarizer(QueryHelper):
     def create_response(
         self,
         query: str,
-        vector_index: Optional[VectorStoreIndex] = None,
+        rag_retriever: Optional[BaseRetriever] = None,
         history: Optional[list[BaseMessage]] = None,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
@@ -338,7 +337,7 @@ class DocsSummarizer(QueryHelper):
 
         Args:
             query: The query to be answered
-            vector_index: Optional vector index for RAG context
+            rag_retriever: Retriever for RAG context
             history: Optional conversation history
 
         Returns:
@@ -351,7 +350,7 @@ class DocsSummarizer(QueryHelper):
             response_end: dict[str, Any] = {}
             tool_calls = []
             tool_results = []
-            async for chunk in self.generate_response(query, vector_index, history):
+            async for chunk in self.generate_response(query, rag_retriever, history):
                 if chunk.type == "end":
                     response_end = chunk.data
                     break
