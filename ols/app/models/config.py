@@ -235,6 +235,15 @@ class BAMConfig(ProviderSpecificConfig, extra="forbid"):
     credentials_path: str  # required attribute
 
 
+class FakeConfig(ProviderSpecificConfig, extra="forbid"):
+    """Configuration specific to fake provider."""
+
+    stream: Optional[bool]
+    response: Optional[str]
+    chunks: Optional[int]
+    sleep: Optional[float]
+
+
 class ProviderConfig(BaseModel):
     """LLM provider configuration."""
 
@@ -252,6 +261,7 @@ class ProviderConfig(BaseModel):
     bam_config: Optional[BAMConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
+    fake_provider_config: Optional[FakeConfig] = None
     certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
@@ -407,6 +417,9 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(watsonx_config)
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
+                case constants.PROVIDER_FAKE:
+                    fake_provider_config = data.get("fake_provider_config")
+                    self.fake_provider_config = FakeConfig(**fake_provider_config)
                 case _:
                     raise checks.InvalidConfigurationError(
                         f"Unsupported provider {self.type} configured"

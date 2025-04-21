@@ -124,7 +124,12 @@ WatsonxParameters = {
     ProviderParameter(GenParams.REPETITION_PENALTY, float),
 }
 
-FakeProviderParameters: set[ProviderParameter] = set()
+FakeProviderParameters = {
+    ProviderParameter("stream", bool),
+    ProviderParameter("response", str),
+    ProviderParameter("chunks", int),
+    ProviderParameter("sleep", float),
+}
 
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
