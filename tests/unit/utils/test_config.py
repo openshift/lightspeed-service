@@ -800,7 +800,8 @@ mcp_servers:
     transport: stdio
     stdio:
       command: python
-      args: mcp_server_1.py
+      args:
+        - mcp_server_1.py
   - name: bar
     transport: sse
     sse:
@@ -889,9 +890,10 @@ def test_valid_config_file():
                         "transport": "stdio",
                         "stdio": {
                             "command": "python",
-                            "args": "mcp_server_1.py",
+                            "args": ["mcp_server_1.py"],
                             "env": {},
                             "cwd": ".",
+                            "encoding": "utf-8",
                         },
                     },
                     {
