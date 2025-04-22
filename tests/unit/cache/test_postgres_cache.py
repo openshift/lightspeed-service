@@ -442,21 +442,21 @@ def test_ready():
         cache = PostgresCache(config)
 
         # mock the connection state 0 - open
-        cache.conn.closed = 0
+        cache.connection.closed = 0
         # patch the poll function to return POLL_OK
-        cache.conn.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
+        cache.connection.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
         # cache is ready
         assert cache.ready()
 
         # mock the connection state 1 - closed
-        cache.conn.closed = 1
+        cache.connection.closed = 1
         # cache is not ready
         assert not cache.ready()
 
         # mock the connection state 0 - open
-        cache.conn.closed = 0
+        cache.connection.closed = 0
         # patch the poll function to raise OperationalError
-        cache.conn.poll = MagicMock(
+        cache.connection.poll = MagicMock(
             side_effect=psycopg2.OperationalError("Connection closed")
         )
         # cache is not ready
