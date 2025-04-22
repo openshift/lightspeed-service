@@ -199,7 +199,7 @@ def test_too_long_question() -> None:
 @pytest.mark.introspection
 @pytest.mark.smoketest
 @pytest.mark.rag
-def test_valid_question() -> None:
+def test_valid_question_4o_mini1() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         cid = suid.get_suid()
@@ -208,6 +208,235 @@ def test_valid_question() -> None:
             json={
                 "conversation_id": cid,
                 "query": "what is kubernetes in the context of OpenShift?",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_4o1() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_41() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_nano1() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_4o_mini() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_4o() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_4() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+        assert "Kubernetes is" in json_response["response"]
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            json_response["response"],
+            re.IGNORECASE,
+        )
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_valid_question_nano() -> None:
+    """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
@@ -351,13 +580,99 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
 
 @pytest.mark.introspection
 @pytest.mark.rag
-@retry(max_attempts=3, wait_between_runs=10)
-def test_rag_question() -> None:
+def test_rag_question_4o_mini() -> None:
     """Ensure responses include rag references."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
             json={"query": "what is openshift virtualization?"},
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, "application/json")
+
+        print(vars(response))
+        json_response = response.json()
+        assert "conversation_id" in json_response
+        assert len(json_response["referenced_documents"]) > 2
+        assert "virt" in json_response["referenced_documents"][0]["doc_url"]
+        assert "https://" in json_response["referenced_documents"][0]["doc_url"]
+        assert json_response["referenced_documents"][0]["doc_title"]
+
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["doc_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
+
+
+@pytest.mark.introspection
+def test_rag_question_4o() -> None:
+    """Ensure responses include rag references."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "query": "what is openshift virtualization?",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, "application/json")
+
+        print(vars(response))
+        json_response = response.json()
+        assert "conversation_id" in json_response
+        assert len(json_response["referenced_documents"]) > 2
+        assert "virt" in json_response["referenced_documents"][0]["doc_url"]
+        assert "https://" in json_response["referenced_documents"][0]["doc_url"]
+        assert json_response["referenced_documents"][0]["doc_title"]
+
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["doc_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
+
+
+@pytest.mark.introspection
+def test_rag_question_4() -> None:
+    """Ensure responses include rag references."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "query": "what is openshift virtualization?",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, "application/json")
+
+        print(vars(response))
+        json_response = response.json()
+        assert "conversation_id" in json_response
+        assert len(json_response["referenced_documents"]) > 2
+        assert "virt" in json_response["referenced_documents"][0]["doc_url"]
+        assert "https://" in json_response["referenced_documents"][0]["doc_url"]
+        assert json_response["referenced_documents"][0]["doc_title"]
+
+        # Length should be same, as there won't be duplicate entry
+        doc_urls_list = [rd["doc_url"] for rd in json_response["referenced_documents"]]
+        assert len(doc_urls_list) == len(set(doc_urls_list))
+
+
+@pytest.mark.introspection
+def test_rag_question_nano() -> None:
+    """Ensure responses include rag references."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "query": "what is openshift virtualization?",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -588,8 +903,121 @@ def test_query_with_unknown_model() -> None:
 
 
 @pytest.mark.introspection
-@retry(max_attempts=3, wait_between_runs=10)
-def test_tool_calling() -> None:
+def test_tool_calling_4o_mini() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_4o() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_4() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_nano() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"]
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_4o_mini1() -> None:
     """Check the REST API /v1/query with POST HTTP method for tool calling."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         cid = suid.get_suid()
@@ -610,11 +1038,93 @@ def test_tool_calling() -> None:
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
 
-        # Sometime granite doesn't summarize well,
-        # response may contain actual tool commands.
-        assert re.search(
-            r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
-            json_response["response"],
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_4o1() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
         )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_41() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"].lower()
+        assert json_response["input_tokens"] > 0
+        assert json_response["output_tokens"] > 0
+
+
+@pytest.mark.introspection
+def test_tool_calling_nano1() -> None:
+    """Check the REST API /v1/query with POST HTTP method for tool calling."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        cid = suid.get_suid()
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, "application/json")
+        print(vars(response))
+        json_response = response.json()
+
+        # checking a few major information from response
+        assert json_response["conversation_id"] == cid
+
+        assert "lightspeed-app-server" in json_response["response"]
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0

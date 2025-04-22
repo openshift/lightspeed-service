@@ -189,9 +189,8 @@ def test_too_long_question() -> None:
         assert events[1]["data"]["response"] == "Prompt is too long"
 
 
-@pytest.mark.smoketest
-@pytest.mark.rag
-def test_valid_question() -> None:
+@pytest.mark.introspection
+def test_valid_question_4o_mini() -> None:
     """Check the endpoint with POST HTTP method for valid question and no yaml."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
@@ -200,6 +199,200 @@ def test_valid_question() -> None:
         response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": cid, "query": "what is kubernetes?"},
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_4o() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_4() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_nano() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes?",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_4o_mini1() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_4o1() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_41() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "Kubernetes is" in response.text
+        assert re.search(
+            r"orchestration (tool|system|platform|engine)",
+            response.text,
+            re.IGNORECASE,
+        )
+
+
+@pytest.mark.introspection
+def test_valid_question_nano1() -> None:
+    """Check the endpoint with POST HTTP method for valid question and no yaml."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
         )
         assert response.status_code == requests.codes.ok
 
@@ -584,7 +777,7 @@ def test_query_with_unknown_model() -> None:
 
 
 @pytest.mark.introspection
-def test_tool_calling_text() -> None:
+def test_tool_calling_text_4o_mini() -> None:
     """Check the endpoint for tool calling in text format."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
@@ -611,7 +804,268 @@ def test_tool_calling_text() -> None:
 
 
 @pytest.mark.introspection
-def test_tool_calling_events() -> None:
+def test_tool_calling_text_4o() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_text_4() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_text_4o_mini1() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        # Sometime granite doesn't summarize well,
+        # response may contain actual tool commands.
+        assert re.search(
+            r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
+            response.text.lower(),
+        )
+
+
+@pytest.mark.introspection
+def test_tool_calling_text_4o1() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+                "provider": "openai",
+                "model": "gpt-4o-mini",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_text_41() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_text_nano1() -> None:
+    """Check the endpoint for tool calling in text format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_TEXT,
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
+
+        assert "lightspeed-app-server" in response.text.lower()
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_4o_mini() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_4o() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_4() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_nano() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "show me pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_4o_mini1() -> None:
     """Check the endpoint for tool calling in event format."""
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
@@ -632,11 +1086,93 @@ def test_tool_calling_events() -> None:
         unique_events = {e["event"] for e in events}
         response_text = construct_response_from_streamed_events(events).lower()
 
-        # Sometime granite doesn't summarize well,
-        # response may contain actual tool commands.
-        assert re.search(
-            r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
-            response_text,
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_4o1() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4o",
+            },
         )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_41() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
+        assert "tool_call" in unique_events
+        assert "tool_result" in unique_events
+
+
+@pytest.mark.introspection
+def test_tool_calling_events_nano1() -> None:
+    """Check the endpoint for tool calling in event format."""
+    with metrics_utils.RestAPICallCounterChecker(
+        pytest.metrics_client, STREAMING_QUERY_ENDPOINT
+    ):
+        cid = suid.get_suid()
+        response = post_with_defaults(
+            STREAMING_QUERY_ENDPOINT,
+            json={
+                "conversation_id": cid,
+                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "media_type": constants.MEDIA_TYPE_JSON,
+                "provider": "openai",
+                "model": "gpt-4.1-nano",
+            },
+        )
+        assert response.status_code == requests.codes.ok
+        response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
+
+        events = parse_streaming_response_to_events(response.text)
+        unique_events = {e["event"] for e in events}
+        response_text = construct_response_from_streamed_events(events).lower()
+
+        assert "lightspeed-app-server" in response_text
         assert "tool_call" in unique_events
         assert "tool_result" in unique_events
