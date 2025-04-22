@@ -9,8 +9,9 @@ llm_providers:
         url: "https://murl1"
 ols_config:
   reference_content:
-    product_docs_index_path: "tests/config"
-    product_docs_index_id: product
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
   conversation_cache:
     type: postgres
     postgres:

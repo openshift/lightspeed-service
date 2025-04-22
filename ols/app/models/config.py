@@ -948,43 +948,39 @@ class LoggingConfig(BaseModel):
         super().__init__(**data)
 
 
-class ReferenceContent(BaseModel):
-    """Reference content configuration."""
+class ReferenceContentIndex(BaseModel):
+    """Reference content index configuration."""
 
     product_docs_index_path: Optional[FilePath] = None
     product_docs_index_id: Optional[str] = None
-    embeddings_model_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
         if data is None:
             return
-
         self.product_docs_index_path = data.get("product_docs_index_path", None)
         self.product_docs_index_id = data.get("product_docs_index_id", None)
-        self.embeddings_model_path = data.get("embeddings_model_path", None)
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
-        if isinstance(other, ReferenceContent):
+        if isinstance(other, ReferenceContentIndex):
             return (
                 self.product_docs_index_path == other.product_docs_index_path
                 and self.product_docs_index_id == other.product_docs_index_id
-                and self.embeddings_model_path == other.embeddings_model_path
             )
         return False
 
     def validate_yaml(self) -> None:
-        """Validate reference content config."""
+        """Validate reference content index config."""
         if self.product_docs_index_path is not None:
-            checks.dir_check(self.product_docs_index_path, "Reference content path")
-
+            checks.dir_check(
+                self.product_docs_index_path, "Reference content index path"
+            )
             if self.product_docs_index_id is None:
                 raise checks.InvalidConfigurationError(
                     "product_docs_index_path is specified but product_docs_index_id is missing"
                 )
-
         if (
             self.product_docs_index_id is not None
             and self.product_docs_index_path is None
@@ -993,8 +989,42 @@ class ReferenceContent(BaseModel):
                 "product_docs_index_id is specified but product_docs_index_path is missing"
             )
 
+
+class ReferenceContent(BaseModel):
+    """Reference content configuration."""
+
+    embeddings_model_path: Optional[FilePath] = None
+    indexes: Optional[list[ReferenceContentIndex]] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if data is None:
+            return
+
+        self.embeddings_model_path = data.get("embeddings_model_path", None)
+        if "indexes" in data:
+            self.indexes = [ReferenceContentIndex(i) for i in data["indexes"]]
+        else:
+            self.indexes = None
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, ReferenceContent):
+            return (
+                self.indexes == other.indexes
+                and self.embeddings_model_path == other.embeddings_model_path
+            )
+
+        return False
+
+    def validate_yaml(self) -> None:
+        """Validate reference content config."""
         if self.embeddings_model_path is not None:
             checks.dir_check(self.embeddings_model_path, "Embeddings model path")
+        if self.indexes is not None:
+            for index in self.indexes:
+                index.validate_yaml()
 
 
 class UserDataCollection(BaseModel):
