@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 
+from ols.app.models.config import PostgresConfig
 from ols.src.quota.quota_exceed_error import QuotaExceedError
 from ols.src.quota.quota_limiter import QuotaLimiter
 
@@ -47,11 +48,18 @@ class RevokableQuotaLimiter(QuotaLimiter):
          WHERE id=%s and subject=%s
         """
 
-    def __init__(self, initial_quota: int, increase_by: int, subject_type: str) -> None:
+    def __init__(
+        self,
+        initial_quota: int,
+        increase_by: int,
+        subject_type: str,
+        connection_config: PostgresConfig,
+    ) -> None:
         """Initialize quota limiter."""
         self.subject_type = subject_type
         self.initial_quota = initial_quota
         self.increase_by = increase_by
+        self.connection_config = connection_config
 
     def available_quota(self, subject_id: str = "") -> int:
         """Retrieve available quota for given subject."""
