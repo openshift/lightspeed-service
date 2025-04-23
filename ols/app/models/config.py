@@ -17,7 +17,6 @@ from pydantic import (
 
 from ols import constants
 from ols.utils import checks, tls
-from ols.utils.checks import InvalidConfigurationError
 
 
 class ModelParameters(BaseModel):
@@ -511,157 +510,65 @@ class LLMProviders(BaseModel):
 class StdioTransportConfig(BaseModel):
     """Stdio transport configuration for MCP server."""
 
-    command: Optional[str] = None
-    args: Optional[str] = None
-    env: Optional[dict[str, str | int]] = None
-    cwd: Optional[str] = None
-    encoding: Optional[str] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            raise InvalidConfigurationError("stdio transport configuration is missing")
-        if "command" not in data:
-            raise InvalidConfigurationError(
-                "command needs to be specified for STDIO transport"
-            )
-        self.command = data.get("command", "")
-        self.args = data.get("args", "")
-        self.env = data.get("env", constants.STDIO_TRANSPORT_DEFAULT_ENV)
-        self.cwd = data.get("cwd", constants.STDIO_TRANSPORT_DEFAULT_CWD)
-        self.encoding = data.get("encoding", constants.STDIO_TRANSPORT_DEFAULT_ENCODING)
-
-    def validate_yaml(self) -> None:
-        """Validate STDIO transport config."""
+    command: str
+    args: list[str] = []
+    env: dict[str, str | int] = constants.STDIO_TRANSPORT_DEFAULT_ENV
+    cwd: str = constants.STDIO_TRANSPORT_DEFAULT_CWD
+    encoding: str = constants.STDIO_TRANSPORT_DEFAULT_ENCODING
 
 
 class SseTransportConfig(BaseModel):
     """SSE transport configuration for MCP server."""
 
-    url: Optional[str] = None
-    timeout: Optional[int] = None
-    sse_read_timeout: Optional[int] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            raise InvalidConfigurationError("SSE transport configuration is missing")
-        if "url" not in data:
-            raise InvalidConfigurationError(
-                "URL needs to be specified for SSE transport"
-            )
-        self.url = data.get("url", "")
-        self.timeout = data.get("timeout", constants.SSE_TRANSPORT_DEFAULT_TIMEOUT)
-        self.sse_read_timeout = data.get(
-            "sse_read_timeout", constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
-        )
-
-    def validate_yaml(self) -> None:
-        """Validate SSE transport config."""
+    url: str
+    timeout: int = constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
+    sse_read_timeout: int = constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
 
 
 class MCPServerConfig(BaseModel):
     """MCP server configuration."""
 
-    name: Optional[str] = None
-    transport: Optional[str] = None
+    name: str
+    transport: Literal["sse", "stdio"]
     stdio: Optional[StdioTransportConfig] = None
     sse: Optional[SseTransportConfig] = None
 
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        self.name = data.get("name", None)
-        self.transport = data.get("transport", None)
-        if self.transport is not None:
-            match self.transport:
-                case constants.MCP_TRANSPORT_STDIO:
-                    if constants.MCP_TRANSPORT_STDIO not in data:
-                        raise checks.InvalidConfigurationError(
-                            "STDIO transport type is specified,"
-                            " but STDIO configuration is missing"
-                        )
-                    self.stdio = StdioTransportConfig(
-                        data.get(constants.MCP_TRANSPORT_STDIO)
-                    )
-                case constants.MCP_TRANSPORT_SSE:
-                    if constants.MCP_TRANSPORT_SSE not in data:
-                        raise checks.InvalidConfigurationError(
-                            "SSE transport type is specified,"
-                            " but SSE configuration is missing"
-                        )
-                    self.sse = SseTransportConfig(data.get(constants.MCP_TRANSPORT_SSE))
-                case _:
-                    raise checks.InvalidConfigurationError(
-                        f"unknown MCP transport type specified: {self.transport}"
-                    )
-        else:
-            raise checks.InvalidConfigurationError(
-                "MCP transport type must be specified"
-            )
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, MCPServerConfig):
-            return (
-                self.name == other.name
-                and self.transport == other.transport
-                and self.stdio == other.stdio
-                and self.sse == other.sse
-            )
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate MCP server config."""
-        if self.name is None:
-            raise checks.InvalidConfigurationError("MCP server name is missing")
-        if self.transport is None:
-            raise checks.InvalidConfigurationError("MCP transport type is missing")
-        # transport type is specified, we can decide which transport configuration to validate
-        match self.transport:
-            case constants.MCP_TRANSPORT_STDIO:
-                self.stdio.validate_yaml()
-            case constants.MCP_TRANSPORT_SSE:
-                self.sse.validate_yaml()
-            case _:
-                raise checks.InvalidConfigurationError(
-                    f"unknown transport type: {self.transport}"
+    @model_validator(mode="after")
+    def stdio_or_sse_specified(self) -> Self:
+        """Check if stdio or sse is specified."""
+        if self.transport == "stdio":
+            if self.stdio is None:
+                raise ValueError(
+                    "Stdio transport selected but 'stdio' config not provided"
                 )
+            if self.sse is not None:
+                raise ValueError(
+                    "Stdio transport selected but 'sse' config should not be provided"
+                )
+        elif self.transport == "sse":
+            if self.sse is None:
+                raise ValueError("SSE transport selected but 'sse' config not provided")
+            if self.stdio is not None:
+                raise ValueError(
+                    "SSE transport selected but 'stdio' config should not be provided"
+                )
+        return self
 
 
 class MCPServers(BaseModel):
     """MCP servers configuration."""
 
-    servers: dict[str, MCPServerConfig] = {}
+    servers: list[MCPServerConfig] = []
 
-    def __init__(
-        self,
-        data: Optional[dict] = None,
-    ) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        for server_cfg in data:
-            if "name" not in server_cfg:
-                raise checks.InvalidConfigurationError("MCP server name is missing")
-            server = MCPServerConfig(server_cfg)
-            self.servers[server_cfg["name"]] = server
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, MCPServers):
-            return self.servers == other.servers
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate LLM config."""
-        for v in self.servers.values():
-            v.validate_yaml()
+    @model_validator(mode="after")
+    def check_duplicite_servers(self) -> Self:
+        """Check if there are duplicate servers."""
+        server_names = set()
+        for server in self.servers:
+            if server.name in server_names:
+                raise ValueError(f"Duplicate server name: '{server.name}'")
+            server_names.add(server.name)
+        return self
 
 
 class PostgresConfig(BaseModel):
@@ -1346,9 +1253,7 @@ class Config(BaseModel):
             )
 
         # initialize MCP servers
-        s = data.get("mcp_servers")
-        if s is not None:
-            self.mcp_servers = MCPServers(s)
+        self.mcp_servers = MCPServers(servers=data.get("mcp_servers", []))
 
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
