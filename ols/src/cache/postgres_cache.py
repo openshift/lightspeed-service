@@ -90,8 +90,27 @@ class PostgresCache(Cache):
 
     def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
+        self.postgres_config = config
+
         # initialize connection to DB
-        self.conn = psycopg2.connect(
+        self.connect()
+        try:
+            self.initialize_cache()
+        except Exception as e:
+            self.connection.close()
+            logger.exception("Error initializing Postgres cache:\n%s", e)
+            raise
+        self.capacity = config.max_entries
+
+    # pylint: disable=W0201
+    def connect(self) -> None:
+        """Initialize connection to database."""
+        logger.info("Connecting to storage")
+        # make sure the connection will have known state
+        # even if PG is not alive
+        self.connection = None
+        config = self.postgres_config
+        self.connection = psycopg2.connect(
             host=config.host,
             port=config.port,
             user=config.user,
@@ -101,22 +120,29 @@ class PostgresCache(Cache):
             sslrootcert=config.ca_cert_path,
             gssencmode=config.gss_encmode,
         )
-        self.conn.autocommit = True
+        self.connection.autocommit = True
+
+    def connected(self) -> bool:
+        """Check if connection to cache is alive."""
+        if self.connection is None:
+            logger.warning("Not connected, need to reconnect later")
+            return False
         try:
-            self.initialize_cache()
-        except Exception as e:
-            self.conn.close()
-            logger.exception("Error initializing Postgres cache:\n%s", e)
-            raise
-        self.capacity = config.max_entries
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            logger.info("Connection to storage is ok")
+            return True
+        except psycopg2.OperationalError as e:
+            logger.error("Disconnected from storage: %s", e)
+            return False
 
     def initialize_cache(self) -> None:
         """Initialize cache - clean it up etc."""
-        cur = self.conn.cursor()
+        cur = self.connection.cursor()
         cur.execute(PostgresCache.CREATE_CACHE_TABLE)
         cur.execute(PostgresCache.CREATE_INDEX)
         cur.close()
-        self.conn.commit()
+        self.connection.commit()
 
     def get(
         self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
@@ -134,7 +160,7 @@ class PostgresCache(Cache):
         # just check if user_id and conversation_id are UUIDs
         super().construct_key(user_id, conversation_id, skip_user_id_check)
 
-        with self.conn.cursor() as cursor:
+        with self.connection.cursor() as cursor:
             try:
                 value = PostgresCache._select(cursor, user_id, conversation_id)
                 if value is None:
@@ -163,7 +189,7 @@ class PostgresCache(Cache):
         """
         value = cache_entry.to_dict()
         # the whole operation is run in one transaction
-        with self.conn.cursor() as cursor:
+        with self.connection.cursor() as cursor:
             try:
                 old_value = self._select(cursor, user_id, conversation_id)
                 if old_value:
@@ -201,7 +227,7 @@ class PostgresCache(Cache):
             bool: True if the conversation was deleted, False if not found.
 
         """
-        with self.conn.cursor() as cursor:
+        with self.connection.cursor() as cursor:
             try:
                 return PostgresCache._delete(cursor, user_id, conversation_id)
             except psycopg2.DatabaseError as e:
@@ -219,7 +245,7 @@ class PostgresCache(Cache):
             A list of conversation ids from the cache
 
         """
-        with self.conn.cursor() as cursor:
+        with self.connection.cursor() as cursor:
             try:
                 cursor.execute(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,))
                 rows = cursor.fetchall()
@@ -238,10 +264,10 @@ class PostgresCache(Cache):
         """
         # TODO: when the connection is closed and the database is back online,
         # we need to reestablish the connection => implement this
-        if not self.conn or self.conn.closed == 1:
+        if not self.connection or self.connection.closed == 1:
             return False
         try:
-            return self.conn.poll() == psycopg2.extensions.POLL_OK
+            return self.connection.poll() == psycopg2.extensions.POLL_OK
         except (psycopg2.OperationalError, psycopg2.InterfaceError):
             # OperationalError - the once alive connection is closed
             # InterfaceError - cannot reach the database server

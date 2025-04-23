@@ -19,10 +19,10 @@ class UserQuotaLimiter(RevokableQuotaLimiter):
     ) -> None:
         """Initialize quota limiter storage."""
         subject = "u"  # user
-        super().__init__(initial_quota, increase_by, subject)
+        super().__init__(initial_quota, increase_by, subject, config)
 
         # initialize connection to DB
-        self.connect(config)
+        self.connect()
 
         try:
             self._initialize_tables()
