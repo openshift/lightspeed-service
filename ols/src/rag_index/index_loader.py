@@ -147,7 +147,10 @@ class IndexLoader:
         ):
             return self._retriever
         retriever = QueryFusionRetriever(
-            [index.as_retriever() for index in self._indexes],
+            [
+                index.as_retriever(similarity_top_k=similarity_top_k)
+                for index in self._indexes
+            ],
             similarity_top_k=similarity_top_k,
             num_queries=1,  # set this to 1 to disable query generation
             use_async=False,
