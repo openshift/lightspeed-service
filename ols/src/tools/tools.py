@@ -1,6 +1,7 @@
 """Functions/Tools definition."""
 
 import logging
+import traceback
 from typing import Optional
 
 from langchain_core.messages import ToolMessage
@@ -14,7 +15,6 @@ from ols.src.tools.oc_cli import (
     oc_logs,
     oc_status,
     show_pods,
-    token_works_for_oc,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,12 +42,8 @@ def get_available_tools(
         logger.warning("No user token provided; no oc tools available")
         return {}
 
-    if token_works_for_oc(user_token):
-        logger.info("Authenticated to 'oc' CLI; adding 'oc' tools")
-        return oc_tools
-
-    logger.error("User token not working for 'oc' CLI; no tools available")
-    return {}
+    logger.info("User token provided; adding 'oc' tools")
+    return oc_tools
 
 
 def check_tool_description_length(tool: BaseTool) -> None:
@@ -90,9 +86,15 @@ def execute_oc_tool_calls(
                 # don't log as exception because it contains traceback
                 # with sensitive information
                 logger.error(tool_output)
-            except Exception as e:
-                tool_output = f"Error executing {tool_name}: {e}"
-                logger.exception(tool_output)
+            except Exception:
+                # if token was used, redact the error to ensure it is not leaked
+                safe_traceback = (
+                    traceback.format_exc().replace(token, "<redacted>")
+                    if token
+                    else traceback.format_exc()
+                )
+                tool_output = f"Error executing {tool_name}: {safe_traceback}"
+                logger.error(tool_output)
 
         logger.debug(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
