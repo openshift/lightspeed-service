@@ -61,9 +61,20 @@ def test_get_operation_on_empty_cache():
     # call the "get" operation
     conversation = cache.get(user_id, conversation_id)
     assert conversation == []
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT, (user_id, conversation_id)
-    )
+
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. select conversation from DB
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+    # Verify the query execution
     mock_cursor.fetchone.assert_called_once()
 
 
@@ -87,10 +98,19 @@ def test_get_operation_invalid_value():
         with pytest.raises(ValueError, match="Invalid value read from cache:"):
             cache.get(user_id, conversation_id)
 
-    # DB operation SELECT must be performed
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT, (user_id, conversation_id)
-    )
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. select conversation from DB
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+    # Verify the query execution
     mock_cursor.fetchone.assert_called_once()
 
 
@@ -121,10 +141,19 @@ def test_get_operation_valid_value():
     # unjsond history should be returned
     assert cache.get(user_id, conversation_id) == history
 
-    # DB operation SELECT must be performed
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT, (user_id, conversation_id)
-    )
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. select conversation from DB
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+    # Verify the query execution
     mock_cursor.fetchone.assert_called_once()
 
 
@@ -147,6 +176,29 @@ def test_get_operation_on_exception():
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
         cache.get(user_id, conversation_id)
+
+
+def test_get_operation_on_disconnected_db():
+    """Test the Cache.get operation when DB is not connected."""
+    # mock the query
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+        # simulate DB disconnection
+        cache.connection = None
+        assert not cache.connected()
+        # DB operation should connect automatically
+        cache.get(user_id, conversation_id)
+        assert cache.connected()
 
 
 def test_insert_or_append_operation():
@@ -172,7 +224,7 @@ def test_insert_or_append_operation():
         # to insert new conversation history
         cache.insert_or_append(user_id, conversation_id, history)
 
-    # multiple DB operations must be performed
+    # multiple DB operations must be performed:
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
@@ -219,7 +271,7 @@ def test_insert_or_append_operation_append_item():
         # to append new history to the old one
         cache.insert_or_append(user_id, conversation_id, appended_history)
 
-    # multiple DB operations must be performed
+    # multiple DB operations must be performed:
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
@@ -256,6 +308,29 @@ def test_insert_or_append_operation_on_exception():
             cache.insert_or_append(user_id, conversation_id, history)
 
 
+def test_insert_or_append_operation_on_disconnected_db():
+    """Test the Cache.insert_or_append operation when DB is not connected."""
+    # mock the query
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+        # simulate DB disconnection
+        cache.connection = None
+        assert not cache.connected()
+        # DB operation should connect automatically
+        cache.insert_or_append(user_id, conversation_id, cache_entry_1)
+        assert cache.connected()
+
+
 def test_list_operation():
     """Test the Cache.list operation."""
     # Mock conversation data to be returned by the database
@@ -290,10 +365,16 @@ def test_list_operation():
     ]
     assert result == expected_result
 
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. list conversations from DB
+    calls = [
+        call("SELECT 1"),
+        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
     # Verify the query execution
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)
-    )
     mock_cursor.fetchall.assert_called_once()
 
 
@@ -318,6 +399,29 @@ def test_list_operation_on_exception():
             cache.list(user_id)
 
 
+def test_list_operation_on_disconnected_db():
+    """Test the Cache.list operation when DB is not connected."""
+    # mock the query
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+        # simulate DB disconnection
+        cache.connection = None
+        assert not cache.connected()
+        # DB operation should connect automatically
+        cache.list(user_id, conversation_id)
+        assert cache.connected()
+
+
 def test_delete_operation():
     """Test the Cache.delete operation."""
     # Mock the database cursor behavior
@@ -340,10 +444,19 @@ def test_delete_operation():
     # Verify the result
     assert result is True
 
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. delete one conversation from DB
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
     # Verify the query execution
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT, (user_id, conversation_id)
-    )
     mock_cursor.fetchone.assert_called_once()
 
 
@@ -369,10 +482,19 @@ def test_delete_operation_not_found():
     # Verify the result
     assert result is False
 
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. delete one conversation from DB
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
     # Verify the query execution
-    mock_cursor.execute.assert_called_once_with(
-        PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT, (user_id, conversation_id)
-    )
     mock_cursor.fetchone.assert_called_once()
 
 
@@ -393,8 +515,31 @@ def test_delete_operation_on_exception():
         cache = PostgresCache(config)
 
         # Verify that the exception is raised
-        with pytest.raises(CacheError, match="PLSQL error"):
+        with pytest.raises(psycopg2.DatabaseError, match="PLSQL error"):
             cache.delete(user_id, conversation_id)
+
+
+def test_delete_operation_on_disconnected_db():
+    """Test the Cache.delete operation when DB is not connected."""
+    # mock the query
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+        # simulate DB disconnection
+        cache.connection = None
+        assert not cache.connected()
+        # DB operation should connect automatically
+        cache.delete(user_id, conversation_id)
+        assert cache.connected()
 
 
 def test_cleanup_method_when_clean_not_needed():

@@ -10,6 +10,7 @@ from ols.app.models.config import PostgresConfig
 from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
+from ols.utils.connection_decorator import connection
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ class PostgresCache(Cache):
         cur.close()
         self.connection.commit()
 
+    @connection
     def get(
         self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
     ) -> list[CacheEntry]:
@@ -171,6 +173,7 @@ class PostgresCache(Cache):
                 logger.error("PostgresCache.get %s", e)
                 raise CacheError("PostgresCache.get", e) from e
 
+    @connection
     def insert_or_append(
         self,
         user_id: str,
@@ -213,6 +216,7 @@ class PostgresCache(Cache):
                 logger.error("PostgresCache.insert_or_append: %s", e)
                 raise CacheError("PostgresCache.insert_or_append", e) from e
 
+    @connection
     def delete(
         self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
     ) -> bool:
@@ -234,6 +238,7 @@ class PostgresCache(Cache):
                 logger.error("PostgresCache.delete: %s", e)
                 raise CacheError("PostgresCache.delete", e) from e
 
+    @connection
     def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
         """List all conversations for a given user_id.
 
