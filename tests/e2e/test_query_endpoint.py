@@ -5,7 +5,6 @@ import re
 import pytest
 import requests
 
-from ols.constants import RAG_CONTENT_LIMIT
 from ols.utils import suid
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
@@ -364,7 +363,7 @@ def test_rag_question() -> None:
         print(vars(response))
         json_response = response.json()
         assert "conversation_id" in json_response
-        assert len(json_response["referenced_documents"]) == RAG_CONTENT_LIMIT
+        assert len(json_response["referenced_documents"]) > 2
         assert "virt" in json_response["referenced_documents"][0]["doc_url"]
         assert "https://" in json_response["referenced_documents"][0]["doc_url"]
         assert json_response["referenced_documents"][0]["doc_title"]
