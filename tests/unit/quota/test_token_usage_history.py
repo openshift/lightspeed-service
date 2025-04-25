@@ -122,7 +122,6 @@ def test_consume_tokens_on_disconnected_db():
             q.consume_tokens(user_id, provider, model, input_tokens, output_tokens)
 
             assert q.connected()
-            
 
     # expected calls to storage
     calls = [

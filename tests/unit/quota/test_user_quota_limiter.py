@@ -152,7 +152,6 @@ def test_available_quota_no_data():
 def test_available_quota_on_disconnected_db():
     """Test the get available quota operation when DB is not connected."""
     quota_limit = 100
-    subject = "u"
     user_id = "1234"
 
     # mock the query result - no data
@@ -186,6 +185,8 @@ def test_available_quota_on_disconnected_db():
 
             # DB operation should connect automatically
             assert q.connected()
+
+    assert available == quota_limit
 
 
 def test_revoke_quota():
@@ -235,7 +236,6 @@ def test_revoke_quota():
 def test_revoke_quota_on_disconnected_db():
     """Test the operation to revoke quota when DB is not connected."""
     quota_limit = 100
-    subject = "u"
     user_id = "1234"
 
     # mock the query result - no data
@@ -453,6 +453,7 @@ def test_consume_input_and_output_tokens_enough_tokens():
             (-to_be_consumed, timestamp, user_id, subject),
         ),
     ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_tokens_on_no_record():
@@ -505,7 +506,6 @@ def test_consume_tokens_on_disconnected_db():
     output_tokens = 20
     available_tokens = 100
     quota_limit = 100
-    subject = "u"
     user_id = "1234"
 
     # mock the query result - no data
@@ -535,7 +535,7 @@ def test_consume_tokens_on_disconnected_db():
             assert not q.connected()
 
             # try to consume tokens
-            q.consume_tokens(input_tokens, output_tokens)
+            q.consume_tokens(input_tokens, output_tokens, user_id)
 
             # DB operation should connect automatically
             assert q.connected()
@@ -586,12 +586,10 @@ def test_increase_quota():
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
-
 def test_increase_quota_on_disconnected_db():
     """Test the operation to increase quota when DB is not connected."""
     quota_limit = 100
     user_id = "1234"
-    subject = "u"
 
     # mock the query result - no data
     mock_cursor = MagicMock()
