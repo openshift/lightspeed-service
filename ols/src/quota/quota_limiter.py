@@ -1,5 +1,6 @@
 """Abstract class that is parent for all quota limiter implementations."""
 
+import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
@@ -7,6 +8,8 @@ import psycopg2
 
 if TYPE_CHECKING:
     from ols.app.models.config import PostgresConfig
+
+logger = logging.getLogger(__name__)
 
 
 class QuotaLimiter(ABC):
@@ -43,6 +46,8 @@ class QuotaLimiter(ABC):
     def connect(self) -> None:
         """Initialize connection to database."""
         config = self.connection_config
+        # make sure the connection will have known state
+        self.connection = None
         self.connection = psycopg2.connect(
             host=config.host,
             port=config.port,
@@ -54,3 +59,17 @@ class QuotaLimiter(ABC):
             gssencmode=config.gss_encmode,
         )
         self.connection.autocommit = True
+
+    def connected(self) -> bool:
+        """Check if connection to cache is alive."""
+        if self.connection is None:
+            logger.warning("Not connected, need to reconnect later")
+            return False
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            logger.info("Connection to storage is ok")
+            return True
+        except psycopg2.OperationalError as e:
+            logger.error("Disconnected from storage: %s", e)
+            return False

@@ -2,10 +2,12 @@
 
 import logging
 from datetime import datetime
+from typing import Optional
 
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
+from ols.utils.connection_decorator import connection
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +47,12 @@ class TokenUsageHistory:
 
     def __init__(self, config: PostgresConfig) -> None:
         """Initialize token usage history storage."""
+        # store connection configuration, will be used
+        # by reconnection logic if needed
+        self.connection_config: Optional[PostgresConfig] = config
+
         # initialize connection to DB
-        self.connect(config)
+        self.connect()
 
         try:
             self._initialize_tables()
@@ -55,6 +61,7 @@ class TokenUsageHistory:
             logger.exception("Error initializing Postgres database:\n%s", e)
             raise
 
+    @connection
     def consume_tokens(
         self,
         user_id: str,
@@ -89,8 +96,11 @@ class TokenUsageHistory:
             )
 
     # pylint: disable=W0201
-    def connect(self, config: PostgresConfig) -> None:
+    def connect(self) -> None:
         """Initialize connection to database."""
+        config = self.connection_config
+        # make sure the connection will have known state
+        self.connection = None
         self.connection = psycopg2.connect(
             host=config.host,
             port=config.port,
@@ -102,6 +112,20 @@ class TokenUsageHistory:
             gssencmode=config.gss_encmode,
         )
         self.connection.autocommit = True
+
+    def connected(self) -> bool:
+        """Check if connection to cache is alive."""
+        if self.connection is None:
+            logger.warning("Not connected, need to reconnect later")
+            return False
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            logger.info("Connection to storage is ok")
+            return True
+        except psycopg2.OperationalError as e:
+            logger.error("Disconnected from storage: %s", e)
+            return False
 
     def _initialize_tables(self) -> None:
         """Initialize tables used by quota limiter."""

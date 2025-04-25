@@ -6,6 +6,7 @@ from datetime import datetime
 from ols.app.models.config import PostgresConfig
 from ols.src.quota.quota_exceed_error import QuotaExceedError
 from ols.src.quota.quota_limiter import QuotaLimiter
+from ols.utils.connection_decorator import connection
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
         self.increase_by = increase_by
         self.connection_config = connection_config
 
+    @connection
     def available_quota(self, subject_id: str = "") -> int:
         """Retrieve available quota for given subject."""
         if self.subject_type == "c":
@@ -76,6 +78,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
                 return self.initial_quota
             return value[0]
 
+    @connection
     def revoke_quota(self, subject_id: str = "") -> None:
         """Revoke quota for given subject."""
         if self.subject_type == "c":
@@ -90,6 +93,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
             )
             self.connection.commit()
 
+    @connection
     def increase_quota(self, subject_id: str = "") -> None:
         """Increase quota for given subject."""
         if self.subject_type == "c":
@@ -116,6 +120,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
             logger.exception("Quota exceed: %s", e)
             raise e
 
+    @connection
     def consume_tokens(
         self,
         input_tokens: int = 0,
