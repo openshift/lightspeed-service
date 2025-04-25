@@ -342,7 +342,6 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
     crd_yml_name = f"olsconfig.crd.{provider}"
     try:
         if len(provider_list) == 1:
-            crd_yml_name = f"olsconfig.crd.{provider}"
             if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
                 print("Cluster introspection is enabled.")
                 crd_yml_name += "_introspection"
