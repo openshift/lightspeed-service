@@ -26,7 +26,7 @@ def post_with_defaults(endpoint, **kwargs):
     return pytest.client.post(
         endpoint,
         headers={"Connection": "close"},
-        timeout=kwargs.pop("timeout", test_api.NON_LLM_REST_API_TIMEOUT),
+        timeout=kwargs.pop("timeout", test_api.LLM_REST_API_TIMEOUT),
         **kwargs,
     )
 
