@@ -2,13 +2,14 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/openshift/lightspeed-service?rev={{revision}}
-    build.appstudio.redhat.com/commit_sha: "{{revision}}"
-    build.appstudio.redhat.com/target_branch: "{{target_branch}}"
-    pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" && \ntarget_branch == \"main\"\n"
     build.appstudio.openshift.io/build-nudge-files: |
       .*Dockerfile.*, bundle/manifests/lightspeed-operator.clusterserviceversion.yaml, config/default/kustomization.yaml, lightspeed-catalog-4.15/index.yaml, lightspeed-catalog-4.16/index.yaml, lightspeed-catalog-4.17/index.yaml, related_images.json
+    build.appstudio.openshift.io/repo: https://github.com/openshift/lightspeed-service?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" && \ntarget_branch
+      == \"main\"\n"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: ols
@@ -18,45 +19,29 @@ metadata:
   namespace: crt-nshift-lightspeed-tenant
 spec:
   params:
-    - name: dockerfile
-      value: Containerfile
-    - name: git-url
-      value: "{{source_url}}"
-    - name: output-image
-      value: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service:{{revision}}
-    - name: path-context
-      value: .
-    - name: revision
-      value: "{{revision}}"
-    - name: build-source-image
-      value: "true"
-    - name: prefetch-input
-      value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true"}]'
-    - name: hermetic
-      value: "true"
-    - name: build-args-file
-      value: build.args
-    - name: build-platforms
-      value:
-      - linux/x86_64
-      - linux-c6gd2xlarge/arm64
-  taskRunSpecs:
-    - pipelineTaskName: prefetch-dependencies
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: build-images
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: clair-scan
-      computeResources:
-        limits:
-          memory: 8Gi
-    - pipelineTaskName: ecosystem-cert-preflight-checks
-      computeResources:
-        limits:
-          memory: 8Gi
+  - name: dockerfile
+    value: Containerfile
+  - name: git-url
+    value: '{{source_url}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service:{{revision}}
+  - name: path-context
+    value: .
+  - name: revision
+    value: '{{revision}}'
+  - name: build-source-image
+    value: "true"
+  - name: prefetch-input
+    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary":
+      "true"}]'
+  - name: hermetic
+    value: "true"
+  - name: build-args-file
+    value: build.args
+  - name: build-platforms
+    value:
+    - linux/x86_64
+    - linux-c6gd2xlarge/arm64
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.
@@ -404,7 +389,7 @@ spec:
       - name: image-url
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: ARGS
-        value: "--project-name=lightspeed-service --report --org=dca2ca89-7e51-4a3a-b7a5-6ad5633057b8"
+        value: --project-name=lightspeed-service --report --org=dca2ca89-7e51-4a3a-b7a5-6ad5633057b8
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
@@ -474,7 +459,7 @@ spec:
       - input: $(params.skip-checks)
         operator: in
         values:
-        - "false"           
+        - "false"
     - name: clamav-scan
       params:
       - name: image-digest
@@ -562,7 +547,25 @@ spec:
       optional: true
     - name: netrc
       optional: true
-  taskRunTemplate: {}
+  taskRunSpecs:
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: prefetch-dependencies
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: build-images
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: clair-scan
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: ecosystem-cert-preflight-checks
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-lightspeed-service
   workspaces:
   - name: git-auth
     secret:
