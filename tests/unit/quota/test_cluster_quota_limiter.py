@@ -88,10 +88,14 @@ def test_available_quota_with_data():
         # try to retrieve available quota for given cluster
         available = q.available_quota()
 
-    # quota for given cluster should be read from storage
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.SELECT_QUOTA, ("", subject)
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given cluster should be read from storage
+        call(ClusterQuotaLimiter.SELECT_QUOTA, ("", subject)),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
     assert available == available_quota
 
 
@@ -138,6 +142,44 @@ def test_available_quota_no_data():
     assert available == quota_limit
 
 
+def test_available_quota_on_disconnected_db():
+    """Test the get available quota operation when DB is not connected."""
+    quota_limit = 100
+    subject = "c"
+
+    # mock the query result - no data
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
+
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = ClusterQuotaLimiter(config, quota_limit)
+
+            # simulate DB disconnection
+            q.connection = None
+            assert not q.connected()
+
+            # try to retrieve available quota for given cluster
+            available = q.available_quota()
+
+            # DB operation should connect automatically
+            assert q.connected()
+
+
 def test_revoke_quota():
     """Test the operation to revoke quota."""
     quota_limit = 100
@@ -168,11 +210,55 @@ def test_revoke_quota():
             # try to revoke quota
             q.revoke_quota()
 
-    # quota for given cluster should be written into the storage
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.SET_AVAILABLE_QUOTA,
-        (quota_limit, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given cluster should be written into the storage
+        call(
+            ClusterQuotaLimiter.SET_AVAILABLE_QUOTA,
+            (quota_limit, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+
+def test_revoke_quota_on_disconnected_db():
+    """Test the operation to revoke quota when DB is not connected."""
+    quota_limit = 100
+    subject = "c"
+
+    # mock the query result - no data
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
+
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = ClusterQuotaLimiter(config, quota_limit)
+
+            # simulate DB disconnection
+            q.connection = None
+            assert not q.connected()
+
+            # try to revoke quota
+            q.revoke_quota()
+
+            # DB operation should connect automatically
+            assert q.connected()
 
 
 def test_consume_tokens_not_enough():
@@ -207,11 +293,17 @@ def test_consume_tokens_not_enough():
             # try to consume tokens
             q.consume_tokens(to_be_consumed, 0)
 
-    # quota for given user should be updated in storage
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (-to_be_consumed, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given user should be updated in storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (-to_be_consumed, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_input_tokens_enough_tokens():
@@ -246,10 +338,17 @@ def test_consume_input_tokens_enough_tokens():
             # try to consume tokens
             q.consume_tokens(to_be_consumed, 0)
 
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (-to_be_consumed, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given user should be updated in storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (-to_be_consumed, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_output_tokens_enough_tokens():
@@ -284,10 +383,17 @@ def test_consume_output_tokens_enough_tokens():
             # try to consume tokens
             q.consume_tokens(0, to_be_consumed)
 
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (-to_be_consumed, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given user should be updated in storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (-to_be_consumed, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_input_and_output_tokens_enough_tokens():
@@ -324,10 +430,17 @@ def test_consume_input_and_output_tokens_enough_tokens():
             # try to consume tokens
             q.consume_tokens(input_tokens, output_tokens)
 
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (-to_be_consumed, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given user should be updated in storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (-to_be_consumed, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_tokens_on_no_record():
@@ -360,11 +473,58 @@ def test_consume_tokens_on_no_record():
 
             q.consume_tokens(to_be_consumed, 0)
 
-    # quota for given cluster should be read from storage
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (-to_be_consumed, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given user should be updated in storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (-to_be_consumed, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+
+def test_consume_tokens_on_disconnected_db():
+    """Test the operation to consume tokens when DB is disconnected."""
+    input_tokens = 30
+    output_tokens = 20
+    available_tokens = 100
+    quota_limit = 100
+    subject = "c"
+
+    # mock the query result - no data
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (available_tokens,)
+
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
+
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = ClusterQuotaLimiter(config, quota_limit)
+
+            # simulate DB disconnection
+            q.connection = None
+            assert not q.connected()
+
+            # try to consume tokens
+            q.consume_tokens(input_tokens, output_tokens)
+
+            # DB operation should connect automatically
+            assert q.connected()
 
 
 def test_increase_quota():
@@ -398,11 +558,56 @@ def test_increase_quota():
             # try to increase quota
             q.increase_quota()
 
-    # quota for given cluster should be written into the storage
-    mock_cursor.execute.assert_called_once_with(
-        ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
-        (additional_quota, timestamp, "", subject),
-    )
+    # expected calls to storage
+    calls = [
+        # check if storage connection is alive
+        call("SELECT 1"),
+        # quota for given cluster should be written into the storage
+        call(
+            ClusterQuotaLimiter.UPDATE_AVAILABLE_QUOTA,
+            (additional_quota, timestamp, "", subject),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+
+
+def test_increase_quota_on_disconnected_db():
+    """Test the operation to increase quota when DB is not connected."""
+    quota_limit = 100
+    subject = "c"
+
+    # mock the query result - no data
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None
+
+    # mock for real timestamp
+    timestamp = datetime.datetime(2000, 1, 1, 12, 0, 0)
+
+    # do not use connection to real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # mock the datetime class in order to use constant timestamps
+        with patch("ols.src.quota.revokable_quota_limiter.datetime") as mock_datetime:
+            # mock function to retrieve timestamp
+            mock_datetime.now = lambda: timestamp
+
+            # initialize Postgres storage
+            config = PostgresConfig()
+            q = ClusterQuotaLimiter(config, quota_limit)
+
+            # simulate DB disconnection
+            q.connection = None
+            assert not q.connected()
+
+            # try to increase quota
+            q.increase_quota()
+
+            # DB operation should connect automatically
+            assert q.connected()
 
 
 def test_ensure_available_quota():
