@@ -62,11 +62,10 @@ function run_suites() {
   # Run tool calling - Enable introspection
   run_suite "azure_openai_introspection" "introspection" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
   (( rc = rc || $? ))
-  # Temporarily disabling below test suites until flakiness is resolved.
-  # run_suite "openai_introspection" "introspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
-  # (( rc = rc || $? ))
-  # run_suite "watsonx_introspection" "introspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "y"
-  # (( rc = rc || $? ))
+  run_suite "openai_introspection" "introspection" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
+  (( rc = rc || $? ))
+  run_suite "watsonx_introspection" "introspection" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "y"
+  (( rc = rc || $? ))
 
   set -e
 
