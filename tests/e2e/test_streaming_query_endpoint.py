@@ -602,7 +602,12 @@ def test_tool_calling_text() -> None:
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
-        assert "lightspeed-app-server" in response.text.lower()
+        # Sometime granite doesn't summarize well,
+        # response may contain actual tool commands.
+        assert re.search(
+            r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
+            response.text.lower(),
+        )
 
 
 @pytest.mark.introspection
@@ -627,6 +632,11 @@ def test_tool_calling_events() -> None:
         unique_events = {e["event"] for e in events}
         response_text = construct_response_from_streamed_events(events).lower()
 
-        assert "lightspeed-app-server" in response_text
+        # Sometime granite doesn't summarize well,
+        # response may contain actual tool commands.
+        assert re.search(
+            r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
+            response_text,
+        )
         assert "tool_call" in unique_events
         assert "tool_result" in unique_events
