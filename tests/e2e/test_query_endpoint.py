@@ -206,7 +206,10 @@ def test_valid_question() -> None:
         cid = suid.get_suid()
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"conversation_id": cid, "query": "what is kubernetes?"},
+            json={
+                "conversation_id": cid,
+                "query": "what is kubernetes in the context of OpenShift?",
+            },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -595,7 +598,7 @@ def test_tool_calling() -> None:
             QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "show me pods in openshift-lightspeed namespace",
+                "query": "Get me current running pods in openshift-lightspeed namespace",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
