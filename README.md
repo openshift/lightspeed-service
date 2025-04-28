@@ -531,9 +531,32 @@ Additionally an optional string parameter `system_prompt` can be specified in `/
 
 ## 12. Quota limits
 
-Activate token quota limits for the service by adding a new configuration structure into the configuration file. That structure should be added into `ols_config` section. It has the following format:
+
+
+### Tokens and token quota limits
+
+Tokens are small chunks of text, which can be as small as one character or as large as one word. Tokens are the units of measurement used to quantify the amount of text that the service sends to, or receives from, a large language model (LLM). Every interaction with the Service and the LLM is counted in tokens.
+
+LLM providers typically charge for their services using a token-based pricing model.
+
+Token quota limits define the number of tokens that can be used in a certain timeframe. Implementing token quota limits helps control costs, encourage more efficient use of queries, and regulate demand on the system. In a multi-user configuration, token quota limits help provide equal access to all users ensuring everyone has an opportunity to submit queries.
+
+### Quota limiter features
+
+It is possible to limit quota usage per user or per service or services (that typically run in one cluster). Each limit is configured as a separate _quota limiter_. It can be of type `user_limiter` or `cluster_limiter` (which is name that makes sense in OpenShift deployment). There are three configuration options for each limiter:
+
+1. `period` specified in a human-readable form, see https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT for all possible options. When the end of the period is reached, quota is reset or increased
+1. `initial_quota` is set at beginning of the period
+1. `quota_increase` alternatively it is possible to increase quota when period is reached
+
+Please note that any number of quota limiters can be configured. For example, two user quota limiters can be set to:
+- increase quota by 100,000 tokens each day
+- reset quota to 10,000,000 tokens each month
 
 ### Configuration format
+
+Activate token quota limits for the service by adding a new configuration structure into the configuration file. That structure should be added into `ols_config` section. It has the following format:
+
 
 ```
   quota_handlers: 
@@ -559,19 +582,13 @@ Activate token quota limits for the service by adding a new configuration struct
       period: 300 <5>
 ```
 
-<1> Specifies the IP address for the PostgresSQL database
-<2> Specifies the port for PostgresSQL database. Default port is 5432.
-<3> Specifies a token quota limit of 100,000 for each user over a period of 30 days.
-<4> Increases the token quota limit for the cluster by 100,000 over a period of 30 days.
+<1> Specifies the IP address for the PostgresSQL database. \
+<2> Specifies the port for PostgresSQL database. Default port is 5432. \
+<3> Specifies a token quota limit of 100,000 for each user over a period of 30 days. \
+<4> Increases the token quota limit for the cluster by 100,000 over a period of 30 days. \
 <5> Defines the number of seconds that the scheduler waits and then checks if the period interval is over. When the period interval is over, the scheduler stores the timestamp and resets or increases the quota limit. 300 seconds or even 600 seconds are good values.
 
 
-
-### Tokens and token quota limits
-
-Tokens are small chunks of text, which can be as small as one character or as large as one word. Tokens are the units of measurement used to quantify the amount of text that the service sends to, or receives from, a large language model (LLM). Every interaction with the Service and the LLM is counted in tokens.
-
-Token quota limits define the number of tokens that can be used in a certain timeframe. Implementing token quota limits helps control costs, encourage more efficient use of queries, and regulate system demands. In a multi-user configuration, token quota limits help provide equal access to all users ensuring everyone has an opportunity to submit queries.
 
 
 
