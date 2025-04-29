@@ -1,3 +1,5 @@
+# This is a sample config for reference.
+# Update properties with actual value; Ex: use the actual model name.
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -206,8 +208,8 @@ data:
         url: "https://api.openai.com/v1"
         credentials_path: config/openai/openai_api_key.txt
         models:
-          - name: gpt-4-1106-preview
-          - name: gpt-4o-mini
+          - name: <model-name-1>
+          - name: <model-name-2>
     ols_config:
       max_workers: 1
       reference_content:
@@ -225,7 +227,7 @@ data:
         tls_certificate_path: /app-root/certs/tls.crt
         tls_key_path: /app-root/certs/tls.key
       default_provider: openai
-      default_model: gpt-4o-mini
+      default_model: <model-name-1>
       user_data_collection:
         feedback_disabled: true
         transcripts_disabled: true

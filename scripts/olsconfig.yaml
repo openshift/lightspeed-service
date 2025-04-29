@@ -6,7 +6,7 @@ llm_providers:
     url: "http://wont-be-used"
     project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
-      - name: ibm/granite-3-8b-instruct
+      - name: model-name
 ols_config:
   conversation_cache:
     type: memory
@@ -16,7 +16,7 @@ ols_config:
     app_log_level: info
     lib_log_level: warning
   default_provider: my_watsonx
-  default_model: ibm/granite-3-8b-instruct
+  default_model: model-name
 dev_config:
   enable_dev_ui: false
   disable_auth: true

@@ -96,7 +96,7 @@ class LLMRequest(BaseModel):
                     "query": "write a deployment yaml for the mongodb image",
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "provider": "openai",
-                    "model": "gpt-4o-mini",
+                    "model": "model-name",
                     "system_prompt": prompts.QUERY_SYSTEM_INSTRUCTION,
                     "attachments": [
                         {
