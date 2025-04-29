@@ -29,7 +29,7 @@ spec:
           name: watsonxcreds
         projectID: ad629765-c373-4731-9d69-dc701724c081
         models:
-          - name: ibm/granite-3-8b-instruct
+          - name: ibm/granite-3-2-8b-instruct
         name: watsonx
         type: watsonx
   ols:
