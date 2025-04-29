@@ -1,19 +1,4 @@
 llm_providers:
-  - name: my_bam
-    type: bam
-    url: "https://bam-api.res.ibm.com"
-    credentials_path: bam_api_key.txt
-    models:
-      - name: ibm/granite-3-8b-instruct
-        context_window_size: 8000
-        parameters:
-          max_tokens_for_response: 500
-    tlsSecurityProfile:
-      type: Custom
-      ciphers:
-          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-      minTLSVersion: VersionTLS13
   - name: my_openai
     type: openai
     url: "https://api.openai.com/v1"
@@ -74,7 +59,7 @@ ols_config:
     uvicorn_log_level: info
     suppress_metrics_in_log: false
     suppress_auth_checks_warning_in_log: false
-  default_provider: my_bam
+  default_provider: my_watsonx
   default_model: ibm/granite-3-8b-instruct
   expire_llm_is_ready_persistent_state: -1
   # query_filters:

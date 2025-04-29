@@ -96,7 +96,6 @@ def test_model_provider():
     assert model, provider in {
         ("gpt-4o-mini", "openai"),
         ("gpt-4o-mini", "azure_openai"),
-        ("ibm/granite-3-8b-instruct", "bam"),
         ("ibm/granite-3-8b-instruct", "watsonx"),
     }
 

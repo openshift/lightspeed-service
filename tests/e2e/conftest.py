@@ -117,7 +117,6 @@ def pytest_addoption(parser):
         "--eval_provider_model_id",
         nargs="+",
         default=[
-            # "bam+ibm/granite-3-8b-instruct",
             "watsonx+ibm/granite-3-8b-instruct",
             "openai+gpt-4o-mini",
             "azure_openai+gpt-4o-mini",

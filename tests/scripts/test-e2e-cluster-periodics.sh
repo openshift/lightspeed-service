@@ -40,10 +40,6 @@ function run_suites() {
   run_suite "azure_openai" "not certificates and not (introspection and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
-  # BAM is currently not working, commenting for now
-  # run_suite "bam" "" "bam" "$BAM_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE"
-  # (( rc = rc || $? ))
-
   run_suite "openai" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
