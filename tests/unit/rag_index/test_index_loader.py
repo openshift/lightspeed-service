@@ -1,5 +1,6 @@
 """Unit test for the index loader module."""
 
+import os
 from unittest.mock import patch
 
 from ols import config
@@ -27,7 +28,10 @@ def test_index_loader_no_id():
         )
     ]
 
-    with patch("llama_index.core.StorageContext.from_defaults"):
+    with (
+        patch("llama_index.core.StorageContext.from_defaults"),
+        patch.dict(os.environ, {"TRANSFORMERS_CACHE": "", "TRANSFORMERS_OFFLINE": ""}),
+    ):
         index_loader_obj = IndexLoader(config.ols_config.reference_content)
         indexes = index_loader_obj.vector_indexes
 
@@ -48,6 +52,7 @@ def test_index_loader():
             "llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir"
         ) as from_persist_dir,
         patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex),
+        patch.dict(os.environ, {"TRANSFORMERS_CACHE": "", "TRANSFORMERS_OFFLINE": ""}),
     ):
         config.ols_config.reference_content.indexes = [
             ReferenceContentIndex(
