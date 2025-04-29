@@ -196,7 +196,6 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
-@pytest.mark.introspection
 @pytest.mark.smoketest
 @pytest.mark.rag
 def test_valid_question() -> None:
