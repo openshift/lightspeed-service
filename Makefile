@@ -117,11 +117,11 @@ security-check: ## Check the project for security issues
 
 format: ## Format the code into unified format
 	pdm run black .
-	pdm run ruff check . --fix --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	pdm run ruff check . --fix
 
 verify:	install-woke install-deps-test ## Verify the code using various linters
 	pdm run black . --check
-	pdm run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+	pdm run ruff check .
 	./woke . --exit-1-on-failure
 	pylint ols scripts tests runner.py
 	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
