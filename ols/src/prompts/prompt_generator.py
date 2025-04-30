@@ -27,7 +27,7 @@ class GeneratePrompt:
         history: list[BaseMessage] = [],
         system_instruction: str = prompts.QUERY_SYSTEM_INSTRUCTION,
         tool_call: bool = False,
-    ):
+    ) -> None:
         """Initialize prompt generator."""
         self._query = query
         self._rag_context = rag_context
