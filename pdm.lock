@@ -5,7 +5,7 @@
 groups = ["default", "dev", "evaluation"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:2a5fc9d192c9a247ccbd8bf321749c29a056c736aa9b5b52ac08b25f2e2497ab"
+content_hash = "sha256:c31faf29a960047b411dbac10af4002c60fe580e41f7f8987b8d5897704ca7e7"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -346,23 +346,23 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.38.2"
+version = "1.38.3"
 requires_python = ">=3.9"
 summary = "The AWS SDK for Python"
 groups = ["dev"]
 dependencies = [
-    "botocore<1.39.0,>=1.38.2",
+    "botocore<1.39.0,>=1.38.3",
     "jmespath<2.0.0,>=0.7.1",
     "s3transfer<0.13.0,>=0.12.0",
 ]
 files = [
-    {file = "boto3-1.38.2-py3-none-any.whl", hash = "sha256:ef3237b169cd906a44a32c03b3229833d923c9e9733355b329ded2151f91ec0b"},
-    {file = "boto3-1.38.2.tar.gz", hash = "sha256:53c8d44b231251fa9421dd13d968236d59fe2cf0421e077afedbf3821653fb3b"},
+    {file = "boto3-1.38.3-py3-none-any.whl", hash = "sha256:9218f86e2164e1bddb75d435bbde4fa651aa58687213d7e3e1b50f7eb8868f66"},
+    {file = "boto3-1.38.3.tar.gz", hash = "sha256:655d51abcd68a40a33c52dbaa2ca73fc63c746b894e2ae22ed8ddc1912ddd93f"},
 ]
 
 [[package]]
 name = "botocore"
-version = "1.38.2"
+version = "1.38.3"
 requires_python = ">=3.9"
 summary = "Low-level, data-driven core of boto 3."
 groups = ["dev"]
@@ -373,8 +373,8 @@ dependencies = [
     "urllib3<1.27,>=1.25.4; python_version < \"3.10\"",
 ]
 files = [
-    {file = "botocore-1.38.2-py3-none-any.whl", hash = "sha256:5d9cffedb1c759a058b43793d16647ed44ec87072f98a1bd6cd673ac0ae6b81d"},
-    {file = "botocore-1.38.2.tar.gz", hash = "sha256:b688a9bd17211a1eaae3a6c965ba9f3973e5435efaaa4fa201f499d3467830e1"},
+    {file = "botocore-1.38.3-py3-none-any.whl", hash = "sha256:96f823240fe3704b99c17d1d1b2fd2d1679cf56d2a55b095f00255b76087cbf0"},
+    {file = "botocore-1.38.3.tar.gz", hash = "sha256:790f8f966201781f5fcf486d48b4492e9f734446bbf9d19ef8159d08be854243"},
 ]
 
 [[package]]
@@ -408,13 +408,13 @@ files = [
 
 [[package]]
 name = "certifi"
-version = "2025.1.31"
+version = "2025.4.26"
 requires_python = ">=3.6"
 summary = "Python package for providing Mozilla's CA Bundle."
 groups = ["default", "dev", "evaluation"]
 files = [
-    {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
-    {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
+    {file = "certifi-2025.4.26-py3-none-any.whl", hash = "sha256:30350364dfe371162649852c63336a15c70c6510c2ad5015b21c2345311805f3"},
+    {file = "certifi-2025.4.26.tar.gz", hash = "sha256:0a816057ea3cdefcef70270d2c515e4506bbc954f417fa5ade2021213bb8f0c6"},
 ]
 
 [[package]]
@@ -854,7 +854,7 @@ files = [
 
 [[package]]
 name = "faiss-cpu"
-version = "1.10.0"
+version = "1.11.0"
 requires_python = ">=3.9"
 summary = "A library for efficient similarity search and clustering of dense vectors."
 groups = ["default"]
@@ -863,17 +863,17 @@ dependencies = [
     "packaging",
 ]
 files = [
-    {file = "faiss_cpu-1.10.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:8ff6924b0f00df278afe70940ae86302066466580724c2f3238860039e9946f1"},
-    {file = "faiss_cpu-1.10.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:cb80b530a9ded44a7d4031a7355a237aaa0ff1f150c1176df050e0254ea5f6f6"},
-    {file = "faiss_cpu-1.10.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:7a9fef4039ed877d40e41d5563417b154c7f8cd57621487dad13c4eb4f32515f"},
-    {file = "faiss_cpu-1.10.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:49b6647aa9e159a2c4603cbff2e1b313becd98ad6e851737ab325c74fe8e0278"},
-    {file = "faiss_cpu-1.10.0-cp311-cp311-win_amd64.whl", hash = "sha256:6f8c0ef8b615c12c7bf612bd1fc51cffa49c1ddaa6207c6981f01ab6782e6b3b"},
-    {file = "faiss_cpu-1.10.0-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:2aca486fe2d680ea64a18d356206c91ff85db99fd34c19a757298c67c23262b1"},
-    {file = "faiss_cpu-1.10.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c1108a4059c66c37c403183e566ca1ed0974a6af7557c92d49207639aab661bc"},
-    {file = "faiss_cpu-1.10.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:449f3eb778d6d937e01a16a3170de4bb8aabfe87c7cb479b458fb790276310c5"},
-    {file = "faiss_cpu-1.10.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:9899c340f92bd94071d6faf4bef0ccb5362843daea42144d4ba857a2a1f67511"},
-    {file = "faiss_cpu-1.10.0-cp312-cp312-win_amd64.whl", hash = "sha256:345a52dbfa980d24b93c94410eadf82d1eef359c6a42e5e0768cca96539f1c3c"},
-    {file = "faiss_cpu-1.10.0.tar.gz", hash = "sha256:5bdca555f24bc036f4d67f8a5a4d6cc91b8d2126d4e78de496ca23ccd46e479d"},
+    {file = "faiss_cpu-1.11.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:a90d1c81d0ecf2157e1d2576c482d734d10760652a5b2fcfa269916611e41f1c"},
+    {file = "faiss_cpu-1.11.0-cp311-cp311-macosx_14_0_x86_64.whl", hash = "sha256:2c39a388b059fb82cd97fbaa7310c3580ced63bf285be531453bfffbe89ea3dd"},
+    {file = "faiss_cpu-1.11.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:a4e3433ffc7f9b8707a7963db04f8676a5756868d325644db2db9d67a618b7a0"},
+    {file = "faiss_cpu-1.11.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:926645f1b6829623bc88e93bc8ca872504d604718ada3262e505177939aaee0a"},
+    {file = "faiss_cpu-1.11.0-cp311-cp311-win_amd64.whl", hash = "sha256:931db6ed2197c03a7fdf833b057c13529afa2cec8a827aa081b7f0543e4e671b"},
+    {file = "faiss_cpu-1.11.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:356437b9a46f98c25831cdae70ca484bd6c05065af6256d87f6505005e9135b9"},
+    {file = "faiss_cpu-1.11.0-cp312-cp312-macosx_14_0_x86_64.whl", hash = "sha256:c4a3d35993e614847f3221c6931529c0bac637a00eff0d55293e1db5cb98c85f"},
+    {file = "faiss_cpu-1.11.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:8f9af33e0b8324e8199b93eb70ac4a951df02802a9dcff88e9afc183b11666f0"},
+    {file = "faiss_cpu-1.11.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:48b7e7876829e6bdf7333041800fa3c1753bb0c47e07662e3ef55aca86981430"},
+    {file = "faiss_cpu-1.11.0-cp312-cp312-win_amd64.whl", hash = "sha256:bdc199311266d2be9d299da52361cad981393327b2b8aa55af31a1b75eaaf522"},
+    {file = "faiss_cpu-1.11.0.tar.gz", hash = "sha256:44877b896a2b30a61e35ea4970d008e8822545cb340eca4eff223ac7f40a1db9"},
 ]
 
 [[package]]
@@ -1084,7 +1084,7 @@ files = [
 
 [[package]]
 name = "gradio"
-version = "5.26.0"
+version = "5.27.0"
 requires_python = ">=3.10"
 summary = "Python library for easily interacting with trained machine learning models"
 groups = ["dev"]
@@ -1120,8 +1120,8 @@ dependencies = [
     "uvicorn>=0.14.0; sys_platform != \"emscripten\"",
 ]
 files = [
-    {file = "gradio-5.26.0-py3-none-any.whl", hash = "sha256:d0960eb551e0da528f8cf4caae0e742c8175deb72f58600d42f8beec866e9294"},
-    {file = "gradio-5.26.0.tar.gz", hash = "sha256:9d03ca96576b91a7ead40e99676f184ff6ad513b35b91539268b74449fa09979"},
+    {file = "gradio-5.27.0-py3-none-any.whl", hash = "sha256:68e5873204168c1e0025e1c6dda0adfc7546b2d906a79ad8becfd9864f719cca"},
+    {file = "gradio-5.27.0.tar.gz", hash = "sha256:577ee37a94d7d1de8a76c52b1386654d4f9a20694ed9a3ad8238ef90bf5da6e9"},
 ]
 
 [[package]]
@@ -4082,13 +4082,13 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "79.0.1"
+version = "80.0.0"
 requires_python = ">=3.9"
 summary = "Easily download, build, install, upgrade, and uninstall Python packages"
 groups = ["default", "dev"]
 files = [
-    {file = "setuptools-79.0.1-py3-none-any.whl", hash = "sha256:e147c0549f27767ba362f9da434eab9c5dc0045d5304feb602a0af001089fc51"},
-    {file = "setuptools-79.0.1.tar.gz", hash = "sha256:128ce7b8f33c3079fd1b067ecbb4051a66e8526e7b65f6cec075dfc650ddfa88"},
+    {file = "setuptools-80.0.0-py3-none-any.whl", hash = "sha256:a38f898dcd6e5380f4da4381a87ec90bd0a7eec23d204a5552e80ee3cab6bd27"},
+    {file = "setuptools-80.0.0.tar.gz", hash = "sha256:c40a5b3729d58dd749c0f08f1a07d134fb8a0a3d7f87dc33e7c5e1f762138650"},
 ]
 
 [[package]]
