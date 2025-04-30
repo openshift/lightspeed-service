@@ -724,7 +724,7 @@ class MessageDecoder(json.JSONDecoder):
         HumanMessage(content="Hello", ...)
     """
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the MessageDecoder with custom object hook."""
         super().__init__(object_hook=self._decode_message, *args, **kwargs)
 

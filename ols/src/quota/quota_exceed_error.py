@@ -6,7 +6,7 @@ class QuotaExceedError(Exception):
 
     def __init__(
         self, subject_id: str, subject_type: str, available: int, needed: int = 0
-    ):
+    ) -> None:
         """Construct exception object."""
         message: str = ""
 
