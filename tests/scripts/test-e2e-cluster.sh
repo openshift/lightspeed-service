@@ -40,14 +40,10 @@ function run_suites() {
   run_suite "azure_openai" "not certificates and not (introspection and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
-  # # BAM is currently not working, commenting for now
-  # run_suite "bam" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "bam" "$BAM_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
-  # (( rc = rc || $? ))
-
   run_suite "openai" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-8b-instruct" "$OLS_IMAGE" "n"
+  run_suite "watsonx" "not azure_entra_id and not certificates and not (introspection and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "n"
   (( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider

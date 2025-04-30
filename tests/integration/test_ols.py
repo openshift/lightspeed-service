@@ -207,7 +207,7 @@ def test_post_question_with_model_but_not_provider(_setup, endpoint):
         json={
             "conversation_id": conversation_id,
             "query": "test query",
-            "model": "some-model",
+            "model": "model-name",
         },
     )
     assert response.status_code == requests.codes.unprocessable
@@ -229,7 +229,7 @@ def test_unknown_provider_in_post(_setup, endpoint):
         json={
             "query": "hello?",
             "provider": "some-provider",
-            "model": "some-model",
+            "model": "model-name",
         },
     )
 
@@ -262,14 +262,14 @@ def test_unsupported_model_in_post(_setup, endpoint):
             json={
                 "query": "hello?",
                 "provider": test_provider,
-                "model": "some-model",
+                "model": "model-name",
             },
         )
 
         assert response.status_code == requests.codes.unprocessable
         expected_json = {
             "detail": {
-                "cause": "Model 'some-model' is not a valid model for "
+                "cause": "Model 'model-name' is not a valid model for "
                 "provider 'test-provider'. Valid models are: []",
                 "response": "Unable to process this request",
             }

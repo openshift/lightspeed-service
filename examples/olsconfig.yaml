@@ -1,26 +1,13 @@
+# This is a sample config for reference.
+# Update properties with actual value; Ex: use the actual model name.
 llm_providers:
-  - name: my_bam
-    type: bam
-    url: "https://bam-api.res.ibm.com"
-    credentials_path: bam_api_key.txt
-    models:
-      - name: ibm/granite-3-8b-instruct
-        context_window_size: 8000
-        parameters:
-          max_tokens_for_response: 500
-    tlsSecurityProfile:
-      type: Custom
-      ciphers:
-          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-      minTLSVersion: VersionTLS13
   - name: my_openai
     type: openai
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
     models:
-      - name: gpt-4-1106-preview
-      - name: gpt-4o-mini
+      - name: model-name-1
+      - name: model-name-2
   - name: my_azure_openai
     type: azure_openai
     url: "https://myendpoint.openai.azure.com/"
@@ -28,14 +15,14 @@ llm_providers:
     api_version: "2024-02-15-preview"
     deployment_name: my_azure_openai_deployment_name
     models:
-      - name: gpt-4o-mini
+      - name: model-name
   - name: my_watsonx
     type: watsonx
     url: "https://us-south.ml.cloud.ibm.com"
     credentials_path: watsonx_api_key.txt
     project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
-      - name: ibm/granite-3-8b-instruct
+      - name: model-name
   - name: my_rhoai
     type: rhoai_vllm
     url: "http://localhost:8000/v1"
@@ -47,13 +34,13 @@ llm_providers:
     url: "http://localhost:8000/v1"
     credentials_path: rhelai_api_key.txt
     models:
-      - name: granite-3-8b-instruct
+      - name: model-name
   - name: instructlab
     type: openai
     url: "http://localhost:8000/v1"
     credentials_path: openai_api_key.txt
     models:
-      - name: merlinite-7b-lab-Q4_K_M
+      - name: model-name
 ols_config:
   # max_workers: 1
   reference_content:
@@ -74,8 +61,8 @@ ols_config:
     uvicorn_log_level: info
     suppress_metrics_in_log: false
     suppress_auth_checks_warning_in_log: false
-  default_provider: my_bam
-  default_model: ibm/granite-3-8b-instruct
+  default_provider: my_watsonx
+  default_model: model-name
   expire_llm_is_ready_persistent_state: -1
   # query_filters:
   #   - name: foo_filter

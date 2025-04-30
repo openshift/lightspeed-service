@@ -3,15 +3,7 @@
         "eval1": {
             "question": "what is kubernetes?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "in_use": true,
-                    "cutoff_score": 0.05,
-                    "text": [
-                        "Kubernetes is an open source container orchestration tool developed by Google. It allows you to run and manage container-based workloads, and is commonly used to deploy interconnected microservices in a cloud-native way. Kubernetes clusters can span hosts across on-premise, public, private, or hybrid clouds.",
-                        "Kubernetes is an open-source container orchestration engine for automating deployment, scaling, and management of containerized applications. It uses a declarative model, meaning it defines a desired state and automatically works towards achieving that state. Kubernetes was originally developed by Google and has since become widely adopted in the industry for its ability to manage large-scale container deployments. It provides features such as self-healing, automated rollouts, and service discovery, making it easier to manage and scale complex applications."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "Kubernetes is an open source container orchestration tool developed by Google that you can use to run and manage container-based workloads. It is commonly used to deploy an array of interconnected microservices, building an application in a cloud native way. Kubernetes can span hosts across on-premise, public, private, or hybrid clouds."
                     ]
@@ -27,11 +19,6 @@
                         "Kubernetes is an open-source container orchestration engine for automating the deployment, scaling, and management of containerized applications. It provides a platform for running and managing containers at scale, allowing you to easily deploy and manage applications across multiple machines or environments. Kubernetes enables efficient resource utilization, automatic scaling, self-healing capabilities, and seamless integration with various cloud providers. It is widely used in modern application development to build scalable and resilient cloud-native applications."
                     ]
                 },
-                "bam+ibm/granite-3-8b-instruct+without_rag": {
-                    "text": [
-                        "Kubernetes, also known as K8s, is an open-source platform designed to automate deploying, scaling, and managing containerized applications. It groups containers that make up an application into logical units for easy management and discovery. Kubernetes abstracts the underlying infrastructure, enabling developers to focus on building their applications without worrying about the complexities of the infrastructure.\n\nKubernetes provides several key features:\n\n1. **Automated Deployment**: Kubernetes can automatically deploy new application versions based on predefined policies, ensuring that the correct version is always running.\n2. **Scaling**: Kubernetes allows you to easily scale your applications up or down based on demand, ensuring optimal performance and resource utilization.\n3. **Self-Healing**: If a container crashes, Kubernetes will automatically restart it, ensuring high availability and reliability.\n4. **Load Balancing**: Kubernetes provides built-in load balancing capabilities, distributing traffic across multiple instances of an application to ensure no single instance becomes a bottleneck.\n5. **Storage Orchestration**: Kubernetes manages storage resources for your applications, making it easy to add or remove storage as needed.\n6. **Secret and Configuration Management**: Kubernetes allows you to manage sensitive data, such as passwords and API keys, as well as application configurations, making it easy to maintain consistent settings across your application environment.\n\nThese features make Kubernetes a powerful and flexible platform for managing containerized applications at scale.\n\nTo learn more about Kubernetes, you can visit the official website at https://kubernetes.io/ or explore the many resources available online, including tutorials, documentation, and community forums."
-                    ]
-                },
                 "azure_openai+gpt-4o-mini+without_rag": {
                     "text": [
                         "Kubernetes is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications. It provides a framework for running and coordinating containers across a cluster of machines. Kubernetes helps simplify the management of complex distributed systems by abstracting away many of the underlying infrastructure details. OpenShift, being a distribution of Kubernetes, offers all the capabilities provided by Kubernetes along with additional features and tools specific to OpenShift."
@@ -39,8 +26,7 @@
                 },
                 "ground_truth": {
                     "cutoff_score": {
-                        "bam+ibm/granite-3-8b-instruct+with_rag": 0.3,
-                        "watsonx+ibm/granite-3-8b-instruct+without_rag": 0.3,
+                        "watsonx+ibm/granite-3-2-8b-instruct+without_rag": 0.3,
                         "openai+gpt-4o-mini+without_rag": 0.2,
                         "azure_openai+gpt-4o-mini+without_rag": 0.2
                     },
@@ -50,8 +36,7 @@
                 },
                 "ground_truth+with_rag": {
                     "cutoff_score": {
-                        "bam+ibm/granite-3-8b-instruct+with_rag": 0.2,
-                        "watsonx+ibm/granite-3-8b-instruct+with_rag": 0.2,
+                        "watsonx+ibm/granite-3-2-8b-instruct+with_rag": 0.2,
                         "openai+gpt-4o-mini+with_rag": 0.2,
                         "azure_openai+gpt-4o-mini+with_rag": 0.2
                     },
@@ -72,13 +57,7 @@
         "eval2": {
             "question": "what is openshift virtualization?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "OpenShift Virtualization is a feature of Red Hat OpenShift Container Platform that allows traditional virtual machines (VMs) to be brought into the platform and run alongside containers. It represents the icon and can be used with either the OVN-Kubernetes or the OpenShiftSDN default Container Network Interface (CNI) network provider. OpenShift Virtualization is certified in Microsoft's Windows Server Virtualization Validation Program (SVVP) to run Windows Server workloads.",
-                        "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through a variety of consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, live migrating virtual machines between nodes, and providing an enhanced web console for managing these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through various consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, and live migrating virtual machines between nodes. An enhanced web console provides a graphical portal to manage these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
@@ -107,12 +86,7 @@
         "eval3": {
             "question": "What is the purpose of the imagePullPolicy in Red Hat OpenShift Container Platform?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "The imagePullPolicy in Red Hat OpenShift Container Platform determines whether a container image should be pulled prior to starting the container. It has three possible values: Always, IfNotPresent, and Never."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "The imagePullPolicy in Red Hat OpenShift Container Platform determines if the image should be pulled prior to starting the container. It has three possible values: Always, IfNotPresent, and Never. If a container imagePullPolicy parameter is not specified, Red Hat OpenShift Container Platform sets it based on the image tag. If the tag is 'latest', it defaults to 'Always'. Otherwise, it defaults to 'IfNotPresent'."
                     ]
@@ -139,12 +113,7 @@
         "eval4": {
             "question": "How does Red Hat OpenShift Pipelines automate deployments?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "Red Hat OpenShift Pipelines automates deployments using Tekton building blocks, which introduce standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows for the abstraction of underlying implementation details and the creation of serverless, cloud-native, continuous integration and continuous delivery (CI/CD) systems that run in isolated containers. These pipelines are designed for decentralized teams working on microservices-based architecture and can be triggered by various events, such as code changes or vulnerability discoveries, to rebuild and replace images ensuring the immutable containers process."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "Red Hat OpenShift Pipelines automates deployments by using Tekton building blocks to abstract away the underlying implementation details. It leverages standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows for serverless, cloud-native, continuous integration, and continuous deployment systems that run in isolated containers, enabling decentralized teams working on microservices-based architecture to automate deployments efficiently."
                     ]
@@ -170,12 +139,7 @@
         "eval5": {
             "question": "what is a limitrange?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "A LimitRange is a feature in OpenShift that sets resource usage limits for each kind of resource in a Namespace. It is used to define the minimum and maximum usage limits for resources that match on kind."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "A LimitRange in OpenShift sets resource usage limits for each kind of resource in a Namespace. It defines a min/max usage limit for resources that match on kind. This allows you to specify the minimum and maximum CPU and memory limits for all containers across a pod in a given project."
                     ]
@@ -202,12 +166,7 @@
         "eval6": {
             "question": "What is the purpose of the Vertical Pod Autoscaler Operator in Openshift?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "The Vertical Pod Autoscaler Operator (VPA) in Openshift is responsible for managing and scaling the vertical dimensions of applications, such as the number of replicas per container, based on resource utilization metrics. It helps to ensure that the resources are efficiently utilized and prevents overprovisioning or underutilization of resources. The VPA Operator can be installed using the Red Hat OpenShift Container Platform web console or the command line interface."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "The Vertical Pod Autoscaler Operator (VPA) in OpenShift is used to automatically adjust the resource requests and limits of pods based on their usage. It helps optimize resource utilization and can improve the performance and stability of applications running on the platform. The VPA can be installed using the Red Hat OpenShift Container Platform web console or CLI."
                     ]
@@ -234,14 +193,7 @@
         "eval7": {
             "question": "Is there a doc on updating clusters?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "cutoff_score": 0.25,
-                    "text": [
-                        "The provided document is a detailed guide on updating OpenShift clusters, including information on the Cluster Version Operator (CVO), ClusterVersion resource, and various update strategies such as canary rollouts.\n\nAdditionally, the document provides instructions on how to check compatibility and update installed Operators.\n\nFor more information on specific update strategies, refer to the \"Performing a canary rollout update\" section.\n\nFor a general overview of how updates work, see the \"Introduction to OpenShift updates\" section.",
-                        "Yes, the Red Hat OpenShift Container Platform documentation covers updating clusters. You can find the relevant information in the \"Updating Clusters\" section of the documentation."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "cutoff_score": 0.25,
                     "text": [
                         "Yes, there is documentation on updating clusters in OpenShift. The process involves creating custom machine config pools (MCPs), labeling nodes, pausing those custom MCPs, performing the cluster update, unpausing one custom MCP, testing applications, and optionally removing custom labels from remaining nodes in small batches.\n\nAdditionally, the Cluster Version Operator (CVO) plays a crucial role in the update process. It constantly compares the manifests of managed cluster Operators to in-cluster resources, and reconciles discrepancies to ensure that the actual state of these resources match their desired state. The CVO also monitors the ClusterVersion resource and communicates or interacts with it through the ClusterVersion object.\n\nFor more detailed information, you can refer to the \"How cluster updates work\" section in the OpenShift documentation."
@@ -271,12 +223,7 @@
         "eval8": {
             "question": "How do I find my clusterID?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "You can find your clusterID in the Red Hat OpenShift Container Platform web console by navigating to Home -> Overview. The value is available in the Cluster ID field of the Details section."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "You can have your cluster ID autofilled by using the Red Hat OpenShift Container Platform web console or manually obtain it using the web console or the OpenShift CLI (oc).\n\nAs a user with the cluster-admin role, follow these steps to view the cluster ID in the web console:\n\n1. Navigate to Home -> Overview.\n2. The value is available in the Cluster ID field of the Details section."
                     ]
@@ -303,12 +250,7 @@
         "eval9": {
             "question": "do you recommend using DeploymentConfig?",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "text": [
-                        "No, I do not recommend using DeploymentConfig as of Red Hat OpenShift Container Platform 4.14. DeploymentConfig objects are deprecated and should not be used for new installations. Instead, use Deployment objects or another alternative to provide declarative updates for pods."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "text": [
                         "No, as of Red Hat OpenShift Container Platform 4.14, DeploymentConfig objects are deprecated and should not be used for new installations. Instead, use Deployment objects or another alternative to provide declarative updates for pods."
                     ]
@@ -336,13 +278,7 @@
         "eval10": {
             "question": "give me sample deployment yaml that uses MongoDB image",
             "answer": {
-                "bam+ibm/granite-3-8b-instruct+with_rag": {
-                    "cutoff_score": 0.1,
-                    "text": [
-                        "Here is an example of a YAML file that uses the MongoDB image and deploys a simple application:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: quay.io/centos7/mongodb-36-centos7:latest\n        ports:\n        - containerPort: 27017\n```\n\nThis YAML file creates a Deployment object that deploys a MongoDB container with a replica count of 3. The container image is pulled from the Quay registry and exposes port 27017 for communication.\n\nTo create this YAML file, follow these steps:\n\n1. Open a terminal and navigate to the directory where you want to create the YAML file.\n2. Run the following command to create the YAML file:\n\n```bash\noc create -f mongodb-nationalparks.yaml\n```\n\nThis command creates the Deployment object for the MongoDB application.\n\n3. After the YAML file is created, you can verify its existence by running the following command:\n\n```bash\noc get deployments\n```\n\nThis command lists all the deployments in the project, including the MongoDB deployment.\n\n4. You can also verify the status of the deployment by running the following command:\n\n```bash\noc rollout status deployment/mongodb-nationalparks\n```\n\nThis command displays the current status of the MongoDB deployment, including the number of replicas and the last observed status."
-                    ]
-                },
-                "watsonx+ibm/granite-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-3-2-8b-instruct+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
                         "Here's an example deployment YAML that uses the MongoDB image:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: quay.io/centos7/mongodb-36-centos7:latest\n        ports:\n        - containerPort: 27017\n        env:\n        - name: MONGODB_USER\n          value: mongodb\n        - name: MONGODB_PASSWORD\n          value: mongodb\n        - name: MONGODB_DATABASE\n          value: nationalparks\n        - name: MONGODB_ADMIN_PASSWORD\n          value: mongodb\n```\nThis YAML defines a Deployment that creates a MongoDB pod with the name `mongodb-nationalparks`. The pod uses the official MongoDB image from Quay.io, which is based on CentOS 7. The container exposes port 27017, and there are environment variables set to connect to the MongoDB instance with the specified credentials and database name."

@@ -208,8 +208,8 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
     models:
-      - name: gpt-4-1106-preview
-      - name: gpt-4o-mini
+      - name: <model 1>
+      - name: <model 2>
   ```
 
 ### Azure OpenAI
@@ -223,7 +223,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: azure_openai_api_key.txt
     deployment_name: my_azure_openai_deployment_name
     models:
-      - name: gpt-4o-mini
+      - name: <model name>
   ```
 
 ### WatsonX
@@ -237,7 +237,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
     credentials_path: watsonx_api_key.txt
     project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
     models:
-      - name: ibm/granite-3-8b-instruct
+      - name: <model name>
   ```
 
 ### RHEL AI provider
@@ -253,7 +253,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
         url: "http://{PATH}.amazonaws.com:8000/v1/"
         credentials_path: openai_api_key.txt
         models:
-          - name: granite-7b-lab
+          - name: <model name>
   ```
 
 ### Red Hat OpenShift AI
@@ -268,7 +268,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
         url: "http://{PATH}:8000/v1/"
         credentials_path: openai_api_key.txt
         models:
-          - name: mistral-7b-instruct
+          - name: <model name>
   ```
 
 ### Local *ollama* server
@@ -306,8 +306,8 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
          ```yaml
             ols_config:
-              default_provider: my_bam
-              default_model: ibm/granite-3-8b-instruct
+              default_provider: <provider name>
+              default_model: <model name>
          ```
 
 
@@ -503,8 +503,8 @@ llm_providers:
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
     models:
-      - name: gpt-4-1106-preview
-      - name: gpt-4o-mini
+      - name: model-name-1
+      - name: model-name-2
     tlsSecurityProfile:
       type: Custom
       ciphers:

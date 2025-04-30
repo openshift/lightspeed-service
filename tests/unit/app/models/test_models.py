@@ -50,7 +50,7 @@ class TestLLM:
         query = "Tell me about Kubernetes"
         conversation_id = "id"
         provider = "openai"
-        model = "gpt-4o-mini"
+        model = "model-name"
         llm_request = LLMRequest(
             query=query,
             conversation_id=conversation_id,

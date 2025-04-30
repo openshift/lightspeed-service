@@ -50,8 +50,8 @@ def get_model_provider_counter_value(
     response = read_metrics(client)
 
     # counters with model and provider have the following format:
-    # llm_token_sent_total{model="ibm/granite-3-8b-instruct",provider="bam"} 8.0
-    # llm_token_received_total{model="ibm/granite-3-8b-instruct",provider="bam"} 2465.0
+    # llm_token_sent_total{model="model-name",provider="provider-name"} 8.0
+    # llm_token_received_total{model="model-name",provider="provider-name"} 2465.0
     prefix = f'{counter_name}{{model="{model}",provider="{provider}"}} '
 
     return get_counter_value(prefix, response, default)
@@ -200,7 +200,7 @@ class TokenCounterChecker:
 
     Example:
     ```python
-    with TokenCounterChecker(client, "ibm/granite-3-8b-instruct", "bam"):
+    with TokenCounterChecker(client, "model-name", "provider-name"):
         ...
         ...
         ...

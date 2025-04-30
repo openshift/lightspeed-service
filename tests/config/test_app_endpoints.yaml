@@ -4,7 +4,7 @@ llm_providers:
     url: "https://bam-api.res.ibm.com"
     credentials_path: tests/config/secret/apitoken
     models:
-      - name: ibm/granite-3-8b-instruct
+      - name: model-name
 ols_config:
   reference_content:
     indexes:
@@ -17,7 +17,7 @@ ols_config:
   logging_config:
     logging_level: INFO
   default_provider: bam
-  default_model: ibm/granite-3-8b-instruct
+  default_model: model-name
 dev_config:
   disable_auth: true
   disable_tls: true
