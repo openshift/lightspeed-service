@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -113,8 +113,8 @@ post_feedback_responses: dict[int | str, dict[str, Any]] = {
 @router.post("", responses=post_feedback_responses)
 def store_user_feedback(
     feedback_request: FeedbackRequest,
-    ensure_feedback_enabled: Any = Depends(ensure_feedback_enabled),
-    auth: Any = Depends(auth_dependency),
+    ensure_feedback_enabled: Annotated[Any, Depends(ensure_feedback_enabled)],
+    auth: Annotated[Any, Depends(auth_dependency)],
 ) -> FeedbackResponse:
     """Handle feedback requests.
 
