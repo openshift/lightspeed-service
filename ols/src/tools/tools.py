@@ -1,7 +1,6 @@
 """Functions/Tools definition."""
 
 import logging
-import traceback
 from typing import Optional
 
 from langchain_core.messages import ToolMessage
@@ -14,7 +13,7 @@ from ols.src.tools.oc_cli import (
     oc_get,
     oc_logs,
     oc_status,
-    show_pods,
+    show_pods_resource_usage,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ oc_tools = {
     "oc_logs": oc_logs,
     "oc_adm_top": oc_adm_top,
     "oc_status": oc_status,
-    "show_pods": show_pods,
+    "show_pods_resource_usage": show_pods_resource_usage,
 }
 
 
@@ -66,39 +65,34 @@ def execute_oc_tool_calls(
     tool_messages = []
 
     for tool_call in tool_calls:
-        status = "error"
         tool_name = tool_call.get("name", "").lower()
         tool_args = tool_call.get("args", {})
         tool = tools_map.get(tool_name)
 
         if not tool:
             tool_output = f"Error: Tool '{tool_name}' not found."
+            status = "error"
             logger.error(tool_output)
         else:
             try:
                 # create a new dict with the tool args and the token
-                tool_output = tool.invoke({**tool_args, "token": token})
-                status = "success"
-            except ValidationError:
-                tool_output = (
-                    f"Error executing {tool_name}: tool arguments are in wrong format"
+                status, tool_output = tool.invoke({**tool_args, "token": token})
+                logger.debug(
+                    "Tool: %s | Args: %s | Output: %s",
+                    tool_name,
+                    tool_args,
+                    tool_output,
                 )
+            except ValidationError as e:
+                tool_output = f'Tool arguments are in wrong format: {str(e).replace(token, "<redacted>")}'  # noqa E501
+                status = "error"
                 # don't log as exception because it contains traceback
                 # with sensitive information
                 logger.error(tool_output)
-            except Exception:
-                # if token was used, redact the error to ensure it is not leaked
-                safe_traceback = (
-                    traceback.format_exc().replace(token, "<redacted>")
-                    if token
-                    else traceback.format_exc()
-                )
-                tool_output = f"Error executing {tool_name}: {safe_traceback}"
+            except Exception as e:
+                tool_output = f"Error executing tool '{tool_name}': {str(e).replace(token, '<redacted>')}"  # noqa E501
+                status = "error"
                 logger.error(tool_output)
-
-        logger.debug(
-            "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
-        )
 
         tool_messages.append(
             ToolMessage(

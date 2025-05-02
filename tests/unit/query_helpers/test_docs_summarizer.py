@@ -307,9 +307,8 @@ def test_tool_calling_tool_execution(caplog):
 
         assert "Tool: get_namespaces_mock" in caplog.text
         tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-        assert f"Output: {tool_output}" in caplog.text
+        assert f"Output: {tool_output[1]}" in caplog.text
 
-        assert "Tool: invalid_function_name" in caplog.text
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2

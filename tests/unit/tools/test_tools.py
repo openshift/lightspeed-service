@@ -36,7 +36,7 @@ def test_execute_tool_calls():
     @tool
     def tool1(command_args: list[str]):
         """Tool 1."""
-        return "Tool 1 called"
+        return "success", "Tool 1 called"
 
     @tool
     def tool2(command_args: list[str]):
@@ -54,7 +54,7 @@ def test_execute_tool_calls():
     assert tool_messages[0].content == "Tool 1 called"
     assert tool_messages[0].tool_call_id == "1"
     assert tool_messages[0].status == "success"
-    assert tool_messages[1].content.startswith("Error executing tool2:")
+    assert tool_messages[1].content.startswith("Error executing tool 'tool2'")
     assert tool_messages[1].tool_call_id == "2"
     assert tool_messages[1].status == "error"
 
@@ -66,7 +66,7 @@ def test_execute_oc_tool_calls_not_leaks_token_into_logs(caplog):
     @tool
     def tool1(some_arg: str):
         """Tool 1."""
-        return "Tool 1 called"
+        return "success", "Tool 1 called"
 
     tools_map = {"tool1": tool1}
     tool_calls = [{"id": 1, "name": "tool1", "args": {"some_arg": "blah"}}]
@@ -87,7 +87,7 @@ def test_execute_oc_tool_calls_not_leaks_token_into_output(caplog):
     @tool
     def tool1(some_args: list):
         """Tool 1."""
-        return "bla"
+        return "success", "bla"
 
     tools_map = {"tool1": tool1}
 
