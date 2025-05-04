@@ -1784,6 +1784,21 @@ files = [
 ]
 
 [[package]]
+name = "langchain-mcp-adapters"
+version = "0.0.9"
+requires_python = ">=3.10"
+summary = "Make Anthropic Model Context Protocol (MCP) tools compatible with LangChain and LangGraph agents."
+groups = ["default"]
+dependencies = [
+    "langchain-core<0.4,>=0.3.36",
+    "mcp<1.7,>=1.4.1",
+]
+files = [
+    {file = "langchain_mcp_adapters-0.0.9-py3-none-any.whl", hash = "sha256:7c3dedd7830de826f418706c8a2fe388afcf8daf2037a1b39d1e065a5eacb082"},
+    {file = "langchain_mcp_adapters-0.0.9.tar.gz", hash = "sha256:9ecd10fc420d98b3c14115bbca3174575e0a4ea29bd125ef39d11191a72ff1a1"},
+]
+
+[[package]]
 name = "langchain-openai"
 version = "0.3.14"
 requires_python = "<4.0,>=3.9"
@@ -2277,6 +2292,27 @@ groups = ["dev"]
 files = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {file = "mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
+]
+
+[[package]]
+name = "mcp"
+version = "1.6.0"
+requires_python = ">=3.10"
+summary = "Model Context Protocol SDK"
+groups = ["default"]
+dependencies = [
+    "anyio>=4.5",
+    "httpx-sse>=0.4",
+    "httpx>=0.27",
+    "pydantic-settings>=2.5.2",
+    "pydantic<3.0.0,>=2.7.2",
+    "sse-starlette>=1.6.1",
+    "starlette>=0.27",
+    "uvicorn>=0.23.1",
+]
+files = [
+    {file = "mcp-1.6.0-py3-none-any.whl", hash = "sha256:7bd24c6ea042dbec44c754f100984d186620d8b841ec30f1b19eda9b93a634d0"},
+    {file = "mcp-1.6.0.tar.gz", hash = "sha256:d9324876de2c5637369f43161cd71eebfd803df5a95e46225cab8d280e366723"},
 ]
 
 [[package]]
@@ -4192,6 +4228,21 @@ files = [
     {file = "sqlalchemy-2.0.40-cp312-cp312-win_amd64.whl", hash = "sha256:2be94d75ee06548d2fc591a3513422b873490efb124048f50556369a834853b0"},
     {file = "sqlalchemy-2.0.40-py3-none-any.whl", hash = "sha256:32587e2e1e359276957e6fe5dad089758bc042a971a8a09ae8ecf7a8fe23d07a"},
     {file = "sqlalchemy-2.0.40.tar.gz", hash = "sha256:d827099289c64589418ebbcaead0145cd19f4e3e8a93919a0100247af245fa00"},
+]
+
+[[package]]
+name = "sse-starlette"
+version = "2.3.3"
+requires_python = ">=3.9"
+summary = "SSE plugin for Starlette"
+groups = ["default"]
+dependencies = [
+    "anyio>=4.7.0",
+    "starlette>=0.41.3",
+]
+files = [
+    {file = "sse_starlette-2.3.3-py3-none-any.whl", hash = "sha256:8b0a0ced04a329ff7341b01007580dd8cf71331cc21c0ccea677d500618da1e0"},
+    {file = "sse_starlette-2.3.3.tar.gz", hash = "sha256:fdd47c254aad42907cfd5c5b83e2282be15be6c51197bf1a9b70b8e990522072"},
 ]
 
 [[package]]
