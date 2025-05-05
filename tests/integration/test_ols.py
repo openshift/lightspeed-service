@@ -1191,7 +1191,7 @@ def test_tool_calling(_setup, caplog) -> None:
 
             assert "Tool: get_namespaces_mock" in caplog.text
             tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-            assert f"Output: {tool_output}" in caplog.text
+            assert f"Output: {tool_output[1]}" in caplog.text
 
             assert response.status_code == requests.codes.ok
             assert response.json()["response"] == "You have 1 namespace."
