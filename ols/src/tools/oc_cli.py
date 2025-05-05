@@ -33,10 +33,7 @@ SECRET_NOT_ALLOWED_MSG = (
 def strip_args_for_oc_command(args: list[str]) -> list[str]:
     """Sanitize arguments for `oc` CLI commands if LLM adds it extra."""
     # sometimes within the list we may get two args combined, eg: [top pod]
-    splited_args = " ".join(args).split(" ")
-
-    # strip whitespaces from args
-    splited_args = [arg.strip() for arg in splited_args if arg.strip()]
+    splited_args = [arg for arg in " ".join(args).split(" ") if arg]
 
     # sometimes model gives args which are already added to the tool.
     remove_arg = ["oc", "get", "describe", "logs", "status", "adm", "top"]
