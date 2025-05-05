@@ -348,7 +348,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
-@pytest.mark.introspection
+@pytest.mark.tool_calling
 @pytest.mark.rag
 @retry(max_attempts=3, wait_between_runs=10)
 def test_rag_question() -> None:
@@ -586,7 +586,7 @@ def test_query_with_unknown_model() -> None:
         assert "Model 'bar' is not a valid model " in json_response["detail"]["cause"]
 
 
-@pytest.mark.introspection
+@pytest.mark.tool_calling
 @retry(max_attempts=3, wait_between_runs=10)
 def test_tool_calling() -> None:
     """Check the REST API /v1/query with POST HTTP method for tool calling."""

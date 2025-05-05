@@ -16,4 +16,4 @@ default                                            Active   25m
     )
 
 
-mock_tools_map = {"get_namespaces_mock": get_namespaces_mock}
+mock_tools_map = [get_namespaces_mock]

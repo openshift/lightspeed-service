@@ -2378,7 +2378,6 @@ def test_ols_config(tmpdir):
         {
             "default_provider": "test_default_provider",
             "default_model": "test_default_model",
-            "introspection_enabled": True,
             "conversation_cache": {
                 "type": "memory",
                 "memory": {
@@ -2395,7 +2394,6 @@ def test_ols_config(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
-    assert ols_config.introspection_enabled
     assert (
         ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
     )
@@ -2433,7 +2431,6 @@ def test_ols_config_with_auth_config(tmpdir):
     assert ols_config.default_model == "test_default_model"
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
-    assert not ols_config.introspection_enabled
     assert ols_config.logging_config.app_log_level == logging.INFO
     assert (
         ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED

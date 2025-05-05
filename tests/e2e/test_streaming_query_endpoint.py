@@ -336,7 +336,7 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
 
-@pytest.mark.introspection
+@pytest.mark.tool_calling
 @pytest.mark.rag
 @retry(max_attempts=3, wait_between_runs=60)
 def test_rag_question() -> None:
@@ -584,7 +584,7 @@ def test_query_with_unknown_model() -> None:
         assert "Model 'bar' is not a valid model " in json_response["detail"]["cause"]
 
 
-@pytest.mark.introspection
+@pytest.mark.tool_calling
 def test_tool_calling_text() -> None:
     """Check the endpoint for tool calling in text format."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -611,7 +611,7 @@ def test_tool_calling_text() -> None:
         )
 
 
-@pytest.mark.introspection
+@pytest.mark.tool_calling
 def test_tool_calling_events() -> None:
     """Check the endpoint for tool calling in event format."""
     with metrics_utils.RestAPICallCounterChecker(
