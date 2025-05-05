@@ -7,9 +7,9 @@ from typing import Any, Optional
 
 import psycopg2
 
-import ols.app.models.config as config_model
 from ols import constants
 from ols.app.models.config import LimiterConfig, PostgresConfig, QuotaHandlersConfig
+from ols.utils.config import AppConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -173,7 +173,7 @@ def connect(config: PostgresConfig) -> Any:
     return connection
 
 
-def start_quota_scheduler(config: config_model.Config) -> None:
+def start_quota_scheduler(config: AppConfig) -> None:
     """Start user and cluster quota scheduler in separate thread."""
     logger.info("Starting quota scheduler")
     thread = Thread(
