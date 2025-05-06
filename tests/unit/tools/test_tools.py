@@ -16,7 +16,7 @@ class FakeTool:
 
     async def arun(self, args):
         """Mock async run method."""
-        return "success", "fake_output"
+        return "fake_output"
 
 
 class FakeMCPClient:

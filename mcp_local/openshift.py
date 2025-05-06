@@ -29,9 +29,7 @@ def strip_args_for_oc_command(args: list[str]) -> list[str]:
     # - two commands as one in args: ["pod my-pod"]
     remove_args = {"oc", "get", "describe", "logs", "status", "adm", "top"}
     split_args = [
-        arg
-        for arg in " ".join(args).split()
-        if arg and arg not in remove_args
+        arg for arg in " ".join(args).split() if arg and arg not in remove_args
     ]
     return split_args
 
@@ -59,16 +57,16 @@ def redact_token(text: str, token: str) -> str:
     return text.replace(token, "<redacted>")
 
 
-def resolve_status_and_response(result: subprocess.CompletedProcess) -> tuple[str, str]:
+def resolve_response(result: subprocess.CompletedProcess) -> str:
     """Return stdout if it is not empty string, otherwise return stderr."""
     # some commands returns empty stdout and message like "namespace not found"
     # in stderr, but with return code 0
     if result.returncode == 0:
-        return "success", result.stdout if result.stdout != "" else result.stderr
-    return "error", result.stderr
+        return result.stdout if result.stdout != "" else result.stderr
+    return result.stderr
 
 
-def run_oc(args: list[str]) -> tuple[str, str]:
+def run_oc(args: list[str]) -> str:
     """Run `oc` CLI with provided arguments and command."""
     # Currently user token is sent to server using env var.
     token = os.environ.get("OC_USER_TOKEN", "token-not-set")
@@ -83,23 +81,20 @@ def run_oc(args: list[str]) -> tuple[str, str]:
         )
     except Exception:
         # if token was used, redact the error to ensure it is not leaked
-        return (
-            "error",
-            f"Error executing args '{args}': {redact_token(traceback.format_exc(), token)}",
-        )
+        return f"Error executing args '{args}': {redact_token(traceback.format_exc(), token)}"
 
-    status, response = resolve_status_and_response(res)
-    return status, redact_token(response, token)
+    response = resolve_response(res)
+    return redact_token(response, token)
 
 
-def safe_run_oc(commands: list[str], args: list[str]) -> tuple[str, str]:
+def safe_run_oc(commands: list[str], args: list[str]) -> str:
     """Run `oc` CLI with provided arguments and command."""
     if is_blocked_char_in_args(args):
-        return "error", BLOCKED_CHARS_DETECTED_MSG
+        return BLOCKED_CHARS_DETECTED_MSG
     if is_secret_in_args(args):
-        return "error", SECRET_NOT_ALLOWED_MSG
-    status, result = run_oc([*commands, *strip_args_for_oc_command(args)])
-    return status, result
+        return SECRET_NOT_ALLOWED_MSG
+    result = run_oc([*commands, *strip_args_for_oc_command(args)])
+    return result
 
 
 @mcp.tool()

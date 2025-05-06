@@ -20,7 +20,7 @@ from mcp_local.openshift import (
     oc_logs,
     oc_status,
     redact_token,
-    resolve_status_and_response,
+    resolve_response,
     run_oc,
     safe_run_oc,
     show_pods_resource_usage,
@@ -106,8 +106,8 @@ def test_is_secret_in_args():
     assert is_secret_in_args(args) is False
 
 
-def test_resolve_status_and_response():
-    """Test the resolve_status_and_response function."""
+def test_resolve_response():
+    """Test the resolve_response function."""
     # normal case
     result = subprocess.CompletedProcess(
         args=["oc", "get", "pod", "my-pod"],
@@ -115,8 +115,7 @@ def test_resolve_status_and_response():
         stdout="stdout",
         stderr="",
     )
-    status, response = resolve_status_and_response(result)
-    assert status == "success"
+    response = resolve_response(result)
     assert response == "stdout"
 
     # quasi case
@@ -126,8 +125,7 @@ def test_resolve_status_and_response():
         stdout="",
         stderr="stderr",
     )
-    status, response = resolve_status_and_response(result)
-    assert status == "success"
+    response = resolve_response(result)
     assert response == "stderr"
 
     # error case
@@ -137,8 +135,7 @@ def test_resolve_status_and_response():
         stdout="",
         stderr="stderr",
     )
-    status, response = resolve_status_and_response(result)
-    assert status == "error"
+    response = resolve_response(result)
     assert response == "stderr"
 
 
@@ -146,22 +143,19 @@ def test_safe_run_oc():
     """Test the run_oc function."""
     # secret present
     args = ["secret"]
-    status, result = safe_run_oc("get", args)
-    assert status == "error"
+    result = safe_run_oc("get", args)
     assert result == SECRET_NOT_ALLOWED_MSG
 
     # forbidden characters present
     args = ["pod", "my-pod;"]
-    status, result = safe_run_oc("get", args)
-    assert status == "error"
+    result = safe_run_oc("get", args)
     assert result == BLOCKED_CHARS_DETECTED_MSG
 
     # normal case
     args = ["pod", "my-pod"]
-    mocked_oc = "success", "stdout"
+    mocked_oc = "stdout"
     with patch("mcp_local.openshift.run_oc", return_value=mocked_oc):
-        status, response = safe_run_oc("get", args)
-        assert status == "success"
+        response = safe_run_oc("get", args)
         assert response == "stdout"
 
 
@@ -190,13 +184,12 @@ def test_oc_run(token_in_env):
             stdout="stdout and fake-token",
             stderr="",
         )
-        status, response = run_oc(args)
+        response = run_oc(args)
 
         # called with args and token
         expected_args = ["oc", *args, "--token", "fake-token"]
         assert expected_args == mock_run.call_args[0][0]
 
-        assert status == "success"
         assert response == "stdout and <redacted>"
 
     # error case
@@ -207,28 +200,25 @@ def test_oc_run(token_in_env):
             stdout="",
             stderr="stderr and fake-token",
         )
-        status, response = run_oc(args)
+        response = run_oc(args)
 
         # called with args and token
         expected_args = ["oc", *args, "--token", "fake-token"]
         assert expected_args == mock_run.call_args[0][0]
 
-        assert status == "error"
         assert response == "stderr and <redacted>"
 
 
 def test_oc_run_exception(token_in_env):
-    """Test the run_oc function on exception."""
+    """Test the run_oc function on exception and token redaction."""
     args = ["pod", "my-pod"]
     with patch("mcp_local.openshift.subprocess.run") as mock_run:
         mock_run.side_effect = Exception("error and fake-token")
-        status, response = run_oc(args)
+        response = run_oc(args)
 
         # called with args and token
         expected_args = ["oc", *args, "--token", "fake-token"]
         assert expected_args == mock_run.call_args[0][0]
-
-        assert status == "error"
         assert response.startswith("Error executing args")
         assert "Traceback" in response
         assert "<redacted>" in response
@@ -247,8 +237,7 @@ def test_tools(tool, token_in_env):
             stderr="",
         )
 
-        status, result = tool(args)
-        assert status == "success"
+        result = tool(args)
         assert result == "stdout"
 
 
@@ -262,8 +251,7 @@ def test_argless_tools(token_in_env):
             stderr="",
         )
 
-        status, result = show_pods_resource_usage()
-        assert status == "success"
+        result = show_pods_resource_usage()
         assert result == "stdout"
 
 
