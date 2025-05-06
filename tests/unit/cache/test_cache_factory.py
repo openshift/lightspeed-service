@@ -10,9 +10,7 @@ from ols.src.cache.cache_factory import (
     CacheFactory,
     InMemoryCache,
     PostgresCache,
-    RedisCache,
 )
-from tests.mock_classes.mock_redis_client import MockRedisClient
 
 
 @pytest.fixture(scope="module")
@@ -22,17 +20,6 @@ def in_memory_cache_config():
         {
             "type": constants.CACHE_TYPE_MEMORY,
             constants.CACHE_TYPE_MEMORY: {"max_entries": 10},
-        }
-    )
-
-
-@pytest.fixture(scope="module")
-def redis_cache_config():
-    """Fixture containing initialized instance of ConversationCacheConfig."""
-    return ConversationCacheConfig(
-        {
-            "type": constants.CACHE_TYPE_REDIS,
-            constants.CACHE_TYPE_REDIS: {"host": "localhost", "port": 6379},
         }
     )
 
@@ -62,17 +49,6 @@ def test_conversation_cache_in_memory(in_memory_cache_config):
     assert cache is not None
     # check if the object has the right type
     assert isinstance(cache, InMemoryCache)
-
-
-def test_conversation_cache_in_redis(redis_cache_config):
-    """Check if RedisCache is returned by factory with proper configuration."""
-    # do not use real Redis client
-    with patch("redis.StrictRedis", new=MockRedisClient):
-        cache = CacheFactory.conversation_cache(redis_cache_config)
-
-    assert cache is not None
-    # check if the object has the right type
-    assert isinstance(cache, RedisCache), type(cache)
 
 
 def test_conversation_cache_in_postgres(postgres_cache_config):
