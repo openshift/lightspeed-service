@@ -1,6 +1,7 @@
 """Unit tests for the providers module."""
 
 import pytest
+from langchain_core.language_models.fake_chat_models import FakeChatModel
 
 from ols import config, constants
 from ols.app.models.config import ProviderConfig, TLSSecurityProfile
@@ -47,10 +48,10 @@ def test_valid_provider_is_registered():
     class Spam(LLMProvider):
         @property
         def default_params(self):
-            return
+            return {}
 
         def load(self):
-            return
+            return FakeChatModel()
 
     assert "spam" in LLMProvidersRegistry.llm_providers
 
@@ -73,7 +74,7 @@ def test_llm_provider_params_order__inputs_overrides_defaults():
             return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
-            return
+            return FakeChatModel()
 
     my_provider = MyProvider(
         model="bla", params={"provider-param": 2}, provider_config=None
@@ -93,7 +94,7 @@ def test_llm_provider_params_order__config_overrides_everything():
             return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
-            return
+            return FakeChatModel()
 
     my_provider = MyProvider(
         model="bla", params={"provider-param": 2}, provider_config=None
@@ -113,7 +114,7 @@ def test_llm_provider_params_order__no_provider_type():
             return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
-            return
+            return FakeChatModel()
 
     # set up provider configuration with type set to None
     provider_config = ProviderConfig()
@@ -134,7 +135,7 @@ def test_construct_httpx_client():
             return {"provider-param": 1, "not-to-be-overwritten-param": "foo"}
 
         def load(self):
-            return
+            return FakeChatModel()
 
     # set up provider configuration with type set to None
     provider_config = ProviderConfig()
