@@ -7,13 +7,6 @@ from ols.src.auth import k8s, noop, noop_with_token
 from ols.src.auth.auth import get_auth_dependency, use_k8s_auth
 
 
-def test_use_k8s_auth_no_auth_config():
-    """Test the function use_k8s_auth."""
-    ols_config = OLSConfig()
-    ols_config.authentication_config = None
-    assert use_k8s_auth(ols_config) is False
-
-
 def test_use_k8s_auth_default_auth_config():
     """Test the function use_k8s_auth."""
     ols_config = OLSConfig()
@@ -35,14 +28,6 @@ def test_use_k8s_auth_no_k8s_module():
     ols_config.authentication_config = AuthenticationConfig()
     ols_config.authentication_config.module = "foo"
     assert use_k8s_auth(ols_config) is False
-
-
-def test_get_auth_dependency_no_auth_config():
-    """Test the function get_auth_dependency when auth config is not setup."""
-    ols_config = OLSConfig()
-    ols_config.authentication_config = None
-    with pytest.raises(Exception, match="Authentication is not configured properly"):
-        get_auth_dependency(ols_config, "/path")
 
 
 def test_get_auth_dependency_default_auth_config():

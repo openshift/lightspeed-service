@@ -12,9 +12,6 @@ logger = logging.getLogger(__name__)
 
 def use_k8s_auth(ols_config: OLSConfig) -> bool:
     """Return True if k8s authentication should be used in the service."""
-    if ols_config is None or ols_config.authentication_config is None:
-        return False
-
     auth_module = ols_config.authentication_config.module
     return auth_module is not None and auth_module == "k8s"
 
@@ -23,9 +20,6 @@ def get_auth_dependency(
     ols_config: OLSConfig, virtual_path: str
 ) -> AuthDependencyInterface:
     """Select the configured authentication dependency interface."""
-    if ols_config is None or ols_config.authentication_config is None:
-        raise Exception("Authentication is not configured properly")
-
     module = ols_config.authentication_config.module
     if module is None:
         raise Exception("Authentication module is not specified")
