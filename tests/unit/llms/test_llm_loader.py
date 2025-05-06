@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from langchain_core.language_models.fake_chat_models import FakeChatModel
 
 from ols import config, constants
 from ols.app.models.config import LLMProviders
@@ -28,7 +29,7 @@ def _registered_fake_provider():
             return {}
 
         def load(self):
-            return "fake_llm"
+            return FakeChatModel()
 
 
 def test_errors_relationship():
@@ -88,7 +89,7 @@ def test_load_llm():
         config.config.llm_providers = providers
 
         llm = load_llm(provider="fake-provider", model="model")
-        assert llm == "fake_llm"
+        assert llm == FakeChatModel()
 
 
 def test_load_llm_no_provider_config():

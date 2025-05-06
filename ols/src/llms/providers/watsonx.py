@@ -6,7 +6,7 @@ from typing import Any, Optional
 from ibm_watsonx_ai.metanames import (
     GenTextParamsMetaNames as GenParams,
 )
-from langchain.llms.base import LLM
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_ibm import ChatWatsonx
 
 from ols import constants
@@ -39,7 +39,7 @@ class Watsonx(LLMProvider):
             GenParams.REPETITION_PENALTY: 1.05,
         }
 
-    def load(self) -> LLM:
+    def load(self) -> BaseChatModel:
         """Load LLM."""
         self.url = str(self.provider_config.url or self.url)
         self.credentials = self.provider_config.credentials
