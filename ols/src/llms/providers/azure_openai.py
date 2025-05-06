@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from azure.core.credentials import AccessToken
 from azure.identity import ClientSecretCredential
-from langchain.llms.base import LLM
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI
 
 from ols import constants
@@ -91,7 +91,7 @@ class AzureOpenAI(LLMProvider):
             default_parameters["azure_ad_token"] = access_token
         return default_parameters
 
-    def load(self) -> LLM:
+    def load(self) -> BaseChatModel:
         """Load LLM."""
         return AzureChatOpenAI(**self.params)
 

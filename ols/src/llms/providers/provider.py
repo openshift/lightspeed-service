@@ -9,6 +9,7 @@ from typing import Any, Optional
 import httpx
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 from langchain.llms.base import LLM
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from ols import config
 from ols.app.models.config import ProviderConfig
@@ -205,7 +206,7 @@ class AbstractLLMProvider(abc.ABC):
         """
 
     @abc.abstractmethod
-    def load(self) -> LLM:
+    def load(self) -> BaseChatModel | LLM:
         """Load and langchain `LLM` instance and return it."""
 
 

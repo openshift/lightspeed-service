@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Optional
 
-from langchain.llms.base import LLM
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
 from ols import constants
@@ -47,6 +47,6 @@ class OpenAI(LLMProvider):
             "http_async_client": self._construct_httpx_client(False, True),
         }
 
-    def load(self) -> LLM:
+    def load(self) -> BaseChatModel:
         """Load LLM."""
         return ChatOpenAI(**self.params)
