@@ -333,7 +333,7 @@
                 "operationId": "liveness_probe_get_method_liveness_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Service is alive",
                         "content": {
                             "application/json": {
                                 "schema": {
