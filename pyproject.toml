@@ -101,7 +101,6 @@ dependencies = [
     "llama-index-vector-stores-faiss>=0.3.0",
     "llama-index-embeddings-huggingface>=0.4.0",
     "uvicorn>=0.32.1",
-    "redis>=5.2.0",
     "faiss-cpu>=1.9.0.post1",
     "openai>=1.54.3",
     "ibm-generative-ai>=3.0.0",  # bam dep

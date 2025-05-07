@@ -5,7 +5,6 @@ from ols.app.models.config import ConversationCacheConfig
 from ols.src.cache.cache import Cache
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.src.cache.postgres_cache import PostgresCache
-from ols.src.cache.redis_cache import RedisCache
 
 
 class CacheFactory:
@@ -16,11 +15,9 @@ class CacheFactory:
         """Create an instance of Cache based on loaded configuration.
 
         Returns:
-            An instance of `Cache` (either `RedisCache`, `PostgresCache` or `InMemoryCache`).
+            An instance of `Cache` (either `PostgresCache` or `InMemoryCache`).
         """
         match config.type:
-            case constants.CACHE_TYPE_REDIS:
-                return RedisCache(config.redis)
             case constants.CACHE_TYPE_MEMORY:
                 return InMemoryCache(config.memory)
             case constants.CACHE_TYPE_POSTGRES:
@@ -28,6 +25,6 @@ class CacheFactory:
             case _:
                 raise ValueError(
                     f"Invalid cache type: {config.type}. "
-                    f"Use '{constants.CACHE_TYPE_REDIS}', '{constants.CACHE_TYPE_POSTGRES}' or "
+                    f"Use '{constants.CACHE_TYPE_POSTGRES}' or "
                     f"'{constants.CACHE_TYPE_MEMORY}' options."
                 )
