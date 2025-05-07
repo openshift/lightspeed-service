@@ -1,15 +1,17 @@
 """Functions/Tools definition."""
 
 import logging
-from typing import Callable
 
 from langchain_core.messages import ToolMessage
+from langchain_core.tools.structured import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 logger = logging.getLogger(__name__)
 
 
-def get_tool_by_name(tool_name: str, mcp_client: MultiServerMCPClient) -> Callable:
+def get_tool_by_name(
+    tool_name: str, mcp_client: MultiServerMCPClient
+) -> StructuredTool:
     """Get a tool by its name from the MCP client."""
     tool = [tool for tool in mcp_client.get_tools() if tool.name == tool_name]
     if len(tool) == 0:
