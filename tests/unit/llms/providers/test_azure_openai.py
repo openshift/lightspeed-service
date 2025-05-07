@@ -7,8 +7,9 @@ import httpx
 import pytest
 from azure.core.credentials import AccessToken
 from langchain_openai import AzureChatOpenAI
+from pydantic import AnyHttpUrl
 
-from ols.app.models.config import ProviderConfig
+from ols.app.models.config import AzureOpenAIConfig, ProviderConfig
 from ols.src.llms.providers.azure_openai import (
     TOKEN_EXPIRATION_LEEWAY,
     AzureOpenAI,
@@ -417,6 +418,7 @@ class MockedCredential:
 
     def get_token(self, url):
         """Request an access token."""
+        assert url is not None
         return MockedAccessToken()
 
 
@@ -428,6 +430,7 @@ class MockedCredentialThrowingException:
 
     def get_token(self, url):
         """Request an access token."""
+        assert url is not None
         raise Exception("Error getting token")
 
 
@@ -476,11 +479,11 @@ def test_token_is_expired():
     assert token_cache.is_expired()
 
     # expires_on is in history - means it is expired
-    token_cache = TokenCache(expires_on=time.time() - 100)
+    token_cache = TokenCache(expires_on=int(time.time()) - 100)
     assert token_cache.is_expired()
 
     # expires_on is in future - means it is not expired
-    token_cache = TokenCache(expires_on=time.time() + 100)
+    token_cache = TokenCache(expires_on=int(time.time()) + 100)
     assert not token_cache.is_expired()
 
 
@@ -502,7 +505,7 @@ def test_token_is_not_reused(provider_config):
     new_access_token = AccessToken(token="new_token", expires_on=0)  # noqa: S106
     token_cache = TokenCache(
         access_token="expired_token",  # noqa: S106
-        expires_on=time.time() - 100,  # expired value
+        expires_on=int(time.time()) - 100,  # expired value
     )
 
     with (
@@ -516,7 +519,9 @@ def test_token_is_not_reused(provider_config):
 
         access_token = AzureOpenAI(
             model="irrelevant value", provider_config=provider_config
-        ).resolve_access_token("irrelevant value")
+        ).resolve_access_token(
+            AzureOpenAIConfig(url=AnyHttpUrl("http://foo.bar.baz"), deployment_name="")
+        )
 
         assert access_token == "new_token"  # noqa: S105
         assert access_token == token_cache.access_token  # cache is updated
@@ -526,7 +531,7 @@ def test_token_is_reused(provider_config):
     """Test that token is reused if it is not expired."""
     token_cache = TokenCache(
         access_token="non_expired_token",  # noqa: S106
-        expires_on=time.time() + 100,  # non-expired value
+        expires_on=int(time.time()) + 100,  # non-expired value
     )
 
     with (patch("ols.src.llms.providers.azure_openai.TOKEN_CACHE", new=token_cache),):
@@ -534,7 +539,9 @@ def test_token_is_reused(provider_config):
 
         access_token = AzureOpenAI(
             model="irrelevant value", provider_config=provider_config
-        ).resolve_access_token("irrelevant value")
+        ).resolve_access_token(
+            AzureOpenAIConfig(url=AnyHttpUrl("http://foo.bar.baz"), deployment_name="")
+        )
 
         assert access_token == "non_expired_token"  # noqa: S105
         assert access_token == token_cache.access_token  # cache is updated
