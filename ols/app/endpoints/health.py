@@ -117,7 +117,15 @@ def readiness_probe_get_method() -> ReadinessResponse:
     return ReadinessResponse(ready=True, reason="service is ready")
 
 
-@router.get("/liveness")
+get_liveness_responses: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": "Service is alive",
+        "model": LivenessResponse,
+    },
+}
+
+
+@router.get("/liveness", responses=get_liveness_responses)
 def liveness_probe_get_method() -> LivenessResponse:
     """Live status of service."""
     return LivenessResponse(alive=True)
