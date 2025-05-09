@@ -46,6 +46,12 @@ def generate_certificates_file(
     """Generate certificates by merging certificates from certify with defined certificates."""
     certificate_directory = ols_config.certificate_directory
 
+    if certificate_directory is None:
+        logger.warning(
+            "Cannot generate certificate file: certificate directory is not specified"
+        )
+        return
+
     logger.info("Generating certificates file into directory %s", certificate_directory)
 
     # file where all certificates will be stored

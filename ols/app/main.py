@@ -79,8 +79,8 @@ def _log_headers(headers: Headers, to_redact: frozenset[str]) -> str:
 
 @app.middleware("")
 async def log_requests_responses(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
+    request: Request, call_next: Callable[[Request], Awaitable[StreamingResponse]]
+) -> StreamingResponse:
     """Middleware for logging of HTTP requests and responses, at debug level."""
     # Bail out early if not logging or Prometheus metrics logging is suppressed
     if not logger.isEnabledFor(logging.DEBUG) or (
