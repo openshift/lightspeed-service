@@ -1,10 +1,9 @@
 """Score calculation for evaluation."""
 
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from ols import config
 from rouge_score.rouge_scorer import RougeScorer
 from scipy.spatial.distance import cosine, euclidean
-
-from ols import config
 
 from .constants import LLM_BASED_EVALS
 from .models import VANILLA_MODEL

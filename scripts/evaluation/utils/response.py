@@ -2,7 +2,6 @@
 
 from langchain.globals import set_debug
 from langchain.prompts import PromptTemplate
-
 from ols import config
 from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt

@@ -1,24 +1,31 @@
 """Main app entrypoint. Starts Uvicorn-based REST API service."""
 
+# pylint: disable=C0413
+# pylint: disable=C0412
+
 import logging
 import os
 import sys
 import threading
 from pathlib import Path
 
-from ols.constants import (
-    CONFIGURATION_DUMP_FILE_NAME,
-    CONFIGURATION_FILE_NAME_ENV_VARIABLE,
-    DEFAULT_CONFIGURATION_FILE,
-)
+# set project name for customize/ imports
+os.environ["PROJECT"] = "ols"
+
+from ols.constants import CONFIGURATION_DUMP_FILE_NAME
 from ols.runners.quota_scheduler import start_quota_scheduler
 from ols.runners.uvicorn import start_uvicorn
 from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
-from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_face_envs
+from ols.utils.environments import (
+    configure_gradio_ui_envs,
+    configure_hugging_face_envs,
+)
 from ols.utils.logging_configurator import configure_logging
 from ols.utils.pyroscope import start_with_pyroscope_enabled
-from ols.version import __version__
+
+from our_ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
+from our_ols.version import __version__
 
 
 def load_index():
@@ -41,9 +48,7 @@ if __name__ == "__main__":
     # else via our code before other envs are set (mainly the gradio).
     from ols import config
 
-    cfg_file = os.environ.get(
-        CONFIGURATION_FILE_NAME_ENV_VARIABLE, DEFAULT_CONFIGURATION_FILE
-    )
+    cfg_file = os.environ[CONFIGURATION_FILE_NAME_ENV_VARIABLE]
     config.reload_from_yaml_file(cfg_file)
 
     if "--dump-config" in sys.argv:

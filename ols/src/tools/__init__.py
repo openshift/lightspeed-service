@@ -1,1 +1,0 @@
-"""Tools/Functions Definition."""

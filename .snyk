@@ -3,8 +3,6 @@ exclude:
     # Ignore test code
     - 'tests/**'
     # Ignore utility scripts that don't ship
-    - 'scripts/transform_coverage_report.py'
     - 'scripts/questions_gen.py'
-    - 'scripts/generate_openapi_schema.py'
     - 'scripts/evaluation/**'
     - 'scripts/data_collection/**'

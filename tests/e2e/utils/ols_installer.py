@@ -5,7 +5,7 @@ import subprocess
 
 import yaml
 
-from ols.constants import DEFAULT_CONFIGURATION_FILE
+from our_ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
 from tests.e2e.utils.retry import retry_until_timeout_or_success

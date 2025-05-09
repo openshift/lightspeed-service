@@ -1,7 +1,6 @@
 """Utility for evaluation."""
 
 from langchain_core.messages import AIMessage
-
 from ols import config
 from ols.constants import RAG_CONTENT_LIMIT
 from ols.src.prompts.prompt_generator import GeneratePrompt

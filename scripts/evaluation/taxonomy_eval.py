@@ -8,10 +8,9 @@ from time import sleep
 import yaml
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts.prompt import PromptTemplate
+from ols import config
 from pandas import DataFrame
 from tqdm import tqdm
-
-from ols import config
 
 from .utils.constants import (
     DEFAULT_CONFIG_FILE,

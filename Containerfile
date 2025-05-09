@@ -54,7 +54,7 @@ COPY runner.py requirements.txt ./
 RUN pip3.11 install --upgrade pip
 RUN for a in 1 2 3 4 5; do pip3.11 install --no-cache-dir -r requirements.txt && break || sleep 15; done
 
-COPY ols ./ols
+COPY our_ols ./our_ols
 
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/

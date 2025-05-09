@@ -13,7 +13,7 @@ from numpy import argsort, array
 from pandas import read_parquet
 from tqdm import tqdm
 
-from ols import config
+from our_ols import config
 
 from .utils.constants import (
     DEFAULT_CONFIG_FILE,

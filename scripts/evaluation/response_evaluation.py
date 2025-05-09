@@ -6,10 +6,9 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from time import sleep
 
+from ols import config
 from pandas import DataFrame, concat, read_csv, read_parquet
 from tqdm import tqdm
-
-from ols import config
 
 from .utils.constants import (
     DEFAULT_CONFIG_FILE,

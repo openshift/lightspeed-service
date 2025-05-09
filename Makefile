@@ -64,30 +64,7 @@ run: ## Run the service locally
 print-version: ## Print the service version
 	python runner.py --version
 
-test: test-unit test-integration test-e2e ## Run all tests
-
-benchmarks: ## Run benchmarks
-	@echo "Running benchmarks..."
-	pdm run pytest tests/benchmarks --benchmark-histogram
-
-test-unit: ## Run the unit tests
-	@echo "Running unit tests..."
-	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" pdm run pytest tests/unit --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
-	pdm run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
-	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
-
-test-integration: ## Run integration tests tests
-	@echo "Running integration tests..."
-	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" pdm run pytest -m 'not redis' tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
-	pdm run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
-	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
-
-check-coverage: test-unit test-integration  ## Unit tests and integration tests overall code coverage check
-	coverage combine --keep "${ARTIFACT_DIR}/.coverage.unit" "${ARTIFACT_DIR}/.coverage.integration"
-	# the threshold should be very high there, in theory it should reach 100%
-	coverage report -m --fail-under=94
+test: test-e2e ## Run all tests
 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
@@ -101,19 +78,6 @@ test-eval: ## Run evaluation tests - requires running OLS server
 	pdm run pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_out_dir ${ARTIFACT_DIR}
 
-coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
-
-unit-tests-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit" -d htmlcov-unit
-
-integration-tests-coverage-report:	test-integration ## Export integration test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
-
-check-types: ## Checks type hints in sources
-	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
-
-security-check: ## Check the project for security issues
-	bandit -c pyproject.toml -r .
 
 format: ## Format the code into unified format
 	pdm run black .
@@ -123,17 +87,11 @@ verify:	install-woke install-deps-test ## Verify the code using various linters
 	pdm run black . --check
 	pdm run ruff check .
 	./woke . --exit-1-on-failure
-	pylint ols scripts tests runner.py
-	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
-
-schema:	## Generate OpenAPI schema file
-	python scripts/generate_openapi_schema.py docs/openapi.json
+	pylint our_ols scripts tests runner.py
+	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs our_ols/
 
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
 	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
-
-verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
-	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
 
 get-rag: ## Download a copy of the RAG embedding model and vector database
 	podman create --replace --name tmp-rag-container $$(grep 'ARG LIGHTSPEED_RAG_CONTENT_IMAGE' Containerfile | awk 'BEGIN{FS="="}{print $$2}') true
@@ -141,32 +99,6 @@ get-rag: ## Download a copy of the RAG embedding model and vector database
 	podman cp tmp-rag-container:/rag/vector_db vector_db
 	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
 	podman rm tmp-rag-container
-
-config.puml: ## Generate PlantUML class diagram for configuration
-	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
-	mv docs/classes.puml docs/config.puml
-
-docs/config.png:	docs/config.puml ## Generate an image with configuration graph
-	pushd docs && \
-	java -jar ${PATH_TO_PLANTUML}/plantuml.jar --theme rose config.puml && \
-	mv classes.png config.png && \
-	popd
-
-llms.puml: ## Generate PlantUML class diagram for LLM plugin system
-	pyreverse ols/src/llms/ --output puml --output-directory=docs/
-	mv docs/classes.puml docs/llms_classes.uml
-	mv docs/packages.puml docs/llms_packages.uml
-
-distribution-archives: ## Generate distribution archives to be uploaded into Python registry
-	pdm run python -m build
-
-upload-distribution-archives: ## Upload distribution archives into Python registry
-	pdm run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
-
-shellcheck: ## Run shellcheck
-	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" | tar -xJv \
-	shellcheck --version
-	shellcheck -- */*.sh
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
