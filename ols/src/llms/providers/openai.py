@@ -43,8 +43,8 @@ class OpenAI(LLMProvider):
             "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
-            "http_client": self._construct_httpx_client(False, False),
-            "http_async_client": self._construct_httpx_client(False, True),
+            "http_client": self._construct_httpx_client(True, False),
+            "http_async_client": self._construct_httpx_client(True, True),
         }
 
     def load(self) -> BaseChatModel:

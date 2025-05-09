@@ -306,7 +306,11 @@ class ProviderConfig(BaseModel):
             # deployment_name only required when using Azure OpenAI
             self.deployment_name = data.get("deployment_name", None)
             # note: it can be overwritten in azure_config
-        if self.type in (constants.PROVIDER_RHOAI_VLLM, constants.PROVIDER_RHELAI_VLLM):
+        if self.type in (
+            constants.PROVIDER_RHOAI_VLLM,
+            constants.PROVIDER_RHELAI_VLLM,
+            constants.PROVIDER_OPENAI,
+        ):
             self.certificates_store = os.path.join(
                 certificate_directory, constants.CERTIFICATE_STORAGE_FILENAME
             )
