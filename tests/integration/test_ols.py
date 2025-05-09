@@ -1,7 +1,7 @@
 """Integration tests for basic OLS REST API endpoints."""
 
 import logging
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -1159,19 +1159,27 @@ def test_tool_calling(_setup, caplog) -> None:
     """Check the REST API query endpoints when tool calling is enabled."""
     endpoint = "/v1/query"
     caplog.set_level(10)
-    config.ols_config.introspection_enabled = True
+    mcp_servers = {"name": "fake-server", "transport": "stdio", "stdio": {}}
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.src.query_helpers.docs_summarizer.get_available_tools"
-        ) as tools_mock,
+            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.mcp_config_to_client_dump",
+            return_value=mcp_servers,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+        ) as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
             new=fake_invoke_llm,
         ) as mock_invoke,
     ):
-        tools_mock.return_value = mock_tools_map
+        mock_mcp_client_instance = Mock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value.__aenter__.return_value = (
+            mock_mcp_client_instance
+        )
 
         with (
             patch(
@@ -1190,8 +1198,8 @@ def test_tool_calling(_setup, caplog) -> None:
             assert mock_invoke.call_count == 3
 
             assert "Tool: get_namespaces_mock" in caplog.text
-            tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-            assert f"Output: {tool_output[1]}" in caplog.text
+            tool_output = mock_tools_map[0].invoke({})
+            assert f"Output: {tool_output}" in caplog.text
 
             assert response.status_code == requests.codes.ok
             assert response.json()["response"] == "You have 1 namespace."

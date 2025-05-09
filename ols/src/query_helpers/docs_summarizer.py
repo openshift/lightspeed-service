@@ -2,23 +2,26 @@
 
 import asyncio
 import logging
+import os
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from llama_index.core.retrievers import BaseRetriever
 
-from ols import config
+from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
+from ols.app.models.config import MCPServerConfig
 from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.tools import execute_oc_tool_calls, get_available_tools
+from ols.src.tools.tools import execute_tool_calls
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -46,6 +49,90 @@ def tool_calls_from_tool_calls_chunks(
     return response.tool_calls
 
 
+def run_async_safely(coro: Callable) -> Any:
+    """Run an async function safely."""
+    try:
+        return asyncio.run(coro)
+    except RuntimeError as e:
+        if "already running" in str(e).lower():
+            logger.warning("Using existing event loop as one is already running")
+            return asyncio.get_event_loop().run_until_complete(coro)
+        raise
+
+
+class MCPConfigBuilder:
+    """Builds MCP config for MultiServerMCPClient."""
+
+    @staticmethod
+    def resolve_openshift_stdio_env_conf(server_envs: dict, user_token: str) -> dict:
+        """Resolve OpenShift stdio env config."""
+        logger.debug("Updating env configuration of openshift stdio mcp server")
+
+        env = {**server_envs}
+        if "OC_USER_TOKEN" in env:
+            logger.warning(
+                "OC_USER_TOKEN is set in openshift mcp server env config, "
+                "overriding with actual user token"
+            )
+        env["OC_USER_TOKEN"] = user_token
+        if "KUBECONFIG" not in env:
+            if "KUBECONFIG" in os.environ:
+                logger.info(
+                    "KUBECONFIG not set in openshift mcp server env config, using "
+                    "KUBECONFIG from environ"
+                )
+                env["KUBECONFIG"] = os.environ["KUBECONFIG"]
+            else:
+                logger.warning(
+                    "KUBECONFIG not set in openshift mcp server env config, "
+                    "and not found in environ"
+                )
+                if (
+                    "KUBERNETES_SERVICE_HOST" in os.environ
+                    and "KUBERNETES_SERVICE_PORT" in os.environ
+                ):
+                    logger.info(
+                        "Using KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT instead"
+                    )
+                    env["KUBERNETES_SERVICE_HOST"] = os.environ[
+                        "KUBERNETES_SERVICE_HOST"
+                    ]
+                    env["KUBERNETES_SERVICE_PORT"] = os.environ[
+                        "KUBERNETES_SERVICE_PORT"
+                    ]
+                else:
+                    logger.error(
+                        "Unable to find any values/envs required for openshift "
+                        "mcp server setup, it probably fail to give any output"
+                    )
+
+        return env
+
+    @staticmethod
+    def mcp_config_to_client_dump(
+        mcp_server_configs: list[MCPServerConfig], user_token: str
+    ) -> dict[str, Any]:
+        """Unpacks config to MultiServerMCPClient expectations."""
+        servers_conf = {}
+        for server_conf in mcp_server_configs:
+            servers_conf[server_conf.name] = {
+                "transport": server_conf.transport,
+            }
+            if server_conf.stdio:
+                servers_conf[server_conf.name].update(server_conf.stdio.model_dump())
+                # TODO: I'm not really happy about this solution, open
+                # for ideas - the config "variables" might be one solution
+                if server_conf.name == "openshift":
+                    servers_conf[server_conf.name]["env"] = (
+                        MCPConfigBuilder.resolve_openshift_stdio_env_conf(  # type: ignore [assignment]
+                            server_conf.stdio.env, user_token
+                        )
+                    )
+            if server_conf.sse:
+                servers_conf[server_conf.name].update(server_conf.sse.model_dump())
+        return servers_conf
+
+
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
@@ -64,9 +151,16 @@ class DocsSummarizer(QueryHelper):
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
 
         # tools part
-        self._introspection_enabled = config.ols_config.introspection_enabled
-        self.tools_map = get_available_tools(self._introspection_enabled, user_token)
         self.user_token = user_token
+        self.mcp_servers = MCPConfigBuilder.mcp_config_to_client_dump(
+            config.mcp_servers.servers, self.user_token
+        )
+        if self.mcp_servers:
+            logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
+            self._tool_calling_enabled = True
+        else:
+            logger.debug("No MCP servers provided, tool calling is disabled")
+            self._tool_calling_enabled = False
 
         # disabled - leaks token to logs when set to True
         set_debug(False)
@@ -116,7 +210,7 @@ class DocsSummarizer(QueryHelper):
             ["sample"],
             [AIMessage("sample")],
             self._system_prompt,
-            self._introspection_enabled,
+            self._tool_calling_enabled,
         ).generate_prompt(self.model)
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -148,7 +242,7 @@ class DocsSummarizer(QueryHelper):
             rag_context,
             history,
             self._system_prompt,
-            self._introspection_enabled,
+            self._tool_calling_enabled,
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
@@ -166,7 +260,7 @@ class DocsSummarizer(QueryHelper):
         self,
         messages: ChatPromptTemplate,
         llm_input_values: dict[str, str],
-        tools_map: dict[str, Callable],
+        tools_map: list[Callable],
         is_final_round: bool,
         token_counter: GenericTokenCounter,
     ) -> AsyncGenerator[AIMessageChunk, None]:
@@ -182,11 +276,12 @@ class DocsSummarizer(QueryHelper):
         Yields:
             AIMessageChunk objects from the LLM response stream
         """
+        logger.debug("provided %s tools", len(tools_map))
         # determine whether to use tools based on round and availability
         llm = (
             self.bare_llm
             if is_final_round or not tools_map
-            else self.bare_llm.bind_tools(tools_map.values())
+            else self.bare_llm.bind_tools(tools_map)
         )
 
         # create and execute the chain
@@ -201,7 +296,6 @@ class DocsSummarizer(QueryHelper):
         self,
         messages: ChatPromptTemplate,
         max_rounds: int,
-        tools_map: dict[str, Callable],
         llm_input_values: dict[str, str],
         token_counter: GenericTokenCounter,
     ) -> AsyncGenerator[StreamedChunk, None]:
@@ -218,67 +312,76 @@ class DocsSummarizer(QueryHelper):
             StreamedChunk objects representing parts of the response
         """
         for i in range(1, max_rounds + 1):
-            is_final_round = (not self._introspection_enabled) or (i == max_rounds)
-            tool_call_chunks = []
-            # invoke LLM and process response chunks
-            async for chunk in self._invoke_llm(
-                messages,
-                llm_input_values,
-                tools_map=tools_map,
-                is_final_round=is_final_round,
-                token_counter=token_counter,
-            ):
-                # TODO: Temporary fix for fake-llm (load test) which gives
-                # output as string. Currently every method that we use gives us
-                # proper output, except fake-llm. We need to move to a different
-                # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
-                # & tool calling and gives response not as string. Even below
-                # temp fix will fail for tool calling.
-                # (load test can be run with tool calling set to False till we
-                # have a permanent fix)
-                if isinstance(chunk, str):
-                    yield StreamedChunk(type="text", text=chunk)
-                    break
+            async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT):
+                async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
 
-                # check if LLM has finished generating
-                if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                    return
-
-                # collect tool chunk or yield text
-                if getattr(chunk, "tool_call_chunks", None):
-                    tool_call_chunks.append(chunk)
-                else:
-                    # stream text chunks directly
-                    yield StreamedChunk(type="text", text=chunk.content)
-
-            # exit if this was the final round
-            if is_final_round:
-                break
-
-            # tool calling part
-            if tool_call_chunks:
-                # assess tool calls and add to messages
-                tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                messages.append(AIMessage(content="", type="ai", tool_calls=tool_calls))
-                for tool_call in tool_calls:
-                    yield StreamedChunk(type="tool_call", data=tool_call)
-
-                # execute tools and add to messages
-                tool_calls_messages = execute_oc_tool_calls(
-                    tools_map, tool_calls, self.user_token
-                )
-                messages.extend(tool_calls_messages)
-                for tool_call_message in tool_calls_messages:
-                    yield StreamedChunk(
-                        type="tool_result",
-                        data={
-                            "id": tool_call_message.tool_call_id,
-                            "status": tool_call_message.status,
-                            "content": tool_call_message.content,
-                            "type": "tool_result",
-                            "round": i,
-                        },
+                    is_final_round = (not self._tool_calling_enabled) or (
+                        i == max_rounds
                     )
+                    logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
+
+                    tool_call_chunks = []
+                    # invoke LLM and process response chunks
+                    async for chunk in self._invoke_llm(
+                        messages,
+                        llm_input_values,
+                        tools_map=mcp_client.get_tools(),
+                        is_final_round=is_final_round,
+                        token_counter=token_counter,
+                    ):
+                        # TODO: Temporary fix for fake-llm (load test) which gives
+                        # output as string. Currently every method that we use gives us
+                        # proper output, except fake-llm. We need to move to a different
+                        # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
+                        # & tool calling and gives response not as string. Even below
+                        # temp fix will fail for tool calling.
+                        # (load test can be run with tool calling set to False till we
+                        # have a permanent fix)
+                        if isinstance(chunk, str):
+                            yield StreamedChunk(type="text", text=chunk)
+                            break
+
+                        # check if LLM has finished generating
+                        if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
+                            return
+
+                        # collect tool chunk or yield text
+                        if getattr(chunk, "tool_call_chunks", None):
+                            tool_call_chunks.append(chunk)
+                        else:
+                            # stream text chunks directly
+                            yield StreamedChunk(type="text", text=chunk.content)
+
+                    # exit if this was the final round
+                    if is_final_round:
+                        break
+
+                    # tool calling part
+                    if tool_call_chunks:
+                        # assess tool calls and add to messages
+                        tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
+                        messages.append(
+                            AIMessage(content="", type="ai", tool_calls=tool_calls)
+                        )
+                        for tool_call in tool_calls:
+                            yield StreamedChunk(type="tool_call", data=tool_call)
+
+                        # execute tools and add to messages
+                        tool_calls_messages = await execute_tool_calls(
+                            mcp_client, tool_calls
+                        )
+                        messages.extend(tool_calls_messages)
+                        for tool_call_message in tool_calls_messages:
+                            yield StreamedChunk(
+                                type="tool_result",
+                                data={
+                                    "id": tool_call_message.tool_call_id,
+                                    "status": tool_call_message.status,
+                                    "content": tool_call_message.content,
+                                    "type": "tool_result",
+                                    "round": i,
+                                },
+                            )
 
     async def generate_response(
         self,
@@ -309,7 +412,6 @@ class DocsSummarizer(QueryHelper):
             async for response in self.iterate_with_tools(
                 messages=messages,
                 max_rounds=MAX_ITERATIONS,
-                tools_map=self.tools_map,
                 token_counter=token_counter,
                 llm_input_values=llm_input_values,
             ):
@@ -378,12 +480,4 @@ class DocsSummarizer(QueryHelper):
 
         # TODO: if we define the non-streaming endpoint as async, we don't
         # need to handle any of this, we would just await it
-        try:
-            # run the async function synchronously
-            return asyncio.run(drain_generate_response())
-        except RuntimeError as e:
-            if "this event loop is already running" in str(e).lower():
-                logger.warning("Using existing event loop as one is already running")
-                loop = asyncio.get_event_loop()
-                return loop.run_until_complete(drain_generate_response())
-            raise
+        return run_async_safely(drain_generate_response())

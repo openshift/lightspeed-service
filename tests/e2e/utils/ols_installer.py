@@ -69,7 +69,7 @@ def create_and_config_sas() -> tuple[str, str]:
     return token, metrics_token
 
 
-def update_ols_config() -> None:
+def update_ols_config(tool_calling_enabled: bool) -> None:
     """Create the ols config configmap with log and collector config for e2e tests.
 
     Returns:
@@ -83,6 +83,20 @@ def update_ols_config() -> None:
     # one of our libs logs a secrets in debug mode which causes the pod
     # logs beying redacted/removed completely - we need log at info level
     olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
+
+    if tool_calling_enabled:
+        olsconfig["mcp_servers"] = [
+            {
+                "name": "openshift",
+                "transport": "stdio",
+                "stdio": {
+                    "command": "python3.11",
+                    "args": [
+                        "/app-root/mcp_local/openshift.py",
+                    ],
+                },
+            }
+        ]
 
     # add collector config for e2e tests
     olsconfig["user_data_collector_config"] = {
@@ -340,11 +354,14 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         print("olsconfig does not yet exist. Creating it.")
 
     crd_yml_name = f"olsconfig.crd.{provider}"
+    tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
     try:
         if len(provider_list) == 1:
-            if os.getenv("INTROSPECTION_ENABLED", "n") == "y":
-                print("Cluster introspection is enabled.")
-                crd_yml_name += "_introspection"
+            if tool_calling_enabled:
+                print("Cluster tool_calling is enabled.")
+                crd_yml_name += "_tool_calling"
+            # OLS-1711: temp solution until operator changes to support mcp_servers
+            print("DEBUG: creating introspection CM")
             cluster_utils.run_oc(
                 [
                     "create",
@@ -353,6 +370,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
                 ],
                 ignore_existing_resource=True,
             )
+            print("DEBUG: introspection CM created")
         else:
             cluster_utils.run_oc(
                 [
@@ -436,7 +454,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
             "0",
         ]
     )
-    update_ols_config()
+    update_ols_config(tool_calling_enabled)
     # scale the ols app server up
     cluster_utils.run_oc(
         [

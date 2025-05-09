@@ -1,24 +1,15 @@
 """OpenShift CLI tools."""
 
-# Need this to avoid adding token arg description to tool doc string.
-# inline ignore is getting removed.
-# ruff: noqa: D417
-
-# Debug note: to debug the tools in local service instance, eg. against
-# cluster, use the KUBECONFIG env variable to point to the kubeconfig
-# file with the cluster configuration, as the oc CLI checks this when no
-# server is provided in the command.
-
-
 import logging
+import os
 import subprocess
 import traceback
-from typing import Annotated
 
-from langchain.tools import tool
-from langchain_core.tools import InjectedToolArg
+from mcp.server.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
+
+mcp = FastMCP("oc_cli_tools")
 
 
 BLOCKED_CHARS = (";", "&", "|", "`", "$", "(", ")", "<", ">", "\\")
@@ -31,21 +22,19 @@ SECRET_NOT_ALLOWED_MSG = (
 
 
 def strip_args_for_oc_command(args: list[str]) -> list[str]:
-    """Sanitize arguments for `oc` CLI commands if LLM adds it extra."""
-    # sometimes within the list we may get two args combined, eg: [top pod]
-    splited_args = [arg for arg in " ".join(args).split(" ") if arg]
-
-    # sometimes model gives args which are already added to the tool.
-    remove_arg = ["oc", "get", "describe", "logs", "status", "adm", "top"]
-    for arg in remove_arg:
-        if arg in splited_args:
-            logger.debug("Removing argument from sanitized args: %s", arg)
-            splited_args.remove(arg)
-
-    return splited_args
+    """Sanitize arguments for `oc` CLI commands if LLM adds extras."""
+    # fixes these cases:
+    # - extra spaces in args: ["pod "]
+    # - extra commands in args: ["oc", "get", "pod"]
+    # - two commands as one in args: ["pod my-pod"]
+    remove_args = {"oc", "get", "describe", "logs", "status", "adm", "top"}
+    split_args = [
+        arg for arg in " ".join(args).split() if arg and arg not in remove_args
+    ]
+    return split_args
 
 
-def is_blocked_char_in_args(args: list[str]) -> list[str]:
+def is_blocked_char_in_args(args: list[str]) -> bool:
     """Check if any of the arguments contain blocked characters."""
     arg_str = " ".join(args)
     if any(char in arg_str for char in BLOCKED_CHARS):
@@ -54,7 +43,7 @@ def is_blocked_char_in_args(args: list[str]) -> list[str]:
     return False
 
 
-def is_secret_in_args(args: list[str]) -> list[str]:
+def is_secret_in_args(args: list[str]) -> bool:
     """Check if any of the arguments contain 'secret'."""
     arg_str = " ".join(args)
     if "secret" in arg_str:
@@ -63,17 +52,25 @@ def is_secret_in_args(args: list[str]) -> list[str]:
     return False
 
 
-def resolve_status_and_response(result: subprocess.CompletedProcess) -> tuple[str, str]:
+def redact_token(text: str, token: str) -> str:
+    """Redact token from text."""
+    return text.replace(token, "<redacted>")
+
+
+def resolve_response(result: subprocess.CompletedProcess) -> str:
     """Return stdout if it is not empty string, otherwise return stderr."""
     # some commands returns empty stdout and message like "namespace not found"
     # in stderr, but with return code 0
     if result.returncode == 0:
-        return "success", result.stdout if result.stdout != "" else result.stderr
-    return "error", result.stderr
+        return result.stdout if result.stdout != "" else result.stderr
+    return result.stderr
 
 
-def run_oc(args: list[str], token: str) -> tuple[str, str]:
+def run_oc(args: list[str]) -> str:
     """Run `oc` CLI with provided arguments and command."""
+    # Currently user token is sent to server using env var.
+    token = os.environ.get("OC_USER_TOKEN", "token-not-set")
+
     try:
         res = subprocess.run(  # noqa: S603
             ["oc", *args, "--token", token],  # noqa: S607
@@ -84,31 +81,24 @@ def run_oc(args: list[str], token: str) -> tuple[str, str]:
         )
     except Exception:
         # if token was used, redact the error to ensure it is not leaked
-        safe_traceback = (
-            traceback.format_exc().replace(token, "<redacted>")
-            if token
-            else traceback.format_exc()
-        )
-        return "error", f"Error executing args '{args}': {safe_traceback}"
+        return f"Error executing args '{args}': {redact_token(traceback.format_exc(), token)}"
 
-    status, response = resolve_status_and_response(res)
-    return status, response.replace(token, "<redacted>")
+    response = resolve_response(res)
+    return redact_token(response, token)
 
 
-def safe_run_oc(commands: list[str], args: list[str], token: str) -> tuple[str, str]:
+def safe_run_oc(commands: list[str], args: list[str]) -> str:
     """Run `oc` CLI with provided arguments and command."""
     if is_blocked_char_in_args(args):
-        return "error", BLOCKED_CHARS_DETECTED_MSG
+        return BLOCKED_CHARS_DETECTED_MSG
     if is_secret_in_args(args):
-        return "error", SECRET_NOT_ALLOWED_MSG
-    status, result = run_oc([*commands, *strip_args_for_oc_command(args)], token)
-    return status, result
+        return SECRET_NOT_ALLOWED_MSG
+    result = run_oc([*commands, *strip_args_for_oc_command(args)])
+    return result
 
 
-@tool
-def oc_get(
-    oc_get_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> tuple[str, str]:
+@mcp.tool()
+def oc_get(oc_get_args: list[str]) -> str:
     """Display one or many resources from OpenShift cluster.
 
     Standard `oc` flags and options are valid.
@@ -141,13 +131,11 @@ def oc_get(
         # List all replication controllers and services together in ps output format.
         oc get rc,services
     """
-    return safe_run_oc(["get"], oc_get_args, token)
+    return safe_run_oc(["get"], oc_get_args)
 
 
-@tool
-def oc_describe(
-    oc_describe_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> tuple[str, str]:
+@mcp.tool()
+def oc_describe(oc_describe_args: list[str]) -> str:
     """Show details of a specific resource or group of resources.
 
     Print a detailed description of the selected resources, including related resources such as events or controllers.
@@ -175,13 +163,11 @@ def oc_describe(
         # Describe all pods managed by the 'frontend' replication controller
         oc describe pods frontend
     """  # noqa: E501
-    return safe_run_oc(["describe"], oc_describe_args, token)
+    return safe_run_oc(["describe"], oc_describe_args)
 
 
-@tool
-def oc_logs(
-    oc_logs_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> tuple[str, str]:
+@mcp.tool()
+def oc_logs(oc_logs_args: list[str]) -> str:
     """Print the logs for a resource.
 
     Supported resources are builds, build configs (bc), deployment configs (dc), and pods.
@@ -204,13 +190,11 @@ def oc_logs(
         # Start streaming of ruby-container logs from pod backend.
         oc logs -f pod/backend -c ruby-container
     """  # noqa: E501
-    return safe_run_oc(["logs"], oc_logs_args, token)
+    return safe_run_oc(["logs"], oc_logs_args)
 
 
-@tool
-def oc_status(
-    oc_status_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> tuple[str, str]:
+@mcp.tool()
+def oc_status(oc_status_args: list[str]) -> str:
     """Show a high level overview of the current project.
 
     This command will show services, deployment configs, build configurations, & active deployments.
@@ -231,11 +215,11 @@ def oc_status(
         # See an overview of the current project including details for any identified issues.
         oc --suggest
     """
-    return safe_run_oc(["status"], oc_status_args, token)
+    return safe_run_oc(["status"], oc_status_args)
 
 
-@tool
-def show_pods_resource_usage(token: Annotated[str, InjectedToolArg]) -> tuple[str, str]:
+@mcp.tool()
+def show_pods_resource_usage() -> str:
     """Show resource usage (CPU and memory) for all pods accross all namespaces.
 
     Usecases:
@@ -248,13 +232,11 @@ def show_pods_resource_usage(token: Annotated[str, InjectedToolArg]) -> tuple[st
         kube-system  konnectivity-agent-qwnsd                          1m          24Mi
         kube-system  kube-apiserver-proxy-ip-10-0-130-91.ec2.internal  2m          13Mi
     """
-    return run_oc(["adm", "top", "pods", "-A"], token)
+    return run_oc(["adm", "top", "pods", "-A"])
 
 
-@tool
-def oc_adm_top(
-    oc_adm_top_args: list[str], token: Annotated[str, InjectedToolArg]
-) -> tuple[str, str]:
+@mcp.tool()
+def oc_adm_top(oc_adm_top_args: list[str]) -> str:
     """Show usage statistics of resources on the server.
 
     This command analyzes resources managed by the platform and presents current usage statistics.
@@ -278,4 +260,8 @@ def oc_adm_top(
         --namespace <namespace>
             Lists resources for specified namespace.
     """
-    return safe_run_oc(["adm", "top"], oc_adm_top_args, token)
+    return safe_run_oc(["adm", "top"], oc_adm_top_args)
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

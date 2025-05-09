@@ -13,14 +13,14 @@ spec:
     providers:
       - credentialsSecretRef:
           name: llmcreds
+        projectID: ad629765-c373-4731-9d69-dc701724c081
         models:
-          - name: gpt-4o-mini
-        name: openai
-        type: openai
+          - name: ibm/granite-3-2-8b-instruct
+        name: watsonx
+        type: watsonx
   ols:
-    defaultModel: gpt-4o-mini
-    defaultProvider: openai
-    introspectionEnabled: true
+    defaultModel: ibm/granite-3-2-8b-instruct
+    defaultProvider: watsonx
     deployment:
       replicas: 1
     disableAuth: false
@@ -32,3 +32,10 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
+  mcp_servers:
+    - name: openshift
+      transport: stdio
+      stdio:
+        command: python
+        args:
+          - ./mcp_local/openshift.py

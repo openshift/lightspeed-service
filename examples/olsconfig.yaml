@@ -50,7 +50,6 @@ ols_config:
       - product_docs_index_path: "./vector_db/user_application_docs/version_1"
         product_docs_index_id: user-application-docs-version_1
     embeddings_model_path: "./embeddings_model"
-  introspection_enabled: true # Default is false, OLS tool calling
   conversation_cache:
     type: memory
     memory:
@@ -108,3 +107,12 @@ dev_config:
   # llm_params:
   #   temperature_override: 0
   # k8s_auth_token: optional_token_when_no_available_kube_config
+
+# MCP servers - enables tool calling if present
+mcp_servers:
+  - name: openshift
+    transport: stdio
+    stdio:
+      command: python
+      args: 
+        - ./mcp_local/openshift.py

@@ -1,7 +1,8 @@
 """Unit tests for DocsSummarizer class."""
 
 import logging
-from unittest.mock import ANY, patch
+import os
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -14,9 +15,14 @@ from tests.mock_classes.mock_tools import mock_tools_map
 config.ols_config.authentication_config.module = "k8s"
 
 
-from ols.app.models.config import LoggingConfig  # noqa:E402
+from ols.app.models.config import (  # noqa:E402
+    LoggingConfig,
+    MCPServerConfig,
+    StdioTransportConfig,
+)
 from ols.src.query_helpers.docs_summarizer import (  # noqa:E402
     DocsSummarizer,
+    MCPConfigBuilder,
     QueryHelper,
 )
 from ols.utils import suid  # noqa:E402
@@ -53,7 +59,7 @@ def check_summary_result(summary, question):
 @pytest.fixture(scope="function", autouse=True)
 def _setup():
     """Set up config for tests."""
-    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+    config.reload_from_yaml_file("tests/config/valid_config_without_mcp.yaml")
 
 
 def test_if_system_prompt_was_updated():
@@ -196,7 +202,6 @@ async def async_mock_invoke(yield_values):
 
 def test_tool_calling_one_iteration():
     """Test tool calling - stops after one iteration."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster?"
 
     with patch(
@@ -206,6 +211,7 @@ def test_tool_calling_one_iteration():
             [AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})]
         )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
         assert mock_invoke.call_count == 1
 
@@ -237,7 +243,6 @@ async def fake_invoke_llm(*args, **kwargs):
 
 def test_tool_calling_two_iteration():
     """Test tool calling - stops after two iterations."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster?"
 
     with patch(
@@ -245,13 +250,13 @@ def test_tool_calling_two_iteration():
         new=fake_invoke_llm,
     ) as mock_invoke:
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
         assert mock_invoke.call_count == 2
 
 
 def test_tool_calling_force_stop():
     """Test tool calling - force stop."""
-    config.ols_config.introspection_enabled = True
     question = "How many namespaces are there in my cluster?"
 
     with (
@@ -268,6 +273,7 @@ def test_tool_calling_force_stop():
             ]
         )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
         assert mock_invoke.call_count == 3
 
@@ -275,15 +281,14 @@ def test_tool_calling_force_stop():
 def test_tool_calling_tool_execution(caplog):
     """Test tool calling - tool execution."""
     caplog.set_level(10)  # Set debug level
-    config.ols_config.introspection_enabled = True
 
     question = "How many namespaces are there in my cluster?"
 
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
         patch(
-            "ols.src.query_helpers.docs_summarizer.get_available_tools"
-        ) as mock_tools,
+            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+        ) as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
@@ -300,15 +305,133 @@ def test_tool_calling_tool_execution(caplog):
                 )
             ]
         )
-        mock_tools.return_value = mock_tools_map
+        mock_mcp_client_instance = Mock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value.__aenter__.return_value = (
+            mock_mcp_client_instance
+        )
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
 
         assert "Tool: get_namespaces_mock" in caplog.text
-        tool_output = mock_tools_map["get_namespaces_mock"].invoke({})
-        assert f"Output: {tool_output[1]}" in caplog.text
+        tool_output = mock_tools_map[0].invoke({})
+        assert f"Output: {tool_output}" in caplog.text
 
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
+
+
+def test_mcp_config_builder():
+    """Test MCPConfigBuilder."""
+    mcp_server_configs = [
+        MCPServerConfig(
+            name="openshift",
+            transport="stdio",
+            stdio=StdioTransportConfig(
+                command="hello",
+                env={"X": "Y"},
+            ),
+        ),
+        MCPServerConfig(
+            name="not-openshift",
+            transport="stdio",
+            stdio=StdioTransportConfig(
+                command="hello",
+                env={"X": "Y"},
+            ),
+        ),
+    ]
+    user_token = "fake-token"  # noqa: S105
+
+    # patch the environment variable to avoid using values from the system
+    with patch.dict(os.environ, {}, clear=True):
+        mcp_config = MCPConfigBuilder.mcp_config_to_client_dump(
+            mcp_server_configs, user_token
+        )
+
+    assert mcp_config == {
+        "openshift": {
+            "transport": "stdio",
+            "command": "hello",
+            "args": [],
+            "env": {"X": "Y", "OC_USER_TOKEN": "fake-token"},
+            "cwd": ".",
+            "encoding": "utf-8",
+        },
+        "not-openshift": {
+            "transport": "stdio",
+            "command": "hello",
+            "args": [],
+            "env": {"X": "Y"},
+            "cwd": ".",
+            "encoding": "utf-8",
+        },
+    }
+
+
+class TestMCPConfigBuilder:
+    """Test MCPConfigBuilder class."""
+
+    @staticmethod
+    def test_expected_scenario():
+        """Test MCPConfigBuilder with env."""
+        user_token = "fake-token"  # noqa: S105
+        envs = {"A": 42, "KUBECONFIG": "bla"}
+
+        mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(envs, user_token)
+
+        expected = {**envs, "OC_USER_TOKEN": user_token}
+        assert mcp_config == expected
+
+    @staticmethod
+    def test_token_set_in_env(caplog):
+        """Test MCPConfigBuilder with token set in env."""
+        # OC_USER_TOKEN set in env - is logged and overriden
+        user_token = "fake-token"  # noqa: S105
+        envs = {"OC_USER_TOKEN": "different-value"}
+
+        with patch.dict(os.environ, {}, clear=True):
+            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
+                envs, user_token
+            )
+
+        expected = {"OC_USER_TOKEN": user_token}
+        assert mcp_config == expected
+        assert "overriding with actual user token" in caplog.text
+
+    @staticmethod
+    def test_kubeconfig_is_missing(caplog):
+        """Test MCPConfigBuilder with KUBECONFIG missing."""
+        # KUBECONFIG is not set in env - value from os.environ is used
+        caplog.set_level(20)  # info
+        envs = {"A": 42}
+        user_token = "fake-token"  # noqa: S105
+
+        with patch.dict(os.environ, {"KUBECONFIG": "os value"}):
+            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
+                envs, user_token
+            )
+
+        expected = {**envs, "OC_USER_TOKEN": user_token, "KUBECONFIG": "os value"}
+        assert mcp_config == expected
+        assert "using KUBECONFIG from environ" in caplog.text
+
+    @staticmethod
+    def test_kubeconfig_is_missing_completely(caplog):
+        """Test MCPConfigBuilder with KUBECONFIG missing."""
+        # KUBECONFIG is not in env or system
+        envs = {}
+        user_token = "fake-token"  # noqa: S105
+
+        with patch.dict(os.environ, {}, clear=True):
+            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
+                envs, user_token
+            )
+
+        expected = {"OC_USER_TOKEN": user_token}
+        assert mcp_config == expected
+        assert "KUBECONFIG not set in openshift mcp server" in caplog.text
+        assert "and not found in environ" in caplog.text
