@@ -1,6 +1,7 @@
 """Utility script to generate automatic questions."""
 
 # TODO: OLS-505 Refactor script scripts/question_get.py to adhere to Python standards and idioms
+# pylint: disable=C0413
 
 import argparse
 import asyncio
@@ -31,14 +32,15 @@ sys.path.append(
 )
 
 # pylint: disable-next=C0413
-from ols import config
+from ols.src.llms.llm_loader import load_llm  # pylint: disable=C0413
+
+from our_ols import config
 
 # pylint: disable-next=C0413
-from ols.constants import (
+from our_ols.constants import (
     CONFIGURATION_FILE_NAME_ENV_VARIABLE,
     DEFAULT_CONFIGURATION_FILE,
 )
-from ols.src.llms.llm_loader import load_llm  # pylint: disable=C0413
 
 cfg_file = os.environ.get(
     CONFIGURATION_FILE_NAME_ENV_VARIABLE, DEFAULT_CONFIGURATION_FILE

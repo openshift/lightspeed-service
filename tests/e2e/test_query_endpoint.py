@@ -4,8 +4,8 @@ import re
 
 import pytest
 import requests
-
 from ols.utils import suid
+
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils
 from tests.e2e.utils import response as response_utils

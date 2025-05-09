@@ -1,7 +1,6 @@
 """Models for evaluation."""
 
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
-
 from ols.src.llms.providers.azure_openai import AzureOpenAI
 from ols.src.llms.providers.openai import OpenAI
 from ols.src.llms.providers.watsonx import Watsonx

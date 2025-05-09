@@ -6,10 +6,10 @@ import time
 
 import pytest
 import requests
-
 from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.customize import metadata
 from ols.utils import suid
+
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import metrics as metrics_utils

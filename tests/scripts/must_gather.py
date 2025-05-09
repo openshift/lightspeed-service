@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from ols.constants import DEFAULT_CONFIGURATION_FILE
+from our_ols.constants import DEFAULT_CONFIGURATION_FILE
 
 sys.path.append(Path(__file__).parent.parent.parent.as_posix())
 from tests.e2e.utils import cluster as cluster_utils
