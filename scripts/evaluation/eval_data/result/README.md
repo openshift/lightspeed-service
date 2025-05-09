@@ -6,13 +6,15 @@
 - [Instruction to run eval script](../../README.md)
 
 ## Result
-- Last Execution date: `2025-03-02`
+- Last Execution date: `2025-05-07`
 - Evaluated Provider/Models:
-    - (watsonx) ibm/granite-3-8b-instruct (API Version: 2024-11-27)
+    - (watsonx) ibm/granite-3-2-8b-instruct (API Version: 2025-04-02)
     - (azure) gpt-4o-mini (Model Version: 2024-07-18, API Version: 2024-02-15-preview)
 - Judge provider/model (LLM based eval): (watsonx) llama-3-1-8b-instruct
 - QnA evaluation dataset: [QnAs from OCP doc](../ocp_doc_qna-edited.parquet)
-- RAG SHA: e4420ab37f9ad90daeab93ba6717db6d388c69a357d0eeb486d1d2d0bc15e085
+- API run mode: without tool calling (streaming internally)
+- RAG SHA: 56269892dcf5279b9857c04918e8fba587008990b09146e907d7af9303bd6c9e
+    - OCP doc: 4.18
     - Embedding model: all-mpnet-base-v2
     - Splitter: Normal (chunk: 380)
     - Vector DB: faiss
