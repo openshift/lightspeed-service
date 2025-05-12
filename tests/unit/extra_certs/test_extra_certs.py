@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 import pytest
 from cryptography import x509
@@ -14,7 +15,7 @@ from ols.utils.certificates import (
 )
 
 cert_in_certificates_store_path = "tests/unit/extra_certs/sample_cert_1.crt"
-extra_cert_path = "tests/unit/extra_certs/sample_cert_2.crt"
+extra_cert_path = Path("tests/unit/extra_certs/sample_cert_2.crt")
 
 
 @pytest.fixture
