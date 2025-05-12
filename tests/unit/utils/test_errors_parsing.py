@@ -1,7 +1,7 @@
 """Unit Test for the errors parsing class."""
 
 from genai.exceptions import ApiResponseException
-from httpx import Response
+from httpx import Request, Response
 from openai import BadRequestError
 
 from ols.utils import errors_parsing
@@ -12,7 +12,10 @@ BAD_REQUEST_STATUS_CODE = 400
 def test_parse_generic_llm_error_on_bad_request_error_without_info():
     """Test the parse_generic_llm_error function when BadRequestError is passed."""
     expected_status_code = BAD_REQUEST_STATUS_CODE
-    response = Response(status_code=expected_status_code, request={})
+    response = Response(
+        status_code=expected_status_code,
+        request=Request(method="GET", url="http://foo.com"),
+    )
     error = BadRequestError("Exception", response=response, body=None)
 
     # try to parse the exception
@@ -28,7 +31,10 @@ def test_parse_generic_llm_error_on_bad_request_error_with_info():
     """Test the parse_generic_llm_error function when BadRequestError is passed."""
     expected_status_code = BAD_REQUEST_STATUS_CODE
     message = "Exception message"
-    response = Response(status_code=expected_status_code, request={})
+    response = Response(
+        status_code=expected_status_code,
+        request=Request(method="GET", url="http://foo.com"),
+    )
     error = BadRequestError("Exception", response=response, body={"message": message})
 
     # try to parse the exception
