@@ -71,6 +71,7 @@ def test_post_authorized_disabled_with_logging_suppressed(caplog):
     """Check the REST API /v1/query with POST HTTP method with the auth warning suppressed."""
     # perform POST request with authentication disabled
     logging_config = LoggingConfig(app_log_level="warning")
+    assert config.ols_config.logging_config is not None
     config.ols_config.logging_config.suppress_auth_checks_warning_in_log = True
 
     configure_logging(logging_config)
