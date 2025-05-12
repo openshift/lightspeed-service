@@ -25,8 +25,11 @@ def _import_modules_from_dir(dir_name: str) -> None:
         spec = importlib.util.spec_from_file_location(
             "module_name", module_name.as_posix()
         )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        if spec is not None and spec.loader is not None:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        else:
+            raise Exception(f"Can not import module {module_name}")
 
 
 # TODO: move providers to plugins

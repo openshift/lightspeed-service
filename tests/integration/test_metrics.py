@@ -94,6 +94,7 @@ def test_metrics_with_debug_log(caplog):
 def test_metrics_with_debug_logging_suppressed(caplog):
     """Check if service provides metrics endpoint with some counters and log output suppressed."""
     logging_config = LoggingConfig(app_log_level="debug")
+    assert config.ols_config.logging_config is not None
     config.ols_config.logging_config.suppress_metrics_in_log = True
 
     configure_logging(logging_config)
