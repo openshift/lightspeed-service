@@ -13,14 +13,9 @@ ols_config:
       - product_docs_index_path: "tests/config"
         product_docs_index_id: product
   conversation_cache:
-    type: redis
-    redis:
-      host: "foobar.com"
-      port: "1234"
-      max_memory: 100MB
-      max_memory_policy: "allkeys-lru"
-      password_path: tests/config/redis_password.txt
-      ca_cert_path: tests/config/redis_ca_cert.crt
+    type: memory
+    memory:
+      max_entries: 1000
   default_provider: p1
   default_model: m1
 dev_config:

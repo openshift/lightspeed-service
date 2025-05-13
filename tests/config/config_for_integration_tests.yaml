@@ -87,13 +87,6 @@ ols_config:
     type: memory
     memory:
       max_entries: 1000
-    redis:
-      host: "foobar.com"
-      port: "1234"
-      max_memory: 100MB
-      max_memory_policy: "allkeys-lru"
-      password_path: tests/config/redis_password.txt
-      ca_cert_path: tests/config/redis_ca_cert.crt
     postgres:
       host: "foobar.com"
       port: "1234"
