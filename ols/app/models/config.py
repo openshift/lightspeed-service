@@ -605,86 +605,6 @@ class PostgresConfig(BaseModel):
         return self
 
 
-class RedisConfig(BaseModel):
-    """Redis configuration."""
-
-    host: Optional[str] = None
-    port: Optional[int] = None
-    max_memory: Optional[str] = None
-    max_memory_policy: Optional[str] = None
-    password: Optional[str] = None
-    ca_cert_path: Optional[FilePath] = None
-    retry_on_error: Optional[bool] = None
-    retry_on_timeout: Optional[bool] = None
-    number_of_retries: Optional[int] = None
-
-    def __init__(self, data: Optional[dict] = None) -> None:
-        """Initialize configuration and perform basic validation."""
-        super().__init__()
-        if data is None:
-            return
-        self.host = data.get("host", constants.REDIS_CACHE_HOST)
-
-        yaml_port = data.get("port", constants.REDIS_CACHE_PORT)
-        try:
-            self.port = int(yaml_port)
-            if not 0 < self.port < 65536:
-                raise ValueError
-        except ValueError as e:
-            raise checks.InvalidConfigurationError(
-                f"invalid Redis port {yaml_port}, valid ports are integers in the (0, 65536) range"
-            ) from e
-
-        self.max_memory = data.get("max_memory", constants.REDIS_CACHE_MAX_MEMORY)
-
-        self.max_memory_policy = data.get(
-            "max_memory_policy", constants.REDIS_CACHE_MAX_MEMORY_POLICY
-        )
-        self.ca_cert_path = data.get("ca_cert_path", None)
-        self.password = checks.get_attribute_from_file(data, "password_path")
-        self.retry_on_error = (
-            str(data.get("retry_on_error", constants.REDIS_RETRY_ON_ERROR)).lower()
-            == "true"
-        )
-        self.retry_on_timeout = (
-            str(data.get("retry_on_timeout", constants.REDIS_RETRY_ON_TIMEOUT)).lower()
-            == "true"
-        )
-        self.number_of_retries = int(
-            data.get("number_of_retries", constants.REDIS_NUMBER_OF_RETRIES)
-        )
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, RedisConfig):
-            return (
-                self.host == other.host
-                and self.port == other.port
-                and self.max_memory == other.max_memory
-                and self.max_memory_policy == other.max_memory_policy
-                and self.password == other.password
-                and self.ca_cert_path == other.ca_cert_path
-                and self.retry_on_error == other.retry_on_error
-                and self.retry_on_timeout == other.retry_on_timeout
-                and self.number_of_retries == other.number_of_retries
-            )
-        return False
-
-    def validate_yaml(self) -> None:
-        """Validate Redis cache config."""
-        if (
-            self.max_memory_policy is not None
-            and self.max_memory_policy not in constants.REDIS_CACHE_MAX_MEMORY_POLICIES
-        ):
-            valid_polices = ", ".join(
-                str(p) for p in constants.REDIS_CACHE_MAX_MEMORY_POLICIES
-            )
-            raise checks.InvalidConfigurationError(
-                f"invalid Redis max_memory_policy {self.max_memory_policy},"
-                f" valid policies are ({valid_polices})"
-            )
-
-
 class InMemoryCacheConfig(BaseModel):
     """In-memory cache configuration."""
 
@@ -769,7 +689,6 @@ class ConversationCacheConfig(BaseModel):
     """Conversation cache configuration."""
 
     type: Optional[str] = None
-    redis: Optional[RedisConfig] = None
     memory: Optional[InMemoryCacheConfig] = None
     postgres: Optional[PostgresConfig] = None
 
@@ -781,13 +700,6 @@ class ConversationCacheConfig(BaseModel):
         self.type = data.get("type", None)
         if self.type is not None:
             match self.type:
-                case constants.CACHE_TYPE_REDIS:
-                    if constants.CACHE_TYPE_REDIS not in data:
-                        raise checks.InvalidConfigurationError(
-                            "redis conversation cache type is specified,"
-                            " but redis configuration is missing"
-                        )
-                    self.redis = RedisConfig(data.get(constants.CACHE_TYPE_REDIS))
                 case constants.CACHE_TYPE_MEMORY:
                     if constants.CACHE_TYPE_MEMORY not in data:
                         raise checks.InvalidConfigurationError(
@@ -816,7 +728,6 @@ class ConversationCacheConfig(BaseModel):
         if isinstance(other, ConversationCacheConfig):
             return (
                 self.type == other.type
-                and self.redis == other.redis
                 and self.memory == other.memory
                 and self.postgres == other.postgres
             )
@@ -828,8 +739,6 @@ class ConversationCacheConfig(BaseModel):
             raise checks.InvalidConfigurationError("missing conversation cache type")
         # cache type is specified, we can decide which cache configuration to validate
         match self.type:
-            case constants.CACHE_TYPE_REDIS:
-                self.redis.validate_yaml()
             case constants.CACHE_TYPE_MEMORY:
                 self.memory.validate_yaml()
             case constants.CACHE_TYPE_POSTGRES:

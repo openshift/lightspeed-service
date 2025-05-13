@@ -25,7 +25,6 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
     QuotaHandlersConfig,
-    RedisConfig,
     ReferenceContent,
     ReferenceContentIndex,
     SseTransportConfig,
@@ -2021,204 +2020,6 @@ def test_postgres_config_with_password():
     assert postgres_config.password == "postgres_password"  # noqa: S105
 
 
-def test_redis_config():
-    """Test the RedisConfig model."""
-    redis_config = RedisConfig({})
-    # default values
-    assert redis_config.retry_on_error == constants.REDIS_RETRY_ON_ERROR
-    assert redis_config.retry_on_timeout == constants.REDIS_RETRY_ON_TIMEOUT
-    assert redis_config.number_of_retries == constants.REDIS_NUMBER_OF_RETRIES
-
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-            "retry_on_error": "false",
-            "retry_on_timeout": "false",
-            "number_of_retries": 42,
-        }
-    )
-
-    # explicitly set values
-    assert redis_config.host == "localhost"
-    assert redis_config.port == 6379
-    assert redis_config.max_memory == "200mb"
-    assert redis_config.max_memory_policy == "allkeys-lru"
-    assert redis_config.retry_on_error is False
-    assert redis_config.retry_on_timeout is False
-    assert redis_config.number_of_retries == 42
-
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-            "retry_on_error": "true",
-            "retry_on_timeout": "true",
-            "number_of_retries": 100,
-        }
-    )
-    assert redis_config.host == "localhost"
-    assert redis_config.port == 6379
-    assert redis_config.max_memory == "200mb"
-    assert redis_config.max_memory_policy == "allkeys-lru"
-    assert redis_config.retry_on_error is True
-    assert redis_config.retry_on_timeout is True
-    assert redis_config.number_of_retries == 100
-
-    redis_config = RedisConfig()
-
-    # initial values
-    assert redis_config.host is None
-    assert redis_config.port is None
-    assert redis_config.max_memory is None
-    assert redis_config.max_memory_policy is None
-    assert redis_config.retry_on_error is None
-    assert redis_config.retry_on_timeout is None
-    assert redis_config.number_of_retries is None
-
-
-def test_redis_config_with_ca_cert_path():
-    """Test the RedisConfig model with CA certificate path."""
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-            "ca_cert_path": "tests/config/redis_ca_cert.crt",
-        }
-    )
-    assert redis_config.ca_cert_path == "tests/config/redis_ca_cert.crt"
-
-
-def test_redis_config_with_no_ca_cert_path():
-    """Test the RedisConfig model with no CA certificate path."""
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-        }
-    )
-    assert redis_config.ca_cert_path is None
-
-
-def test_redis_config_with_password():
-    """Test the RedisConfig model."""
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-            "password_path": "tests/config/redis_password.txt",
-        }
-    )
-    assert redis_config.password == "redis_password"  # noqa: S105
-
-
-def test_redis_config_with_no_password():
-    """Test the RedisConfig model with no password."""
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-        }
-    )
-    assert redis_config.password is None
-
-
-def test_redis_config_with_invalid_password_path():
-    """Test the RedisConfig model with invalid password path."""
-    with pytest.raises(NotADirectoryError, match="Not a directory"):
-        RedisConfig(
-            {
-                "host": "localhost",
-                "port": 6379,
-                "max_memory": "200mb",
-                "max_memory_policy": "allkeys-lru",
-                "password_path": "/dev/null/foobar",
-            }
-        )
-
-
-def test_redis_config_invalid_port():
-    """Test the RedisConfig model with invalid password path."""
-    with pytest.raises(InvalidConfigurationError):
-        RedisConfig(
-            {
-                "host": "localhost",
-                "port": -1,
-                "max_memory": "200mb",
-                "max_memory_policy": "allkeys-lru",
-            }
-        )
-
-    with pytest.raises(InvalidConfigurationError):
-        RedisConfig(
-            {
-                "host": "localhost",
-                "port": 100000,
-                "max_memory": "200mb",
-                "max_memory_policy": "allkeys-lru",
-            }
-        )
-
-
-def test_redis_config_equality():
-    """Test the RedisConfig equality check."""
-    redis_config_1 = RedisConfig()
-    redis_config_2 = RedisConfig()
-
-    # compare the same Redis configs
-    assert redis_config_1 == redis_config_2
-
-    # compare different Redis configs
-    redis_config_2.host = "12.34.56.78"
-    assert redis_config_1 != redis_config_2
-
-    # compare with value of different type
-    other_value = "foo"
-    assert redis_config_1 != other_value
-
-
-def test_redis_config_yaml_valiation():
-    """Test the RedisConfig yaml validation method."""
-    redis_config = RedisConfig(
-        {
-            "host": "localhost",
-            "port": 6379,
-            "max_memory": "200mb",
-            "max_memory_policy": "allkeys-lru",
-            "retry_on_error": "false",
-            "retry_on_timeout": "false",
-            "number_of_retries": 42,
-        }
-    )
-    redis_config.validate_yaml()
-
-    # change max_memory_policy
-    redis_config.max_memory_policy = "allkeys-lru"
-    redis_config.validate_yaml()
-
-    # change max_memory_policy
-    redis_config.max_memory_policy = "volatile-lru"
-    redis_config.validate_yaml()
-
-    # unknown max_memory_policy
-    # -> it should raises an exception
-    redis_config.max_memory_policy = "unknown"
-    with pytest.raises(InvalidConfigurationError):
-        redis_config.validate_yaml()
-
-
 def test_memory_cache_config():
     """Test the MemoryCacheConfig model."""
     memory_cache_config = InMemoryCacheConfig(
@@ -2277,23 +2078,6 @@ def test_conversation_cache_config():
 
     conversation_cache_config = ConversationCacheConfig(
         {
-            "type": "redis",
-            "redis": {
-                "host": "localhost",
-                "port": 6379,
-                "max_memory": "200mb",
-                "max_memory_policy": "allkeys-lru",
-            },
-        }
-    )
-    assert conversation_cache_config.type == "redis"
-    assert conversation_cache_config.redis.host == "localhost"
-    assert conversation_cache_config.redis.port == 6379
-    assert conversation_cache_config.redis.max_memory == "200mb"
-    assert conversation_cache_config.redis.max_memory_policy == "allkeys-lru"
-
-    conversation_cache_config = ConversationCacheConfig(
-        {
             "type": "postgres",
             "postgres": {
                 "host": "1.2.3.4",
@@ -2313,15 +2097,8 @@ def test_conversation_cache_config():
 
     conversation_cache_config = ConversationCacheConfig()
     assert conversation_cache_config.type is None
-    assert conversation_cache_config.redis is None
     assert conversation_cache_config.memory is None
     assert conversation_cache_config.postgres is None
-
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="redis conversation cache type is specified, but redis configuration is missing",
-    ):
-        ConversationCacheConfig({"type": "redis"})
 
     with pytest.raises(
         InvalidConfigurationError,
