@@ -1,5 +1,9 @@
 """End to end tests for the REST API endpoint /query when attachment(s) are send in request."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import pytest
 import requests
 

@@ -1,5 +1,9 @@
 """Additional arguments for pytest."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import json
 import logging
 import os
@@ -25,8 +29,8 @@ pytest.makereport_called = False
 
 # generic HTTP client for talking to OLS, when OLS is run on a cluster
 # this client will be preconfigured with a valid user token header.
-pytest.client: Client = None
-pytest.metrics_client: Client = None
+pytest.client: Client = None  # pyright: ignore[reportInvalidTypeForm]
+pytest.metrics_client: Client = None  # pyright: ignore[reportInvalidTypeForm]
 OLS_READY = False
 # on_cluster attribute is set to true when the tests are being run
 # against ols running on a cluster

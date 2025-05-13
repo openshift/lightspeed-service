@@ -1,5 +1,9 @@
 """End to end tests for the REST API streming query endpoint."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import json
 import re
 

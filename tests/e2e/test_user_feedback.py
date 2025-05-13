@@ -1,5 +1,9 @@
 """End to end tests for the REST API endpoint /feedback."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import pytest
 import requests
 
