@@ -9,6 +9,7 @@ from pydantic import (
     AnyHttpUrl,
     BaseModel,
     DirectoryPath,
+    Field,
     FilePath,
     PositiveInt,
     field_validator,
@@ -118,6 +119,44 @@ class TLSConfig(BaseModel):
                     "Can not enable TLS without ols_config.tls_config.tls_key_path"
                 )
             checks.file_check(self.tls_key_path, "OLS server certificate private key")
+
+
+class ProxyConfig(BaseModel):
+    """HTTPS Proxy configuration."""
+
+    proxy_url: Optional[AnyHttpUrl] = Field(
+        default_factory=lambda: os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+    )  # type: ignore
+    proxy_ca_cert_path: Optional[FilePath] = None
+
+    def __init__(self, data: Optional[dict] = None) -> None:
+        """Initialize configuration and perform basic validation."""
+        super().__init__()
+        if not data:
+            return
+        self.proxy_url = data.get("proxy_url")
+        self.proxy_ca_cert_path = data.get("proxy_ca_cert_path")
+
+    def validate_yaml(self) -> None:
+        """Validate proxy config."""
+        if self.proxy_url is None and self.proxy_ca_cert_path:
+            raise checks.InvalidConfigurationError("Proxy URL is missing")
+        if self.proxy_url and not checks.is_valid_http_url(self.proxy_url):
+            raise checks.InvalidConfigurationError(
+                "Proxy URL is invalid, only http:// and https:// URLs are supported"
+            )
+        if self.proxy_ca_cert_path is not None:
+            checks.file_check(self.proxy_ca_cert_path, "Proxy CA certificate")
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_default_proxy_url(cls, values: Any) -> Any:
+        """Set proxy URL from environment variable if not provided."""
+        if "proxy_url" not in values or values["proxy_url"] is None:
+            env_proxy = os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+            if env_proxy:
+                values["proxy_url"] = env_proxy
+        return values
 
 
 class AuthenticationConfig(BaseModel):
@@ -956,6 +995,8 @@ class OLSConfig(BaseModel):
 
     quota_handlers: Optional[QuotaHandlersConfig] = None
 
+    proxy_config: Optional[ProxyConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1008,6 +1049,7 @@ class OLSConfig(BaseModel):
             data.get("tlsSecurityProfile", None)
         )
         self.quota_handlers = QuotaHandlersConfig(data.get("quota_handlers", None))
+        self.proxy_config = ProxyConfig(data.get("proxy_config"))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1031,6 +1073,7 @@ class OLSConfig(BaseModel):
                 and self.expire_llm_is_ready_persistent_state
                 == other.expire_llm_is_ready_persistent_state
                 and self.quota_handlers == other.quota_handlers
+                and self.proxy_config == other.proxy_config
             )
         return False
 
@@ -1049,6 +1092,8 @@ class OLSConfig(BaseModel):
             self.tls_security_profile.validate_yaml()
         if self.authentication_config is not None:
             self.authentication_config.validate_yaml()
+        if self.proxy_config is not None:
+            self.proxy_config.validate_yaml()
 
         valid_query_validation_methods = list(constants.QueryValidationMethod)
         if self.query_validation_method not in valid_query_validation_methods:
