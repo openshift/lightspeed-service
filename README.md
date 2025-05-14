@@ -84,7 +84,6 @@ configure model, and connect to it.
         * [Conversation history cache interface](#conversation-history-cache-interface)
         * [Conversation history cache implementations](#conversation-history-cache-implementations)
             * [In-memory cache](#in-memory-cache)
-            * [Redis cache](#redis-cache)
             * [Postgres cache](#postgres-cache)
         * [LLM providers registry](#llm-providers-registry)
         * [LLM providers interface implementations](#llm-providers-interface-implementations)
@@ -860,9 +859,8 @@ Unified interface used to store and retrieve conversation history with optionall
 
 ### Conversation history cache implementations
 
-Currently there exist three conversation history cache implementations:
+Currently there exist two conversation history cache implementations:
 1. in-memory cache
-1. Redis cache
 1. Postgres cache
 
 Entries stored in cache have compound keys that consist of `user_id` and `conversation_id`. It is possible for one user to have multiple conversations and thus multiple `conversation_id` values at the same time. Global cache capacity can be specified. The capacity is measured as the number of entries; entries sizes are ignored in this computation.
@@ -870,10 +868,6 @@ Entries stored in cache have compound keys that consist of `user_id` and `conver
 #### In-memory cache
 
 In-memory cache is implemented as a queue with a defined maximum capacity specified as the number of entries that can be stored in a cache. That number is the limit for all cache entries, it doesn't matter how many users are using the LLM. When the new entry is put into the cache and if the maximum capacity is reached, the oldest entry is removed from the cache.
-
-#### Redis cache
-
-Entries are stored in Redis as a dictionary. LRU policy can be specified that allows Redis to automatically remove the oldest entries.
 
 #### Postgres cache
 
