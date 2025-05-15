@@ -45,6 +45,7 @@ class QuotaLimiter(ABC):
     # pylint: disable=W0201
     def connect(self) -> None:
         """Initialize connection to database."""
+        logger.info("Establishing connection to storage")
         config = self.connection_config
         # make sure the connection will have known state
         self.connection = None
