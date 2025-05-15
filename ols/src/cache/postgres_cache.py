@@ -95,12 +95,6 @@ class PostgresCache(Cache):
 
         # initialize connection to DB
         self.connect()
-        try:
-            self.initialize_cache()
-        except Exception as e:
-            self.connection.close()
-            logger.exception("Error initializing Postgres cache:\n%s", e)
-            raise
         self.capacity = config.max_entries
 
     # pylint: disable=W0201
@@ -121,6 +115,12 @@ class PostgresCache(Cache):
             sslrootcert=config.ca_cert_path,
             gssencmode=config.gss_encmode,
         )
+        try:
+            self.initialize_cache()
+        except Exception as e:
+            self.connection.close()
+            logger.exception("Error initializing Postgres cache:\n%s", e)
+            raise
         self.connection.autocommit = True
 
     def connected(self) -> bool:
@@ -139,10 +139,18 @@ class PostgresCache(Cache):
 
     def initialize_cache(self) -> None:
         """Initialize cache - clean it up etc."""
-        cur = self.connection.cursor()
-        cur.execute(PostgresCache.CREATE_CACHE_TABLE)
-        cur.execute(PostgresCache.CREATE_INDEX)
-        cur.close()
+        # cursor as context manager is not used there on purpose
+        # any CREATE statement can raise it's own exception
+        # and it should not interfere with other statements
+        cursor = self.connection.cursor()
+
+        logger.info("Initializing table for cache")
+        cursor.execute(PostgresCache.CREATE_CACHE_TABLE)
+
+        logger.info("Initializing index for cache")
+        cursor.execute(PostgresCache.CREATE_INDEX)
+
+        cursor.close()
         self.connection.commit()
 
     @connection
