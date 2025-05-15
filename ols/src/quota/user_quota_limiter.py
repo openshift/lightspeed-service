@@ -22,11 +22,5 @@ class UserQuotaLimiter(RevokableQuotaLimiter):
         super().__init__(initial_quota, increase_by, subject, config)
 
         # initialize connection to DB
+        # and initialize tables too
         self.connect()
-
-        try:
-            self._initialize_tables()
-        except Exception as e:
-            self.connection.close()
-            logger.exception("Error initializing Postgres database:\n%s", e)
-            raise
