@@ -200,6 +200,14 @@ def test_get_operation_on_disconnected_db():
         cache.get(user_id, conversation_id)
         assert cache.connected()
 
+    calls = [
+        call(
+            PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
 
 def test_insert_or_append_operation():
     """Test the Cache.insert_or_append operation for first item to be inserted."""
@@ -310,6 +318,9 @@ def test_insert_or_append_operation_on_exception():
 
 def test_insert_or_append_operation_on_disconnected_db():
     """Test the Cache.insert_or_append operation when DB is not connected."""
+    history = cache_entry_1
+    conversation = json.dumps([history.to_dict()], cls=MessageEncoder)
+
     # mock the query
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
@@ -329,6 +340,21 @@ def test_insert_or_append_operation_on_disconnected_db():
         # DB operation should connect automatically
         cache.insert_or_append(user_id, conversation_id, cache_entry_1)
         assert cache.connected()
+
+    # multiple DB operations must be performed:
+    calls = [
+        call(
+            PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id),
+        ),
+        call(
+            PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
+            (user_id, conversation_id, conversation.encode("utf-8")),
+        ),
+        call(PostgresCache.QUERY_CACHE_SIZE),
+        call("SELECT 1"),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=True)
 
 
 def test_list_operation():
@@ -420,6 +446,13 @@ def test_list_operation_on_disconnected_db():
         # DB operation should connect automatically
         cache.list(user_id, conversation_id)
         assert cache.connected()
+
+    # one DB operation must be performed:
+    # 1. list conversations from DB
+    calls = [
+        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_delete_operation():
@@ -540,6 +573,16 @@ def test_delete_operation_on_disconnected_db():
         # DB operation should connect automatically
         cache.delete(user_id, conversation_id)
         assert cache.connected()
+
+    # one DB operations must be performed:
+    # 1. delete one conversation from DB
+    calls = [
+        call(
+            PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_cleanup_method_when_clean_not_needed():
