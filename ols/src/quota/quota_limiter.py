@@ -42,6 +42,10 @@ class QuotaLimiter(ABC):
         """Initialize connection config."""
         self.connection_config: Optional[PostgresConfig] = None
 
+    @abstractmethod
+    def _initialize_tables(self) -> None:
+        """Initialize tables and indexes."""
+
     # pylint: disable=W0201
     def connect(self) -> None:
         """Initialize connection to database."""
@@ -59,6 +63,14 @@ class QuotaLimiter(ABC):
             # sslrootcert=config.ca_cert_path,
             gssencmode=config.gss_encmode,
         )
+
+        try:
+            self._initialize_tables()
+        except Exception as e:
+            self.connection.close()
+            logger.exception("Error initializing Postgres database:\n%s", e)
+            raise
+
         self.connection.autocommit = True
 
     def connected(self) -> bool:

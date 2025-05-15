@@ -150,6 +150,7 @@ class RevokableQuotaLimiter(QuotaLimiter):
 
     def _initialize_tables(self) -> None:
         """Initialize tables used by quota limiter."""
+        logger.info("Initializing tables for quota limiter")
         cursor = self.connection.cursor()
         cursor.execute(RevokableQuotaLimiter.CREATE_QUOTA_TABLE)
         cursor.close()

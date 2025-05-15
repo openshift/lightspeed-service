@@ -54,13 +54,6 @@ class TokenUsageHistory:
         # initialize connection to DB
         self.connect()
 
-        try:
-            self._initialize_tables()
-        except Exception as e:
-            self.connection.close()
-            logger.exception("Error initializing Postgres database:\n%s", e)
-            raise
-
     @connection
     def consume_tokens(
         self,
@@ -111,6 +104,12 @@ class TokenUsageHistory:
             # sslrootcert=config.ca_cert_path,
             gssencmode=config.gss_encmode,
         )
+        try:
+            self._initialize_tables()
+        except Exception as e:
+            self.connection.close()
+            logger.exception("Error initializing Postgres database:\n%s", e)
+            raise
         self.connection.autocommit = True
 
     def connected(self) -> bool:
@@ -129,6 +128,7 @@ class TokenUsageHistory:
 
     def _initialize_tables(self) -> None:
         """Initialize tables used by quota limiter."""
+        logger.info("Initializing tables for token usage history")
         cursor = self.connection.cursor()
         cursor.execute(TokenUsageHistory.CREATE_TOKEN_USAGE_TABLE)
         cursor.close()
