@@ -356,6 +356,16 @@ def check_tokens_available(
     try:
         for quota_limiter in quota_limiters:
             quota_limiter.ensure_available_quota(subject_id=user_id)
+    except psycopg2.Error as pg_error:
+        message = "Error communicating with quota database backend"
+        logger.error(message)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": message,
+                "cause": str(pg_error),
+            },
+        )
     except Exception as quota_exceed_error:
         message = "The quota has been exceeded"
         logger.error(message)
