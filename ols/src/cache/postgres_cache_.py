@@ -25,6 +25,7 @@ class PostgresCache(Cache):
     -----------------+-----------------------------+----------+---------+----------+
      user_id         | text                        | not null |         | extended |
      conversation_id | text                        | not null |         | extended |
+     topic_summary   | text                        | not null |         | extended |
      value           | bytea                       |          |         | extended |
      updated_at      | timestamp without time zone |          |         | plain    |
     Indexes:
@@ -40,6 +41,7 @@ class PostgresCache(Cache):
             user_id         text NOT NULL,
             conversation_id text NOT NULL,
             value           bytea,
+            topic_summary   text,
             updated_at      timestamp,
             PRIMARY KEY(user_id, conversation_id)
         );
@@ -63,8 +65,8 @@ class PostgresCache(Cache):
         """
 
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
-        INSERT INTO cache(user_id, conversation_id, value, updated_at)
-        VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+        INSERT INTO cache(user_id, conversation_id, value, topic_summary, updated_at)
+        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
         """
 
     DELETE_CONVERSATION_HISTORY_STATEMENT = """
@@ -83,7 +85,7 @@ class PostgresCache(Cache):
         """
 
     LIST_CONVERSATIONS_STATEMENT = """
-        SELECT conversation_id
+        SELECT conversation_id, topic_summary
         FROM cache
         WHERE user_id=%s
         ORDER BY updated_at DESC
@@ -139,18 +141,13 @@ class PostgresCache(Cache):
 
     def initialize_cache(self) -> None:
         """Initialize cache - clean it up etc."""
-        # cursor as context manager is not used there on purpose
-        # any CREATE statement can raise it's own exception
-        # and it should not interfere with other statements
-        cursor = self.connection.cursor()
+        with self.connection.cursor() as cursor:
+            logger.info("Initializing table for cache")
+            cursor.execute(PostgresCache.CREATE_CACHE_TABLE)
 
-        logger.info("Initializing table for cache")
-        cursor.execute(PostgresCache.CREATE_CACHE_TABLE)
+            logger.info("Initializing index for cache")
+            cursor.execute(PostgresCache.CREATE_INDEX)
 
-        logger.info("Initializing index for cache")
-        cursor.execute(PostgresCache.CREATE_INDEX)
-
-        cursor.close()
         self.connection.commit()
 
     @connection
@@ -187,6 +184,7 @@ class PostgresCache(Cache):
         user_id: str,
         conversation_id: str,
         cache_entry: CacheEntry,
+        topic_summary: str = "",
         skip_user_id_check: bool = False,
     ) -> None:
         """Set the value associated with the given key.
@@ -195,8 +193,8 @@ class PostgresCache(Cache):
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             cache_entry: The `CacheEntry` object to store.
+            topic_summary: Summary of the conversation's initial topic.
             skip_user_id_check: Skip user_id suid check.
-
         """
         value = cache_entry.to_dict()
         # the whole operation is run in one transaction
@@ -217,6 +215,7 @@ class PostgresCache(Cache):
                         user_id,
                         conversation_id,
                         json.dumps([value], cls=MessageEncoder).encode("utf-8"),
+                        topic_summary,
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
@@ -247,7 +246,9 @@ class PostgresCache(Cache):
                 raise CacheError("PostgresCache.delete", e) from e
 
     @connection
-    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+    def list(
+        self, user_id: str, skip_user_id_check: bool = False
+    ) -> list[dict[str, str]]:
         """List all conversations for a given user_id.
 
         Args:
@@ -255,14 +256,16 @@ class PostgresCache(Cache):
             skip_user_id_check: Skip user_id suid check.
 
         Returns:
-            A list of conversation ids from the cache
+             A list of dictionaries containing conversation_id and topic_summary
 
         """
         with self.connection.cursor() as cursor:
             try:
                 cursor.execute(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,))
                 rows = cursor.fetchall()
-                return [row[0] for row in rows]
+                return [
+                    {"conversation_id": row[0], "topic_summary": row[1]} for row in rows
+                ]
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.list: %s", e)
                 raise CacheError("PostgresCache.list", e) from e
@@ -276,8 +279,9 @@ class PostgresCache(Cache):
             True if the cache is ready, False otherwise.
         """
         # TODO: when the connection is closed and the database is back online,
-        # we need to reestablish the connection => implement this
-        if not self.connection or self.connection.closed == 1:
+        # we need to reestablish the connection => implement this there?
+        # (it will be reconnected on any other DB operation anyway)
+        if self.connection is None or self.connection.closed == 1:
             return False
         try:
             return self.connection.poll() == psycopg2.extensions.POLL_OK
@@ -334,11 +338,12 @@ class PostgresCache(Cache):
         user_id: str,
         conversation_id: str,
         value: bytes,
+        topic_summary: str,
     ) -> None:
         """Insert new conversation history for given user_id and conversation_id."""
         cursor.execute(
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id, value),
+            (user_id, conversation_id, value, topic_summary),
         )
 
     @staticmethod
