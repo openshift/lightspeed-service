@@ -1,6 +1,6 @@
 """Prometheus metrics that are exposed by REST API."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
@@ -57,7 +57,7 @@ provider_model_configuration = Gauge(
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
-def get_metrics(auth: Any = Depends(auth_dependency)) -> PlainTextResponse:
+def get_metrics(auth: Annotated[Any, Depends(auth_dependency)]) -> PlainTextResponse:
     """Metrics Endpoint.
 
     Args:

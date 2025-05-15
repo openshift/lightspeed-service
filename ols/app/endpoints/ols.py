@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Generator, Optional, Union
 
+import psycopg2
 import pytz
 from fastapi import APIRouter, Depends, HTTPException, status
 from langchain_core.messages import AIMessage, HumanMessage
