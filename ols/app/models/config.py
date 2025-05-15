@@ -972,7 +972,6 @@ class OLSConfig(BaseModel):
     """OLS configuration."""
 
     conversation_cache: Optional[ConversationCacheConfig] = None
-    introspection_enabled: Optional[bool] = False
     logging_config: Optional[LoggingConfig] = None
     reference_content: Optional[ReferenceContent] = None
     authentication_config: AuthenticationConfig = AuthenticationConfig()
@@ -1005,7 +1004,6 @@ class OLSConfig(BaseModel):
         if data is None:
             return
 
-        self.introspection_enabled = data.get("introspection_enabled", False)
         self.conversation_cache = ConversationCacheConfig(
             data.get("conversation_cache", None)
         )
@@ -1056,7 +1054,6 @@ class OLSConfig(BaseModel):
         if isinstance(other, OLSConfig):
             return (
                 self.conversation_cache == other.conversation_cache
-                and self.introspection_enabled == other.introspection_enabled
                 and self.logging_config == other.logging_config
                 and self.reference_content == other.reference_content
                 and self.default_provider == other.default_provider

@@ -7,13 +7,10 @@ from langchain.tools import tool
 @tool
 def get_namespaces_mock() -> tuple[str, str]:
     """Fetch the list of all namespaces in the cluster."""
-    return (
-        "success",
-        """
+    return """
 NAME                                               STATUS   AGE
 default                                            Active   25m
-""",
-    )
+"""
 
 
-mock_tools_map = {"get_namespaces_mock": get_namespaces_mock}
+mock_tools_map = [get_namespaces_mock]
