@@ -244,7 +244,7 @@ def test_insert_or_append_operation():
         ),
         call(PostgresCache.QUERY_CACHE_SIZE),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_insert_or_append_operation_append_item():
@@ -290,7 +290,7 @@ def test_insert_or_append_operation_append_item():
             (new_conversation.encode("utf-8"), user_id, conversation_id),
         ),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_insert_or_append_operation_on_exception():
@@ -354,7 +354,7 @@ def test_insert_or_append_operation_on_disconnected_db():
         call(PostgresCache.QUERY_CACHE_SIZE),
         call("SELECT 1"),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_list_operation():
@@ -618,7 +618,7 @@ def test_cleanup_method_when_clean_performed():
             PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT + " 100)",
         ),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_ready():
