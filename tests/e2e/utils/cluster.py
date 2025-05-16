@@ -356,21 +356,27 @@ def wait_for_running_pod(
     )
     if not r:
         raise Exception("Timed out waiting for new OLS pod to be ready")
-    pod_name = get_pod_by_prefix(
-        prefix=name, namespace=namespace, fail_not_found=False
-    )[0]
+
+    def pod_has_2_containers_ready():
+        pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
+        if not pods:
+            return False
+        return (
+            len(
+                [
+                    container
+                    for container in get_container_ready_status(pods[0])
+                    if container == "true"
+                ]
+            )
+            == 2
+        )
+
     # wait for the two containers in the server pod to become ready
     r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
         5,
-        lambda: len(
-            [
-                container
-                for container in get_container_ready_status(pod_name)
-                if container == "true"
-            ]
-        )
-        == 2,
+        pod_has_2_containers_ready,
         "Waiting for two containers in the server pod to become ready",
     )
     if not r:
