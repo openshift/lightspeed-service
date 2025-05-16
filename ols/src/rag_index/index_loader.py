@@ -43,6 +43,28 @@ def load_llama_index_deps() -> None:
     from llama_index.vector_stores.faiss import FaissVectorStore
 
 
+def calculate_retrievers_weights(number_of_retrievers: int) -> list[float]:
+    """Calculate weights for retrievers.
+
+    Weights always prioritizes the first retriever.
+    """
+    if number_of_retrievers == 0:
+        logger.warning("Number of retrievers is 0. Returning empty weights list.")
+        return []
+    if number_of_retrievers == 1:
+        return [1.0]
+
+    # assign a higher weight to the first retriever
+    first_weight = 0.6  # adjust this value as needed
+    remaining_weight = 1.0 - first_weight
+    other_weight = remaining_weight / (number_of_retrievers - 1)
+
+    # generate the weights list
+    retriever_weights = [first_weight] + [other_weight] * (number_of_retrievers - 1)
+
+    return retriever_weights
+
+
 class IndexLoader:
     """Load index from local file storage."""
 
@@ -146,15 +168,30 @@ class IndexLoader:
             and self._retriever.similarity_top_k == similarity_top_k
         ):
             return self._retriever
-        retriever = QueryFusionRetriever(
-            [
-                index.as_retriever(similarity_top_k=similarity_top_k)
-                for index in self._indexes
-            ],
-            similarity_top_k=similarity_top_k,
-            num_queries=1,  # set this to 1 to disable query generation
-            use_async=False,
-            verbose=False,
-        )
+
+        retrievers = [
+            index.as_retriever(similarity_top_k=similarity_top_k)
+            for index in self._indexes
+        ]
+
+        if len(retrievers) == 1:
+            retriever = QueryFusionRetriever(
+                retrievers=retrievers,
+                similarity_top_k=similarity_top_k,
+                num_queries=1,  # set this to 1 to disable query generation
+                use_async=False,
+                verbose=False,
+            )
+        else:
+            # set weights and mode in case of multiple retrievers/indices
+            retriever = QueryFusionRetriever(
+                retrievers=retrievers,
+                retriever_weights=calculate_retrievers_weights(len(retrievers)),
+                mode="relative_score",  # relative score fusion mode to apply weights
+                similarity_top_k=similarity_top_k,
+                num_queries=1,  # set this to 1 to disable query generation
+                use_async=False,
+                verbose=False,
+            )
         self._retriever = retriever
         return self._retriever

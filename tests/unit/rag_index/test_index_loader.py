@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from ols import config
 from ols.app.models.config import ReferenceContent, ReferenceContentIndex
-from ols.src.rag_index.index_loader import IndexLoader
+from ols.src.rag_index.index_loader import IndexLoader, calculate_retrievers_weights
 from tests.mock_classes.mock_llama_index import MockLlamaIndex
 
 
@@ -69,3 +69,16 @@ def test_index_loader():
 
         assert len(indexes) == 1
         assert isinstance(indexes[0], MockLlamaIndex)
+
+
+def test_calculate_retrievers_weights():
+    """Test calculate retrievers weights."""
+    assert calculate_retrievers_weights(0) == []
+
+    assert calculate_retrievers_weights(1) == [1.0]
+
+    assert calculate_retrievers_weights(2) == [0.6, 0.4]
+
+    assert calculate_retrievers_weights(3) == [0.6, 0.2, 0.2]
+
+    # and so on...
