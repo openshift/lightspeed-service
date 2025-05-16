@@ -138,7 +138,7 @@ def test_available_quota_no_data():
             ("", subject, quota_limit, quota_limit, timestamp),
         ),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
     assert available == quota_limit
 
 

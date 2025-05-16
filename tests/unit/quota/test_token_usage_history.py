@@ -79,7 +79,7 @@ def test_consume_tokens():
             },
         ),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
 def test_consume_tokens_on_disconnected_db():
@@ -125,8 +125,6 @@ def test_consume_tokens_on_disconnected_db():
 
     # expected calls to storage
     calls = [
-        # check if storage connection is alive
-        call("SELECT 1"),
         # quota for given user should be read from storage
         # and the initialization of new record should be made
         call(
@@ -140,5 +138,7 @@ def test_consume_tokens_on_disconnected_db():
                 "updated_at": timestamp,
             },
         ),
+        # check if storage connection is alive
+        call("SELECT 1"),
     ]
-    mock_cursor.execute.assert_has_calls(calls, any_order=True)
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
