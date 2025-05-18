@@ -162,8 +162,7 @@ class DocsSummarizer(QueryHelper):
             logger.debug("No MCP servers provided, tool calling is disabled")
             self._tool_calling_enabled = False
 
-        # disabled - leaks token to logs when set to True
-        set_debug(False)
+        set_debug(self.verbose)
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
