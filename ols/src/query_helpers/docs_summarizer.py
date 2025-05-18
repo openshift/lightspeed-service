@@ -311,9 +311,14 @@ class DocsSummarizer(QueryHelper):
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        for i in range(1, max_rounds + 1):
-            async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT):
-                async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
+        async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
+            async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
+
+                # Get tools from mcp server
+                tools_map = mcp_client.get_tools()
+
+                # Tool calling in a loop
+                for i in range(1, max_rounds + 1):
 
                     is_final_round = (not self._tool_calling_enabled) or (
                         i == max_rounds
@@ -325,7 +330,7 @@ class DocsSummarizer(QueryHelper):
                     async for chunk in self._invoke_llm(
                         messages,
                         llm_input_values,
-                        tools_map=mcp_client.get_tools(),
+                        tools_map=tools_map,
                         is_final_round=is_final_round,
                         token_counter=token_counter,
                     ):
