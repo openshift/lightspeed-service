@@ -1,5 +1,9 @@
 """Model response and model evaluation tests."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import os
 from argparse import Namespace
 
@@ -12,8 +16,8 @@ def test_model_response(request) -> None:
     """Evaluate model response."""
     args = Namespace(**vars(request.config.option))
     args.eval_provider_model_id = []
-    providers = os.getenv("PROVIDER").split()
-    models = os.getenv("MODEL").split()
+    providers = os.getenv("PROVIDER", "").split()
+    models = os.getenv("MODEL", "").split()
     for i, provider in enumerate(providers):
         args.eval_provider_model_id.append(f"{provider}+{models[i]}")
     args.eval_type = "consistency"
