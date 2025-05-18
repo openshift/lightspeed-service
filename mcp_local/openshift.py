@@ -34,36 +34,22 @@ def strip_args_for_oc_command(args: list[str]) -> list[str]:
     return split_args
 
 
-def is_blocked_char_in_args(args: list[str]) -> bool:
-    """Check if any of the arguments contain blocked characters."""
+def raise_for_unacceptable_args(args: list[str]) -> None:
+    """Check & raise exception if arguments are unacceptable."""
     arg_str = " ".join(args)
+
     if any(char in arg_str for char in BLOCKED_CHARS):
         logger.error("Blocked characters found in argument: %s", arg_str)
-        return True
-    return False
+        raise Exception(BLOCKED_CHARS_DETECTED_MSG)
 
-
-def is_secret_in_args(args: list[str]) -> bool:
-    """Check if any of the arguments contain 'secret'."""
-    arg_str = " ".join(args)
     if "secret" in arg_str:
         logger.error("'secret' keyword found in argument: %s", arg_str)
-        return True
-    return False
+        raise Exception(SECRET_NOT_ALLOWED_MSG)
 
 
 def redact_token(text: str, token: str) -> str:
     """Redact token from text."""
     return text.replace(token, "<redacted>")
-
-
-def resolve_response(result: subprocess.CompletedProcess) -> str:
-    """Return stdout if it is not empty string, otherwise return stderr."""
-    # some commands returns empty stdout and message like "namespace not found"
-    # in stderr, but with return code 0
-    if result.returncode == 0:
-        return result.stdout if result.stdout != "" else result.stderr
-    return result.stderr
 
 
 def run_oc(args: list[str]) -> str:
@@ -72,7 +58,7 @@ def run_oc(args: list[str]) -> str:
     token = os.environ.get("OC_USER_TOKEN", "token-not-set")
 
     try:
-        res = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # noqa: S603
             ["oc", *args, "--token", token],  # noqa: S607
             capture_output=True,
             text=True,
@@ -81,20 +67,21 @@ def run_oc(args: list[str]) -> str:
         )
     except Exception:
         # if token was used, redact the error to ensure it is not leaked
-        return f"Error executing args '{args}': {redact_token(traceback.format_exc(), token)}"
+        raise Exception(redact_token(traceback.format_exc(), token))
 
-    response = resolve_response(res)
-    return redact_token(response, token)
+    # some commands returns empty stdout and message like "namespace not found"
+    # in stderr, but with return code 0
+    if result.returncode == 0:
+        response = result.stdout if result.stdout != "" else result.stderr
+        return redact_token(response, token)
+    raise Exception(redact_token(result.stderr, token))
 
 
 def safe_run_oc(commands: list[str], args: list[str]) -> str:
     """Run `oc` CLI with provided arguments and command."""
-    if is_blocked_char_in_args(args):
-        return BLOCKED_CHARS_DETECTED_MSG
-    if is_secret_in_args(args):
-        return SECRET_NOT_ALLOWED_MSG
-    result = run_oc([*commands, *strip_args_for_oc_command(args)])
-    return result
+    raise_for_unacceptable_args(args)
+
+    return run_oc([*commands, *strip_args_for_oc_command(args)])
 
 
 @mcp.tool()
