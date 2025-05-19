@@ -18,29 +18,34 @@ end box
 box "RH VPN"
   participant "Internal Data Pipeline" as ccx
   database "Ceph S3 Bucket" as ceph
+  participant "OLS pipeline" as olspipe
+  database "Redshift" as rs
+  participant "Dashboard" as dash
 end box
 
 == User Interaction ==
-
 user -> ols: Interaction
 ols -> disk: Store transcript as JSON
 
 == User Feedback ==
-
 user -> ols: Feedback
 ols -> disk: Store feedback as JSON
 
 == Data Packaging and Upload ==
-
 sidecar -> disk: Scan for new JSON files
 disk -> sidecar: New JSON files
 sidecar -> sidecar: Package data into tar.gz
 sidecar -> ingress: Upload ols.tgz
 
-== Data Processing ==
+== Data Forwarding ==
 ingress -> cs: Forward data
 cs -> aws: Validate and store into
 aws -> ccx: Notify
 ccx -> ceph: Process and store
+
+== Data Processing ==
+ceph -> olspipe: Process archives
+olspipe -> rs: Publish data
+rs -> dash: Consume
 
 @enduml
