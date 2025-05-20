@@ -314,12 +314,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         "Waiting for OLS operator to install",
     )
     if not r:
-        print("Timed out waiting for OLS operator to install successfully")
-        return None
+        msg = "Timed out waiting for OLS operator to install successfully"
+        print(msg)
+        raise Exception(msg)
     print("Operator installed successfully")
 
     provider = os.getenv("PROVIDER", "openai")
-    creds = os.getenv("PROVIDER_KEY_PATH")
+    creds = os.getenv("PROVIDER_KEY_PATH", "")
     # create the llm api key secret ols will mount
     provider_list = provider.split()
     creds_list = creds.split()
@@ -415,8 +416,9 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C90
         "Waiting for OLS API server deployment to be created",
     )
     if not r:
-        print("Timed out waiting for OLS deployment to be created")
-        return None
+        msg = "Timed out waiting for OLS deployment to be created"
+        print(msg)
+        raise Exception(msg)
     print("OLS deployment created")
 
     # Ensure ols pod exists so it gets deleted during the scale down to zero, otherwise
