@@ -12,7 +12,7 @@ ARG BUILDARCH
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
-
+RUN cd /bin && ln -s python3.11 python
 # conditional installation of OpenShift CLI
 
 ENV BUILDARCH=${BUILDARCH}
