@@ -103,6 +103,9 @@ def oc_get(oc_get_args: list[str]) -> str:
 
     Standard `oc` flags and options are valid.
 
+    Namespace is optional argument. If not provided, the default namespace will be used.
+    To specify a namespace, use the `--namespace <namespace>` or `-n <namespace>`.
+
     Args:
         oc_get_args: Arguments for oc get
 
@@ -115,9 +118,6 @@ def oc_get(oc_get_args: list[str]) -> str:
 
         # List events for cluster
         oc get events
-
-        # List events for namespace
-        oc get events -n namespace
 
         # List a single replication controller with specified NAME in ps output format.
         oc get replicationcontroller web
@@ -140,6 +140,9 @@ def oc_describe(oc_describe_args: list[str]) -> str:
 
     Print a detailed description of the selected resources, including related resources such as events or controllers.
     You may select a single object by name, all objects of that type, provide a name prefix, or label selector.
+
+    Namespace is optional argument. If not provided, the default namespace will be used.
+    To specify a namespace, use the `--namespace <namespace>` or `-n <namespace>`.
 
     Args:
         oc_describe_args: Arguments for oc describe
@@ -174,6 +177,9 @@ def oc_logs(oc_logs_args: list[str]) -> str:
     When a pod is specified and has more than one container, the container name should be specified via -c.
     When a build config or deployment config is specified, you can view the logs for a particular version of it via --version.
 
+    Namespace is optional argument. If not provided, the default namespace will be used.
+    To specify a namespace, use the `--namespace <namespace>` or `-n <namespace>`.
+
     Args:
         oc_logs_args: Arguments for oc logs
 
@@ -201,6 +207,9 @@ def oc_status(oc_status_args: list[str]) -> str:
     If you have any misconfigured components information about them will be shown.
     For more information about individual items, use the describe command \
     (e.g. oc describe buildconfig, oc describe deploymentconfig, oc describe service).
+
+    Namespace is optional argument. If not provided, the default namespace will be used.
+    To specify a namespace, use the `--namespace <namespace>` or `-n <namespace>`.
 
     Args:
         oc_status_args: Arguments for oc status
