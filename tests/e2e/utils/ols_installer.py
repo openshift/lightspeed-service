@@ -239,61 +239,64 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         )
 
 
-def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915  # noqa: C901
+def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
-    print("Setting up for on cluster test execution")
-    bundle_image = os.getenv(
-        "BUNDLE_IMAGE", "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest"
-    )
-    # setup the lightspeed namespace
-    cluster_utils.run_oc(
-        ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
-    )
-    print("created OLS project")
+    disconnected = os.getenv("DISCONNECTED", "")
+    if not disconnected:
+        print("Setting up for on cluster test execution")
+        bundle_image = os.getenv(
+            "BUNDLE_IMAGE",
+            "quay.io/openshift-lightspeed/lightspeed-operator-bundle:latest",
+        )
+        # setup the lightspeed namespace
+        cluster_utils.run_oc(
+            ["create", "ns", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        cluster_utils.run_oc(
+            ["project", "openshift-lightspeed"], ignore_existing_resource=True
+        )
+        print("created OLS project")
 
-    # install the ImageDigestMirrorSet to mirror images
-    # from "registry.redhat.io/openshift-lightspeed-beta"
-    # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
-        ignore_existing_resource=True,
-    )
+        # install the ImageDigestMirrorSet to mirror images
+        # from "registry.redhat.io/openshift-lightspeed-beta"
+        # to "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols"
+        cluster_utils.run_oc(
+            ["create", "-f", "tests/config/operator_install/imagedigestmirrorset.yaml"],
+            ignore_existing_resource=True,
+        )
 
-    # install the operator from bundle
-    print("Installing OLS operator from bundle")
-    cluster_utils.run_oc(
-        [
-            "apply",
-            "-f",
-            "tests/config/operator_install/imagedigestmirrorset.yaml",
-        ],
-        ignore_existing_resource=True,
-    )
-    try:
-        subprocess.run(  # noqa: S603
-            [  # noqa: S607
-                "operator-sdk",
-                "run",
-                "bundle",
-                "--timeout=20m",
-                "-n",
-                "openshift-lightspeed",
-                bundle_image,
-                "--verbose",
+        # install the operator from bundle
+        print("Installing OLS operator from bundle")
+        cluster_utils.run_oc(
+            [
+                "apply",
+                "-f",
+                "tests/config/operator_install/imagedigestmirrorset.yaml",
             ],
-            capture_output=True,
-            text=True,
-            check=True,
+            ignore_existing_resource=True,
         )
-    # TODO: add run_command func
-    except subprocess.CalledProcessError as e:
-        print(
-            f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
-        )
-        raise
+        try:
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "operator-sdk",
+                    "run",
+                    "bundle",
+                    "--timeout=20m",
+                    "-n",
+                    "openshift-lightspeed",
+                    bundle_image,
+                    "--verbose",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        # TODO: add run_command func
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
+            )
+            raise
 
     token, metrics_token = create_and_config_sas()
 
