@@ -1,5 +1,9 @@
 """Integration tests for metrics exposed by the service."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import logging
 import os
 import re

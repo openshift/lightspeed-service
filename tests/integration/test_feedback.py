@@ -1,5 +1,9 @@
 """Integration tests for REST API endpoints for providing user feedback."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 from unittest.mock import patch
 
 import pytest
