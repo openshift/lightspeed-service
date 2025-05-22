@@ -613,6 +613,8 @@ def test_tool_calling_text() -> None:
             r"(lightspeed-app-server|\[\"pods\", \"-n\", \"openshift-lightspeed\"\])",
             response.text.lower(),
         )
+        # Special check for granite
+        assert not response.text.strip().startswith("<tool_call>")
 
 
 @pytest.mark.tool_calling
@@ -645,3 +647,6 @@ def test_tool_calling_events() -> None:
         )
         assert "tool_call" in unique_events
         assert "tool_result" in unique_events
+
+        # Special check for granite
+        assert not response_text.strip().startswith("<tool_call>")

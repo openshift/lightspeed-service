@@ -621,3 +621,6 @@ def test_tool_calling() -> None:
         )
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
+
+        # Special check for granite
+        assert not json_response["response"].strip().startswith("<tool_call>")

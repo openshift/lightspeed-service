@@ -1,5 +1,6 @@
 """Tool calling agent."""
 
+# TODO: Refactor/rename this file
 import asyncio
 import logging
 import os
@@ -25,6 +26,29 @@ from ols.src.tools.tools import execute_tool_calls
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
+
+
+def skip_special_chunk(
+    chunk_text: str,
+    chunk_counter: int,
+    model_name: str,
+    final_round: bool,
+) -> bool:
+    """Handle special chunk."""
+    # Handle granite tool call identifier chunks.
+    # This is a workaround as until these chunks are recieved, it is
+    # difficult to associate these with tool call (with langchain).
+    # We can implement more sophisticated solution but may not be worth doing.
+    if constants.ModelFamily.GRANITE in model_name and not final_round:
+        return (
+            (chunk_counter == 0 and chunk_text == "")
+            or (chunk_counter == 1 and chunk_text == "<")
+            or (chunk_counter == 2 and chunk_text == "tool")
+            or (chunk_counter == 3 and chunk_text == "_")
+            or (chunk_counter == 4 and chunk_text == "call")
+            or (chunk_counter == 5 and chunk_text == ">")
+        )
+    return False
 
 
 def tool_calls_from_tool_calls_chunks(
@@ -162,8 +186,7 @@ class DocsSummarizer(QueryHelper):
             logger.debug("No MCP servers provided, tool calling is disabled")
             self._tool_calling_enabled = False
 
-        # disabled - leaks token to logs when set to True
-        set_debug(False)
+        set_debug(self.verbose)
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
@@ -292,7 +315,7 @@ class DocsSummarizer(QueryHelper):
         ):
             yield chunk  # type: ignore [misc]
 
-    async def iterate_with_tools(
+    async def iterate_with_tools(  # noqa: C901
         self,
         messages: ChatPromptTemplate,
         max_rounds: int,
@@ -311,9 +334,14 @@ class DocsSummarizer(QueryHelper):
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        for i in range(1, max_rounds + 1):
-            async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT):
-                async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
+        async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
+            async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
+
+                # Get tools from mcp server
+                tools_map = mcp_client.get_tools()
+
+                # Tool calling in a loop
+                for i in range(1, max_rounds + 1):
 
                     is_final_round = (not self._tool_calling_enabled) or (
                         i == max_rounds
@@ -321,11 +349,12 @@ class DocsSummarizer(QueryHelper):
                     logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
                     tool_call_chunks = []
+                    chunk_counter = 0
                     # invoke LLM and process response chunks
                     async for chunk in self._invoke_llm(
                         messages,
                         llm_input_values,
-                        tools_map=mcp_client.get_tools(),
+                        tools_map=tools_map,
                         is_final_round=is_final_round,
                         token_counter=token_counter,
                     ):
@@ -349,8 +378,13 @@ class DocsSummarizer(QueryHelper):
                         if getattr(chunk, "tool_call_chunks", None):
                             tool_call_chunks.append(chunk)
                         else:
-                            # stream text chunks directly
-                            yield StreamedChunk(type="text", text=chunk.content)
+                            if not skip_special_chunk(
+                                chunk.content, chunk_counter, self.model, is_final_round
+                            ):
+                                # stream text chunks directly
+                                yield StreamedChunk(type="text", text=chunk.content)
+
+                        chunk_counter += 1
 
                     # exit if this was the final round
                     if is_final_round:

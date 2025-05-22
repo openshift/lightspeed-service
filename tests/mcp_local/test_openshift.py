@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import re
 import subprocess
 from unittest.mock import patch
 
@@ -12,15 +13,13 @@ from mcp_local.openshift import (
     BLOCKED_CHARS,
     BLOCKED_CHARS_DETECTED_MSG,
     SECRET_NOT_ALLOWED_MSG,
-    is_blocked_char_in_args,
-    is_secret_in_args,
     oc_adm_top,
     oc_describe,
     oc_get,
     oc_logs,
     oc_status,
+    raise_for_unacceptable_args,
     redact_token,
-    resolve_response,
     run_oc,
     safe_run_oc,
     show_pods_resource_usage,
@@ -71,85 +70,36 @@ def test_strip_args_for_oc_command():
     assert strip_args_for_oc_command(args) == expected
 
 
-def test_is_blocked_char_in_args():
-    """Test the is_blocked_char_in_args function."""
+def test_raise_for_unacceptable_args():
+    """Test the unacceptable args check."""
     # blocked character present
     for char in BLOCKED_CHARS:
         args = ["oc", "get", f"pod{char}my-pod"]
-        assert is_blocked_char_in_args(args) is True
+        with pytest.raises(Exception, match=re.escape(BLOCKED_CHARS_DETECTED_MSG)):
+            raise_for_unacceptable_args(args)
 
-    # no blocked character
-    args = ["oc", "get", "pod", "my-pod"]
-    assert is_blocked_char_in_args(args) is False
+    # secret/secrets present
+    for s in ["secret", "secrets"]:
+        args = ["oc", "get", s, "my-secret"]
+        with pytest.raises(Exception, match=SECRET_NOT_ALLOWED_MSG):
+            raise_for_unacceptable_args(args)
 
-    # empty list
-    args = []
-    assert is_blocked_char_in_args(args) is False
+    # no blocked character, no error (returns nothing)
+    assert raise_for_unacceptable_args(["oc", "get", "pod", "my-pod"]) is None
 
-
-def test_is_secret_in_args():
-    """Test the is_secret_in_args function."""
-    # secret present
-    args = ["oc", "get", "secret", "my-secret"]
-    assert is_secret_in_args(args) is True
-
-    # secrets present
-    args = ["oc", "get", "secrets", "my-secret"]
-    assert is_secret_in_args(args) is True
-
-    # no secret
-    args = ["oc", "get", "pod", "my-pod"]
-    assert is_secret_in_args(args) is False
-
-    # empty list
-    args = []
-    assert is_secret_in_args(args) is False
-
-
-def test_resolve_response():
-    """Test the resolve_response function."""
-    # normal case
-    result = subprocess.CompletedProcess(
-        args=["oc", "get", "pod", "my-pod"],
-        returncode=0,
-        stdout="stdout",
-        stderr="",
-    )
-    response = resolve_response(result)
-    assert response == "stdout"
-
-    # quasi case
-    result = subprocess.CompletedProcess(
-        args=["oc", "get", "pod", "my-pod"],
-        returncode=0,
-        stdout="",
-        stderr="stderr",
-    )
-    response = resolve_response(result)
-    assert response == "stderr"
-
-    # error case
-    result = subprocess.CompletedProcess(
-        args=["oc", "get", "pod", "my-pod"],
-        returncode=1,
-        stdout="",
-        stderr="stderr",
-    )
-    response = resolve_response(result)
-    assert response == "stderr"
+    # empty list, no error (returns nothing)
+    assert raise_for_unacceptable_args([]) is None
 
 
 def test_safe_run_oc():
     """Test the run_oc function."""
     # secret present
-    args = ["secret"]
-    result = safe_run_oc("get", args)
-    assert result == SECRET_NOT_ALLOWED_MSG
+    with pytest.raises(Exception, match=SECRET_NOT_ALLOWED_MSG):
+        safe_run_oc("get", ["secret"])
 
     # forbidden characters present
-    args = ["pod", "my-pod;"]
-    result = safe_run_oc("get", args)
-    assert result == BLOCKED_CHARS_DETECTED_MSG
+    with pytest.raises(Exception, match=re.escape(BLOCKED_CHARS_DETECTED_MSG)):
+        safe_run_oc("get", ["pod", "my-pod;"])
 
     # normal case
     args = ["pod", "my-pod"]
@@ -175,8 +125,10 @@ def test_token_default_value():
 
 def test_oc_run(token_in_env):
     """Test the run_oc function."""
-    # normal case - token is in response - should be redacted
     args = ["pod", "my-pod"]
+    expected_args = ["oc", *args, "--token", "fake-token"]
+
+    # normal case - token is in response - should be redacted
     with patch("mcp_local.openshift.subprocess.run") as mock_run:
         mock_run.return_value = subprocess.CompletedProcess(
             args=args,
@@ -187,7 +139,6 @@ def test_oc_run(token_in_env):
         response = run_oc(args)
 
         # called with args and token
-        expected_args = ["oc", *args, "--token", "fake-token"]
         assert expected_args == mock_run.call_args[0][0]
 
         assert response == "stdout and <redacted>"
@@ -200,29 +151,33 @@ def test_oc_run(token_in_env):
             stdout="",
             stderr="stderr and fake-token",
         )
+        with pytest.raises(Exception, match="stderr and <redacted>"):
+            run_oc(args)
+
+    # quasi case
+    with patch("mcp_local.openshift.subprocess.run") as mock_run:
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["oc", "get", "pod", "my-pod"],
+            returncode=0,
+            stdout="",
+            stderr="stderr and fake-token",
+        )
         response = run_oc(args)
 
         # called with args and token
-        expected_args = ["oc", *args, "--token", "fake-token"]
         assert expected_args == mock_run.call_args[0][0]
 
         assert response == "stderr and <redacted>"
 
-
-def test_oc_run_exception(token_in_env):
-    """Test the run_oc function on exception and token redaction."""
-    args = ["pod", "my-pod"]
+    # exception case
     with patch("mcp_local.openshift.subprocess.run") as mock_run:
         mock_run.side_effect = Exception("error and fake-token")
-        response = run_oc(args)
 
-        # called with args and token
-        expected_args = ["oc", *args, "--token", "fake-token"]
-        assert expected_args == mock_run.call_args[0][0]
-        assert response.startswith("Error executing args")
-        assert "Traceback" in response
-        assert "<redacted>" in response
-        assert "fake-token" not in response
+        with pytest.raises(Exception) as exception:
+            run_oc(args)
+        assert "Traceback" in str(exception.value)
+        assert "error and <redacted>" in str(exception.value)
+        assert "fake-token" not in str(exception.value)
 
 
 @pytest.mark.parametrize("tool", (oc_get, oc_describe, oc_logs, oc_status, oc_adm_top))
