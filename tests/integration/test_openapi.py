@@ -1,5 +1,9 @@
 """Integration tests for REST API endpoint that provides OpenAPI specification."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import json
 import os
 from unittest.mock import patch

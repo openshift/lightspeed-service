@@ -1,5 +1,9 @@
 """Integration tests for basic OLS REST API endpoints."""
 
+# we add new attributes into pytest instance, which is not recognized
+# properly by linters
+# pyright: reportAttributeAccessIssue=false
+
 import logging
 from unittest.mock import Mock, patch
 
