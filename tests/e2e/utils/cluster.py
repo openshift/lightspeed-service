@@ -222,7 +222,7 @@ def list_path(pod_name: str, path: str) -> list[str]:
             "No such file or directory" in e.stdout
             or "No such file or directory" in e.stderr
         ):
-            return None
+            return []
         raise Exception("Error listing pod path") from e
 
 
