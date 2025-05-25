@@ -18,6 +18,8 @@ ols_config:
     logging_level: INFO
   default_provider: bam
   default_model: model-name
+  query_filters:
+    []
 dev_config:
   disable_auth: true
   disable_tls: true
