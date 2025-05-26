@@ -76,7 +76,7 @@ def test_mcp_server_config_required_name():
         ValidationError,
         match=r"(?s)name.*Field required",
     ):
-        MCPServerConfig(
+        MCPServerConfig(  # pyright: ignore[reportCallIssue]
             transport="stdio", stdio={"command": "python", "args": ["server.py"]}
         )
 
@@ -87,19 +87,19 @@ def test_mcp_server_config_transport():
         ValidationError,
         match=r"(?s)transport.*Field required",
     ):
-        MCPServerConfig()
+        MCPServerConfig()  # pyright: ignore[reportCallIssue]
 
     with pytest.raises(
         ValidationError,
         match="Input should be",
     ):
-        MCPServerConfig(transport="unknown")
+        MCPServerConfig(transport="unknown")  # pyright: ignore[reportCallIssue]
 
 
 def test_mcp_server_config_missing_options():
     """Test the MCPServerConfig model for missing options."""
-    stdio_conf = {"command": "python", "args": ["server.py"]}
-    sse_conf = {"url": "http://server:8080"}
+    stdio_conf = StdioTransportConfig(command="python", args=["server.py"])
+    sse_conf = SseTransportConfig(url="http://server:8080")
     with pytest.raises(
         ValidationError,
         match="Stdio transport selected but 'stdio' config not provided",
@@ -174,11 +174,11 @@ def test_mcp_servers(
 
 def test_mcp_servers_duplicity():
     """Test the MCPServers model."""
-    mcp_server_config = {
-        "name": "foo",
-        "transport": "stdio",
-        "stdio": {"command": "python", "args": ["server1.py"]},
-    }
+    mcp_server_config = MCPServerConfig(
+        name="foo",
+        transport="stdio",
+        stdio=StdioTransportConfig(command="python", args=["server1.py"]),
+    )
 
     with pytest.raises(ValidationError, match="Duplicate server name: 'foo'"):
         MCPServers(servers=[mcp_server_config, mcp_server_config])
@@ -187,10 +187,10 @@ def test_mcp_servers_duplicity():
 def test_mcp_servers_invalid_input():
     """Test the MCPServers model."""
     with pytest.raises(ValidationError, match="Input should be a valid list"):
-        MCPServers(servers={"name": "foo"})
+        MCPServers(servers={"name": "foo"})  # pyright: ignore[reportArgumentType]
 
     with pytest.raises(ValidationError, match="Input should be a valid list"):
-        MCPServers(servers={})
+        MCPServers(servers={})  # pyright: ignore[reportArgumentType]
 
 
 def test_mcp_servers_equality(
@@ -229,7 +229,7 @@ def test_mcp_servers_equality(
 def test_sse_transport_configuration_on_no_data():
     """Test the SSE transport configuration handling when no data are provided."""
     with pytest.raises(ValidationError, match=r"(?s)url.*Field required"):
-        SseTransportConfig()
+        SseTransportConfig()  # pyright: ignore[reportCallIssue]
 
 
 def test_sse_transport_defaults():
@@ -245,17 +245,17 @@ def test_sse_transport_defaults():
 def test_stdio_transport_configuration_on_no_data():
     """Test the STDIO transport configuration handling when no data are provided."""
     with pytest.raises(ValidationError, match=r"(?s)command.*Field required"):
-        StdioTransportConfig()
+        StdioTransportConfig()  # pyright: ignore[reportCallIssue]
 
 
 def test_stdio_transport_defaults():
     """Test the STDIO transport configuration defaults."""
     stdio_transport = StdioTransportConfig(command="python")
-    stdio_transport.command == "python"
-    stdio_transport.args == []
-    stdio_transport.env == constants.STDIO_TRANSPORT_DEFAULT_ENV
-    stdio_transport.cwd == constants.STDIO_TRANSPORT_DEFAULT_CWD
-    stdio_transport.encoding == constants.STDIO_TRANSPORT_DEFAULT_ENCODING
+    assert stdio_transport.command == "python"
+    assert stdio_transport.args == []
+    assert stdio_transport.env == constants.STDIO_TRANSPORT_DEFAULT_ENV
+    assert stdio_transport.cwd == constants.STDIO_TRANSPORT_DEFAULT_CWD
+    assert stdio_transport.encoding == constants.STDIO_TRANSPORT_DEFAULT_ENCODING
 
 
 def test_model_parameters():
