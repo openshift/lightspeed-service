@@ -14,6 +14,9 @@ class TestRedactor(TestCase):
         """Set up the test."""
         config = AppConfig()
         config.reload_from_yaml_file("tests/config/valid_config_with_query_filter.yaml")
+        # make sure the query filters are specified in configuration
+        assert config.ols_config.query_filters is not None
+        # construct redactor class
         self.query_filter = Redactor(config.ols_config.query_filters)
 
     def test_redact_question_image_ip(self):
