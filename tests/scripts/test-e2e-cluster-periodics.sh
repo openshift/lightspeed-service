@@ -37,11 +37,8 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image
   # empty test_tags means run all tests
-  if [$DISCONNECTED]; then
-    # smoke tests for RHOAI VLLM-compatible provider
-    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "n"
-    (( rc = rc || $? ))
-  else
+  if [ -z "${DISCONNECTED:-}" ]; then
+    # Tests for not disconnected environments
     run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
     (( rc = rc || $? ))
 
@@ -71,6 +68,12 @@ function run_suites() {
     (( rc = rc || $? ))
     run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "y"
     (( rc = rc || $? ))
+  else
+    # Tests for disconnected environments
+    # smoke tests for RHOAI VLLM-compatible provider
+    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "n"
+    (( rc = rc || $? ))
+    
   fi
   set -e
 
