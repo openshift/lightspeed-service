@@ -33,10 +33,4 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
-  mcp_servers:
-    - name: openshift
-      transport: stdio
-      stdio:
-        command: python
-        args:
-          - ./mcp_local/openshift.py
+    introspectionEnabled: true
