@@ -19,31 +19,20 @@ class FakeTool:
         return "fake_output"
 
 
-class FakeMCPClient:
-    """Mock MCP client class."""
-
-    def get_tools(self):
-        """Mock method to return a list of tools."""
-        return [FakeTool(name="fake_tool")]
-
-
 def test_get_tool_by_name():
     """Test get_tool_by_name function."""
     fake_tool_name = "fake_tool"
-    fake_mcp_client = FakeMCPClient()
+    fake_tools = [FakeTool(name="fake_tool")]
+    fake_tools_duplicite = [FakeTool(name="fake_tool"), FakeTool(name="fake_tool")]
 
-    tool = get_tool_by_name(fake_tool_name, fake_mcp_client)
+    tool = get_tool_by_name(fake_tool_name, fake_tools)
     assert tool.name == fake_tool_name
 
     with pytest.raises(ValueError, match="Tool 'non_existent_tool' not found."):
-        get_tool_by_name("non_existent_tool", fake_mcp_client)
+        get_tool_by_name("non_existent_tool", fake_tools)
 
     with pytest.raises(ValueError, match="Multiple tools found with name 'fake_tool'."):
-        fake_mcp_client.get_tools = lambda: [
-            FakeTool(name="fake_tool"),
-            FakeTool(name="fake_tool"),
-        ]
-        get_tool_by_name(fake_tool_name, fake_mcp_client)
+        get_tool_by_name(fake_tool_name, fake_tools_duplicite)
 
 
 @pytest.mark.asyncio
@@ -51,13 +40,13 @@ async def test_execute_tool_call():
     """Test execute_tool_call function."""
     fake_tool_name = "fake_tool"
     fake_tool_args = {"arg1": "value1"}
-    fake_mcp_client = FakeMCPClient()
+    fake_tools = [FakeTool(name="fake_tool")]
 
     with patch(
         "ols.src.tools.tools.get_tool_by_name", return_value=FakeTool(fake_tool_name)
     ):
         status, output = await execute_tool_call(
-            fake_tool_name, fake_tool_args, fake_mcp_client
+            fake_tool_name, fake_tool_args, fake_tools
         )
         assert output == "fake_output"
         assert status == "success"
@@ -66,7 +55,7 @@ async def test_execute_tool_call():
         "ols.src.tools.tools.get_tool_by_name", side_effect=Exception("Tool error")
     ):
         status, output = await execute_tool_call(
-            fake_tool_name, fake_tool_args, fake_mcp_client
+            fake_tool_name, fake_tool_args, fake_tools
         )
         assert "Error executing tool" in output
         assert status == "error"
@@ -77,7 +66,7 @@ async def test_execute_tool_calls():
     """Test execute_tool_calls function."""
     fake_tool_name = "fake_tool"
     fake_tool_args = {"arg1": "value1"}
-    fake_mcp_client = FakeMCPClient()
+    fake_tools = [FakeTool(name="fake_tool")]
 
     tool_calls = [
         {"name": fake_tool_name, "args": fake_tool_args, "id": "tool_call_1"},
@@ -87,7 +76,7 @@ async def test_execute_tool_calls():
     with patch(
         "ols.src.tools.tools.execute_tool_call", return_value=("success", "fake_output")
     ):
-        tool_messages = await execute_tool_calls(fake_mcp_client, tool_calls)
+        tool_messages = await execute_tool_calls(tool_calls, fake_tools)
         assert len(tool_messages) == 2
         assert tool_messages[0].content == "fake_output"
         assert tool_messages[0].status == "success"

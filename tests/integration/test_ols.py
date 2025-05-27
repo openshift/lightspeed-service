@@ -5,7 +5,7 @@
 # pyright: reportAttributeAccessIssue=false
 
 import logging
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import requests
@@ -1179,11 +1179,10 @@ def test_tool_calling(_setup, caplog) -> None:
             new=fake_invoke_llm,
         ) as mock_invoke,
     ):
-        mock_mcp_client_instance = Mock()
+        # Create mock tools map
+        mock_mcp_client_instance = AsyncMock()
         mock_mcp_client_instance.get_tools.return_value = mock_tools_map
-        mock_mcp_client_cls.return_value.__aenter__.return_value = (
-            mock_mcp_client_instance
-        )
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         with (
             patch(
