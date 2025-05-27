@@ -740,9 +740,11 @@ def test_conversation_request_dedup_ref_docs(auth):
         patch("ols.config.conversation_cache.get"),
     ):
         mock_rag_chunk = [
-            RagChunk("text1", "url-b", "title-b"),
-            RagChunk("text2", "url-b", "title-b"),  # duplicate doc
-            RagChunk("text3", "url-a", "title-a"),
+            RagChunk(text="text1", doc_url="url-b", doc_title="title-b"),
+            RagChunk(
+                text="text2", doc_url="url-b", doc_title="title-b"
+            ),  # duplicate doc
+            RagChunk(text="text3", doc_url="url-a", doc_title="title-a"),
         ]
         mock_validate_question.return_value = True
         mock_summarize.return_value = SummarizerResponse(
@@ -982,8 +984,8 @@ def test_store_transcript(transcripts_location):
     llm_request = LLMRequest(query=query, conversation_id=conversation_id)
     response = "Kubernetes is ..."
     rag_chunks = [
-        RagChunk("text1", "url1", "title1"),
-        RagChunk("text2", "url2", "title2"),
+        RagChunk(text="text1", doc_url="url1", doc_title="title1"),
+        RagChunk(text="text2", doc_url="url2", doc_title="title2"),
     ]
     truncated = True
     tool_calls = [
