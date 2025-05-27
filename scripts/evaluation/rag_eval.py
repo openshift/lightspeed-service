@@ -103,6 +103,7 @@ class RetrievalEvaluation:
         provider_config = config.config.llm_providers.providers[
             self._args.judge_provider
         ]
+        assert provider_config.type is not None, "Provider type must be configured"
         judge_llm = VANILLA_MODEL[provider_config.type](
             self._args.judge_model, provider_config
         ).load()
@@ -153,6 +154,7 @@ class RetrievalEvaluation:
     def _get_judge_response(self, query):
         """Get Judge response."""
         print("Getting Judge response...")
+        result = {}
         for retry_counter in range(MAX_RETRY_ATTEMPTS):
             try:
                 result = self._judge_llm.invoke(

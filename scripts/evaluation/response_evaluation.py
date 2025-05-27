@@ -170,6 +170,7 @@ class ResponseEvaluation:
         time_to_breath=TIME_TO_BREATH,
     ):
         """Get api response for a question/query."""
+        response = None
         # try to retrieve response even when model is not responding reliably
         # in 100% cases
         # it fixes OLS-858 e2e test failure - test_model_response response validation
