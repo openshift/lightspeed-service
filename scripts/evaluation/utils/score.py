@@ -31,6 +31,7 @@ class ResponseScore:
         if judge_llm_required:
             # Judge provider & model need to be configured correctly in config yaml file.
             provider_config = config.config.llm_providers.providers[args.judge_provider]
+            assert provider_config.type is not None, "Provider type must be configured"
             judge_llm = VANILLA_MODEL[provider_config.type](
                 args.judge_model, provider_config
             ).load()

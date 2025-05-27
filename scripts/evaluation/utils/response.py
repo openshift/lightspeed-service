@@ -18,6 +18,7 @@ set_debug(True)
 def get_model_response(query, provider, model, mode, api_client=None):
     """Get response depending upon the mode."""
     if mode == "ols":
+        assert api_client is not None, "API client needs to be configured"
         response = api_client.post(
             "/v1/query",
             json={
@@ -35,6 +36,9 @@ def get_model_response(query, provider, model, mode, api_client=None):
     prompt_input = {"query": query}
     provider_config = config.config.llm_providers.providers[provider]
     model_config = provider_config.models[model]
+    assert (
+        provider_config.type is not None
+    ), "Provider type needs to be specified in configuration"
     llm = VANILLA_MODEL[provider_config.type](model, provider_config).load()
 
     if mode == "ols_param":

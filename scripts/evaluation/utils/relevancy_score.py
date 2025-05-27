@@ -29,6 +29,7 @@ class AnswerRelevancyScore:
         time_to_breath=TIME_TO_BREATH,
     ):
         """Calculate relevancy score."""
+        score, valid_flag, gen_questions = None, None, None
         # Generate relevant questions.
         for retry_counter in range(retry_attempts):
             try:
