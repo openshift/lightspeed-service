@@ -63,6 +63,7 @@ class AzureOpenAIVanilla(AzureOpenAI):
             # credentials for API key is not set -> azure AD token is
             # obtained through azure config parameters (tenant_id,
             # client_id and client_secret)
+            assert azure_config is not None, "Azure OpenAI configuration is missing"
             access_token = self.resolve_access_token(azure_config)
             default_parameters["azure_ad_token"] = access_token
         return default_parameters

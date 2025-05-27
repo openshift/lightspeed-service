@@ -25,6 +25,7 @@ class AnswerSimilarityScore:
         time_to_breath=TIME_TO_BREATH,
     ):
         """Generate similarity score."""
+        score = None
         for retry_counter in range(retry_attempts):
             try:
                 result = self._judge_llm.invoke(
