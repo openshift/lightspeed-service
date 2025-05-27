@@ -833,10 +833,26 @@ class ReferenceContentIndex(BaseModel):
     def validate_yaml(self) -> None:
         """Validate reference content index config."""
         if self.product_docs_index_path is not None:
-            checks.dir_check(
-                self.product_docs_index_path, "Reference content index path"
-            )
-            if self.product_docs_index_id is None:
+            try:
+                fallback_to_default = False
+                checks.dir_check(
+                    self.product_docs_index_path, "Reference content index path"
+                )
+            except checks.InvalidConfigurationError as e_original:
+                # special case for OCP documents not having the current version.
+                # we use the "latest" version from the vector store directory.
+                default_path = os.path.join(
+                    os.path.dirname(self.product_docs_index_path), "latest"
+                )
+                try:
+                    checks.dir_check(default_path, "Reference content index path")
+                    self.product_docs_index_path = FilePath(default_path)
+                    # load all index in the default path
+                    self.product_docs_index_id = None
+                    fallback_to_default = True
+                except checks.InvalidConfigurationError:
+                    raise e_original
+            if self.product_docs_index_id is None and not fallback_to_default:
                 raise checks.InvalidConfigurationError(
                     "product_docs_index_path is specified but product_docs_index_id is missing"
                 )

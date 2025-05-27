@@ -2946,6 +2946,32 @@ def test_reference_content_yaml_validation():
         reference_content.validate_yaml()
 
 
+def test_reference_content_yaml_validation_fallback_to_default_dir(tmp_path):
+    """Test the ReferenceContent YAML validation method fallback to default dir."""
+    default_dir = tmp_path / "latest"
+    default_dir.mkdir()
+
+    # index path to inexistent dir in the temp dir should fallback to "default" dir
+    inexistent_dir = tmp_path / "non_existing_dir"
+    reference_content = ReferenceContent()
+    reference_content.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "foo", "product_docs_index_path": inexistent_dir}
+        )
+    ]
+    reference_content.validate_yaml()
+    assert reference_content.indexes[0].product_docs_index_path == default_dir
+    assert reference_content.indexes[0].product_docs_index_id is None
+
+    # exception should be raised if the default dir does not exist, either
+    default_dir.rmdir()
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Reference content index path '.+' does not exist",
+    ):
+        reference_content.validate_yaml()
+
+
 def test_config_no_query_filter_node():
     """Test the Config model when query filter is not set at all."""
     config = Config(
