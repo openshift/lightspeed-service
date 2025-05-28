@@ -8,7 +8,7 @@ from ibm_watsonx_ai.wml_client_error import ApiRequestFailure
 from openai import BadRequestError
 
 # Constants for default messages and status codes
-DEFAULT_ERROR_MESSAGE = "Oops, something went wrong during LLM invocation"
+DEFAULT_ERROR_MESSAGE = "An error occurred during LLM invocation. Please contact your OpenShift Lightspeed administrator."  # noqa: E501
 DEFAULT_STATUS_CODE = status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
