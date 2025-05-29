@@ -48,6 +48,8 @@ Please refer above files for the structure, add new data accordingly.
 
 **eval_provider_model_id**: We can provide set of provider/model combinations as ids for comparison.
 
+**use_default_json_data**: When enabled, a default json dataset will be used with specific format. The special format is more relevant for `consistency` mode. But can be used with other mode aswell.
+
 **qna_pool_file**: Applicable only for `model` evaluation. Provide file path to the parquet file having additional QnAs. Default is None.
 
 **eval_out_dir**: Directory, where output csv/json files will be saved.
