@@ -63,8 +63,7 @@ def test_import_modules_from_non_existing_dir():
         _import_modules_from_dir("...")
 
 
-# not enabled: we run unit tests under root on CI, needs to be solved first
-def _test_import_modules_from_unreadable_dir():
+def test_import_modules_from_unreadable_dir():
     """Test the behaviour when non readable directory is specified."""
     with pytest.raises(PermissionError, match="Permission denied"):
         # permission is denied accessing /root/ directory
