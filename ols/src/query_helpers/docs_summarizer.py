@@ -3,7 +3,6 @@
 # TODO: Refactor/rename this file
 import asyncio
 import logging
-import os
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain.globals import set_debug
@@ -16,12 +15,12 @@ from llama_index.core.retrievers import BaseRetriever
 from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
-from ols.app.models.config import MCPServerConfig
 from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.src.tools.mcp_config_builder import MCPConfigBuilder
 from ols.src.tools.tools import execute_tool_calls
 from ols.utils.token_handler import TokenHandler
 
@@ -84,79 +83,6 @@ def run_async_safely(coro: Callable) -> Any:
         raise
 
 
-class MCPConfigBuilder:
-    """Builds MCP config for MultiServerMCPClient."""
-
-    @staticmethod
-    def resolve_openshift_stdio_env_conf(server_envs: dict, user_token: str) -> dict:
-        """Resolve OpenShift stdio env config."""
-        logger.debug("Updating env configuration of openshift stdio mcp server")
-
-        env = {**server_envs}
-        if "OC_USER_TOKEN" in env:
-            logger.warning(
-                "OC_USER_TOKEN is set in openshift mcp server env config, "
-                "overriding with actual user token"
-            )
-        env["OC_USER_TOKEN"] = user_token
-        if "KUBECONFIG" not in env:
-            if "KUBECONFIG" in os.environ:
-                logger.info(
-                    "KUBECONFIG not set in openshift mcp server env config, using "
-                    "KUBECONFIG from environ"
-                )
-                env["KUBECONFIG"] = os.environ["KUBECONFIG"]
-            else:
-                logger.warning(
-                    "KUBECONFIG not set in openshift mcp server env config, "
-                    "and not found in environ"
-                )
-                if (
-                    "KUBERNETES_SERVICE_HOST" in os.environ
-                    and "KUBERNETES_SERVICE_PORT" in os.environ
-                ):
-                    logger.info(
-                        "Using KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT instead"
-                    )
-                    env["KUBERNETES_SERVICE_HOST"] = os.environ[
-                        "KUBERNETES_SERVICE_HOST"
-                    ]
-                    env["KUBERNETES_SERVICE_PORT"] = os.environ[
-                        "KUBERNETES_SERVICE_PORT"
-                    ]
-                else:
-                    logger.error(
-                        "Unable to find any values/envs required for openshift "
-                        "mcp server setup, it probably fail to give any output"
-                    )
-
-        return env
-
-    @staticmethod
-    def mcp_config_to_client_dump(
-        mcp_server_configs: list[MCPServerConfig], user_token: str
-    ) -> dict[str, Any]:
-        """Unpacks config to MultiServerMCPClient expectations."""
-        servers_conf = {}
-        for server_conf in mcp_server_configs:
-            servers_conf[server_conf.name] = {
-                "transport": server_conf.transport,
-            }
-            if server_conf.stdio:
-                servers_conf[server_conf.name].update(server_conf.stdio.model_dump())
-                # TODO: I'm not really happy about this solution, open
-                # for ideas - the config "variables" might be one solution
-                if server_conf.name == "openshift":
-                    servers_conf[server_conf.name]["env"] = (
-                        MCPConfigBuilder.resolve_openshift_stdio_env_conf(  # type: ignore [assignment]
-                            server_conf.stdio.env, user_token
-                        )
-                    )
-            if server_conf.sse:
-                servers_conf[server_conf.name].update(server_conf.sse.model_dump())
-        return servers_conf
-
-
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
@@ -176,9 +102,10 @@ class DocsSummarizer(QueryHelper):
 
         # tools part
         self.user_token = user_token
-        self.mcp_servers = MCPConfigBuilder.mcp_config_to_client_dump(
-            config.mcp_servers.servers, self.user_token
+        mcp_config_builder = MCPConfigBuilder(
+            self.user_token, config.mcp_servers.servers
         )
+        self.mcp_servers = mcp_config_builder.dump_client_config()
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
             self._tool_calling_enabled = True
