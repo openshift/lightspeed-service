@@ -69,7 +69,7 @@ def create_and_config_sas() -> tuple[str, str]:
     return token, metrics_token
 
 
-def update_ols_config(tool_calling_enabled: bool) -> None:
+def update_ols_config() -> None:
     """Create the ols config configmap with log and collector config for e2e tests.
 
     Returns:
@@ -83,20 +83,6 @@ def update_ols_config(tool_calling_enabled: bool) -> None:
     # one of our libs logs a secrets in debug mode which causes the pod
     # logs beying redacted/removed completely - we need log at info level
     olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
-
-    if tool_calling_enabled:
-        olsconfig["mcp_servers"] = [
-            {
-                "name": "openshift",
-                "transport": "stdio",
-                "stdio": {
-                    "command": "python3.11",
-                    "args": [
-                        "/app-root/mcp_local/openshift.py",
-                    ],
-                },
-            }
-        ]
 
     # add collector config for e2e tests
     olsconfig["user_data_collector_config"] = {
@@ -459,7 +445,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             "0",
         ]
     )
-    update_ols_config(tool_calling_enabled)
+    update_ols_config()
     # scale the ols app server up
     cluster_utils.run_oc(
         [
