@@ -213,7 +213,7 @@ def test_argless_tools(token_in_env):
 @pytest.mark.asyncio
 async def test_is_stdio_server():
     """Test if the server is a stdio server."""
-    async with MultiServerMCPClient(
+    mcp_client = MultiServerMCPClient(
         {
             "math": {
                 "command": "python",
@@ -226,15 +226,16 @@ async def test_is_stdio_server():
                 "transport": "stdio",
             },
         }
-    ) as client:
-        tools = client.get_tools()
-        assert len(tools) == 6
-        assert tools[0].name == "oc_get"
-        assert tools[1].name == "oc_describe"
-        assert tools[2].name == "oc_logs"
-        assert tools[3].name == "oc_status"
-        assert tools[4].name == "show_pods_resource_usage"
-        assert tools[5].name == "oc_adm_top"
+    )
+
+    tools = await mcp_client.get_tools()
+    assert len(tools) == 6
+    assert tools[0].name == "oc_get"
+    assert tools[1].name == "oc_describe"
+    assert tools[2].name == "oc_logs"
+    assert tools[3].name == "oc_status"
+    assert tools[4].name == "show_pods_resource_usage"
+    assert tools[5].name == "oc_adm_top"
 
 
 def test_redact_token():

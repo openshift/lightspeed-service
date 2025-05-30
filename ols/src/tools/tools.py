@@ -4,16 +4,15 @@ import logging
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
-from langchain_mcp_adapters.client import MultiServerMCPClient
 
 logger = logging.getLogger(__name__)
 
 
 def get_tool_by_name(
-    tool_name: str, mcp_client: MultiServerMCPClient
+    tool_name: str, all_mcp_tools: list[StructuredTool]
 ) -> StructuredTool:
     """Get a tool by its name from the MCP client."""
-    tool = [tool for tool in mcp_client.get_tools() if tool.name == tool_name]
+    tool = [tool for tool in all_mcp_tools if tool.name == tool_name]
     if len(tool) == 0:
         raise ValueError(f"Tool '{tool_name}' not found.")
     if len(tool) > 1:
@@ -23,11 +22,11 @@ def get_tool_by_name(
 
 
 async def execute_tool_call(
-    tool_name: str, tool_args: dict, mcp_client: MultiServerMCPClient
+    tool_name: str, tool_args: dict, all_mcp_tools: list[StructuredTool]
 ) -> tuple[str, str]:
     """Execute a tool call and return the output and status."""
     try:
-        tool = get_tool_by_name(tool_name, mcp_client)
+        tool = get_tool_by_name(tool_name, all_mcp_tools)
         tool_output = await tool.arun(tool_args)  # type: ignore [attr-defined]
         status = "success"
         logger.debug(
@@ -44,8 +43,8 @@ async def execute_tool_call(
 
 
 async def execute_tool_calls(
-    mcp_client: MultiServerMCPClient,
     tool_calls: list[dict],
+    all_mcp_tools: list[StructuredTool],
 ) -> tuple[list[ToolMessage], list[dict]]:
     """Execute tool calls and return ToolMessages and execution details."""
     tool_messages = []
@@ -56,7 +55,7 @@ async def execute_tool_calls(
         tool_id = tool_call.get("id")
         try:
             status, tool_output = await execute_tool_call(
-                tool_name, tool_args, mcp_client
+                tool_name, tool_args, all_mcp_tools
             )
         except Exception as e:
             tool_output = (
