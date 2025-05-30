@@ -9,6 +9,11 @@ from ols.constants import RAG_CONTENT_LIMIT
 
 logger = logging.getLogger(__name__)
 
+
+SCORE_DILUTION_WEIGHT = 0.05
+SCORE_DILUTION_DEPTH = 2
+
+
 # delay import of llama_index dependencies
 BaseIndex = Any
 BaseRetriever = Any
@@ -41,6 +46,45 @@ def load_llama_index_deps() -> None:
     from llama_index.core.llms.utils import resolve_llm
     from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
     from llama_index.vector_stores.faiss import FaissVectorStore
+
+    # Set custom query fusion class to override existing normalized weighted score.
+    # This is currently an experimental/easy work-around to prioritize indexes.
+    global QueryFusionRetrieverCustom  # pylint: disable=W0601
+
+    class QueryFusionRetrieverCustom(QueryFusionRetriever):  # pylint: disable=W0612
+        """Custom query fusion retriever."""
+
+        def __init__(self, **kwargs):
+            """Initialize custom query fusion class."""
+            super().__init__(**kwargs)
+
+            retriever_weights = kwargs.get("retriever_weights", None)
+            if not retriever_weights:
+                retriever_weights = [1.0] * len(kwargs["retrievers"])
+            self._custom_retriever_weights = retriever_weights
+
+        def _simple_fusion(self, results):
+            """Override internal method and apply weighted score."""
+            # Overriding one of the method is okay, we just need to add our custom logic.
+
+            # Note: Index with lower weight still may rank higher, if score gap is enough.
+            # Currently weights are calculated dynamic (until this becomes part of config)
+            # Current dynamic weights marginally penalize the score.
+            all_nodes = {}
+            for i, nodes_with_scores in enumerate(results.values()):
+                for j, node_with_score in enumerate(nodes_with_scores):
+                    node_index_id = f"{i}_{j}"
+                    all_nodes[node_index_id] = node_with_score
+                    # weighted_score = node_with_score.score * self._custom_retriever_weights[i]
+                    # Uncomment above and delete below, if we decide weights to be set from config.
+                    weighted_score = node_with_score.score * (
+                        1 - min(i, SCORE_DILUTION_DEPTH - 1) * SCORE_DILUTION_WEIGHT
+                    )
+                    all_nodes[node_index_id].score = weighted_score
+
+            return sorted(
+                all_nodes.values(), key=lambda x: x.score or 0.0, reverse=True
+            )
 
 
 class IndexLoader:
@@ -146,12 +190,16 @@ class IndexLoader:
             and self._retriever.similarity_top_k == similarity_top_k
         ):
             return self._retriever
-        retriever = QueryFusionRetriever(
-            [
+
+        # Note: we are using a custom retriever, based on our need
+        retriever = QueryFusionRetrieverCustom(
+            retrievers=[
                 index.as_retriever(similarity_top_k=similarity_top_k)
                 for index in self._indexes
             ],
             similarity_top_k=similarity_top_k,
+            retriever_weights=None,  # Setting as None, until this gets added to config
+            mode="simple",  # Don't modify this as we are adding our own logic
             num_queries=1,  # set this to 1 to disable query generation
             use_async=False,
             verbose=False,
