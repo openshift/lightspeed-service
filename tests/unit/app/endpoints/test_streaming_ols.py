@@ -26,6 +26,7 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
 from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
 from ols.customize import prompts  # noqa:E402
 from ols.utils import suid  # noqa:E402
+from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
 
 conversation_id = suid.get_suid()
 
@@ -137,14 +138,14 @@ def test_generic_llm_error():
     """Test generic_llm_error."""
     assert (
         generic_llm_error("error", constants.MEDIA_TYPE_TEXT)
-        == "Oops, something went wrong during LLM invocation: error"
+        == f"{DEFAULT_ERROR_MESSAGE}: error"
     )
 
     assert generic_llm_error("error", constants.MEDIA_TYPE_JSON) == format_stream_data(
         {
             "event": "error",
             "data": {
-                "response": "Oops, something went wrong during LLM invocation",
+                "response": DEFAULT_ERROR_MESSAGE,
                 "cause": "error",
             },
         }
