@@ -148,6 +148,12 @@ def pytest_addoption(parser):
         help="Scenario for which responses will be evaluated.",
     )
     parser.addoption(
+        "--use_default_json_data",
+        default=True,
+        type=bool,
+        help="When True, default data will be used.",
+    )
+    parser.addoption(
         "--qna_pool_file",
         default=None,
         type=str,

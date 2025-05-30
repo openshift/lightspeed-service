@@ -48,10 +48,12 @@ class ResponseEvaluation:
         self._scorer = ResponseScore(self._args)
 
         # Load data
-        with open(
-            os.path.join(self._input_dir, DEFAULT_QNA_FILE), encoding="utf-8"
-        ) as qna_f:
-            self._qa_pool_json = json.load(qna_f)["evaluation"]
+        self._qa_pool_json = None
+        if self._args.use_default_json_data:
+            with open(
+                os.path.join(self._input_dir, DEFAULT_QNA_FILE), encoding="utf-8"
+            ) as qna_f:
+                self._qa_pool_json = json.load(qna_f)["evaluation"]
 
         self._qa_pool_df = self._load_qna_pool_parquet()
 
@@ -149,7 +151,9 @@ class ResponseEvaluation:
 
     def _get_inscope_qna(self, provider_model_id):
         """Get QnAs which are inscope for evaluation."""
-        qna_pool_df = self._restructure_qna_pool_json(provider_model_id)
+        qna_pool_df = DataFrame()
+        if self._qa_pool_json:
+            qna_pool_df = self._restructure_qna_pool_json(provider_model_id)
 
         qna_pool_df = concat([qna_pool_df, self._qa_pool_df])
 

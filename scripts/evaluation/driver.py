@@ -50,6 +50,12 @@ def _args_parser(args):
         help="Scenario for which responses will be evaluated.",
     )
     parser.add_argument(
+        "--use_default_json_data",
+        default=True,
+        type=bool,
+        help="When True, default data will be used.",
+    )
+    parser.add_argument(
         "--qna_pool_file",
         default=None,
         type=str,
