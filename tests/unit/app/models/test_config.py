@@ -5,7 +5,7 @@ import logging
 import os
 
 import pytest
-from pydantic import AnyHttpUrl, ValidationError
+from pydantic import ValidationError
 
 import ols.utils.tls as tls
 from ols import constants
@@ -4034,7 +4034,7 @@ def test_proxy_config_correct_values_env_var():
         system_proxy = "http://proxy.example.com:1234"
         os.environ["https_proxy"] = "http://proxy.example.com:1234"
     proxy_config = ProxyConfig()
-    assert proxy_config.proxy_url == AnyHttpUrl(system_proxy)
+    assert proxy_config.proxy_url == system_proxy
     assert proxy_config.proxy_ca_cert_path is None
     proxy_config.validate_yaml()
     if system_proxy == "http://proxy.example.com:1234":

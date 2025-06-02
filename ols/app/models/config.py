@@ -124,9 +124,9 @@ class TLSConfig(BaseModel):
 class ProxyConfig(BaseModel):
     """HTTPS Proxy configuration."""
 
-    proxy_url: Optional[AnyHttpUrl] = Field(
+    proxy_url: Optional[str] = Field(
         default_factory=lambda: os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-    )  # type: ignore
+    )
     proxy_ca_cert_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
