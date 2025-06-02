@@ -335,87 +335,83 @@ class DocsSummarizer(QueryHelper):
             StreamedChunk objects representing parts of the response
         """
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
-            async with MultiServerMCPClient(self.mcp_servers) as mcp_client:
+            mcp_client = MultiServerMCPClient(self.mcp_servers)
+            all_mcp_tools = await mcp_client.get_tools()
 
-                # Get tools from mcp server
-                tools_map = mcp_client.get_tools()
+            # Tool calling in a loop
+            for i in range(1, max_rounds + 1):
 
-                # Tool calling in a loop
-                for i in range(1, max_rounds + 1):
+                is_final_round = (not self._tool_calling_enabled) or (i == max_rounds)
+                logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
-                    is_final_round = (not self._tool_calling_enabled) or (
-                        i == max_rounds
-                    )
-                    logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
-
-                    tool_call_chunks = []
-                    chunk_counter = 0
-                    # invoke LLM and process response chunks
-                    async for chunk in self._invoke_llm(
-                        messages,
-                        llm_input_values,
-                        tools_map=tools_map,
-                        is_final_round=is_final_round,
-                        token_counter=token_counter,
-                    ):
-                        # TODO: Temporary fix for fake-llm (load test) which gives
-                        # output as string. Currently every method that we use gives us
-                        # proper output, except fake-llm. We need to move to a different
-                        # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
-                        # & tool calling and gives response not as string. Even below
-                        # temp fix will fail for tool calling.
-                        # (load test can be run with tool calling set to False till we
-                        # have a permanent fix)
-                        if isinstance(chunk, str):
-                            yield StreamedChunk(type="text", text=chunk)
-                            break
-
-                        # check if LLM has finished generating
-                        if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                            return
-
-                        # collect tool chunk or yield text
-                        if getattr(chunk, "tool_call_chunks", None):
-                            tool_call_chunks.append(chunk)
-                        else:
-                            if not skip_special_chunk(
-                                chunk.content, chunk_counter, self.model, is_final_round
-                            ):
-                                # stream text chunks directly
-                                yield StreamedChunk(type="text", text=chunk.content)
-
-                        chunk_counter += 1
-
-                    # exit if this was the final round
-                    if is_final_round:
+                tool_call_chunks = []
+                chunk_counter = 0
+                # invoke LLM and process response chunks
+                async for chunk in self._invoke_llm(
+                    messages,
+                    llm_input_values,
+                    tools_map=all_mcp_tools,
+                    is_final_round=is_final_round,
+                    token_counter=token_counter,
+                ):
+                    # TODO: Temporary fix for fake-llm (load test) which gives
+                    # output as string. Currently every method that we use gives us
+                    # proper output, except fake-llm. We need to move to a different
+                    # fake-llm (or custom fake-llm) which can handle streaming/non-streaming
+                    # & tool calling and gives response not as string. Even below
+                    # temp fix will fail for tool calling.
+                    # (load test can be run with tool calling set to False till we
+                    # have a permanent fix)
+                    if isinstance(chunk, str):
+                        yield StreamedChunk(type="text", text=chunk)
                         break
 
-                    # tool calling part
-                    if tool_call_chunks:
-                        # assess tool calls and add to messages
-                        tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                        messages.append(
-                            AIMessage(content="", type="ai", tool_calls=tool_calls)
-                        )
-                        for tool_call in tool_calls:
-                            yield StreamedChunk(type="tool_call", data=tool_call)
+                    # check if LLM has finished generating
+                    if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
+                        return
 
-                        # execute tools and add to messages
-                        tool_calls_messages = await execute_tool_calls(
-                            mcp_client, tool_calls
+                    # collect tool chunk or yield text
+                    if getattr(chunk, "tool_call_chunks", None):
+                        tool_call_chunks.append(chunk)
+                    else:
+                        if not skip_special_chunk(
+                            chunk.content, chunk_counter, self.model, is_final_round
+                        ):
+                            # stream text chunks directly
+                            yield StreamedChunk(type="text", text=chunk.content)
+
+                    chunk_counter += 1
+
+                # exit if this was the final round
+                if is_final_round:
+                    break
+
+                # tool calling part
+                if tool_call_chunks:
+                    # assess tool calls and add to messages
+                    tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
+                    messages.append(
+                        AIMessage(content="", type="ai", tool_calls=tool_calls)
+                    )
+                    for tool_call in tool_calls:
+                        yield StreamedChunk(type="tool_call", data=tool_call)
+
+                    # execute tools and add to messages
+                    tool_calls_messages = await execute_tool_calls(
+                        tool_calls, all_mcp_tools
+                    )
+                    messages.extend(tool_calls_messages)
+                    for tool_call_message in tool_calls_messages:
+                        yield StreamedChunk(
+                            type="tool_result",
+                            data={
+                                "id": tool_call_message.tool_call_id,
+                                "status": tool_call_message.status,
+                                "content": tool_call_message.content,
+                                "type": "tool_result",
+                                "round": i,
+                            },
                         )
-                        messages.extend(tool_calls_messages)
-                        for tool_call_message in tool_calls_messages:
-                            yield StreamedChunk(
-                                type="tool_result",
-                                data={
-                                    "id": tool_call_message.tool_call_id,
-                                    "status": tool_call_message.status,
-                                    "content": tool_call_message.content,
-                                    "type": "tool_result",
-                                    "round": i,
-                                },
-                            )
 
     async def generate_response(
         self,

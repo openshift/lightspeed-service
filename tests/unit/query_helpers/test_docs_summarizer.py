@@ -2,7 +2,7 @@
 
 import logging
 import os
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -305,11 +305,11 @@ def test_tool_calling_tool_execution(caplog):
                 )
             ]
         )
-        mock_mcp_client_instance = Mock()
+
+        # Create mock tools map
+        mock_mcp_client_instance = AsyncMock()
         mock_mcp_client_instance.get_tools.return_value = mock_tools_map
-        mock_mcp_client_cls.return_value.__aenter__.return_value = (
-            mock_mcp_client_instance
-        )
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         summarizer._tool_calling_enabled = True
