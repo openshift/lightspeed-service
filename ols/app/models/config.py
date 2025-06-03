@@ -124,9 +124,9 @@ class TLSConfig(BaseModel):
 class ProxyConfig(BaseModel):
     """HTTPS Proxy configuration."""
 
-    proxy_url: Optional[AnyHttpUrl] = Field(
+    proxy_url: Optional[str] = Field(
         default_factory=lambda: os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-    )  # type: ignore
+    )
     proxy_ca_cert_path: Optional[FilePath] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
@@ -134,7 +134,9 @@ class ProxyConfig(BaseModel):
         super().__init__()
         if not data:
             return
-        self.proxy_url = data.get("proxy_url")
+        if "proxy_url" in data:
+            # avoid overwriting the proxy_url set by environment variable
+            self.proxy_url = data.get("proxy_url")
         self.proxy_ca_cert_path = data.get("proxy_ca_cert_path")
 
     def validate_yaml(self) -> None:
@@ -147,6 +149,12 @@ class ProxyConfig(BaseModel):
             )
         if self.proxy_ca_cert_path is not None:
             checks.file_check(self.proxy_ca_cert_path, "Proxy CA certificate")
+
+    def is_https(self) -> bool:
+        """Check if the proxy URL is HTTPS."""
+        if self.proxy_url is None:
+            return False
+        return self.proxy_url.lower().startswith("https://")
 
     @model_validator(mode="before")
     @classmethod

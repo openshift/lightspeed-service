@@ -346,9 +346,11 @@ class LLMProvider(AbstractLLMProvider):
                 config.ols_config.proxy_config.proxy_url,
                 config.ols_config.proxy_config.proxy_ca_cert_path,
             )
-            proxy_context = ssl.create_default_context(
-                cafile=config.ols_config.proxy_config.proxy_ca_cert_path
-            )
+            proxy_context = None
+            if config.ols_config.proxy_config.is_https():
+                proxy_context = ssl.create_default_context(
+                    cafile=config.ols_config.proxy_config.proxy_ca_cert_path
+                )
             proxy = httpx.Proxy(
                 url=config.ols_config.proxy_config.proxy_url, ssl_context=proxy_context
             )
