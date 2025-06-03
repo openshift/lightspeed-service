@@ -3,8 +3,14 @@
 from unittest.mock import patch
 
 import pytest
+from langchain_core.tools.structured import StructuredTool
 
-from ols.src.tools.tools import execute_tool_call, execute_tool_calls, get_tool_by_name
+from ols.src.tools.tools import (
+    execute_tool_call,
+    execute_tool_calls,
+    filter_read_only_tools,
+    get_tool_by_name,
+)
 
 
 class FakeTool:
@@ -84,3 +90,34 @@ async def test_execute_tool_calls():
         assert tool_messages[1].content == "fake_output"
         assert tool_messages[1].status == "success"
         assert tool_messages[1].tool_call_id == "tool_call_2"
+
+
+def test_filter_read_only_tools():
+    """Test filter_read_only_tools function."""
+    fake_tools = [
+        StructuredTool(
+            name="read_tool", args_schema={}, metadata={"readOnlyHint": True}
+        ),
+        StructuredTool(
+            name="write_tool", args_schema={}, metadata={"readOnlyHint": False}
+        ),
+    ]
+
+    read_only_tools = filter_read_only_tools(fake_tools)
+
+    assert len(read_only_tools) == 1
+    assert read_only_tools[0].name == "read_tool"
+
+
+def test_filter_read_only_tools_no_metadata_tool(caplog):
+    """Test filter_read_only_tools function."""
+    fake_tools = [
+        StructuredTool(name="no_metadata_tool", args_schema={}),
+    ]
+
+    read_only_tools = filter_read_only_tools(fake_tools)
+
+    assert len(read_only_tools) == 1
+    assert read_only_tools[0].name == "no_metadata_tool"
+
+    assert "Tool no_metadata_tool has no metadata" in caplog.text

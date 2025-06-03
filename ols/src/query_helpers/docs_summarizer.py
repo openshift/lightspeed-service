@@ -21,7 +21,7 @@ from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.mcp_config_builder import MCPConfigBuilder
-from ols.src.tools.tools import execute_tool_calls
+from ols.src.tools.tools import execute_tool_calls, filter_read_only_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -264,6 +264,7 @@ class DocsSummarizer(QueryHelper):
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
             mcp_client = MultiServerMCPClient(self.mcp_servers)
             all_mcp_tools = await mcp_client.get_tools()
+            all_mcp_tools = filter_read_only_tools(all_mcp_tools)
 
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
