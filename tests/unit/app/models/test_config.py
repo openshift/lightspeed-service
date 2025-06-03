@@ -4037,6 +4037,7 @@ def test_proxy_config_correct_values_env_var():
     assert proxy_config.proxy_url == system_proxy
     assert proxy_config.proxy_ca_cert_path is None
     proxy_config.validate_yaml()
+
     # CA alone in config should be valid with URL in env var.
     proxy_config = ProxyConfig(
         {
