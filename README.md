@@ -585,7 +585,7 @@ Activate token quota limits for the service by adding a new configuration struct
       - name: user_quota_daily_increases
         type: user_limiter
         quota_increase: 1000 <5>
-        period: 1 hour
+        period: 1 day
     scheduler:
       period: 300 <6>
 ```
@@ -594,7 +594,7 @@ Activate token quota limits for the service by adding a new configuration struct
 <2> Specifies the port for PostgresSQL database. Default port is 5432. \
 <3> Specifies a token quota limit of 100,000 for each user over a period of 30 days. \
 <4> Specifies a token quota limit of 1,000,000 for the whole cluster over a period of 30 days. \
-<5> Increases the token quota limit for the user by 1,000 each one hour. \
+<5> Increases the token quota limit for the user by 1,000 each day. \
 <6> Defines the number of seconds that the scheduler waits and then checks if the period interval is over. When the period interval is over, the scheduler stores the timestamp and resets or increases the quota limit. 300 seconds or even 600 seconds are good values.
 
 
