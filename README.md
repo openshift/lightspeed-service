@@ -546,7 +546,14 @@ It is possible to limit quota usage per user or per service or services (that ty
 
 1. `period` specified in a human-readable form, see https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT for all possible options. When the end of the period is reached, quota is reset or increased
 1. `initial_quota` is set at beginning of the period
-1. `quota_increase` alternatively it is possible to increase quota when period is reached
+1. `quota_increase` this value (if specified) is used to increase quota when period is reached
+
+There are two basic use cases:
+
+1. When quota needs to be reset specific value periodically (for example on weekly on monthly basis), specify `initial_quota` to the required value
+1. When quota needs to be increased by specific value periodically (for example on daily basis), specify `quota_increase`
+
+Technically it is possible to specify both `initial_quota` and `quota_increase`. It means that at the end of time period the quota will be *reset* to `initial_quota + quota_increase`.
 
 Please note that any number of quota limiters can be configured. For example, two user quota limiters can be set to:
 - increase quota by 100,000 tokens each day
@@ -570,22 +577,25 @@ Activate token quota limits for the service by adding a new configuration struct
       - name: user_monthly_limits
         type: user_limiter
         initial_quota: 100000 <3>
-        quota_increase: 10 <4>
         period: 30 days
       - name: cluster_monthly_limits
         type: cluster_limiter
-        initial_quota: 100000 <3>
-        quota_increase: 1000000 <4>
+        initial_quota: 1000000 <4>
         period: 30 days
+      - name: user_quota_daily_increases
+        type: user_limiter
+        quota_increase: 1000 <5>
+        period: 1 day
     scheduler:
-      period: 300 <5>
+      period: 300 <6>
 ```
 
 <1> Specifies the IP address for the PostgresSQL database. \
 <2> Specifies the port for PostgresSQL database. Default port is 5432. \
 <3> Specifies a token quota limit of 100,000 for each user over a period of 30 days. \
-<4> Increases the token quota limit for the cluster by 100,000 over a period of 30 days. \
-<5> Defines the number of seconds that the scheduler waits and then checks if the period interval is over. When the period interval is over, the scheduler stores the timestamp and resets or increases the quota limit. 300 seconds or even 600 seconds are good values.
+<4> Specifies a token quota limit of 1,000,000 for the whole cluster over a period of 30 days. \
+<5> Increases the token quota limit for the user by 1,000 each day. \
+<6> Defines the number of seconds that the scheduler waits and then checks if the period interval is over. When the period interval is over, the scheduler stores the timestamp and resets or increases the quota limit. 300 seconds or even 600 seconds are good values.
 
 
 
