@@ -152,7 +152,7 @@ class TestMCPConfigBuilder:
         result = MCPConfigBuilder.include_auth_header(user_token, config)
 
         assert "headers" in result
-        assert result["headers"][K8S_AUTH_HEADER] == user_token
+        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
 
     @staticmethod
     def test_include_auth_header_existing_headers():
@@ -163,7 +163,7 @@ class TestMCPConfigBuilder:
         result = MCPConfigBuilder.include_auth_header(user_token, config)
 
         assert result["headers"]["Content-Type"] == "application/json"
-        assert result["headers"][K8S_AUTH_HEADER] == user_token
+        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
 
     @staticmethod
     def test_include_auth_header_existing_auth(caplog):
@@ -173,7 +173,7 @@ class TestMCPConfigBuilder:
 
         result = MCPConfigBuilder.include_auth_header(user_token, config)
 
-        assert result["headers"][K8S_AUTH_HEADER] == user_token
+        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
         assert (
             "Kubernetes auth header is already set, overriding with actual user token"
             in caplog.text
@@ -200,7 +200,9 @@ class TestMCPConfigBuilder:
         assert result["sse-server"]["transport"] == "sse"
         assert result["sse-server"]["url"] == "https://example.com/events"
         assert result["sse-server"]["headers"]["X-Custom-Header"] == "value"
-        assert result["sse-server"]["headers"][K8S_AUTH_HEADER] == user_token
+        assert (
+            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        )
 
     @staticmethod
     def test_dump_client_config_with_mixed_transports():
@@ -233,4 +235,6 @@ class TestMCPConfigBuilder:
         assert result["openshift"]["transport"] == "stdio"
         assert result["sse-server"]["transport"] == "sse"
         assert result["openshift"]["env"]["OC_USER_TOKEN"] == user_token
-        assert result["sse-server"]["headers"][K8S_AUTH_HEADER] == user_token
+        assert (
+            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        )

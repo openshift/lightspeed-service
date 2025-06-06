@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Additional header containing user token for k8s/ocp authentication
 # for SSE MCP servers.
-K8S_AUTH_HEADER = "kubernetes-authorization-bearer-token"
+K8S_AUTH_HEADER = "kubernetes-authorization"
 
 
 class MCPConfigBuilder:
@@ -33,7 +33,7 @@ class MCPConfigBuilder:
             logger.warning(
                 "Kubernetes auth header is already set, overriding with actual user token."
             )
-        config["headers"][K8S_AUTH_HEADER] = user_token
+        config["headers"][K8S_AUTH_HEADER] = f"Bearer {user_token}"
         return config
 
     def include_auth_to_stdio(self, server_envs: dict[str, str]) -> dict[str, str]:
