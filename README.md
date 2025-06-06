@@ -553,6 +553,8 @@ There are two basic use cases:
 1. When quota needs to be reset specific value periodically (for example on weekly on monthly basis), specify `initial_quota` to the required value
 1. When quota needs to be increased by specific value periodically (for example on daily basis), specify `quota_increase`
 
+Technically it is possible to specify both `initial_quota` and `quota_increase`. It means that at the end of time period the quota will be *reset* to `initial_quota + quota_increase`.
+
 Please note that any number of quota limiters can be configured. For example, two user quota limiters can be set to:
 - increase quota by 100,000 tokens each day
 - reset quota to 10,000,000 tokens each month
