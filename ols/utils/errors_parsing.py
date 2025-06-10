@@ -57,3 +57,21 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
             return parse_watsonx_error(e)
         case _:
             return DEFAULT_STATUS_CODE, DEFAULT_ERROR_MESSAGE, str(e)
+
+
+def handle_known_errors(response: str, cause: str) -> tuple[str, str]:
+    """Handle known errors and return a user-friendly message."""
+    if all(
+        [
+            "maximum" in response.lower(),
+            "context" in response.lower(),
+            "length" in response.lower(),
+        ]
+    ):
+        return (
+            "Prompt is too long. Please try to shorten your prompt or "
+            "set the contextWindowSize, maxTokensForResponse parameters"
+            " in the configuration.",
+            cause,
+        )
+    return response, cause
