@@ -133,7 +133,7 @@ class PostgresCache(Cache):
                 cursor.execute("SELECT 1")
             logger.info("Connection to storage is ok")
             return True
-        except psycopg2.OperationalError as e:
+        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
             logger.error("Disconnected from storage: %s", e)
             return False
 
