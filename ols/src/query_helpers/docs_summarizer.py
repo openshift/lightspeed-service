@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import os
+from datetime import timedelta
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain.globals import set_debug
@@ -154,6 +155,17 @@ class MCPConfigBuilder:
                     )
             if server_conf.sse:
                 servers_conf[server_conf.name].update(server_conf.sse.model_dump())
+            if server_conf.streamable_http:
+                servers_conf[server_conf.name].update(
+                    server_conf.streamable_http.model_dump()
+                )
+                # Note: Streamable HTTP transport expects timedelta instead of
+                # int as for the sse - blame langchain-mcp-adapters for
+                # inconsistency
+                for timeout in ("timeout", "sse_read_timeout"):
+                    servers_conf[server_conf.name][timeout] = timedelta(
+                        seconds=servers_conf[server_conf.name][timeout]  # type: ignore [assignment]
+                    )
         return servers_conf
 
 
