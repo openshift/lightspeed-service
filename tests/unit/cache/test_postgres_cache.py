@@ -641,11 +641,12 @@ def test_ready():
         # cache is not ready
         assert not cache.ready()
 
-        # mock the connection state 0 - open
-        cache.connection.closed = 0
-        # patch the poll function to raise OperationalError
-        cache.connection.poll = MagicMock(
-            side_effect=psycopg2.OperationalError("Connection closed")
-        )
-        # cache is not ready
-        assert not cache.ready()
+        for error_type in (psycopg2.OperationalError, psycopg2.InterfaceError):
+            # mock the connection state 0 - open
+            cache.connection.closed = 0
+            # patch the poll function to raise OperationalError
+            cache.connection.poll = MagicMock(
+                side_effect=error_type("Connection closed")
+            )
+            # cache is not ready
+            assert not cache.ready()
