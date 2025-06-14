@@ -268,6 +268,8 @@ def generic_llm_error(error: Exception, media_type: str) -> str:
     logger.exception(error)
     _, response, cause = errors_parsing.parse_generic_llm_error(error)
 
+    response, cause = errors_parsing.handle_known_errors(response, cause)
+
     if media_type == MEDIA_TYPE_TEXT:
         return f"{response}: {cause}"
     return format_stream_data(
