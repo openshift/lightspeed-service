@@ -256,3 +256,25 @@ def test_parse_generic_llm_error_on_unknown_exception_without_message():
     assert status_code == errors_parsing.DEFAULT_STATUS_CODE
     assert error_message == errors_parsing.DEFAULT_ERROR_MESSAGE
     assert cause == ""
+
+
+def test_handle_known_errors():
+    """Test the handle_known_errors function."""
+    # generic exception
+    known_response = "Maximum context length exceeded"
+    unknown_response = "This is unknown response"
+    cause = "cause"
+
+    # known error
+    handled_response, handled_cause = errors_parsing.handle_known_errors(
+        known_response, cause
+    )
+    assert handled_response == errors_parsing.PROMPT_TOO_LONG_ERROR_MSG
+    assert handled_cause == "cause"
+
+    # unknown error
+    handled_response, handled_cause = errors_parsing.handle_known_errors(
+        unknown_response, cause
+    )
+    assert handled_response == unknown_response
+    assert handled_cause == cause

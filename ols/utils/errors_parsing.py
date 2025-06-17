@@ -11,6 +11,13 @@ from openai import BadRequestError
 DEFAULT_ERROR_MESSAGE = "An error occurred during LLM invocation. Please contact your OpenShift Lightspeed administrator."  # noqa: E501
 DEFAULT_STATUS_CODE = status.HTTP_500_INTERNAL_SERVER_ERROR
 
+# The msg is user facing - note the config fields from OLS CRD
+PROMPT_TOO_LONG_ERROR_MSG = (
+    "Prompt is too long. Please try to shorten your prompt or "
+    "set the contextWindowSize and maxTokensForResponse parameters "
+    "in the configuration."
+)
+
 
 def parse_openai_error(e: BadRequestError) -> tuple[int, str, str]:
     """Parse OpenAI or Azure error."""
@@ -57,3 +64,16 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
             return parse_watsonx_error(e)
         case _:
             return DEFAULT_STATUS_CODE, DEFAULT_ERROR_MESSAGE, str(e)
+
+
+def handle_known_errors(response: str, cause: str) -> tuple[str, str]:
+    """Handle known errors and return a user-friendly message."""
+    if all(
+        [
+            "maximum" in response.lower(),
+            "context" in response.lower(),
+            "length" in response.lower(),
+        ]
+    ):
+        return PROMPT_TOO_LONG_ERROR_MSG, cause
+    return response, cause
