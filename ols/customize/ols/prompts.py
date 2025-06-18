@@ -33,11 +33,13 @@ Given the user's query you must decide what to do with it based on the list of t
 """
 
 AGENT_INSTRUCTION_GRANITE = """
-You have been also given set of functions/tools.
-Your task is to decide if tool call is needed and produce a list of function calls required to generate response to the user utterance.
-When you request/produce function calls, add `<tool_call>` at the beginning, so that function calls can be identified.
-  Sample tool format: '<tool_call>[{{"arguments": {{"oc_adm_top_args": ["pods", "-A"]}}, "name": "oc_adm_top"}}]'
-Do not use function calls for below kind of queries (These kind of queries do not require real time cluster data):
+You have been also given set of tools.
+Your task is to decide if tool call is needed and produce a json list of tools required to generate response to the user utterance.
+When you request/produce tool call, add `<tool_call>` at the beginning, so that tool call can be identified.
+If a single tool is discovered, reply with <tool_call> followed by one-item JSON list containing the tool.
+Tool call must be a json list like below example.
+  Sample tool call format: '<tool_call>[{{"arguments": {{"oc_adm_top_args": ["pods", "-A"]}}, "name": "oc_adm_top"}}]'
+Do not use tool call for the following kind of queries (These kind of queries do not require real time data):
   - User is asking about general information about Openshift/Kubernetes.
   - User is asking "how-to" kind of queries for which you can refer retrieved documents.
 Refer tool response / output before providing your response.
