@@ -41,6 +41,8 @@ Do not use function calls for below kind of queries (These kind of queries do no
   - User is asking about general information about Openshift/Kubernetes.
   - User is asking "how-to" kind of queries for which you can refer retrieved documents.
 Refer tool response / output before providing your response.
+Do not call a function twice with the same arguments. Never repeat your function calls.
+Call a function if it is relevant. Never make up functions.
 """
 
 # Currently only additional instructions are concatenated to original
