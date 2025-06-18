@@ -1168,7 +1168,7 @@ def test_tool_calling(_setup, caplog) -> None:
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.mcp_config_to_client_dump",
+            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
             return_value=mcp_servers,
         ),
         patch(
