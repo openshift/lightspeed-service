@@ -1,0 +1,56 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - name: azure_openai
+        type: azure_openai
+        credentialsSecretRef:
+          name: llmcreds
+        deploymentName: gpt-4o-mini
+        models:
+          - name: gpt-4o-mini
+        url: 'https://ols-test.openai.azure.com/'
+      - name: azure_openai_with_entra_id
+        type: azure_openai
+        credentialsSecretRef:
+          name: azure-entra-id
+        deploymentName: gpt-4o-mini
+        models:
+          - name: gpt-4o-mini
+        url: 'https://ols-test.openai.azure.com/'
+  ols:
+    defaultModel: gpt-4o-mini
+    defaultProvider: azure_openai
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"
+    quotaHandlersConfig:
+      enableTokenHistory: true
+      limitersConfig:
+        - initialQuota: 22222
+          name: default
+          period: 1 month
+          quotaIncrease: 1000
+          type: cluster_limiter
+        - initialQuota: 11111
+          name: default
+          period: 1 day
+          quotaIncrease: 0
+          type: user_limiter
