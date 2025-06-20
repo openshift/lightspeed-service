@@ -553,6 +553,7 @@ def generate_response(
         status_code, response_text, cause = errors_parsing.parse_generic_llm_error(
             summarizer_error
         )
+        response_text, cause = errors_parsing.handle_known_errors(response_text, cause)
         raise HTTPException(
             status_code=status_code,
             detail={
