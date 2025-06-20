@@ -39,39 +39,39 @@ function run_suites() {
   # empty test_tags means run all tests
   if [ -z "${DISCONNECTED:-}" ]; then
     # Tests for not disconnected environments
-    run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
+    run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag)" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
+    run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag)" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "n"
+    run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag)" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     # smoke tests for RHOAI VLLM-compatible provider
-    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "n"
+    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     # smoke tests for RHELAI VLLM-compatible provider
-    run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "n"
+    run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
     
-    run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "n"
+    run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
 
     # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
     # Run tool calling - Enable tool_calling
-    run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
+    run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
-    run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "y"
+    run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
-    run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "y"
+    run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
   else
     # Tests for disconnected environments
     # smoke tests for RHOAI VLLM-compatible provider
-    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "n"
+    run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
     
   fi
