@@ -8,6 +8,18 @@ from langchain_core.tools.structured import StructuredTool
 logger = logging.getLogger(__name__)
 
 
+SENSITIVE_KEYWORDS = ["secret"]
+
+
+def raise_for_sensitive_tool_args(tool_args: dict) -> None:
+    """Check tool arguments for sensitive content and raise an exception if found."""
+    for key, value in tool_args.items():
+        if any(keyword in str(value).lower() for keyword in SENSITIVE_KEYWORDS):
+            raise ValueError(
+                f"Sensitive keyword in tool arguments {key}={value} are not allowed."
+            )
+
+
 def get_tool_by_name(
     tool_name: str, all_mcp_tools: list[StructuredTool]
 ) -> StructuredTool:
@@ -54,6 +66,7 @@ async def execute_tool_calls(
         tool_args = tool_call.get("args", {})
         tool_id = tool_call.get("id")
         try:
+            raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
                 tool_name, tool_args, all_mcp_tools
             )
