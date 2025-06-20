@@ -8,7 +8,7 @@ TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
 SUITE_ID := $(if $(SUITE_ID),$(SUITE_ID),"nosuite")
 PROVIDER := $(if $(PROVIDER),$(PROVIDER),"openai")
 MODEL := $(if $(MODEL),$(MODEL),"gpt-4o-mini")
-TOOL_CALLING_ENABLED := $(if $(TOOL_CALLING_ENABLED),$(TOOL_CALLING_ENABLED),"n")
+OLS_CONFIG_SUFFIX := $(if $(OLS_CONFIG_SUFFIX),$(OLS_CONFIG_SUFFIX),"default")
 PATH_TO_PLANTUML := ~/bin
 
 # Python registry to where the package should be uploaded

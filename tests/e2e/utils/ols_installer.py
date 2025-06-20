@@ -343,33 +343,22 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     except subprocess.CalledProcessError:
         print("olsconfig does not yet exist. Creating it.")
 
-    crd_yml_name = f"olsconfig.crd.{provider}"
-    tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
     try:
+        crd_yml_file = "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
+
         if len(provider_list) == 1:
-            if tool_calling_enabled:
-                print("Cluster tool_calling is enabled.")
-                crd_yml_name += "_tool_calling"
-            # OLS-1711: temp solution until operator changes to support mcp_servers
-            print("DEBUG: creating introspection CM")
-            cluster_utils.run_oc(
-                [
-                    "create",
-                    "-f",
-                    f"tests/config/operator_install/{crd_yml_name}.yaml",
-                ],
-                ignore_existing_resource=True,
-            )
-            print("DEBUG: introspection CM created")
-        else:
-            cluster_utils.run_oc(
-                [
-                    "create",
-                    "-f",
-                    "tests/config/operator_install/olsconfig.crd.evaluation.yaml",
-                ],
-                ignore_existing_resource=True,
-            )
+            crd_yml_name = f"olsconfig.crd.{provider}"
+            ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+
+            if ols_config_suffix != "default":
+                crd_yml_name += f"_{ols_config_suffix}"
+            crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
+
+        print(f"CRD path: {crd_yml_file}.")
+        cluster_utils.run_oc(
+            ["create", "-f", crd_yml_file], ignore_existing_resource=True
+        )
+
     except subprocess.CalledProcessError as e:
         csv = cluster_utils.run_oc(
             ["get", "clusterserviceversion", "-o", "jsonpath={.items[0].status}"]
