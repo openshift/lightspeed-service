@@ -59,7 +59,6 @@ function run_suites() {
     run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-
     # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
     # Run tool calling - Enable tool_calling
     run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
@@ -68,6 +67,13 @@ function run_suites() {
     (( rc = rc || $? ))
     run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
+
+    # BYOK Test cases
+    run_suite "watsonx_byok1" "byok1" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "byok1"
+    (( rc = rc || $? ))
+    run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "byok2"
+    (( rc = rc || $? ))
+
   else
     # Tests for disconnected environments
     # smoke tests for RHOAI VLLM-compatible provider

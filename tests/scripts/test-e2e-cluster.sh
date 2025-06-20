@@ -63,6 +63,12 @@ function run_suites() {
   run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
 
+  # BYOK Test cases
+  run_suite "watsonx_byok1" "byok1" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "byok1"
+  (( rc = rc || $? ))
+  run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "byok2"
+  (( rc = rc || $? ))
+
   set -e
 
   return $rc
