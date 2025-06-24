@@ -333,7 +333,7 @@ class LLMProvider(AbstractLLMProvider):
 
         return updated_params
 
-    def _construct_httpx_client(
+    def _construct_httpx_client(  # noqa: C901
         self, use_custom_certificate_store: bool, use_async: bool
     ) -> httpx.Client | httpx.AsyncClient:
         """Construct HTTPX client instance to be used to communicate with LLM."""
