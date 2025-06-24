@@ -1,7 +1,6 @@
 """Unit tests for DocsSummarizer class."""
 
 import logging
-import os
 from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
@@ -17,12 +16,9 @@ config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.models.config import (  # noqa:E402
     LoggingConfig,
-    MCPServerConfig,
-    StdioTransportConfig,
 )
 from ols.src.query_helpers.docs_summarizer import (  # noqa:E402
     DocsSummarizer,
-    MCPConfigBuilder,
     QueryHelper,
 )
 from ols.utils import suid  # noqa:E402
@@ -322,116 +318,3 @@ def test_tool_calling_tool_execution(caplog):
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
-
-
-def test_mcp_config_builder():
-    """Test MCPConfigBuilder."""
-    mcp_server_configs = [
-        MCPServerConfig(
-            name="openshift",
-            transport="stdio",
-            stdio=StdioTransportConfig(
-                command="hello",
-                env={"X": "Y"},
-            ),
-        ),
-        MCPServerConfig(
-            name="not-openshift",
-            transport="stdio",
-            stdio=StdioTransportConfig(
-                command="hello",
-                env={"X": "Y"},
-            ),
-        ),
-    ]
-    user_token = "fake-token"  # noqa: S105
-
-    # patch the environment variable to avoid using values from the system
-    with patch.dict(os.environ, {}, clear=True):
-        mcp_config = MCPConfigBuilder.mcp_config_to_client_dump(
-            mcp_server_configs, user_token
-        )
-
-    assert mcp_config == {
-        "openshift": {
-            "transport": "stdio",
-            "command": "hello",
-            "args": [],
-            "env": {"X": "Y", "OC_USER_TOKEN": "fake-token"},
-            "cwd": ".",
-            "encoding": "utf-8",
-        },
-        "not-openshift": {
-            "transport": "stdio",
-            "command": "hello",
-            "args": [],
-            "env": {"X": "Y"},
-            "cwd": ".",
-            "encoding": "utf-8",
-        },
-    }
-
-
-class TestMCPConfigBuilder:
-    """Test MCPConfigBuilder class."""
-
-    @staticmethod
-    def test_expected_scenario():
-        """Test MCPConfigBuilder with env."""
-        user_token = "fake-token"  # noqa: S105
-        envs = {"A": 42, "KUBECONFIG": "bla"}
-
-        mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(envs, user_token)
-
-        expected = {**envs, "OC_USER_TOKEN": user_token}
-        assert mcp_config == expected
-
-    @staticmethod
-    def test_token_set_in_env(caplog):
-        """Test MCPConfigBuilder with token set in env."""
-        # OC_USER_TOKEN set in env - is logged and overriden
-        user_token = "fake-token"  # noqa: S105
-        envs = {"OC_USER_TOKEN": "different-value"}
-
-        with patch.dict(os.environ, {}, clear=True):
-            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
-                envs, user_token
-            )
-
-        expected = {"OC_USER_TOKEN": user_token}
-        assert mcp_config == expected
-        assert "overriding with actual user token" in caplog.text
-
-    @staticmethod
-    def test_kubeconfig_is_missing(caplog):
-        """Test MCPConfigBuilder with KUBECONFIG missing."""
-        # KUBECONFIG is not set in env - value from os.environ is used
-        caplog.set_level(20)  # info
-        envs = {"A": 42}
-        user_token = "fake-token"  # noqa: S105
-
-        with patch.dict(os.environ, {"KUBECONFIG": "os value"}):
-            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
-                envs, user_token
-            )
-
-        expected = {**envs, "OC_USER_TOKEN": user_token, "KUBECONFIG": "os value"}
-        assert mcp_config == expected
-        assert "using KUBECONFIG from environ" in caplog.text
-
-    @staticmethod
-    def test_kubeconfig_is_missing_completely(caplog):
-        """Test MCPConfigBuilder with KUBECONFIG missing."""
-        # KUBECONFIG is not in env or system
-        envs = {}
-        user_token = "fake-token"  # noqa: S105
-
-        with patch.dict(os.environ, {}, clear=True):
-            mcp_config = MCPConfigBuilder.resolve_openshift_stdio_env_conf(
-                envs, user_token
-            )
-
-        expected = {"OC_USER_TOKEN": user_token}
-        assert mcp_config == expected
-        assert "KUBECONFIG not set in openshift mcp server" in caplog.text
-        assert "and not found in environ" in caplog.text
