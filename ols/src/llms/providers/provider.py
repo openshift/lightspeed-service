@@ -335,7 +335,7 @@ class LLMProvider(AbstractLLMProvider):
 
     def _construct_httpx_client(
         self, use_custom_certificate_store: bool, use_async: bool
-    ) -> httpx.Client | httpx.AsyncClient:
+    ) -> httpx.Client | httpx.AsyncClient: # noqa: C901
         """Construct HTTPX client instance to be used to communicate with LLM."""
         # no proxy by default
         proxy = None
