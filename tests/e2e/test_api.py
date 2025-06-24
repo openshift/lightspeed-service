@@ -517,3 +517,79 @@ def test_ca_service_certs_rotation():
         timeout=LLM_REST_API_TIMEOUT,
     )
     assert response.status_code == requests.codes.ok
+
+
+def test_quota_limits():
+    """Verify OLS quota limits."""
+    _, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
+    cluster_utils.run_oc(
+        [
+            "apply",
+            "-f",
+            f"tests/config/operator_install/olsconfig.crd.{provider}_quota.yaml",
+        ]
+    )
+    cluster_utils.run_oc(
+        ["scale", "--replicas=1", "deployment/lightspeed-operator-controller-manager"]
+    )
+    cluster_utils.wait_for_running_pod()
+    for i in range(5):
+        try:
+            response = pytest.client.post(
+                "/v1/query",
+                json={"query": "what is kubernetes?"},
+                timeout=LLM_REST_API_TIMEOUT,
+            )
+
+            # assert that the available quota is
+            # less than the initial one hardcoded in the olsconfig
+            assert (
+                response.json()["available_quotas"]["UserQuotaLimiter"] < 11111
+            ), "available quota was not used or user limits were ignored"
+            assert (
+                response.json()["input_tokens"] > 0
+            ), "input tokens were not populated"
+        except KeyError:
+            if i == 5:
+                pytest.raises(KeyError)
+            continue
+        break
+
+    # Remove the user limitation, wait for pod and check available quota again
+    action = {"op": "remove", "path": "/spec/ols/quotaHandlersConfig/limitersConfig/1"}
+    merge_strat = f"-p=[{action}]"
+    cluster_utils.run_oc(["patch", "olsconfig", "cluster", "--type=json", merge_strat])
+    cluster_utils.wait_for_running_pod()
+    response = pytest.client.post(
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    # assert that the available quota is less than the initial one hardcoded in the olsconfig
+    # but higher than the user limit
+    available_quota = response.json()["available_quotas"]["ClusterQuotaLimiter"]
+    assert (
+        11111 < available_quota < 22222
+    ), "Quota still being user limited when limitation was removed"
+    assert response.json()["input_tokens"] > 0, "input tokens were not populated"
+    cluster_utils.run_oc(
+        ["apply", "-f", f"tests/config/operator_install/olsconfig.crd.{provider}.yaml"]
+    )
+    cluster_utils.wait_for_running_pod()
+    cluster_utils.run_oc(
+        ["scale", "--replicas=0", "deployment/lightspeed-operator-controller-manager"]
+    )
+    response = pytest.client.post(
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
+    with pytest.raises(KeyError):
+        assert not response.json()["available_quotas"][
+            "UserQuotaLimiter"
+        ], "available quota populated after being removed from config"
+    with pytest.raises(KeyError):
+        assert not response.json()["available_quotas"][
+            "ClusterQuotaLimiter"
+        ], "available quota populated after being removed from config"
+    assert response.json()["input_tokens"] > 0, "input tokens were not populated"
