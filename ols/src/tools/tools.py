@@ -68,3 +68,21 @@ async def execute_tool_calls(
         )
 
     return tool_messages
+
+
+def filter_read_only_tools(
+    all_mcp_tools: list[StructuredTool],
+) -> list[StructuredTool]:
+    """Filter out read-only tools from the list of all MCP tools."""
+    read_only_tools = []
+    for tool in all_mcp_tools:
+        if tool.metadata is None:
+            # TBD should we skip or add a tool with no metadata?
+            logger.warning("Tool %s has no metadata", tool.name)
+            read_only_tools.append(tool)
+        elif tool.metadata.get("readOnlyHint", False):
+            read_only_tools.append(tool)
+    logger.debug(
+        "Filtered read-only tools: %s", [tool.name for tool in read_only_tools]
+    )
+    return read_only_tools
