@@ -519,6 +519,7 @@ def test_ca_service_certs_rotation():
     assert response.status_code == requests.codes.ok
 
 
+@pytest.mark.quota_limits
 def test_quota_limits():
     """Verify OLS quota limits."""
     _, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
