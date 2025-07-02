@@ -574,6 +574,7 @@ class SseTransportConfig(BaseModel):
     url: str
     timeout: int = constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
     sse_read_timeout: int = constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
+    headers: dict[str, str] = Field(default_factory=dict)
 
 
 class MCPServerConfig(BaseModel):

@@ -240,6 +240,7 @@ def test_sse_transport_defaults():
     assert (
         sse_transport.sse_read_timeout == constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
     )
+    assert sse_transport.headers == {}
 
 
 def test_stdio_transport_configuration_on_no_data():
