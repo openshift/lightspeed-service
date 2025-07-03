@@ -17,11 +17,13 @@ def write_go_coverage_format(
     executed_lines = file_data.get("executed_lines", [])
     missing_lines = file_data.get("missing_lines", [])
     with open(output_file_name, "a", encoding="utf-8") as f:
-        for line in executed_lines:
-            f.write(f"{file_path}:{line}.0,{line + 1}.0 1 1\n")
+        f.writelines(
+            f"{file_path}:{line}.0,{line + 1}.0 1 1\n" for line in executed_lines
+        )
 
-        for line in missing_lines:
-            f.write(f"{file_path}:{line}.0,{line + 1}.0 1 0\n")
+        f.writelines(
+            f"{file_path}:{line}.0,{line + 1}.0 1 0\n" for line in missing_lines
+        )
 
 
 def parse_coverage_json(json_content: str, output_file_name: str) -> None:
