@@ -5,7 +5,7 @@
 groups = ["default", "dev", "evaluation"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:2ff0a981e728605802fb98ed2270ebf5b274b76cfed3277cb166410085d48928"
+content_hash = "sha256:ec8f4e5a0d2d329bdb37bd5b4fb79de554e6255741822e53fe3789f42405aac9"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -1323,46 +1323,46 @@ files = [
 
 [[package]]
 name = "ibm-cos-sdk"
-version = "2.14.0"
+version = "2.14.2"
 requires_python = ">=3.8"
 summary = "IBM SDK for Python"
 groups = ["default"]
 dependencies = [
-    "ibm-cos-sdk-core==2.14.0",
-    "ibm-cos-sdk-s3transfer==2.14.0",
+    "ibm-cos-sdk-core==2.14.2",
+    "ibm-cos-sdk-s3transfer==2.14.2",
     "jmespath<=1.0.1,>=0.10.0",
 ]
 files = [
-    {file = "ibm-cos-sdk-2.14.0.tar.gz", hash = "sha256:732fb5cdf6cc58f954bd78612d317187cd36dff48801b0b937a81df3ece2c4be"},
+    {file = "ibm_cos_sdk-2.14.2.tar.gz", hash = "sha256:d859422c1dfd03e52cd66acbb2b45b4c944a390725c3a91d4a8e003f0cfc4e4b"},
 ]
 
 [[package]]
 name = "ibm-cos-sdk-core"
-version = "2.14.0"
+version = "2.14.2"
 requires_python = ">=3.6"
 summary = "Low-level, data-driven core of IBM SDK for Python"
 groups = ["default"]
 dependencies = [
     "jmespath<=1.0.1,>=0.10.0",
     "python-dateutil<3.0.0,>=2.9.0",
-    "requests<2.32.3,>=2.32.0",
+    "requests<3.0.0,>=2.32.4",
     "urllib3<3,>=1.26.18",
 ]
 files = [
-    {file = "ibm-cos-sdk-core-2.14.0.tar.gz", hash = "sha256:2905e00a9cc61aed945a4f58daa6037ae7c2ca76fa0ae75b2949b300557bf5ca"},
+    {file = "ibm_cos_sdk_core-2.14.2.tar.gz", hash = "sha256:d594b2af58f70e892aa3b0f6ae4b0fa5d412422c05beeba083d4561b5fad91b4"},
 ]
 
 [[package]]
 name = "ibm-cos-sdk-s3transfer"
-version = "2.14.0"
+version = "2.14.2"
 requires_python = ">=3.8"
 summary = "IBM S3 Transfer Manager"
 groups = ["default"]
 dependencies = [
-    "ibm-cos-sdk-core==2.14.0",
+    "ibm-cos-sdk-core==2.14.2",
 ]
 files = [
-    {file = "ibm-cos-sdk-s3transfer-2.14.0.tar.gz", hash = "sha256:8eda9af12477c31d399449f655c42c694ae9c3dad46801ed923f4cd5bdc4ff13"},
+    {file = "ibm_cos_sdk_s3transfer-2.14.2.tar.gz", hash = "sha256:01d1cb14c0decaeef273979da7a13f7a874f1d4c542ff3ae0a186c7b090569bc"},
 ]
 
 [[package]]
@@ -1786,17 +1786,17 @@ files = [
 
 [[package]]
 name = "langchain-ibm"
-version = "0.3.10"
-requires_python = "<3.13,>=3.10"
+version = "0.3.13"
+requires_python = "<3.14,>=3.10"
 summary = "An integration package connecting IBM watsonx.ai and LangChain"
 groups = ["default"]
 dependencies = [
-    "ibm-watsonx-ai<2.0.0,>=1.2.10",
+    "ibm-watsonx-ai<2.0.0,>=1.3.18",
     "langchain-core<0.4.0,>=0.3.39",
 ]
 files = [
-    {file = "langchain_ibm-0.3.10-py3-none-any.whl", hash = "sha256:a7c6026879e47f069f7831d5d0cc39a97ae9cf4f75752cbf9b7102cf5ad23fa2"},
-    {file = "langchain_ibm-0.3.10.tar.gz", hash = "sha256:a3023903b8b094fe0226c1e3dafb348ed60caf537415ebea9bdf4ceebc6cd4ad"},
+    {file = "langchain_ibm-0.3.13-py3-none-any.whl", hash = "sha256:ca68cbb4338b50fdffd08926e8901fa96ebe12e07422193decc2f46c32ab5ea1"},
+    {file = "langchain_ibm-0.3.13.tar.gz", hash = "sha256:61f3ece7c665bb37da6809f60824a521420eeda84d00927414e76d9221340cc6"},
 ]
 
 [[package]]
@@ -3601,18 +3601,18 @@ files = [
 
 [[package]]
 name = "pytest-reportportal"
-version = "5.4.7"
+version = "5.5.1"
 summary = "Agent for Reporting results of tests to the Report Portal"
 groups = ["dev"]
 dependencies = [
     "aenum>=3.1.0",
     "dill>=0.3.6",
-    "pytest>=3.8.0",
-    "reportportal-client~=5.5.10",
+    "pytest>=4.6.10",
+    "reportportal-client~=5.6.4",
 ]
 files = [
-    {file = "pytest_reportportal-5.4.7-py2.py3-none-any.whl", hash = "sha256:9ac17a19e39a3839b0b0ffb3d75bd2f309aa906456ca1368693aa9c2820e713a"},
-    {file = "pytest_reportportal-5.4.7.tar.gz", hash = "sha256:0bda05ef674d934ac423d62c5c494970b68de1a0cfc13453a6e2efe4c9bd9ef8"},
+    {file = "pytest_reportportal-5.5.1-py2.py3-none-any.whl", hash = "sha256:5e97ae137c71fee31fcdcb6a0b8bb60c797e6d8daa85731831d88f1aa7039c78"},
+    {file = "pytest_reportportal-5.5.1.tar.gz", hash = "sha256:d87d3bd47d769e8acccfe141929a7ddb24389fa0848e461a188420bdb4060be0"},
 ]
 
 [[package]]
@@ -3799,23 +3799,23 @@ files = [
 
 [[package]]
 name = "reportportal-client"
-version = "5.5.10"
+version = "5.6.5"
 summary = "Python client for ReportPortal v5."
 groups = ["dev"]
 dependencies = [
     "aenum",
-    "aiohttp>=3.8.6",
+    "aiohttp>=3.10.11",
     "certifi>=2024.8.30",
-    "requests>=2.31.0",
+    "requests>=2.32.3",
 ]
 files = [
-    {file = "reportportal_client-5.5.10-py2.py3-none-any.whl", hash = "sha256:245c2997933cec5244d01193113aa6e3f04b7161dc9bc20664614cc93216552d"},
-    {file = "reportportal_client-5.5.10.tar.gz", hash = "sha256:b453e811dc7ed333ff0da5ea4ddc7aac752b8d5a5f3cc00411e767198e688bd4"},
+    {file = "reportportal_client-5.6.5-py2.py3-none-any.whl", hash = "sha256:b3cc3c71c3748f1759b9893ee660176134f34650d1733fed45a5920806d239fe"},
+    {file = "reportportal_client-5.6.5.tar.gz", hash = "sha256:c927f745e3e4b9f1e146207adf9709651318fcf05e577ffdddb00998262704be"},
 ]
 
 [[package]]
 name = "requests"
-version = "2.32.2"
+version = "2.32.4"
 requires_python = ">=3.8"
 summary = "Python HTTP for Humans."
 groups = ["default", "dev", "evaluation"]
@@ -3826,8 +3826,8 @@ dependencies = [
     "urllib3<3,>=1.21.1",
 ]
 files = [
-    {file = "requests-2.32.2-py3-none-any.whl", hash = "sha256:fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c"},
-    {file = "requests-2.32.2.tar.gz", hash = "sha256:dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289"},
+    {file = "requests-2.32.4-py3-none-any.whl", hash = "sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c"},
+    {file = "requests-2.32.4.tar.gz", hash = "sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422"},
 ]
 
 [[package]]
@@ -4490,13 +4490,13 @@ files = [
 
 [[package]]
 name = "transformers"
-version = "4.50.3"
+version = "4.53.0"
 requires_python = ">=3.9.0"
 summary = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 groups = ["default"]
 dependencies = [
     "filelock",
-    "huggingface-hub<1.0,>=0.26.0",
+    "huggingface-hub<1.0,>=0.30.0",
     "numpy>=1.17",
     "packaging>=20.0",
     "pyyaml>=5.1",
@@ -4507,8 +4507,8 @@ dependencies = [
     "tqdm>=4.27",
 ]
 files = [
-    {file = "transformers-4.50.3-py3-none-any.whl", hash = "sha256:6111610a43dec24ef32c3df0632c6b25b07d9711c01d9e1077bdd2ff6b14a38c"},
-    {file = "transformers-4.50.3.tar.gz", hash = "sha256:1d795d24925e615a8e63687d077e4f7348c2702eb87032286eaa76d83cdc684f"},
+    {file = "transformers-4.53.0-py3-none-any.whl", hash = "sha256:7d8039ff032c01a2d7f8a8fe0066620367003275f023815a966e62203f9f5dd7"},
+    {file = "transformers-4.53.0.tar.gz", hash = "sha256:f89520011b4a73066fdc7aabfa158317c3934a22e3cd652d7ffbc512c4063841"},
 ]
 
 [[package]]

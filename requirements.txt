@@ -294,12 +294,12 @@ httpx-sse==0.4.0 \
 huggingface-hub==0.30.1 \
     --hash=sha256:0f6aa5ec5a4e68e5b9e45d556b4e5ea180c58f5a5ffa734e7f38c9d573028959 \
     --hash=sha256:f379e8b8d0791295602538856638460ae3cf679c7f304201eb80fb98c771950e
-ibm-cos-sdk==2.14.0 \
-    --hash=sha256:732fb5cdf6cc58f954bd78612d317187cd36dff48801b0b937a81df3ece2c4be
-ibm-cos-sdk-core==2.14.0 \
-    --hash=sha256:2905e00a9cc61aed945a4f58daa6037ae7c2ca76fa0ae75b2949b300557bf5ca
-ibm-cos-sdk-s3transfer==2.14.0 \
-    --hash=sha256:8eda9af12477c31d399449f655c42c694ae9c3dad46801ed923f4cd5bdc4ff13
+ibm-cos-sdk==2.14.2 \
+    --hash=sha256:d859422c1dfd03e52cd66acbb2b45b4c944a390725c3a91d4a8e003f0cfc4e4b
+ibm-cos-sdk-core==2.14.2 \
+    --hash=sha256:d594b2af58f70e892aa3b0f6ae4b0fa5d412422c05beeba083d4561b5fad91b4
+ibm-cos-sdk-s3transfer==2.14.2 \
+    --hash=sha256:01d1cb14c0decaeef273979da7a13f7a874f1d4c542ff3ae0a186c7b090569bc
 ibm-generative-ai==3.0.0 \
     --hash=sha256:0d86297371a5bb7c41d143a8c770e068f37489b5ca88e6bd56dca61a4f6dc1a8 \
     --hash=sha256:e0c39a5c84356f7408de31988ee055349a4ab7ec7030f313fa1c19d76b2b6d85
@@ -368,9 +368,9 @@ langchain-community==0.3.27 \
 langchain-core==0.3.67 \
     --hash=sha256:2c14aa44a0e78e014e96d7f2f8916ac109d0a0ba87ed67ee25bf7296bed7e7ba \
     --hash=sha256:b699f1f24b24fa2747c05e2daa280aa64478a51e01a4e82c7f8e20b6167dfa99
-langchain-ibm==0.3.10 \
-    --hash=sha256:a3023903b8b094fe0226c1e3dafb348ed60caf537415ebea9bdf4ceebc6cd4ad \
-    --hash=sha256:a7c6026879e47f069f7831d5d0cc39a97ae9cf4f75752cbf9b7102cf5ad23fa2
+langchain-ibm==0.3.13 \
+    --hash=sha256:61f3ece7c665bb37da6809f60824a521420eeda84d00927414e76d9221340cc6 \
+    --hash=sha256:ca68cbb4338b50fdffd08926e8901fa96ebe12e07422193decc2f46c32ab5ea1
 langchain-mcp-adapters==0.1.8 \
     --hash=sha256:037323b772f3214986b127fe89d2e7e721ca5e852a618cdbbf00cc955154cc90 \
     --hash=sha256:5fc6a596b73be96198135a11707102e3a7e9470b4d149bbbb1c9f9d902e0fa42
@@ -902,9 +902,9 @@ regex==2024.11.6 \
     --hash=sha256:e5364a4502efca094731680e80009632ad6624084aff9a23ce8c8c6820de3e51 \
     --hash=sha256:f2a19f302cd1ce5dd01a9099aaa19cae6173306d1302a43b627f62e21cf18ac0 \
     --hash=sha256:fdd6028445d2460f33136c55eeb1f601ab06d74cb3347132e1c24250187500d9
-requests==2.32.2 \
-    --hash=sha256:dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289 \
-    --hash=sha256:fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c
+requests==2.32.4 \
+    --hash=sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c \
+    --hash=sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422
 requests-oauthlib==2.0.0 \
     --hash=sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36 \
     --hash=sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9
@@ -1074,9 +1074,9 @@ torch==2.7.0 \
 tqdm==4.67.1 \
     --hash=sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2 \
     --hash=sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2
-transformers==4.50.3 \
-    --hash=sha256:1d795d24925e615a8e63687d077e4f7348c2702eb87032286eaa76d83cdc684f \
-    --hash=sha256:6111610a43dec24ef32c3df0632c6b25b07d9711c01d9e1077bdd2ff6b14a38c
+transformers==4.53.0 \
+    --hash=sha256:7d8039ff032c01a2d7f8a8fe0066620367003275f023815a966e62203f9f5dd7 \
+    --hash=sha256:f89520011b4a73066fdc7aabfa158317c3934a22e3cd652d7ffbc512c4063841
 triton==3.3.0; platform_system == "Linux" and platform_machine == "x86_64" \
     --hash=sha256:3161a2bf073d6b22c4e2f33f951f3e5e3001462b2570e6df9cd57565bdec2984 \
     --hash=sha256:b68c778f6c4218403a6bd01be7484f6dc9e20fe2083d22dd8aef33e3b87a10a3
