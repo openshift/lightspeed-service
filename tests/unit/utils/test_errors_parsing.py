@@ -1,5 +1,7 @@
 """Unit Test for the errors parsing class."""
 
+from unittest.mock import patch
+
 from genai.exceptions import ApiResponseException
 from httpx import Request, Response
 from openai import BadRequestError
@@ -265,11 +267,19 @@ def test_handle_known_errors():
     unknown_response = "This is unknown response"
     cause = "cause"
 
-    # known error
+    # known error - prompt too
     handled_response, handled_cause = errors_parsing.handle_known_errors(
         known_response, cause
     )
     assert handled_response == errors_parsing.PROMPT_TOO_LONG_ERROR_MSG
+    assert handled_cause == "cause"
+
+    # known error - prompt too long with tools
+    with patch("ols.config.mcp_servers.servers", new=["server"]):
+        handled_response, handled_cause = errors_parsing.handle_known_errors(
+            known_response, cause
+        )
+    assert handled_response == errors_parsing.PROMPT_TOO_LONG_WITH_TOOLS_ERROR_MSG
     assert handled_cause == "cause"
 
     # unknown error
