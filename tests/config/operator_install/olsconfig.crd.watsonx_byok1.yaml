@@ -1,0 +1,34 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        projectID: ad629765-c373-4731-9d69-dc701724c081
+        models:
+          - name: ibm/granite-3-2-8b-instruct
+        name: watsonx
+        type: watsonx
+  ols:
+    defaultModel: ibm/granite-3-2-8b-instruct
+    defaultProvider: watsonx
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    rag:
+      - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content:5332173516291b1fb24b2afdab377a24d88373d6
+        indexPath: /rag/vector_db/ocp_product_docs/4.17
+        indexID: ocp-product-docs-4_17
+      - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content:5332173516291b1fb24b2afdab377a24d88373d6
+        indexPath: /rag/vector_db/ocp_product_docs/4.16
+        indexID: ocp-product-docs-4_16

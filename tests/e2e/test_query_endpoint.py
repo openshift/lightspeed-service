@@ -624,3 +624,33 @@ def test_tool_calling() -> None:
 
         # Special check for granite
         assert not json_response["response"].strip().startswith("<tool_call>")
+
+
+@pytest.mark.byok1
+def test_rag_question_byok1() -> None:
+    """Ensure response include expected top rag reference."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={"query": "what is openshift virtualization?"},
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        print(vars(response))
+        assert "4.17" in response.json()["referenced_documents"][0]["doc_url"]
+
+
+@pytest.mark.byok2
+def test_rag_question_byok2() -> None:
+    """Ensure response include expected top rag reference."""
+    with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
+        response = pytest.client.post(
+            QUERY_ENDPOINT,
+            json={"query": "what is openshift virtualization?"},
+            timeout=test_api.LLM_REST_API_TIMEOUT,
+        )
+        assert response.status_code == requests.codes.ok
+
+        print(vars(response))
+        assert "4.16" in response.json()["referenced_documents"][0]["doc_url"]
