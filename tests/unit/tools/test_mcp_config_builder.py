@@ -1,12 +1,14 @@
 """Tests for MCPConfigBuilder."""
 
 import os
+from datetime import timedelta
 from unittest.mock import patch
 
 from ols.app.models.config import (
     MCPServerConfig,
     SseTransportConfig,
     StdioTransportConfig,
+    StreamableHttpTransportConfig,
 )
 from ols.src.tools.mcp_config_builder import K8S_AUTH_HEADER, MCPConfigBuilder
 
@@ -237,4 +239,83 @@ class TestMCPConfigBuilder:
         assert result["openshift"]["env"]["OC_USER_TOKEN"] == user_token
         assert (
             result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        )
+
+    @staticmethod
+    def test_dump_client_config_with_streamable_http():
+        """Test dump_client_config with streamable HTTP configuration."""
+        mcp_server_configs = [
+            MCPServerConfig(
+                name="streamable-server",
+                transport="streamable_http",
+                streamable_http=StreamableHttpTransportConfig(
+                    url="https://example.com/stream",
+                    headers={"X-Custom-Header": "value"},
+                    timeout=30,
+                    sse_read_timeout=60,
+                ),
+            ),
+        ]
+        user_token = "fake-token"  # noqa: S105
+
+        builder = MCPConfigBuilder(user_token, mcp_server_configs)
+        result = builder.dump_client_config()
+
+        assert result["streamable-server"]["transport"] == "streamable_http"
+        assert result["streamable-server"]["url"] == "https://example.com/stream"
+        assert result["streamable-server"]["headers"]["X-Custom-Header"] == "value"
+        assert (
+            result["streamable-server"]["headers"][K8S_AUTH_HEADER]
+            == f"Bearer {user_token}"
+        )
+        # Verify that timeout values are converted to timedelta objects
+        assert result["streamable-server"]["timeout"] == timedelta(seconds=30)
+        assert result["streamable-server"]["sse_read_timeout"] == timedelta(seconds=60)
+
+    @staticmethod
+    def test_dump_client_config_with_all_transports():
+        """Test dump_client_config with stdio, SSE, and streamable HTTP configurations."""
+        mcp_server_configs = [
+            MCPServerConfig(
+                name="openshift",
+                transport="stdio",
+                stdio=StdioTransportConfig(
+                    command="hello",
+                    env={"X": "Y"},
+                ),
+            ),
+            MCPServerConfig(
+                name="sse-server",
+                transport="sse",
+                sse=SseTransportConfig(
+                    url="https://example.com/events",
+                ),
+            ),
+            MCPServerConfig(
+                name="streamable-server",
+                transport="streamable_http",
+                streamable_http=StreamableHttpTransportConfig(
+                    url="https://example.com/stream",
+                ),
+            ),
+        ]
+        user_token = "fake-token"  # noqa: S105
+
+        with patch.dict(os.environ, {}, clear=True):
+            builder = MCPConfigBuilder(user_token, mcp_server_configs)
+            result = builder.dump_client_config()
+
+        assert "openshift" in result
+        assert "sse-server" in result
+        assert "streamable-server" in result
+        assert result["openshift"]["transport"] == "stdio"
+        assert result["sse-server"]["transport"] == "sse"
+        assert result["streamable-server"]["transport"] == "streamable_http"
+        assert result["openshift"]["env"]["OC_USER_TOKEN"] == user_token
+        assert (
+            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        )
+        assert (
+            result["streamable-server"]["headers"][K8S_AUTH_HEADER]
+            == f"Bearer {user_token}"
         )
