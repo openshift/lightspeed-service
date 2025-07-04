@@ -596,8 +596,8 @@ class MCPServerConfig(BaseModel):
     streamable_http: Optional[StreamableHttpTransportConfig] = None
 
     @model_validator(mode="after")
-    def stdio_or_sse_specified(self) -> Self:
-        """Check if stdio or sse is specified."""
+    def correct_transport_specified(self) -> Self:
+        """Check if correct transport is specified."""
         if self.transport == "stdio":
             if self.stdio is None:
                 raise ValueError(
