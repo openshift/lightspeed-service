@@ -3985,6 +3985,7 @@ def test_proxy_config_default_values():
         os_proxy = os.getenv("HTTPS_PROXY")
     assert proxy_config.proxy_url == os_proxy
     assert proxy_config.proxy_ca_cert_path is None
+    assert proxy_config.no_proxy_hosts == []
 
 
 def test_proxy_config_correct_values():
@@ -3993,10 +3994,12 @@ def test_proxy_config_correct_values():
         {
             "proxy_url": "http://proxy.example.com:1234",
             "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+            "no_proxy_hosts": ["localhost", "127.0.0.1", "example.com"],
         }
     )
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
     assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"
+    assert proxy_config.no_proxy_hosts == ["localhost", "127.0.0.1", "example.com"]
     proxy_config.validate_yaml()
 
 
@@ -4028,15 +4031,16 @@ def test_proxy_config_invalid_ca_cert_path():
         ).validate_yaml()
 
 
-def test_proxy_config_correct_values_env_var():
+def test_proxy_config_correct_values_env_var(monkeypatch):
     """Test the ProxyConfig model customized values."""
-    system_proxy = os.environ.get("https_proxy")
-    if system_proxy is None:
-        system_proxy = "http://proxy.example.com:1234"
-        os.environ["https_proxy"] = "http://proxy.example.com:1234"
+    https_proxy = "http://proxy.example.com:1234"
+    no_proxy = "localhost,127.0.0.1,example.com"
+    monkeypatch.setenv("https_proxy", https_proxy)
+    monkeypatch.setenv("no_proxy", no_proxy)
     proxy_config = ProxyConfig()
-    assert proxy_config.proxy_url == system_proxy
+    assert proxy_config.proxy_url == https_proxy
     assert proxy_config.proxy_ca_cert_path is None
+    assert proxy_config.no_proxy_hosts == no_proxy.split(",")
     proxy_config.validate_yaml()
 
     # CA alone in config should be valid with URL in env var.
@@ -4047,8 +4051,20 @@ def test_proxy_config_correct_values_env_var():
     )
     proxy_config.validate_yaml()
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
-    assert proxy_config.proxy_url == system_proxy
-    if system_proxy == "http://proxy.example.com:1234":
-        del os.environ["https_proxy"]
-    else:
-        os.environ["https_proxy"] = system_proxy
+    assert proxy_config.proxy_url == https_proxy
+
+
+def test_proxy_config_no_proxy_env_var_with_certificates(monkeypatch):
+    """Test the ProxyConfig model with no_proxy_hosts and certificates."""
+    no_proxy = "localhost,127.0.0.1,example.com"
+    monkeypatch.setenv("no_proxy", no_proxy)
+    proxy_config = ProxyConfig(
+        {
+            "proxy_url": "http://proxy.example.com:1234",
+            "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+        }
+    )
+    proxy_config.validate_yaml()
+    assert proxy_config.no_proxy_hosts == no_proxy.split(",")
+    assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
+    assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"
