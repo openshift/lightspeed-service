@@ -37,13 +37,13 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image tool_calling quota_limits
   # empty test_tags means run all tests
-  run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
+  run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
+  run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "default"
+  run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
   # smoke tests for RHOAI VLLM-compatible provider
