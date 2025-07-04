@@ -7,9 +7,25 @@ from genai.exceptions import ApiResponseException
 from ibm_watsonx_ai.wml_client_error import ApiRequestFailure
 from openai import BadRequestError
 
+from ols import config
+
 # Constants for default messages and status codes
 DEFAULT_ERROR_MESSAGE = "An error occurred during LLM invocation. Please contact your OpenShift Lightspeed administrator."  # noqa: E501
 DEFAULT_STATUS_CODE = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+PROMPT_TOO_LONG_WITH_TOOLS_ERROR_MSG = (
+    "The request exceeds the allowed token limit, possibly due to tool "
+    "usage or misconfigured context window or maximum response tokens "
+    "settings. Please refine your prompt to be more specific, or verify "
+    "that the token-related configuration parameters are correctly set."
+)
+
+# The msg is user facing - note the config fields from OLS CRD
+PROMPT_TOO_LONG_ERROR_MSG = (
+    "The prompt exceeds the maximum token limit. Please shorten your "
+    "input or adjust the context window and maximum response tokens "
+    "settings in the configuration to allow for larger prompts."
+)
 
 
 def parse_openai_error(e: BadRequestError) -> tuple[int, str, str]:
@@ -57,3 +73,21 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
             return parse_watsonx_error(e)
         case _:
             return DEFAULT_STATUS_CODE, DEFAULT_ERROR_MESSAGE, str(e)
+
+
+def handle_known_errors(response: str, cause: str) -> tuple[str, str]:
+    """Handle known errors and return a user-friendly message."""
+    if all(
+        [
+            "maximum" in response.lower(),
+            "context" in response.lower(),
+            "length" in response.lower(),
+        ]
+    ):
+        if config.mcp_servers.servers:
+            # tool calls are too long
+            return PROMPT_TOO_LONG_WITH_TOOLS_ERROR_MSG, cause
+        # models with context smaller than our default
+        return PROMPT_TOO_LONG_ERROR_MSG, cause
+
+    return response, cause
