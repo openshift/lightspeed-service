@@ -48,7 +48,8 @@ function cleanup_ols_operator() {
 function run_suite() {
   echo "Preparing to run suite $1"
 
-  cleanup_ols_operator
+  # moving clean_ols_operator funtionality to test scripts.
+  # cleanup_ols_operator
   
   if [ "$1" = "model_eval" ]; then
   # Run eval tests
