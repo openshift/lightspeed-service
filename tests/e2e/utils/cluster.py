@@ -23,14 +23,26 @@ def run_oc(
         )
         return res
     except subprocess.CalledProcessError as e:
-        if ignore_existing_resource and "AlreadyExists" in e.stderr:
-            print(f"Resource already exists: {e}\nproceeding...")
-        else:
-            print(
-                f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
-            )
-            raise
-    return subprocess.CompletedProcess("", 0)
+        if ignore_existing_resource:
+            # Check for various "already exists" error patterns in both stderr and stdout
+            error_text = (e.stderr + " " + e.stdout).lower()
+            if any(
+                pattern in error_text
+                for pattern in [
+                    "alreadyexists",
+                    "already exists",
+                    "already exist",
+                    "conflict",
+                    "resource exists",
+                ]
+            ):
+                print(f"Resource already exists: {e}\nproceeding...")
+                return subprocess.CompletedProcess(e.cmd, 0, stdout="", stderr="")
+
+        print(
+            f"Error running oc command {args}: {e}, stdout: {e.stdout}, stderr: {e.stderr}"
+        )
+        raise
 
 
 def run_oc_and_store_stdout(

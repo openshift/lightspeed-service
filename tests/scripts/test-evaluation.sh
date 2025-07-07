@@ -40,6 +40,8 @@ function run_suites() {
   (( rc = rc || $? ))
   set -e
 
+  cleanup_ols_operator 
+
   return $rc
 }
 
