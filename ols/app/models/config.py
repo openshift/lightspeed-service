@@ -128,6 +128,11 @@ class ProxyConfig(BaseModel):
         default_factory=lambda: os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
     )
     proxy_ca_cert_path: Optional[FilePath] = None
+    no_proxy_hosts: Optional[list[str]] = Field(
+        default_factory=lambda: [
+            host for host in os.getenv("no_proxy", "").split(",") if host
+        ]
+    )
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -138,6 +143,9 @@ class ProxyConfig(BaseModel):
             # avoid overwriting the proxy_url set by environment variable
             self.proxy_url = data.get("proxy_url")
         self.proxy_ca_cert_path = data.get("proxy_ca_cert_path")
+        if "no_proxy_hosts" in data:
+            # avoid overwriting the no_proxy_hosts set by environment variable
+            self.no_proxy_hosts = data.get("no_proxy_hosts", self.no_proxy_hosts)
 
     def validate_yaml(self) -> None:
         """Validate proxy config."""

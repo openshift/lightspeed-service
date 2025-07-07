@@ -333,7 +333,7 @@ class LLMProvider(AbstractLLMProvider):
 
         return updated_params
 
-    def _construct_httpx_client(
+    def _construct_httpx_client(  # noqa: C901
         self, use_custom_certificate_store: bool, use_async: bool
     ) -> httpx.Client | httpx.AsyncClient:
         """Construct HTTPX client instance to be used to communicate with LLM."""
@@ -354,6 +354,20 @@ class LLMProvider(AbstractLLMProvider):
             proxy = httpx.Proxy(
                 url=config.ols_config.proxy_config.proxy_url, ssl_context=proxy_context
             )
+        mounts = None
+        # if proxy is set, we need to bypass proxy for hosts specified in env var "no_proxy"
+        if (
+            config.ols_config.proxy_config
+            and config.ols_config.proxy_config.no_proxy_hosts
+        ):
+            logger.debug(
+                "No proxy hosts are set: %s",
+                config.ols_config.proxy_config.no_proxy_hosts,
+            )
+            mounts = {
+                f"all://*{host}": None
+                for host in config.ols_config.proxy_config.no_proxy_hosts
+            }
 
         sec_profile = self.provider_config.tls_security_profile
 
@@ -372,8 +386,8 @@ class LLMProvider(AbstractLLMProvider):
                 )
                 verify = custom_context
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxies=proxy)
-            return httpx.Client(verify=verify, proxies=proxy)
+                return httpx.AsyncClient(verify=verify, proxies=proxy, mounts=mounts)
+            return httpx.Client(verify=verify, proxies=proxy, mounts=mounts)
 
         # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
