@@ -79,7 +79,7 @@ class "MCPServerConfig" as ols.app.models.config.MCPServerConfig {
   sse : Optional[SseTransportConfig]
   stdio : Optional[StdioTransportConfig]
   transport : Literal['sse', 'stdio']
-  stdio_or_sse_specified() -> Self
+  correct_transport_specified() -> Self
 }
 class "MCPServers" as ols.app.models.config.MCPServers {
   servers : list[MCPServerConfig]

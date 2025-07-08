@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import timedelta
 from typing import Any
 
 from ols.app.models.config import MCPServerConfig
@@ -81,5 +82,19 @@ class MCPConfigBuilder:
                 sse_conf = server_conf.sse.model_dump()
                 self.include_auth_header(self.user_token, sse_conf)
                 servers_conf[server_conf.name].update(sse_conf)
+
+            if server_conf.streamable_http:
+                servers_conf[server_conf.name].update(
+                    self.include_auth_header(
+                        self.user_token, server_conf.streamable_http.model_dump()
+                    )
+                )
+                # Note: Streamable HTTP transport expects timedelta instead of
+                # int as for the sse - blame langchain-mcp-adapters for
+                # inconsistency
+                for timeout in ("timeout", "sse_read_timeout"):
+                    servers_conf[server_conf.name][timeout] = timedelta(
+                        seconds=servers_conf[server_conf.name][timeout]  # type: ignore [assignment]
+                    )
 
         return servers_conf

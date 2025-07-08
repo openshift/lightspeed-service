@@ -585,32 +585,55 @@ class SseTransportConfig(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
 
 
+class StreamableHttpTransportConfig(BaseModel):
+    """Streamable HTTP transport configuration for MCP server."""
+
+    url: str
+    timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT
+    sse_read_timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT
+    headers: dict[str, str] = Field(default_factory=dict)
+
+
 class MCPServerConfig(BaseModel):
     """MCP server configuration."""
 
     name: str
-    transport: Literal["sse", "stdio"]
+    transport: Literal["sse", "stdio", "streamable_http"]
     stdio: Optional[StdioTransportConfig] = None
     sse: Optional[SseTransportConfig] = None
+    streamable_http: Optional[StreamableHttpTransportConfig] = None
 
     @model_validator(mode="after")
-    def stdio_or_sse_specified(self) -> Self:
-        """Check if stdio or sse is specified."""
+    def correct_transport_specified(self) -> Self:
+        """Check if correct transport is specified."""
         if self.transport == "stdio":
             if self.stdio is None:
                 raise ValueError(
                     "Stdio transport selected but 'stdio' config not provided"
                 )
-            if self.sse is not None:
+            if self.sse is not None or self.streamable_http is not None:
                 raise ValueError(
-                    "Stdio transport selected but 'sse' config should not be provided"
+                    "Stdio transport selected but 'sse' or 'streamable_http' "
+                    "config should not be provided"
                 )
         elif self.transport == "sse":
             if self.sse is None:
                 raise ValueError("SSE transport selected but 'sse' config not provided")
-            if self.stdio is not None:
+            if self.stdio is not None or self.streamable_http is not None:
                 raise ValueError(
-                    "SSE transport selected but 'stdio' config should not be provided"
+                    "SSE transport selected but 'stdio' or 'streamable_http' "
+                    "config should not be provided"
+                )
+        elif self.transport == "streamable_http":
+            if self.streamable_http is None:
+                raise ValueError(
+                    "Streamable HTTP transport selected but 'streamable_http' "
+                    "config not provided"
+                )
+            if self.stdio is not None or self.sse is not None:
+                raise ValueError(
+                    "Streamable HTTP transport selected but 'stdio' or 'sse' "
+                    "config should not be provided"
                 )
         return self
 
