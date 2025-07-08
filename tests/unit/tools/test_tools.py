@@ -4,7 +4,13 @@ from unittest.mock import patch
 
 import pytest
 
-from ols.src.tools.tools import execute_tool_call, execute_tool_calls, get_tool_by_name
+from ols.src.tools.tools import (
+    SENSITIVE_KEYWORDS,
+    execute_tool_call,
+    execute_tool_calls,
+    get_tool_by_name,
+    raise_for_sensitive_tool_args,
+)
 
 
 class FakeTool:
@@ -84,3 +90,32 @@ async def test_execute_tool_calls():
         assert tool_messages[1].content == "fake_output"
         assert tool_messages[1].status == "success"
         assert tool_messages[1].tool_call_id == "tool_call_2"
+
+
+def test_raise_for_sensitive_tool_args():
+    """Test raise_for_sensitive_tool_args function."""
+    raise_for_sensitive_tool_args({"tool_args": "normal_args"})
+
+    for keyword in SENSITIVE_KEYWORDS:
+        with pytest.raises(ValueError, match="Sensitive keyword in tool arguments"):
+            sensitive_args = {"tool_args": keyword}
+            raise_for_sensitive_tool_args(sensitive_args)
+
+
+@pytest.mark.asyncio
+async def test_execute_sensitive_tool_calls():
+    """Test execute_tool_calls with sensitive tool arguments."""
+    tool_calls = [
+        {
+            "name": "some_tool",
+            "args": {"tool_arg": SENSITIVE_KEYWORDS[0]},
+            "id": "tool_call_1",
+        },
+    ]
+    fake_tools = []
+
+    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+
+    assert tool_messages[0].status == "error"
+    assert "Sensitive keyword" in tool_messages[0].content
+    assert "are not allowed" in tool_messages[0].content
