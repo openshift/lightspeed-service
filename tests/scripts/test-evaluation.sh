@@ -40,6 +40,9 @@ function run_suites() {
   (( rc = rc || $? ))
   set -e
 
+  # moved from utils.sh to cleanup the operator only once everything is done.
+  cleanup_ols_operator # from utils.sh
+
   return $rc
 }
 
