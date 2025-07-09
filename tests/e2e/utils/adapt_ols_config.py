@@ -16,7 +16,7 @@ def adapt_ols_config() -> str :
         provider = os.environ["PROVIDER"]
         model = os.environ["MODEL"]
         key_path = os.environ["PROVIDER_KEY_PATH"]
-        provider_url = os.environ["OLS_PROVIDER_RL"]
+        provider_url = os.environ["OLS_PROVIDER_URL"]
         configmap_yaml = cluster.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
         configmap = yaml.safe_load(configmap_yaml)
         olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
