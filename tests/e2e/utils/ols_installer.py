@@ -345,13 +345,17 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     crd_yml_name = f"olsconfig.crd.{provider}"
     tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
+    quota_limits_enabled = os.getenv("QUOTA_LIMITS", "n") == "y"
     try:
         if len(provider_list) == 1:
             if tool_calling_enabled:
                 print("Cluster tool_calling is enabled.")
                 crd_yml_name += "_tool_calling"
+            if quota_limits_enabled:
+                print("Quota limits is enabled.")
+                crd_yml_name += "_quota"
             # OLS-1711: temp solution until operator changes to support mcp_servers
-            print("DEBUG: creating introspection CM")
+            print(f"DEBUG: creating introspection CM from {crd_yml_name}.yaml")
             cluster_utils.run_oc(
                 [
                     "create",
