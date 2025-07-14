@@ -1,5 +1,6 @@
 """Functions/Tools definition."""
 
+import asyncio
 import logging
 
 from langchain_core.messages import ToolMessage
@@ -54,17 +55,19 @@ async def execute_tool_call(
     return status, tool_output
 
 
-async def execute_tool_calls(
-    tool_calls: list[dict],
-    all_mcp_tools: list[StructuredTool],
-) -> tuple[list[ToolMessage], list[dict]]:
-    """Execute tool calls and return ToolMessages and execution details."""
-    tool_messages = []
+async def _execute_single_tool_call(
+    tool_call: dict, all_mcp_tools: list[StructuredTool]
+) -> ToolMessage:
+    """Execute a single tool call and return a ToolMessage."""
+    tool_name = tool_call.get("name")
+    tool_args = tool_call.get("args", {})
+    tool_id = tool_call.get("id")
 
-    for tool_call in tool_calls:
-        tool_name = tool_call.get("name")
-        tool_args = tool_call.get("args", {})
-        tool_id = tool_call.get("id")
+    if tool_name is None:
+        tool_output = "Error: Tool name is missing from tool call"
+        status = "error"
+        logger.error("Tool call missing name: %s", tool_call)
+    else:
         try:
             raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
@@ -76,8 +79,24 @@ async def execute_tool_calls(
             )
             status = "error"
             logger.exception(tool_output)
-        tool_messages.append(
-            ToolMessage(content=tool_output, status=status, tool_call_id=tool_id)
-        )
+
+    return ToolMessage(content=tool_output, status=status, tool_call_id=tool_id)
+
+
+async def execute_tool_calls(
+    tool_calls: list[dict],
+    all_mcp_tools: list[StructuredTool],
+) -> list[ToolMessage]:
+    """Execute tool calls in parallel and return ToolMessages."""
+    if not tool_calls:
+        return []
+
+    # Create tasks for parallel execution
+    tasks = [
+        _execute_single_tool_call(tool_call, all_mcp_tools) for tool_call in tool_calls
+    ]
+
+    # Execute all tool calls in parallel
+    tool_messages = await asyncio.gather(*tasks)
 
     return tool_messages
