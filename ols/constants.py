@@ -236,4 +236,5 @@ STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
 STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT = 10  # in seconds
 
 # timeout value for a single llm with tools round
-TOOL_CALL_ROUND_TIMEOUT = 30
+# Keeping it really high at this moment (until this is configurable)
+TOOL_CALL_ROUND_TIMEOUT = 300
