@@ -3,6 +3,8 @@ approvers:
   - joshuawilson
   - tisnik
   - xrajesh
+  - raptorsun
+  - onmete
 
 # Note: prow reviewer assignment isn't particularly helpful and anyone
 # in the openshift org can review(lgtm) a PR, so leaving this empty.
