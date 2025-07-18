@@ -5,13 +5,12 @@ from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 
 
-def get_olsconfig_cr_file(providers: list[str], tool_calling_enabled: bool) -> str:
+def get_olsconfig_cr_file(providers: list[str], tool_calling_enabled: bool, introspection_enabled: bool = False) -> str:
     """Get the appropriate olsconfig CR file based on providers and options.
-
     Args:
         providers: List of provider names
         tool_calling_enabled: Whether tool calling is enabled
-
+        introspection_enabled: Whether introspection is enabled
     Returns:
         Path to the appropriate olsconfig CR file
     """
@@ -24,10 +23,16 @@ def get_olsconfig_cr_file(providers: list[str], tool_calling_enabled: bool) -> s
     base_name = f"olsconfig.crd.{provider}"
 
     # Check if tool calling is enabled and CR file exists
+    # Tool calling configs already include introspection
     if tool_calling_enabled:
         tool_calling_file = f"tests/config/operator_install/{base_name}_tool_calling.yaml"
         if os.path.exists(tool_calling_file):
             base_name += "_tool_calling"
+    elif introspection_enabled:
+        # Check for introspection-only config file
+        introspection_file = f"tests/config/operator_install/{base_name}_introspection.yaml"
+        if os.path.exists(introspection_file):
+            base_name += "_introspection"
 
     # Validate that the CR file exists
     cr_file_path = f"tests/config/operator_install/{base_name}.yaml"
@@ -46,6 +51,7 @@ def adapt_ols_config() -> None:
     Environment variables:
     - PROVIDER: Space-separated list of provider names.
     - TOOL_CALLING_ENABLED: Set to "y" to enable tool calling (if supported by provider)
+    - INTROSPECTION_ENABLED: Set to "y" to enable introspection (if supported by provider)
     """
     print("Adapting OLS configuration for provider switching")
 
@@ -57,11 +63,12 @@ def adapt_ols_config() -> None:
 
     print(f"Configuring for providers: {providers}")
 
-    # Check if tool calling is enabled
+    # Check if tool calling and introspection are enabled
     tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
+    introspection_enabled = os.getenv("INTROSPECTION_ENABLED", "n") == "y"
 
     # Select appropriate olsconfig CR file
-    cr_file = get_olsconfig_cr_file(providers, tool_calling_enabled)
+    cr_file = get_olsconfig_cr_file(providers, tool_calling_enabled, introspection_enabled)
     print(f"Selected olsconfig CR file: {cr_file}")
 
     # Apply the olsconfig CR
