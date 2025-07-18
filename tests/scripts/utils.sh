@@ -48,7 +48,8 @@ function cleanup_ols_operator() {
 function run_suite() {
   echo "Preparing to run suite $1"
 
-  cleanup_ols_operator
+  # commenting and copying this to test-e2e-cluster.sh, test-evaluation.sh, and test-e2e-cluster-periodics.sh
+  # cleanup_ols_operator
   
   if [ "$1" = "model_eval" ]; then
   # Run eval tests
