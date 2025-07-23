@@ -5,82 +5,91 @@ from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 
 
-def get_olsconfig_cr_file(providers: list[str], tool_calling_enabled: bool, introspection_enabled: bool = False) -> str:
-    """Get the appropriate olsconfig CR file based on providers and options.
-    Args:
-        providers: List of provider names
-        tool_calling_enabled: Whether tool calling is enabled
-        introspection_enabled: Whether introspection is enabled
-    Returns:
-        Path to the appropriate olsconfig CR file
-    """
-    # For multiple providers, use evaluation config
-    if len(providers) > 1:
-        return "tests/config/operator_install/olsconfig.crd.evaluation.yaml"
-
-    # For single provider, select based on provider type
-    provider = providers[0]
-    base_name = f"olsconfig.crd.{provider}"
-
-    # Check if tool calling is enabled and CR file exists
-    # Tool calling configs already include introspection
-    if tool_calling_enabled:
-        tool_calling_file = f"tests/config/operator_install/{base_name}_tool_calling.yaml"
-        if os.path.exists(tool_calling_file):
-            base_name += "_tool_calling"
-    elif introspection_enabled:
-        # Check for introspection-only config file
-        introspection_file = f"tests/config/operator_install/{base_name}_introspection.yaml"
-        if os.path.exists(introspection_file):
-            base_name += "_introspection"
-
-    # Validate that the CR file exists
-    cr_file_path = f"tests/config/operator_install/{base_name}.yaml"
-    if not os.path.exists(cr_file_path):
-        raise FileNotFoundError(f"CR file not found: {base_name}.yaml")
-
-    return cr_file_path
-
-
 def adapt_ols_config() -> None:
     """Adapt OLS configuration for different providers dynamically.
 
-    This function selects and applies the appropriate olsconfig Custom Resource
-    based on environment variables, allowing switching across providers without reinstalling the operator.
-
-    Environment variables:
-    - PROVIDER: Space-separated list of provider names.
-    - TOOL_CALLING_ENABLED: Set to "y" to enable tool calling (if supported by provider)
-    - INTROSPECTION_ENABLED: Set to "y" to enable introspection (if supported by provider)
+    Also ensures the test-user service account and role binding exist to avoid test failures.
     """
     print("Adapting OLS configuration for provider switching")
 
-    # Get provider configuration from environment
     provider_env = os.getenv("PROVIDER", "openai")
-    providers = [p for p in provider_env.split() if p.strip()]
-    if not providers:
-        providers = ["openai"]
+    provider_list = provider_env.split() or ["openai"]
+    print(f"Configuring for providers: {provider_list}")
 
-    print(f"Configuring for providers: {providers}")
-
-    # Check if tool calling and introspection are enabled
     tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
-    introspection_enabled = os.getenv("INTROSPECTION_ENABLED", "n") == "y"
+    namespace = "openshift-lightspeed"
 
-    # Select appropriate olsconfig CR file
-    cr_file = get_olsconfig_cr_file(providers, tool_calling_enabled, introspection_enabled)
-    print(f"Selected olsconfig CR file: {cr_file}")
+    try:
+        # Choose CRD YAML based on provider config
+        if len(provider_list) == 1:
+            provider = provider_list[0]
+            crd_yml_name = f"olsconfig.crd.{provider}"
+            if tool_calling_enabled:
+                crd_yml_name += "_tool_calling"
+            print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
+            cluster_utils.run_oc(
+                ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
+                ignore_existing_resource=True,
+            )
+        else:
+            print("Applying evaluation olsconfig CR for multiple providers")
+            cluster_utils.run_oc(
+                ["apply", "-f", "tests/config/operator_install/olsconfig.crd.evaluation.yaml"],
+                ignore_existing_resource=True,
+            )
+        print("OLSConfig CR applied successfully")
+    except Exception as e:
+        raise RuntimeError(f"Error applying OLSConfig CR: {e}") from e
 
-    # Apply the olsconfig CR
-    print(f"Applying olsconfig CR from {cr_file}")
-    cluster_utils.run_oc(["apply", "-f", cr_file])
-    print("Successfully applied olsconfig CR")
+    # Ensure pod-reader role exists
+    try:
+        print("Ensuring 'pod-reader' role exists...")
+        role_exists = cluster_utils.run_oc([
+            "get", "role", "pod-reader", "-n", namespace, "--ignore-not-found"
+        ]).stdout.strip()
 
-    # Wait for the controller manager to detect the changes and restart the deployment
-    print("Waiting for controller manager to detect olsconfig changes and restart deployment")
+        if not role_exists:
+            print("Creating role 'pod-reader'")
+            cluster_utils.run_oc([
+                "create", "role", "pod-reader",
+                "--verb=get,list", "--resource=pods",
+                "--namespace", namespace
+            ])
+    except Exception as e:
+        print(f"Warning: Could not ensure pod-reader role exists: {e}")
 
-    # Wait for the deployment to be updated/restarted by the controller manager
-    print("Waiting for OLS deployment to be updated")
+    # Ensure test-user service account and rolebinding exist
+    try:
+        print("Ensuring 'test-user' service account exists...")
+        sa_exists = cluster_utils.run_oc([
+            "get", "sa", "test-user", "-n", namespace, "--ignore-not-found"
+        ]).stdout.strip()
+
+        if not sa_exists:
+            print("Creating service account 'test-user'")
+            cluster_utils.run_oc(["create", "sa", "test-user", "-n", namespace])
+
+        print("Ensuring 'test-user-pod-reader' role binding exists...")
+        rb_exists = cluster_utils.run_oc([
+            "get", "rolebinding", "test-user-pod-reader", "-n", namespace, "--ignore-not-found"
+        ]).stdout.strip()
+
+        if not rb_exists:
+            print("Creating role binding 'test-user-pod-reader'")
+            cluster_utils.run_oc([
+                "create", "rolebinding", "test-user-pod-reader",
+                "--role=pod-reader",
+                f"--serviceaccount={namespace}:test-user",
+                "--namespace", namespace,
+            ])
+
+        print("Service account and role binding verified.")
+    except Exception as e:
+        raise RuntimeError(f"Error ensuring RBAC setup: {e}") from e
+
+    # Wait for controller manager to detect config change
+    print("Waiting for OLS controller to apply updated configuration...")
+
     deployment_ready = retry_until_timeout_or_success(
         30,
         6,
@@ -88,17 +97,17 @@ def adapt_ols_config() -> None:
             "get", "deployment", "lightspeed-app-server",
             "--ignore-not-found", "-o", "name"
         ]).stdout.strip() == "deployment.apps/lightspeed-app-server",
-        "Waiting for OLS API server deployment to be updated by controller",
+        "Waiting for lightspeed-app-server deployment to be detected",
     )
 
     if not deployment_ready:
-        raise Exception("Timed out waiting for OLS deployment to be updated")
+        raise TimeoutError("Timed out waiting for lightspeed-app-server deployment update")
 
-    # Wait for the pod to be ready (this handles the initialization phase automatically)
-    print("Waiting for OLS pod to be ready after configuration change")
+    print("Waiting for pods to be ready after configuration update...")
     cluster_utils.wait_for_running_pod()
 
-    print("Configuration adaptation completed successfully")
+    print("OLS configuration and access setup completed successfully.")
+
 
 if __name__ == "__main__":
     adapt_ols_config()
