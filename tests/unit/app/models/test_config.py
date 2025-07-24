@@ -31,6 +31,7 @@ from ols.app.models.config import (
     ReferenceContentIndex,
     SseTransportConfig,
     StdioTransportConfig,
+    StreamableHttpTransportConfig,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -59,8 +60,20 @@ def mcp_server_config_sse_transport():
     }
 
 
+@pytest.fixture
+def mcp_server_config_streamable_http_transport():
+    """MCP server config map fixture."""
+    return {
+        "name": "gru",
+        "transport": "streamable_http",
+        "streamable_http": {"url": "127.0.0.1:8080"},
+    }
+
+
 def test_mcp_server_config(
-    mcp_server_config_stdio_transport, mcp_server_config_sse_transport
+    mcp_server_config_stdio_transport,
+    mcp_server_config_sse_transport,
+    mcp_server_config_streamable_http_transport,
 ):
     """Test the MCPServerConfig model."""
     mcp_server_config = MCPServerConfig(**mcp_server_config_stdio_transport)
@@ -68,6 +81,9 @@ def test_mcp_server_config(
 
     mcp_server_config = MCPServerConfig(**mcp_server_config_sse_transport)
     assert mcp_server_config.name == "bar"
+
+    mcp_server_config = MCPServerConfig(**mcp_server_config_streamable_http_transport)
+    assert mcp_server_config.name == "gru"
 
 
 def test_mcp_server_config_required_name():
@@ -100,35 +116,76 @@ def test_mcp_server_config_missing_options():
     """Test the MCPServerConfig model for missing options."""
     stdio_conf = StdioTransportConfig(command="python", args=["server.py"])
     sse_conf = SseTransportConfig(url="http://server:8080")
+    streamable_http_conf = StreamableHttpTransportConfig(url="http://server:8080")
+
+    # stdio selected, but config is missing
     with pytest.raises(
         ValidationError,
-        match="Stdio transport selected but 'stdio' config not provided",
+        match="Stdio transport selected but 'stdio'",
     ):
         MCPServerConfig(
             name="foo",
             transport="stdio",
         )
 
+    # stdio selected, but other configs provided too
     with pytest.raises(
         ValidationError,
-        match="Stdio transport selected but 'sse' config should not be provided",
+        match="Stdio transport selected but 'sse' or 'streamable_http'",
     ):
-        MCPServerConfig(name="foo", transport="stdio", stdio=stdio_conf, sse=sse_conf)
+        MCPServerConfig(
+            name="foo",
+            transport="stdio",
+            stdio=stdio_conf,
+            sse=sse_conf,
+            streamable_http=streamable_http_conf,
+        )
 
+    # sse selected, but config is missing
     with pytest.raises(
         ValidationError,
-        match="SSE transport selected but 'sse' config not provided",
+        match="SSE transport selected but 'sse'",
     ):
         MCPServerConfig(
             name="foo",
             transport="sse",
         )
 
+    # sse selected, but other configs provided too
     with pytest.raises(
         ValidationError,
-        match="SSE transport selected but 'stdio' config should not be provided",
+        match="SSE transport selected but 'stdio' or 'streamable_http'",
     ):
-        MCPServerConfig(name="foo", transport="sse", stdio=stdio_conf, sse=sse_conf)
+        MCPServerConfig(
+            name="foo",
+            transport="sse",
+            stdio=stdio_conf,
+            sse=sse_conf,
+            streamable_http=streamable_http_conf,
+        )
+
+    # streamable_http selected, but config is missing
+    with pytest.raises(
+        ValidationError,
+        match="Streamable HTTP transport selected but 'streamable_http'",
+    ):
+        MCPServerConfig(
+            name="foo",
+            transport="streamable_http",
+        )
+
+    # streamable_http selected, but other configs provided too
+    with pytest.raises(
+        ValidationError,
+        match="Streamable HTTP transport selected but 'stdio' or 'sse'",
+    ):
+        MCPServerConfig(
+            name="foo",
+            transport="streamable_http",
+            stdio=stdio_conf,
+            sse=sse_conf,
+            streamable_http=streamable_http_conf,
+        )
 
 
 def test_mcp_server_config_equality(mcp_server_config_stdio_transport):
@@ -155,7 +212,9 @@ def test_mcp_server_config_equality(mcp_server_config_stdio_transport):
 
 
 def test_mcp_servers(
-    mcp_server_config_stdio_transport, mcp_server_config_sse_transport
+    mcp_server_config_stdio_transport,
+    mcp_server_config_sse_transport,
+    mcp_server_config_streamable_http_transport,
 ):
     """Test the MCPServers model."""
     mcp_servers = MCPServers()
@@ -165,11 +224,13 @@ def test_mcp_servers(
         servers=[
             mcp_server_config_stdio_transport,
             mcp_server_config_sse_transport,
+            mcp_server_config_streamable_http_transport,
         ]
     )
-    assert len(mcp_servers.servers) == 2
+    assert len(mcp_servers.servers) == 3
     assert mcp_servers.servers[0].name == "foo"
     assert mcp_servers.servers[1].name == "bar"
+    assert mcp_servers.servers[2].name == "gru"
 
 
 def test_mcp_servers_duplicity():
@@ -241,6 +302,23 @@ def test_sse_transport_defaults():
         sse_transport.sse_read_timeout == constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
     )
     assert sse_transport.headers == {}
+
+
+def test_streamable_http_transport_configuration_on_no_data():
+    """Test the SSE transport configuration handling when no data are provided."""
+    with pytest.raises(ValidationError, match=r"(?s)url.*Field required"):
+        StreamableHttpTransportConfig()  # pyright: ignore[reportCallIssue]
+
+
+def test_streamable_http_transport_defaults():
+    """Test the SSE transport configuration defaults."""
+    sse_transport = StreamableHttpTransportConfig(url="http://localhost:8080")
+    assert sse_transport.url == "http://localhost:8080"
+    assert sse_transport.timeout == constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT
+    assert (
+        sse_transport.sse_read_timeout
+        == constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT
+    )
 
 
 def test_stdio_transport_configuration_on_no_data():
@@ -3985,6 +4063,7 @@ def test_proxy_config_default_values():
         os_proxy = os.getenv("HTTPS_PROXY")
     assert proxy_config.proxy_url == os_proxy
     assert proxy_config.proxy_ca_cert_path is None
+    assert proxy_config.no_proxy_hosts == []
 
 
 def test_proxy_config_correct_values():
@@ -3993,10 +4072,12 @@ def test_proxy_config_correct_values():
         {
             "proxy_url": "http://proxy.example.com:1234",
             "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+            "no_proxy_hosts": ["localhost", "127.0.0.1", "example.com"],
         }
     )
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
     assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"
+    assert proxy_config.no_proxy_hosts == ["localhost", "127.0.0.1", "example.com"]
     proxy_config.validate_yaml()
 
 
@@ -4028,15 +4109,16 @@ def test_proxy_config_invalid_ca_cert_path():
         ).validate_yaml()
 
 
-def test_proxy_config_correct_values_env_var():
+def test_proxy_config_correct_values_env_var(monkeypatch):
     """Test the ProxyConfig model customized values."""
-    system_proxy = os.environ.get("https_proxy")
-    if system_proxy is None:
-        system_proxy = "http://proxy.example.com:1234"
-        os.environ["https_proxy"] = "http://proxy.example.com:1234"
+    https_proxy = "http://proxy.example.com:1234"
+    no_proxy = "localhost,127.0.0.1,example.com"
+    monkeypatch.setenv("https_proxy", https_proxy)
+    monkeypatch.setenv("no_proxy", no_proxy)
     proxy_config = ProxyConfig()
-    assert proxy_config.proxy_url == system_proxy
+    assert proxy_config.proxy_url == https_proxy
     assert proxy_config.proxy_ca_cert_path is None
+    assert proxy_config.no_proxy_hosts == no_proxy.split(",")
     proxy_config.validate_yaml()
 
     # CA alone in config should be valid with URL in env var.
@@ -4047,8 +4129,20 @@ def test_proxy_config_correct_values_env_var():
     )
     proxy_config.validate_yaml()
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
-    assert proxy_config.proxy_url == system_proxy
-    if system_proxy == "http://proxy.example.com:1234":
-        del os.environ["https_proxy"]
-    else:
-        os.environ["https_proxy"] = system_proxy
+    assert proxy_config.proxy_url == https_proxy
+
+
+def test_proxy_config_no_proxy_env_var_with_certificates(monkeypatch):
+    """Test the ProxyConfig model with no_proxy_hosts and certificates."""
+    no_proxy = "localhost,127.0.0.1,example.com"
+    monkeypatch.setenv("no_proxy", no_proxy)
+    proxy_config = ProxyConfig(
+        {
+            "proxy_url": "http://proxy.example.com:1234",
+            "proxy_ca_cert_path": "tests/config/empty_cert.crt",
+        }
+    )
+    proxy_config.validate_yaml()
+    assert proxy_config.no_proxy_hosts == no_proxy.split(",")
+    assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
+    assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"

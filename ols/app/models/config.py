@@ -128,6 +128,11 @@ class ProxyConfig(BaseModel):
         default_factory=lambda: os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
     )
     proxy_ca_cert_path: Optional[FilePath] = None
+    no_proxy_hosts: Optional[list[str]] = Field(
+        default_factory=lambda: [
+            host for host in os.getenv("no_proxy", "").split(",") if host
+        ]
+    )
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -138,6 +143,9 @@ class ProxyConfig(BaseModel):
             # avoid overwriting the proxy_url set by environment variable
             self.proxy_url = data.get("proxy_url")
         self.proxy_ca_cert_path = data.get("proxy_ca_cert_path")
+        if "no_proxy_hosts" in data:
+            # avoid overwriting the no_proxy_hosts set by environment variable
+            self.no_proxy_hosts = data.get("no_proxy_hosts", self.no_proxy_hosts)
 
     def validate_yaml(self) -> None:
         """Validate proxy config."""
@@ -577,32 +585,55 @@ class SseTransportConfig(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
 
 
+class StreamableHttpTransportConfig(BaseModel):
+    """Streamable HTTP transport configuration for MCP server."""
+
+    url: str
+    timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT
+    sse_read_timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT
+    headers: dict[str, str] = Field(default_factory=dict)
+
+
 class MCPServerConfig(BaseModel):
     """MCP server configuration."""
 
     name: str
-    transport: Literal["sse", "stdio"]
+    transport: Literal["sse", "stdio", "streamable_http"]
     stdio: Optional[StdioTransportConfig] = None
     sse: Optional[SseTransportConfig] = None
+    streamable_http: Optional[StreamableHttpTransportConfig] = None
 
     @model_validator(mode="after")
-    def stdio_or_sse_specified(self) -> Self:
-        """Check if stdio or sse is specified."""
+    def correct_transport_specified(self) -> Self:
+        """Check if correct transport is specified."""
         if self.transport == "stdio":
             if self.stdio is None:
                 raise ValueError(
                     "Stdio transport selected but 'stdio' config not provided"
                 )
-            if self.sse is not None:
+            if self.sse is not None or self.streamable_http is not None:
                 raise ValueError(
-                    "Stdio transport selected but 'sse' config should not be provided"
+                    "Stdio transport selected but 'sse' or 'streamable_http' "
+                    "config should not be provided"
                 )
         elif self.transport == "sse":
             if self.sse is None:
                 raise ValueError("SSE transport selected but 'sse' config not provided")
-            if self.stdio is not None:
+            if self.stdio is not None or self.streamable_http is not None:
                 raise ValueError(
-                    "SSE transport selected but 'stdio' config should not be provided"
+                    "SSE transport selected but 'stdio' or 'streamable_http' "
+                    "config should not be provided"
+                )
+        elif self.transport == "streamable_http":
+            if self.streamable_http is None:
+                raise ValueError(
+                    "Streamable HTTP transport selected but 'streamable_http' "
+                    "config not provided"
+                )
+            if self.stdio is not None or self.sse is not None:
+                raise ValueError(
+                    "Streamable HTTP transport selected but 'stdio' or 'sse' "
+                    "config should not be provided"
                 )
         return self
 
