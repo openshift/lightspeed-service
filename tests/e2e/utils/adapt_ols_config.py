@@ -16,7 +16,6 @@ def adapt_ols_config() -> None:
     provider_list = provider_env.split() or ["openai"]
     print(f"Configuring for providers: {provider_list}")
 
-    tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
     namespace = "openshift-lightspeed"
 
     try:
@@ -24,8 +23,10 @@ def adapt_ols_config() -> None:
         if len(provider_list) == 1:
             provider = provider_list[0]
             crd_yml_name = f"olsconfig.crd.{provider}"
-            if tool_calling_enabled:
-                crd_yml_name += "_tool_calling"
+            ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+
+            if ols_config_suffix != "default":
+                crd_yml_name += f"_{ols_config_suffix}"
             print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
             cluster_utils.run_oc(
                 ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
