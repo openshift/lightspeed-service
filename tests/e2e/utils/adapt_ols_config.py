@@ -1,8 +1,102 @@
 """Functions to adapt OLS configuration for different providers on the go during multi-provider test scenarios."""
 
 import os
+import yaml
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.retry import retry_until_timeout_or_success
+
+
+def patch_rag_versions() -> None:
+    """Patch RAG index versions to use 4.18 to match current RAG content."""
+    try:
+        print("Patching RAG index versions to use 4.18...")
+        
+        # Get current OLSConfig
+        result = cluster_utils.run_oc([
+            "get", "olsconfig", "cluster", "-o", "yaml"
+        ])
+        
+        olsconfig = yaml.safe_load(result.stdout)
+        
+        # Check if RAG configuration exists
+        if "spec" in olsconfig and "ols" in olsconfig["spec"] and "rag" in olsconfig["spec"]["ols"]:
+            rag_configs = olsconfig["spec"]["ols"]["rag"]
+            
+            # Update RAG index paths to use 4.18
+            for rag_config in rag_configs:
+                if "indexPath" in rag_config:
+                    original_path = rag_config["indexPath"]
+                    # Replace 4.16 or 4.17 with 4.18 in the path
+                    if "/4.16" in original_path:
+                        rag_config["indexPath"] = original_path.replace("/4.16", "/4.18")
+                        rag_config["indexID"] = rag_config["indexID"].replace("4_16", "4_18")
+                        print(f"Updated RAG path from 4.16 to 4.18: {rag_config['indexPath']}")
+                    elif "/4.17" in original_path and "/4.18" not in original_path:
+                        # Only update 4.17 to 4.18 if 4.18 doesn't already exist
+                        has_4_18 = any("/4.18" in config.get("indexPath", "") for config in rag_configs)
+                        if not has_4_18:
+                            rag_config["indexPath"] = original_path.replace("/4.17", "/4.18")
+                            rag_config["indexID"] = rag_config["indexID"].replace("4_17", "4_18")
+                            print(f"Updated RAG path from 4.17 to 4.18: {rag_config['indexPath']}")
+            
+            # Apply the updated configuration
+            updated_yaml = yaml.dump(olsconfig)
+            cluster_utils.run_oc(["apply", "-f", "-"], command=updated_yaml)
+            print("RAG configuration patched successfully")
+        else:
+            print("No RAG configuration found to patch")
+            
+    except Exception as e:
+        print(f"Warning: Could not patch RAG versions: {e}")
+        # Don't fail the entire process for this
+
+
+def patch_mcp_servers_for_tool_calling(is_tool_calling: bool) -> None:
+    """Add MCP servers configuration for tool calling functionality."""
+    if not is_tool_calling:
+        print("Not a tool calling configuration, skipping MCP server setup")
+        return
+        
+    try:
+        print("Adding MCP servers configuration for tool calling...")
+        
+        # Get current OLSConfig
+        result = cluster_utils.run_oc([
+            "get", "olsconfig", "cluster", "-o", "yaml"
+        ])
+        
+        olsconfig = yaml.safe_load(result.stdout)
+        
+        # Add MCP servers configuration if not present
+        if "spec" not in olsconfig:
+            olsconfig["spec"] = {}
+            
+        # Define the OpenShift MCP server configuration
+        mcp_servers_config = [
+            {
+                "name": "openshift",
+                "transport": "stdio",
+                "stdio": {
+                    "command": "python",
+                    "args": ["./mcp_local/openshift.py"],
+                    "env": {}
+                }
+            }
+        ]
+        
+        # Add or update MCP servers
+        olsconfig["spec"]["mcpServers"] = mcp_servers_config
+        
+        # Apply the updated configuration
+        updated_yaml = yaml.dump(olsconfig)
+        cluster_utils.run_oc(["apply", "-f", "-"], command=updated_yaml)
+        print("MCP servers configuration added successfully")
+        print(f"Added MCP servers: {[server['name'] for server in mcp_servers_config]}")
+        
+    except Exception as e:
+        print(f"Warning: Could not add MCP servers configuration: {e}")
+        # Don't fail the entire process for this
+
 
 
 def adapt_ols_config() -> None:
@@ -23,15 +117,43 @@ def adapt_ols_config() -> None:
         if len(provider_list) == 1:
             provider = provider_list[0]
             crd_yml_name = f"olsconfig.crd.{provider}"
+            
+            # Handle both new OLS_CONFIG_SUFFIX and legacy TOOL_CALLING_ENABLED approaches
             ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-
+            tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
+            
+            # Backward compatibility: if TOOL_CALLING_ENABLED is set, use it
+            if tool_calling_enabled and ols_config_suffix == "default":
+                ols_config_suffix = "tool_calling"
+                print("Using TOOL_CALLING_ENABLED for backward compatibility")
+            
+            # Apply suffix if not default
+            is_tool_calling = ols_config_suffix == "tool_calling"
             if ols_config_suffix != "default":
                 crd_yml_name += f"_{ols_config_suffix}"
-            print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
+                
+            print(f"Applying olsconfig CR from {crd_yml_name}.yaml (suffix: {ols_config_suffix})")
             cluster_utils.run_oc(
                 ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
                 ignore_existing_resource=True,
             )
+            
+            # Add MCP servers configuration for tool calling
+            patch_mcp_servers_for_tool_calling(is_tool_calling)
+
+                        # ✅ Patch introspectionEnabled if tool calling is active
+            if is_tool_calling:
+                print("Patching OLSConfig to enable tool calling (spec.ols.introspectionEnabled: true)")
+                try:
+                    cluster_utils.run_oc([
+                        "patch", "olsconfig", "cluster",
+                        "--type=merge",
+                        "-p", '{"spec":{"ols":{"introspectionEnabled": true}}}'
+                    ])
+                except Exception as e:
+                    raise RuntimeError(f"Failed to patch OLSConfig for introspectionEnabled: {e}")
+
+            
         else:
             print("Applying evaluation olsconfig CR for multiple providers")
             cluster_utils.run_oc(
@@ -39,6 +161,10 @@ def adapt_ols_config() -> None:
                 ignore_existing_resource=True,
             )
         print("OLSConfig CR applied successfully")
+        
+        # Patch RAG versions to match current content (4.18)
+        patch_rag_versions()
+        
     except Exception as e:
         raise RuntimeError(f"Error applying OLSConfig CR: {e}") from e
 
