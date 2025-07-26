@@ -100,16 +100,21 @@ def patch_mcp_servers_for_tool_calling(is_tool_calling: bool) -> None:
 
 
 def adapt_ols_config() -> None:
-    """Adapt OLS configuration for different providers dynamically.
-
-    Also ensures the test-user service account and role binding exist to avoid test failures.
-    """
+    """Adapt OLS configuration for different providers dynamically and enable tool calling if requested."""
     print("Adapting OLS configuration for provider switching")
 
     provider_env = os.getenv("PROVIDER", "openai")
     provider_list = provider_env.split() or ["openai"]
     print(f"Configuring for providers: {provider_list}")
 
+    ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+    tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
+
+    if tool_calling_enabled and ols_config_suffix == "default":
+        ols_config_suffix = "tool_calling"
+        print("Using TOOL_CALLING_ENABLED for backward compatibility")
+
+    is_tool_calling = ols_config_suffix == "tool_calling"
     namespace = "openshift-lightspeed"
 
     try:
@@ -117,43 +122,52 @@ def adapt_ols_config() -> None:
         if len(provider_list) == 1:
             provider = provider_list[0]
             crd_yml_name = f"olsconfig.crd.{provider}"
-            
-            # Handle both new OLS_CONFIG_SUFFIX and legacy TOOL_CALLING_ENABLED approaches
-            ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-            tool_calling_enabled = os.getenv("TOOL_CALLING_ENABLED", "n") == "y"
-            
-            # Backward compatibility: if TOOL_CALLING_ENABLED is set, use it
-            if tool_calling_enabled and ols_config_suffix == "default":
-                ols_config_suffix = "tool_calling"
-                print("Using TOOL_CALLING_ENABLED for backward compatibility")
-            
-            # Apply suffix if not default
-            is_tool_calling = ols_config_suffix == "tool_calling"
-            if ols_config_suffix != "default":
-                crd_yml_name += f"_{ols_config_suffix}"
-                
-            print(f"Applying olsconfig CR from {crd_yml_name}.yaml (suffix: {ols_config_suffix})")
+            if is_tool_calling:
+                crd_yml_name += "_tool_calling"
+            print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
             cluster_utils.run_oc(
                 ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
                 ignore_existing_resource=True,
             )
-            
-            # Add MCP servers configuration for tool calling
-            patch_mcp_servers_for_tool_calling(is_tool_calling)
 
-                        # ✅ Patch introspectionEnabled if tool calling is active
+            # Configure tool calling if needed
             if is_tool_calling:
+                print("Configuring tool calling functionality...")
+                
+                # 1. Patch introspectionEnabled field
                 print("Patching OLSConfig to enable tool calling (spec.ols.introspectionEnabled: true)")
-                try:
-                    cluster_utils.run_oc([
-                        "patch", "olsconfig", "cluster",
-                        "--type=merge",
-                        "-p", '{"spec":{"ols":{"introspectionEnabled": true}}}'
-                    ])
-                except Exception as e:
-                    raise RuntimeError(f"Failed to patch OLSConfig for introspectionEnabled: {e}")
+                cluster_utils.run_oc([
+                    "patch", "olsconfig", "cluster",
+                    "--type=merge",
+                    "-p", '{"spec":{"ols":{"introspectionEnabled": true}}}'
+                ])
 
-            
+                # 2. Add MCP servers configuration (CRITICAL for tool calling)
+                print("Adding MCP servers configuration for tool calling...")
+                mcp_servers_patch = {
+                    "spec": {
+                        "mcpServers": [
+                            {
+                                "name": "openshift",
+                                "transport": "stdio",
+                                "stdio": {
+                                    "command": "python",
+                                    "args": ["./mcp_local/openshift.py"],
+                                    "env": {}
+                                }
+                            }
+                        ]
+                    }
+                }
+                
+                import json
+                cluster_utils.run_oc([
+                    "patch", "olsconfig", "cluster",
+                    "--type=merge",
+                    "-p", json.dumps(mcp_servers_patch)
+                ])
+                print("✅ Tool calling configuration completed successfully")
+
         else:
             print("Applying evaluation olsconfig CR for multiple providers")
             cluster_utils.run_oc(
@@ -161,10 +175,10 @@ def adapt_ols_config() -> None:
                 ignore_existing_resource=True,
             )
         print("OLSConfig CR applied successfully")
-        
+
         # Patch RAG versions to match current content (4.18)
         patch_rag_versions()
-        
+
     except Exception as e:
         raise RuntimeError(f"Error applying OLSConfig CR: {e}") from e
 
