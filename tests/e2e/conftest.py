@@ -63,14 +63,7 @@ def pytest_sessionstart():
                 ols_url, token, metrics_token = ols_installer.install_ols()
             else:
                 print("OLS Operator is already installed. Skipping install.")
-                adapt_ols_config()
-                
-                # Get service details using existing functions
-                token, metrics_token = ols_installer.create_and_config_sas()
-                url = cluster.run_oc([
-                    "get", "route", "ols", "-o", "jsonpath='{.spec.host}'"
-                ]).stdout.strip("'")
-                ols_url = f"https://{url}"
+                ols_url, token, metrics_token = adapt_ols_config()
 
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
