@@ -1,10 +1,12 @@
 """Functions to adapt OLS configuration for different providers on the go during multi-provider test scenarios."""
 
 import os
+import yaml
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
+from ols.constants import DEFAULT_CONFIGURATION_FILE
 
 
 def adapt_ols_config() -> tuple[str, str, str]:
@@ -93,6 +95,22 @@ def adapt_ols_config() -> tuple[str, str, str]:
     print("Waiting for pods to be ready after configuration update...")
     cluster_utils.wait_for_running_pod()
 
+    # Add MCP server configuration for tool calling
+    print("Adding MCP server configuration for tool calling...")
+    try:
+        add_mcp_server_config()
+        # Restart pods to pick up the new configuration
+        cluster_utils.run_oc([
+            "scale", "deployment/lightspeed-app-server", "--replicas", "0"
+        ])
+        cluster_utils.run_oc([
+            "scale", "deployment/lightspeed-app-server", "--replicas", "1"
+        ])
+        print("Restarting pods to apply MCP configuration...")
+        cluster_utils.wait_for_running_pod()
+    except Exception as e:
+        print(f"Warning: Could not add MCP server configuration: {e}")
+
     # Disable collector script by default to avoid running during all tests
     pod_name = cluster_utils.get_pod_by_prefix()[0]
     print(f"Disabling collector on pod {pod_name}")
@@ -121,6 +139,46 @@ def adapt_ols_config() -> tuple[str, str, str]:
 
     print("OLS configuration and access setup completed successfully.")
     return ols_url, token, metrics_token
+
+
+def add_mcp_server_config() -> None:
+    """Add MCP server configuration to enable tool calling."""
+    # Get the current configmap
+    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    configmap = yaml.safe_load(configmap_yaml)
+    olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+
+    # Check if MCP servers already exist
+    if "mcp_servers" in olsconfig:
+        print("MCP servers already configured, skipping...")
+        return
+
+    print("Adding MCP server configuration for OpenShift tools...")
+    
+    # Add MCP server configuration for OpenShift tools
+    # Use absolute path to be more robust across environments
+    olsconfig["mcp_servers"] = [
+        {
+            "name": "openshift",
+            "transport": "stdio",
+            "stdio": {
+                "command": "python",
+                "args": ["/app-root/mcp_local/openshift.py"],
+                "env": {
+                    "PYTHONPATH": "/app-root"
+                }
+            }
+        }
+    ]
+
+    # Update the configmap
+    configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
+    updated_configmap = yaml.dump(configmap)
+
+    print("Applying MCP server configuration...")
+    # Apply the updated configmap using replace to avoid conflicts
+    cluster_utils.run_oc(["replace", "-f", "-"], command=updated_configmap)
+    print("MCP server configuration applied successfully")
 
 
 if __name__ == "__main__":
