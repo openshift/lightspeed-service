@@ -4,10 +4,11 @@ This module defines the endpoint and supporting functions for handling
 streaming queries.
 """
 
+import asyncio
 import json
 import logging
 import time
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Generator, Optional
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
@@ -430,6 +431,14 @@ async def response_processing_wrapper(
         return  # stop execution after error
 
     timestamps["generate response"] = time.time()
+
+    # Log assistant's answer in JSON format
+    logger.info(json.dumps({
+        "event": "assistant_answer",
+        "answer": response.strip(),
+        "conversation_id": conversation_id,
+        "user": user_id
+    }, ensure_ascii=False, indent=2))
 
     store_data(
         user_id,

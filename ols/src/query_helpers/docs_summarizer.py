@@ -4,6 +4,7 @@
 import asyncio
 import logging
 from typing import Any, AsyncGenerator, Callable, Optional
+import json
 
 from langchain.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
@@ -321,6 +322,14 @@ class DocsSummarizer(QueryHelper):
                         AIMessage(content="", type="ai", tool_calls=tool_calls)
                     )
                     for tool_call in tool_calls:
+                        # Log tool call in JSON format
+                        logger.info(json.dumps({
+                            "event": "tool_call",
+                            "tool_name": tool_call.get("name", "unknown"),
+                            "arguments": tool_call.get("args", {}),
+                            "tool_id": tool_call.get("id", "unknown")
+                        }, ensure_ascii=False, indent=2))
+                        
                         yield StreamedChunk(type="tool_call", data=tool_call)
 
                     # execute tools and add to messages
@@ -329,6 +338,14 @@ class DocsSummarizer(QueryHelper):
                     )
                     messages.extend(tool_calls_messages)
                     for tool_call_message in tool_calls_messages:
+                        # Log tool result in JSON format
+                        logger.info(json.dumps({
+                            "event": "tool_result",
+                            "tool_id": tool_call_message.tool_call_id,
+                            "status": tool_call_message.status,
+                            "output_snippet": str(tool_call_message.content)[:1000]  # Truncate to first 1000 chars
+                        }, ensure_ascii=False, indent=2))
+                        
                         yield StreamedChunk(
                             type="tool_result",
                             data={
