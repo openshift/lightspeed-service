@@ -145,30 +145,50 @@ def conversation_request(
     processed_request.timestamps["generate response"] = time.time()
 
     # Log assistant's answer in JSON format
-    logger.info(json.dumps({
-        "event": "assistant_answer",
-        "answer": summarizer_response.response.strip(),
-        "conversation_id": processed_request.conversation_id,
-        "user": processed_request.user_id
-    }, ensure_ascii=False, indent=2))
+    logger.info(
+        json.dumps(
+            {
+                "event": "assistant_answer",
+                "answer": summarizer_response.response.strip(),
+                "conversation_id": processed_request.conversation_id,
+                "user": processed_request.user_id,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
     # Log tool calls for non-streaming endpoint
     for tool_call in summarizer_response.tool_calls:
-        logger.info(json.dumps({
-            "event": "tool_call",
-            "tool_name": tool_call.get("name", "unknown"),
-            "arguments": tool_call.get("args", {}),
-            "tool_id": tool_call.get("id", "unknown")
-        }, ensure_ascii=False, indent=2))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "tool_call",
+                    "tool_name": tool_call.get("name", "unknown"),
+                    "arguments": tool_call.get("args", {}),
+                    "tool_id": tool_call.get("id", "unknown"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
 
     # Log tool results for non-streaming endpoint
     for tool_result in summarizer_response.tool_results:
-        logger.info(json.dumps({
-            "event": "tool_result",
-            "tool_id": tool_result.get("id", "unknown"),
-            "status": tool_result.get("status", "unknown"),
-            "output_snippet": str(tool_result.get("content", ""))[:1000]  # Truncate to first 1000 chars
-        }, ensure_ascii=False, indent=2))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "tool_result",
+                    "tool_id": tool_result.get("id", "unknown"),
+                    "status": tool_result.get("status", "unknown"),
+                    "output_snippet": str(tool_result.get("content", ""))[
+                        :1000
+                    ],  # Truncate to first 1000 chars
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
 
     store_conversation_history(
         processed_request.user_id,
@@ -325,12 +345,18 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
     timestamps["redact query"] = time.time()
 
     # Log incoming request (after redaction) in JSON format
-    logger.info(json.dumps({
-        "event": "user_question",
-        "question": llm_request.query,
-        "user": user_id,
-        "conversation_id": conversation_id
-    }, ensure_ascii=False, indent=2))
+    logger.info(
+        json.dumps(
+            {
+                "event": "user_question",
+                "question": llm_request.query,
+                "user": user_id,
+                "conversation_id": conversation_id,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
     previous_input = retrieve_previous_input(
         user_id, llm_request.conversation_id, skip_user_id_check
