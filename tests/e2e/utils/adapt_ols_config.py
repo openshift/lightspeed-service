@@ -4,13 +4,13 @@ import os
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
-from tests.e2e.utils import ols_installer
+from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
 
 
 def adapt_ols_config() -> tuple[str, str, str]:
     """Adapt OLS configuration for different providers dynamically.
 
-    Also ensures RBAC, service accounts, and OLS route exist for test execution.
+    Ensures RBAC, service accounts, and OLS route exist for test execution.
     Returns:
         tuple: (ols_url, token, metrics_token)
     """
@@ -33,7 +33,7 @@ def adapt_ols_config() -> tuple[str, str, str]:
             print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
             cluster_utils.run_oc(
                 ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
-                ignore_existing_resource=True,
+                ignore_existing_resource=False,
             )
         else:
             print("Applying evaluation olsconfig CR for multiple providers")
@@ -45,33 +45,39 @@ def adapt_ols_config() -> tuple[str, str, str]:
     except Exception as e:
         raise RuntimeError(f"Error applying OLSConfig CR: {e}") from e
 
-    # Ensure pod-reader role exists
-    try:
-        print("Ensuring 'pod-reader' role exists...")
-        cluster_utils.run_oc([
-            "create", "role", "pod-reader",
-            "--verb=get,list", "--resource=pods",
-            "--namespace", namespace
-        ], ignore_existing_resource=True)
-    except Exception as e:
-        print(f"Warning: Could not ensure pod-reader role: {e}")
-
-    # Ensure test-user and rolebinding exist
+    # Ensure service accounts exist
     try:
         print("Ensuring 'test-user' service account exists...")
         cluster_utils.run_oc(["create", "sa", "test-user", "-n", namespace], ignore_existing_resource=True)
 
-        print("Ensuring 'test-user-pod-reader' rolebinding exists...")
+        print("Ensuring 'metrics-test-user' service account exists...")
+        cluster_utils.run_oc(["create", "sa", "metrics-test-user", "-n", namespace], ignore_existing_resource=True)
+
+        print("Granting access roles to service accounts...")
+        cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
+        cluster_utils.grant_sa_user_access("metrics-test-user", "lightspeed-operator-ols-metrics-reader")
+    except Exception as e:
+        raise RuntimeError(f"Error ensuring service accounts or access roles: {e}") from e
+
+    # Ensure pod-reader role and binding exist
+    try:
+        print("Ensuring 'pod-reader' role and rolebinding exist...")
+        cluster_utils.run_oc([
+            "create", "role", "pod-reader",
+            "--verb=get,list", "--resource=pods",
+            "--namespace", namespace
+        ], ignore_existing_resource=False)
+
         cluster_utils.run_oc([
             "create", "rolebinding", "test-user-pod-reader",
             "--role=pod-reader",
             f"--serviceaccount={namespace}:test-user",
             "--namespace", namespace,
-        ], ignore_existing_resource=True)
+        ], ignore_existing_resource=False)
 
-        print("Service account and role binding verified.")
+        print("RBAC setup verified.")
     except Exception as e:
-        raise RuntimeError(f"Error ensuring RBAC setup: {e}") from e
+        print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
     # Wait for OLS deployment and pods to be ready
     print("Waiting for OLS controller to apply updated configuration...")
@@ -87,17 +93,24 @@ def adapt_ols_config() -> tuple[str, str, str]:
     print("Waiting for pods to be ready after configuration update...")
     cluster_utils.wait_for_running_pod()
 
-    # Create test-user + metrics-user tokens and assign roles
-    token, metrics_token = ols_installer.create_and_config_sas()
+    # Disable collector script by default to avoid running during all tests
+    pod_name = cluster_utils.get_pod_by_prefix()[0]
+    print(f"Disabling collector on pod {pod_name}")
+    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+
+    # Reuse existing tokens
+    print("Fetching tokens for service accounts...")
+    token = cluster_utils.get_token_for("test-user")
+    metrics_token = cluster_utils.get_token_for("metrics-test-user")
 
     # Ensure route exists
     try:
-        cluster_utils.run_oc(["delete", "route", "ols"])
+        cluster_utils.run_oc(["delete", "route", "ols"], ignore_existing_resource=False)
     except Exception:
         print("No existing route to delete. Continuing...")
 
     print("Creating route for OLS access")
-    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"])
+    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"], ignore_existing_resource=False)
 
     url = cluster_utils.run_oc([
         "get", "route", "ols", "-o", "jsonpath='{.spec.host}'"
