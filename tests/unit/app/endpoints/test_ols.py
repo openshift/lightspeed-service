@@ -1035,7 +1035,7 @@ def test_store_transcript(transcripts_location):
     # we don't really care about the timestamp, so let's just set it to
     # a fixed value
     transcript["metadata"]["timestamp"] = "fake-timestamp"
-    assert transcript == {
+    expected_transcript = {
         "metadata": {
             "provider": None,
             "model": None,
@@ -1069,7 +1069,59 @@ def test_store_transcript(transcripts_location):
                 "content": "this is attachment",
             }
         ],
+        "ols_config": config.ols_config.model_dump(),
     }
+    assert transcript == expected_transcript
+
+
+def test_store_transcript_includes_ols_config(transcripts_location):
+    """Test that ols_config is included in stored transcript."""
+    user_id = suid.get_suid()
+    conversation_id = suid.get_suid()
+    query_is_valid = True
+    query = "Test query"
+    llm_request = LLMRequest(query=query, conversation_id=conversation_id)
+    response = "Test response"
+    rag_chunks = []
+    truncated = False
+    tool_calls = []
+    tool_results = []
+    attachments = []
+
+    ols.store_transcript(
+        user_id,
+        conversation_id,
+        query_is_valid,
+        query,
+        llm_request,
+        response,
+        rag_chunks,
+        truncated,
+        tool_calls,
+        tool_results,
+        attachments,
+    )
+
+    transcript_dir = Path(transcripts_location) / user_id / conversation_id
+    transcripts = list(transcript_dir.glob("*.json"))
+    assert len(transcripts) == 1
+
+    # Load and verify the transcript contains ols_config
+    with open(transcripts[0]) as f:
+        transcript = json.loads(f.read())
+    
+    # Verify ols_config is present
+    assert "ols_config" in transcript
+    
+    # Verify ols_config contains expected configuration data
+    ols_config_in_transcript = transcript["ols_config"]
+    expected_ols_config = config.ols_config.model_dump()
+    assert ols_config_in_transcript == expected_ols_config
+    
+    # Verify it contains key configuration sections
+    assert "default_provider" in ols_config_in_transcript
+    assert "default_model" in ols_config_in_transcript
+    assert "user_data_collection" in ols_config_in_transcript
 
 
 def test_calc_input_tokens_no_token_counter():

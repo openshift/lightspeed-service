@@ -840,6 +840,7 @@ def store_transcript(
         "truncated": truncated,
         "tool_calls": merge_tools_info(tool_calls, tool_results),
         "attachments": [attachment.model_dump() for attachment in attachments],
+        "ols_config": config.ols_config.model_dump(),
     }
 
     # stores feedback in a file under unique uuid
