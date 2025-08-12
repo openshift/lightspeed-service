@@ -27,11 +27,11 @@ install-tools:	install-woke ## Install required utilities/tools
 	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
 	# CI job configuration would need to be updated in follow-up task
 	# pip uninstall -v -y mypy 2> /dev/null || true
-	# display setuptools version
-	pip show setuptools
 	export PIP_DEFAULT_TIMEOUT=100
 	# install all dependencies, including devel ones
 	@for a in 1 2 3 4 5; do pdm install --group default,dev,evaluation --fail-fast -v && break || sleep 15; done
+	# display setuptools version
+	pdm show setuptools
 	# check that correct mypy version is installed
 	# mypy --version
 	pdm run mypy --version
@@ -123,7 +123,7 @@ verify:	install-woke install-deps-test ## Verify the code using various linters
 	pdm run black . --check
 	pdm run ruff check .
 	./woke . --exit-1-on-failure
-	pylint ols scripts tests runner.py
+	pdm run pylint ols scripts tests runner.py
 	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 schema:	## Generate OpenAPI schema file
