@@ -195,7 +195,13 @@ Depends on configuration, but usually it is not needed to generate or use API ke
    they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
 
    [!NOTE]
-   There are two supported methods to provide credentials for Azure OpenAI. The first method is compatible with other providers, i.e. `credentials_path` contains a directory name containing one file with API token. In the second method, that directory should contain three files named `tenant_id`, `client_id`, and `client_secret`. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
+   There are two supported methods to provide credentials for Azure OpenAI:
+   
+   **Method 1 - API Key Authentication:**
+   Use `credentials_path` pointing to a file containing your Azure OpenAI API key.
+   
+   **Method 2 - Azure AD Authentication:**
+   Use the `azure_openai_config` section with a `credentials_path` pointing to a directory containing three files named `tenant_id`, `client_id`, and `client_secret`. Do NOT include a main `credentials_path` when using this method. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
 ### OpenAI provider
 
@@ -215,15 +221,34 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    Make sure the `url` and `deployment_name` are set correctly.
 
-  ```yaml
-  - name: my_azure_openai
-    type: azure_openai
-    url: "https://myendpoint.openai.azure.com/"
-    credentials_path: azure_openai_api_key.txt
-    deployment_name: my_azure_openai_deployment_name
-    models:
-      - name: <model name>
-  ```
+   **Method 1 - API Key Authentication:**
+   ```yaml
+   - name: my_azure_openai
+     type: azure_openai
+     url: "https://myendpoint.openai.azure.com/"
+     credentials_path: azure_openai_api_key.txt
+     deployment_name: my_azure_openai_deployment_name
+     models:
+       - name: <model name>
+   ```
+
+   **Method 2 - Azure AD Authentication (tenant_id, client_id, client_secret):**
+   ```yaml
+   
+   - name: my_azure_openai
+     type: azure_openai
+     models:
+       - name: <model name>
+     azure_openai_config:
+       url: "https://myendpoint.openai.azure.com/"
+       deployment_name: my_azure_openai_deployment_name
+       credentials_path: path/to/azure/credentials/directory
+   ```
+   
+   For Method 2, the credentials directory must contain three files:
+   - `tenant_id` - containing your Azure tenant ID
+   - `client_id` - containing your Azure application client ID  
+   - `client_secret` - containing your Azure application client secret
 
 ### WatsonX
 
