@@ -421,6 +421,55 @@ def test_user_data_collection():
 
 
 @pytest.mark.cluster
+def test_config_collection():
+    """Test that service configuration is collected at startup.
+
+    This test verifies that the config collection feature stores the
+    service configuration file in the expected location during startup.
+    """
+    pod_name = None
+    try:
+        pod_name = cluster_utils.get_pod_by_prefix()[0]
+        config_path = OLS_USER_DATA_PATH + "/config"
+
+        # Check if config directory exists and has files
+        config_files = cluster_utils.list_path(pod_name, config_path)
+
+        # There should be at least one config file from service startup
+        assert len(config_files) > 0, f"No config files found in {config_path}"
+
+        # Check that config files have the expected JSON format
+        for config_file in config_files[:1]:  # Check at least the first file
+            config_file_path = f"{config_path}/{config_file}"
+
+            # Read the config file content
+            config_content = cluster_utils.read_file(pod_name, config_file_path)
+            config_data = json.loads(config_content)
+
+            # Verify expected structure
+            assert "metadata" in config_data
+            assert "configuration" in config_data
+
+            # Verify metadata fields
+            metadata = config_data["metadata"]
+            assert "timestamp" in metadata
+            assert "service_version" in metadata
+            assert "config_file_path" in metadata
+            assert "backend" in metadata
+
+            # Verify backend identifier for migration support
+            assert metadata["backend"] == "lightspeed-service"
+
+            # Verify configuration contains YAML content
+            configuration = config_data["configuration"]
+            assert isinstance(configuration, str)
+            assert "ols_config:" in configuration  # Should contain YAML structure
+
+    except Exception as e:
+        pytest.fail(f"Config collection test failed: {e}")
+
+
+@pytest.mark.cluster
 def test_http_header_redaction():
     """Test that sensitive HTTP headers are redacted from the logs."""
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
