@@ -445,19 +445,95 @@ Depends on configuration, but usually it is not needed to generate or use API ke
                tls_key_password_path: /app-root/certs/password.txt
       ```
 
-## 5. (Optional) Configure the local document store
+## 5. (Optional) Configure RAG
 
-   The following command downloads a copy of the whole image containing RAG embedding model and vector database:
+### 5.1 OCP documentation
+   The following command downloads a copy of the image containing the RAG embedding model and the vector databases:
 
    ```sh
    make get-rag
    ```
 
-   Please note that the link to the specific image to be downloaded is stored in the file `build.args` (and that file is autoupdated by bots when new a RAG is re-generated):
+   The link to the RAG content image is stored in `Containerfile`. Konflux nudges keep it up to date.
+   The embedding model is placed in the `embeddings_model` directory. The vector databases are placed in the `vector_db` directory.
+   There is a vector database per OCP version:
+   ```sh
+   $ tree vector_db/ocp_product_docs
+   vector_db/ocp_product_docs
+   ├── 4.16
+   ...
+   ├── 4.17
+   ...
+   ├── 4.18
+   ...
+   ├── 4.19
+   │   ├── default__vector_store.json
+   │   ├── docstore.json
+   │   ├── graph_store.json
+   │   ├── image__vector_store.json
+   │   ├── index_store.json
+   │   └── metadata.json
+   └── latest -> 4.19
+   $
+   ```
+
+   In order to use an OCP documentation RAG database with the OLS, add the following to your OLS configuration file:
+   ```yaml
+   ols_config:
+     reference_content:
+       embeddings_model_path: ./embeddings_model
+       indexes:
+       - product_docs_index_path: ./vector_db/ocp_product_docs/4.19
+         product_docs_index_id: ocp-product-docs-4_19
+   ```
+   `product_docs_index_id` is located in the `index-id` field of the corresponding `metadata.json` file.
+
+### 5.2 BYOK
+   Adding a BYOK vector database is similar. Assume you built a RAG database of GIMP documentation with the BYOK tool and pushed the resulting image to `quay.io/my_byok/gimp:latest`.
+   Here is how to extract the vector database from that image and place it under the `vector_db` directory:
+   ```sh
+	$ podman create --replace --name tmp-rag-container quay.io/my_byok/gimp:latest true
+	$ podman cp tmp-rag-container:/rag/vector_db vector_db/gimp
+	$ podman rm tmp-rag-container
+   ```
+   To continue with the previous example, here is how the GIMP RAG database can be added to the OLS configuration:
+
+   ```yaml
+   ols_config:
+     reference_content:
+       embeddings_model_path: ./embeddings_model
+       indexes:
+       - product_docs_index_path: ./vector_db/ocp_product_docs/4.19
+         product_docs_index_id: ocp-product-docs-4_19
+       - product_docs_index_path: ./vector_db/gimp
+         product_docs_index_id: vector_db_index
+   ```
+   As before, the `product_docs_index_id` field is located in the `index-id` field of the corresponding `metadata.json` file and is set by default to `vector_db_index` by the BYOK tool.
+
+### 5.3 Confirming the OLS is loading the configured vector databases.
+   To confirm that the OLS is loading the expected vector databases and embedding model, look for the following messages in the OLS log at the DEBUG log level:
+   ```txt
+   2025-08-15 14:43:36,020 [ols.src.rag_index.index_loader:index_loader.py:100] DEBUG: Config used for index load: embeddings_model_path='./embeddings_model' indexes=[ReferenceContentIndex(product_docs_index_path='./vector_db/ocp_product_docs/4.19', product_docs_index_id='ocp-product-docs-4_19'), ReferenceContentIndex(product_docs_index_path='./vector_db/gimp', product_docs_index_id='vector_db_index')]
+   ...
+   2025-08-15 15:29:09,352 [ols.src.rag_index.index_loader:index_loader.py:118] DEBUG: Loading embedding model info from path ./embeddings_model
+   2025-08-15 15:29:09,353 [sentence_transformers.SentenceTransformer:SentenceTransformer.py:219] INFO: Load pretrained SentenceTransformer: ./embeddings_model
+   ...
+   2025-08-15 14:43:41,351 [root:base.py:115] INFO: Loading llama_index.vector_stores.faiss.base from ./vector_db/ocp_product_docs/4.19/default__vector_store.json.
+   ...
+   2025-08-15 14:43:41,786 [ols.src.rag_index.index_loader:index_loader.py:148] INFO: Loading vector index #0...
+   2025-08-15 14:43:41,786 [llama_index.core.indices.loading:loading.py:70] INFO: Loading indices with ids: ['ocp-product-docs-4_19']
+   2025-08-15 14:43:42,038 [ols.src.rag_index.index_loader:index_loader.py:154] INFO: Vector index #0 is loaded.
+   2025-08-15 14:43:42,038 [root:base.py:115] INFO: Loading llama_index.vector_stores.faiss.base from ./vector_db/gimp/default__vector_store.json.
+   ...
+   2025-08-15 14:43:42,041 [ols.src.rag_index.index_loader:index_loader.py:148] INFO: Loading vector index #1...
+   2025-08-15 14:43:42,041 [llama_index.core.indices.loading:loading.py:70] INFO: Loading indices with ids: ['vector_db_index']
+   2025-08-15 14:43:42,043 [ols.src.rag_index.index_loader:index_loader.py:154] INFO: Vector index #1 is loaded.
+   2025-08-15 14:43:42,043 [ols.src.rag_index.index_loader:index_loader.py:168] INFO: All indexes are loaded.
+   ```
 
 ## 6. (Optional) Configure conversation cache
    Conversation cache can be stored in memory (it's content will be lost after shutdown) or in PostgreSQL database. It is possible to specify storage type in `olsconfig.yaml` configuration file.
-   
+
    1. Cache stored in memory:
          ```yaml
          ols_config:
