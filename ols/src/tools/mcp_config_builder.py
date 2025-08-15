@@ -28,13 +28,15 @@ class MCPConfigBuilder:
     @staticmethod
     def include_auth_header(user_token: str, config: dict[str, Any]) -> dict[str, Any]:
         """Include user token in the config headers."""
-        if "headers" not in config:
-            config["headers"] = {}
-        if K8S_AUTH_HEADER in config["headers"]:
-            logger.warning(
-                "Kubernetes auth header is already set, overriding with actual user token."
-            )
-        config["headers"][K8S_AUTH_HEADER] = f"Bearer {user_token}"
+        # Only add Authorization header if we have a valid token
+        if user_token and user_token.strip():
+            if "headers" not in config:
+                config["headers"] = {}
+            if K8S_AUTH_HEADER in config["headers"]:
+                logger.warning(
+                    "Kubernetes auth header is already set, overriding with actual user token."
+                )
+            config["headers"][K8S_AUTH_HEADER] = f"Bearer {user_token}"
         return config
 
     def include_auth_to_stdio(self, server_envs: dict[str, str]) -> dict[str, str]:
