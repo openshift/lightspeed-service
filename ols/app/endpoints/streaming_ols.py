@@ -431,6 +431,20 @@ async def response_processing_wrapper(
 
     timestamps["generate response"] = time.time()
 
+    # Log assistant's answer in JSON format
+    logger.info(
+        json.dumps(
+            {
+                "event": "assistant_answer",
+                "answer": response.strip(),
+                "conversation_id": conversation_id,
+                "user": user_id,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
     store_data(
         user_id,
         conversation_id,
