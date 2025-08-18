@@ -360,7 +360,7 @@ def test_rag_question() -> None:
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"query": "what is openshift virtualization?"},
+            json={"query": "about openshift virtualization"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -632,7 +632,7 @@ def test_rag_question_byok1() -> None:
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"query": "what is openshift virtualization?"},
+            json={"query": "about openshift virtualization"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
@@ -647,7 +647,7 @@ def test_rag_question_byok2() -> None:
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"query": "what is openshift virtualization?"},
+            json={"query": "about openshift virtualization"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         assert response.status_code == requests.codes.ok
