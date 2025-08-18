@@ -1032,6 +1032,12 @@ A dictionary containing the credentials of the S3 bucket must be specified, cont
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
+## Question and Answer Quality Evaluation
+There is an extensive suite of evaluation tools and scripts available in this 
+repository if you are interested in exploring different LLMs and their 
+performance. Please look at 
+[scripts/evaluation/README](scripts/evaluation/README.md) to learn more.
+
 
 # Contributing
 
