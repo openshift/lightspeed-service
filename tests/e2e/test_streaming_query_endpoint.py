@@ -351,7 +351,7 @@ def test_rag_question() -> None:
         response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={
-                "query": "what is openshift virtualization?",
+                "query": "about openshift virtualization",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
