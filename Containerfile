@@ -1,69 +1,21 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content@sha256:5a684b6b75ba0e5c34b322494d1ca41f8c3e5d1b753d174129d0d8a7536d2e38
-ARG HERMETIC=false
 
+# Get RAG content from the existing RAG image
 FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
-FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
-ARG HERMETIC=false
-ARG VERSION
-ARG APP_ROOT=/app-root
-ARG BUILDARCH
+# Use lightspeed-stack as the base image instead of building our own service
+FROM --platform=linux/amd64 quay.io/lightspeed-core/lightspeed-stack:dev-latest
 
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip
+# Copy RAG content from the RAG image into the lightspeed-stack image
+COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs /app-root/vector_db/ocp_product_docs
+COPY --from=lightspeed-rag-content /rag/embeddings_model /app-root/embeddings_model
 
-# conditional installation of OpenShift CLI
-
-ENV BUILDARCH=${BUILDARCH}
-ENV HERMETIC=${HERMETIC}
-RUN if [ "$HERMETIC" == "true" ]; then \
-      microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs openshift-clients; \
-    else \
-      OC_CLIENT_TAR_GZ=openshift-client-linux-${BUILDARCH}-rhel9-4.17.16.tar.gz; \
-      microdnf install -y tar gzip && \
-      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.16/${OC_CLIENT_TAR_GZ}" && \
-      tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
-      rm -f ${OC_CLIENT_TAR_GZ} && \
-      chmod +x /usr/local/bin/oc && \
-      microdnf remove -y tar gzip; \
-    fi
-
-RUN oc version --client
-
-# PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
-# PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
-# PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip legacy locales and use UTF-8 mode
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONCOERCECLOCALE=0 \
-    PYTHONUTF8=1 \
-    PYTHONIOENCODING=UTF-8 \
-    LANG=en_US.UTF-8 \
-    PIP_NO_CACHE_DIR=off
-
-WORKDIR /app-root
-
-COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
-COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
-
-# Add explicit files and directories
-# (avoid accidental inclusion of local directories or env files or credentials)
-COPY runner.py requirements.txt ./
-
-RUN pip3.11 install --upgrade pip
-RUN for a in 1 2 3 4 5; do pip3.11 install --no-cache-dir -r requirements.txt && break || sleep 15; done
-
-COPY ols ./ols
-COPY mcp_local ./mcp_local
+# Copy configuration file
+COPY lightspeed-stack.yaml /app-root/
 
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
-
-# Run the application
-EXPOSE 8080
-EXPOSE 8443
-CMD ["python3.11", "runner.py"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       io.k8s.description="AI-powered OpenShift Assistant Service." \
