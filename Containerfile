@@ -11,9 +11,6 @@ FROM --platform=linux/amd64 quay.io/lightspeed-core/lightspeed-stack:dev-latest
 COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs /app-root/vector_db/ocp_product_docs
 COPY --from=lightspeed-rag-content /rag/embeddings_model /app-root/embeddings_model
 
-# Copy configuration file
-COPY lightspeed-stack.yaml /app-root/
-
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
 
