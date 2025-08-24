@@ -74,10 +74,10 @@ dev = [
 # because this variant need to be downloaded from external link, not from
 # standard Python package index:
 #
-# [[tool.pdm.source]]
-# type = "find_links"
-# url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
-# name = "torch"
+[[tool.pdm.source]]
+type = "find_links"
+url = "https://download.pytorch.org/whl/cpu/torch_stable.html"
+name = "torch"
 
 
 [build-system]
