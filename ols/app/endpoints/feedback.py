@@ -66,7 +66,12 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     storage_path.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.utcnow())
-    data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
+    data_to_store = {
+        "user_id": user_id, 
+        "timestamp": current_time, 
+        "ols_config": config.ols_config.model_dump(),
+        **feedback
+    }
 
     # stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
