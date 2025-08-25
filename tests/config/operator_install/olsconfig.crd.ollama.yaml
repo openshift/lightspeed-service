@@ -1,0 +1,37 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: gemma3:1b
+        name: ollama
+        type: openai
+        url: 'http://ollama-service.ollama.svc.cluster.local:11434/v1'
+  ols:
+    defaultModel: gemma3:1b
+    defaultProvider: ollama
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"
