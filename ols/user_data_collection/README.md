@@ -92,9 +92,11 @@ ols_config:
     feedback_storage: "/your-path/user-data/feedback"
     transcripts_disabled: false
     transcripts_storage: "/your-path/user-data/transcripts"
+    config_disabled: false
+    config_storage: "/your-path/user-data/config"
 ```
 
-> `/feedback` and `/transcripts` needs to be under the same directory - `user-data/` in example above
+> `/feedback`, `/transcripts` and `/config` needs to be under the same directory - `user-data/` in example above
 
 and then just interact with OLS, post feedback or ask a question - it will store the data/JSONs under specified location.
 
