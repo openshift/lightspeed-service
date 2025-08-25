@@ -1,6 +1,7 @@
 """Utilities for interacting with the OpenShift cluster."""
 
 import json
+import os
 import subprocess
 
 from tests.e2e.utils.retry import retry_until_timeout_or_success
@@ -361,6 +362,19 @@ def wait_for_running_pod(
         pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         if not pods:
             return False
+        # Creating exception for disconnected since no data collection
+        disconnected = os.getenv("DISCONNECTED", "")
+        if not disconnected:
+            return (
+                len(
+                    [
+                        container
+                        for container in get_container_ready_status(pods[0])
+                        if container == "true"
+                    ]
+                )
+                == 2
+            )
         return (
             len(
                 [
@@ -369,7 +383,7 @@ def wait_for_running_pod(
                     if container == "true"
                 ]
             )
-            == 2
+            == 1
         )
 
     # wait for the two containers in the server pod to become ready
