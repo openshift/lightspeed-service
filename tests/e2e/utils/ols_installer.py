@@ -14,6 +14,8 @@ from tests.e2e.utils.wait_for_ols import wait_for_ols
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
 
+disconnected = os.getenv("DISCONNECTED", "")
+
 
 def create_and_config_sas() -> tuple[str, str]:
     """Create and provide access to service accounts for testing.
@@ -84,15 +86,16 @@ def update_ols_config() -> None:
     # logs beying redacted/removed completely - we need log at info level
     olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
 
-    # add collector config for e2e tests
-    olsconfig["user_data_collector_config"] = {
-        "data_storage": "/app-root/ols-user-data",
-        "log_level": "debug",
-        "collection_interval": 10,
-        "run_without_initial_wait": True,
-        "ingress_env": "stage",
-        "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
-    }
+    if not disconnected:
+        # add collector config for e2e tests
+        olsconfig["user_data_collector_config"] = {
+            "data_storage": "/app-root/ols-user-data",
+            "log_level": "debug",
+            "collection_interval": 10,
+            "run_without_initial_wait": True,
+            "ingress_env": "stage",
+            "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
+        }
 
     # patch reference content config for new format
     # Todo: remove this when the operator PR is merged:
@@ -201,7 +204,18 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         )
     except subprocess.CalledProcessError:
         print("llmcreds secret does not yet exist. Creating it.")
-    if provider_size == 1:
+    if creds == "empty":
+        cluster_utils.run_oc(
+            [
+                "create",
+                "secret",
+                "generic",
+                "llmcreds",
+                f"--from-literal=apitoken={creds}",
+            ],
+            ignore_existing_resource=True,
+        )
+    elif provider_size == 1:
         cluster_utils.run_oc(
             [
                 "create",
@@ -227,7 +241,6 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
 
 def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # noqa: C901
     """Install OLS onto an OCP cluster using the OLS operator."""
-    disconnected = os.getenv("DISCONNECTED", "")
     if not disconnected:
         print("Setting up for on cluster test execution")
         bundle_image = os.getenv(
@@ -283,7 +296,9 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
                 f"Error running operator-sdk: {e}, stdout: {e.output}, stderr: {e.stderr}"
             )
             raise
-
+    cluster_utils.run_oc(
+        ["project", "openshift-lightspeed"], ignore_existing_resource=True
+    )
     token, metrics_token = create_and_config_sas()
 
     # wait for the operator to install
@@ -309,7 +324,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     print("Operator installed successfully")
 
     provider = os.getenv("PROVIDER", "openai")
-    creds = os.getenv("PROVIDER_KEY_PATH", "")
+    creds = os.getenv("PROVIDER_KEY_PATH", "empty")
     # create the llm api key secret ols will mount
     provider_list = provider.split()
     creds_list = creds.split()
@@ -470,10 +485,10 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         ).stdout
     )
     print("-" * 50)
-
-    # disable collector script by default to avoid running during all
-    # tests (collecting/sending data)
-    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    if not disconnected:
+        # disable collector script by default to avoid running during all
+        # tests (collecting/sending data)
+        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
     try:
         cluster_utils.run_oc(
