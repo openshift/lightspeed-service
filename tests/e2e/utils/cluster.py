@@ -390,8 +390,7 @@ def wait_for_running_pod(
 
         if disconnected or tool_calling_enabled:
             return ready_containers >= 2
-        else:
-            return ready_containers == 2
+        return ready_containers == 2
 
     # wait for the containers in the server pod to become ready
     # two containers normally, three in case we're running mcp server
