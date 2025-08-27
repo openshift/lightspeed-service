@@ -18,7 +18,8 @@ from reportportal_client import RPLogger
 
 from scripts.upload_artifact_s3 import upload_artifact_s3
 from tests.e2e.utils import client as client_utils
-from tests.e2e.utils import ols_installer
+from tests.e2e.utils import cluster, ols_installer
+from tests.e2e.utils.adapt_ols_config import adapt_ols_config
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -45,11 +46,29 @@ def pytest_sessionstart():
     # OLS_URL env only needs to be set when running against a local ols instance,
     # when ols is run against a cluster the url is retrieved from the cluster.
     ols_url = os.getenv("OLS_URL", "")
-
     if "localhost" not in ols_url:
         on_cluster = True
         try:
-            ols_url, token, metrics_token = ols_installer.install_ols()
+            result = cluster.run_oc(
+                [
+                    "get",
+                    "clusterserviceversion",
+                    "-n",
+                    "openshift-lightspeed",
+                    "-o",
+                    "json",
+                ]
+            )
+            csv_data = json.loads(result.stdout)
+            print(csv_data)
+
+            if not csv_data["items"]:
+                print("OLS Operator is not installed yet.")
+                ols_url, token, metrics_token = ols_installer.install_ols()
+            else:
+                print("OLS Operator is already installed. Skipping install.")
+                ols_url, token, metrics_token = adapt_ols_config()
+
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
             must_gather()
