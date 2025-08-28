@@ -32,20 +32,24 @@ class OpenAI(LLMProvider):
             if openai_config.api_key is not None:
                 self.credentials = openai_config.api_key
 
-        return {
+        default_parameters: dict[str, Any] = {
             "base_url": self.url,
             "openai_api_key": self.credentials,
             "model": self.model,
-            "top_p": 0.95,
-            "frequency_penalty": 1.03,
             "organization": None,
             "cache": None,
-            "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
             "http_client": self._construct_httpx_client(True, False),
             "http_async_client": self._construct_httpx_client(True, True),
         }
+
+        # gpt-5 and o-series models don't support certain parameters
+        if not ("gpt-5" in self.model or self.model.startswith("o")):
+            default_parameters["temperature"] = 0.01
+            default_parameters["top_p"] = 0.95
+            default_parameters["frequency_penalty"] = 1.03
+        return default_parameters
 
     def load(self) -> BaseChatModel:
         """Load LLM."""
