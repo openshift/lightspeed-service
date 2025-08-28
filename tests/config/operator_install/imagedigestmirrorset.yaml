@@ -5,15 +5,15 @@ metadata:
   name: openshift-lightspeed-prod-to-ci
 spec:
   imageDigestMirrors:
-    - source: registry.redhat.io/openshift-lightspeed-tech-preview/lightspeed-rhel9-operator
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-rhel9-operator
       mirrors:
         - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-operator
-    - source: registry.redhat.io/openshift-lightspeed-tech-preview/lightspeed-operator-bundle
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-operator-bundle
       mirrors:
         - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/bundle
-    - source: registry.redhat.io/openshift-lightspeed-tech-preview/lightspeed-service-api-rhel9
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-service-api-rhel9
       mirrors:
         - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-service
-    - source: registry.redhat.io/openshift-lightspeed-tech-preview/lightspeed-console-plugin-rhel9
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-console-plugin-rhel9
       mirrors:
         - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console
