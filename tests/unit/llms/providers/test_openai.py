@@ -236,3 +236,37 @@ def test_params_replace_default_values_with_none(provider_config, fake_certifi_s
     # known parameter(s) should be there, now with None values
     assert "base_url" in openai.params
     assert openai.params["base_url"] is None
+
+
+@pytest.mark.parametrize(
+    "model_name,should_have_params",
+    [
+        ("gpt-4o", True),
+        ("gpt-5-mini", False),
+        ("o1-mini", False),
+    ],
+)
+def test_gpt5_and_o_series_models_parameter_exclusion(
+    provider_config, model_name, should_have_params
+):
+    """Test that some parameters are excluded for gpt-5 and o-series models."""
+    openai = OpenAI(model=model_name, provider_config=provider_config)
+    openai.load()
+
+    if should_have_params:
+        # should have the parameters
+        assert openai.default_params["temperature"] == 0.01
+        assert openai.default_params["top_p"] == 0.95
+        assert openai.default_params["frequency_penalty"] == 1.03
+    else:
+        # gpt-5 and o-series models should not have the parameters
+        assert "temperature" not in openai.default_params
+        assert "top_p" not in openai.default_params
+        assert "frequency_penalty" not in openai.default_params
+
+    # These parameters should always be present
+    assert "base_url" in openai.default_params
+    assert "openai_api_key" in openai.default_params
+    assert "model" in openai.default_params
+    assert "max_tokens" in openai.default_params
+    assert openai.default_params["model"] == model_name
