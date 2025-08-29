@@ -64,3 +64,6 @@ benchmark_*.svg
 
 # distribution archives
 dist/
+
+# uv-related
+uv.lock
