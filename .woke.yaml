@@ -6,6 +6,7 @@ ignore_files:
   - '__pycache__/**/*'   # Exclude Python cache directories
   - '.*'                 # Exclude all files starting with .
   - 'ols/customize/ols/keywords.py'
+  - ols/customize/ols/prompts.py
 
 rules:
   - name: abort
