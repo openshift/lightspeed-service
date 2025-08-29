@@ -7,6 +7,7 @@ ignore_files:
   - '.*'                 # Exclude all files starting with .
   - 'ols/customize/ols/keywords.py'
   - ols/customize/ols/prompts.py
+  - docs/openapi.json
 
 rules:
   - name: abort
