@@ -33,7 +33,7 @@ tmptest_*
 logs/*
 
 # ignore eval results
-*/*/eval_result/*
+*/*/eval_result*/*
 
 # ignore test results
 tests/test_results/*
