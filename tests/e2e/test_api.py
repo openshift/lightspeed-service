@@ -10,8 +10,9 @@ import time
 
 import pytest
 import requests
+import yaml
 
-from ols.constants import HTTP_REQUEST_HEADERS_TO_REDACT
+from ols.constants import DEFAULT_CONFIGURATION_FILE, HTTP_REQUEST_HEADERS_TO_REDACT
 from ols.customize import metadata
 from ols.utils import suid
 from tests.e2e.utils import client as client_utils
@@ -519,28 +520,74 @@ def test_ca_service_certs_rotation():
     assert response.status_code == requests.codes.ok
 
 
+def update_olsconfig(limiters: list[dict]):
+    """Update the olsconfig ConfigMap with new quota handler limiters.
+
+    Args:
+        limiters: List of dictionaries containing limiter configurations
+                 to set in ols_config.quota_handlers.limiters
+    """
+    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
+    configmap = yaml.safe_load(configmap_yaml)
+    olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+    olsconfig["ols_config"]["quota_handlers"]["limiters"] = limiters
+    configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
+    updated_configmap = yaml.dump(configmap)
+
+    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
+    cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
+
+
 @pytest.mark.quota_limits
 def test_quota_limits():
     """Verify OLS quota limits."""
-    _, provider = metrics_utils.get_enabled_model_and_provider(pytest.metrics_client)
     response = pytest.client.post(
-                "/v1/query",
-                json={"query": "what is kubernetes?"},
-                timeout=LLM_REST_API_TIMEOUT,
-            )
+        "/v1/query",
+        json={"query": "what is kubernetes?"},
+        timeout=LLM_REST_API_TIMEOUT,
+    )
 
     # assert that the available quota is
     # less than the initial one hardcoded in the olsconfig
     assert (
         response.json()["available_quotas"]["UserQuotaLimiter"] < 11111
     ), "available quota was not used or user limits were ignored"
-    assert (
-        response.json()["input_tokens"] > 0
-    ), "input tokens were not populated"
+    assert response.json()["input_tokens"] > 0, "input tokens were not populated"
+    # Assure we're removing the correct configuration. Not assume and hardcode.
+    result = json.loads(cluster_utils.run_oc(["get", "olsconfig", "-o", "json"]).stdout)
+    for limiter in result["items"][0]["spec"]["ols"]["quotaHandlersConfig"][
+        "limitersConfig"
+    ]:
+        if limiter["type"] == "UserQuotaLimiter":
+            break
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "0",
+        ]
+    )
+    update_olsconfig(
+        limiters=[
+            {
+                "initial_quota": 22222,
+                "name": "default",
+                "period": "1 month",
+                "quota_increase": 1000,
+                "type": "cluster_limiter",
+            }
+        ]
+    )
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "1",
+        ]
+    )
     # Remove the user limitation, wait for pod and check available quota again
-    action = {"op": "remove", "path": "/spec/ols/quotaHandlersConfig/limitersConfig/1"}
-    merge_strat = f"-p=[{action}]"
-    cluster_utils.run_oc(["patch", "olsconfig", "cluster", "--type=json", merge_strat])
     cluster_utils.wait_for_running_pod()
     response = pytest.client.post(
         "/v1/query",
@@ -555,12 +602,23 @@ def test_quota_limits():
     ), "Quota still being user limited when limitation was removed"
     assert response.json()["input_tokens"] > 0, "input tokens were not populated"
     cluster_utils.run_oc(
-        ["apply", "-f", f"tests/config/operator_install/olsconfig.crd.{provider}.yaml"]
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "0",
+        ]
+    )
+    update_olsconfig(limiters=[])
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "--replicas",
+            "1",
+        ]
     )
     cluster_utils.wait_for_running_pod()
-    cluster_utils.run_oc(
-        ["scale", "--replicas=0", "deployment/lightspeed-operator-controller-manager"]
-    )
     response = pytest.client.post(
         "/v1/query",
         json={"query": "what is kubernetes?"},

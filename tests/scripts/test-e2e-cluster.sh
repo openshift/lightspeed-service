@@ -35,7 +35,7 @@ function run_suites() {
   # If changes are done in this file, please make sure they reflect in test-e2e-cluster-periodics.sh and test-evaluation.sh
 
   # runsuite arguments:
-  # suiteid test_tags provider provider_keypath model ols_image tool_calling quota_limits
+  # suiteid test_tags provider provider_keypath model ols_image os_config_suffix
   # empty test_tags means run all tests
   run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
