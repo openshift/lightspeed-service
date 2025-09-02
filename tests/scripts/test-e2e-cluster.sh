@@ -69,6 +69,8 @@ function run_suites() {
   run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-2-8b-instruct" "$OLS_IMAGE" "byok2"
   (( rc = rc || $? ))
 
+  cleanup_ols_operator 
+
   set -e
 
   return $rc
