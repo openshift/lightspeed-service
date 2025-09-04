@@ -73,6 +73,7 @@ function run_suites() {
   run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "quota"
   (( rc = rc || $? ))
 
+  cleanup_ols_operator 
 
   set -e
 
