@@ -263,8 +263,12 @@ class DocsSummarizer(QueryHelper):
             StreamedChunk objects representing parts of the response
         """
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
-            mcp_client = MultiServerMCPClient(self.mcp_servers)
-            all_mcp_tools = await mcp_client.get_tools()
+            try:
+                mcp_client = MultiServerMCPClient(self.mcp_servers)
+                all_mcp_tools = await mcp_client.get_tools()
+            except Exception as e:
+                logger.error("Failed to get MCP tools: %s", e)
+                all_mcp_tools = {}
 
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
