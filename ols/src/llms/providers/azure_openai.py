@@ -64,21 +64,24 @@ class AzureOpenAI(LLMProvider):
             if azure_config.api_key is not None:
                 self.credentials = azure_config.api_key
 
-        default_parameters = {
+        default_parameters: dict[str, Any] = {
             "azure_endpoint": self.url,
             "api_version": api_version,
             "deployment_name": deployment_name,
             "model": self.model,
-            "top_p": 0.95,
-            "frequency_penalty": 1.03,
             "organization": None,
             "cache": None,
-            "temperature": 0.01,
             "max_tokens": 512,
             "verbose": False,
             "http_client": self._construct_httpx_client(False, False),
             "http_async_client": self._construct_httpx_client(False, True),
         }
+
+        # gpt-5 and o-series models don't support certain parameters
+        if not ("gpt-5" in self.model or self.model.startswith("o")):
+            default_parameters["temperature"] = 0.01
+            default_parameters["top_p"] = 0.95
+            default_parameters["frequency_penalty"] = 1.03
 
         if self.credentials is not None:
             # if credentials with API key is set, use it to call Azure OpenAI endpoints
