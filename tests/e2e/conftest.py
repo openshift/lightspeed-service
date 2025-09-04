@@ -18,7 +18,8 @@ from reportportal_client import RPLogger
 
 from scripts.upload_artifact_s3 import upload_artifact_s3
 from tests.e2e.utils import client as client_utils
-from tests.e2e.utils import ols_installer
+from tests.e2e.utils import cluster, ols_installer
+from tests.e2e.utils.adapt_ols_config import adapt_ols_config
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -49,7 +50,34 @@ def pytest_sessionstart():
     if "localhost" not in ols_url:
         on_cluster = True
         try:
-            ols_url, token, metrics_token = ols_installer.install_ols()
+            result = cluster.run_oc(
+                [
+                    "get",
+                    "clusterserviceversion",
+                    "-n",
+                    "openshift-lightspeed",
+                    "-o",
+                    "json",
+                ]
+            )
+            csv_data = json.loads(result.stdout)
+            print(csv_data)
+
+            if not csv_data["items"]:
+                print("OLS Operator is not installed yet.")
+                ols_url, token, metrics_token = ols_installer.install_ols()
+            else:
+                print("OLS Operator is already installed. Skipping install.")
+                provider = os.getenv("PROVIDER", "openai")
+                creds = os.getenv("PROVIDER_KEY_PATH", "empty")
+                # create the llm api key secret ols will mount
+                provider_list = provider.split()
+                creds_list = creds.split()
+                for i, prov in enumerate(provider_list):
+                    ols_installer.create_secrets(
+                        prov, creds_list[i], len(provider_list)
+                    )
+                ols_url, token, metrics_token = adapt_ols_config()
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
             must_gather()
