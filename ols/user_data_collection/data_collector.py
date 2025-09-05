@@ -146,12 +146,13 @@ def collect_ols_data_from(location: str) -> list[pathlib.Path]:
     Returns:
         List of paths to the collected files.
 
-    Only JSON files from the 'feedback' and 'transcripts' directories are collected.
+    Only JSON files from the 'feedback', 'transcripts', and 'config' directories are collected.
     """
     files = []
 
     files += list(pathlib.Path(location).glob("feedback/*.json"))
     files += list(pathlib.Path(location).glob("transcripts/*/*/*.json"))
+    files += list(pathlib.Path(location).glob("config/*.json"))
 
     return files
 
