@@ -314,6 +314,7 @@ def test_post_question_on_noyaml_response_type(_setup, endpoint) -> None:
     """Check the REST API query endpoints when call is success."""
     ml = mock_langchain_interface("test response")
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -338,6 +339,7 @@ def test_post_question_with_keyword(_setup, endpoint) -> None:
 
     ml = mock_langchain_interface(None)
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -385,9 +387,12 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
     ]
     config.ols_config.query_filters = query_filters
 
-    with patch(
-        "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
-        return_value=answer,
+    with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
+            return_value=answer,
+        ),
     ):
         ml = mock_langchain_interface("test response")
         with (
@@ -438,6 +443,7 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 
     ml = mock_langchain_interface("test response")
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -497,6 +503,7 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -539,6 +546,7 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -582,6 +590,7 @@ def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -638,6 +647,7 @@ def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -703,6 +713,7 @@ def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -788,6 +799,7 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -851,6 +863,7 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -916,6 +929,7 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> Non
         return answer
 
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.QuestionValidator.validate_question",
             side_effect=validate_question,
@@ -1109,6 +1123,7 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     query = "test query"
     system_prompt = "You are an expert in something marvelous."
     with (
+        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
             "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
             False,

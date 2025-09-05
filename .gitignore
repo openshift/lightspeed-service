@@ -33,7 +33,7 @@ tmptest_*
 logs/*
 
 # ignore eval results
-*/*/eval_result/*
+*/*/eval_result*/*
 
 # ignore test results
 tests/test_results/*
@@ -64,3 +64,6 @@ benchmark_*.svg
 
 # distribution archives
 dist/
+
+# uv-related
+uv.lock
