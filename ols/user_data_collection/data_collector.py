@@ -180,11 +180,6 @@ def package_files_into_tarball(
                     file_path, arcname=file_path.as_posix().replace(path_to_strip, "")
                 )
 
-        # add magic file for identification of our archive on the CCX side
-        empty_file = tarfile.TarInfo("openshift_lightspeed.json")
-        empty_file.size = 0
-        tar.addfile(empty_file)
-
     tarball_io.seek(0)
 
     return tarball_io
@@ -233,7 +228,7 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
         "file": (
             "ols.tgz",
             tarball.read(),
-            "application/vnd.redhat.openshift.periodic+tar",
+            "application/vnd.redhat.ols.periodic+tar",
         ),
     }
 
