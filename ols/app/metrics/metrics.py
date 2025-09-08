@@ -1,6 +1,7 @@
 """Prometheus metrics that are exposed by REST API."""
 
-from typing import Annotated, Any
+import logging
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
@@ -16,6 +17,12 @@ from prometheus_client import (
 from ols import config
 from ols.src.auth.auth import get_auth_dependency
 from ols.utils.config import AppConfig
+from ols.app.metrics.quota_metrics_service import (
+    get_quota_metrics_collector,
+    update_quota_metrics_on_request,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["metrics"])
 auth_dependency = get_auth_dependency(
@@ -56,16 +63,46 @@ provider_model_configuration = Gauge(
 )
 
 
+def get_quota_metrics_dependency() -> Optional[Any]:
+    """FastAPI dependency to provide quota metrics collector.
+    
+    Returns:
+        QuotaMetricsCollector instance or None if not configured or failed to initialize
+    """
+    try:
+        # Check if quota handlers are configured
+        if (
+            config.ols_config.quota_handlers is None
+            or config.ols_config.quota_handlers.storage is None
+        ):
+            logger.debug("Quota handlers not configured, skipping quota metrics")
+            return None
+        
+        return get_quota_metrics_collector(config.ols_config.quota_handlers.storage)
+        
+    except Exception as e:
+        logger.error("Failed to initialize quota metrics collector: %s", e)
+        # Return None to gracefully degrade - metrics endpoint should still work
+        return None
+
+
 @router.get("/metrics", response_class=PlainTextResponse)
-def get_metrics(auth: Annotated[Any, Depends(auth_dependency)]) -> PlainTextResponse:
+def get_metrics(
+    auth: Annotated[Any, Depends(auth_dependency)],
+    quota_collector: Annotated[Optional[Any], Depends(get_quota_metrics_dependency)]
+) -> PlainTextResponse:
     """Metrics Endpoint.
 
     Args:
         auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.
+        quota_collector: The quota metrics collector dependency (optional)
 
     Returns:
         Response containing the latest metrics.
     """
+    # Update quota metrics if collector is available
+    update_quota_metrics_on_request(quota_collector)
+    
     return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

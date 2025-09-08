@@ -862,6 +862,26 @@ Service exposes metrics in Prometheus format on `/metrics` endpoint. Scraping th
 curl 'http://127.0.0.1:8080/metrics'
 ```
 
+#### Available Metrics
+
+The service exports several types of metrics:
+
+**API and LLM Metrics:**
+- `ols_rest_api_calls_total` - REST API calls counter
+- `ols_response_duration_seconds` - Response durations
+- `ols_llm_calls_total` - LLM calls counter
+- `ols_llm_token_sent_total` / `ols_llm_token_received_total` - Token usage counters
+
+**Quota Metrics** (when quota handlers are configured):
+- `ols_quota_limit_total{subject_type, subject_id}` - Total quota allocated per subject
+- `ols_quota_available_total{subject_type, subject_id}` - Available quota remaining  
+- `ols_quota_utilization_percent{subject_type, subject_id}` - Quota utilization percentage
+- `ols_token_usage_total{user_id, provider, model, token_type}` - Cumulative token consumption
+- `ols_quota_warning_subjects_total{subject_type}` - Number of subjects with >80% quota usage
+- `ols_quota_exceeded_subjects_total{subject_type}` - Number of subjects that exceeded quota
+
+Quota metrics are automatically updated when the `/metrics` endpoint is accessed and periodically in the background (every 5 minutes by default). These metrics provide insights into token usage patterns, quota utilization, and help with capacity planning and cost management.
+
 ### Gradio UI
 
 There is a minimal Gradio UI you can use when running the OLS server locally.  To use it, it is needed to enable UI in `olsconfig.yaml` file:
