@@ -65,7 +65,7 @@ provider_model_configuration = Gauge(
 
 def get_quota_metrics_dependency() -> Optional[Any]:
     """FastAPI dependency to provide quota metrics collector.
-    
+
     Returns:
         QuotaMetricsCollector instance or None if not configured or failed to initialize
     """
@@ -77,9 +77,9 @@ def get_quota_metrics_dependency() -> Optional[Any]:
         ):
             logger.debug("Quota handlers not configured, skipping quota metrics")
             return None
-        
+
         return get_quota_metrics_collector(config.ols_config.quota_handlers.storage)
-        
+
     except Exception as e:
         logger.error("Failed to initialize quota metrics collector: %s", e)
         # Return None to gracefully degrade - metrics endpoint should still work
@@ -89,7 +89,7 @@ def get_quota_metrics_dependency() -> Optional[Any]:
 @router.get("/metrics", response_class=PlainTextResponse)
 def get_metrics(
     auth: Annotated[Any, Depends(auth_dependency)],
-    quota_collector: Annotated[Optional[Any], Depends(get_quota_metrics_dependency)]
+    quota_collector: Annotated[Optional[Any], Depends(get_quota_metrics_dependency)],
 ) -> PlainTextResponse:
     """Metrics Endpoint.
 
@@ -102,7 +102,7 @@ def get_metrics(
     """
     # Update quota metrics if collector is available
     update_quota_metrics_on_request(quota_collector)
-    
+
     return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

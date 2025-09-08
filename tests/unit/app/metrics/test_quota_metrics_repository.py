@@ -42,7 +42,7 @@ class TestQuotaRecord:
         """Test quota utilization percentage calculation."""
         record = QuotaRecord(
             id="user123",
-            subject="u", 
+            subject="u",
             quota_limit=1000,
             available=250,
             updated_at=datetime.datetime(2024, 1, 1, 12, 0, 0),
@@ -131,7 +131,9 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.fetchall.return_value = quota_data
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -152,7 +154,9 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.fetchall.return_value = []
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -166,26 +170,44 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.execute.side_effect = Exception("Database connection error")
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
-            
+
             with pytest.raises(Exception, match="Database connection error"):
                 repo.get_quota_records()
 
     def test_get_token_usage_records_success(self):
         """Test successful retrieval of token usage records."""
         token_data = [
-            ("user1", "openai", "gpt-4", 500, 200, datetime.datetime(2024, 1, 1, 12, 0, 0)),
-            ("user2", "openai", "gpt-3.5", 300, 150, datetime.datetime(2024, 1, 1, 13, 0, 0)),
+            (
+                "user1",
+                "openai",
+                "gpt-4",
+                500,
+                200,
+                datetime.datetime(2024, 1, 1, 12, 0, 0),
+            ),
+            (
+                "user2",
+                "openai",
+                "gpt-3.5",
+                300,
+                150,
+                datetime.datetime(2024, 1, 1, 13, 0, 0),
+            ),
         ]
 
         mock_cursor = MagicMock()
         mock_cursor.fetchall.return_value = token_data
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -205,7 +227,9 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.fetchall.return_value = []
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -219,11 +243,13 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.execute.side_effect = Exception("Database connection error")
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
-            
+
             with pytest.raises(Exception, match="Database connection error"):
                 repo.get_token_usage_records()
 
@@ -232,7 +258,9 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor = MagicMock()
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -247,7 +275,9 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.execute.side_effect = Exception("Connection failed")
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
@@ -261,17 +291,19 @@ class TestPostgresQuotaMetricsRepository:
         mock_cursor.fetchall.return_value = []
 
         with patch("psycopg2.connect") as mock_connect:
-            mock_connect.return_value.cursor.return_value.__enter__.return_value = mock_cursor
+            mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+                mock_cursor
+            )
 
             config = PostgresConfig()
             repo = PostgresQuotaMetricsRepository(config)
-            
+
             # Simulate disconnection
             repo.connection = None
-            
+
             # This should trigger reconnection
             records = repo.get_quota_records()
-            
+
             assert len(records) == 0
             # Verify reconnection was called
             assert mock_connect.call_count >= 2
