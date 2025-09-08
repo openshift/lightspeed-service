@@ -1,18 +1,16 @@
 """Unit tests for QuotaMetricsCollector."""
 
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 from prometheus_client import REGISTRY
 
 from ols import config
+from ols.app.metrics.quota_metrics_collector import QuotaMetricsCollector
+from ols.app.metrics.quota_metrics_repository import QuotaRecord, TokenUsageRecord
 
 # needs to be setup before imports that use authentication
 config.ols_config.authentication_config.module = "k8s"
-
-from ols.app.metrics.quota_metrics_collector import QuotaMetricsCollector
-from ols.app.metrics.quota_metrics_repository import QuotaRecord, TokenUsageRecord
 
 
 class TestQuotaMetricsCollector:
@@ -21,12 +19,12 @@ class TestQuotaMetricsCollector:
     def setup_method(self):
         """Set up test environment."""
         # Clear any existing metrics to avoid conflicts
-        to_remove = []
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            if hasattr(collector, "_name") and (
-                "ols_quota" in collector._name or "ols_token" in collector._name
-            ):
-                to_remove.append(collector)
+        to_remove = [
+            collector
+            for collector in list(REGISTRY._collector_to_names.keys())
+            if hasattr(collector, "_name")
+            and ("ols_quota" in collector._name or "ols_token" in collector._name)
+        ]
 
         for collector in to_remove:
             try:
@@ -37,12 +35,12 @@ class TestQuotaMetricsCollector:
     def teardown_method(self):
         """Clean up test environment."""
         # Clear any metrics created during tests
-        to_remove = []
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            if hasattr(collector, "_name") and (
-                "ols_quota" in collector._name or "ols_token" in collector._name
-            ):
-                to_remove.append(collector)
+        to_remove = [
+            collector
+            for collector in list(REGISTRY._collector_to_names.keys())
+            if hasattr(collector, "_name")
+            and ("ols_quota" in collector._name or "ols_token" in collector._name)
+        ]
 
         for collector in to_remove:
             try:

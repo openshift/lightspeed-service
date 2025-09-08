@@ -4,18 +4,15 @@ import time
 from threading import Thread
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from ols import config
-
-# needs to be setup before imports that use authentication
-config.ols_config.authentication_config.module = "k8s"
-
 from ols.app.metrics.quota_metrics_scheduler import (
     quota_metrics_scheduler,
     start_quota_metrics_scheduler,
 )
 from ols.utils.config import AppConfig
+
+# needs to be setup before imports that use authentication
+config.ols_config.authentication_config.module = "k8s"
 
 
 class TestQuotaMetricsScheduler:
@@ -38,7 +35,7 @@ class TestQuotaMetricsScheduler:
 
     def test_quota_metrics_scheduler_with_valid_config(self):
         """Test scheduler with valid configuration."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = QuotaHandlersConfig()
         config_obj.storage = PostgresConfig()
@@ -64,7 +61,7 @@ class TestQuotaMetricsScheduler:
 
     def test_quota_metrics_scheduler_with_collector_error(self):
         """Test scheduler behavior when collector initialization fails."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = QuotaHandlersConfig()
         config_obj.storage = PostgresConfig()
@@ -79,7 +76,7 @@ class TestQuotaMetricsScheduler:
 
     def test_quota_metrics_scheduler_continues_on_update_error(self):
         """Test that scheduler continues running even if update fails."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = QuotaHandlersConfig()
         config_obj.storage = PostgresConfig()
@@ -109,8 +106,8 @@ class TestQuotaMetricsScheduler:
     def test_quota_metrics_scheduler_sleep_interval(self):
         """Test that scheduler respects the configured sleep interval."""
         from ols.app.models.config import (
-            QuotaHandlersConfig,
             PostgresConfig,
+            QuotaHandlersConfig,
             SchedulerConfig,
         )
 
@@ -137,7 +134,7 @@ class TestQuotaMetricsScheduler:
 
     def test_start_quota_metrics_scheduler(self):
         """Test starting the quota metrics scheduler in a background thread."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = AppConfig()
         # Set up quota handlers config
@@ -163,7 +160,7 @@ class TestQuotaMetricsScheduler:
 
     def test_quota_metrics_scheduler_default_interval(self):
         """Test scheduler uses default interval when not configured."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = QuotaHandlersConfig()
         config_obj.storage = PostgresConfig()
@@ -188,7 +185,7 @@ class TestQuotaMetricsScheduler:
 
     def test_quota_metrics_scheduler_thread_safety(self):
         """Test that scheduler can be safely interrupted."""
-        from ols.app.models.config import QuotaHandlersConfig, PostgresConfig
+        from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 
         config_obj = QuotaHandlersConfig()
         config_obj.storage = PostgresConfig()

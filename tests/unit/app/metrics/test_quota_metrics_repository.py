@@ -1,23 +1,20 @@
 """Unit tests for QuotaMetricsRepository."""
 
 import datetime
-from unittest.mock import MagicMock, call, patch
-from typing import List
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ols import config
-
-# needs to be setup before imports that use authentication
-config.ols_config.authentication_config.module = "k8s"
-
-from ols.app.models.config import PostgresConfig
 from ols.app.metrics.quota_metrics_repository import (
-    QuotaMetricsRepository,
     PostgresQuotaMetricsRepository,
     QuotaRecord,
     TokenUsageRecord,
 )
+from ols.app.models.config import PostgresConfig
+
+# needs to be setup before imports that use authentication
+config.ols_config.authentication_config.module = "k8s"
 
 
 class TestQuotaRecord:

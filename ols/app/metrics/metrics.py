@@ -15,12 +15,12 @@ from prometheus_client import (
 )
 
 from ols import config
-from ols.src.auth.auth import get_auth_dependency
-from ols.utils.config import AppConfig
 from ols.app.metrics.quota_metrics_service import (
     get_quota_metrics_collector,
     update_quota_metrics_on_request,
 )
+from ols.src.auth.auth import get_auth_dependency
+from ols.utils.config import AppConfig
 
 logger = logging.getLogger(__name__)
 

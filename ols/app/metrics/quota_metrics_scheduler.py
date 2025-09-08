@@ -5,8 +5,8 @@ import time
 from threading import Thread
 from typing import Optional
 
-from ols.app.models.config import QuotaHandlersConfig
 from ols.app.metrics.quota_metrics_service import get_quota_metrics_collector
+from ols.app.models.config import QuotaHandlersConfig
 from ols.utils.config import AppConfig
 
 logger = logging.getLogger(__name__)

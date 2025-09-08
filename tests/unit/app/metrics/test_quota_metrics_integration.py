@@ -4,16 +4,13 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from ols import config
+from ols.app.metrics.quota_metrics_repository import QuotaRecord, TokenUsageRecord
+from ols.app.metrics.quota_metrics_service import get_quota_metrics_collector
 
 # needs to be setup before imports that use authentication
 config.ols_config.authentication_config.module = "k8s"
-
-from ols.app.metrics.quota_metrics_repository import QuotaRecord, TokenUsageRecord
-from ols.app.metrics.quota_metrics_service import get_quota_metrics_collector
 
 
 class TestQuotaMetricsIntegration:
@@ -21,19 +18,20 @@ class TestQuotaMetricsIntegration:
 
     def setup_method(self):
         """Set up test environment."""
-        from ols.app.metrics.quota_metrics_service import reset_quota_metrics_collector
         from prometheus_client import REGISTRY
+
+        from ols.app.metrics.quota_metrics_service import reset_quota_metrics_collector
 
         # Reset quota metrics service
         reset_quota_metrics_collector()
 
         # Clear any existing quota metrics from the registry
-        to_remove = []
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            if hasattr(collector, "_name") and (
-                "ols_quota" in collector._name or "ols_token" in collector._name
-            ):
-                to_remove.append(collector)
+        to_remove = [
+            collector
+            for collector in list(REGISTRY._collector_to_names.keys())
+            if hasattr(collector, "_name")
+            and ("ols_quota" in collector._name or "ols_token" in collector._name)
+        ]
 
         for collector in to_remove:
             try:
@@ -43,19 +41,20 @@ class TestQuotaMetricsIntegration:
 
     def teardown_method(self):
         """Clean up test environment."""
-        from ols.app.metrics.quota_metrics_service import reset_quota_metrics_collector
         from prometheus_client import REGISTRY
+
+        from ols.app.metrics.quota_metrics_service import reset_quota_metrics_collector
 
         # Reset quota metrics service
         reset_quota_metrics_collector()
 
         # Clear any metrics created during tests
-        to_remove = []
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            if hasattr(collector, "_name") and (
-                "ols_quota" in collector._name or "ols_token" in collector._name
-            ):
-                to_remove.append(collector)
+        to_remove = [
+            collector
+            for collector in list(REGISTRY._collector_to_names.keys())
+            if hasattr(collector, "_name")
+            and ("ols_quota" in collector._name or "ols_token" in collector._name)
+        ]
 
         for collector in to_remove:
             try:
@@ -111,7 +110,6 @@ class TestQuotaMetricsIntegration:
         ) as mock_repo_class:
             mock_repo_class.return_value = mock_repo
 
-            from ols.app.metrics.quota_metrics_collector import QuotaMetricsCollector
             from ols.app.models.config import PostgresConfig
 
             # Create collector and update metrics
@@ -163,7 +161,7 @@ class TestQuotaMetricsIntegration:
 
             config_obj = PostgresConfig()
 
-            # Should handle the error gracefully and return None or a dummy collector
+            # Should handle the error gracefully and return None or a placeholder collector
             with pytest.raises(Exception):
                 get_quota_metrics_collector(config_obj)
 

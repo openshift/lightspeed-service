@@ -3,14 +3,60 @@
 import logging
 from typing import Optional
 
-from ols.app.models.config import PostgresConfig
 from ols.app.metrics.quota_metrics_collector import QuotaMetricsCollector
 from ols.app.metrics.quota_metrics_repository import PostgresQuotaMetricsRepository
+from ols.app.models.config import PostgresConfig
 
 logger = logging.getLogger(__name__)
 
-# Global collector instance for caching
-_quota_metrics_collector: Optional[QuotaMetricsCollector] = None
+
+class QuotaMetricsService:
+    """Singleton service for managing quota metrics collector instances."""
+
+    _instance: Optional["QuotaMetricsService"] = None
+    _collector: Optional[QuotaMetricsCollector] = None
+
+    def __new__(cls) -> "QuotaMetricsService":
+        """Create a new instance using singleton pattern."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def get_collector(
+        self, postgres_config: PostgresConfig
+    ) -> Optional[QuotaMetricsCollector]:
+        """Get or create a quota metrics collector instance.
+
+        Args:
+            postgres_config: PostgreSQL configuration for database connection
+
+        Returns:
+            QuotaMetricsCollector instance or None if initialization fails
+        """
+        if self._collector is not None:
+            logger.debug("Returning cached quota metrics collector")
+            return self._collector
+
+        try:
+            logger.info("Initializing quota metrics collector")
+            repository = PostgresQuotaMetricsRepository(postgres_config)
+            self._collector = QuotaMetricsCollector(repository)
+            logger.info("Quota metrics collector initialized successfully")
+            return self._collector
+
+        except Exception as e:
+            logger.error("Failed to initialize quota metrics collector: %s", e)
+            # Re-raise to ensure the dependency system knows about the failure
+            raise
+
+    def reset(self) -> None:
+        """Reset the collector instance."""
+        logger.debug("Resetting quota metrics collector")
+        self._collector = None
+
+
+# Module-level service instance
+_service = QuotaMetricsService()
 
 
 def get_quota_metrics_collector(
@@ -28,23 +74,7 @@ def get_quota_metrics_collector(
     Returns:
         QuotaMetricsCollector instance or None if initialization fails
     """
-    global _quota_metrics_collector
-
-    if _quota_metrics_collector is not None:
-        logger.debug("Returning cached quota metrics collector")
-        return _quota_metrics_collector
-
-    try:
-        logger.info("Initializing quota metrics collector")
-        repository = PostgresQuotaMetricsRepository(postgres_config)
-        _quota_metrics_collector = QuotaMetricsCollector(repository)
-        logger.info("Quota metrics collector initialized successfully")
-        return _quota_metrics_collector
-
-    except Exception as e:
-        logger.error("Failed to initialize quota metrics collector: %s", e)
-        # Re-raise to ensure the dependency system knows about the failure
-        raise
+    return _service.get_collector(postgres_config)
 
 
 def update_quota_metrics_on_request(collector: Optional[QuotaMetricsCollector]) -> None:
@@ -71,11 +101,9 @@ def update_quota_metrics_on_request(collector: Optional[QuotaMetricsCollector]) 
 
 
 def reset_quota_metrics_collector() -> None:
-    """Reset the global quota metrics collector instance.
+    """Reset the quota metrics collector instance.
 
     This is primarily useful for testing to ensure clean state
     between test runs.
     """
-    global _quota_metrics_collector
-    logger.debug("Resetting quota metrics collector")
-    _quota_metrics_collector = None
+    _service.reset()

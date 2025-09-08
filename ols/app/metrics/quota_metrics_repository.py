@@ -55,17 +55,17 @@ class QuotaMetricsRepository(ABC):
     @abstractmethod
     def get_quota_records(self) -> List[QuotaRecord]:
         """Retrieve all quota records from the database."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_token_usage_records(self) -> List[TokenUsageRecord]:
         """Retrieve all token usage records from the database."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def health_check(self) -> bool:
         """Check if the database connection is healthy."""
-        pass
+        raise NotImplementedError
 
 
 class PostgresQuotaMetricsRepository(QuotaMetricsRepository):
@@ -78,7 +78,7 @@ class PostgresQuotaMetricsRepository(QuotaMetricsRepository):
         ORDER BY subject, id
     """
 
-    SELECT_TOKEN_USAGE_RECORDS = """
+    SELECT_USAGE_RECORDS = """
         SELECT user_id, provider, model, input_tokens, output_tokens, updated_at
         FROM token_usage
         ORDER BY user_id, provider, model
@@ -147,7 +147,7 @@ class PostgresQuotaMetricsRepository(QuotaMetricsRepository):
 
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute(self.SELECT_TOKEN_USAGE_RECORDS)
+                cursor.execute(self.SELECT_USAGE_RECORDS)
                 rows = cursor.fetchall()
 
                 return [
