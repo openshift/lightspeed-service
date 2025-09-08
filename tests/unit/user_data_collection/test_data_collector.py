@@ -95,7 +95,7 @@ def test_package_files_into_tarball(tmp_path):
     with tarfile.open(fileobj=tarball, mode="r:gz") as tar:
         files = tar.getnames()
     # asserts that files in tarball are stored without the full path
-    assert files == ["some.json", "extra_dir/extra.json", "openshift_lightspeed.json"]
+    assert files == ["some.json", "extra_dir/extra.json"]
 
 
 def test_delete_data(tmp_path):
