@@ -1,7 +1,6 @@
 """Utilities for interacting with the OpenShift cluster."""
 
 import json
-import os
 import subprocess
 
 from tests.e2e.utils.retry import retry_until_timeout_or_success
@@ -383,14 +382,14 @@ def wait_for_running_pod(
             ]
         )
 
-        # Check for tool calling or disconnected mode (both need >=2 containers)
-        disconnected = os.getenv("DISCONNECTED", "")
-        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-        tool_calling_enabled = "tool_calling" in ols_config_suffix
+        # Get the actual number of containers in the pod
+        try:
+            total_containers = len(get_container_ready_status(pods[0]))
+        except Exception:
+            return False
 
-        if disconnected or tool_calling_enabled:
-            return ready_containers >= 2
-        return ready_containers == 2
+        # All containers must be ready
+        return ready_containers == total_containers and ready_containers >= 1
 
     # wait for the containers in the server pod to become ready
     # two containers normally, three in case we're running mcp server

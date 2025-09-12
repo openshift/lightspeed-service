@@ -527,14 +527,30 @@ def _wait_for_final_deployment() -> None:
 def _finalize_test_setup() -> tuple[str, str]:
     """Finalize test setup and return tokens."""
     # Disable collector script by default to avoid running during all tests
-    pod_name = cluster_utils.get_pod_by_prefix()[0]
-    print(f"Disabling collector on pod {pod_name}")
-    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    try:
+        pod_name = cluster_utils.get_pod_by_prefix()[0]
+        print(f"Disabling collector on pod {pod_name}")
+        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    except Exception as e:
+        print(f"Warning: Could not disable collector: {e}")
 
-    # Fetch tokens for service accounts
+    # Fetch tokens for service accounts with retry
     print("Fetching tokens for service accounts...")
-    token = cluster_utils.get_token_for("test-user")
-    metrics_token = cluster_utils.get_token_for("metrics-test-user")
+    token = retry_until_timeout_or_success(
+        12,
+        5,
+        lambda: cluster_utils.get_token_for("test-user"),
+        "Getting token for test-user",
+    )
+    metrics_token = retry_until_timeout_or_success(
+        12,
+        5,
+        lambda: cluster_utils.get_token_for("metrics-test-user"),
+        "Getting token for metrics-test-user",
+    )
+
+    if not token or not metrics_token:
+        raise Exception("Failed to retrieve service account tokens")
 
     return token, metrics_token
 
