@@ -1752,28 +1752,28 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.3.26"
-requires_python = ">=3.9"
+version = "0.3.27"
+requires_python = "<4.0,>=3.9"
 summary = "Building applications with LLMs through composability"
 groups = ["default", "evaluation"]
 dependencies = [
     "PyYAML>=5.3",
     "SQLAlchemy<3,>=1.4",
     "async-timeout<5.0.0,>=4.0.0; python_version < \"3.11\"",
-    "langchain-core<1.0.0,>=0.3.66",
-    "langchain-text-splitters<1.0.0,>=0.3.8",
+    "langchain-core<1.0.0,>=0.3.72",
+    "langchain-text-splitters<1.0.0,>=0.3.9",
     "langsmith>=0.1.17",
     "pydantic<3.0.0,>=2.7.4",
     "requests<3,>=2",
 ]
 files = [
-    {file = "langchain-0.3.26-py3-none-any.whl", hash = "sha256:361bb2e61371024a8c473da9f9c55f4ee50f269c5ab43afdb2b1309cb7ac36cf"},
-    {file = "langchain-0.3.26.tar.gz", hash = "sha256:8ff034ee0556d3e45eff1f1e96d0d745ced57858414dba7171c8ebdbeb5580c9"},
+    {file = "langchain-0.3.27-py3-none-any.whl", hash = "sha256:7b20c4f338826acb148d885b20a73a16e410ede9ee4f19bb02011852d5f98798"},
+    {file = "langchain-0.3.27.tar.gz", hash = "sha256:aa6f1e6274ff055d0fd36254176770f356ed0a8994297d1df47df341953cec62"},
 ]
 
 [[package]]
 name = "langchain-community"
-version = "0.3.27"
+version = "0.3.29"
 requires_python = ">=3.9"
 summary = "Community contributed LangChain integrations."
 groups = ["default", "evaluation"]
@@ -1781,25 +1781,25 @@ dependencies = [
     "PyYAML>=5.3",
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
-    "dataclasses-json<0.7,>=0.5.7",
+    "dataclasses-json<0.7,>=0.6.7",
     "httpx-sse<1.0.0,>=0.4.0",
-    "langchain-core<1.0.0,>=0.3.66",
-    "langchain<1.0.0,>=0.3.26",
+    "langchain-core<2.0.0,>=0.3.75",
+    "langchain<2.0.0,>=0.3.27",
     "langsmith>=0.1.125",
     "numpy>=1.26.2; python_version < \"3.13\"",
     "numpy>=2.1.0; python_version >= \"3.13\"",
-    "pydantic-settings<3.0.0,>=2.4.0",
-    "requests<3,>=2",
+    "pydantic-settings<3.0.0,>=2.10.1",
+    "requests<3,>=2.32.5",
     "tenacity!=8.4.0,<10,>=8.1.0",
 ]
 files = [
-    {file = "langchain_community-0.3.27-py3-none-any.whl", hash = "sha256:581f97b795f9633da738ea95da9cb78f8879b538090c9b7a68c0aed49c828f0d"},
-    {file = "langchain_community-0.3.27.tar.gz", hash = "sha256:e1037c3b9da0c6d10bf06e838b034eb741e016515c79ef8f3f16e53ead33d882"},
+    {file = "langchain_community-0.3.29-py3-none-any.whl", hash = "sha256:c876ec7ef40b46353af164197f4e08e157650e8a02c9fb9d49351cdc16c839fe"},
+    {file = "langchain_community-0.3.29.tar.gz", hash = "sha256:1f3d37973b10458052bb3cc02dce9773a8ffbd02961698c6d395b8c8d7f9e004"},
 ]
 
 [[package]]
 name = "langchain-core"
-version = "0.3.67"
+version = "0.3.76"
 requires_python = ">=3.9"
 summary = "Building applications with LLMs through composability"
 groups = ["default", "evaluation"]
@@ -1807,14 +1807,14 @@ dependencies = [
     "PyYAML>=5.3",
     "jsonpatch<2.0,>=1.33",
     "langsmith>=0.3.45",
-    "packaging<25,>=23.2",
+    "packaging>=23.2",
     "pydantic>=2.7.4",
     "tenacity!=8.4.0,<10.0.0,>=8.1.0",
     "typing-extensions>=4.7",
 ]
 files = [
-    {file = "langchain_core-0.3.67-py3-none-any.whl", hash = "sha256:b699f1f24b24fa2747c05e2daa280aa64478a51e01a4e82c7f8e20b6167dfa99"},
-    {file = "langchain_core-0.3.67.tar.gz", hash = "sha256:2c14aa44a0e78e014e96d7f2f8916ac109d0a0ba87ed67ee25bf7296bed7e7ba"},
+    {file = "langchain_core-0.3.76-py3-none-any.whl", hash = "sha256:46e0eb48c7ac532432d51f8ca1ece1804c82afe9ae3dcf027b867edadf82b3ec"},
+    {file = "langchain_core-0.3.76.tar.gz", hash = "sha256:71136a122dd1abae2c289c5809d035cf12b5f2bb682d8a4c1078cd94feae7419"},
 ]
 
 [[package]]
@@ -1866,16 +1866,16 @@ files = [
 
 [[package]]
 name = "langchain-text-splitters"
-version = "0.3.8"
-requires_python = "<4.0,>=3.9"
+version = "0.3.11"
+requires_python = ">=3.9"
 summary = "LangChain text splitting utilities"
 groups = ["default", "evaluation"]
 dependencies = [
-    "langchain-core<1.0.0,>=0.3.51",
+    "langchain-core<2.0.0,>=0.3.75",
 ]
 files = [
-    {file = "langchain_text_splitters-0.3.8-py3-none-any.whl", hash = "sha256:e75cc0f4ae58dcf07d9f18776400cf8ade27fadd4ff6d264df6278bb302f6f02"},
-    {file = "langchain_text_splitters-0.3.8.tar.gz", hash = "sha256:116d4b9f2a22dda357d0b79e30acf005c5518177971c66a9f1ab0edfdb0f912e"},
+    {file = "langchain_text_splitters-0.3.11-py3-none-any.whl", hash = "sha256:cf079131166a487f1372c8ab5d0bfaa6c0a4291733d9c43a34a16ac9bcd6a393"},
+    {file = "langchain_text_splitters-0.3.11.tar.gz", hash = "sha256:7a50a04ada9a133bbabb80731df7f6ddac51bc9f1b9cab7fa09304d71d38a6cc"},
 ]
 
 [[package]]
@@ -3372,17 +3372,18 @@ files = [
 
 [[package]]
 name = "pydantic-settings"
-version = "2.8.1"
-requires_python = ">=3.8"
+version = "2.10.1"
+requires_python = ">=3.9"
 summary = "Settings management using Pydantic"
 groups = ["default", "evaluation"]
 dependencies = [
     "pydantic>=2.7.0",
     "python-dotenv>=0.21.0",
+    "typing-inspection>=0.4.0",
 ]
 files = [
-    {file = "pydantic_settings-2.8.1-py3-none-any.whl", hash = "sha256:81942d5ac3d905f7f3ee1a70df5dfb62d5569c12f51a5a647defc1c3d9ee2e9c"},
-    {file = "pydantic_settings-2.8.1.tar.gz", hash = "sha256:d5c663dfbe9db9d5e1c646b2e161da12f0d734d422ee56f567d0ea2cee4e8585"},
+    {file = "pydantic_settings-2.10.1-py3-none-any.whl", hash = "sha256:a60952460b99cf661dc25c29c0ef171721f98bfcb52ef8d9ea4c943d7c8cc796"},
+    {file = "pydantic_settings-2.10.1.tar.gz", hash = "sha256:06f0062169818d0f5524420a360d632d5857b83cffd4d42fe29597807a1614ee"},
 ]
 
 [[package]]
@@ -3865,8 +3866,8 @@ files = [
 
 [[package]]
 name = "requests"
-version = "2.32.4"
-requires_python = ">=3.8"
+version = "2.32.5"
+requires_python = ">=3.9"
 summary = "Python HTTP for Humans."
 groups = ["default", "dev", "evaluation"]
 dependencies = [
@@ -3876,8 +3877,8 @@ dependencies = [
     "urllib3<3,>=1.21.1",
 ]
 files = [
-    {file = "requests-2.32.4-py3-none-any.whl", hash = "sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c"},
-    {file = "requests-2.32.4.tar.gz", hash = "sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422"},
+    {file = "requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6"},
+    {file = "requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf"},
 ]
 
 [[package]]
