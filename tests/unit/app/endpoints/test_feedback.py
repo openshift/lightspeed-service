@@ -59,8 +59,41 @@ def test_store_feedback(feedback_location):
             feedback.store_feedback(user_id, feedback_data)
 
         stored_data = load_fake_feedback("fake-uuid")
-        assert stored_data == {
+        expected_data = {
             "user_id": "12345678-abcd-0000-0123-456789abcdef",
             "timestamp": "2000-01-01 01:23:45",
+            "ols_config": config.ols_config.model_dump(),
             **feedback_data,
         }
+        assert stored_data == expected_data
+
+
+def test_store_feedback_includes_ols_config(feedback_location):
+    """Test that ols_config is included in stored feedback."""
+    user_id = "test-user-id"
+    feedback_data = {"rating": 5, "comment": "Great response"}
+
+    with patch("ols.app.endpoints.feedback.datetime") as mocked_datetime:
+        mocked_datetime.utcnow = lambda: datetime(2023, 5, 1, 12, 0, 0)
+        with patch("ols.app.endpoints.feedback.get_suid", return_value="test-uuid"):
+            feedback.store_feedback(user_id, feedback_data)
+
+        stored_data = load_fake_feedback("test-uuid")
+        
+        # Verify ols_config is present
+        assert "ols_config" in stored_data
+        
+        # Verify ols_config contains expected configuration data
+        ols_config_in_feedback = stored_data["ols_config"]
+        expected_ols_config = config.ols_config.model_dump()
+        assert ols_config_in_feedback == expected_ols_config
+        
+        # Verify it contains key configuration sections
+        assert "default_provider" in ols_config_in_feedback
+        assert "default_model" in ols_config_in_feedback
+        assert "user_data_collection" in ols_config_in_feedback
+        
+        # Verify other feedback data is still present
+        assert stored_data["user_id"] == user_id
+        assert stored_data["rating"] == 5
+        assert stored_data["comment"] == "Great response"
