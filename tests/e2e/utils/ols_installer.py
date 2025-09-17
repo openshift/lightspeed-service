@@ -199,7 +199,7 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
             [
                 "delete",
                 "secret",
-                 "llmcreds",
+                "llmcreds",
             ],
         )
     except subprocess.CalledProcessError:

@@ -73,7 +73,9 @@ def pytest_sessionstart():
                 provider_list = provider.split()
                 creds_list = creds.split()
                 for i, prov in enumerate(provider_list):
-                    ols_installer.create_secrets(prov, creds_list[i], len(provider_list))
+                    ols_installer.create_secrets(
+                        prov, creds_list[i], len(provider_list)
+                    )
                 ols_url, token, metrics_token = adapt_ols_config()
 
         except Exception as e:
