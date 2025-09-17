@@ -47,8 +47,6 @@ function cleanup_ols_operator() {
 # $7 OLS_CONFIG_SUFFIX
 function run_suite() {
   echo "Preparing to run suite $1"
-
-  cleanup_ols_operator
   
   if [ "$1" = "model_eval" ]; then
   # Run eval tests
