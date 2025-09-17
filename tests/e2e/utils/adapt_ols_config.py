@@ -455,6 +455,11 @@ def _finalize_deployment_setup() -> None:
     # Wait for the new configuration to be applied and pods to be ready
     print("Waiting for new configuration to be applied...")
     wait_for_deployment()
+    pod = cluster_utils.get_pod_by_prefix()[0]
+    cluster_utils.run_oc([
+        "exec", pod, "-c", "lightspeed-service-user-data-collector", "--", "sh", "-lc",
+        "mkdir -p /app-root/ols-user-data/transcripts"
+    ])
 
     # Update OLS configmap with additional e2e configurations
     print("Updating OLS configmap with e2e test configurations...")
@@ -505,7 +510,7 @@ def _wait_for_final_deployment() -> None:
     try:
         wait_for_deployment()
     except Exception as e:
-        print(f"❌ Deployment failed to become ready: {e}")
+        print(f" Deployment failed to become ready: {e}")
         # Get detailed pod status for debugging
         try:
             pods = cluster_utils.run_oc(["get", "pods", "-o", "wide"]).stdout
@@ -528,6 +533,11 @@ def _finalize_test_setup() -> tuple[str, str]:
     """Finalize test setup and return tokens."""
     # Disable collector script by default to avoid running during all tests
     pod_name = cluster_utils.get_pod_by_prefix()[0]
+    cluster_utils.run_oc([
+        "exec", pod_name, "-c", "lightspeed-service-user-data-collector", "--", "sh", "-lc",
+        "mkdir -p $(dirname /app-root/ols-user-data/disable_collector) && "
+        "touch /app-root/ols-user-data/disable_collector"
+    ])
     print(f"Disabling collector on pod {pod_name}")
     cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
