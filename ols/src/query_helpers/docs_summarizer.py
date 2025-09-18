@@ -348,7 +348,7 @@ class DocsSummarizer(QueryHelper):
 
                     # execute tools and add to messages
                     tool_calls_messages = await execute_tool_calls(
-                        tool_calls, all_mcp_tools
+                        tool_calls, all_mcp_tools, messages
                     )
                     messages.extend(tool_calls_messages)
                     for tool_call_message in tool_calls_messages:
@@ -374,6 +374,7 @@ class DocsSummarizer(QueryHelper):
                                 "id": tool_call_message.tool_call_id,
                                 "status": tool_call_message.status,
                                 "content": tool_call_message.content,
+                                "artifact": tool_call_message.artifact,
                                 "type": "tool_result",
                                 "round": i,
                             },
