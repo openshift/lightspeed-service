@@ -32,7 +32,10 @@ tmptest_*
 # don't keep log files
 logs/*
 
-# ignore eval results
+# Evaluation artifacts
+eval/venv/
+eval/results*/
+eval/.deepeval/
 */*/eval_result*/*
 
 # ignore test results
