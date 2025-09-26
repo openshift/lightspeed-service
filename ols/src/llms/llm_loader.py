@@ -49,7 +49,6 @@ def resolve_provider_config(
             f"Valid models are: {list(provider_config.models.keys())}"
         )
 
-    print(f"provider config {provider_config}")
     return provider_config
 
 
