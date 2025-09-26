@@ -57,7 +57,7 @@ class AzureOpenAI(LLMProvider):
         deployment_name = self.provider_config.deployment_name
         azure_config = self.provider_config.azure_config
 
-        # provider-specific configuration has precendence over regular configuration
+        # provider-specific configuration has precedence over regular configuration
         if azure_config is not None:
             self.url = str(azure_config.url)
             deployment_name = azure_config.deployment_name
@@ -92,6 +92,7 @@ class AzureOpenAI(LLMProvider):
             # client_id and client_secret)
             access_token = self.resolve_access_token(azure_config)
             default_parameters["azure_ad_token"] = access_token
+        logger.info(f"Created Azure default parameters {default_parameters}")
         return default_parameters
 
     def load(self) -> BaseChatModel:
