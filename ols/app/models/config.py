@@ -365,6 +365,7 @@ class ProviderConfig(BaseModel):
             constants.PROVIDER_RHOAI_VLLM,
             constants.PROVIDER_RHELAI_VLLM,
             constants.PROVIDER_OPENAI,
+            constants.PROVIDER_AZURE_OPENAI,
         ):
             self.certificates_store = os.path.join(
                 certificate_directory, constants.CERTIFICATE_STORAGE_FILENAME
