@@ -450,7 +450,6 @@ class ProviderConfig(BaseModel):
                             raise_on_error=False,
                         )
                     self.read_api_key(azure_config)
-                    print(f"Azure config {azure_config}")
                     self.azure_config = AzureOpenAIConfig(**azure_config)
                 case constants.PROVIDER_OPENAI:
                     openai_config = data.get("openai_config")
