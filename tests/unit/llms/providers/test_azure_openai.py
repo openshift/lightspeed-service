@@ -1,23 +1,22 @@
 """Unit tests for Azure OpenAI provider."""
 
-import time
 import os
+import time
 from unittest.mock import patch
 
 import httpx
 import pytest
-from ols import constants
 from azure.core.credentials import AccessToken
 from langchain_openai import AzureChatOpenAI
 from pydantic import AnyHttpUrl
 
+from ols import constants
 from ols.app.models.config import AzureOpenAIConfig, ProviderConfig
 from ols.src.llms.providers.azure_openai import (
     TOKEN_EXPIRATION_LEEWAY,
     AzureOpenAI,
     TokenCache,
 )
-
 
 cert_in_certificates_store_path = "tests/unit/extra_certs/sample_cert_1.crt"
 
@@ -254,7 +253,8 @@ def test_credentials_in_directory_handling(provider_config_credentials_directory
 
 
 def test_loading_provider_specific_parameters(
-        provider_config_with_specific_parameters, fake_certifi_store):
+    provider_config_with_specific_parameters, fake_certifi_store
+):
     """Test if provider-specific parameters are loaded too."""
     azure_openai = AzureOpenAI(
         model="uber-model",
