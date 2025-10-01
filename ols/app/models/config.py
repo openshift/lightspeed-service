@@ -1075,7 +1075,7 @@ class OLSConfig(BaseModel):
         self.authentication_config = AuthenticationConfig(
             **data.get("authentication_config", {})
         )
-        # setup the authentication module, which is optional in configuration file
+        # setup the authentication module, which is optional in configuration file#
         if self.authentication_config.module is None:
             self.authentication_config.module = constants.DEFAULT_AUTHENTICATION_MODULE
 
