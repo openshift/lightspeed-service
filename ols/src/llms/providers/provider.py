@@ -370,7 +370,7 @@ class LLMProvider(AbstractLLMProvider):
             }
 
         sec_profile = self.provider_config.tls_security_profile
-        logger.info(f"security profile {sec_profile}")
+        logger.info("Security profile %s", sec_profile)
 
         # if security profile is not set, use httpx client as is
         if sec_profile is None or sec_profile.profile_type is None:
@@ -386,7 +386,9 @@ class LLMProvider(AbstractLLMProvider):
                     cafile=self.provider_config.certificates_store
                 )
                 verify = custom_context
-            logger.info(f"No security profiles. creating httpx.Client with verify {verify}")
+            logger.info(
+                "No security profiles. creating httpx.Client with verify %s", verify
+            )
             if use_async:
                 return httpx.AsyncClient(verify=verify, proxies=proxy, mounts=mounts)
             return httpx.Client(verify=verify, proxies=proxy, mounts=mounts)
@@ -413,7 +415,9 @@ class LLMProvider(AbstractLLMProvider):
 
         if use_custom_certificate_store:
             context.load_verify_locations(self.provider_config.certificates_store)
-        logger.info(f"with security profile, creating httpx.Client with verify {context}")
+        logger.info(
+            "With security profile, creating httpx.Client with verify %s", context
+        )
         if use_async:
             return httpx.AsyncClient(verify=context, proxies=proxy)
         return httpx.Client(verify=context, proxies=proxy)

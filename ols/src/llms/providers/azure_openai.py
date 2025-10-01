@@ -92,7 +92,7 @@ class AzureOpenAI(LLMProvider):
             # client_id and client_secret)
             access_token = self.resolve_access_token(azure_config)
             default_parameters["azure_ad_token"] = access_token
-        logger.info(f"Created Azure default parameters {default_parameters}")
+        logger.info("Created Azure default parameters %s", default_parameters)
         return default_parameters
 
     def load(self) -> BaseChatModel:
