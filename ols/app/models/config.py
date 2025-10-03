@@ -1198,6 +1198,7 @@ class UserDataCollectorConfig(BaseModel):
     collection_interval: int = 2 * 60 * 60  # 2 hours
     run_without_initial_wait: bool = False
     ingress_env: Literal["stage", "prod"] = "prod"
+    # this is not offline token, but direct auth token to ingress
     cp_offline_token: Optional[str] = None
     initial_wait: int = 60 * 5  # 5 minutes in seconds
     ingress_timeout: int = 30

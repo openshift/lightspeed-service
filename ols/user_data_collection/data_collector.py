@@ -235,11 +235,19 @@ def upload_data_to_ingress(tarball: io.BytesIO) -> requests.Response:
     headers: dict[str, str | bytes]
 
     if udc_config.cp_offline_token:
-        logger.debug("using CP offline token to generate refresh token")
-        token = access_token_from_offline_token(udc_config.cp_offline_token)
-        # when authenticating with token, user-agent is not accepted
-        # causing "UHC services authentication failed"
-        headers = {"Authorization": f"Bearer {token}"}
+        # logger.debug("using CP offline token to generate refresh token")
+        # token = access_token_from_offline_token(udc_config.cp_offline_token)
+        # # when authenticating with token, user-agent is not accepted
+        # # causing "UHC services authentication failed"
+        # headers = {
+        #     "User-Agent": udc_config.user_agent.format(cluster_id="test"),
+        #     "Authorization": f"Bearer {token}"
+        # }
+        logger.debug("using direct auth token")
+        headers = {
+            "User-Agent": udc_config.user_agent.format(cluster_id="test"),
+            "Authorization": f"Bearer {udc_config.cp_offline_token}",
+        }
     else:
         logger.debug("using cluster pull secret to authenticate")
         cluster_id = K8sClientSingleton.get_cluster_id()
