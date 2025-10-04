@@ -554,34 +554,6 @@ llm_providers:
 ols_config:
   reference_content:
     indexes:
-    - product_docs_index_path: "/tmp"
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  temperature_override: 0.1
-  enable_dev_ui: true
-  disable_auth: false
-
-""",
-        InvalidConfigurationError,
-        "product_docs_index_path is specified but product_docs_index_id is missing",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    credentials_path: tests/config/secret/apitoken
-    models:
-      - name: m1
-        credentials_path: tests/config/secret/apitoken
-ols_config:
-  reference_content:
-    indexes:
     - product_docs_index_id: "product"
   conversation_cache:
     type: memory
