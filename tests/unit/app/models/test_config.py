@@ -2928,14 +2928,19 @@ def test_reference_content_index_yaml_validation():
     # should not raise an exception
     reference_content_index.validate_yaml()
 
-    # existing docs index path with set up product ID
+    # existing docs index path with set up index ID
     reference_content_index.product_docs_index_path = "."
     reference_content_index.product_docs_index_id = "foo"
     reference_content_index.validate_yaml()
 
-    # existing docs index path, but no product ID
+    # existing docs index path, but no index ID
     reference_content_index.product_docs_index_path = "."
     reference_content_index.product_docs_index_id = None
+    reference_content_index.validate_yaml()
+
+    # no docs index path, but with index id
+    reference_content_index.product_docs_index_path = None
+    reference_content_index.product_docs_index_id = "foo"
     with pytest.raises(InvalidConfigurationError):
         reference_content_index.validate_yaml()
 
