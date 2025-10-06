@@ -57,7 +57,7 @@ class AzureOpenAI(LLMProvider):
         deployment_name = self.provider_config.deployment_name
         azure_config = self.provider_config.azure_config
 
-        # provider-specific configuration has precendence over regular configuration
+        # provider-specific configuration has precedence over regular configuration
         if azure_config is not None:
             self.url = str(azure_config.url)
             deployment_name = azure_config.deployment_name
@@ -73,8 +73,8 @@ class AzureOpenAI(LLMProvider):
             "cache": None,
             "max_tokens": 512,
             "verbose": False,
-            "http_client": self._construct_httpx_client(False, False),
-            "http_async_client": self._construct_httpx_client(False, True),
+            "http_client": self._construct_httpx_client(True, False),
+            "http_async_client": self._construct_httpx_client(True, True),
         }
 
         # gpt-5 and o-series models don't support certain parameters
@@ -92,6 +92,7 @@ class AzureOpenAI(LLMProvider):
             # client_id and client_secret)
             access_token = self.resolve_access_token(azure_config)
             default_parameters["azure_ad_token"] = access_token
+        logger.info("Created Azure default parameters %s", default_parameters)
         return default_parameters
 
     def load(self) -> BaseChatModel:
