@@ -577,6 +577,14 @@ spec:
       limits:
         memory: 8Gi
     pipelineTaskName: ecosystem-cert-preflight-checks
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: sast-snyk-check
+  - computeResources:
+      limits:
+        memory: 8Gi
+    pipelineTaskName: sast-unicode-check
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-service
   workspaces:
