@@ -372,6 +372,7 @@ class DocsSummarizer(QueryHelper):
                             type="tool_result",
                             data={
                                 "id": tool_call_message.tool_call_id,
+                                "tool_name": tool_call_message.name,
                                 "status": tool_call_message.status,
                                 "content": tool_call_message.content,
                                 "artifact": tool_call_message.artifact,
