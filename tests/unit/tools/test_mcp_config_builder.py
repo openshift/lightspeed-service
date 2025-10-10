@@ -319,3 +319,60 @@ class TestMCPConfigBuilder:
             result["streamable-server"]["headers"][K8S_AUTH_HEADER]
             == f"Bearer {user_token}"
         )
+
+    @staticmethod
+    def test_headers_correctly_passed_through():
+        """Test that custom headers are correctly preserved alongside k8s auth header."""
+        # Test with SSE transport
+        sse_config = MCPServerConfig(
+            name="sse-server",
+            transport="sse",
+            sse=SseTransportConfig(
+                url="https://example.com/events",
+                headers={
+                    "Authorization": "Bearer existing-token",
+                    "Content-Type": "application/json",
+                    "X-Custom-Header": "custom-value",
+                    "User-Agent": "test-agent",
+                },
+            ),
+        )
+
+        # Test with streamable HTTP transport
+        streamable_config = MCPServerConfig(
+            name="streamable-server",
+            transport="streamable_http",
+            streamable_http=StreamableHttpTransportConfig(
+                url="https://example.com/stream",
+                headers={
+                    "Authorization": "Bearer existing-token",
+                    "Content-Type": "application/json",
+                    "X-Custom-Header": "custom-value",
+                    "User-Agent": "test-agent",
+                },
+            ),
+        )
+
+        mcp_server_configs = [sse_config, streamable_config]
+        user_token = "fake-token"  # noqa: S105
+
+        builder = MCPConfigBuilder(user_token, mcp_server_configs)
+        result = builder.dump_client_config()
+
+        # Verify SSE server headers
+        sse_headers = result["sse-server"]["headers"]
+        assert sse_headers["Authorization"] == "Bearer existing-token"
+        assert sse_headers["Content-Type"] == "application/json"
+        assert sse_headers["X-Custom-Header"] == "custom-value"
+        assert sse_headers["User-Agent"] == "test-agent"
+        assert sse_headers[K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        assert len(sse_headers) == 5  # All original headers + k8s auth header
+
+        # Verify streamable HTTP server headers
+        streamable_headers = result["streamable-server"]["headers"]
+        assert streamable_headers["Authorization"] == "Bearer existing-token"
+        assert streamable_headers["Content-Type"] == "application/json"
+        assert streamable_headers["X-Custom-Header"] == "custom-value"
+        assert streamable_headers["User-Agent"] == "test-agent"
+        assert streamable_headers[K8S_AUTH_HEADER] == f"Bearer {user_token}"
+        assert len(streamable_headers) == 5  # All original headers + k8s auth header
