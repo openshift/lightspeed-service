@@ -853,6 +853,7 @@ class ReferenceContentIndex(BaseModel):
 
     product_docs_index_path: Optional[FilePath] = None
     product_docs_index_id: Optional[str] = None
+    product_docs_origin: Optional[str] = None
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -861,6 +862,7 @@ class ReferenceContentIndex(BaseModel):
             return
         self.product_docs_index_path = data.get("product_docs_index_path", None)
         self.product_docs_index_id = data.get("product_docs_index_id", None)
+        self.product_docs_origin = data.get("product_docs_origin", None)
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -868,6 +870,7 @@ class ReferenceContentIndex(BaseModel):
             return (
                 self.product_docs_index_path == other.product_docs_index_path
                 and self.product_docs_index_id == other.product_docs_index_id
+                and self.product_docs_origin == other.product_docs_origin
             )
         return False
 

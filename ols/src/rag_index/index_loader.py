@@ -145,7 +145,15 @@ class IndexLoader:
                     ),
                     persist_dir=index_config.product_docs_index_path,
                 )
-                logger.info("Loading vector index #%d...", i)
+                logger.info(
+                    "Loading vector index #%d%s...",
+                    i,
+                    (
+                        f" from {index_config.product_docs_origin}"
+                        if index_config.product_docs_origin
+                        else ""
+                    ),
+                )
                 index = load_index_from_storage(
                     storage_context=storage_context,
                     index_id=index_config.product_docs_index_id,
