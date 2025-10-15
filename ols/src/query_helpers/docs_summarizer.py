@@ -106,7 +106,11 @@ class DocsSummarizer(QueryHelper):
         mcp_config_builder = MCPConfigBuilder(
             self.user_token, config.mcp_servers.servers
         )
-        self.mcp_servers = mcp_config_builder.dump_client_config()
+        try:
+            self.mcp_servers = mcp_config_builder.dump_client_config()
+        except Exception as e:
+            logger.error("Failed to resolve MCP server(s): %s", e)
+            self.mcp_servers = {}
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
             self._tool_calling_enabled = True
