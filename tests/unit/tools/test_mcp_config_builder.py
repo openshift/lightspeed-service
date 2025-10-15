@@ -1,6 +1,7 @@
 """Tests for MCPConfigBuilder."""
 
 import os
+import tempfile
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ from ols.app.models.config import (
     StdioTransportConfig,
     StreamableHttpTransportConfig,
 )
-from ols.src.tools.mcp_config_builder import K8S_AUTH_HEADER, MCPConfigBuilder
+from ols.src.tools.mcp_config_builder import KUBERNETES_PLACEHOLDER, MCPConfigBuilder
 
 
 def test_mcp_config_builder_dump_client_config():
@@ -146,65 +147,41 @@ class TestMCPConfigBuilder:
         assert "Missing necessary KUBECONFIG/KUBERNETES_SERVICE_* envs" in caplog.text
 
     @staticmethod
-    def test_include_auth_header():
-        """Test include_auth_header method."""
-        user_token = "fake-token"  # noqa: S105
-        config = {}
-
-        result = MCPConfigBuilder.include_auth_header(user_token, config)
-
-        assert "headers" in result
-        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-
-    @staticmethod
-    def test_include_auth_header_existing_headers():
-        """Test include_auth_header with existing headers."""
-        user_token = "fake-token"  # noqa: S105
-        config = {"headers": {"Content-Type": "application/json"}}
-
-        result = MCPConfigBuilder.include_auth_header(user_token, config)
-
-        assert result["headers"]["Content-Type"] == "application/json"
-        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-
-    @staticmethod
-    def test_include_auth_header_existing_auth(caplog):
-        """Test include_auth_header with existing auth header."""
-        user_token = "fake-token"  # noqa: S105
-        config = {"headers": {K8S_AUTH_HEADER: "old-token"}}
-
-        result = MCPConfigBuilder.include_auth_header(user_token, config)
-
-        assert result["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-        assert (
-            "Kubernetes auth header is already set, overriding with actual user token"
-            in caplog.text
-        )
-
-    @staticmethod
     def test_dump_client_config_with_sse():
         """Test dump_client_config with SSE configuration."""
-        mcp_server_configs = [
-            MCPServerConfig(
-                name="sse-server",
-                transport="sse",
-                sse=SseTransportConfig(
-                    url="https://example.com/events",
-                    headers={"X-Custom-Header": "value"},
+        file_descriptor, file_path = tempfile.mkstemp(suffix=".tmp")
+        try:
+            with os.fdopen(file_descriptor, "w") as open_file:
+                open_file.write("value")
+            mcp_server_configs = [
+                MCPServerConfig(
+                    name="sse-server",
+                    transport="sse",
+                    sse=SseTransportConfig(
+                        url="https://example.com/events",
+                        headers={
+                            "X-Custom-Header": file_path,
+                            "kubernetes": KUBERNETES_PLACEHOLDER,
+                        },
+                    ),
                 ),
-            ),
-        ]
-        user_token = "fake-token"  # noqa: S105
+            ]
+            user_token = "fake-token"  # noqa: S105
 
-        builder = MCPConfigBuilder(user_token, mcp_server_configs)
-        result = builder.dump_client_config()
-
-        assert result["sse-server"]["transport"] == "sse"
-        assert result["sse-server"]["url"] == "https://example.com/events"
-        assert result["sse-server"]["headers"]["X-Custom-Header"] == "value"
-        assert (
-            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-        )
+            builder = MCPConfigBuilder(user_token, mcp_server_configs)
+            try:
+                result = builder.dump_client_config()
+            except Exception as e:
+                print(f"failed  creating config {e}")
+                assert False
+            assert result["sse-server"]["transport"] == "sse"
+            assert result["sse-server"]["url"] == "https://example.com/events"
+            assert result["sse-server"]["headers"]["X-Custom-Header"] == "value"
+            assert (
+                result["sse-server"]["headers"]["kubernetes"] == f"Bearer {user_token}"
+            )
+        finally:
+            os.unlink(file_path)
 
     @staticmethod
     def test_dump_client_config_with_mixed_transports():
@@ -237,40 +214,52 @@ class TestMCPConfigBuilder:
         assert result["openshift"]["transport"] == "stdio"
         assert result["sse-server"]["transport"] == "sse"
         assert result["openshift"]["env"]["OC_USER_TOKEN"] == user_token
-        assert (
-            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-        )
 
     @staticmethod
     def test_dump_client_config_with_streamable_http():
         """Test dump_client_config with streamable HTTP configuration."""
-        mcp_server_configs = [
-            MCPServerConfig(
-                name="streamable-server",
-                transport="streamable_http",
-                streamable_http=StreamableHttpTransportConfig(
-                    url="https://example.com/stream",
-                    headers={"X-Custom-Header": "value"},
-                    timeout=30,
-                    sse_read_timeout=60,
+        file_descriptor, file_path = tempfile.mkstemp(suffix=".tmp")
+        try:
+            with os.fdopen(file_descriptor, "w") as open_file:
+                open_file.write("value")
+            mcp_server_configs = [
+                MCPServerConfig(
+                    name="streamable-server",
+                    transport="streamable_http",
+                    streamable_http=StreamableHttpTransportConfig(
+                        url="https://example.com/stream",
+                        headers={
+                            "X-Custom-Header": file_path,
+                            "kubernetes": KUBERNETES_PLACEHOLDER,
+                        },
+                        timeout=30,
+                        sse_read_timeout=60,
+                    ),
                 ),
-            ),
-        ]
-        user_token = "fake-token"  # noqa: S105
+            ]
+            user_token = "fake-token"  # noqa: S105
 
-        builder = MCPConfigBuilder(user_token, mcp_server_configs)
-        result = builder.dump_client_config()
+            builder = MCPConfigBuilder(user_token, mcp_server_configs)
+            try:
+                result = builder.dump_client_config()
+            except Exception as e:
+                print(f"failed  creating config {e}")
+                assert False
 
-        assert result["streamable-server"]["transport"] == "streamable_http"
-        assert result["streamable-server"]["url"] == "https://example.com/stream"
-        assert result["streamable-server"]["headers"]["X-Custom-Header"] == "value"
-        assert (
-            result["streamable-server"]["headers"][K8S_AUTH_HEADER]
-            == f"Bearer {user_token}"
-        )
-        # Verify that timeout values are converted to timedelta objects
-        assert result["streamable-server"]["timeout"] == timedelta(seconds=30)
-        assert result["streamable-server"]["sse_read_timeout"] == timedelta(seconds=60)
+            assert result["streamable-server"]["transport"] == "streamable_http"
+            assert result["streamable-server"]["url"] == "https://example.com/stream"
+            assert result["streamable-server"]["headers"]["X-Custom-Header"] == "value"
+            assert (
+                result["streamable-server"]["headers"]["kubernetes"]
+                == f"Bearer {user_token}"
+            )
+            # Verify that timeout values are converted to timedelta objects
+            assert result["streamable-server"]["timeout"] == timedelta(seconds=30)
+            assert result["streamable-server"]["sse_read_timeout"] == timedelta(
+                seconds=60
+            )
+        finally:
+            os.unlink(file_path)
 
     @staticmethod
     def test_dump_client_config_with_all_transports():
@@ -312,10 +301,3 @@ class TestMCPConfigBuilder:
         assert result["sse-server"]["transport"] == "sse"
         assert result["streamable-server"]["transport"] == "streamable_http"
         assert result["openshift"]["env"]["OC_USER_TOKEN"] == user_token
-        assert (
-            result["sse-server"]["headers"][K8S_AUTH_HEADER] == f"Bearer {user_token}"
-        )
-        assert (
-            result["streamable-server"]["headers"][K8S_AUTH_HEADER]
-            == f"Bearer {user_token}"
-        )
