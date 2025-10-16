@@ -71,7 +71,7 @@ async def _execute_single_tool_call(
         logger.error("Tool call missing name: %s", tool_call)
     else:
         try:
-            # raise_for_sensitive_tool_args(tool_args)
+            raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
                 tool_name, tool_args, all_mcp_tools
             )
