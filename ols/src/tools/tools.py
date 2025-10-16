@@ -1,6 +1,7 @@
 """Functions/Tools definition."""
 
 import asyncio
+import json
 import logging
 
 from langchain_core.messages import ToolMessage
@@ -154,11 +155,14 @@ async def execute_tool_calls(
 
         # Change Content and Artifact
         # Putting into artifact is a standard way how to send data to client and NOT TO LLM
-        # TODO: This content<->artifact will be implemented directly in NGUI
+        # NGUI support that natively but Current OLS MCP client has no support for MCP structured_content.
+        # So NGUI has structured_output disabled and it's needed to do it manually
         if generate_ui_result.status == "success":
             generate_ui_result.artifact = generate_ui_result.content
+            # Get summary. https://redhat-ux.github.io/next-gen-ui-agent/guide/ai_apps_binding/mcp-library/#generate_ui
+            generate_ui_content: dict = json.loads(generate_ui_result.content)
             # This tells LLM not to repeat again what is displayed on dashboard.
-            generate_ui_result.content = "UI Component has been sucessfully generated and user can see it on dashboard."
+            generate_ui_result.content = generate_ui_content.get("summary")
 
         tool_messages.append(generate_ui_result)
 
