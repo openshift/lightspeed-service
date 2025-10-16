@@ -49,6 +49,16 @@ class RevokableQuotaLimiter(QuotaLimiter):
          WHERE id=%s and subject=%s
         """
 
+    RECONCILE_QUOTA_LIMITS = """
+        UPDATE quota_limits
+           SET quota_limit = %s,
+               available = available + (%s - quota_limit),
+               updated_at = NOW()
+         WHERE subject = %s
+           AND quota_limit != %s
+     RETURNING id, quota_limit, available
+        """
+
     def __init__(
         self,
         initial_quota: int,
@@ -61,6 +71,15 @@ class RevokableQuotaLimiter(QuotaLimiter):
         self.initial_quota = initial_quota
         self.increase_by = increase_by
         self.connection_config = connection_config
+
+    def connect(self) -> None:
+        """Initialize connection to database and reconcile quota limits.
+
+        After establishing the database connection, this method automatically
+        reconciles any existing quota records with the current configuration.
+        """
+        super().connect()
+        self._reconcile_quota_limits()
 
     @connection
     def available_quota(self, subject_id: str = "") -> int:
@@ -173,3 +192,55 @@ class RevokableQuotaLimiter(QuotaLimiter):
                 ),
             )
             self.connection.commit()
+
+    def _reconcile_quota_limits(self) -> None:
+        """Reconcile quota limits with current configuration.
+
+        Updates existing quota records when initial_quota changes while preserving
+        consumed tokens.
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    RevokableQuotaLimiter.RECONCILE_QUOTA_LIMITS,
+                    (
+                        self.initial_quota,  # new quota_limit 
+                        self.initial_quota,  # used in calculation: available + (new - old)
+                        self.subject_type,  
+                        self.initial_quota,  
+                    ),
+                )
+                updated_rows = cursor.fetchall()
+                if updated_rows:
+                    for row in updated_rows:
+                        subject_id, new_limit, new_available = row
+                        logger.info(
+                            "Reconciled quota for subject='%s' type='%s': "
+                            "quota_limit=%d, available=%d",
+                            subject_id if subject_id else "(cluster)",
+                            self.subject_type,
+                            new_limit,
+                            new_available,
+                        )
+                    logger.info(
+                        "Quota reconciliation complete for subject type '%s': "
+                        "updated %d record(s)",
+                        self.subject_type,
+                        len(updated_rows),
+                    )
+                else:
+                    logger.debug(
+                        "No quota updates needed for subject type '%s' "
+                        "(no records or all match current configuration)",
+                        self.subject_type,
+                    )
+
+                self.connection.commit()
+
+        except Exception as e:
+            logger.error(
+                "Failed to reconcile quota limits for subject type '%s': %s",
+                self.subject_type,
+                e,
+            )
+            raise

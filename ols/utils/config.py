@@ -159,6 +159,10 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+            # reset quota limiters and token usage history to pick up
+            # new configuration values
+            self._quota_limiters = None
+            self._token_usage_history = None
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
