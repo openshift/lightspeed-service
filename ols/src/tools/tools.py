@@ -71,7 +71,9 @@ async def _execute_single_tool_call(
         logger.error("Tool call missing name: %s", tool_call)
     else:
         try:
-            raise_for_sensitive_tool_args(tool_args)
+            # generate_ui args contain live data about e.g. pods containing sensitive words like secret etc.
+            if tool_name != "generate_ui":
+                raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
                 tool_name, tool_args, all_mcp_tools
             )
