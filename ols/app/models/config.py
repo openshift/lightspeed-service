@@ -878,7 +878,6 @@ class ReferenceContentIndex(BaseModel):
         """Validate reference content index config."""
         if self.product_docs_index_path is not None:
             try:
-                fallback_to_default = False
                 checks.dir_check(
                     self.product_docs_index_path, "Reference content index path"
                 )
@@ -891,22 +890,16 @@ class ReferenceContentIndex(BaseModel):
                 try:
                     checks.dir_check(default_path, "Reference content index path")
                     self.product_docs_index_path = FilePath(default_path)
-                    # load all index in the default path
+                    # we don't know the index_id for "latest" so ignore what
+                    # the config says and load whatever index is there
                     self.product_docs_index_id = None
-                    fallback_to_default = True
                 except checks.InvalidConfigurationError:
                     raise e_original
-            if self.product_docs_index_id is None and not fallback_to_default:
+        else:
+            if self.product_docs_index_id is not None:
                 raise checks.InvalidConfigurationError(
-                    "product_docs_index_path is specified but product_docs_index_id is missing"
+                    "product_docs_index_id is specified but product_docs_index_path is missing"
                 )
-        if (
-            self.product_docs_index_id is not None
-            and self.product_docs_index_path is None
-        ):
-            raise checks.InvalidConfigurationError(
-                "product_docs_index_id is specified but product_docs_index_path is missing"
-            )
 
 
 class ReferenceContent(BaseModel):
