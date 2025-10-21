@@ -123,7 +123,7 @@ async def execute_tool_calls(
     )
     if generate_ui_task:
         # get all tool responses and pass to NGUI arg
-        generate_ui_task["args"]["input_data"] = []
+        generate_ui_task["args"]["structured_data"] = []
         if len(tool_messages) > 0:
             ngui_input_data = [
                 {
@@ -133,7 +133,7 @@ async def execute_tool_calls(
                 }
                 for tm in tool_messages
             ]
-            generate_ui_task["args"]["input_data"].extend(ngui_input_data)
+            generate_ui_task["args"]["structured_data"].extend(ngui_input_data)
         else:
             ngui_input_data = [
                 {
@@ -144,11 +144,11 @@ async def execute_tool_calls(
                 for tm in messages.messages
                 if isinstance(tm, ToolMessage)
             ]
-            generate_ui_task["args"]["input_data"].extend(ngui_input_data)
+            generate_ui_task["args"]["structured_data"].extend(ngui_input_data)
 
         logger.info(
             "Executing generate_ui tool_call. input_data.length=%s",
-            len(generate_ui_task["args"]["input_data"]),
+            len(generate_ui_task["args"]["structured_data"]),
         )
 
         generate_ui_result = await _execute_single_tool_call(
