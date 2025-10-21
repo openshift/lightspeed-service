@@ -93,68 +93,26 @@ async def _execute_single_tool_call(
 
 
 async def execute_tool_calls(
-    tool_calls: list[dict],
-    all_mcp_tools: list[StructuredTool],
-    messages: ChatPromptTemplate,
+    tool_calls: list[dict], all_mcp_tools: list[StructuredTool]
 ) -> list[ToolMessage]:
     """Execute tool calls in parallel and return ToolMessages."""
     if not tool_calls:
         return []
 
-    # Create tasks for parallel execution except generate_ui.
-    # generate_ui task from next_gen_ui MCP has to collect data from other MCP first
+    # Create tasks for parallel execution
     tasks = [
-        _execute_single_tool_call(tool_call, all_mcp_tools)
-        for tool_call in tool_calls
-        if not tool_call["name"] == "generate_ui"
+        _execute_single_tool_call(tool_call, all_mcp_tools) for tool_call in tool_calls
     ]
 
     # Execute all tool calls in parallel
     tool_messages = await asyncio.gather(*tasks)
 
-    # Execute next_gen_ui tool with all data from previous tools
-    # TODO: Following code should refactored to use "memory/context" where
-    # each MCP can access "short term memory (context)" and act appropriately
-    # MCP has no support for this ATM
-
-    generate_ui_task = next(
-        (tool_call for tool_call in tool_calls if tool_call["name"] == "generate_ui"),
+    # Get NGUI result
+    generate_ui_result = next(
+        (tm for tm in tool_messages if tm.name.startswith("generate_ui")),
         None,
     )
-    if generate_ui_task:
-        # get all tool responses and pass to NGUI arg
-        generate_ui_task["args"]["structured_data"] = []
-        if len(tool_messages) > 0:
-            ngui_input_data = [
-                {
-                    "id": tm.tool_call_id,
-                    "data": tm.content,
-                    "type": tm.name,
-                }
-                for tm in tool_messages
-            ]
-            generate_ui_task["args"]["structured_data"].extend(ngui_input_data)
-        else:
-            ngui_input_data = [
-                {
-                    "id": tm.tool_call_id,
-                    "data": str(tm.content),
-                    "type": tm.name,
-                }
-                for tm in messages.messages
-                if isinstance(tm, ToolMessage)
-            ]
-            generate_ui_task["args"]["structured_data"].extend(ngui_input_data)
-
-        logger.info(
-            "Executing generate_ui tool_call. input_data.length=%s",
-            len(generate_ui_task["args"]["structured_data"]),
-        )
-
-        generate_ui_result = await _execute_single_tool_call(
-            generate_ui_task, all_mcp_tools
-        )
-
+    if generate_ui_result:
         # Change Content and Artifact
         # Putting into artifact is a standard way how to send data to client and NOT TO LLM
         # NGUI support that natively but Current OLS MCP client has no support for MCP structured_content.
@@ -165,7 +123,5 @@ async def execute_tool_calls(
             generate_ui_content: dict = json.loads(generate_ui_result.content)
             # This tells LLM not to repeat again what is displayed on dashboard.
             generate_ui_result.content = generate_ui_content.get("summary")
-
-        tool_messages.append(generate_ui_result)
 
     return tool_messages
