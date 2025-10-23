@@ -204,10 +204,10 @@ class RevokableQuotaLimiter(QuotaLimiter):
                 cursor.execute(
                     RevokableQuotaLimiter.RECONCILE_QUOTA_LIMITS,
                     (
-                        self.initial_quota,  # new quota_limit 
+                        self.initial_quota,  # new quota_limit
                         self.initial_quota,  # used in calculation: available + (new - old)
-                        self.subject_type,  
-                        self.initial_quota,  
+                        self.subject_type,
+                        self.initial_quota,
                     ),
                 )
                 updated_rows = cursor.fetchall()
