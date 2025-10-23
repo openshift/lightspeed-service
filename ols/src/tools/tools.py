@@ -1,10 +1,12 @@
 """Functions/Tools definition."""
 
 import asyncio
+import json
 import logging
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
+from langchain_core.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +71,9 @@ async def _execute_single_tool_call(
         logger.error("Tool call missing name: %s", tool_call)
     else:
         try:
-            raise_for_sensitive_tool_args(tool_args)
+            # generate_ui args contain live data about e.g. pods containing sensitive words like secret etc.
+            if tool_name != "generate_ui":
+                raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
                 tool_name, tool_args, all_mcp_tools
             )
@@ -80,12 +84,16 @@ async def _execute_single_tool_call(
             status = "error"
             logger.exception(tool_output)
 
-    return ToolMessage(content=tool_output, status=status, tool_call_id=tool_id)
+    return ToolMessage(
+        content=tool_output,
+        status=status,
+        tool_call_id=tool_id,
+        name=tool_call.get("name"),
+    )
 
 
 async def execute_tool_calls(
-    tool_calls: list[dict],
-    all_mcp_tools: list[StructuredTool],
+    tool_calls: list[dict], all_mcp_tools: list[StructuredTool]
 ) -> list[ToolMessage]:
     """Execute tool calls in parallel and return ToolMessages."""
     if not tool_calls:
@@ -98,5 +106,22 @@ async def execute_tool_calls(
 
     # Execute all tool calls in parallel
     tool_messages = await asyncio.gather(*tasks)
+
+    # Get NGUI result
+    generate_ui_result = next(
+        (tm for tm in tool_messages if tm.name.startswith("generate_ui")),
+        None,
+    )
+    if generate_ui_result:
+        # Change Content and Artifact
+        # Putting into artifact is a standard way how to send data to client and NOT TO LLM
+        # NGUI support that natively but Current OLS MCP client has no support for MCP structured_content.
+        # So NGUI has structured_output disabled and it's needed to do it manually
+        if generate_ui_result.status == "success":
+            generate_ui_result.artifact = generate_ui_result.content
+            # Get summary. https://redhat-ux.github.io/next-gen-ui-agent/guide/ai_apps_binding/mcp-library/#generate_ui
+            generate_ui_content: dict = json.loads(generate_ui_result.content)
+            # This tells LLM not to repeat again what is displayed on dashboard.
+            generate_ui_result.content = generate_ui_content.get("summary")
 
     return tool_messages
