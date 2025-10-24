@@ -29,12 +29,24 @@ RESET_QUOTA_STATEMENT = """
     """
 
 
-RECONCILE_QUOTA_LIMITS_STATEMENT = """
+# Reconciliation SQL for user quotas - updates all user rows
+RECONCILE_USER_QUOTA_LIMITS_STATEMENT = """
     UPDATE quota_limits
        SET quota_limit = %s,
            available = available + (%s - quota_limit),
            updated_at = NOW()
-     WHERE subject = %s
+     WHERE subject = 'u'
+       AND quota_limit != %s
+ RETURNING id, quota_limit, available
+    """
+
+# Reconciliation SQL for cluster quotas - updates cluster row
+RECONCILE_CLUSTER_QUOTA_LIMITS_STATEMENT = """
+    UPDATE quota_limits
+       SET quota_limit = %s,
+           available = available + (%s - quota_limit),
+           updated_at = NOW()
+     WHERE subject = 'c'
        AND quota_limit != %s
  RETURNING id, quota_limit, available
     """
@@ -174,17 +186,25 @@ def reconcile_quota_limits(
         logger.debug("No initial quota set for '%s', skipping reconciliation", name)
         return
 
-    subject_id = get_subject_id(quota_limiter.type)
+    # Select appropriate SQL based on limiter type
+    if quota_limiter.type == constants.USER_QUOTA_LIMITER:
+        reconcile_sql = RECONCILE_USER_QUOTA_LIMITS_STATEMENT
+    elif quota_limiter.type == constants.CLUSTER_QUOTA_LIMITER:
+        reconcile_sql = RECONCILE_CLUSTER_QUOTA_LIMITS_STATEMENT
+    else:
+        logger.error("Unknown limiter type '%s' for '%s', skipping reconciliation",
+                    quota_limiter.type, name)
+        return
+
     new_quota = quota_limiter.initial_quota
 
     try:
         with connection.cursor() as cursor:
             cursor.execute(
-                RECONCILE_QUOTA_LIMITS_STATEMENT,
+                reconcile_sql,
                 (
                     new_quota,  # new quota_limit value
                     new_quota,  # used in calculation: available + (new - old)
-                    subject_id,  # WHERE subject = ?
                     new_quota,  # WHERE quota_limit != ?
                 ),
             )

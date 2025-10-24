@@ -49,12 +49,24 @@ class RevokableQuotaLimiter(QuotaLimiter):
          WHERE id=%s and subject=%s
         """
 
-    RECONCILE_QUOTA_LIMITS = """
+    # Reconciliation SQL for user quotas - updates all user rows
+    RECONCILE_USER_QUOTA_LIMITS = """
         UPDATE quota_limits
            SET quota_limit = %s,
                available = available + (%s - quota_limit),
                updated_at = NOW()
-         WHERE subject = %s
+         WHERE subject = 'u'
+           AND quota_limit != %s
+     RETURNING id, quota_limit, available
+        """
+
+    # Reconciliation SQL for cluster quotas - updates cluster row
+    RECONCILE_CLUSTER_QUOTA_LIMITS = """
+        UPDATE quota_limits
+           SET quota_limit = %s,
+               available = available + (%s - quota_limit),
+               updated_at = NOW()
+         WHERE subject = 'c'
            AND quota_limit != %s
      RETURNING id, quota_limit, available
         """
@@ -75,11 +87,18 @@ class RevokableQuotaLimiter(QuotaLimiter):
     def connect(self) -> None:
         """Initialize connection to database and reconcile quota limits.
 
-        After establishing the database connection, this method automatically
-        reconciles any existing quota records with the current configuration.
+        Reconciliation ensures database quota limits match OLSConfig after updates.
+        This happens on first request after config changes, ensuring immediate sync.
+        The quota_scheduler also runs reconciliation periodically as a backup.
         """
         super().connect()
-        self._reconcile_quota_limits()
+        # Reconcile on connect so changes take effect on first request after OLSConfig update
+        try:
+            self._reconcile_quota_limits()
+        except Exception as e:
+            logger.warning(
+                "Quota reconciliation on connect failed (will retry on scheduler): %s", e
+            )
 
     @connection
     def available_quota(self, subject_id: str = "") -> int:
@@ -199,15 +218,23 @@ class RevokableQuotaLimiter(QuotaLimiter):
         Updates existing quota records when initial_quota changes while preserving
         consumed tokens.
         """
+        # Select appropriate SQL based on subject type
+        if self.subject_type == "u":
+            reconcile_sql = RevokableQuotaLimiter.RECONCILE_USER_QUOTA_LIMITS
+        elif self.subject_type == "c":
+            reconcile_sql = RevokableQuotaLimiter.RECONCILE_CLUSTER_QUOTA_LIMITS
+        else:
+            logger.error("Unknown subject type '%s', skipping reconciliation", self.subject_type)
+            return
+
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(
-                    RevokableQuotaLimiter.RECONCILE_QUOTA_LIMITS,
+                    reconcile_sql,
                     (
                         self.initial_quota,  # new quota_limit
                         self.initial_quota,  # used in calculation: available + (new - old)
-                        self.subject_type,
-                        self.initial_quota,
+                        self.initial_quota,  # WHERE quota_limit != ?
                     ),
                 )
                 updated_rows = cursor.fetchall()
