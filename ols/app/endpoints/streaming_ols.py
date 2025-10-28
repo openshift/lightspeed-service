@@ -171,7 +171,7 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
         if event_type == LLM_TOOL_CALL_EVENT:
             return f"\nTool call: {json.dumps(data)}\n"
         if event_type == LLM_TOOL_RESULT_EVENT:
-            return f"\nTool result: {json.dumps(data)}\n"
+            return f"\nTool call: {json.dumps(data)}\n"
         logger.error("Unknown event type: %s", event_type)
         return ""
     return format_stream_data(
