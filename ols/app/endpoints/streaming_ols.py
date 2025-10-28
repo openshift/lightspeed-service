@@ -154,7 +154,7 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_event(data: dict, event_type: str, media_type: str, artifact: str = "") -> str:
+def stream_event(data: dict, event_type: str, media_type: str) -> str:
     """Build an item to yield based on media type.
 
     Args:
@@ -169,16 +169,15 @@ def stream_event(data: dict, event_type: str, media_type: str, artifact: str = "
         if event_type == LLM_TOKEN_EVENT:
             return data["token"]
         if event_type == LLM_TOOL_CALL_EVENT:
-            return f"\nTool call: {json.dumps(data)}\nartifact: {artifact}\n"
+            return f"\nTool call: {json.dumps(data)}\n"
         if event_type == LLM_TOOL_RESULT_EVENT:
-            return f"\nTool call: {json.dumps(data)}\nartifact: {artifact}\n"
+            return f"\nTool call: {json.dumps(data)}\n"
         logger.error("Unknown event type: %s", event_type)
         return ""
     return format_stream_data(
         {
             "event": event_type,
             "data": data,
-            "artifact": artifact,
         }
     )
 
@@ -402,7 +401,6 @@ async def response_processing_wrapper(
                     data=item.data,
                     event_type=LLM_TOOL_RESULT_EVENT,
                     media_type=media_type,
-                    artifact=item.artifact,
                 )
             elif item.type == "text":
                 response += item.text

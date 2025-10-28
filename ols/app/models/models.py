@@ -802,4 +802,3 @@ class StreamedChunk:
     type: Literal["text", "tool_call", "tool_result", "end"]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
-    artifact: str = ""
