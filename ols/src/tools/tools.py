@@ -6,7 +6,6 @@ import logging
 
 from langchain_core.messages import ToolMessage, BaseMessage
 from langchain_core.tools.structured import StructuredTool
-from langchain_core.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ async def _execute_single_tool_call(
     else:
         try:
             # generate_ui args contain live data about e.g. pods containing sensitive words like secret etc.
-            if tool_name != "generate_ui":
+            if not tool_name.startswith("generate_ui"):
                 raise_for_sensitive_tool_args(tool_args)
             status, tool_output = await execute_tool_call(
                 tool_name, tool_args, all_mcp_tools
