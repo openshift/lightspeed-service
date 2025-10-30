@@ -5,7 +5,7 @@
 groups = ["default", "dev", "evaluation"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:ce8969ef24388dae7b8205727984c23b4e3036d514b43c259a0202e20667b436"
+content_hash = "sha256:f52973e650c7b62620102963425c2e51eca278cbb08ac7b396d1ad534db99e3e"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -1834,18 +1834,18 @@ files = [
 
 [[package]]
 name = "langchain-mcp-adapters"
-version = "0.1.8"
+version = "0.1.11"
 requires_python = ">=3.10"
 summary = "Make Anthropic Model Context Protocol (MCP) tools compatible with LangChain and LangGraph agents."
 groups = ["default"]
 dependencies = [
-    "langchain-core<0.4,>=0.3.36",
+    "langchain-core<2,>=0.3.36",
     "mcp>=1.9.2",
     "typing-extensions>=4.14.0",
 ]
 files = [
-    {file = "langchain_mcp_adapters-0.1.8-py3-none-any.whl", hash = "sha256:037323b772f3214986b127fe89d2e7e721ca5e852a618cdbbf00cc955154cc90"},
-    {file = "langchain_mcp_adapters-0.1.8.tar.gz", hash = "sha256:5fc6a596b73be96198135a11707102e3a7e9470b4d149bbbb1c9f9d902e0fa42"},
+    {file = "langchain_mcp_adapters-0.1.11-py3-none-any.whl", hash = "sha256:7b35921e9487bcb3ea3d94bf10341316ac897e2997e8a16032ae514834a9685d"},
+    {file = "langchain_mcp_adapters-0.1.11.tar.gz", hash = "sha256:a217c49086b162344749f7f99a148fc12482e2da8e0260b2e35fc93afb31b38d"},
 ]
 
 [[package]]
