@@ -17,3 +17,15 @@ spec:
     - source: registry.redhat.io/openshift-lightspeed/lightspeed-console-plugin-rhel9
       mirrors:
         - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/ols/lightspeed-console
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-console-plugin-pf5-rhel9
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-console-pf5
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-to-dataverse-exporter-rhel9
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-to-dataverse-exporter
+    - source: registry.redhat.io/openshift-lightspeed/openshift-mcp-server-rhel9
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server
+    - source: registry.redhat.io/openshift-lightspeed/lightspeed-ocp-rag
+      mirrors:
+        - quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-ocp-rag

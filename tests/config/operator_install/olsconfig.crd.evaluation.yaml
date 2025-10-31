@@ -37,6 +37,13 @@ spec:
     defaultProvider: openai
     deployment:
       replicas: 1
+      dataCollector:
+        resources:
+          limits:
+            memory: 800Mi
+          requests:
+            cpu: 50m
+            memory: 800Mi
     disableAuth: false
     logLevel: DEBUG
     queryFilters:

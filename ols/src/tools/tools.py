@@ -1,6 +1,7 @@
 """Functions/Tools definition."""
 
 import asyncio
+import json
 import logging
 
 from langchain_core.messages import ToolMessage
@@ -40,7 +41,7 @@ async def execute_tool_call(
     """Execute a tool call and return the output and status."""
     try:
         tool = get_tool_by_name(tool_name, all_mcp_tools)
-        tool_output = await tool.arun(tool_args)  # type: ignore [attr-defined]
+        tool_output = await tool.arun(_jsonify(tool_args))  # type: ignore [attr-defined]
         status = "success"
         logger.debug(
             "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
@@ -100,3 +101,26 @@ async def execute_tool_calls(
     tool_messages = await asyncio.gather(*tasks)
 
     return tool_messages
+
+
+def _jsonify(args: dict) -> dict:
+    """Convert to JSON."""
+    res = {}
+    for key, value in args.items():
+        if isinstance(value, str) and _maybe_json(value):
+            # If a value looks like json
+            try:
+                # convert to json
+                res[key] = json.loads(value)
+            except json.JSONDecodeError:
+                # conversion fails, use a string
+                res[key] = value
+        else:
+            res[key] = value
+    return res
+
+
+def _maybe_json(value: str) -> bool:
+    """Check if a string looks like JSON."""
+    stripped = value.strip()
+    return stripped.startswith(("[", "{"))

@@ -23,14 +23,26 @@ def run_oc(
         )
         return res
     except subprocess.CalledProcessError as e:
-        if ignore_existing_resource and "AlreadyExists" in e.stderr:
-            print(f"Resource already exists: {e}\nproceeding...")
-        else:
-            print(
-                f"Error running oc command {args}: {e}, stdout: {e.output}, stderr: {e.stderr}"
-            )
-            raise
-    return subprocess.CompletedProcess("", 0)
+        if ignore_existing_resource:
+            # Check for various "already exists" error patterns in both stderr and stdout
+            error_text = (e.stderr + " " + e.stdout).lower()
+            if any(
+                pattern in error_text
+                for pattern in [
+                    "alreadyexists",
+                    "already exists",
+                    "already exist",
+                    "conflict",
+                    "resource exists",
+                ]
+            ):
+                print(f"Resource already exists: {e}\nproceeding...")
+                return subprocess.CompletedProcess(e.cmd, 0, stdout="", stderr="")
+
+        print(
+            f"Error running oc command {args}: {e}, stdout: {e.stdout}, stderr: {e.stderr}"
+        )
+        raise
 
 
 def run_oc_and_store_stdout(
@@ -325,8 +337,8 @@ def wait_for_running_pod(
 ):
     """Wait for the selected pod to be in running state."""
     r = retry_until_timeout_or_success(
-        5,
         3,
+        2,
         lambda: len(
             run_oc(
                 [
@@ -343,12 +355,9 @@ def wait_for_running_pod(
     )
 
     # wait for new ols app pod to be created+running
-    # there should be exactly one, if we see more than one it may be an old pod
-    # and we need to wait for it to go away before progressing so we don't try to
-    # interact with it.
     r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
-        5,
+        3,
         lambda: len(
             get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         )
@@ -358,43 +367,40 @@ def wait_for_running_pod(
     if not r:
         raise Exception("Timed out waiting for new OLS pod to be ready")
 
-    def pod_has_2_containers_ready():
+    def pod_has_containers_ready():
         pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         if not pods:
             return False
-        # Creating exception for disconnected since no data collection
-        disconnected = os.getenv("DISCONNECTED", "")
-        if not disconnected:
-            return (
-                len(
-                    [
-                        container
-                        for container in get_container_ready_status(pods[0])
-                        if container == "true"
-                    ]
-                )
-                == 2
-            )
-        return (
-            len(
-                [
-                    container
-                    for container in get_container_ready_status(pods[0])
-                    if container == "true"
-                ]
-            )
-            == 1
+
+        ready_containers = len(
+            [
+                container
+                for container in get_container_ready_status(pods[0])
+                if container == "true"
+            ]
         )
 
-    # wait for the two containers in the server pod to become ready
+        # Check for tool calling or disconnected mode (both need >=2 containers)
+        disconnected = os.getenv("DISCONNECTED", "")
+        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+        tool_calling_enabled = "tool_calling" in ols_config_suffix
+
+        if disconnected:
+            return ready_containers >= 1
+        if tool_calling_enabled:
+            return ready_containers >= 2
+        return ready_containers >= 2
+
+    # wait for the containers in the server pod to become ready
+    # two containers normally, three in case we're running mcp server
     r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
         5,
-        pod_has_2_containers_ready,
-        "Waiting for two containers in the server pod to become ready",
+        pod_has_containers_ready,
+        "Waiting for containers in the server pod to become ready",
     )
     if not r:
-        raise Exception("Timed out waiting for new two containers to become ready")
+        raise Exception("Timed out waiting for containers to become ready")
 
 
 def get_certificate_secret_name(

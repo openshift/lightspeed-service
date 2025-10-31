@@ -82,7 +82,9 @@ function run_suites() {
     # smoke tests for RHOAI VLLM-compatible provider
     run_suite "rhoai_vllm" "smoketest" "rhoai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
-    
+  
+  cleanup_ols_operator
+  
   fi
   set -e
 

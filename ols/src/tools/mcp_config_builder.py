@@ -6,13 +6,12 @@ from datetime import timedelta
 from typing import Any
 
 from ols.app.models.config import MCPServerConfig
+from ols.utils import checks
 
 logger = logging.getLogger(__name__)
 
-
-# Additional header containing user token for k8s/ocp authentication
-# for SSE MCP servers.
-K8S_AUTH_HEADER = "kubernetes-authorization"
+# Constant, defining usage of kubernetes token
+KUBERNETES_PLACEHOLDER = "kubernetes"
 
 
 class MCPConfigBuilder:
@@ -24,20 +23,6 @@ class MCPConfigBuilder:
         """Initialize the MCPConfigBuilder with user token and server config list."""
         self.user_token = user_token
         self.mcp_server_configs = mcp_server_configs
-
-    @staticmethod
-    def include_auth_header(user_token: str, config: dict[str, Any]) -> dict[str, Any]:
-        """Include user token in the config headers."""
-        # Only add Authorization header if we have a valid token
-        if user_token and user_token.strip():
-            if "headers" not in config:
-                config["headers"] = {}
-            if K8S_AUTH_HEADER in config["headers"]:
-                logger.warning(
-                    "Kubernetes auth header is already set, overriding with actual user token."
-                )
-            config["headers"][K8S_AUTH_HEADER] = f"Bearer {user_token}"
-        return config
 
     def include_auth_to_stdio(self, server_envs: dict[str, str]) -> dict[str, str]:
         """Resolve OpenShift stdio env config."""
@@ -79,18 +64,20 @@ class MCPConfigBuilder:
                         server_conf.stdio.env
                     )
                 servers_conf[server_conf.name].update(stdio_conf)
+                continue
 
             if server_conf.sse:
                 sse_conf = server_conf.sse.model_dump()
-                self.include_auth_header(self.user_token, sse_conf)
+                sse_conf["headers"] = self._resolve_tokens_to_value(sse_conf["headers"])
                 servers_conf[server_conf.name].update(sse_conf)
+                continue
 
             if server_conf.streamable_http:
-                servers_conf[server_conf.name].update(
-                    self.include_auth_header(
-                        self.user_token, server_conf.streamable_http.model_dump()
-                    )
+                http_conf = server_conf.streamable_http.model_dump()
+                http_conf["headers"] = self._resolve_tokens_to_value(
+                    http_conf["headers"]
                 )
+                servers_conf[server_conf.name].update(http_conf)
                 # Note: Streamable HTTP transport expects timedelta instead of
                 # int as for the sse - blame langchain-mcp-adapters for
                 # inconsistency
@@ -100,3 +87,21 @@ class MCPConfigBuilder:
                     )
 
         return servers_conf
+
+    def _resolve_tokens_to_value(self, headers: dict[str, str]) -> dict[str, Any]:
+        """Convert header definitions to values."""
+        updated = {}
+        for name, value in headers.items():
+            if value == KUBERNETES_PLACEHOLDER:
+                updated[name] = f"Bearer {self.user_token}"
+            else:
+                try:
+                    # load token value
+                    with open(value, "r", encoding="utf-8") as token_store:
+                        token = token_store.read()
+                    updated[name] = token
+                except Exception as e:
+                    raise checks.InvalidConfigurationError(
+                        f"token value refers to non existent file  '{value}', error {e}"
+                    )
+        return updated
