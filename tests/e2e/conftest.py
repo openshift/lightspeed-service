@@ -299,8 +299,8 @@ def get_secret_value(env: str) -> str:
 
 def pytest_sessionfinish(session):
     """Create datarouter compatible archive to upload into report portal."""
-    # Gather OLS artifacts only if there were failures
-    if on_cluster and session.testsfailed > 0:
+    # Gather OLS artifacts for all test suites when running on cluster
+    if on_cluster:
         must_gather()
     # Sending reports to report portal
     try:
