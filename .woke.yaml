@@ -8,6 +8,7 @@ ignore_files:
   - 'ols/customize/ols/keywords.py'
   - ols/customize/ols/prompts.py
   - docs/openapi.json
+  - eval/eval_data*
 
 rules:
   - name: abort
