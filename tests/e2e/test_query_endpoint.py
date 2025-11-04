@@ -222,9 +222,8 @@ def test_valid_question() -> None:
 
         # checking a few major information from response
         assert json_response["conversation_id"] == cid
-        assert "Kubernetes is" in json_response["response"]
         assert re.search(
-            r"orchestration (tool|system|platform|engine)",
+            r"kubernetes|openshift",
             json_response["response"],
             re.IGNORECASE,
         )

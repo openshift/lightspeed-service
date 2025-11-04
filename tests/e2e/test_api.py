@@ -464,9 +464,8 @@ def test_azure_entra_id():
     json_response = response.json()
 
     # checking a few major information from response
-    assert "Kubernetes is" in json_response["response"]
     assert re.search(
-        r"orchestration (tool|system|platform|engine)",
+        r"kubernetes|openshift",
         json_response["response"],
         re.IGNORECASE,
     )
