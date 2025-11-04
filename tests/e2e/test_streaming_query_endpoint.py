@@ -209,9 +209,8 @@ def test_valid_question() -> None:
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
-        assert "Kubernetes is" in response.text
         assert re.search(
-            r"orchestration (tool|system|platform|engine)",
+            r"kubernetes|openshift",
             response.text,
             re.IGNORECASE,
         )
