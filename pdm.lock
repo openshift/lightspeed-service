@@ -5,7 +5,7 @@
 groups = ["default", "dev", "evaluation"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:ce8969ef24388dae7b8205727984c23b4e3036d514b43c259a0202e20667b436"
+content_hash = "sha256:717d2b8b9ab6049215d07e7a8b2271c25d53153daecf499bb85f83f38d444798"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -275,7 +275,7 @@ files = [
 
 [[package]]
 name = "banks"
-version = "2.1.1"
+version = "2.2.0"
 requires_python = ">=3.9"
 summary = "A prompt programming language"
 groups = ["default"]
@@ -288,8 +288,8 @@ dependencies = [
     "pydantic",
 ]
 files = [
-    {file = "banks-2.1.1-py3-none-any.whl", hash = "sha256:06e4ee46a0ff2fcdf5f64a5f028a7b7ceb719d5c7b9339f5aa90b24936fbb7f5"},
-    {file = "banks-2.1.1.tar.gz", hash = "sha256:95ec9c8f3c173c9f1c21eb2451ba0e21dda87f1ceb738854fabadb54bc387b86"},
+    {file = "banks-2.2.0-py3-none-any.whl", hash = "sha256:963cd5c85a587b122abde4f4064078def35c50c688c1b9d36f43c92503854e7d"},
+    {file = "banks-2.2.0.tar.gz", hash = "sha256:d1446280ce6e00301e3e952dd754fd8cee23ff277d29ed160994a84d0d7ffe62"},
 ]
 
 [[package]]
@@ -2007,14 +2007,14 @@ files = [
 
 [[package]]
 name = "llama-index-core"
-version = "0.12.46"
+version = "0.12.52.post1"
 requires_python = "<4.0,>=3.9"
 summary = "Interface between LLMs and your data"
 groups = ["default"]
 dependencies = [
     "aiohttp<4,>=3.8.6",
     "aiosqlite",
-    "banks<3,>=2.0.0",
+    "banks<3,>=2.2.0",
     "dataclasses-json",
     "deprecated>=1.2.9.3",
     "dirtyjson<2,>=1.0.8",
@@ -2028,6 +2028,7 @@ dependencies = [
     "nltk>3.8.1",
     "numpy",
     "pillow>=9.0.0",
+    "platformdirs",
     "pydantic>=2.8.0",
     "pyyaml>=6.0.1",
     "requests>=2.31.0",
@@ -2041,8 +2042,8 @@ dependencies = [
     "wrapt",
 ]
 files = [
-    {file = "llama_index_core-0.12.46-py3-none-any.whl", hash = "sha256:320d91a528dbb5679f7c49cc8b0106e6a2c92d376fdf3576cdf827dc33c479e9"},
-    {file = "llama_index_core-0.12.46.tar.gz", hash = "sha256:d95a9a3be9170087aef70671aa5edaa0e200f7ae5d1d0973c3a5b8e1d7bb0eab"},
+    {file = "llama_index_core-0.12.52.post1-py3-none-any.whl", hash = "sha256:3e28d65d238bad8ec5ce372659ae0a3878851c6ba9c9447d6ddb4de138694b1f"},
+    {file = "llama_index_core-0.12.52.post1.tar.gz", hash = "sha256:ac6f447271e5ac4c12e1901373ec4b5ac7814ea33bd1ad3c3c8e9ac9771834ab"},
 ]
 
 [[package]]
