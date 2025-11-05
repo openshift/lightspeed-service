@@ -13,9 +13,6 @@ from ols.utils.config import AppConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-# Track last reconciled quota values to avoid DB updates when quota is unchanged
-_last_reconciled_quotas: dict[str, int] = {}
-
 
 INCREASE_QUOTA_STATEMENT = """
     UPDATE quota_limits
@@ -29,29 +26,6 @@ RESET_QUOTA_STATEMENT = """
        SET available=%s, revoked_at=NOW()
      WHERE subject=%s
        AND revoked_at < NOW() - INTERVAL %s ;
-    """
-
-
-# Reconciliation SQL for user quotas - updates all user rows
-RECONCILE_USER_QUOTA_LIMITS_STATEMENT = """
-    UPDATE quota_limits
-       SET available = available + (%s - quota_limit),
-           quota_limit = %s,
-           updated_at = NOW()
-     WHERE subject = 'u'
-       AND quota_limit != %s
- RETURNING id, quota_limit, available
-    """
-
-# Reconciliation SQL for cluster quotas - updates cluster row
-RECONCILE_CLUSTER_QUOTA_LIMITS_STATEMENT = """
-    UPDATE quota_limits
-       SET available = available + (%s - quota_limit),
-           quota_limit = %s,
-           updated_at = NOW()
-     WHERE subject = 'c'
-       AND quota_limit != %s
- RETURNING id, quota_limit, available
     """
 
 
@@ -85,9 +59,7 @@ def quota_scheduler(config: Optional[QuotaHandlersConfig]) -> bool:
         logger.info("Quota scheduler sync started")
         for name, limiter in config.limiters.limiters.items():
             try:
-                # Reconcile quota limits first to handle config changes
-                reconcile_quota_limits(connection, name, limiter)
-                # Then handle periodic quota revocation
+                # Handle periodic quota revocation
                 quota_revocation(connection, name, limiter)
             except Exception as e:
                 logger.error("Quota scheduler error for '%s': %s", name, e)
@@ -171,88 +143,6 @@ def reset_quota(connection: Any, subject_id: str, reset_to: int, period: str) ->
             ),
         )
         logger.info("Changed %d rows in database", cursor.rowcount)
-
-
-def reconcile_quota_limits(
-    connection: Any, name: str, quota_limiter: LimiterConfig
-) -> None:
-    """Reconcile quota limits with current configuration.
-
-    Updates existing quota records when initial_quota changes while preserving
-    consumed tokens.
-    """
-    if quota_limiter.type is None:
-        logger.warning("Limiter type not set for '%s', skipping reconciliation", name)
-        return
-
-    if quota_limiter.initial_quota is None:
-        logger.debug("No initial quota set for '%s', skipping reconciliation", name)
-        return
-
-    # Check if quota value has changed since last reconciliation, to remove redundant checks
-    new_quota = quota_limiter.initial_quota
-    if name in _last_reconciled_quotas and _last_reconciled_quotas[name] == new_quota:
-        logger.debug("Quota unchanged for '%s' (value=%d), skipping reconciliation", name, new_quota)
-        return
-
-    # Select appropriate SQL based on limiter type
-    if quota_limiter.type == constants.USER_QUOTA_LIMITER:
-        reconcile_sql = RECONCILE_USER_QUOTA_LIMITS_STATEMENT
-    elif quota_limiter.type == constants.CLUSTER_QUOTA_LIMITER:
-        reconcile_sql = RECONCILE_CLUSTER_QUOTA_LIMITS_STATEMENT
-    else:
-        logger.error(
-            "Unknown limiter type '%s' for '%s', skipping reconciliation",
-            quota_limiter.type,
-            name,
-        )
-        return
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                reconcile_sql,
-                (
-                    new_quota,  # used in calculation: available + (new - old)
-                    new_quota,  # new quota_limit value to set
-                    new_quota,  # WHERE quota_limit != ?
-                ),
-            )
-
-            # Process returned rows for logging
-            updated_rows = cursor.fetchall()
-            if updated_rows:
-                for row in updated_rows:
-                    user_id, new_limit, new_available = row
-                    logger.info(
-                        "Reconciled quota for limiter='%s' subject='%s' type='%s': "
-                        "quota_limit=%d, available=%d",
-                        name,
-                        user_id if user_id else "(cluster)",
-                        quota_limiter.type,
-                        new_limit,
-                        new_available,
-                    )
-                logger.info(
-                    "Quota reconciliation complete for '%s': updated %d record(s)",
-                    name,
-                    len(updated_rows),
-                )
-            else:
-                logger.debug(
-                    "No quota updates needed for '%s' "
-                    "(no records or all match current configuration)",
-                    name,
-                )
-
-            # Tracking quota value
-            _last_reconciled_quotas[name] = new_quota
-    except Exception as e:
-        logger.error(
-            "Failed to reconcile quota limits for '%s': %s",
-            name,
-            e,
-        )
 
 
 def get_subject_id(limiter_type: str) -> str:

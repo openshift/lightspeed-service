@@ -411,6 +411,10 @@ def check_tokens_available(
 
     try:
         for quota_limiter in quota_limiters:
+            # Reconcile quota limits with config before checking availability
+            # This ensures config changes take effect immediately on each request
+            if hasattr(quota_limiter, "reconcile_quota_limits"):
+                quota_limiter.reconcile_quota_limits()
             quota_limiter.ensure_available_quota(subject_id=user_id)
     except psycopg2.Error as pg_error:
         message = "Error communicating with quota database backend"
