@@ -49,6 +49,28 @@ class RevokableQuotaLimiter(QuotaLimiter):
          WHERE id=%s and subject=%s
         """
 
+    # Reconciliation SQL for user quotas - updates all user rows
+    RECONCILE_USER_QUOTA_LIMITS = """
+        UPDATE quota_limits
+           SET available = available + (%s - quota_limit),
+               quota_limit = %s,
+               updated_at = NOW()
+         WHERE subject = 'u'
+           AND quota_limit != %s
+     RETURNING id, quota_limit, available
+        """
+
+    # Reconciliation SQL for cluster quotas - updates cluster row
+    RECONCILE_CLUSTER_QUOTA_LIMITS = """
+        UPDATE quota_limits
+           SET available = available + (%s - quota_limit),
+               quota_limit = %s,
+               updated_at = NOW()
+         WHERE subject = 'c'
+           AND quota_limit != %s
+     RETURNING id, quota_limit, available
+        """
+
     def __init__(
         self,
         initial_quota: int,
@@ -61,6 +83,20 @@ class RevokableQuotaLimiter(QuotaLimiter):
         self.initial_quota = initial_quota
         self.increase_by = increase_by
         self.connection_config = connection_config
+
+    def reconcile_quota_limits(self) -> None:
+        """Reconcile quota limits with current configuration.
+
+        Public method to trigger reconciliation after initialization.
+        Should be called after quota limiters are created to ensure
+        database quota limits match OLSConfig after updates.
+        """
+        try:
+            self._reconcile_quota_limits()
+        except Exception as e:
+            logger.warning(
+                "Quota reconciliation failed (will retry on scheduler): %s", e
+            )
 
     @connection
     def available_quota(self, subject_id: str = "") -> int:
@@ -173,3 +209,65 @@ class RevokableQuotaLimiter(QuotaLimiter):
                 ),
             )
             self.connection.commit()
+
+    def _reconcile_quota_limits(self) -> None:
+        """Reconcile quota limits with current configuration.
+
+        Updates existing quota records when initial_quota changes while preserving
+        consumed tokens.
+        """
+        # Select appropriate SQL based on subject type
+        if self.subject_type == "u":
+            reconcile_sql = RevokableQuotaLimiter.RECONCILE_USER_QUOTA_LIMITS
+        elif self.subject_type == "c":
+            reconcile_sql = RevokableQuotaLimiter.RECONCILE_CLUSTER_QUOTA_LIMITS
+        else:
+            logger.error(
+                "Unknown subject type '%s', skipping reconciliation", self.subject_type
+            )
+            return
+
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    reconcile_sql,
+                    (
+                        self.initial_quota,  # used in calculation: available + (new - old)
+                        self.initial_quota,  # new quota_limit to set
+                        self.initial_quota,  # WHERE quota_limit != ?
+                    ),
+                )
+                updated_rows = cursor.fetchall()
+                if updated_rows:
+                    for row in updated_rows:
+                        subject_id, new_limit, new_available = row
+                        logger.info(
+                            "Reconciled quota for subject='%s' type='%s': "
+                            "quota_limit=%d, available=%d",
+                            subject_id if subject_id else "(cluster)",
+                            self.subject_type,
+                            new_limit,
+                            new_available,
+                        )
+                    logger.info(
+                        "Quota reconciliation complete for subject type '%s': "
+                        "updated %d record(s)",
+                        self.subject_type,
+                        len(updated_rows),
+                    )
+                else:
+                    logger.debug(
+                        "No quota updates needed for subject type '%s' "
+                        "(no records or all match current configuration)",
+                        self.subject_type,
+                    )
+
+                self.connection.commit()
+
+        except Exception as e:
+            logger.error(
+                "Failed to reconcile quota limits for subject type '%s': %s",
+                self.subject_type,
+                e,
+            )
+            raise

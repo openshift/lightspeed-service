@@ -83,9 +83,12 @@ class AppConfig:
     def quota_limiters(self) -> list[QuotaLimiter]:
         """Return all quota limiters."""
         if self._quota_limiters is None:
-            self._quota_limiters = QuotaLimiterFactory.quota_limiters(
-                self.ols_config.quota_handlers
-            )
+            if self.ols_config.quota_handlers is not None:
+                self._quota_limiters = QuotaLimiterFactory.quota_limiters(
+                    self.ols_config.quota_handlers
+                )
+            else:
+                self._quota_limiters = []
         return self._quota_limiters
 
     @property
@@ -159,6 +162,10 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+            # reset quota limiters and token usage history to pick up
+            # new configuration values
+            self._quota_limiters = None
+            self._token_usage_history = None
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
