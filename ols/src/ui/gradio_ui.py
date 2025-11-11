@@ -34,7 +34,9 @@ class GradioUI:
         additional_inputs = [use_history, provider, model]
         if config.dev_config.enable_system_prompt_override:
             system_prompt = gr.TextArea(
-                value=prompts.QUERY_SYSTEM_INSTRUCTION, label="System prompt"
+                value=config.ols_config.system_prompt
+                or prompts.QUERY_SYSTEM_INSTRUCTION,
+                label="System prompt",
             )
             additional_inputs.append(system_prompt)
         self.ui = gr.ChatInterface(self.chat_ui, additional_inputs=additional_inputs)
