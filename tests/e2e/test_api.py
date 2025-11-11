@@ -311,10 +311,10 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
 
 
 @pytest.mark.cluster
-def test_user_data_collection():
-    """Test user data collection.
+def test_user_data_export():
+    """Test user data export.
 
-    It is performed by checking the user data collection container logs
+    It is performed by checking the user data export container logs
     for the expected messages in logs.
     A bit of trick is required to check just the logs since the last
     action (as container logs can be influenced by other tests).
