@@ -567,7 +567,9 @@ spec:
     pipelineTaskName: prefetch-dependencies
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 10Gi
+      requests:
+        memory: 10Gi
     pipelineTaskName: build-images
   - computeResources:
       limits:
