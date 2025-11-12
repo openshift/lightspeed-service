@@ -176,7 +176,22 @@ class DocsSummarizer(QueryHelper):
         # Retrieve RAG content
         if rag_retriever:
             retrieved_nodes = rag_retriever.retrieve(query)
+            logger.info("Retrieved %d documents from indexes", len(retrieved_nodes))
+
             retrieved_nodes = reranker.rerank(retrieved_nodes)
+            logger.info("After reranking: %d documents", len(retrieved_nodes))
+
+            # Logging top retrieved candidates with scores
+            for i, node in enumerate(retrieved_nodes[:5]):
+                logger.info(
+                    "Retrieved doc #%d: title='%s', url='%s', index='%s', score=%.4f",
+                    i + 1,
+                    node.metadata.get("title", "unknown"),
+                    node.metadata.get("docs_url", "unknown"),
+                    node.metadata.get("index_origin", "unknown"),
+                    node.get_score(raise_error=False),
+                )
+
             rag_chunks, available_tokens = token_handler.truncate_rag_context(
                 retrieved_nodes, available_tokens
             )

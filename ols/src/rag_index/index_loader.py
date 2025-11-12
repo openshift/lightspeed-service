@@ -62,6 +62,7 @@ def load_llama_index_deps() -> None:
             if not retriever_weights:
                 retriever_weights = [1.0] * len(kwargs["retrievers"])
             self._custom_retriever_weights = retriever_weights
+            self._index_configs = kwargs.get("index_configs", None)
 
         def _simple_fusion(self, results):
             """Override internal method and apply weighted score."""
@@ -72,15 +73,36 @@ def load_llama_index_deps() -> None:
             # Current dynamic weights marginally penalize the score.
             all_nodes = {}
             for i, nodes_with_scores in enumerate(results.values()):
+                # Getting index metadata based on available index configs
+                index_id = ""
+                index_origin = ""
+                if self._index_configs and i < len(self._index_configs):
+                    index_config = self._index_configs[i]
+                    index_id = index_config.product_docs_index_id or ""
+                    index_origin = index_config.product_docs_origin or "default"
+
                 for j, node_with_score in enumerate(nodes_with_scores):
+                    # Add index metadata to node
+                    node_with_score.node.metadata["index_id"] = index_id
+                    node_with_score.node.metadata["index_origin"] = index_origin
+
                     node_index_id = f"{i}_{j}"
                     all_nodes[node_index_id] = node_with_score
                     # weighted_score = node_with_score.score * self._custom_retriever_weights[i]
                     # Uncomment above and delete below, if we decide weights to be set from config.
-                    weighted_score = node_with_score.score * (
+                    original_score = node_with_score.score
+                    weighted_score = original_score * (
                         1 - min(i, SCORE_DILUTION_DEPTH - 1) * SCORE_DILUTION_WEIGHT
                     )
                     all_nodes[node_index_id].score = weighted_score
+
+                    logger.debug(
+                        "Document from index #%d (%s): original_score=%.4f, weighted_score=%.4f",
+                        i,
+                        index_origin or index_id or "unknown",
+                        original_score,
+                        weighted_score,
+                    )
 
             return sorted(
                 all_nodes.values(), key=lambda x: x.score or 0.0, reverse=True
@@ -199,6 +221,19 @@ class IndexLoader:
         ):
             return self._retriever
 
+        # Log index information
+        index_info = [
+            f"{i}: {cfg.product_docs_origin or cfg.product_docs_index_id or 'unknown'}"
+            for i, cfg in enumerate(self._index_config.indexes or [])
+            if cfg is not None
+        ]
+        logger.info(
+            "Creating retriever for %d indexes (similarity_top_k=%d): %s",
+            len(self._indexes),
+            similarity_top_k,
+            index_info,
+        )
+
         # Note: we are using a custom retriever, based on our need
         retriever = QueryFusionRetrieverCustom(
             retrievers=[
@@ -207,6 +242,7 @@ class IndexLoader:
             ],
             similarity_top_k=similarity_top_k,
             retriever_weights=None,  # Setting as None, until this gets added to config
+            index_configs=self._index_config.indexes if self._index_config else None,
             mode="simple",  # Don't modify this as we are adding our own logic
             num_queries=1,  # set this to 1 to disable query generation
             use_async=False,
