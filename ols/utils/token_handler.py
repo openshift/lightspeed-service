@@ -121,12 +121,24 @@ class TokenHandler:
             list of `RagChunk` objects, available tokens after context usage
         """
         rag_chunks = []
+        logger.info(
+            "Processing %d retrieved nodes for RAG context", len(retrieved_nodes)
+        )
 
-        for node in retrieved_nodes:
+        for idx, node in enumerate(retrieved_nodes):
             score = float(node.get_score(raise_error=False))
+            doc_title = node.metadata.get("title", "unknown")
+            doc_url = node.metadata.get("docs_url", "unknown")
+            index_id = node.metadata.get("index_id", "")
+            index_origin = node.metadata.get("index_origin", "")
+
             if score < RAG_SIMILARITY_CUTOFF:
-                logger.debug(
-                    "RAG content similarity score: %f is less than threshold %f.",
+                logger.info(
+                    "Document #%d rejected: '%s' (index: %s) - "
+                    "similarity score %.4f < threshold %.4f",
+                    idx + 1,
+                    doc_title,
+                    index_origin or index_id or "unknown",
                     score,
                     RAG_SIMILARITY_CUTOFF,
                 )
@@ -137,26 +149,53 @@ class TokenHandler:
             tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
             tokens_count += 1  # for new-line char
-            logger.debug("RAG content tokens count: %d.", tokens_count)
+            logger.debug("RAG content tokens count: %d", tokens_count)
 
             available_tokens = min(tokens_count, max_tokens)
-            logger.debug("Available tokens: %d.", tokens_count)
+            logger.debug(
+                "Tokens used for this chunk: %d, remaining budget: %d",
+                available_tokens,
+                max_tokens - available_tokens,
+            )
 
             if available_tokens < MINIMUM_CONTEXT_TOKEN_LIMIT:
-                logger.debug("%d tokens are less than threshold.", available_tokens)
+                logger.info(
+                    "Document #%d rejected: '%s' (index: %s) - "
+                    "insufficient tokens (%d < %d minimum)",
+                    idx + 1,
+                    doc_title,
+                    index_origin or index_id or "unknown",
+                    available_tokens,
+                    MINIMUM_CONTEXT_TOKEN_LIMIT,
+                )
                 break
+
+            logger.info(
+                "Document #%d selected: title='%s', url='%s', index='%s', "
+                "score=%.4f, tokens=%d, remaining_context=%d",
+                idx + 1,
+                doc_title,
+                doc_url,
+                index_origin or index_id or "unknown",
+                score,
+                available_tokens,
+                max_tokens - available_tokens,
+            )
 
             node_text = self.tokens_to_text(tokens[:available_tokens])
             rag_chunks.append(
                 RagChunk(
                     text=node_text,
-                    doc_url=node.metadata.get("docs_url", ""),
-                    doc_title=node.metadata.get("title", ""),
+                    doc_url=doc_url,
+                    doc_title=doc_title,
                 )
             )
 
             max_tokens -= available_tokens
 
+        logger.info(
+            "Final selection: %d documents chosen for RAG context", len(rag_chunks)
+        )
         return rag_chunks, max_tokens
 
     def limit_conversation_history(
