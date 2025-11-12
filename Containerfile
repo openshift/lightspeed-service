@@ -52,7 +52,13 @@ COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 COPY runner.py requirements.txt ./
 
 RUN pip3.11 install --upgrade pip
-RUN for a in 1 2 3 4 5; do pip3.11 install --no-cache-dir -r requirements.txt && break || sleep 15; done
+RUN pip3.11 install --no-cache-dir -r requirements.txt
+
+# Verify all dependencies are installed correctly
+RUN echo "Verifying dependencies installation..." && \
+    pip3.11 check && \
+    python3.11 -c "import yaml, fastapi, langchain, llama_index, uvicorn, pydantic" && \
+    echo "All dependencies installed and verified successfully!"
 
 COPY ols ./ols
 COPY mcp_local ./mcp_local
