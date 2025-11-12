@@ -1,4 +1,4 @@
-# OpenShift LightSpeed Service - Development Guide for Claude
+# OpenShift LightSpeed Service - Development Guide for AI
 
 ## Project Overview
 OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift built with FastAPI, LangChain, and LlamaIndex. It provides AI responses to OpenShift/Kubernetes questions using various LLM backends.
@@ -40,6 +40,9 @@ ols/
 │   ├── cache/     # Conversation caching (memory, postgres)
 │   ├── llms/      # LLM providers and loading
 │   ├── query_helpers/ # Query processing utilities
+│   ├── mcp/       # Model Context Protocol support
+│   ├── quota/     # Quota management
+│   ├── rag_index/ # RAG indexing
 │   └── utils/     # Shared utilities
 ├── constants.py   # Global constants
 └── utils/         # Configuration and utilities
@@ -76,9 +79,10 @@ make coverage-report   # Generate HTML coverage report
 ## Configuration Patterns
 
 ### Config Structure
-- **YAML-based** - Primary config in `olsconfig.yaml`
+- **YAML-based** - Config file `olsconfig.yaml` (user-specific, contains secrets, not in repo)
+- **Config Location** - Use `OLS_CONFIG_FILE` env var to specify path, or ask user for location
+- **Examples** - See `examples/olsconfig.yaml` and `scripts/olsconfig.yaml` for templates
 - **Pydantic Models** - All config classes in `ols/app/models/config.py`
-- **Environment Variables** - `OLS_CONFIG_FILE` for config path
 - **Validation** - Extensive validation with custom validators
 
 ### Provider Configuration
@@ -132,12 +136,22 @@ make security-check   # Bandit security scan
 ## Common Patterns
 
 ### Error Handling
+Custom exceptions are defined in their respective domain modules. Common patterns:
 ```python
-from ols.utils.errors import SomeCustomError
+# Cache errors
+from ols.src.cache.cache_error import CacheError
 
-def validate_something(data: str) -> None:
-    if not data:
-        raise SomeCustomError("Validation failed")
+# Quota errors
+from ols.src.quota.quota_exceed_error import QuotaExceedError
+
+# LLM configuration errors
+from ols.src.llms.llm_loader import LLMConfigurationError
+
+# Token/prompt errors
+from ols.utils.token_handler import PromptTooLongError
+
+# General config errors
+from ols.utils.checks import InvalidConfigurationError
 ```
 
 ### Configuration Classes
@@ -179,5 +193,22 @@ def test_function(mock_dep):
 - Validate all inputs with Pydantic
 - Use TLS for all external communications
 - Follow principle of least privilege
+
+## Maintaining This Guide
+
+This document is automatically loaded by AI assistants working on this project. Keep it focused on **patterns, conventions, and architectural decisions** rather than implementation details.
+
+### When to Update AGENTS.md
+- **Architectural changes** - New provider types, authentication methods, caching strategies
+- **Pattern changes** - Modified configuration approaches, testing patterns, error handling
+- **New conventions** - Tool changes, library migrations, new standards
+- **Repeated AI mistakes** - If AI assistants consistently miss patterns, document them
+- **Major refactors** - Directory restructuring, module reorganization
+
+### When NOT to Update
+- Individual function implementations
+- Bug fixes that don't change patterns
+- Routine feature additions using existing patterns
+- Minor code changes
 
 Run `make help` to see all available commands.
