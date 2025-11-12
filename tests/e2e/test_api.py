@@ -486,7 +486,6 @@ def test_generated_service_certs_rotation():
     assert response.status_code == requests.codes.ok
 
 
-@pytest.mark.skip(reason="Unblocking until OLS-1775")
 @pytest.mark.certificates
 def test_ca_service_certs_rotation():
     """Verify OLS responds after ca certificate rotation."""
