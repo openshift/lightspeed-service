@@ -78,8 +78,9 @@ def load_llama_index_deps() -> None:
                 index_origin = ""
                 if self._index_configs and i < len(self._index_configs):
                     index_config = self._index_configs[i]
-                    index_id = index_config.product_docs_index_id or ""
-                    index_origin = index_config.product_docs_origin or "default"
+                    if index_config is not None:
+                        index_id = index_config.product_docs_index_id or ""
+                        index_origin = index_config.product_docs_origin or "default"
 
                 for j, node_with_score in enumerate(nodes_with_scores):
                     # Add index metadata to node
@@ -224,7 +225,7 @@ class IndexLoader:
         # Log index information
         index_info = [
             f"{i}: {cfg.product_docs_origin or cfg.product_docs_index_id or 'unknown'}"
-            for i, cfg in enumerate(self._index_config.indexes or [])
+            for i, cfg in enumerate(self._index_config.indexes if self._index_config else [])
             if cfg is not None
         ]
         logger.info(
