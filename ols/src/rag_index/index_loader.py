@@ -225,7 +225,9 @@ class IndexLoader:
         # Log index information
         index_info = [
             f"{i}: {cfg.product_docs_origin or cfg.product_docs_index_id or 'unknown'}"
-            for i, cfg in enumerate(self._index_config.indexes if self._index_config else [])
+            for i, cfg in enumerate(
+                self._index_config.indexes if self._index_config else []
+            )
             if cfg is not None
         ]
         logger.info(
