@@ -52,7 +52,7 @@ COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
 COPY runner.py requirements.txt ./
 
 RUN pip3.11 install --upgrade pip
-RUN pip3.11 install --no-cache-dir -r requirements.txt
+RUN pip3.11 install --no-cache-dir --ignore-installed -r requirements.txt
 
 # Verify all dependencies are installed correctly
 RUN echo "Verifying dependencies installation..." && \
