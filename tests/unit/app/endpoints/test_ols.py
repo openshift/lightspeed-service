@@ -1047,8 +1047,24 @@ def test_store_transcript(transcripts_location):
         "query_is_valid": query_is_valid,
         "llm_response": response,
         "rag_chunks": [
-            {"text": "text1", "doc_url": "url1", "doc_title": "title1"},
-            {"text": "text2", "doc_url": "url2", "doc_title": "title2"},
+            {
+                "text": "text1",
+                "doc_url": "url1",
+                "doc_title": "title1",
+                "index_id": "",
+                "index_origin": "",
+                "similarity_score": 0.0,
+                "token_count": 0,
+            },
+            {
+                "text": "text2",
+                "doc_url": "url2",
+                "doc_title": "title2",
+                "index_id": "",
+                "index_origin": "",
+                "similarity_score": 0.0,
+                "token_count": 0,
+            },
         ],
         "truncated": truncated,
         "tool_calls": [

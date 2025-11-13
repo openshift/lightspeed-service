@@ -553,11 +553,19 @@ class RagChunk:
         text: The text used as a RAG chunk.
         doc_url: The URL of the doc from which the RAG chunk comes from.
         doc_title: The title of the doc.
+        index_id: The ID of the index from which this chunk was retrieved.
+        index_origin: The origin/source of the index (e.g., BYOK, default).
+        similarity_score: The similarity score of this chunk.
+        token_count: The number of tokens in this chunk.
     """
 
     text: str
     doc_url: str
     doc_title: str
+    index_id: str = ""
+    index_origin: str = ""
+    similarity_score: float = 0.0
+    token_count: int = 0
 
 
 @dataclass
