@@ -10,7 +10,7 @@ import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
+from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -73,15 +73,6 @@ def update_ols_configmap() -> None:
             "feedback_storage": "/app-root/ols-user-data/feedback",
             "transcripts_disabled": False,
             "transcripts_storage": "/app-root/ols-user-data/transcripts",
-        }
-
-        olsconfig["user_data_collector_config"] = {
-            "data_storage": "/app-root/ols-user-data",
-            "log_level": "debug",
-            "collection_interval": 10,
-            "run_without_initial_wait": True,
-            "ingress_env": "stage",
-            "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
         }
 
         # Update the configmap
@@ -392,15 +383,18 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
     except Exception as e:
         print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
-    # Disable data collector to avoid interference with tests
-    # Note: OLS will create the required directories automatically when it starts
+    # Configure exporter for e2e tests with proper settings
     try:
-        pod_name = cluster_utils.get_pod_by_prefix()[0]
-        print(f"Disabling data collector on pod: {pod_name}")
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
-        print("Data collector disabled successfully")
+        print("Configuring exporter for e2e tests...")
+        configure_exporter_for_e2e_tests(
+            interval_seconds=3600,  # 1 hour to prevent interference
+            ingress_env="stage",
+            log_level="debug",
+            data_dir="/app-root/ols-user-data",
+        )
+        print("Exporter configured successfully")
     except Exception as e:
-        print(f"Warning: Could not disable collector: {e}")
+        print(f"Warning: Could not configure exporter: {e}")
         print("Tests may experience interference from data collector")
 
     # Fetch tokens for service accounts
