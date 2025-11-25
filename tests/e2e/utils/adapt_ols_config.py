@@ -320,7 +320,8 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
     if ols_image:
         print(f"Applying test image: {ols_image}")
         try:
-            # Patch both containers (api and collector)
+            # Patch only the lightspeed-service-api container (containers/0)
+            # Do NOT patch containers/1 (lightspeed-to-dataverse-exporter) as it uses a different image
             patch = (
                 f'[{{"op": "replace", "path": "/spec/template/spec/'
                 f'containers/0/image", "value": "{ols_image}"}}]'
@@ -335,26 +336,6 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
                     patch,
                 ]
             )
-
-            # Check if there's a second container and patch it too
-            try:
-                patch = (
-                    f'[{{"op": "replace", "path": "/spec/template/spec/'
-                    f'containers/1/image", "value": "{ols_image}"}}]'
-                )
-                cluster_utils.run_oc(
-                    [
-                        "patch",
-                        "deployment/lightspeed-app-server",
-                        "--type",
-                        "json",
-                        "-p",
-                        patch,
-                    ]
-                )
-            except Exception as e:
-                # Second container might not exist
-                print(f"Note: Could not patch second container: {e}")
 
             print("Image configuration completed")
         except Exception as e:
