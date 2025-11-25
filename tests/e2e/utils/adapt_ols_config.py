@@ -198,7 +198,7 @@ def setup_route() -> str:
     return f"https://{url}"
 
 
-def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0915
+def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     """Adapt OLS configuration for different providers dynamically.
 
     Ensures RBAC, service accounts, and OLS route exist for test execution.
@@ -321,7 +321,8 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
         print(f"Applying test image: {ols_image}")
         try:
             # Patch only the lightspeed-service-api container (containers/0)
-            # Do NOT patch containers/1 (lightspeed-to-dataverse-exporter) as it uses a different image
+            # Do NOT patch containers/1 (lightspeed-to-dataverse-exporter)
+            # as it uses a different image
             patch = (
                 f'[{{"op": "replace", "path": "/spec/template/spec/'
                 f'containers/0/image", "value": "{ols_image}"}}]'

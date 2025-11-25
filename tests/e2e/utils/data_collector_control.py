@@ -4,11 +4,13 @@ This module provides methods to configure the lightspeed-to-dataverse-exporter
 for testing purposes.
 """
 
+import os
 import time
 
 import yaml
 
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_USER_DATA_PATH
 
 # Exporter config map constants
 EXPORTER_CONFIG_MAP_NAME = "lightspeed-exporter-config"
@@ -34,8 +36,6 @@ class DataCollectorControl:
         This removes all data that would be collected, effectively
         disabling collection for the current cycle.
         """
-        from tests.e2e.utils.constants import OLS_USER_DATA_PATH
-
         try:
             cluster_utils.remove_dir(self.pod_name, f"{OLS_USER_DATA_PATH}/feedback")
             cluster_utils.remove_dir(self.pod_name, f"{OLS_USER_DATA_PATH}/transcripts")
@@ -185,8 +185,6 @@ def configure_exporter_for_e2e_tests(
         log_level: Log level (default: "debug").
         data_dir: Data directory path (default: "/app-root/ols-user-data").
     """
-    import os
-
     controller = DataCollectorControl()
 
     # Determine ingress URL based on environment
