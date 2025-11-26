@@ -63,7 +63,7 @@ class DataCollectorControl:
         Note: This requires container restart to take effect.
         """
         try:
-            # Get the current config map
+            # Get the current config map (created by operator)
             result = cluster_utils.run_oc(
                 [
                     "get",
@@ -122,26 +122,63 @@ class DataCollectorControl:
         Args:
             interval_seconds: Collection interval in seconds.
 
-        Note: This requires container restart to take effect.
+        Note: This requires deployment restart to take effect.
         """
+        # Scale down deployment first
+        print("Scaling down deployment before ConfigMap update...")
+        cluster_utils.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-app-server",
+                "-n",
+                EXPORTER_NAMESPACE,
+                "--replicas=0",
+            ]
+        )
+        
+        # Wait for pod to terminate
+        print("Waiting for pod to terminate...")
+        max_wait = 30
+        start_time = time.time()
+        while time.time() - start_time < max_wait:
+            try:
+                pods = cluster_utils.get_pod_by_prefix(fail_not_found=False)
+                if not pods:
+                    print("Pod terminated successfully")
+                    break
+            except Exception:
+                break
+            time.sleep(2)
+        
+        # Now update the ConfigMap
         self.update_exporter_config(collection_interval=interval_seconds)
+        
+        # Wait a moment for ConfigMap update to propagate
+        print("Waiting for ConfigMap changes to propagate...")
+        time.sleep(2)
 
     def restart_exporter_container(
         self, container_name: str = "lightspeed-to-dataverse-exporter"
     ) -> None:
-        """Restart the exporter container by deleting the pod.
+        """Restart the exporter by scaling deployment back up.
 
-        The deployment controller will recreate the pod with the new config.
+        The deployment controller will create a new pod with the updated config.
 
         Args:
             container_name: Name of the exporter container (for verification).
         """
         try:
-            print(f"Restarting pod {self.pod_name} to apply config changes...")
+            print("Scaling deployment back up...")
             cluster_utils.run_oc(
-                ["delete", "pod", self.pod_name, "-n", EXPORTER_NAMESPACE]
+                [
+                    "scale",
+                    "deployment/lightspeed-app-server",
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--replicas=1",
+                ]
             )
-            print("Pod deleted, waiting for new pod to start...")
+            print("Waiting for new pod to start...")
             time.sleep(5)
 
             # Wait for new pod to be ready
@@ -158,6 +195,13 @@ class DataCollectorControl:
                     if pod_info.get("status", {}).get("phase") == "Running":
                         self.pod_name = new_pod
                         print(f"New pod {new_pod} is ready")
+                        
+                        # Wait additional time for container to fully initialize
+                        print("Waiting for exporter container to initialize...")
+                        time.sleep(5)
+                        
+                        # Verify the config was picked up by checking the logs
+                        self._verify_config_applied(new_pod, container_name)
                         return
                 except Exception as e:
                     print(f"Waiting for pod... ({e})")
@@ -167,6 +211,38 @@ class DataCollectorControl:
         except Exception as e:
             print(f"Warning: Could not restart container: {e}")
             raise
+
+    def _verify_config_applied(self, pod_name: str, container_name: str) -> None:
+        """Verify the exporter picked up the new configuration.
+
+        Args:
+            pod_name: Name of the pod.
+            container_name: Name of the exporter container.
+        """
+        try:
+            # Get container logs to verify config
+            log_result = cluster_utils.run_oc(
+                [
+                    "logs",
+                    pod_name,
+                    "-c",
+                    container_name,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--tail=50",
+                ]
+            )
+            logs = log_result.stdout
+            
+            # Look for collection interval in logs
+            for line in logs.split("\n"):
+                if "Collection interval:" in line:
+                    print(f"Config verification: {line}")
+                    return
+            
+            print("Warning: Could not verify collection interval in logs")
+        except Exception as e:
+            print(f"Warning: Could not verify config from logs: {e}")
 
 
 def configure_exporter_for_e2e_tests(
@@ -236,9 +312,11 @@ def prepare_for_data_collection_test(
     # Restart exporter to apply new config
     controller.restart_exporter_container()
 
-    # Wait a bit for the container to fully start
-    print("Waiting for exporter to start with new config...")
-    time.sleep(5)
+    # Wait for first collection cycle with new interval to complete
+    # This ensures the exporter is fully operational with the new config
+    wait_time = short_interval_seconds + 3
+    print(f"Waiting {wait_time}s for first collection cycle to complete...")
+    time.sleep(wait_time)
 
     return controller
 
