@@ -161,9 +161,14 @@ def replace_ols_image(ols_image: str) -> None:
     )
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
-    # Only patch containers/0 (lightspeed-service-api)
-    # Do NOT patch containers/1 (lightspeed-to-dataverse-exporter) as it uses a different image
     patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
+    cluster_utils.run_oc(
+        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+    )
+
+    # Patch the exporter container with specific exporter image for testing
+    exporter_image = "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-to-dataverse-exporter:d27b131e911961cc14d7ddb45ee1789d7c7c3371"
+    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{exporter_image}"}}]"""  # noqa: E501
     cluster_utils.run_oc(
         ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
     )
