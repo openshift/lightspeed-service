@@ -122,9 +122,27 @@ class DataCollectorControl:
         Args:
             interval_seconds: Collection interval in seconds.
 
-        Note: This requires deployment restart to take effect.
+        Note: This requires operator and deployment restart to take effect.
         """
-        # Scale down deployment first
+        # Scale down operator to prevent ConfigMap reconciliation
+        print("Scaling down operator to prevent ConfigMap reconciliation...")
+        try:
+            cluster_utils.run_oc(
+                [
+                    "scale",
+                    "deployment/lightspeed-operator-controller-manager",
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--replicas=0",
+                ]
+            )
+            print("Operator scaled down")
+        except Exception as e:
+            print(f"Warning: Could not scale down operator: {e}")
+        
+        time.sleep(3)
+        
+        # Scale down deployment
         print("Scaling down deployment before ConfigMap update...")
         cluster_utils.run_oc(
             [
@@ -150,7 +168,7 @@ class DataCollectorControl:
                 break
             time.sleep(2)
         
-        # Now update the ConfigMap
+        # Now update the ConfigMap (operator won't reconcile it back)
         self.update_exporter_config(collection_interval=interval_seconds)
         
         # Wait a moment for ConfigMap update to propagate
@@ -326,13 +344,57 @@ def cleanup_after_data_collection_test(
 ) -> None:
     """Clean up after data collection test.
 
-    Restores a long collection interval to prevent interference with other tests.
+    Restores a long collection interval and brings back the operator.
 
     Args:
         controller: DataCollectorControl instance from prepare_for_data_collection_test.
         restore_interval_seconds: Interval to restore (default: 3600s = 1 hour).
     """
     print(f"Restoring collection interval to {restore_interval_seconds}s...")
-    controller.set_exporter_collection_interval(restore_interval_seconds)
-    controller.restart_exporter_container()
+    
+    # Scale down deployment
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "-n",
+            EXPORTER_NAMESPACE,
+            "--replicas=0",
+        ]
+    )
+    time.sleep(3)
+    
+    # Restore the ConfigMap
+    controller.update_exporter_config(collection_interval=restore_interval_seconds)
+    time.sleep(2)
+    
+    # Scale up deployment
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "-n",
+            EXPORTER_NAMESPACE,
+            "--replicas=1",
+        ]
+    )
+    
+    # Scale operator back up so it can manage resources
+    print("Scaling operator back up...")
+    try:
+        cluster_utils.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-operator-controller-manager",
+                "-n",
+                EXPORTER_NAMESPACE,
+                "--replicas=1",
+            ]
+        )
+        print("Operator scaled back up")
+    except Exception as e:
+        print(f"Warning: Could not scale up operator: {e}")
+    
+    # Wait for pod to be ready
+    time.sleep(10)
     print("Data collection test cleanup complete")
