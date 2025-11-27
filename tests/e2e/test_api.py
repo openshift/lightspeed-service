@@ -348,7 +348,7 @@ def test_user_data_collection():
         )
         last_log_line = get_last_log_line(container_log)
 
-        # Wait another cycle to verify no data is collected (directory is empty)
+        # Wait another cycle to verify exporter ran but found no data (directory is empty)
         time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL_SHORT + 1)
 
         container_log = cluster_utils.get_container_log(
@@ -356,8 +356,8 @@ def test_user_data_collection():
         )
         logs = filter_logs(container_log, last_log_line)
 
-        # Verify no data collected
-        assert "No data marked for collection in" not in logs
+        # Verify exporter ran and found no data to collect
+        assert "No data marked for collection in" in logs
         assert "Uploading data chunk" not in logs
 
         # Get log point for next check

@@ -122,27 +122,10 @@ class DataCollectorControl:
         Args:
             interval_seconds: Collection interval in seconds.
 
-        Note: This requires operator and deployment restart to take effect.
+        Note: This requires deployment restart to take effect.
+              The operator does NOT reconcile the exporter ConfigMap if it exists.
         """
-        # Scale down operator to prevent ConfigMap reconciliation
-        print("Scaling down operator to prevent ConfigMap reconciliation...")
-        try:
-            cluster_utils.run_oc(
-                [
-                    "scale",
-                    "deployment/lightspeed-operator-controller-manager",
-                    "-n",
-                    EXPORTER_NAMESPACE,
-                    "--replicas=0",
-                ]
-            )
-            print("Operator scaled down")
-        except Exception as e:
-            print(f"Warning: Could not scale down operator: {e}")
-        
-        time.sleep(3)
-        
-        # Scale down deployment
+        # Scale down deployment first to ensure clean restart
         print("Scaling down deployment before ConfigMap update...")
         cluster_utils.run_oc(
             [
@@ -154,9 +137,9 @@ class DataCollectorControl:
             ]
         )
         
-        # Wait for pod to terminate
+        # Wait for pod to terminate completely
         print("Waiting for pod to terminate...")
-        max_wait = 30
+        max_wait = 60
         start_time = time.time()
         while time.time() - start_time < max_wait:
             try:
@@ -165,15 +148,21 @@ class DataCollectorControl:
                     print("Pod terminated successfully")
                     break
             except Exception:
+                print("Pod terminated (exception during check)")
                 break
             time.sleep(2)
         
-        # Now update the ConfigMap (operator won't reconcile it back)
+        # Extra wait to ensure pod is fully gone
+        time.sleep(3)
+        
+        # Now update the ConfigMap
+        # Note: The operator does NOT reconcile the exporter ConfigMap if it already exists
+        print(f"Updating ConfigMap with collection_interval={interval_seconds}...")
         self.update_exporter_config(collection_interval=interval_seconds)
         
-        # Wait a moment for ConfigMap update to propagate
+        # Wait for ConfigMap update to fully propagate in etcd
         print("Waiting for ConfigMap changes to propagate...")
-        time.sleep(2)
+        time.sleep(5)
 
     def restart_exporter_container(
         self, container_name: str = "lightspeed-to-dataverse-exporter"
@@ -344,7 +333,7 @@ def cleanup_after_data_collection_test(
 ) -> None:
     """Clean up after data collection test.
 
-    Restores a long collection interval and brings back the operator.
+    Restores a long collection interval.
 
     Args:
         controller: DataCollectorControl instance from prepare_for_data_collection_test.
@@ -362,11 +351,11 @@ def cleanup_after_data_collection_test(
             "--replicas=0",
         ]
     )
-    time.sleep(3)
+    time.sleep(5)
     
     # Restore the ConfigMap
     controller.update_exporter_config(collection_interval=restore_interval_seconds)
-    time.sleep(2)
+    time.sleep(3)
     
     # Scale up deployment
     cluster_utils.run_oc(
@@ -378,22 +367,6 @@ def cleanup_after_data_collection_test(
             "--replicas=1",
         ]
     )
-    
-    # Scale operator back up so it can manage resources
-    print("Scaling operator back up...")
-    try:
-        cluster_utils.run_oc(
-            [
-                "scale",
-                "deployment/lightspeed-operator-controller-manager",
-                "-n",
-                EXPORTER_NAMESPACE,
-                "--replicas=1",
-            ]
-        )
-        print("Operator scaled back up")
-    except Exception as e:
-        print(f"Warning: Could not scale up operator: {e}")
     
     # Wait for pod to be ready
     time.sleep(10)
