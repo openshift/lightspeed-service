@@ -336,28 +336,6 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
                 ]
             )
 
-            # Patch the exporter container (containers/1) with specific exporter image
-            try:
-                exporter_image = "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-to-dataverse-exporter:d27b131e911961cc14d7ddb45ee1789d7c7c3371"
-                patch = (
-                    f'[{{"op": "replace", "path": "/spec/template/spec/'
-                    f'containers/1/image", "value": "{exporter_image}"}}]'
-                )
-                cluster_utils.run_oc(
-                    [
-                        "patch",
-                        "deployment/lightspeed-app-server",
-                        "--type",
-                        "json",
-                        "-p",
-                        patch,
-                    ]
-                )
-                print(f"Exporter image set to: {exporter_image}")
-            except Exception as e:
-                # Second container might not exist
-                print(f"Note: Could not patch second container: {e}")
-
             print("Image configuration completed")
         except Exception as e:
             print(f" Warning: Could not apply test image: {e}")

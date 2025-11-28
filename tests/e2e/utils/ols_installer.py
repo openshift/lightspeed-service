@@ -166,13 +166,6 @@ def replace_ols_image(ols_image: str) -> None:
         ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
     )
 
-    # Patch the exporter container with specific exporter image for testing
-    exporter_image = "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/lightspeed-to-dataverse-exporter:d27b131e911961cc14d7ddb45ee1789d7c7c3371"
-    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{exporter_image}"}}]"""  # noqa: E501
-    cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-    )
-
 
 def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
     """Create secrets for models.
