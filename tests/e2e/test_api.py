@@ -346,6 +346,8 @@ def test_user_data_collection():
         container_log = cluster_utils.get_container_log(
             pod_name, data_collection_container_name
         )
+        # Print full startup logs for debugging in CI
+        print(f"\n=== Full exporter container log (startup) ===\n{container_log}\n")
         last_log_line = get_last_log_line(container_log)
 
         # Wait another cycle to verify exporter ran but found no data (directory is empty)
@@ -355,6 +357,9 @@ def test_user_data_collection():
             pod_name, data_collection_container_name
         )
         logs = filter_logs(container_log, last_log_line)
+
+        # Print logs for debugging in CI
+        print(f"\n=== Exporter logs after first cycle (expecting no data) ===\n{logs}\n")
 
         # Verify exporter ran and found no data to collect
         assert "No data marked for collection in" in logs
@@ -385,10 +390,15 @@ def test_user_data_collection():
         )
         logs = filter_logs(container_log, last_log_line)
 
-        # Update these assertions based on actual exporter log format
-        assert "Collected 1 files" in logs
-        assert "Uploading data chunk" in logs
-        assert "Data uploaded with request_id:" in logs
+        # Print full logs for debugging in CI
+        print(f"\n=== Exporter logs after data creation (expecting upload) ===\n{logs}\n")
+
+        # Verify data was collected and upload was attempted
+        assert "Collected 1 files" in logs, f"Expected 'Collected 1 files' in logs"
+        assert "Uploading data chunk" in logs, f"Expected 'Uploading data chunk' in logs"
+        assert "Data uploaded with request_id:" in logs, (
+            f"Expected 'Data uploaded with request_id:' in logs"
+        )
 
         # Verify data was cleaned up
         user_data = cluster_utils.list_path(pod_name, f"{OLS_USER_DATA_PATH}/feedback/")
