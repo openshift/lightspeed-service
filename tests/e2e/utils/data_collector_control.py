@@ -362,7 +362,8 @@ def prepare_for_data_collection_test(
     This function:
     1. Clears existing data directories
     2. Sets a short collection interval for fast testing
-    3. Restarts the exporter container to apply changes
+    3. Configures ingress URL for stage environment
+    4. Restarts the exporter container to apply changes
 
     Args:
         short_interval_seconds: Short collection interval for testing (default: 10s).
@@ -376,9 +377,13 @@ def prepare_for_data_collection_test(
     print("Clearing data directories before test...")
     controller.clear_data_directory()
 
-    # Set short collection interval for testing
+    # Set short collection interval and stage ingress URL for testing
+    # The token is already in the ConfigMap from the operator
+    stage_ingress_url = "https://console.stage.redhat.com/api/ingress/v1/upload"
     print(f"Setting collection interval to {short_interval_seconds}s for testing...")
+    print(f"Setting ingress URL to stage: {stage_ingress_url}")
     controller.set_exporter_collection_interval(short_interval_seconds)
+    controller.update_exporter_config(ingress_server_url=stage_ingress_url)
 
     # Restart exporter to apply new config
     controller.restart_exporter_container()
