@@ -251,7 +251,7 @@ class DataCollectorControl:
                     if pod_info.get("status", {}).get("phase") == "Running":
                         self.pod_name = new_pod
                         print(f"New pod {new_pod} is ready")
-                        
+
                         # Verify the exporter config was picked up
                         self._verify_config_applied(
                             new_pod, container_name, self._expected_interval
@@ -306,9 +306,13 @@ class DataCollectorControl:
                     if expected_interval is not None:
                         expected_str = f"{expected_interval} seconds"
                         if expected_str in line:
-                            print(f"✓ Collection interval matches expected: {expected_interval}s")
+                            print(
+                                f"✓ Collection interval matches expected: {expected_interval}s"
+                            )
                         else:
-                            print(f"✗ WARNING: Expected {expected_interval}s but got: {line}")
+                            print(
+                                f"✗ WARNING: Expected {expected_interval}s but got: {line}"
+                            )
                     return
 
             print("Warning: Could not verify collection interval in logs")
@@ -377,13 +381,22 @@ def prepare_for_data_collection_test(
     print("Clearing data directories before test...")
     controller.clear_data_directory()
 
-    # Set short collection interval and stage ingress URL for testing
-    # The token is already in the ConfigMap from the operator
+    # Set short collection interval, stage ingress URL, and token for testing
     stage_ingress_url = "https://console.stage.redhat.com/api/ingress/v1/upload"
+    cp_offline_token = os.getenv("CP_OFFLINE_TOKEN", "")
+
     print(f"Setting collection interval to {short_interval_seconds}s for testing...")
     print(f"Setting ingress URL to stage: {stage_ingress_url}")
+    if cp_offline_token:
+        print("Setting ingress auth token from CP_OFFLINE_TOKEN env var")
+    else:
+        print("Warning: CP_OFFLINE_TOKEN not set, upload will fail with 401")
+
     controller.set_exporter_collection_interval(short_interval_seconds)
-    controller.update_exporter_config(ingress_server_url=stage_ingress_url)
+    controller.update_exporter_config(
+        ingress_server_url=stage_ingress_url,
+        ingress_server_auth_token=cp_offline_token if cp_offline_token else None,
+    )
 
     # Restart exporter to apply new config
     controller.restart_exporter_container()
@@ -409,7 +422,7 @@ def cleanup_after_data_collection_test(
         restore_interval_seconds: Interval to restore (default: 3600s = 1 hour).
     """
     print(f"Restoring collection interval to {restore_interval_seconds}s...")
-    
+
     # Scale down deployment
     cluster_utils.run_oc(
         [
@@ -421,11 +434,11 @@ def cleanup_after_data_collection_test(
         ]
     )
     time.sleep(5)
-    
+
     # Restore the ConfigMap
     controller.update_exporter_config(collection_interval=restore_interval_seconds)
     time.sleep(3)
-    
+
     # Scale up deployment
     cluster_utils.run_oc(
         [
@@ -436,7 +449,7 @@ def cleanup_after_data_collection_test(
             "--replicas=1",
         ]
     )
-    
+
     # Wait for pod to be ready
     time.sleep(10)
     print("Data collection test cleanup complete")
