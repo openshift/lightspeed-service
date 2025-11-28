@@ -6,6 +6,7 @@ for testing purposes.
 
 import json
 import os
+import re
 import time
 
 import yaml
@@ -84,11 +85,11 @@ class DataCollectorControl:
             if self._original_exporter_config is None:
                 self._original_exporter_config = configmap.copy()
 
-            # Parse the exporter config
+            # Get the raw config string - we use string manipulation to preserve
+            # sensitive values like auth tokens that might be corrupted by YAML round-trip
             exporter_config_str = configmap["data"][EXPORTER_CONFIG_FILENAME]
-            exporter_config = yaml.safe_load(exporter_config_str)
 
-            # Update fields if provided
+            # Use regex-based updates to avoid YAML round-trip corruption of tokens
             updates = {
                 "collection_interval": collection_interval,
                 "ingress_server_url": ingress_server_url,
@@ -96,17 +97,27 @@ class DataCollectorControl:
                 "ingress_server_auth_token": ingress_server_auth_token,
                 "log_level": log_level,
             }
+
             for key, value in updates.items():
                 if value is not None:
-                    exporter_config[key] = value
-
-            # Update the config map data
-            configmap["data"][EXPORTER_CONFIG_FILENAME] = yaml.dump(exporter_config)
+                    # Match the key followed by colon and any value until end of line
+                    pattern = rf"^({re.escape(key)}:\s*).*$"
+                    replacement = rf"\g<1>{value}"
+                    new_config = re.sub(
+                        pattern, replacement, exporter_config_str, flags=re.MULTILINE
+                    )
+                    if new_config != exporter_config_str:
+                        exporter_config_str = new_config
+                    else:
+                        # Key not found, append it
+                        exporter_config_str = (
+                            exporter_config_str.rstrip() + f"\n{key}: {value}\n"
+                        )
 
             # Use oc patch instead of apply to avoid metadata conflicts
             # This directly patches the data field without touching metadata
             patch_data = json.dumps(
-                {"data": {EXPORTER_CONFIG_FILENAME: configmap["data"][EXPORTER_CONFIG_FILENAME]}}
+                {"data": {EXPORTER_CONFIG_FILENAME: exporter_config_str}}
             )
             result = cluster_utils.run_oc(
                 [
