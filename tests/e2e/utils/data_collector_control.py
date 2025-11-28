@@ -4,6 +4,7 @@ This module provides methods to configure the lightspeed-to-dataverse-exporter
 for testing purposes.
 """
 
+import json
 import os
 import time
 
@@ -29,6 +30,7 @@ class DataCollectorControl:
         """
         self.pod_name = pod_name or cluster_utils.get_pod_by_prefix()[0]
         self._original_exporter_config: dict | None = None
+        self._expected_interval: int | None = None
 
     def clear_data_directory(self) -> None:
         """Clear the data directory to prevent collection.
@@ -97,10 +99,42 @@ class DataCollectorControl:
                 if value is not None:
                     exporter_config[key] = value
 
-            # Update the config map
+            # Update the config map data
             configmap["data"][EXPORTER_CONFIG_FILENAME] = yaml.dump(exporter_config)
-            updated_yaml = yaml.dump(configmap)
-            cluster_utils.run_oc(["apply", "-f", "-"], command=updated_yaml)
+
+            # Use oc patch instead of apply to avoid metadata conflicts
+            # This directly patches the data field without touching metadata
+            patch_data = json.dumps(
+                {"data": {EXPORTER_CONFIG_FILENAME: configmap["data"][EXPORTER_CONFIG_FILENAME]}}
+            )
+            result = cluster_utils.run_oc(
+                [
+                    "patch",
+                    "configmap",
+                    EXPORTER_CONFIG_MAP_NAME,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--type",
+                    "merge",
+                    "-p",
+                    patch_data,
+                ]
+            )
+            print(f"ConfigMap patch result: {result.stdout}")
+
+            # Verify the update was applied
+            verify_result = cluster_utils.run_oc(
+                [
+                    "get",
+                    "configmap",
+                    EXPORTER_CONFIG_MAP_NAME,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "-o",
+                    "jsonpath={.data.config\\.yaml}",
+                ]
+            )
+            print(f"ConfigMap verification - current config:\n{verify_result.stdout}")
 
             # Log what was updated
             print("Exporter config updated:")
@@ -125,6 +159,9 @@ class DataCollectorControl:
         Note: This requires deployment restart to take effect.
               The operator does NOT reconcile the exporter ConfigMap if it exists.
         """
+        # Store expected interval for verification
+        self._expected_interval = interval_seconds
+
         # Scale down deployment first to ensure clean restart
         print("Scaling down deployment before ConfigMap update...")
         cluster_utils.run_oc(
@@ -136,7 +173,7 @@ class DataCollectorControl:
                 "--replicas=0",
             ]
         )
-        
+
         # Wait for pod to terminate completely
         print("Waiting for pod to terminate...")
         max_wait = 60
@@ -151,15 +188,15 @@ class DataCollectorControl:
                 print("Pod terminated (exception during check)")
                 break
             time.sleep(2)
-        
+
         # Extra wait to ensure pod is fully gone
         time.sleep(3)
-        
+
         # Now update the ConfigMap
         # Note: The operator does NOT reconcile the exporter ConfigMap if it already exists
         print(f"Updating ConfigMap with collection_interval={interval_seconds}...")
         self.update_exporter_config(collection_interval=interval_seconds)
-        
+
         # Wait for ConfigMap update to fully propagate in etcd
         print("Waiting for ConfigMap changes to propagate...")
         time.sleep(5)
@@ -206,9 +243,11 @@ class DataCollectorControl:
                         # Wait additional time for container to fully initialize
                         print("Waiting for exporter container to initialize...")
                         time.sleep(5)
-                        
+
                         # Verify the config was picked up by checking the logs
-                        self._verify_config_applied(new_pod, container_name)
+                        self._verify_config_applied(
+                            new_pod, container_name, self._expected_interval
+                        )
                         return
                 except Exception as e:
                     print(f"Waiting for pod... ({e})")
@@ -219,12 +258,15 @@ class DataCollectorControl:
             print(f"Warning: Could not restart container: {e}")
             raise
 
-    def _verify_config_applied(self, pod_name: str, container_name: str) -> None:
+    def _verify_config_applied(
+        self, pod_name: str, container_name: str, expected_interval: int | None = None
+    ) -> None:
         """Verify the exporter picked up the new configuration.
 
         Args:
             pod_name: Name of the pod.
             container_name: Name of the exporter container.
+            expected_interval: Expected collection interval in seconds.
         """
         try:
             # Get container logs to verify config
@@ -240,13 +282,19 @@ class DataCollectorControl:
                 ]
             )
             logs = log_result.stdout
-            
+
             # Look for collection interval in logs
             for line in logs.split("\n"):
                 if "Collection interval:" in line:
                     print(f"Config verification: {line}")
+                    if expected_interval is not None:
+                        expected_str = f"{expected_interval} seconds"
+                        if expected_str in line:
+                            print(f"✓ Collection interval matches expected: {expected_interval}s")
+                        else:
+                            print(f"✗ WARNING: Expected {expected_interval}s but got: {line}")
                     return
-            
+
             print("Warning: Could not verify collection interval in logs")
         except Exception as e:
             print(f"Warning: Could not verify config from logs: {e}")
