@@ -36,9 +36,6 @@ def test_feedback_storing_cluster():
     feedbacks_path = test_api.OLS_USER_DATA_PATH + "/feedback"
     pod_name = cluster_utils.get_pod_by_prefix()[0]
 
-    # disable collector script to avoid interference with the test
-    cluster_utils.create_file(pod_name, test_api.OLS_COLLECTOR_DISABLING_FILE, "")
-
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty
     # for this test

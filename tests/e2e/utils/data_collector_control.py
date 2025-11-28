@@ -1,0 +1,455 @@
+"""Utilities for controlling the data exporter in e2e tests.
+
+This module provides methods to configure the lightspeed-to-dataverse-exporter
+for testing purposes.
+"""
+
+import json
+import os
+import re
+import time
+
+import yaml
+
+from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_USER_DATA_PATH
+from tests.e2e.utils.wait_for_ols import wait_for_ols
+
+# Exporter config map constants
+EXPORTER_CONFIG_MAP_NAME = "lightspeed-exporter-config"
+EXPORTER_CONFIG_FILENAME = "config.yaml"
+EXPORTER_NAMESPACE = "openshift-lightspeed"
+
+
+class DataCollectorControl:
+    """Control mechanism for the data collector/exporter."""
+
+    def __init__(self, pod_name: str | None = None):
+        """Initialize the control mechanism.
+
+        Args:
+            pod_name: Name of the OLS pod. If None, will be auto-detected.
+        """
+        self.pod_name = pod_name or cluster_utils.get_pod_by_prefix()[0]
+        self._original_exporter_config: dict | None = None
+        self._expected_interval: int | None = None
+
+    def clear_data_directory(self) -> None:
+        """Clear the data directory to prevent collection.
+
+        This removes all data that would be collected, effectively
+        disabling collection for the current cycle.
+        """
+        try:
+            cluster_utils.remove_dir(self.pod_name, f"{OLS_USER_DATA_PATH}/feedback")
+            cluster_utils.remove_dir(self.pod_name, f"{OLS_USER_DATA_PATH}/transcripts")
+            print("Data directories cleared")
+        except Exception as e:
+            print(f"Warning: Could not clear data directories: {e}")
+
+    def update_exporter_config(
+        self,
+        collection_interval: int | None = None,
+        ingress_server_url: str | None = None,
+        data_dir: str | None = None,
+        ingress_server_auth_token: str | None = None,
+        log_level: str | None = None,
+    ) -> None:
+        """Update exporter ConfigMap settings.
+
+        Args:
+            collection_interval: Collection interval in seconds.
+            ingress_server_url: Ingress server URL (e.g., stage vs prod).
+            data_dir: Data directory path.
+            ingress_server_auth_token: Auth token for ingress server.
+            log_level: Log level (e.g., "debug", "info").
+
+        Note: This requires container restart to take effect.
+        """
+        try:
+            # Get the current config map (created by operator)
+            result = cluster_utils.run_oc(
+                [
+                    "get",
+                    "configmap",
+                    EXPORTER_CONFIG_MAP_NAME,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "-o",
+                    "yaml",
+                ]
+            )
+            configmap = yaml.safe_load(result.stdout)
+
+            # Store original config for restoration (only first time)
+            if self._original_exporter_config is None:
+                self._original_exporter_config = configmap.copy()
+
+            # Get the raw config string - we use string manipulation to preserve
+            # sensitive values like auth tokens that might be corrupted by YAML round-trip
+            exporter_config_str = configmap["data"][EXPORTER_CONFIG_FILENAME]
+
+            # Use regex-based updates to avoid YAML round-trip corruption of tokens
+            updates = {
+                "collection_interval": collection_interval,
+                "ingress_server_url": ingress_server_url,
+                "data_dir": data_dir,
+                "ingress_server_auth_token": ingress_server_auth_token,
+                "log_level": log_level,
+            }
+
+            for key, value in updates.items():
+                if value is not None:
+                    # Match the key followed by colon and any value until end of line
+                    pattern = rf"^({re.escape(key)}:\s*).*$"
+                    replacement = rf"\g<1>{value}"
+                    new_config = re.sub(
+                        pattern, replacement, exporter_config_str, flags=re.MULTILINE
+                    )
+                    if new_config != exporter_config_str:
+                        exporter_config_str = new_config
+                    else:
+                        # Key not found, append it
+                        exporter_config_str = (
+                            exporter_config_str.rstrip() + f"\n{key}: {value}\n"
+                        )
+
+            # Use oc patch instead of apply to avoid metadata conflicts
+            # This directly patches the data field without touching metadata
+            patch_data = json.dumps(
+                {"data": {EXPORTER_CONFIG_FILENAME: exporter_config_str}}
+            )
+            result = cluster_utils.run_oc(
+                [
+                    "patch",
+                    "configmap",
+                    EXPORTER_CONFIG_MAP_NAME,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--type",
+                    "merge",
+                    "-p",
+                    patch_data,
+                ]
+            )
+            print(f"ConfigMap patch result: {result.stdout}")
+
+            # Verify the update was applied
+            verify_result = cluster_utils.run_oc(
+                [
+                    "get",
+                    "configmap",
+                    EXPORTER_CONFIG_MAP_NAME,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "-o",
+                    "jsonpath={.data.config\\.yaml}",
+                ]
+            )
+            print(f"ConfigMap verification - current config:\n{verify_result.stdout}")
+
+            # Log what was updated
+            print("Exporter config updated:")
+            for key, value in updates.items():
+                if value is not None:
+                    if key == "ingress_server_auth_token":
+                        print("  - ingress_server_auth_token: [SET]")
+                    else:
+                        suffix = "s" if key == "collection_interval" else ""
+                        print(f"  - {key}: {value}{suffix}")
+            print("Note: Container restart required for changes to take effect")
+        except Exception as e:
+            print(f"Warning: Could not modify exporter config: {e}")
+            raise
+
+    def set_exporter_collection_interval(self, interval_seconds: int) -> None:
+        """Set the collection interval in the exporter config map.
+
+        Args:
+            interval_seconds: Collection interval in seconds.
+
+        Note: This requires deployment restart to take effect.
+              The operator does NOT reconcile the exporter ConfigMap if it exists.
+        """
+        # Store expected interval for verification
+        self._expected_interval = interval_seconds
+
+        # Scale down deployment first to ensure clean restart
+        print("Scaling down deployment before ConfigMap update...")
+        cluster_utils.run_oc(
+            [
+                "scale",
+                "deployment/lightspeed-app-server",
+                "-n",
+                EXPORTER_NAMESPACE,
+                "--replicas=0",
+            ]
+        )
+
+        # Wait for pod to terminate completely
+        print("Waiting for pod to terminate...")
+        max_wait = 60
+        start_time = time.time()
+        while time.time() - start_time < max_wait:
+            try:
+                pods = cluster_utils.get_pod_by_prefix(fail_not_found=False)
+                if not pods:
+                    print("Pod terminated successfully")
+                    break
+            except Exception:
+                print("Pod terminated (exception during check)")
+                break
+            time.sleep(2)
+
+        # Extra wait to ensure pod is fully gone
+        time.sleep(3)
+
+        # Now update the ConfigMap
+        # Note: The operator does NOT reconcile the exporter ConfigMap if it already exists
+        print(f"Updating ConfigMap with collection_interval={interval_seconds}...")
+        self.update_exporter_config(collection_interval=interval_seconds)
+
+        # Wait for ConfigMap update to fully propagate in etcd
+        print("Waiting for ConfigMap changes to propagate...")
+        time.sleep(5)
+
+    def restart_exporter_container(
+        self, container_name: str = "lightspeed-to-dataverse-exporter"
+    ) -> None:
+        """Restart the exporter by scaling deployment back up.
+
+        The deployment controller will create a new pod with the updated config.
+
+        Args:
+            container_name: Name of the exporter container (for verification).
+        """
+        try:
+            print("Scaling deployment back up...")
+            cluster_utils.run_oc(
+                [
+                    "scale",
+                    "deployment/lightspeed-app-server",
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--replicas=1",
+                ]
+            )
+            print("Waiting for new pod to start...")
+            time.sleep(5)
+
+            # Wait for new pod to be ready
+            max_wait = 60
+            start_time = time.time()
+            while time.time() - start_time < max_wait:
+                try:
+                    new_pod = cluster_utils.get_pod_by_prefix()[0]
+                    # Verify pod is ready
+                    result = cluster_utils.run_oc(
+                        ["get", "pod", new_pod, "-n", EXPORTER_NAMESPACE, "-o", "json"]
+                    )
+                    pod_info = yaml.safe_load(result.stdout)
+                    if pod_info.get("status", {}).get("phase") == "Running":
+                        self.pod_name = new_pod
+                        print(f"New pod {new_pod} is ready")
+
+                        # Verify the exporter config was picked up
+                        self._verify_config_applied(
+                            new_pod, container_name, self._expected_interval
+                        )
+
+                        # Wait for OLS API to be ready (not just pod running)
+                        print("Waiting for OLS API to be ready...")
+                        ols_url = cluster_utils.get_ols_url("ols")
+                        if not wait_for_ols(ols_url, timeout=120, interval=5):
+                            print("Warning: OLS readiness check timed out")
+                        else:
+                            print("OLS API is ready")
+                        return
+                except Exception as e:
+                    print(f"Waiting for pod... ({e})")
+                time.sleep(2)
+
+            print("Warning: Timeout waiting for new pod to be ready")
+        except Exception as e:
+            print(f"Warning: Could not restart container: {e}")
+            raise
+
+    def _verify_config_applied(
+        self, pod_name: str, container_name: str, expected_interval: int | None = None
+    ) -> None:
+        """Verify the exporter picked up the new configuration.
+
+        Args:
+            pod_name: Name of the pod.
+            container_name: Name of the exporter container.
+            expected_interval: Expected collection interval in seconds.
+        """
+        try:
+            # Get container logs to verify config
+            log_result = cluster_utils.run_oc(
+                [
+                    "logs",
+                    pod_name,
+                    "-c",
+                    container_name,
+                    "-n",
+                    EXPORTER_NAMESPACE,
+                    "--tail=50",
+                ]
+            )
+            logs = log_result.stdout
+
+            # Look for collection interval in logs
+            for line in logs.split("\n"):
+                if "Collection interval:" in line:
+                    print(f"Config verification: {line}")
+                    if expected_interval is not None:
+                        expected_str = f"{expected_interval} seconds"
+                        if expected_str in line:
+                            print(
+                                f"✓ Collection interval matches expected: {expected_interval}s"
+                            )
+                        else:
+                            print(
+                                f"✗ WARNING: Expected {expected_interval}s but got: {line}"
+                            )
+                    return
+
+            print("Warning: Could not verify collection interval in logs")
+        except Exception as e:
+            print(f"Warning: Could not verify config from logs: {e}")
+
+
+def configure_exporter_for_e2e_tests(
+    interval_seconds: int = 3600,
+    ingress_env: str = "stage",
+    cp_offline_token: str | None = None,
+    log_level: str = "debug",
+    data_dir: str = "/app-root/ols-user-data",
+) -> None:
+    """Configure exporter for e2e tests with proper settings.
+
+    Args:
+        interval_seconds: Collection interval (default: 3600 = 1 hour).
+        ingress_env: Ingress environment - "stage" or "prod" (default: "stage").
+        cp_offline_token: Auth token for ingress server (required for stage).
+        log_level: Log level (default: "debug").
+        data_dir: Data directory path (default: "/app-root/ols-user-data").
+    """
+    controller = DataCollectorControl()
+
+    # Determine ingress URL based on environment
+    if ingress_env == "stage":
+        ingress_url = "https://console.stage.redhat.com/api/ingress/v1/upload"
+    else:
+        ingress_url = "https://console.redhat.com/api/ingress/v1/upload"
+
+    # Get token from env if not provided
+    if cp_offline_token is None:
+        cp_offline_token = os.getenv("CP_OFFLINE_TOKEN", "")
+
+    controller.update_exporter_config(
+        collection_interval=interval_seconds,
+        ingress_server_url=ingress_url,
+        data_dir=data_dir,
+        ingress_server_auth_token=cp_offline_token if cp_offline_token else None,
+        log_level=log_level,
+    )
+    controller.restart_exporter_container()
+
+
+def prepare_for_data_collection_test(
+    short_interval_seconds: int = 10,
+) -> DataCollectorControl:
+    """Prepare the environment for testing data collection.
+
+    This function:
+    1. Clears existing data directories
+    2. Sets a short collection interval for fast testing
+    3. Configures ingress URL for stage environment
+    4. Restarts the exporter container to apply changes
+
+    Args:
+        short_interval_seconds: Short collection interval for testing (default: 10s).
+
+    Returns:
+        DataCollectorControl instance for further operations.
+    """
+    controller = DataCollectorControl()
+
+    # Clear any existing data
+    print("Clearing data directories before test...")
+    controller.clear_data_directory()
+
+    # Set short collection interval, stage ingress URL, and token for testing
+    stage_ingress_url = "https://console.stage.redhat.com/api/ingress/v1/upload"
+    cp_offline_token = os.getenv("CP_OFFLINE_TOKEN", "")
+
+    print(f"Setting collection interval to {short_interval_seconds}s for testing...")
+    print(f"Setting ingress URL to stage: {stage_ingress_url}")
+    if cp_offline_token:
+        print("Setting ingress auth token from CP_OFFLINE_TOKEN env var")
+    else:
+        print("Warning: CP_OFFLINE_TOKEN not set, upload will fail with 401")
+
+    controller.set_exporter_collection_interval(short_interval_seconds)
+    controller.update_exporter_config(
+        ingress_server_url=stage_ingress_url,
+        ingress_server_auth_token=cp_offline_token if cp_offline_token else None,
+    )
+
+    # Restart exporter to apply new config
+    controller.restart_exporter_container()
+
+    # Wait for first collection cycle with new interval to complete
+    # This ensures the exporter is fully operational with the new config
+    wait_time = short_interval_seconds + 3
+    print(f"Waiting {wait_time}s for first collection cycle to complete...")
+    time.sleep(wait_time)
+
+    return controller
+
+
+def cleanup_after_data_collection_test(
+    controller: DataCollectorControl, restore_interval_seconds: int = 3600
+) -> None:
+    """Clean up after data collection test.
+
+    Restores a long collection interval.
+
+    Args:
+        controller: DataCollectorControl instance from prepare_for_data_collection_test.
+        restore_interval_seconds: Interval to restore (default: 3600s = 1 hour).
+    """
+    print(f"Restoring collection interval to {restore_interval_seconds}s...")
+
+    # Scale down deployment
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "-n",
+            EXPORTER_NAMESPACE,
+            "--replicas=0",
+        ]
+    )
+    time.sleep(5)
+
+    # Restore the ConfigMap
+    controller.update_exporter_config(collection_interval=restore_interval_seconds)
+    time.sleep(3)
+
+    # Scale up deployment
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-app-server",
+            "-n",
+            EXPORTER_NAMESPACE,
+            "--replicas=1",
+        ]
+    )
+
+    # Wait for pod to be ready
+    time.sleep(10)
+    print("Data collection test cleanup complete")

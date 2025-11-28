@@ -7,7 +7,7 @@ import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
+from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -86,17 +86,6 @@ def update_ols_config() -> None:
     # logs beying redacted/removed completely - we need log at info level
     olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
 
-    if not disconnected:
-        # add collector config for e2e tests
-        olsconfig["user_data_collector_config"] = {
-            "data_storage": "/app-root/ols-user-data",
-            "log_level": "debug",
-            "collection_interval": 10,
-            "run_without_initial_wait": True,
-            "ingress_env": "stage",
-            "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
-        }
-
     # patch reference content config for new format
     # Todo: remove this when the operator PR is merged:
     # https://github.com/openshift/lightspeed-operator/pull/668
@@ -173,11 +162,6 @@ def replace_ols_image(ols_image: str) -> None:
 
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
     patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
-    cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
-    )
-
-    patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/1/image", "value":"{ols_image}"}}]"""  # noqa: E501
     cluster_utils.run_oc(
         ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
     )
@@ -486,9 +470,19 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     )
     print("-" * 50)
     if not disconnected:
-        # disable collector script by default to avoid running during all
-        # tests (collecting/sending data)
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+        # Configure exporter for e2e tests with proper settings
+        try:
+            print("Configuring exporter for e2e tests...")
+            configure_exporter_for_e2e_tests(
+                interval_seconds=3600,  # 1 hour to prevent interference
+                ingress_env="stage",
+                log_level="debug",
+                data_dir="/app-root/ols-user-data",
+            )
+            print("Exporter configured successfully")
+        except Exception as e:
+            print(f"Warning: Could not configure exporter: {e}")
+            print("Tests may experience interference from data collector")
 
     try:
         cluster_utils.run_oc(
