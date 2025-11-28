@@ -12,6 +12,7 @@ import yaml
 
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils.constants import OLS_USER_DATA_PATH
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 # Exporter config map constants
 EXPORTER_CONFIG_MAP_NAME = "lightspeed-exporter-config"
@@ -240,14 +241,18 @@ class DataCollectorControl:
                         self.pod_name = new_pod
                         print(f"New pod {new_pod} is ready")
                         
-                        # Wait additional time for container to fully initialize
-                        print("Waiting for exporter container to initialize...")
-                        time.sleep(5)
-
-                        # Verify the config was picked up by checking the logs
+                        # Verify the exporter config was picked up
                         self._verify_config_applied(
                             new_pod, container_name, self._expected_interval
                         )
+
+                        # Wait for OLS API to be ready (not just pod running)
+                        print("Waiting for OLS API to be ready...")
+                        ols_url = cluster_utils.get_ols_url("ols")
+                        if not wait_for_ols(ols_url, timeout=120, interval=5):
+                            print("Warning: OLS readiness check timed out")
+                        else:
+                            print("OLS API is ready")
                         return
                 except Exception as e:
                     print(f"Waiting for pod... ({e})")
