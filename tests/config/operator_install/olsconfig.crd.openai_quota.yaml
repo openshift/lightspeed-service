@@ -44,3 +44,6 @@ spec:
           period: 1 day
           quotaIncrease: 0
           type: user_limiter
+    userDataCollection:  # disable user collection for this test suite
+      feedbackDisabled: true
+      transcriptsDisabled: true

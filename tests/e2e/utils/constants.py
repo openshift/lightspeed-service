@@ -8,5 +8,13 @@ CONVERSATION_ID = "12345678-abcd-0000-0123-456789abcdef"
 
 # constant from tests/config/cluster_install/ols_manifests.yaml
 OLS_USER_DATA_PATH = "/app-root/ols-user-data"
-OLS_USER_DATA_COLLECTION_INTERVAL = 10
-OLS_COLLECTOR_DISABLING_FILE = OLS_USER_DATA_PATH + "/disable_collector"
+
+# Collection intervals for data exporter
+# Set once at test suite startup to 3600s (1 hour) so no data is sent during tests
+# For the data collection test specifically, we prune the dir, reset to 5s, and test
+OLS_USER_DATA_COLLECTION_INTERVAL_LONG = (
+    3600  # 1 hour - set at startup, prevents data collection
+)
+OLS_USER_DATA_COLLECTION_INTERVAL_SHORT = (
+    5  # 5 seconds - used only in data collection test
+)

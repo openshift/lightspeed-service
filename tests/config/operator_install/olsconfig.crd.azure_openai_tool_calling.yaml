@@ -34,3 +34,6 @@ spec:
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
     introspectionEnabled: true
+    userDataCollection:  # disable user collection for this test suite
+      feedbackDisabled: true
+      transcriptsDisabled: true
