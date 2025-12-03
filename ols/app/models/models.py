@@ -5,7 +5,7 @@ from collections import OrderedDict
 from dataclasses import field
 from typing import Any, Literal, Optional, Self, Union
 
-from langchain.llms.base import LLM
+from langchain_core.language_models.llms import LLM
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic.dataclasses import dataclass

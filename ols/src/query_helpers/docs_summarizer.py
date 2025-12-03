@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any, AsyncGenerator, Callable, Optional
 
-from langchain.globals import set_debug
+from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate

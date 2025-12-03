@@ -3,9 +3,9 @@
 import logging
 from typing import Any
 
-from langchain.globals import set_debug
-from langchain.prompts import PromptTemplate
+from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage
+from langchain_core.prompts import PromptTemplate
 
 from ols import config
 from ols.app.metrics import TokenMetricUpdater

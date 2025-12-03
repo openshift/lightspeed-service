@@ -1,6 +1,6 @@
 """Mocked ChatWatsonx class to avoid accessing real Watsonx API."""
 
-from langchain.llms.base import LLM
+from langchain_core.language_models.llms import LLM
 
 
 class ChatWatsonx(LLM):
