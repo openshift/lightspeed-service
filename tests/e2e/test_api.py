@@ -24,10 +24,10 @@ from tests.e2e.utils.constants import (
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
-    OLS_COLLECTOR_DISABLING_FILE,
-    OLS_USER_DATA_COLLECTION_INTERVAL,
+    OLS_USER_DATA_COLLECTION_INTERVAL_SHORT,
     OLS_USER_DATA_PATH,
 )
+from tests.e2e.utils.data_collector_control import prepare_for_data_collection_test
 from tests.e2e.utils.decorators import retry
 from tests.e2e.utils.postgres import (
     read_conversation_history,
@@ -143,14 +143,12 @@ def test_forbidden_user():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.cluster
+@pytest.mark.data_export
 def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
     cluster_utils.wait_for_running_pod()
     pod_name = cluster_utils.get_pod_by_prefix()[0]
-    # disable collector script to avoid interference with the test
-    cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
 
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty
@@ -310,115 +308,92 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "OpenShift" in deserialized[3].content
 
 
-@pytest.mark.cluster
+@pytest.mark.data_export
 def test_user_data_collection():
-    """Test user data collection.
+    """Test user data collection and upload to ingress.
 
-    It is performed by checking the user data collection container logs
-    for the expected messages in logs.
-    A bit of trick is required to check just the logs since the last
-    action (as container logs can be influenced by other tests).
+    This test runs in isolation with the 'data_export' marker.
+    It patches the exporter to use manual mode so it uses the ConfigMap token.
     """
-    pod_name = None
-    try:
-        pod_name = cluster_utils.get_pod_by_prefix()[0]
 
-        # enable collector script
-        if pod_name is not None:
-            cluster_utils.remove_file(pod_name, OLS_COLLECTOR_DISABLING_FILE)
-            assert "disable_collector" not in cluster_utils.list_path(
-                pod_name, OLS_USER_DATA_PATH
-            )
+    def filter_logs(logs: str, last_log_line: str) -> str:
+        filtered_logs = []
+        new_logs = False
+        for line in logs.split("\n"):
+            if line == last_log_line:
+                new_logs = True
+                continue
+            if new_logs:
+                filtered_logs.append(line)
+        return "\n".join(filtered_logs)
 
-        def filter_logs(logs: str, last_log_line: str) -> str:
-            filtered_logs = []
-            new_logs = False
-            for line in logs.split("\n"):
-                if line == last_log_line:
-                    new_logs = True
-                    continue
-                if new_logs:
-                    filtered_logs.append(line)
-            return "\n".join(filtered_logs)
+    def get_last_log_line(logs: str) -> str:
+        return [line for line in logs.split("\n") if line][-1]
 
-        def get_last_log_line(logs: str) -> str:
-            return [line for line in logs.split("\n") if line][-1]
+    # Prepare: patch to manual mode, set short interval, configure stage ingress
+    controller = prepare_for_data_collection_test(
+        short_interval_seconds=OLS_USER_DATA_COLLECTION_INTERVAL_SHORT
+    )
 
-        # constants from tests/config/cluster_install/ols_manifests.yaml
-        data_collection_container_name = "lightspeed-service-user-data-collector"
-        pod_name = cluster_utils.get_pod_by_prefix()[0]
+    data_collection_container_name = "lightspeed-to-dataverse-exporter"
+    pod_name = controller.pod_name
 
-        # there are multiple tests running agains cluster, so user data
-        # can be already present - we need to ensure the storage is empty
-        # for this test
-        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH)
-        if user_data:
-            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/feedback")
-            cluster_utils.remove_dir(pod_name, OLS_USER_DATA_PATH + "/transcripts")
-            assert cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH) == []
+    # Get baseline logs
+    container_log = cluster_utils.get_container_log(
+        pod_name, data_collection_container_name
+    )
+    print(f"\n=== Full exporter container log (startup) ===\n{container_log}\n")
+    last_log_line = get_last_log_line(container_log)
 
-        # safety wait for the script to start after being disabled by other
-        # tests
-        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+    # Wait another cycle to verify exporter ran but found no data
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL_SHORT + 1)
 
-        # data shoud be pruned now and this is the point from which we want
-        # to check the logs
-        container_log = cluster_utils.get_container_log(
-            pod_name, data_collection_container_name
-        )
-        last_log_line = get_last_log_line(container_log)
+    container_log = cluster_utils.get_container_log(
+        pod_name, data_collection_container_name
+    )
+    logs = filter_logs(container_log, last_log_line)
+    print(f"\n=== Exporter logs after first cycle (expecting no data) ===\n{logs}\n")
 
-        # wait the collection period for some extra to give the script a
-        # chance to log what we want to check
-        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 1)
+    # Verify exporter ran and found no data to collect
+    assert "No data marked for collection in" in logs
+    assert "Uploading data chunk" not in logs
 
-        # we just check that there are no data and the script is working
-        container_log = cluster_utils.get_container_log(
-            pod_name, data_collection_container_name
-        )
-        logs = filter_logs(container_log, last_log_line)
+    # Get log point for next check
+    last_log_line = get_last_log_line(container_log)
 
-        assert "collected" not in logs
-        assert "data uploaded with request_id:" not in logs
-        assert "uploaded data removed" not in logs
-        assert "data upload failed with response:" not in logs
-        assert "contains no data, nothing to do..." in logs
+    # Create new data via feedback endpoint
+    response = pytest.client.post(
+        "/v1/feedback",
+        json={
+            "conversation_id": CONVERSATION_ID,
+            "user_question": "what is OCP4?",
+            "llm_response": "Openshift 4 is ...",
+            "sentiment": 1,
+        },
+        timeout=BASIC_ENDPOINTS_TIMEOUT,
+    )
+    assert response.status_code == requests.codes.ok
 
-        # get the log point for the next check
-        last_log_line = get_last_log_line(container_log)
+    # Wait for collection to happen
+    time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL_SHORT + 5)
 
-        # create a new data via feedback endpoint
-        response = pytest.client.post(
-            "/v1/feedback",
-            json={
-                "conversation_id": CONVERSATION_ID,
-                "user_question": "what is OCP4?",
-                "llm_response": "Openshift 4 is ...",
-                "sentiment": 1,
-            },
-            timeout=BASIC_ENDPOINTS_TIMEOUT,
-        )
-        assert response.status_code == requests.codes.ok
-        # ensure the script have enought time to send the payload before
-        # we pull its logs
-        time.sleep(OLS_USER_DATA_COLLECTION_INTERVAL + 5)
+    # Check that data was collected and sent
+    container_log = cluster_utils.get_container_log(
+        pod_name, data_collection_container_name
+    )
+    logs = filter_logs(container_log, last_log_line)
+    print(f"\n=== Exporter logs after data creation (expecting upload) ===\n{logs}\n")
 
-        # check that data was packaged, sent and removed
-        container_log = cluster_utils.get_container_log(
-            pod_name, data_collection_container_name
-        )
-        logs = filter_logs(container_log, last_log_line)
-        assert "collected 1 files (splitted to 1 chunks) from" in logs
-        assert "data uploaded with request_id:" in logs
-        assert "uploaded data removed" in logs
-        assert "data upload failed with response:" not in logs
-        user_data = cluster_utils.list_path(pod_name, OLS_USER_DATA_PATH + "/feedback/")
-        assert user_data == []
+    # Verify data was collected and uploaded
+    assert "Collected 1 files" in logs, "Expected 'Collected 1 files' in logs"
+    assert "Uploading data chunk" in logs, "Expected 'Uploading data chunk' in logs"
+    assert (
+        "Data uploaded with request_id:" in logs
+    ), "Expected 'Data uploaded with request_id:' in logs"
 
-    finally:
-        # disable collector script after test/on failure
-        if pod_name is not None:
-            cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
+    # Verify data was cleaned up after upload
+    user_data = cluster_utils.list_path(pod_name, f"{OLS_USER_DATA_PATH}/feedback/")
+    assert user_data == []
 
 
 @pytest.mark.cluster

@@ -53,3 +53,6 @@ spec:
       - name: bar_filter
         pattern: '\b(?:bar)\b'
         replaceWith: "openshift"
+    userDataCollection:  # disable user collection for this test suite
+      feedbackDisabled: true
+      transcriptsDisabled: true

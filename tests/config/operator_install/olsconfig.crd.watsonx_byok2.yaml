@@ -32,3 +32,6 @@ spec:
       - image: quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content:5332173516291b1fb24b2afdab377a24d88373d6
         indexPath: /rag/vector_db/ocp_product_docs/4.17
         indexID: ocp-product-docs-4_17
+    userDataCollection:  # disable user collection for this test suite
+      feedbackDisabled: true
+      transcriptsDisabled: true

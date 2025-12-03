@@ -14,24 +14,19 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gemma3:1b
-        name: ollama
+          - name: gpt-4o-mini
+        name: openai
         type: openai
-        url: 'http://ollama-service.ollama.svc.cluster.local:11434/v1'
   ols:
-    defaultModel: gemma3:1b
-    defaultProvider: ollama
+    defaultModel: gpt-4o-mini
+    defaultProvider: openai
     deployment:
       replicas: 1
     disableAuth: false
     logLevel: DEBUG
-    queryFilters:
-      - name: foo_filter
-        pattern: '\b(?:foo)\b'
-        replaceWith: "deployment"
-      - name: bar_filter
-        pattern: '\b(?:bar)\b'
-        replaceWith: "openshift"
-    userDataCollection:  # disable user collection for this test suite
-      feedbackDisabled: true
-      transcriptsDisabled: true
+    userDataCollection:
+      feedbackDisabled: false
+      feedbackStorage: ols-user-data
+      transcriptsDisabled: false
+      transcriptsStorage: ols-user-data
+

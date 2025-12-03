@@ -30,14 +30,11 @@ def test_feedback_can_post_with_wrong_token():
     assert response.status_code == requests.codes.forbidden
 
 
-@pytest.mark.cluster
+@pytest.mark.data_export
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
     feedbacks_path = test_api.OLS_USER_DATA_PATH + "/feedback"
     pod_name = cluster_utils.get_pod_by_prefix()[0]
-
-    # disable collector script to avoid interference with the test
-    cluster_utils.create_file(pod_name, test_api.OLS_COLLECTOR_DISABLING_FILE, "")
 
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty
@@ -69,6 +66,7 @@ def test_feedback_storing_cluster():
     assert feedback_data["sentiment"] == 1
 
 
+@pytest.mark.data_export
 def test_feedback_missing_conversation_id():
     """Test posting feedback with missing conversation ID."""
     response = pytest.client.post(
@@ -84,6 +82,7 @@ def test_feedback_missing_conversation_id():
     response_utils.check_missing_field_response(response, "conversation_id")
 
 
+@pytest.mark.data_export
 def test_feedback_missing_user_question():
     """Test posting feedback with missing user question."""
     response = pytest.client.post(
@@ -99,6 +98,7 @@ def test_feedback_missing_user_question():
     response_utils.check_missing_field_response(response, "user_question")
 
 
+@pytest.mark.data_export
 def test_feedback_missing_llm_response():
     """Test posting feedback with missing LLM response."""
     response = pytest.client.post(
@@ -114,6 +114,7 @@ def test_feedback_missing_llm_response():
     response_utils.check_missing_field_response(response, "llm_response")
 
 
+@pytest.mark.data_export
 def test_feedback_improper_conversation_id():
     """Test posting feedback with improper conversation ID."""
     response = pytest.client.post(

@@ -10,7 +10,7 @@ import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_COLLECTOR_DISABLING_FILE
+from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
@@ -67,22 +67,16 @@ def update_ols_configmap() -> None:
         # Set INFO level to avoid redacted logs
         olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
 
-        # Configure user data collection for OLS service (to store data)
-        olsconfig["ols_config"]["user_data_collection"] = {
-            "feedback_disabled": False,
-            "feedback_storage": "/app-root/ols-user-data/feedback",
-            "transcripts_disabled": False,
-            "transcripts_storage": "/app-root/ols-user-data/transcripts",
-        }
-
-        olsconfig["user_data_collector_config"] = {
-            "data_storage": "/app-root/ols-user-data",
-            "log_level": "debug",
-            "collection_interval": 10,
-            "run_without_initial_wait": True,
-            "ingress_env": "stage",
-            "cp_offline_token": os.getenv("CP_OFFLINE_TOKEN", ""),
-        }
+        # Configure user data collection only for data_export test suite
+        # Other test suites don't need it and the volume might not be mounted
+        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+        if ols_config_suffix == "data_export":
+            olsconfig["ols_config"]["user_data_collection"] = {
+                "feedback_disabled": False,
+                "feedback_storage": "/app-root/ols-user-data/feedback",
+                "transcripts_disabled": False,
+                "transcripts_storage": "/app-root/ols-user-data/transcripts",
+            }
 
         # Update the configmap
         configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
@@ -207,7 +201,7 @@ def setup_route() -> str:
     return f"https://{url}"
 
 
-def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0915
+def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     """Adapt OLS configuration for different providers dynamically.
 
     Ensures RBAC, service accounts, and OLS route exist for test execution.
@@ -329,7 +323,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
     if ols_image:
         print(f"Applying test image: {ols_image}")
         try:
-            # Patch both containers (api and collector)
+            # Patch the lightspeed-service-api container (containers/0)
             patch = (
                 f'[{{"op": "replace", "path": "/spec/template/spec/'
                 f'containers/0/image", "value": "{ols_image}"}}]'
@@ -344,26 +338,6 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
                     patch,
                 ]
             )
-
-            # Check if there's a second container and patch it too
-            try:
-                patch = (
-                    f'[{{"op": "replace", "path": "/spec/template/spec/'
-                    f'containers/1/image", "value": "{ols_image}"}}]'
-                )
-                cluster_utils.run_oc(
-                    [
-                        "patch",
-                        "deployment/lightspeed-app-server",
-                        "--type",
-                        "json",
-                        "-p",
-                        patch,
-                    ]
-                )
-            except Exception as e:
-                # Second container might not exist
-                print(f"Note: Could not patch second container: {e}")
 
             print("Image configuration completed")
         except Exception as e:
@@ -392,15 +366,18 @@ def adapt_ols_config() -> tuple[str, str, str]:  # noqa: C901 pylint: disable=R0
     except Exception as e:
         print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
-    # Disable data collector to avoid interference with tests
-    # Note: OLS will create the required directories automatically when it starts
+    # Configure exporter for e2e tests with proper settings
     try:
-        pod_name = cluster_utils.get_pod_by_prefix()[0]
-        print(f"Disabling data collector on pod: {pod_name}")
-        cluster_utils.create_file(pod_name, OLS_COLLECTOR_DISABLING_FILE, "")
-        print("Data collector disabled successfully")
+        print("Configuring exporter for e2e tests...")
+        configure_exporter_for_e2e_tests(
+            interval_seconds=3600,  # 1 hour to prevent interference
+            ingress_env="stage",
+            log_level="DEBUG",
+            data_dir="/app-root/ols-user-data",
+        )
+        print("Exporter configured successfully")
     except Exception as e:
-        print(f"Warning: Could not disable collector: {e}")
+        print(f"Warning: Could not configure exporter: {e}")
         print("Tests may experience interference from data collector")
 
     # Fetch tokens for service accounts
