@@ -35,7 +35,7 @@ pytest.metrics_client: Client = None  # pyright: ignore[reportInvalidTypeForm]
 OLS_READY = False
 # on_cluster attribute is set to true when the tests are being run
 # against ols running on a cluster
-on_cluster: bool = False
+on_cluster: bool = False  # pylint: disable=C0103
 
 
 def pytest_sessionstart():

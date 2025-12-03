@@ -400,7 +400,9 @@ class ProviderConfig(BaseModel):
             model = ModelConfig(**m)
             self.models[m["name"]] = model
 
-    def set_provider_specific_configuration(self, data: dict) -> None:  # noqa: C901
+    def set_provider_specific_configuration(  # noqa: C901  # pylint: disable=R0912
+        self, data: dict
+    ) -> None:
         """Set the provider-specific configuration."""
         # compute how many provider-specific configurations are
         # found in config file

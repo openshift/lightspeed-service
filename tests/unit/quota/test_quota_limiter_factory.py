@@ -127,5 +127,5 @@ def test_quota_limiters_unknown_limiter():
     )
     # do not use connection to real PostgreSQL instance
     with patch("psycopg2.connect"):
-        with pytest.raises(ValueError, match="Invalid limiter type: UNKNOWN."):
+        with pytest.raises(ValueError, match=r"Invalid limiter type: UNKNOWN\."):
             QuotaLimiterFactory.quota_limiters(config)

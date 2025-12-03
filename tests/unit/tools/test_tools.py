@@ -59,10 +59,12 @@ def test_get_tool_by_name():
     tool = get_tool_by_name(fake_tool_name, fake_tools)
     assert tool.name == fake_tool_name
 
-    with pytest.raises(ValueError, match="Tool 'non_existent_tool' not found."):
+    with pytest.raises(ValueError, match=r"Tool 'non_existent_tool' not found\."):
         get_tool_by_name("non_existent_tool", fake_tools)
 
-    with pytest.raises(ValueError, match="Multiple tools found with name 'fake_tool'."):
+    with pytest.raises(
+        ValueError, match=r"Multiple tools found with name 'fake_tool'\."
+    ):
         get_tool_by_name(fake_tool_name, fake_tools_duplicite)
 
 

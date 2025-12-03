@@ -41,6 +41,7 @@ def load_llama_index_deps() -> None:
         StorageContext,
         load_index_from_storage,
     )
+    from llama_index.core.embeddings.utils import EmbedType
     from llama_index.core.indices.base import BaseIndex
     from llama_index.core.llms.utils import resolve_llm
     from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
