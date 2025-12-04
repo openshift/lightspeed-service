@@ -3,9 +3,9 @@
 import logging
 from typing import Any
 
-from langchain.llms.base import LLM
 from langchain_community.llms import FakeListLLM
 from langchain_community.llms.fake import FakeStreamingListLLM
+from langchain_core.language_models.llms import LLM
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider

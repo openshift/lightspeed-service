@@ -91,6 +91,7 @@ description = "OpenShift Lightspeed is an AI powered assistant that runs on Open
 authors = []
 # NOTE: langchain bumps causes mypy issues
 dependencies = [
+    "aiohttp>=3.12.14",
     "pdm>=2.21.0",
     "httpx>=0.27.2",
     "fastapi>=0.115.6",
@@ -119,12 +120,12 @@ dependencies = [
     "urllib3>=2.2.3",
     "zipp>=3.20.1",
     "jinja2>=3.1.6",
-    "starlette>=0.41.3",
+    "starlette>=0.49.1",
     "virtualenv>=20.28.0",
     "requests>=2.32.2",
     "transformers>=4.50.3",
     "langchain-mcp-adapters>=0.0.11",
-    "mcp>=1.10.0",  # CVEs in lower version
+    "mcp>=1.23.0",  # CVEs in lower version
 ]
 requires-python = ">=3.11.1,<=3.12.10"
 readme = "README.md"

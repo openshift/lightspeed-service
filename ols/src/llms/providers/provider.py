@@ -8,8 +8,8 @@ from typing import Any, Optional
 
 import httpx
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
-from langchain.llms.base import LLM
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.language_models.llms import LLM
 
 from ols import config
 from ols.app.models.config import ProviderConfig
@@ -36,6 +36,7 @@ class ProviderParameter:
     _type: type
 
 
+# pylint: disable=C0103
 AzureOpenAIParameters = {
     ProviderParameter("azure_endpoint", str),
     ProviderParameter("api_key", str),

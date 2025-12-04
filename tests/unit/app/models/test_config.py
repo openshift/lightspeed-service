@@ -2007,7 +2007,7 @@ def test_tls_config_no_data_provided():
     tls_config = TLSConfig(None)
     with pytest.raises(
         InvalidConfigurationError,
-        match="Can not enable TLS without ols_config.tls_config.tls_certificate_path",
+        match=r"Can not enable TLS without ols_config.tls_config.tls_certificate_path",
     ):
         tls_config.validate_yaml(False)
 
@@ -2022,7 +2022,7 @@ def test_tls_config_no_tls_key_path():
     )
     with pytest.raises(
         InvalidConfigurationError,
-        match="Can not enable TLS without ols_config.tls_config.tls_key_path",
+        match=r"Can not enable TLS without ols_config.tls_config.tls_key_path",
     ):
         tls_config.validate_yaml(False)
 
@@ -3056,7 +3056,7 @@ def test_reference_content_yaml_validation_fallback_to_default_dir(tmp_path):
     default_dir.rmdir()
     with pytest.raises(
         InvalidConfigurationError,
-        match="Reference content index path '.+' does not exist",
+        match=r"Reference content index path '.+' does not exist",
     ):
         reference_content.validate_yaml()
 
@@ -3771,7 +3771,7 @@ def test_ols_config_with_non_existing_system_prompt(tmpdir):
     """Test the OLSConfig model with system prompt path specification that does not exist."""
     with pytest.raises(
         FileNotFoundError,
-        match="No such file or directory: 'tests/config/non_existing_file.txt'",
+        match=r"No such file or directory: 'tests/config/non_existing_file.txt'",
     ):
         OLSConfig(
             {
@@ -4095,7 +4095,7 @@ def test_proxy_config_invalid_url():
     """Test the ProxyConfig model with invalid URL."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="Proxy URL is invalid.+",
+        match=r"Proxy URL is invalid.+",
     ):
         ProxyConfig(
             {
@@ -4109,7 +4109,7 @@ def test_proxy_config_invalid_ca_cert_path():
     """Test the ProxyConfig model with invalid CA certificate path."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="Proxy CA certificate 'invalid/path/to/cert.crt' is not a file",
+        match=r"Proxy CA certificate 'invalid/path/to/cert.crt' is not a file",
     ):
         ProxyConfig(
             {

@@ -70,6 +70,6 @@ def test_get_auth_dependency_unknown_module():
     ols_config.authentication_config = AuthenticationConfig()
     ols_config.authentication_config.module = "foo"
     with pytest.raises(
-        Exception, match="Invalid/unknown auth. module was configured: foo"
+        Exception, match=r"Invalid/unknown auth\. module was configured: foo"
     ):
         get_auth_dependency(ols_config, "/path")

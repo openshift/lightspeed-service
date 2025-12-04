@@ -3,13 +3,13 @@
 from unittest.mock import patch
 
 import pytest
-from langchain.prompts import (
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import AIMessage, HumanMessage
 
 from ols.constants import ModelFamily
 from ols.src.prompts.prompt_generator import GeneratePrompt, format_retrieved_chunk

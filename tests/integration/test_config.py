@@ -25,7 +25,7 @@ def test_load_proper_config():
 def test_load_non_existent_config():
     """Test how loading of non-existent config is handled."""
     with pytest.raises(
-        FileNotFoundError, match="tests/config/non_existent_config.yaml"
+        FileNotFoundError, match=r"tests/config/non_existent_config.yaml"
     ):
         config.reload_from_yaml_file("tests/config/non_existent_config.yaml")
 

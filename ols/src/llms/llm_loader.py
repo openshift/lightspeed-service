@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Optional
 
-from langchain.llms.base import LLM
+from langchain_core.language_models.llms import LLM
 
 from ols import config, constants
 from ols.app.models.config import LLMProviders, ProviderConfig

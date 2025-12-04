@@ -3,8 +3,8 @@
 import logging
 from typing import Any
 
-from langchain.callbacks.base import AsyncCallbackHandler
-from langchain.llms.base import LLM
+from langchain_core.callbacks.base import AsyncCallbackHandler
+from langchain_core.language_models.llms import LLM
 
 from ols.app.metrics.metrics import (
     llm_calls_total,

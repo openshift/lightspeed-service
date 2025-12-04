@@ -22,7 +22,7 @@ from ols.src.llms.llm_loader import load_llm
 
 router = APIRouter(tags=["health"])
 logger = logging.getLogger(__name__)
-llm_is_ready_persistent_state: bool = False
+llm_is_ready_persistent_state: bool = False  # pylint: disable=C0103
 llm_is_ready_timestamp = 0  # pylint: disable=C0103
 
 
