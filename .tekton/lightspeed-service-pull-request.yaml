@@ -564,7 +564,9 @@ spec:
   taskRunSpecs:
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 10Gi
+      requests:
+        memory: 10Gi
     pipelineTaskName: prefetch-dependencies
   - computeResources:
       limits:
