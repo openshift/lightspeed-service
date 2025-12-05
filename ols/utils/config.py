@@ -66,11 +66,6 @@ class AppConfig:
         return self.config.dev_config
 
     @property
-    def user_data_collector_config(self) -> config_model.UserDataCollectorConfig:
-        """Return the user data collector configuration."""
-        return self.config.user_data_collector_config
-
-    @property
     def conversation_cache(self) -> Cache:
         """Return the conversation cache."""
         if self._conversation_cache is None:
