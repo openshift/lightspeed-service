@@ -816,7 +816,6 @@ def test_valid_config_file():
             }
         )
         assert config.config == expected_config
-        assert config.user_data_collector_config is not None
         assert config.ols_config.user_data_collection is not None
         assert config.ols_config.user_data_collection.feedback_disabled is True
         assert config.ols_config.quota_handlers is not None

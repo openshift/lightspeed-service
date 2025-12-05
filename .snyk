@@ -7,4 +7,3 @@ exclude:
     - 'scripts/questions_gen.py'
     - 'scripts/generate_openapi_schema.py'
     - 'scripts/evaluation/**'
-    - 'scripts/data_collection/**'

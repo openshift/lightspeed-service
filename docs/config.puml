@@ -24,7 +24,6 @@ class "Config" as ols.app.models.config.Config {
   llm_providers
   mcp_servers
   ols_config
-  user_data_collector_config : Optional[UserDataCollectorConfig]
   validate_yaml() -> None
 }
 class "ConversationCacheConfig" as ols.app.models.config.ConversationCacheConfig {
@@ -228,21 +227,6 @@ class "UserDataCollection" as ols.app.models.config.UserDataCollection {
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }
-class "UserDataCollectorConfig" as ols.app.models.config.UserDataCollectorConfig {
-  access_token_generation_timeout : int
-  collection_interval : int
-  cp_offline_token : Optional[str]
-  data_storage : Optional[DirectoryPath]
-  ingress_base_delay : int
-  ingress_env : Literal['stage', 'prod']
-  ingress_max_retries : int
-  ingress_timeout : int
-  initial_wait : int
-  log_level : int
-  run_without_initial_wait : bool
-  user_agent : str
-  validate_token_is_set_when_needed() -> Self
-}
 class "WatsonxConfig" as ols.app.models.config.WatsonxConfig {
   credentials_path : str
   project_id : Optional[str]
@@ -279,6 +263,5 @@ ols.app.models.config.TLSConfig --* ols.app.models.config.OLSConfig : tls_config
 ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.OLSConfig : tls_security_profile
 ols.app.models.config.TLSSecurityProfile --* ols.app.models.config.ProviderConfig : tls_security_profile
 ols.app.models.config.UserDataCollection --* ols.app.models.config.OLSConfig : user_data_collection
-ols.app.models.config.UserDataCollectorConfig --* ols.app.models.config.Config : user_data_collector_config
 ols.app.models.config.WatsonxConfig --* ols.app.models.config.ProviderConfig : watsonx_config
 @enduml

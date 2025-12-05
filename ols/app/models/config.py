@@ -8,7 +8,6 @@ from typing import Any, Literal, Optional, Self
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
-    DirectoryPath,
     Field,
     FilePath,
     PositiveInt,
@@ -1185,57 +1184,12 @@ class DevConfig(BaseModel):
         return False
 
 
-class UserDataCollectorConfig(BaseModel):
-    """User data collection configuration.
-
-    All time information is given in seconds.
-
-    """
-
-    data_storage: Optional[DirectoryPath] = None
-    log_level: int = logging.INFO
-    collection_interval: int = 2 * 60 * 60  # 2 hours
-    run_without_initial_wait: bool = False
-    ingress_env: Literal["stage", "prod"] = "prod"
-    # this is not offline token, but direct auth token to ingress
-    cp_offline_token: Optional[str] = None
-    initial_wait: int = 60 * 5  # 5 minutes in seconds
-    ingress_timeout: int = 30
-    ingress_base_delay: int = 60  # exponential backoff parameter
-    ingress_max_retries: int = 3  # exponential backoff parameter
-    access_token_generation_timeout: int = 5
-    user_agent: str = (
-        "openshift-lightspeed-operator/user-data-collection cluster/{cluster_id}"
-    )
-
-    def __init__(self, **data: Any) -> None:
-        """Initialize configuration."""
-        # convert input strings (level names, eg. debug/info,...) to
-        # logging level name (integer values)
-        if "log_level" in data:
-            data["log_level"] = checks.get_log_level(data["log_level"])
-        super().__init__(**data)
-
-    @model_validator(mode="after")
-    def validate_token_is_set_when_needed(self) -> Self:
-        """Check that cp_offline_token is set when env is stage."""
-        if self.ingress_env == "stage" and self.cp_offline_token is None:
-            raise ValueError("cp_offline_token is required in stage environment")
-        if "{cluster_id}" not in self.user_agent:
-            raise ValueError(
-                "user_agent must contain a {cluster_id} substring, "
-                "as a placeholder for k8s cluster ID"
-            )
-        return self
-
-
 class Config(BaseModel):
     """Global service configuration."""
 
     llm_providers: LLMProviders = LLMProviders()
     ols_config: OLSConfig = OLSConfig()
     dev_config: DevConfig = DevConfig()
-    user_data_collector_config: Optional[UserDataCollectorConfig] = None
     mcp_servers: MCPServers = MCPServers()
 
     def __init__(
@@ -1268,9 +1222,6 @@ class Config(BaseModel):
 
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
-        self.user_data_collector_config = UserDataCollectorConfig(
-            **data.get("user_data_collector_config", {})
-        )
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
