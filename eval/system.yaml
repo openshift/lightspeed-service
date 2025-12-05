@@ -1,0 +1,145 @@
+# LightSpeed Evaluation Framework Configuration
+
+# LLM Configuration
+llm:
+  provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
+  model: "gpt-4o-mini"        # Model name for the provider
+  temperature: 0.0            # Generation temperature
+  max_tokens: 512             # Maximum tokens in response
+  timeout: 300                # Request timeout in seconds
+  num_retries: 3              # Retry attempts
+
+# API Configuration
+# Only query endpoint is supported
+api:
+  enabled: true                        # Enable API calls instead of using pre-filled data
+  api_base: http://localhost:8080      # Base API URL
+  endpoint_type: query                 # Use "streaming" or "query" endpoint
+  timeout: 300                         # API request timeout in seconds
+
+  # API input configuration
+  provider: "openai"                   # LLM provider for queries
+  model: "gpt-4o-mini"                 # Model to use for queries
+  no_tools: null                       # Whether to bypass tools and MCP servers (optional)
+  system_prompt: null                  # System prompt (default None)
+
+  # Authentication via API_KEY environment variable only for MCP server
+
+# Default metrics metadata
+metrics_metadata:
+  # Turn-level metrics metadata
+  turn_level:
+    # Ragas Response Evaluation metrics
+    "ragas:response_relevancy":
+      threshold: 0.7
+      description: "How relevant the response is to the question"
+      default: false  # By default the value is false
+
+    "ragas:faithfulness":
+      threshold: 0.7
+      description: "How faithful the response is to the provided context"
+
+    # Ragas Context/Retrieval Evaluation metrics
+    "ragas:context_recall":
+      threshold: 0.7
+      description: "Did we fetch every fact the answer needs?"
+
+    "ragas:context_precision_with_reference":
+      threshold: 0.7
+      description: "How precise the retrieved context is (with reference)"
+
+    "ragas:context_precision_without_reference":
+      threshold: 0.7
+      description: "How precise the retrieved context is (without reference)"
+
+    "ragas:context_relevance":
+      threshold: 0.7
+      description: "Is what we retrieved actually relevant to user query?"
+
+    # Custom metrics
+    "custom:answer_correctness":
+      threshold: 0.7
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true  # This metric is applied by default when no turn_metrics specified
+
+    "custom:tool_eval":
+      description: "Tool call evaluation comparing expected vs actual tool calls"
+
+  # Conversation-level metrics metadata
+  conversation_level:
+    # DeepEval metrics
+    "deepeval:conversation_completeness":
+      threshold: 0.7
+      description: "How completely the conversation addresses user intentions"
+      default: false
+
+    "deepeval:conversation_relevancy":
+      threshold: 0.7
+      description: "How relevant the conversation is to the topic/context"
+
+    "deepeval:knowledge_retention":
+      threshold: 0.7
+      description: "How well the model retains information from previous turns"
+
+# Output Configuration
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:          # Enable specific output types
+    - csv                   # Detailed results CSV
+    - json                  # Summary JSON with statistics
+    # - txt                   # Human-readable summary
+
+  # CSV columns to include
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8]            # Graph size (width, height)
+  dpi: 300                    # Image resolution
+
+  # Graph types to generate
+  enabled_graphs:
+    # - "pass_rates"            # Pass rate bar chart
+    - "score_distribution"    # Score distribution box plot
+    # - "conversation_heatmap"  # Heatmap of conversation performance
+    - "status_breakdown"      # Pie chart for pass/fail/error breakdown
+
+# Environment Variables - Automatically get set before any imports
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"        # Disable DeepEval telemetry
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"     # Disable DeepEval progress bars
+
+  LITELLM_LOG: ERROR                       # Suppress LiteLLM verbose logging
+
+# Logging Configuration
+logging:
+  # Source code logging level
+  source_level: INFO          # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+  # Package logging level (imported libraries)
+  package_level: ERROR
+
+  # Log format and display options
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+
+  # Specific package log levels (override package_level for specific libraries)
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING
