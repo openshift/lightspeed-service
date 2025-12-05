@@ -12,6 +12,7 @@ from ols.src.cache.cache_factory import CacheFactory
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 from ols.src.quota.token_usage_history import TokenUsageHistory
+from ols.src.tools.tools import initialize_data_masking
 
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
@@ -159,6 +160,10 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+
+            # Initialize data masking service with MCP server configurations
+            if self.config.mcp_servers and self.config.mcp_servers.servers:
+                initialize_data_masking(self.config.mcp_servers.servers)
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

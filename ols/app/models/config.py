@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from ols import constants
+from ols.app.models.masking_config import MaskingConfig
 from ols.utils import checks, tls
 
 
@@ -605,6 +606,7 @@ class MCPServerConfig(BaseModel):
     stdio: Optional[StdioTransportConfig] = None
     sse: Optional[SseTransportConfig] = None
     streamable_http: Optional[StreamableHttpTransportConfig] = None
+    data_masking: Optional[MaskingConfig] = None
 
     @model_validator(mode="after")
     def correct_transport_specified(self) -> Self:
