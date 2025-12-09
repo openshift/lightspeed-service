@@ -959,6 +959,21 @@ class UserDataCollection(BaseModel):
             )
         return self
 
+    @property
+    def config_status_enabled(self) -> bool:
+        """Config status is enabled when feedback or transcripts collection is enabled."""
+        return not self.feedback_disabled or not self.transcripts_disabled
+
+    @property
+    def config_status_storage(self) -> Optional[str]:
+        """Infer config status storage from feedback or transcripts storage."""
+        if not self.config_status_enabled:
+            return None
+        base_storage = self.feedback_storage or self.transcripts_storage
+        if base_storage is None:
+            return None
+        return os.path.join(os.path.dirname(base_storage), "config_status")
+
 
 class SchedulerConfig(BaseModel):
     """Scheduler configuration."""

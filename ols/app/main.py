@@ -11,6 +11,7 @@ from starlette.routing import Mount, Route, WebSocketRoute
 from ols import config, constants, version
 from ols.app import metrics, routers
 from ols.customize import metadata
+from ols.src.config_status import extract_config_status, store_config_status
 
 app = FastAPI(
     title=f"Swagger {metadata.SERVICE_NAME} service - OpenAPI",
@@ -152,3 +153,13 @@ app_routes_paths = [
     for route in app.routes
     if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
+
+if config.ols_config.user_data_collection.config_status_enabled:
+    try:
+        config_status = extract_config_status(config.config)
+        store_config_status(
+            config.ols_config.user_data_collection.config_status_storage,
+            config_status,
+        )
+    except Exception as e:
+        logger.warning("Failed to store config status: %s", e)
