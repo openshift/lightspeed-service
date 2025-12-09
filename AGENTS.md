@@ -10,6 +10,34 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 - **Async/Await** - Throughout the codebase
 - **Pydantic Models** - Configuration and data validation
 
+## Version Management
+
+### Version Update Process
+When updating the OLS version, you **MUST** update version numbers in **THREE** files:
+
+1. **`ols/version.py`** - Python version constant
+   ```python
+   __version__ = "X.Y.Z"
+   ```
+
+2. **`docs/openapi.json`** - OpenAPI specification version
+   ```json
+   "info": {
+       "version": "X.Y.Z"
+   }
+   ```
+
+3. **`scripts/build-container.sh`** - Container build version
+   ```bash
+   OLS_VERSION=vX.Y.Z
+   ```
+
+**Important Notes:**
+- All three files MUST have matching versions
+- `ols/version.py` is the source of truth used by project manager tools
+- `scripts/build-container.sh` uses a `v` prefix (e.g., `v1.0.8`)
+- After version changes, regenerate OpenAPI docs if needed
+
 ## Code Standards
 
 ### Python Version & Dependencies
