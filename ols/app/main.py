@@ -26,6 +26,16 @@ app = FastAPI(
 
 logger = logging.getLogger(__name__)
 
+# Endpoints that don't require security headers (health checks, metrics, etc.)
+ENDPOINTS_WITHOUT_SECURITY_HEADERS = frozenset(
+    [
+        "/metrics",
+        "/readiness",
+        "/liveness",
+    ]
+)
+
+
 if config.dev_config.enable_dev_ui:
     # Gradio depends on many packages like Matplotlib, Pillow etc.
     # it does not make much sense to import all these packages for
@@ -52,7 +62,7 @@ metrics.setup_model_metrics(config)
 async def rest_api_counter(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    """Middleware with REST API counter update logic."""
+    """Middleware with REST API counter update logic and security headers."""
     path = request.url.path
 
     if path not in app_routes_paths:
@@ -61,6 +71,38 @@ async def rest_api_counter(
     # measure time to handle duration + update histogram
     with metrics.response_duration_seconds.labels(path).time():
         response = await call_next(request)
+
+    # Add security headers to all endpoints except health checks and metrics
+
+    # NOTE: These are RESPONSE headers (server -> client). Clients do not need to send them.
+    # Clients can either ignore these headers or leverage them for additional security validation.
+    # Browsers will enforce these policies; HTTP libraries typically ignore them.
+
+    # This ensures new endpoints get security headers by default
+    if path not in ENDPOINTS_WITHOUT_SECURITY_HEADERS:
+        # X-Content-Type-Options prevents MIME-sniffing attacks
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # HTTP Strict Transport Security (HSTS) - only when TLS is enabled
+        if not config.dev_config.disable_tls:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+
+        # Additional security headers (currently commented out)
+        # Uncomment these if you want additional protections:
+
+        # Prevent clickjacking by disallowing the page to be embedded in iframes
+        # response.headers["X-Frame-Options"] = "DENY"
+
+        # Control referrer information to prevent leaking sensitive data in URLs
+        # response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Legacy XSS protection (modern browsers use CSP instead)
+        # response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # Content Security Policy - restricts resource loading (requires careful tuning)
+        # response.headers["Content-Security-Policy"] = "default-src 'self'"
 
     # ignore /metrics endpoint that will be called periodically
     if not path.endswith("/metrics"):
