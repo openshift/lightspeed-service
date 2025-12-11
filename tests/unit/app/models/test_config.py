@@ -3597,6 +3597,44 @@ def test_user_data_config__transcripts(tmpdir):
     assert user_data.transcripts_storage is None
 
 
+def test_user_data_config__config_status(tmpdir):
+    """Tests the UserDataCollection model, config_status part."""
+    import os
+
+    parent_dir = os.path.dirname(tmpdir.strpath)
+
+    # config status is inferred from feedback/transcripts settings
+    # when feedback is enabled, config_status should be enabled too
+    user_data = UserDataCollection(
+        feedback_disabled=False, feedback_storage=tmpdir.strpath
+    )
+    assert user_data.config_status_enabled is True
+    assert user_data.config_status_storage == os.path.join(parent_dir, "config_status")
+
+    # when transcripts is enabled, config_status should be enabled too
+    user_data = UserDataCollection(
+        transcripts_disabled=False, transcripts_storage=tmpdir.strpath
+    )
+    assert user_data.config_status_enabled is True
+    assert user_data.config_status_storage == os.path.join(parent_dir, "config_status")
+
+    # when both feedback and transcripts are enabled
+    user_data = UserDataCollection(
+        feedback_disabled=False,
+        feedback_storage=tmpdir.strpath,
+        transcripts_disabled=False,
+        transcripts_storage=f"{tmpdir.strpath}/transcripts",
+    )
+    assert user_data.config_status_enabled is True
+    # should use feedback_storage as base
+    assert user_data.config_status_storage == os.path.join(parent_dir, "config_status")
+
+    # when both are disabled, config_status should be disabled too
+    user_data = UserDataCollection()
+    assert user_data.config_status_enabled is False
+    assert user_data.config_status_storage is None
+
+
 def test_dev_config_defaults():
     """Test the DevConfig model with default values."""
     dev_config = DevConfig()
