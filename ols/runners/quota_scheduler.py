@@ -59,9 +59,10 @@ def quota_scheduler(config: Optional[QuotaHandlersConfig]) -> bool:
         logger.info("Quota scheduler sync started")
         for name, limiter in config.limiters.limiters.items():
             try:
+                # Handle periodic quota revocation
                 quota_revocation(connection, name, limiter)
             except Exception as e:
-                logger.error("Quota revoke error: %s", e)
+                logger.error("Quota scheduler error for '%s': %s", name, e)
         logger.info("Quota scheduler sync finished")
         sleep(period)
     # unreachable code
