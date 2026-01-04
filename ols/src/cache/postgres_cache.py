@@ -73,8 +73,12 @@ class PostgresCache(Cache):
                (SELECT user_id, conversation_id FROM cache ORDER BY updated_at LIMIT
         """
 
-    QUERY_CACHE_SIZE = """
-        SELECT count(*) FROM cache;
+    QUERY_TOTAL_ENTRIES = """
+        SELECT COALESCE(SUM(json_array_length(convert_from(value, 'utf-8')::json)), 0) FROM cache;
+        """
+
+    SELECT_OLDEST_ROW = """
+        SELECT user_id, conversation_id, value FROM cache ORDER BY updated_at LIMIT 1;
         """
 
     DELETE_SINGLE_CONVERSATION_STATEMENT = """
@@ -218,7 +222,7 @@ class PostgresCache(Cache):
                         conversation_id,
                         json.dumps([value], cls=MessageEncoder).encode("utf-8"),
                     )
-                    PostgresCache._cleanup(cursor, self.capacity)
+                PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.insert_or_append: %s", e)
@@ -343,16 +347,34 @@ class PostgresCache(Cache):
 
     @staticmethod
     def _cleanup(cursor: psycopg2.extensions.cursor, capacity: int) -> None:
-        """Perform cleanup old conversation histories."""
-        cursor.execute(PostgresCache.QUERY_CACHE_SIZE)
-        value = cursor.fetchone()
-        if value is not None:
-            count = value[0]
-            limit = count - capacity
-            if limit > 0:
-                cursor.execute(
-                    f"{PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT} {count - capacity})"
-                )
+        """Perform cleanup by evicting oldest messages until total_entries <= capacity."""
+        cursor.execute(PostgresCache.QUERY_TOTAL_ENTRIES)
+        result = cursor.fetchone()
+        if result is None:
+            total_entries = 0
+        else:
+            val = result[0]
+            try:
+                total_entries = int(val)
+            except (TypeError, ValueError):
+                total_entries = 0
+
+        if total_entries > capacity:
+            cursor.execute(PostgresCache.SELECT_OLDEST_ROW)
+            row = cursor.fetchone()
+            if not row:
+                return
+            user_id, conversation_id, value_bytes = row
+            text_value = str(value_bytes, "utf-8")
+            value = json.loads(text_value, cls=MessageDecoder)
+
+            if len(value) > 1:
+                value.pop(0)
+                new_value_bytes = json.dumps(value, cls=MessageEncoder).encode("utf-8")
+                PostgresCache._update(cursor, user_id, conversation_id, new_value_bytes)
+            else:
+                PostgresCache._delete(cursor, user_id, conversation_id)
+            total_entries -= 1
 
     @staticmethod
     def _delete(

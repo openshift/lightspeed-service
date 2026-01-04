@@ -31,7 +31,8 @@ class InMemoryCache(Cache):
     def initialize_cache(self, config: InMemoryCacheConfig) -> None:
         """Initialize the InMemoryCache."""
         # pylint: disable=W0201
-        self.capacity = config.max_entries
+        self.capacity: int = config.max_entries
+        self.total_entries: int = 0
         self.deque: deque[str] = deque()
         self.cache: dict[str, list[dict[str, Any]]] = {}
 
@@ -67,6 +68,12 @@ class InMemoryCache(Cache):
     ) -> None:
         """Set the value if a key is not present or else simply appends.
 
+        Eviction policy:
+          - Capacity is treated as number of message entries across all conversations.
+          - When inserting causes total entries to exceed capacity, evict the oldest
+            message(s) from the least-recently-used conversation(s) (tail of deque)
+            until total_entries <= capacity.
+
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
@@ -78,16 +85,25 @@ class InMemoryCache(Cache):
 
         with self._lock:
             if key not in self.cache:
-                if len(self.deque) == self.capacity:
-                    oldest = self.deque.pop()
-                    del self.cache[oldest]
                 self.cache[key] = [value]
             else:
                 self.deque.remove(key)
-                old_value = self.cache[key]
-                old_value.append(value)
-                self.cache[key] = old_value
+                self.cache[key].append(value)
             self.deque.appendleft(key)
+            self.total_entries += 1
+
+            # Evict oldest messages until we're within capacity
+            if self.total_entries > self.capacity and self.deque:
+                oldest_key = self.deque[-1]
+                oldest_list = self.cache.get(oldest_key, [])
+                del oldest_list[0]
+                self.total_entries -= 1
+
+                if len(oldest_list) == 0:
+                    del self.cache[oldest_key]
+                    self.deque.pop()
+                else:
+                    self.cache[oldest_key] = oldest_list
 
     def delete(
         self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
@@ -109,6 +125,7 @@ class InMemoryCache(Cache):
                 return False
 
             # Remove from both cache and deque
+            self.total_entries -= len(self.cache[key])
             del self.cache[key]
             self.deque.remove(key)
             return True

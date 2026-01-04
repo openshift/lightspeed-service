@@ -242,7 +242,7 @@ def test_insert_or_append_operation():
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (user_id, conversation_id, conversation.encode("utf-8")),
         ),
-        call(PostgresCache.QUERY_CACHE_SIZE),
+        call(PostgresCache.QUERY_TOTAL_ENTRIES),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
@@ -351,7 +351,7 @@ def test_insert_or_append_operation_on_disconnected_db():
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (user_id, conversation_id, conversation.encode("utf-8")),
         ),
-        call(PostgresCache.QUERY_CACHE_SIZE),
+        call(PostgresCache.QUERY_TOTAL_ENTRIES),
         call("SELECT 1"),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -596,26 +596,37 @@ def test_cleanup_method_when_clean_not_needed():
         PostgresCache._cleanup(mock_cursor, capacity)
 
     # Verify the query execution
-    mock_cursor.execute.assert_called_once_with(PostgresCache.QUERY_CACHE_SIZE)
+    mock_cursor.execute.assert_called_once_with(PostgresCache.QUERY_TOTAL_ENTRIES)
 
 
 def test_cleanup_method_when_clean_performed():
-    """Test the static method that cleans up PG cache."""
+    """Test the static method that cleans up PG cache by evicting one message."""
+    # Prepare mock data for eviction: a conversation with 2 messages
+    value = [cache_entry_1.to_dict(), cache_entry_2.to_dict()]
+    conversation = json.dumps(value, cls=MessageEncoder)
+    value_bytes = conversation.encode("utf-8")
+    row = (user_id, conversation_id, value_bytes)
+
+    # After evicting the oldest message, the conversation has 1 message left
+    trimmed_value = [cache_entry_2.to_dict()]
+    trimmed_conversation = json.dumps(trimmed_value, cls=MessageEncoder)
+    trimmed_value_bytes = trimmed_conversation.encode("utf-8")
+
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = (200,)
-    capacity = 100
+    mock_cursor.fetchone.side_effect = [(200,), row]
+    capacity = 199  # Total 200 > 199, so evict 1 message
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect"):
         PostgresCache._cleanup(mock_cursor, capacity)
 
-    # Verify the query execution
+    # Verify the query executions: get total, get oldest row, update the trimmed conversation
     calls = [
+        call(PostgresCache.QUERY_TOTAL_ENTRIES),
+        call(PostgresCache.SELECT_OLDEST_ROW),
         call(
-            PostgresCache.QUERY_CACHE_SIZE,
-        ),
-        call(
-            PostgresCache.DELETE_CONVERSATION_HISTORY_STATEMENT + " 100)",
+            PostgresCache.UPDATE_CONVERSATION_HISTORY_STATEMENT,
+            (trimmed_value_bytes, user_id, conversation_id),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
