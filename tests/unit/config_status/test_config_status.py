@@ -65,10 +65,8 @@ class TestConfigStatus:
             providers={"openai": ["my_openai"]},
             models={"my_openai": ["gpt-4"]},
             rag_indexes=[],
-            embeddings_model=None,
             query_redactor_enabled=False,
             query_filter_count=0,
-            authentication_module="k8s",
             providers_with_tls_config=[],
             conversation_cache_type="memory",
             mcp_servers={},
@@ -76,15 +74,12 @@ class TestConfigStatus:
             token_history_enabled=False,
             proxy_enabled=False,
             custom_system_prompt_enabled=False,
-            max_workers=1,
-            extra_ca_configured=False,
+            extra_ca_count=0,
         )
 
         assert status.providers == {"openai": ["my_openai"]}
         assert status.models == {"my_openai": ["gpt-4"]}
         assert status.rag_indexes == []
-        assert status.embeddings_model is None
-        assert status.authentication_module == "k8s"
 
 
 class TestExtractConfigStatus:
@@ -98,9 +93,7 @@ class TestExtractConfigStatus:
         assert status.providers == {"openai": ["test_provider"]}
         assert status.models == {"test_provider": []}
         assert status.rag_indexes == []
-        assert status.embeddings_model is None
         assert status.query_redactor_enabled is False
-        assert status.authentication_module == "k8s"
         assert status.conversation_cache_type == "memory"
         assert status.mcp_servers == {}
         assert status.quota_management_enabled is False
@@ -121,7 +114,6 @@ class TestExtractConfigStatus:
         status = extract_config_status(config)
 
         assert status.rag_indexes == ["ocp-product-docs-4_17"]
-        assert status.embeddings_model == "/models/embeddings"
 
     def test_extract_config_status_with_query_filters(self):
         """Test extracting config status with query filters enabled."""
@@ -196,12 +188,10 @@ class TestExtractConfigStatus:
         """Test extracting config status with custom system prompt."""
         config = create_minimal_config()
         config.ols_config.system_prompt = "Custom prompt content"
-        config.ols_config.max_workers = 4
 
         status = extract_config_status(config)
 
         assert status.custom_system_prompt_enabled is True
-        assert status.max_workers == 4
 
 
 class TestStoreConfigStatus:
@@ -214,22 +204,16 @@ class TestStoreConfigStatus:
             providers={"openai": ["my_openai"]},
             models={"my_openai": ["gpt-4"]},
             rag_indexes=["ocp-docs-4_17", "user-docs-v1"],
-            embeddings_model="/models/embeddings",
             query_redactor_enabled=True,
             query_filter_count=1,
-            authentication_module="k8s",
             providers_with_tls_config=["my_openai"],
             conversation_cache_type="memory",
             mcp_servers={"openshift": "stdio"},
-            dev_ui_enabled=False,
-            auth_disabled=False,
-            system_prompt_override_enabled=False,
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
             custom_system_prompt_enabled=True,
-            max_workers=2,
-            extra_ca_configured=False,
+            extra_ca_count=0,
         )
 
         with patch("ols.src.config_status.config_status.suid.get_suid") as mock_suid:
@@ -250,8 +234,6 @@ class TestStoreConfigStatus:
         assert stored_data["providers"] == {"openai": ["my_openai"]}
         assert stored_data["models"] == {"my_openai": ["gpt-4"]}
         assert stored_data["rag_indexes"] == ["ocp-docs-4_17", "user-docs-v1"]
-        assert stored_data["embeddings_model"] == "/models/embeddings"
-        assert stored_data["authentication_module"] == "k8s"
         assert stored_data["mcp_servers"] == {"openshift": "stdio"}
         assert stored_data["custom_system_prompt_enabled"] is True
 
@@ -262,10 +244,8 @@ class TestStoreConfigStatus:
             providers={},
             models={},
             rag_indexes=[],
-            embeddings_model=None,
             query_redactor_enabled=False,
             query_filter_count=0,
-            authentication_module="k8s",
             providers_with_tls_config=[],
             conversation_cache_type="memory",
             mcp_servers={},
@@ -273,8 +253,7 @@ class TestStoreConfigStatus:
             token_history_enabled=False,
             proxy_enabled=False,
             custom_system_prompt_enabled=False,
-            max_workers=1,
-            extra_ca_configured=False,
+            extra_ca_count=0,
         )
 
         with patch("ols.src.config_status.config_status.suid.get_suid") as mock_suid:
