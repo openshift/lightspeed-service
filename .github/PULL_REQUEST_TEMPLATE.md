@@ -16,11 +16,14 @@
 - [ ] CI configuration change
 - [ ] Konflux configuration change
 
-
 ## Related Tickets & Documents
 
 - Related Issue #
 - Closes #
+
+## AI Tools Assistance
+
+- [ ] AI tools were used to assist with this PR
 
 ## Checklist before requesting a review
 
