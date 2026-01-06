@@ -5,7 +5,7 @@
 groups = ["default", "dev", "evaluation"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:e9aba81330237297e0435e6c266d91996328edce919124c90ac3b77a7dfda702"
+content_hash = "sha256:2350da28043e9db0cba359fe74cf3365384539639309d588c4110aa4ac1fd8da"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -1883,7 +1883,7 @@ files = [
 
 [[package]]
 name = "kubernetes"
-version = "34.1.0"
+version = "33.1.0"
 requires_python = ">=3.6"
 summary = "Kubernetes python client"
 groups = ["default"]
@@ -1891,17 +1891,18 @@ dependencies = [
     "certifi>=14.05.14",
     "durationpy>=0.7",
     "google-auth>=1.0.1",
+    "oauthlib>=3.2.2",
     "python-dateutil>=2.5.3",
     "pyyaml>=5.4.1",
     "requests",
     "requests-oauthlib",
     "six>=1.9.0",
-    "urllib3<2.4.0,>=1.24.2",
+    "urllib3>=1.24.2",
     "websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0",
 ]
 files = [
-    {file = "kubernetes-34.1.0-py2.py3-none-any.whl", hash = "sha256:bffba2272534e224e6a7a74d582deb0b545b7c9879d2cd9e4aae9481d1f2cc2a"},
-    {file = "kubernetes-34.1.0.tar.gz", hash = "sha256:8fe8edb0b5d290a2f3ac06596b23f87c658977d46b5f8df9d0f4ea83d0003912"},
+    {file = "kubernetes-33.1.0-py2.py3-none-any.whl", hash = "sha256:544de42b24b64287f7e0aa9513c93cb503f7f40eea39b20f66810011a86eabc5"},
+    {file = "kubernetes-33.1.0.tar.gz", hash = "sha256:f64d829843a54c251061a8e7a14523b521f2dc5c896cf6d65ccf348648a88993"},
 ]
 
 [[package]]
@@ -5123,13 +5124,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.3.0"
+version = "2.6.2"
 requires_python = ">=3.9"
 summary = "HTTP library with thread-safe connection pooling, file post, and more."
 groups = ["default", "dev", "evaluation"]
 files = [
-    {file = "urllib3-2.3.0-py3-none-any.whl", hash = "sha256:1cee9ad369867bfdbbb48b7dd50374c0967a0bb7710050facf0dd6911440e3df"},
-    {file = "urllib3-2.3.0.tar.gz", hash = "sha256:f8c5449b3cf0861679ce7e0503c7b44b5ec981bec0d1d3795a07f1ba96f0204d"},
+    {file = "urllib3-2.6.2-py3-none-any.whl", hash = "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"},
+    {file = "urllib3-2.6.2.tar.gz", hash = "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797"},
 ]
 
 [[package]]
