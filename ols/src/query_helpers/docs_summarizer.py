@@ -84,6 +84,36 @@ def run_async_safely(coro: Callable) -> Any:
         raise
 
 
+async def gather_mcp_tools(mcp_servers: dict[str, Any]) -> list:
+    """Gather tools from multiple MCP servers with failure isolation.
+
+    Load tools from each MCP server individually so that if one server
+    is unreachable, tools from other servers are still available.
+
+    Args:
+        mcp_servers: Dictionary mapping server names to their configurations.
+
+    Returns:
+        List of tools from all successfully connected servers.
+    """
+    all_tools: list = []
+    mcp_client = MultiServerMCPClient(mcp_servers)
+
+    for server_name in mcp_servers:
+        try:
+            server_tools = await mcp_client.get_tools(server_name=server_name)
+            all_tools.extend(server_tools)
+            logger.info(
+                "Loaded %d tools from MCP server '%s'",
+                len(server_tools),
+                server_name,
+            )
+        except Exception as e:
+            logger.error("Failed to get tools from MCP server '%s': %s", server_name, e)
+
+    return all_tools
+
+
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
@@ -282,12 +312,7 @@ class DocsSummarizer(QueryHelper):
             StreamedChunk objects representing parts of the response
         """
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
-            try:
-                mcp_client = MultiServerMCPClient(self.mcp_servers)
-                all_mcp_tools = await mcp_client.get_tools()
-            except Exception as e:
-                logger.error("Failed to get MCP tools: %s", e)
-                all_mcp_tools = {}
+            all_mcp_tools = await gather_mcp_tools(self.mcp_servers)
 
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
