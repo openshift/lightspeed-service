@@ -4156,3 +4156,86 @@ def test_proxy_config_no_proxy_env_var_with_certificates(monkeypatch):
     assert proxy_config.no_proxy_hosts == no_proxy.split(",")
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
     assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"
+
+
+def test_provider_config_extra_headers_valid():
+    """Test extra_headers accepts valid dict."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "credentials_path": None,
+            "models": [{"name": "test-model"}],
+            "extra_headers": {"X-Tenant-ID": "my-org", "X-Environment": "prod"},
+        },
+        ignore_llm_secrets=True,
+    )
+    assert provider_config.extra_headers == {
+        "X-Tenant-ID": "my-org",
+        "X-Environment": "prod",
+    }
+
+
+def test_provider_config_extra_headers_default_empty():
+    """Test extra_headers defaults to empty dict when not specified."""
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "credentials_path": None,
+            "models": [{"name": "test-model"}],
+        },
+        ignore_llm_secrets=True,
+    )
+    assert provider_config.extra_headers == {}
+
+
+def test_provider_config_extra_headers_rejects_non_string_value():
+    """Test extra_headers rejects non-string values."""
+    with pytest.raises(
+        InvalidConfigurationError, match="extra_headers values must be strings"
+    ):
+        ProviderConfig(
+            {
+                "name": "test_provider",
+                "type": "openai",
+                "credentials_path": None,
+                "models": [{"name": "test-model"}],
+                "extra_headers": {"X-Custom": 123},
+            },
+            ignore_llm_secrets=True,
+        )
+
+
+def test_provider_config_extra_headers_rejects_empty_key():
+    """Test extra_headers rejects empty string keys."""
+    with pytest.raises(
+        InvalidConfigurationError, match="extra_headers keys must be non-empty"
+    ):
+        ProviderConfig(
+            {
+                "name": "test_provider",
+                "type": "openai",
+                "credentials_path": None,
+                "models": [{"name": "test-model"}],
+                "extra_headers": {"": "value"},
+            },
+            ignore_llm_secrets=True,
+        )
+
+
+def test_provider_config_extra_headers_rejects_non_string_key():
+    """Test extra_headers rejects non-string keys."""
+    with pytest.raises(
+        InvalidConfigurationError, match="extra_headers keys must be non-empty"
+    ):
+        ProviderConfig(
+            {
+                "name": "test_provider",
+                "type": "openai",
+                "credentials_path": None,
+                "models": [{"name": "test-model"}],
+                "extra_headers": {123: "value"},
+            },
+            ignore_llm_secrets=True,
+        )

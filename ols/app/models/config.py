@@ -317,6 +317,7 @@ class ProviderConfig(BaseModel):
     fake_provider_config: Optional[FakeConfig] = None
     certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
+    extra_headers: dict[str, str] = {}
 
     def __init__(
         self,
@@ -372,6 +373,20 @@ class ProviderConfig(BaseModel):
         self.tls_security_profile = TLSSecurityProfile(
             data.get("tlsSecurityProfile", None)
         )
+        self.extra_headers = data.get("extra_headers", {})
+        self._validate_extra_headers()
+
+    def _validate_extra_headers(self) -> None:
+        """Validate extra_headers field."""
+        for key, value in self.extra_headers.items():
+            if not isinstance(key, str) or not key:
+                raise checks.InvalidConfigurationError(
+                    "extra_headers keys must be non-empty strings"
+                )
+            if not isinstance(value, str):
+                raise checks.InvalidConfigurationError(
+                    "extra_headers values must be strings"
+                )
 
     def set_provider_type(self, data: dict) -> None:
         """Set the provider type."""
