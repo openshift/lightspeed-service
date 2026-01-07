@@ -29,7 +29,7 @@ install-tools:	install-woke ## Install required utilities/tools
 	# pip uninstall -v -y mypy 2> /dev/null || true
 	export PIP_DEFAULT_TIMEOUT=100
 	# install all dependencies, including devel ones
-	@for a in 1 2 3 4 5; do pdm install --group default,dev,evaluation --fail-fast -v && break || sleep 15; done
+	pdm --no-cache install --group default,dev,evaluation --fail-fast -v
 	# display setuptools version
 	pdm show setuptools
 	# check that correct mypy version is installed
