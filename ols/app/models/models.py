@@ -794,11 +794,126 @@ class StreamedChunk:
     """Represents a chunk of streamed data from the LLM.
 
     Attributes:
-        type: The type of chunk (text, tool_call, tool_result, or end)
+        type: The type of chunk (text, tool_call, tool_result, or end,
+              approval_required, approval_timeout, approval_received, tool_skipped)
         text: The text content of the chunk (for text chunks)
         data: Additional data associated with the chunk (for non-text chunks)
     """
 
-    type: Literal["text", "tool_call", "tool_result", "end"]
+    type: Literal[
+        "text",
+        "tool_call",
+        "tool_result",
+        "end",
+        "approval_required",
+        "approval_timeout",
+        "approval_received",
+        "tool_skipped",
+    ]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
+
+
+class ApprovalRequest(BaseModel):
+    """Model representing a request for human approval of a tool call.
+
+    Attributes:
+        approval_id: Unique identifier for this approval request.
+        conversation_id: The conversation ID this approval belongs to.
+        decision: The decision made by the user (approve, reject, or modify).
+        modified_args: Optional modified arguments if decision is 'modify'.
+    """
+
+    approval_id: str
+    conversation_id: str
+    decision: Literal["approve", "reject", "modify"]
+    modified_args: Optional[dict[str, Any]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "approval_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "conversation_id": "987fcdeb-51a2-34d6-b789-123456789abc",
+                    "decision": "approve",
+                },
+                {
+                    "approval_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "conversation_id": "987fcdeb-51a2-34d6-b789-123456789abc",
+                    "decision": "modify",
+                    "modified_args": {"namespace": "production"},
+                },
+            ]
+        }
+    }
+
+
+class ApprovalResponse(BaseModel):
+    """Model representing a response to an approval request.
+
+    Attributes:
+        approval_id: The approval ID that was processed.
+        status: The status of the approval submission.
+        message: Optional message about the approval status.
+    """
+
+    approval_id: str
+    status: Literal["accepted", "expired", "not_found", "error"]
+    message: Optional[str] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "approval_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "status": "accepted",
+                    "message": "Tool execution will proceed",
+                }
+            ]
+        }
+    }
+
+
+class PendingApproval(BaseModel):
+    """Model representing a pending approval for a tool call.
+
+    Attributes:
+        approval_id: Unique identifier for this approval.
+        conversation_id: The conversation this approval belongs to.
+        tool_name: Name of the tool awaiting approval.
+        tool_args: Arguments for the tool call.
+        created_at: Timestamp when approval was requested.
+        expires_at: Timestamp when approval will expire.
+    """
+
+    approval_id: str
+    conversation_id: str
+    tool_name: str
+    tool_args: dict[str, Any]
+    created_at: float
+    expires_at: float
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "approval_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "conversation_id": "987fcdeb-51a2-34d6-b789-123456789abc",
+                    "tool_name": "kubectl_apply",
+                    "tool_args": {"yaml": "apiVersion: v1\nkind: Pod..."},
+                    "created_at": 1704657600.0,
+                    "expires_at": 1704657900.0,
+                }
+            ]
+        }
+    }
+
+
+class PendingApprovalsResponse(BaseModel):
+    """Model representing a list of pending approvals.
+
+    Attributes:
+        pending_approvals: List of pending approval requests.
+    """
+
+    pending_approvals: list[PendingApproval]
