@@ -280,6 +280,13 @@ def test_tool_calling_tool_execution(caplog):
 
     question = "How many namespaces are there in my cluster?"
 
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
         patch(
@@ -288,6 +295,10 @@ def test_tool_calling_tool_execution(caplog):
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            return_value=mcp_servers_config,
+        ),
     ):
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
             [
@@ -302,13 +313,12 @@ def test_tool_calling_tool_execution(caplog):
             ]
         )
 
-        # Create mock tools map
+        # Create mock MCP client - now get_tools is called with server_name parameter
         mock_mcp_client_instance = AsyncMock()
         mock_mcp_client_instance.get_tools.return_value = mock_tools_map
         mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
 
         assert "Tool: get_namespaces_mock" in caplog.text
@@ -318,3 +328,133 @@ def test_tool_calling_tool_execution(caplog):
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_gather_mcp_tools_failure_isolation(caplog):
+    """Test gather_mcp_tools isolates failures from individual MCP servers.
+
+    When multiple MCP servers are configured and one is unreachable,
+    tools from the working servers should still be returned.
+    """
+    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+
+    caplog.set_level(10)
+
+    mcp_servers = {
+        "working_server": {
+            "transport": "streamable_http",
+            "url": "http://working-server:8080/mcp",
+        },
+        "broken_server": {
+            "transport": "streamable_http",
+            "url": "http://non-exist:8888/mcp",
+        },
+    }
+
+    # Mock MultiServerMCPClient.get_tools to simulate per-server behavior
+    async def mock_get_tools(server_name=None):
+        if server_name == "working_server":
+            return mock_tools_map
+        elif server_name == "broken_server":
+            raise ConnectionError("Failed to connect to http://non-exist:8888/mcp")
+        return []
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+    ) as mock_client_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get_tools.side_effect = mock_get_tools
+        mock_client_cls.return_value = mock_client_instance
+
+        # Call gather_mcp_tools - should return tools from working server
+        # even though broken_server fails
+        tools = await gather_mcp_tools(mcp_servers)
+
+        # Verify we got tools from the working server
+        assert len(tools) == 1
+        assert tools[0].name == "get_namespaces_mock"
+
+        # Verify logging shows partial success
+        assert "Loaded 1 tools from MCP server 'working_server'" in caplog.text
+        assert "Failed to get tools from MCP server 'broken_server'" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_gather_mcp_tools_all_servers_working(caplog):
+    """Test gather_mcp_tools aggregates tools from all working servers."""
+    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+
+    caplog.set_level(10)
+
+    mcp_servers = {
+        "server_a": {"transport": "streamable_http", "url": "http://server-a:8080/mcp"},
+        "server_b": {"transport": "streamable_http", "url": "http://server-b:8080/mcp"},
+    }
+
+    async def mock_get_tools(server_name=None):
+        # Both servers return tools successfully
+        return mock_tools_map
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+    ) as mock_client_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get_tools.side_effect = mock_get_tools
+        mock_client_cls.return_value = mock_client_instance
+
+        tools = await gather_mcp_tools(mcp_servers)
+
+        # Should have tools from both servers (2 x 1 = 2 tools)
+        assert len(tools) == 2
+        assert "Loaded 1 tools from MCP server 'server_a'" in caplog.text
+        assert "Loaded 1 tools from MCP server 'server_b'" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_gather_mcp_tools_all_servers_failing(caplog):
+    """Test gather_mcp_tools handles all servers failing gracefully."""
+    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+
+    caplog.set_level(10)
+
+    mcp_servers = {
+        "broken_a": {"transport": "streamable_http", "url": "http://broken-a:8888/mcp"},
+        "broken_b": {"transport": "streamable_http", "url": "http://broken-b:8888/mcp"},
+    }
+
+    async def mock_get_tools(server_name=None):
+        raise ConnectionError(f"Failed to connect to {server_name}")
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+    ) as mock_client_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get_tools.side_effect = mock_get_tools
+        mock_client_cls.return_value = mock_client_instance
+
+        tools = await gather_mcp_tools(mcp_servers)
+
+        # Should return empty list, not raise exception
+        assert tools == []
+        assert "Failed to get tools from MCP server 'broken_a'" in caplog.text
+        assert "Failed to get tools from MCP server 'broken_b'" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_gather_mcp_tools_empty_config():
+    """Test gather_mcp_tools with no servers configured."""
+    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+    ) as mock_client_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_cls.return_value = mock_client_instance
+
+        tools = await gather_mcp_tools({})
+
+        # Should return empty list
+        assert tools == []
+        # get_tools should never be called
+        mock_client_instance.get_tools.assert_not_called()
