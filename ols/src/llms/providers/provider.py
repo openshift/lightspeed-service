@@ -338,6 +338,9 @@ class LLMProvider(AbstractLLMProvider):
         self, use_custom_certificate_store: bool, use_async: bool
     ) -> httpx.Client | httpx.AsyncClient:
         """Construct HTTPX client instance to be used to communicate with LLM."""
+        # get extra headers from provider config
+        extra_headers = getattr(self.provider_config, "extra_headers", {}) or {}
+
         # no proxy by default
         proxy = None
         # set up proxy if configured.
@@ -391,8 +394,12 @@ class LLMProvider(AbstractLLMProvider):
                 "No security profiles. creating httpx.Client with verify %s", verify
             )
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxies=proxy, mounts=mounts)
-            return httpx.Client(verify=verify, proxies=proxy, mounts=mounts)
+                return httpx.AsyncClient(
+                    verify=verify, proxies=proxy, mounts=mounts, headers=extra_headers
+                )
+            return httpx.Client(
+                verify=verify, proxies=proxy, mounts=mounts, headers=extra_headers
+            )
 
         # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
@@ -420,5 +427,5 @@ class LLMProvider(AbstractLLMProvider):
             "With security profile, creating httpx.Client with verify %s", context
         )
         if use_async:
-            return httpx.AsyncClient(verify=context, proxies=proxy)
-        return httpx.Client(verify=context, proxies=proxy)
+            return httpx.AsyncClient(verify=context, proxies=proxy, headers=extra_headers)
+        return httpx.Client(verify=context, proxies=proxy, headers=extra_headers)

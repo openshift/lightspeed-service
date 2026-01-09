@@ -5,6 +5,12 @@ llm_providers:
     type: openai
     url: "https://api.openai.com/v1"
     credentials_path: openai_api_key.txt
+    # Optional: custom HTTP headers to include in all requests to this provider.
+    # This is useful for multi-tenant routing, environment tags, or internal auditing.
+    # extra_headers:
+    #   X-Tenant-ID: "my-org"
+    #   X-Request-Source: "lightspeed"
+    #   X-Environment: "production"
     models:
       - name: model-name-1
       - name: model-name-2

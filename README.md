@@ -50,12 +50,13 @@ configure model, and connect to it.
     * [8. (Optional) Configure the number of workers](#8-optional-configure-the-number-of-workers)
     * [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
     * [10. TLS security profiles](#10-tls-security-profiles)
-    * [11. System prompt](#11-system-prompt)
-    * [12. Quota limits](#12-quota-limits)
+    * [11. Custom HTTP Headers](#11-custom-http-headers)
+    * [12. System prompt](#12-system-prompt)
+    * [13. Quota limits](#13-quota-limits)
         * [Configuration format](#configuration-format)
         * [Tokens and token quota limits](#tokens-and-token-quota-limits)
-    * [13. Configuration dump](#12-configuration-dump)
-    * [14. Cluster introspection](#13-cluster-introspection)
+    * [14. Configuration dump](#14-configuration-dump)
+    * [15. Cluster introspection](#15-cluster-introspection)
 * [Usage](#usage)
     * [Deployments](#deployments)
         * [Local Deployment](#local-deployment)
@@ -467,12 +468,12 @@ Depends on configuration, but usually it is not needed to generate or use API ke
    ├── 4.18
    ...
    ├── 4.19
-   │   ├── default__vector_store.json
-   │   ├── docstore.json
-   │   ├── graph_store.json
-   │   ├── image__vector_store.json
-   │   ├── index_store.json
-   │   └── metadata.json
+   │   ├── default__vector_store.json
+   │   ├── docstore.json
+   │   ├── graph_store.json
+   │   ├── image__vector_store.json
+   │   ├── index_store.json
+   │   └── metadata.json
    └── latest -> 4.19
    $
    ```
@@ -617,8 +618,31 @@ llm_providers:
 The `tlsSecurityProfile` is fully optional. When it is not specified, the LLM call won't be affected by specific SSL/TLS settings.
 
 
+## 11. Custom HTTP Headers
 
-## 11. System prompt
+You can configure custom HTTP headers to be included in all requests to a specific LLM provider. This is useful for multi-tenant routing, environment tags, or internal auditing headers.
+
+```yaml
+llm_providers:
+  - name: my_openai
+    type: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: openai_api_key.txt
+    extra_headers:
+      X-Tenant-ID: "my-org"
+      X-Environment: "staging"
+    models:
+      - name: gpt-4
+```
+
+| Field | Description |
+|-------|-------------|
+| `extra_headers` | Optional mapping of custom HTTP headers to include in **all** requests made to this provider. Keys and values must be strings. Useful for tenant IDs, environment tags, or internal auditing headers. Per-request headers (such as `Authorization`) can still override these if they use the same key. |
+
+**Note:** Custom headers are only supported for HTTPX-based providers (OpenAI, Azure OpenAI, RHOAI VLLM, RHELAI VLLM). Watsonx and BAM providers do not support custom headers.
+
+
+## 12. System prompt
    The service uses the, so called, system prompt to put the question into context before the question is sent to the selected LLM. The default system prompt is designed for questions about OpenShift and Kubernetes. It is possible to use a different system prompt via the configuration option `system_prompt_path` in the `ols_config` section. That option must contain the path to the text file with the actual system prompt (can contain multiple lines). An example of such configuration:
 
 ```yaml
@@ -629,7 +653,7 @@ ols_config:
 Additionally an optional string parameter `system_prompt` can be specified in `/v1/query` endpoint to override the configured system prompt. This override mechanism can be used only when the `dev_config.enable_system_prompt_override` configuration options is set to `true` in the service configuration file. Please note that the default value for this option is `false`, so the system prompt cannot be changed. This means, when the `dev_config.enable_system_prompt_override` is set to `false` and `/v1/query` is invoked with the `system_prompt` parameter, the value specified in `system_prompt` parameter is ignored.
 
 
-## 12. Quota limits
+## 13. Quota limits
 
 
 
@@ -702,13 +726,13 @@ Activate token quota limits for the service by adding a new configuration struct
 
 
 
-## 13. Configuration dump
+## 14. Configuration dump
 
 It is possible to dump the actual configuration into a JSON file for further processing. The generated configuration file will contain all the configuration attributes, including keys etc., so keep the output file in a secret.
 
 In order to dump the configuration, pass `--dump-config` command line option.
 
-## 14. Cluster introspection
+## 15. Cluster introspection
 
 > **⚠ Warning:** This feature is experimental and currently under development.
 
