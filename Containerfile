@@ -1,5 +1,5 @@
 # vim: set filetype=dockerfile
-ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content@sha256:3530bcb7ee35e0a4efb8555427572e7ede1aa0a760240cd4c832b53769edd22f
+ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content:latest
 ARG HERMETIC=false
 
 FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
@@ -80,7 +80,8 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       com.redhat.component=openshift-lightspeed-service \
       name="openshift-lightspeed/lightspeed-service-api-rhel9" \
       cpe="cpe:/a:redhat:openshift_lightspeed:1::el9" \
-      vendor="Red Hat, Inc."
+      vendor="Red Hat, Inc." \
+      konflux.additional-tags="latest"
 
 
 # no-root user is checked in Konflux
