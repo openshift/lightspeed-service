@@ -80,7 +80,8 @@ LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
       com.redhat.component=openshift-lightspeed-service \
       name="openshift-lightspeed/lightspeed-service-api-rhel9" \
       cpe="cpe:/a:redhat:openshift_lightspeed:1::el9" \
-      vendor="Red Hat, Inc."
+      vendor="Red Hat, Inc." \
+      konflux.additional-tags="latest"
 
 
 # no-root user is checked in Konflux
