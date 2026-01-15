@@ -8,7 +8,6 @@ from pathlib import Path
 import pytz
 from pydantic import BaseModel
 
-from ols import constants
 from ols.app.models.config import Config
 from ols.utils import suid
 
@@ -32,15 +31,12 @@ class ConfigStatus(BaseModel):
 
     providers_with_tls_config: list[str]
 
-    conversation_cache_type: str
-
     mcp_servers: dict[str, str]
 
     quota_management_enabled: bool
     token_history_enabled: bool
 
     proxy_enabled: bool
-    custom_system_prompt_enabled: bool
     extra_ca_count: int
 
 
@@ -86,12 +82,6 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
         if p.tls_security_profile and p.tls_security_profile.profile_type
     ]
 
-    conversation_cache_type = (
-        ols_cfg.conversation_cache.type
-        if ols_cfg.conversation_cache and ols_cfg.conversation_cache.type
-        else constants.CACHE_TYPE_MEMORY
-    )
-
     mcp_servers = {s.name: s.transport for s in mcp_cfg.servers}
 
     quota_management_enabled = ols_cfg.quota_handlers is not None and (
@@ -106,7 +96,6 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
     proxy_enabled = (
         ols_cfg.proxy_config is not None and ols_cfg.proxy_config.proxy_url is not None
     )
-    custom_system_prompt_enabled = ols_cfg.system_prompt is not None
     extra_ca_count = len(ols_cfg.extra_ca)
 
     return ConfigStatus(
@@ -116,12 +105,10 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
         query_redactor_enabled=query_redactor_enabled,
         query_filter_count=query_filter_count,
         providers_with_tls_config=providers_with_tls_config,
-        conversation_cache_type=conversation_cache_type,
         mcp_servers=mcp_servers,
         quota_management_enabled=quota_management_enabled,
         token_history_enabled=token_history_enabled,
         proxy_enabled=proxy_enabled,
-        custom_system_prompt_enabled=custom_system_prompt_enabled,
         extra_ca_count=extra_ca_count,
     )
 

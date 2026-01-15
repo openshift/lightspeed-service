@@ -68,12 +68,10 @@ class TestConfigStatus:
             query_redactor_enabled=False,
             query_filter_count=0,
             providers_with_tls_config=[],
-            conversation_cache_type="memory",
             mcp_servers={},
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            custom_system_prompt_enabled=False,
             extra_ca_count=0,
         )
 
@@ -94,11 +92,9 @@ class TestExtractConfigStatus:
         assert status.models == {"test_provider": []}
         assert status.rag_indexes == []
         assert status.query_redactor_enabled is False
-        assert status.conversation_cache_type == "memory"
         assert status.mcp_servers == {}
         assert status.quota_management_enabled is False
         assert status.proxy_enabled is False
-        assert status.custom_system_prompt_enabled is False
 
     def test_extract_config_status_with_rag_enabled(self):
         """Test extracting config status with RAG enabled."""
@@ -184,15 +180,6 @@ class TestExtractConfigStatus:
             "provider2": ["model3"],
         }
 
-    def test_extract_config_status_with_custom_system_prompt(self):
-        """Test extracting config status with custom system prompt."""
-        config = create_minimal_config()
-        config.ols_config.system_prompt = "Custom prompt content"
-
-        status = extract_config_status(config)
-
-        assert status.custom_system_prompt_enabled is True
-
 
 class TestStoreConfigStatus:
     """Tests for store_config_status function."""
@@ -207,12 +194,10 @@ class TestStoreConfigStatus:
             query_redactor_enabled=True,
             query_filter_count=1,
             providers_with_tls_config=["my_openai"],
-            conversation_cache_type="memory",
             mcp_servers={"openshift": "stdio"},
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            custom_system_prompt_enabled=True,
             extra_ca_count=0,
         )
 
@@ -235,7 +220,6 @@ class TestStoreConfigStatus:
         assert stored_data["models"] == {"my_openai": ["gpt-4"]}
         assert stored_data["rag_indexes"] == ["ocp-docs-4_17", "user-docs-v1"]
         assert stored_data["mcp_servers"] == {"openshift": "stdio"}
-        assert stored_data["custom_system_prompt_enabled"] is True
 
     def test_store_config_status_creates_directory(self, tmpdir):
         """Test that store_config_status creates the storage directory if needed."""
@@ -247,12 +231,10 @@ class TestStoreConfigStatus:
             query_redactor_enabled=False,
             query_filter_count=0,
             providers_with_tls_config=[],
-            conversation_cache_type="memory",
             mcp_servers={},
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
-            custom_system_prompt_enabled=False,
             extra_ca_count=0,
         )
 
