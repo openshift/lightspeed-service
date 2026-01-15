@@ -580,6 +580,7 @@ def generate_response(
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
             user_token=user_token,
+            conversation_id=conversation_id,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:

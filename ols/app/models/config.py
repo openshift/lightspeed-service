@@ -1037,6 +1037,28 @@ class QuotaHandlersConfig(BaseModel):
         self.enable_token_history = data.get("enable_token_history", False)
 
 
+class HITLConfig(BaseModel):
+    """Human-in-the-loop configuration for tool approval workflows."""
+
+    enabled: bool = False
+    approval_timeout: int = 300  # seconds to wait for user approval
+    tools_requiring_approval: list[str] = []  # empty list = all tools require approval
+    auto_approve_read_only: bool = True  # auto-approve GET/list/describe operations
+    default_on_timeout: Literal["approve", "reject"] = "reject"
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, HITLConfig):
+            return (
+                self.enabled == other.enabled
+                and self.approval_timeout == other.approval_timeout
+                and self.tools_requiring_approval == other.tools_requiring_approval
+                and self.auto_approve_read_only == other.auto_approve_read_only
+                and self.default_on_timeout == other.default_on_timeout
+            )
+        return False
+
+
 class OLSConfig(BaseModel):
     """OLS configuration."""
 
@@ -1064,6 +1086,8 @@ class OLSConfig(BaseModel):
     quota_handlers: Optional[QuotaHandlersConfig] = None
 
     proxy_config: Optional[ProxyConfig] = None
+
+    hitl_config: HITLConfig = HITLConfig()
 
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
@@ -1117,6 +1141,7 @@ class OLSConfig(BaseModel):
         )
         self.quota_handlers = QuotaHandlersConfig(data.get("quota_handlers", None))
         self.proxy_config = ProxyConfig(data.get("proxy_config"))
+        self.hitl_config = HITLConfig(**data.get("hitl_config", {}))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1140,6 +1165,7 @@ class OLSConfig(BaseModel):
                 == other.expire_llm_is_ready_persistent_state
                 and self.quota_handlers == other.quota_handlers
                 and self.proxy_config == other.proxy_config
+                and self.hitl_config == other.hitl_config
             )
         return False
 

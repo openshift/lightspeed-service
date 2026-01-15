@@ -9,6 +9,7 @@ import yaml
 import ols.app.models.config as config_model
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
+from ols.src.hitl.hitl_manager import HITLManager
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 from ols.src.quota.token_usage_history import TokenUsageHistory
@@ -44,6 +45,7 @@ class AppConfig:
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
         self._token_usage_history: Optional[TokenUsageHistory] = None
+        self._hitl_manager: Optional[HITLManager] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -122,6 +124,13 @@ class AppConfig:
         """Return the proxy configuration."""
         return self.config.proxy_config  # type: ignore[attr-defined]
 
+    @property
+    def hitl_manager(self) -> HITLManager:
+        """Return the HITL manager."""
+        if self._hitl_manager is None:
+            self._hitl_manager = HITLManager(self.ols_config.hitl_config)
+        return self._hitl_manager
+
     def reload_empty(self) -> None:
         """Reload the configuration with empty values."""
         self.config = config_model.Config()
@@ -154,6 +163,7 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+            self._hitl_manager = None
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())
