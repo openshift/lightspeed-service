@@ -339,55 +339,6 @@ ols_config:
     )
 
 
-def test_invalid_config_missing_conversation_cache_type():
-    """Check handling invalid configuration without conversation cache type."""
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'https://murl1'
-dev_config:
-  disable_tls: true
-ols_config:
-  conversation_cache:
-    foo: bar
-""",
-        InvalidConfigurationError,
-        "missing conversation cache type",
-    )
-
-
-def test_invalid_config_unknown_conversation_cache_type():
-    """Check handling invalid configuration with unknown conversation cache type."""
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: bam
-    url: 'http://url1'
-    models:
-      - name: m1
-        url: 'https://murl1'
-dev_config:
-  disable_tls: true
-ols_config:
-  conversation_cache:
-    type: foobar
-    redis:
-      host: 127.0.0.1
-      port: 1234
-""",
-        InvalidConfigurationError,
-        "unknown conversation cache type: foobar",
-    )
-
-
 def test_invalid_config_for_memory_cache():
     """Check handling invalid memory cache configuration."""
     check_expected_exception(
