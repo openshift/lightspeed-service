@@ -96,6 +96,38 @@ def test_insert_or_append_overflow(cache):
     )
 
 
+def test_insert_or_append_eviction(cache):
+    """Test if items in cache eviction with defined capacity is handled correctly."""
+    # remove last hex digit from user UUID
+    user_name_prefix = constants.DEFAULT_USER_UID[:-1]
+
+    capacity = 5
+    cache.capacity = capacity
+    cache.insert_or_append(
+        f"{user_name_prefix}{0}",
+        conversation_id,
+        CacheEntry(query=HumanMessage("user query 0 intial entry")),
+    )
+    for i in range(capacity):
+        user = f"{user_name_prefix}{i}"
+        value = CacheEntry(query=HumanMessage(f"user query {i}"))
+        cache.insert_or_append(
+            user,
+            conversation_id,
+            value,
+        )
+
+    # Ensure the oldest entry is evicted
+    expected_result = [CacheEntry(query=HumanMessage("user query 0"))]
+    assert cache.get(f"{user_name_prefix}0", conversation_id) == expected_result
+    # Ensure the newest entry is still present
+    expected_result = [CacheEntry(query=HumanMessage(f"user query {i}"))]
+    assert (
+        cache.get(f"{user_name_prefix}{capacity - 1}", conversation_id)
+        == expected_result
+    )
+
+
 def test_get_nonexistent_user(cache):
     """Test how non-existent items are handled by the cache."""
     # this UUID is different from DEFAULT_USER_UID
