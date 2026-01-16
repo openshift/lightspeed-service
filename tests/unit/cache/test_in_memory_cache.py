@@ -118,14 +118,13 @@ def test_insert_or_append_eviction(cache):
         )
 
     # Ensure the oldest entry is evicted
-    expected_result = [CacheEntry(query=HumanMessage(f"user query 0"))]
-    assert (
-        cache.get(f"{user_name_prefix}0", conversation_id) == expected_result
-    )
+    expected_result = [CacheEntry(query=HumanMessage("user query 0"))]
+    assert cache.get(f"{user_name_prefix}0", conversation_id) == expected_result
     # Ensure the newest entry is still present
     expected_result = [CacheEntry(query=HumanMessage(f"user query {i}"))]
     assert (
-        cache.get(f"{user_name_prefix}{capacity - 1}", conversation_id) == expected_result
+        cache.get(f"{user_name_prefix}{capacity - 1}", conversation_id)
+        == expected_result
     )
 
 
