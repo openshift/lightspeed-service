@@ -93,6 +93,10 @@ class PostgresCache(Cache):
         ORDER BY updated_at DESC
     """
 
+    ADVISORY_LOCK_STATEMENT = """
+        SELECT pg_advisory_xact_lock(hashtext(%s || %s))
+    """
+
     def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
         self.postgres_config = config
@@ -206,6 +210,10 @@ class PostgresCache(Cache):
         # the whole operation is run in one transaction
         with self.connection.cursor() as cursor:
             try:
+                cursor.execute(
+                    self.ADVISORY_LOCK_STATEMENT,
+                    (user_id, conversation_id),
+                )
                 old_value = self._select(cursor, user_id, conversation_id)
                 if old_value:
                     old_value.append(value)
@@ -385,4 +393,4 @@ class PostgresCache(Cache):
             PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
             (user_id, conversation_id),
         )
-        return cursor.fetchone() is not None
+        return cursor.rowcount > 0

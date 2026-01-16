@@ -459,7 +459,7 @@ def test_delete_operation():
     """Test the Cache.delete operation."""
     # Mock the database cursor behavior
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = True
+    mock_cursor.rowcount = 1
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
@@ -489,15 +489,12 @@ def test_delete_operation():
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
-    # Verify the query execution
-    mock_cursor.fetchone.assert_called_once()
-
 
 def test_delete_operation_not_found():
     """Test the Cache.delete operation when the conversation is not found."""
     # Mock the database cursor behavior to simulate no row found
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = None
+    mock_cursor.rowcount = 0
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
@@ -527,9 +524,6 @@ def test_delete_operation_not_found():
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
-    # Verify the query execution
-    mock_cursor.fetchone.assert_called_once()
-
 
 def test_delete_operation_on_exception():
     """Test the Cache.delete operation when an exception is raised."""
@@ -556,7 +550,7 @@ def test_delete_operation_on_disconnected_db():
     """Test the Cache.delete operation when DB is not connected."""
     # mock the query
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.return_value = None
+    mock_cursor.rowcount = 0
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
