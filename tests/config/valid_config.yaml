@@ -41,15 +41,11 @@ ols_config:
   system_prompt_path: "tests/config/system_prompt.txt"
 mcp_servers:
   - name: foo
-    transport: stdio
-    stdio:
-      command: python
-      args:
-        - mcp_server_1.py
+    url: http://localhost:8080
   - name: bar
-    transport: sse
-    sse:
-      url: 127.0.0.1:8080
+    url: http://127.0.0.1:8081
+    authorization_headers:
+      X-API-Key: /path/to/secret
 dev_config:
   disable_auth: true
   disable_tls: true

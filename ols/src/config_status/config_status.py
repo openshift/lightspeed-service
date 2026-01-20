@@ -82,7 +82,10 @@ def extract_config_status(cfg: Config) -> ConfigStatus:
         if p.tls_security_profile and p.tls_security_profile.profile_type
     ]
 
-    mcp_servers = {s.name: s.transport for s in mcp_cfg.servers}
+    mcp_servers = {
+        s.name: s.url.split("://")[0] if "://" in s.url else "http"
+        for s in mcp_cfg.servers
+    }
 
     quota_management_enabled = ols_cfg.quota_handlers is not None and (
         ols_cfg.quota_handlers.limiters is not None
