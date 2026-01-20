@@ -1178,15 +1178,12 @@ def test_tool_calling(_setup, caplog) -> None:
     """Check the REST API query endpoints when tool calling is enabled."""
     endpoint = "/v1/query"
     caplog.set_level(10)
-    # MCP servers config is a dict mapping server names to their configurations
-    mcp_servers = {
-        "fake-server": {"transport": "stdio", "stdio": {}},
-    }
+    mcp_servers = {"fake-server": {"transport": "http", "url": "http://fake-server"}}
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
             return_value=mcp_servers,
         ),
         patch(

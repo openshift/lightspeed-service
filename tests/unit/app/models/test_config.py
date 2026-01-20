@@ -31,9 +31,6 @@ from ols.app.models.config import (
     QuotaHandlersConfig,
     ReferenceContent,
     ReferenceContentIndex,
-    SseTransportConfig,
-    StdioTransportConfig,
-    StreamableHttpTransportConfig,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -42,49 +39,59 @@ from ols.utils.checks import InvalidConfigurationError
 
 
 @pytest.fixture
-def mcp_server_config_stdio_transport():
+def mcp_server_config_http():
     """MCP server config map fixture."""
     return {
         "name": "foo",
-        "transport": "stdio",
-        "stdio": {"command": "python", "args": ["server1.py"]},
+        "url": "http://localhost:8080",
     }
 
 
 @pytest.fixture
-def mcp_server_config_sse_transport():
-    """MCP server config map fixture."""
+def mcp_server_config_http_with_auth():
+    """MCP server config map fixture with authorization."""
     return {
         "name": "bar",
-        "transport": "sse",
-        "sse": {"url": "127.0.0.1:8080"},
+        "url": "http://localhost:8081",
+        "authorization_headers": {"Authorization": "kubernetes"},
     }
 
 
 @pytest.fixture
-def mcp_server_config_streamable_http_transport():
-    """MCP server config map fixture."""
+def mcp_server_config_http_with_timeout():
+    """MCP server config map fixture with timeout."""
     return {
         "name": "gru",
-        "transport": "streamable_http",
-        "streamable_http": {"url": "127.0.0.1:8080"},
+        "url": "http://localhost:8082",
+        "timeout": 30,
     }
 
 
 def test_mcp_server_config(
-    mcp_server_config_stdio_transport,
-    mcp_server_config_sse_transport,
-    mcp_server_config_streamable_http_transport,
+    mcp_server_config_http,
+    mcp_server_config_http_with_auth,
+    mcp_server_config_http_with_timeout,
 ):
     """Test the MCPServerConfig model."""
-    mcp_server_config = MCPServerConfig(**mcp_server_config_stdio_transport)
+    mcp_server_config = MCPServerConfig(**mcp_server_config_http)
     assert mcp_server_config.name == "foo"
+    assert mcp_server_config.url == "http://localhost:8080"
 
-    mcp_server_config = MCPServerConfig(**mcp_server_config_sse_transport)
-    assert mcp_server_config.name == "bar"
+    # Mock k8s authentication for kubernetes placeholder test
+    with mock.patch("ols.config") as mock_config:
+        mock_auth_config = mock.Mock()
+        mock_auth_config.module = "k8s"
+        mock_ols_config = mock.Mock()
+        mock_ols_config.authentication_config = mock_auth_config
+        mock_config.ols_config = mock_ols_config
 
-    mcp_server_config = MCPServerConfig(**mcp_server_config_streamable_http_transport)
+        mcp_server_config = MCPServerConfig(**mcp_server_config_http_with_auth)
+        assert mcp_server_config.name == "bar"
+        assert mcp_server_config.url == "http://localhost:8081"
+
+    mcp_server_config = MCPServerConfig(**mcp_server_config_http_with_timeout)
     assert mcp_server_config.name == "gru"
+    assert mcp_server_config.url == "http://localhost:8082"
 
 
 def test_mcp_server_config_required_name():
@@ -93,111 +100,26 @@ def test_mcp_server_config_required_name():
         ValidationError,
         match=r"(?s)name.*Field required",
     ):
-        MCPServerConfig(  # pyright: ignore[reportCallIssue]
-            transport="stdio", stdio={"command": "python", "args": ["server.py"]}
-        )
+        MCPServerConfig(url="http://localhost:8080")  # pyright: ignore[reportCallIssue]
 
 
-def test_mcp_server_config_transport():
-    """Test the MCPServerConfig model for missing transport option."""
+def test_mcp_server_config_required_url():
+    """Test the MCPServerConfig model for missing URL."""
     with pytest.raises(
         ValidationError,
-        match=r"(?s)transport.*Field required",
+        match=r"(?s)url.*Field required",
     ):
-        MCPServerConfig()  # pyright: ignore[reportCallIssue]
-
-    with pytest.raises(
-        ValidationError,
-        match="Input should be",
-    ):
-        MCPServerConfig(transport="unknown")  # pyright: ignore[reportCallIssue]
+        MCPServerConfig(name="test")  # pyright: ignore[reportCallIssue]
 
 
-def test_mcp_server_config_missing_options():
-    """Test the MCPServerConfig model for missing options."""
-    stdio_conf = StdioTransportConfig(command="python", args=["server.py"])
-    sse_conf = SseTransportConfig(url="http://server:8080")
-    streamable_http_conf = StreamableHttpTransportConfig(url="http://server:8080")
-
-    # stdio selected, but config is missing
-    with pytest.raises(
-        ValidationError,
-        match="Stdio transport selected but 'stdio'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="stdio",
-        )
-
-    # stdio selected, but other configs provided too
-    with pytest.raises(
-        ValidationError,
-        match="Stdio transport selected but 'sse' or 'streamable_http'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="stdio",
-            stdio=stdio_conf,
-            sse=sse_conf,
-            streamable_http=streamable_http_conf,
-        )
-
-    # sse selected, but config is missing
-    with pytest.raises(
-        ValidationError,
-        match="SSE transport selected but 'sse'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="sse",
-        )
-
-    # sse selected, but other configs provided too
-    with pytest.raises(
-        ValidationError,
-        match="SSE transport selected but 'stdio' or 'streamable_http'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="sse",
-            stdio=stdio_conf,
-            sse=sse_conf,
-            streamable_http=streamable_http_conf,
-        )
-
-    # streamable_http selected, but config is missing
-    with pytest.raises(
-        ValidationError,
-        match="Streamable HTTP transport selected but 'streamable_http'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="streamable_http",
-        )
-
-    # streamable_http selected, but other configs provided too
-    with pytest.raises(
-        ValidationError,
-        match="Streamable HTTP transport selected but 'stdio' or 'sse'",
-    ):
-        MCPServerConfig(
-            name="foo",
-            transport="streamable_http",
-            stdio=stdio_conf,
-            sse=sse_conf,
-            streamable_http=streamable_http_conf,
-        )
-
-
-def test_mcp_server_config_equality(mcp_server_config_stdio_transport):
+def test_mcp_server_config_equality(mcp_server_config_http):
     """Test the MCPServerConfig model."""
-    mcp_server_config_1 = MCPServerConfig(**mcp_server_config_stdio_transport)
-    mcp_server_config_2 = MCPServerConfig(**mcp_server_config_stdio_transport)
+    mcp_server_config_1 = MCPServerConfig(**mcp_server_config_http)
+    mcp_server_config_2 = MCPServerConfig(**mcp_server_config_http)
     mcp_server_config_3 = MCPServerConfig(
         **{
             "name": "some_other_name",
-            "transport": "stdio",
-            "stdio": {"command": "python", "args": ["server2.py"]},
+            "url": "http://localhost:9090",
         }
     )
 
@@ -213,21 +135,29 @@ def test_mcp_server_config_equality(mcp_server_config_stdio_transport):
 
 
 def test_mcp_servers(
-    mcp_server_config_stdio_transport,
-    mcp_server_config_sse_transport,
-    mcp_server_config_streamable_http_transport,
+    mcp_server_config_http,
+    mcp_server_config_http_with_auth,
+    mcp_server_config_http_with_timeout,
 ):
     """Test the MCPServers model."""
     mcp_servers = MCPServers()
-    assert mcp_servers.servers == []
+    assert not mcp_servers.servers
 
-    mcp_servers = MCPServers(
-        servers=[
-            mcp_server_config_stdio_transport,
-            mcp_server_config_sse_transport,
-            mcp_server_config_streamable_http_transport,
-        ]
-    )
+    # Mock k8s authentication for kubernetes placeholder test
+    with mock.patch("ols.config") as mock_config:
+        mock_auth_config = mock.Mock()
+        mock_auth_config.module = "k8s"
+        mock_ols_config = mock.Mock()
+        mock_ols_config.authentication_config = mock_auth_config
+        mock_config.ols_config = mock_ols_config
+
+        mcp_servers = MCPServers(
+            servers=[
+                mcp_server_config_http,
+                mcp_server_config_http_with_auth,
+                mcp_server_config_http_with_timeout,
+            ]
+        )
     assert len(mcp_servers.servers) == 3
     assert mcp_servers.servers[0].name == "foo"
     assert mcp_servers.servers[1].name == "bar"
@@ -238,8 +168,7 @@ def test_mcp_servers_duplicity():
     """Test the MCPServers model."""
     mcp_server_config = MCPServerConfig(
         name="foo",
-        transport="stdio",
-        stdio=StdioTransportConfig(command="python", args=["server1.py"]),
+        url="http://localhost:8080",
     )
 
     with pytest.raises(ValidationError, match="Duplicate server name: 'foo'"):
@@ -255,25 +184,23 @@ def test_mcp_servers_invalid_input():
         MCPServers(servers={})  # pyright: ignore[reportArgumentType]
 
 
-def test_mcp_servers_equality(
-    mcp_server_config_stdio_transport, mcp_server_config_sse_transport
-):
+def test_mcp_servers_equality(mcp_server_config_http, mcp_server_config_http_with_auth):
     """Test the MCPServers model."""
     mcp_servers_1 = MCPServers(
         servers=[
-            mcp_server_config_stdio_transport,
-            mcp_server_config_sse_transport,
+            mcp_server_config_http,
+            mcp_server_config_http_with_auth,
         ]
     )
     mcp_servers_2 = MCPServers(
         servers=[
-            mcp_server_config_stdio_transport,
-            mcp_server_config_sse_transport,
+            mcp_server_config_http,
+            mcp_server_config_http_with_auth,
         ]
     )
     mcp_servers_3 = MCPServers(
         servers=[
-            mcp_server_config_stdio_transport,
+            mcp_server_config_http,
         ]
     )
 
@@ -286,56 +213,6 @@ def test_mcp_servers_equality(
     # compare with value of different type
     other_value = "foo"
     assert mcp_servers_1 != other_value
-
-
-def test_sse_transport_configuration_on_no_data():
-    """Test the SSE transport configuration handling when no data are provided."""
-    with pytest.raises(ValidationError, match=r"(?s)url.*Field required"):
-        SseTransportConfig()  # pyright: ignore[reportCallIssue]
-
-
-def test_sse_transport_defaults():
-    """Test the SSE transport configuration defaults."""
-    sse_transport = SseTransportConfig(url="http://localhost:8080")
-    assert sse_transport.url == "http://localhost:8080"
-    assert sse_transport.timeout == constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
-    assert (
-        sse_transport.sse_read_timeout == constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
-    )
-    assert sse_transport.headers == {}
-
-
-def test_streamable_http_transport_configuration_on_no_data():
-    """Test the SSE transport configuration handling when no data are provided."""
-    with pytest.raises(ValidationError, match=r"(?s)url.*Field required"):
-        StreamableHttpTransportConfig()  # pyright: ignore[reportCallIssue]
-
-
-def test_streamable_http_transport_defaults():
-    """Test the SSE transport configuration defaults."""
-    sse_transport = StreamableHttpTransportConfig(url="http://localhost:8080")
-    assert sse_transport.url == "http://localhost:8080"
-    assert sse_transport.timeout == constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT
-    assert (
-        sse_transport.sse_read_timeout
-        == constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT
-    )
-
-
-def test_stdio_transport_configuration_on_no_data():
-    """Test the STDIO transport configuration handling when no data are provided."""
-    with pytest.raises(ValidationError, match=r"(?s)command.*Field required"):
-        StdioTransportConfig()  # pyright: ignore[reportCallIssue]
-
-
-def test_stdio_transport_defaults():
-    """Test the STDIO transport configuration defaults."""
-    stdio_transport = StdioTransportConfig(command="python")
-    assert stdio_transport.command == "python"
-    assert stdio_transport.args == []
-    assert stdio_transport.env == constants.STDIO_TRANSPORT_DEFAULT_ENV
-    assert stdio_transport.cwd == constants.STDIO_TRANSPORT_DEFAULT_CWD
-    assert stdio_transport.encoding == constants.STDIO_TRANSPORT_DEFAULT_ENCODING
 
 
 def test_model_parameters():
@@ -1557,21 +1434,37 @@ def test_llm_providers():
         ]
     )
     assert len(llm_providers.providers) == 1
-    assert llm_providers.providers["test_provider_name"].name == "test_provider_name"
-    assert llm_providers.providers["test_provider_name"].type == "bam"
-    assert llm_providers.providers["test_provider_name"].url == "test_provider_url"
-    assert llm_providers.providers["test_provider_name"].credentials == "secret_key"
-    assert len(llm_providers.providers["test_provider_name"].models) == 1
     assert (
-        llm_providers.providers["test_provider_name"].models["test_model_name"].name
+        llm_providers.providers["test_provider_name"].name == "test_provider_name"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider_name"].type == "bam"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider_name"].url == "test_provider_url"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider_name"].credentials == "secret_key"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        len(llm_providers.providers["test_provider_name"].models) == 1
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider_name"]
+        .models["test_model_name"]
+        .name  # pyright: ignore[reportIndexIssue]
         == "test_model_name"
     )
     assert (
-        str(llm_providers.providers["test_provider_name"].models["test_model_name"].url)
+        str(
+            llm_providers.providers["test_provider_name"].models["test_model_name"].url
+        )  # pyright: ignore[reportIndexIssue]
         == "http://test.url/"
     )
     assert (
-        llm_providers.providers["test_provider_name"]
+        llm_providers.providers[
+            "test_provider_name"
+        ]  # pyright: ignore[reportIndexIssue]
         .models["test_model_name"]
         .credentials
         == "secret_key"
@@ -1609,8 +1502,12 @@ def test_llm_providers_type_defaulting():
         ]
     )
     assert len(llm_providers.providers) == 1
-    assert llm_providers.providers["bam"].name == "bam"
-    assert llm_providers.providers["bam"].type == "bam"
+    assert (
+        llm_providers.providers["bam"].name == "bam"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["bam"].type == "bam"
+    )  # pyright: ignore[reportIndexIssue]
 
     llm_providers = LLMProviders(
         [
@@ -1627,8 +1524,12 @@ def test_llm_providers_type_defaulting():
         ]
     )
     assert len(llm_providers.providers) == 1
-    assert llm_providers.providers["test_provider"].name == "test_provider"
-    assert llm_providers.providers["test_provider"].type == "bam"
+    assert (
+        llm_providers.providers["test_provider"].name == "test_provider"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider"].type == "bam"
+    )  # pyright: ignore[reportIndexIssue]
 
 
 def test_llm_providers_type_validation():
@@ -1690,10 +1591,16 @@ def test_llm_providers_watsonx_required_projectid():
         ]
     )
     assert len(llm_providers.providers) == 1
-    assert llm_providers.providers["watsonx"].name == "watsonx"
-    assert llm_providers.providers["watsonx"].type == "watsonx"
     assert (
-        llm_providers.providers["watsonx"].project_id
+        llm_providers.providers["watsonx"].name == "watsonx"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["watsonx"].type == "watsonx"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers[
+            "watsonx"
+        ].project_id  # pyright: ignore[reportIndexIssue]
         == "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     )
 
@@ -1710,10 +1617,16 @@ def test_llm_providers_watsonx_required_projectid():
         ]
     )
     assert len(llm_providers.providers) == 1
-    assert llm_providers.providers["test_provider"].name == "test_provider"
-    assert llm_providers.providers["test_provider"].type == "watsonx"
     assert (
-        llm_providers.providers["test_provider"].project_id
+        llm_providers.providers["test_provider"].name == "test_provider"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers["test_provider"].type == "watsonx"
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        llm_providers.providers[
+            "test_provider"
+        ].project_id  # pyright: ignore[reportIndexIssue]
         == "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     )
 
@@ -2470,7 +2383,7 @@ def test_ols_config_equality(subtests):
 
     # compare OLSConfig with other object
     assert ols_config_1 != "foo"
-    assert ols_config_2 != {}
+    assert ols_config_2
 
 
 def test_config():
@@ -2540,46 +2453,63 @@ def test_config():
     )
     assert len(config.llm_providers.providers) == 3
     assert (
-        config.llm_providers.providers["test_provider_name"].name
+        config.llm_providers.providers[
+            "test_provider_name"
+        ].name  # pyright: ignore[reportIndexIssue]
         == "test_provider_name"
     )
     assert (
-        config.llm_providers.providers["test_provider_name"].url == "test_provider_url"
+        config.llm_providers.providers["test_provider_name"].url
+        == "test_provider_url"  # pyright: ignore[reportIndexIssue]
     )
     assert (
-        config.llm_providers.providers["test_provider_name"].credentials == "secret_key"
+        config.llm_providers.providers["test_provider_name"].credentials
+        == "secret_key"  # pyright: ignore[reportIndexIssue]
     )
-    assert len(config.llm_providers.providers["test_provider_name"].models) == 1
     assert (
-        config.llm_providers.providers["test_provider_name"]
+        len(config.llm_providers.providers["test_provider_name"].models) == 1
+    )  # pyright: ignore[reportIndexIssue]
+    assert (
+        config.llm_providers.providers[
+            "test_provider_name"
+        ]  # pyright: ignore[reportIndexIssue]
         .models["test_model_name"]
         .name
         == "test_model_name"
     )
     assert (
         str(
-            config.llm_providers.providers["test_provider_name"]
+            config.llm_providers.providers[
+                "test_provider_name"
+            ]  # pyright: ignore[reportIndexIssue]
             .models["test_model_name"]
             .url
         )
         == "http://test_model_url/"
     )
     assert (
-        config.llm_providers.providers["test_provider_name"]
+        config.llm_providers.providers[
+            "test_provider_name"
+        ]  # pyright: ignore[reportIndexIssue]
         .models["test_model_name"]
         .credentials
         == "secret_key"
     )
     assert (
-        config.llm_providers.providers["rhoai_provider_name"].certificates_store
+        config.llm_providers.providers[
+            "rhoai_provider_name"
+        ].certificates_store  # pyright: ignore[reportIndexIssue]
         == "/foo/bar/baz/ols.pem"
     )
     assert (
-        config.llm_providers.providers["rhelai_provider_name"].certificates_store
+        config.llm_providers.providers[
+            "rhelai_provider_name"
+        ].certificates_store  # pyright: ignore[reportIndexIssue]
         == "/foo/bar/baz/ols.pem"
     )
     assert (
-        config.llm_providers.providers["test_provider_name"].certificates_store is None
+        config.llm_providers.providers["test_provider_name"].certificates_store
+        is None  # pyright: ignore[reportIndexIssue]
     )
 
     assert config.ols_config.default_provider == "test_default_provider"
@@ -3599,8 +3529,6 @@ def test_user_data_config__transcripts(tmpdir):
 
 def test_user_data_config__config_status(tmpdir):
     """Tests the UserDataCollection model, config_status part."""
-    import os
-
     parent_dir = os.path.dirname(tmpdir.strpath)
 
     # config status is inferred from feedback/transcripts settings
@@ -3640,7 +3568,7 @@ def test_dev_config_defaults():
     dev_config = DevConfig()
     assert dev_config.pyroscope_url is None
     assert dev_config.enable_dev_ui is False
-    assert dev_config.llm_params == {}
+    assert not dev_config.llm_params
     assert dev_config.disable_auth is False
     assert dev_config.disable_tls is False
     assert dev_config.k8s_auth_token is None

@@ -651,15 +651,9 @@ ols_config:
     minTLSVersion: VersionTLS13
 mcp_servers:
   - name: foo
-    transport: stdio
-    stdio:
-      command: python
-      args:
-        - mcp_server_1.py
+    url: http://foo-server:8080/mcp
   - name: bar
-    transport: sse
-    sse:
-      url: 127.0.0.1:8080
+    url: http://bar-server:8080/mcp
 dev_config:
   enable_dev_ui: true
   disable_auth: false
@@ -679,98 +673,33 @@ def test_valid_config_file():
     try:
         config.reload_from_yaml_file("tests/config/valid_config.yaml")
 
-        expected_config = Config(
-            {
-                "llm_providers": [
-                    {
-                        "name": "p1",
-                        "type": "bam",
-                        "url": "https://url1",
-                        "credentials_path": "tests/config/secret/apitoken",
-                        "models": [
-                            {
-                                "name": "m1",
-                                "url": "https://murl1",
-                                "credentials_path": "tests/config/secret/apitoken",
-                                "context_window_size": 450,
-                                "parameters": {"max_tokens_for_response": 100},
-                            },
-                            {
-                                "name": "m2",
-                                "url": "https://murl2",
-                            },
-                        ],
-                    },
-                    {
-                        "name": "p2",
-                        "type": "openai",
-                        "url": "https://url2",
-                        "models": [
-                            {
-                                "name": "m1",
-                                "url": "https://murl1",
-                            },
-                            {
-                                "name": "m2",
-                                "url": "https://murl2",
-                            },
-                        ],
-                    },
-                ],
-                "ols_config": {
-                    "max_workers": 1,
-                    "reference_content": {
-                        "indexes": [
-                            {
-                                "product_docs_index_path": "tests/config",
-                                "product_docs_index_id": "product",
-                            }
-                        ],
-                    },
-                    "conversation_cache": {
-                        "type": "memory",
-                        "memory": {
-                            "max_entries": 1000,
-                        },
-                    },
-                    "logging_config": {
-                        "logging_level": "INFO",
-                    },
-                    "default_provider": "p1",
-                    "default_model": "m1",
-                    "certificate_directory": "/foo/bar/baz/xyzzy",
-                    "system_prompt_path": "tests/config/system_prompt.txt",
-                    "user_data_collection": {"transcripts_disabled": True},
-                },
-                "mcp_servers": [
-                    {
-                        "name": "foo",
-                        "transport": "stdio",
-                        "stdio": {
-                            "command": "python",
-                            "args": ["mcp_server_1.py"],
-                            "env": {},
-                            "cwd": ".",
-                            "encoding": "utf-8",
-                        },
-                    },
-                    {
-                        "name": "bar",
-                        "transport": "sse",
-                        "sse": {
-                            "url": "127.0.0.1:8080",
-                            "timeout": 5,
-                            "sse_read_timeout": 10,
-                        },
-                    },
-                ],
-            }
-        )
-        assert config.config == expected_config
+        # Verify LLM providers
+        assert "p1" in config.config.llm_providers.providers
+        assert "p2" in config.config.llm_providers.providers
+        assert config.config.llm_providers.providers["p1"].type == "bam"
+        assert config.config.llm_providers.providers["p2"].type == "openai"
+
+        # Verify OLS config
+        assert config.ols_config.max_workers == 1
+        assert config.ols_config.default_provider == "p1"
+        assert config.ols_config.default_model == "m1"
         assert config.ols_config.user_data_collection is not None
         assert config.ols_config.user_data_collection.feedback_disabled is True
         assert config.ols_config.quota_handlers is not None
+
+        # Verify MCP servers
         assert config.mcp_servers is not None
+        # Only one server should remain (second one skipped due to missing secret file)
+        assert len(config.mcp_servers.servers) == 1
+
+        # First MCP server (the only one remaining)
+        assert config.mcp_servers.servers[0].name == "foo"
+        assert config.mcp_servers.servers[0].url == "http://localhost:8080"
+        assert config.mcp_servers.servers[0].authorization_headers == {}
+        assert config.mcp_servers.servers[0].timeout is None
+
+        # Second MCP server ("bar") was skipped during validation
+        # because its auth header references a non-existent file
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")

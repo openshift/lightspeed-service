@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from pydantic import AnyHttpUrl, FilePath
 
+from ols import constants
+
 
 class InvalidConfigurationError(Exception):
     """OLS Configuration is invalid."""
@@ -97,3 +99,145 @@ def get_log_level(value: str) -> int:
             f"{[k.lower() for k in logging.getLevelNamesMapping()]}"
         )
     return log_level
+
+
+def resolve_authorization_headers(
+    authorization_headers: dict[str, str],
+    auth_module: Optional[str] = None,
+) -> dict[str, str]:
+    """Resolve authorization headers by reading secret files or preserving special values.
+
+    Args:
+        authorization_headers: Map of header names to secret locations or special keywords.
+            - If value is "kubernetes": preserved unchanged for later substitution during request.
+              Only valid when authentication module is "k8s" or "noop-with-token".
+              "noop-with-token" is for testing only - the real k8s token must be passed at
+              request time.
+              If used with other auth modules, a warning is logged and the server is skipped.
+            - If value is "client": preserved unchanged for later substitution during request.
+            - Otherwise: Treated as file path and read the secret from that file.
+        auth_module: The authentication module being used (e.g., "k8s", "noop-with-token").
+            Used to validate that "kubernetes" placeholder is only used with appropriate auth
+            modules.
+
+    Returns:
+        Map of header names to resolved header values or special keywords.
+        Returns empty dict if any header fails to resolve (kubernetes placeholder
+        with non-k8s/non-noop-with-token auth, or secret file cannot be read).
+
+    Examples:
+        >>> # With file paths
+        >>> resolve_authorization_headers({"Authorization": "/var/secrets/token"})
+        {"Authorization": "secret-value-from-file"}
+
+        >>> # With kubernetes special case (kept as-is, requires k8s or noop-with-token auth)
+        >>> resolve_authorization_headers(
+        ...     {"Authorization": "kubernetes"},
+        ...     auth_module="k8s"
+        ... )
+        {"Authorization": "kubernetes"}
+
+        >>> # With client special case (kept as-is)
+        >>> resolve_authorization_headers({"Authorization": "client"})
+        {"Authorization": "client"}
+    """
+    logger = logging.getLogger(__name__)
+    resolved: dict[str, str] = {}
+
+    for header_name, header_value in authorization_headers.items():
+        match header_value.strip():
+            case constants.MCP_KUBERNETES_PLACEHOLDER:
+                # Validate that kubernetes placeholder is only used with k8s or noop-with-token auth
+                # (noop-with-token is allowed for testing purposes)
+                if auth_module not in (
+                    constants.DEFAULT_AUTHENTICATION_MODULE,
+                    constants.NOOP_WITH_TOKEN_AUTHENTICATION_MODULE,
+                ):
+                    logger.warning(
+                        "MCP server authorization header '%s' uses '%s' placeholder, but "
+                        "authentication module is '%s'. "
+                        "The 'kubernetes' placeholder requires authentication module to be "
+                        "'%s' or '%s'. This MCP server will be skipped.",
+                        header_name,
+                        constants.MCP_KUBERNETES_PLACEHOLDER,
+                        auth_module,
+                        constants.DEFAULT_AUTHENTICATION_MODULE,
+                        constants.NOOP_WITH_TOKEN_AUTHENTICATION_MODULE,
+                    )
+                    return {}  # Return empty dict to signal server should be skipped
+                resolved[header_name] = constants.MCP_KUBERNETES_PLACEHOLDER
+                logger.debug(
+                    "Header %s will use Kubernetes token (resolved at request time)",
+                    header_name,
+                )
+
+            case constants.MCP_CLIENT_PLACEHOLDER:
+                resolved[header_name] = constants.MCP_CLIENT_PLACEHOLDER
+                logger.debug(
+                    "Header %s will use client-provided token (resolved at request time)",
+                    header_name,
+                )
+
+            case _:
+                # Read secret from file path
+                secret_value = read_secret(
+                    data={"path": header_value},
+                    path_key="path",
+                    default_filename="",
+                    raise_on_error=False,
+                )
+                if secret_value:
+                    resolved[header_name] = secret_value
+                    logger.debug(
+                        "Resolved header %s from secret file %s",
+                        header_name,
+                        header_value,
+                    )
+                else:
+                    logger.warning(
+                        "MCP server authorization header '%s' failed to read secret file '%s'. "
+                        "This MCP server will be skipped.",
+                        header_name,
+                        header_value,
+                    )
+                    return {}  # Return empty dict to signal server should be skipped
+
+    return resolved
+
+
+def validate_mcp_servers(
+    servers: list,
+    auth_module: Optional[str],
+) -> list:
+    """Validate and filter MCP servers, resolving their authorization headers.
+
+    Args:
+        servers: List of MCPServerConfig objects to validate.
+        auth_module: The authentication module being used (e.g., "k8s", "noop").
+
+    Returns:
+        List of valid MCPServerConfig objects with resolved authorization headers.
+        Servers are excluded if any authorization header cannot be resolved.
+    """
+    logger = logging.getLogger(__name__)
+    valid_servers = []
+
+    for server in servers:
+        if server.authorization_headers:
+            # Resolve headers with auth module context
+            resolved = resolve_authorization_headers(
+                server.authorization_headers,
+                auth_module=auth_module,
+            )
+            if not resolved:
+                # Already logged in resolve_authorization_headers
+                logger.debug(
+                    "MCP server '%s' excluded due to unresolvable authorization headers",
+                    server.name,
+                )
+                continue
+            # Store the resolved headers
+            server._resolved_authorization_headers = resolved
+        valid_servers.append(server)
+
+    return valid_servers
