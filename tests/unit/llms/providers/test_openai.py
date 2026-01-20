@@ -97,7 +97,7 @@ def test_basic_interface(provider_config, fake_certifi_store):
     assert openai.default_params
     assert "base_url" in openai.default_params
     assert "model" in openai.default_params
-    assert "max_tokens" in openai.default_params
+    assert "max_completion_tokens" in openai.default_params
 
     # check the HTTP client parameter
     assert "http_client" in openai.default_params
@@ -181,7 +181,7 @@ def test_loading_provider_specific_parameters(
 
     assert "base_url" in openai.default_params
     assert "model" in openai.default_params
-    assert "max_tokens" in openai.default_params
+    assert "max_completion_tokens" in openai.default_params
 
     # parameters taken from provier-specific configuration
     # which takes precedence over regular configuration
@@ -268,5 +268,5 @@ def test_gpt5_and_o_series_models_parameter_exclusion(
     assert "base_url" in openai.default_params
     assert "openai_api_key" in openai.default_params
     assert "model" in openai.default_params
-    assert "max_tokens" in openai.default_params
+    assert "max_completion_tokens" in openai.default_params
     assert openai.default_params["model"] == model_name

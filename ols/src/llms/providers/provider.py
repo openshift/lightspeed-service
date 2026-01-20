@@ -49,7 +49,7 @@ AzureOpenAIParameters = {
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
     ProviderParameter("temperature", float),
-    ProviderParameter("max_tokens", int),
+    ProviderParameter("max_completion_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
@@ -66,7 +66,7 @@ OpenAIParameters = {
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
     ProviderParameter("temperature", float),
-    ProviderParameter("max_tokens", int),
+    ProviderParameter("max_completion_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
@@ -82,7 +82,7 @@ RHOAIVLLMParameters = {
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
     ProviderParameter("temperature", float),
-    ProviderParameter("max_tokens", int),
+    ProviderParameter("max_completion_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
@@ -98,7 +98,7 @@ RHELAIVLLMParameters = {
     ProviderParameter("organization", str),
     ProviderParameter("cache", str),
     ProviderParameter("temperature", float),
-    ProviderParameter("max_tokens", int),
+    ProviderParameter("max_completion_tokens", int),
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
@@ -146,22 +146,22 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
 
 # Generic to Azure OpenAI parameters mapping
 AzureOpenAIParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_completion_tokens",
 }
 
 # Generic to OpenAI parameters mapping
 OpenAIParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_completion_tokens",
 }
 
 # Generic to RHELAI VLLM parameters mapping
 RHELAIVLLMParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_completion_tokens",
 }
 
 # Generic to RHOAI VLLM parameters mapping
 RHOAIVLLMParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_completion_tokens",
 }
 
 # Generic to BAM parameters mapping

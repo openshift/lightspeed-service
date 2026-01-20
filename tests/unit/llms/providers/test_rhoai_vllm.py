@@ -99,7 +99,7 @@ def test_basic_interface(provider_config, fake_certifi_store):
     assert rhoai_vllm.default_params
     assert "base_url" in rhoai_vllm.default_params
     assert "model" in rhoai_vllm.default_params
-    assert "max_tokens" in rhoai_vllm.default_params
+    assert "max_completion_tokens" in rhoai_vllm.default_params
 
     # check the HTTP client parameter
     assert "http_client" in rhoai_vllm.default_params
@@ -191,7 +191,7 @@ def test_loading_provider_specific_parameters(
 
     assert "base_url" in rhoai_vllm.default_params
     assert "model" in rhoai_vllm.default_params
-    assert "max_tokens" in rhoai_vllm.default_params
+    assert "max_completion_tokens" in rhoai_vllm.default_params
 
     # parameters taken from provier-specific configuration
     # which takes precedence over regular configuration

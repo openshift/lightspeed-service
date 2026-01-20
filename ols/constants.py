@@ -76,7 +76,7 @@ DEFAULT_CONTEXT_WINDOW_SIZE = 128000
 # Also response with YAML generally uses more tokens (when large model is used)
 # It should be in reasonable proportion to context window limit; otherwise unnecessary
 # truncation will happen. If not set, default value will be used.
-DEFAULT_MAX_TOKENS_FOR_RESPONSE = 2048
+DEFAULT_MAX_TOKENS_FOR_RESPONSE = 4096
 
 
 # Tokenizer model to generate tokens (for an approximated token calculation)
