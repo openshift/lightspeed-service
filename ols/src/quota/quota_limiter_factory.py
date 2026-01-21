@@ -6,6 +6,7 @@ from ols import constants
 from ols.app.models.config import PostgresConfig, QuotaHandlersConfig
 from ols.src.quota.cluster_quota_limiter import ClusterQuotaLimiter
 from ols.src.quota.quota_limiter import QuotaLimiter
+from ols.src.quota.revokable_quota_limiter import RevokableQuotaLimiter
 from ols.src.quota.user_quota_limiter import UserQuotaLimiter
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,8 @@ class QuotaLimiterFactory:
             limiter = QuotaLimiterFactory.create_limiter(
                 storage_config, limiter_type, initial_quota, increase_by
             )
+            if isinstance(limiter, RevokableQuotaLimiter):
+                limiter.reconcile_quota_limits()
             limiters.append(limiter)
             logger.info("Set up quota limiter '%s'", name)
         return limiters
