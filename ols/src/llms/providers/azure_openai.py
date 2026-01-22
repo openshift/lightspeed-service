@@ -71,7 +71,7 @@ class AzureOpenAI(LLMProvider):
             "model": self.model,
             "organization": None,
             "cache": None,
-            "max_tokens": 512,
+            "max_completion_tokens": 512,
             "verbose": False,
             "http_client": self._construct_httpx_client(True, False),
             "http_async_client": self._construct_httpx_client(True, True),

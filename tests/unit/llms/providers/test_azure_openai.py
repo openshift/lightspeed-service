@@ -219,7 +219,7 @@ def test_basic_interface(provider_config, fake_certifi_store):
     assert "deployment_name" in azure_openai.default_params
     assert "api_key" in azure_openai.default_params
     assert "azure_endpoint" in azure_openai.default_params
-    assert "max_tokens" in azure_openai.default_params
+    assert "max_completion_tokens" in azure_openai.default_params
     assert "api_version" in azure_openai.default_params
 
     # test parameter values taken from config
@@ -270,7 +270,7 @@ def test_loading_provider_specific_parameters(
     assert "deployment_name" in azure_openai.default_params
     assert "api_key" in azure_openai.default_params
     assert "azure_endpoint" in azure_openai.default_params
-    assert "max_tokens" in azure_openai.default_params
+    assert "max_completion_tokens" in azure_openai.default_params
     assert "api_version" in azure_openai.default_params
 
     # test parameter values taken from provider-specific config
@@ -596,5 +596,5 @@ def test_gpt5_and_o_series_models_parameter_exclusion(
     assert "api_key" in azure_openai.default_params
     assert "model" in azure_openai.default_params
     assert "deployment_name" in azure_openai.default_params
-    assert "max_tokens" in azure_openai.default_params
+    assert "max_completion_tokens" in azure_openai.default_params
     assert azure_openai.default_params["model"] == model_name

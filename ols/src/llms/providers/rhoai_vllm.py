@@ -42,7 +42,7 @@ class RHOAIVLLM(LLMProvider):
             "organization": None,
             "cache": None,
             "temperature": 0.01,
-            "max_tokens": 512,
+            "max_completion_tokens": 512,
             "verbose": False,
             "http_client": self._construct_httpx_client(True, False),
             "http_async_client": self._construct_httpx_client(True, True),
