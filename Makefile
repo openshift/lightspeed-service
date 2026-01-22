@@ -127,7 +127,7 @@ verify:	install-woke install-deps-test ## Verify the code using various linters
 	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 schema:	## Generate OpenAPI schema file
-	python scripts/generate_openapi_schema.py docs/openapi.json
+	pdm run python scripts/generate_openapi_schema.py docs/openapi.json
 
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
 	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
