@@ -168,7 +168,7 @@ class DataCollectorControl:
         cluster_utils.run_oc(
             [
                 "scale",
-                "deployment/lightspeed-app-server",
+                "deployment/lightspeed-stack-deployment",
                 "-n",
                 EXPORTER_NAMESPACE,
                 "--replicas=0",
@@ -217,7 +217,7 @@ class DataCollectorControl:
             cluster_utils.run_oc(
                 [
                     "scale",
-                    "deployment/lightspeed-app-server",
+                    "deployment/lightspeed-stack-deployment",
                     "-n",
                     EXPORTER_NAMESPACE,
                     "--replicas=1",
@@ -379,7 +379,7 @@ def patch_exporter_mode_to_manual() -> None:
     cluster_utils.run_oc(
         [
             "patch",
-            "deployment/lightspeed-app-server",
+            "deployment/lightspeed-stack-deployment",
             "-n",
             EXPORTER_NAMESPACE,
             "--type=json",
@@ -429,7 +429,7 @@ def prepare_for_data_collection_test(
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            "deployment/lightspeed-stack-deployment",
             "-n",
             EXPORTER_NAMESPACE,
             "--replicas=0",

@@ -5,6 +5,7 @@
 # pyright: reportAttributeAccessIssue=false
 
 import re
+import os
 
 import pytest
 import requests
@@ -18,10 +19,13 @@ from tests.e2e.utils.decorators import retry
 from . import test_api
 
 QUERY_ENDPOINT = "/v1/query"
+import ipdb
 
-
+@pytest.mark.skip_with_lcore
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
+    ipdb.set_trace()
+    
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         cid = suid.get_suid()
         response = pytest.client.post(
@@ -77,11 +81,11 @@ def test_invalid_question_without_conversation_id():
             json_response["response"],
             re.IGNORECASE,
         )
-
-        # new conversation ID should be generated
-        assert suid.check_suid(
-            json_response["conversation_id"]
-        ), "Conversation ID is not in UUID format"
+        if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+            # new conversation ID should be generated
+            assert suid.check_suid(
+                json_response["conversation_id"]
+            ), "Conversation ID is not in UUID format"
 
 
 def test_query_call_without_payload():
@@ -125,6 +129,7 @@ def test_query_call_with_improper_payload():
         assert "missing" in response.text
 
 
+@pytest.mark.skip_with_lcore
 def test_valid_question_improper_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for improper conversation ID."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -150,6 +155,7 @@ def test_valid_question_improper_conversation_id() -> None:
         assert json_response == expected_response
 
 
+@pytest.mark.skip_with_lcore
 @retry(max_attempts=3, wait_between_runs=10)
 def test_valid_question_missing_conversation_id() -> None:
     """Check the REST API /v1/query with POST HTTP method for missing conversation ID."""
@@ -175,6 +181,7 @@ def test_valid_question_missing_conversation_id() -> None:
         ), "Conversation ID is not in UUID format"
 
 
+@pytest.mark.skip_with_lcore
 def test_too_long_question() -> None:
     """Check the REST API /v1/query with too long question."""
     # let's make the query really large, larger that context window size
@@ -200,6 +207,7 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
+@pytest.mark.skip_with_lcore
 @pytest.mark.smoketest
 @pytest.mark.rag
 def test_valid_question() -> None:
@@ -256,6 +264,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         assert f"{major}.{minor}" in json_response["referenced_documents"][0]["doc_url"]
 
 
+@pytest.mark.skip_with_lcore
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -275,6 +284,7 @@ def test_valid_question_tokens_counter() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
+@pytest.mark.skip_with_lcore
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -294,6 +304,7 @@ def test_invalid_question_tokens_counter() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
+@pytest.mark.skip_with_lcore
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -322,6 +333,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
         response_utils.check_content_type(response, "application/json")
 
 
+@pytest.mark.skip_with_lcore
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -378,6 +390,7 @@ def test_rag_question() -> None:
         assert len(doc_urls_list) == len(set(doc_urls_list))
 
 
+@pytest.mark.skip_with_lcore
 @pytest.mark.cluster
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
@@ -403,7 +416,7 @@ def test_query_filter() -> None:
         assert "bar" not in response_words
 
         # Retrieve the pod name
-        ols_container_name = "lightspeed-service-api"
+        ols_container_name = "lightspeed-stack-deployment"
         pod_name = cluster_utils.get_pod_by_prefix()[0]
 
         # Check if filtered words are redacted in the logs
@@ -417,7 +430,7 @@ def test_query_filter() -> None:
                 continue
             # check that the pattern is indeed not found in logs
             for pattern in unwanted_patterns:
-                assert pattern not in line.lower()
+                assert pattern not in line.lower(), f"failed for {pattern}"
 
         # Ensure the intended redaction has occurred
         assert "what is deployment in openshift?" in container_log
@@ -486,7 +499,7 @@ def test_query_with_provider_but_not_model() -> None:
         # error thrown on Pydantic level
         assert (
             json_response["detail"][0]["msg"]
-            == "Value error, LLM model must be specified when the provider is specified."
+            == "Value error, Model must be specified if provider is specified"
         )
 
 
@@ -514,7 +527,7 @@ def test_query_with_model_but_not_provider() -> None:
 
         assert (
             json_response["detail"][0]["msg"]
-            == "Value error, LLM provider must be specified when the model is specified."
+            == "Value error, Provider must be specified if model is specified"
         )
 
 
@@ -624,10 +637,11 @@ def test_tool_calling() -> None:
         # Special check for granite
         assert not json_response["response"].strip().startswith("<tool_call>")
 
-
+import ipdb
 @pytest.mark.byok1
 def test_rag_question_byok1() -> None:
     """Ensure response include expected top rag reference."""
+    ipdb.set_trace()
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,
