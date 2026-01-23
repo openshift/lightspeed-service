@@ -578,13 +578,11 @@ class MCPServerConfig(BaseModel):
     """
 
     name: str = Field(
-        ...,
         title="MCP name",
         description="MCP server name that must be unique",
     )
 
     url: str = Field(
-        ...,
         title="MCP server URL",
         description="URL of the MCP server",
     )
@@ -598,7 +596,7 @@ class MCPServerConfig(BaseModel):
         ),
     )
 
-    authorization_headers: dict[str, str] = Field(
+    headers: dict[str, str] = Field(
         default_factory=dict,
         title="Authorization headers",
         description=(
@@ -615,12 +613,12 @@ class MCPServerConfig(BaseModel):
         ),
     )
 
-    _resolved_authorization_headers: dict[str, str] = PrivateAttr(default_factory=dict)
+    _resolved_headers: dict[str, str] = PrivateAttr(default_factory=dict)
 
     @property
-    def resolved_authorization_headers(self) -> dict[str, str]:
-        """Resolved authorization headers (computed from authorization_headers)."""
-        return self._resolved_authorization_headers
+    def resolved_headers(self) -> dict[str, str]:
+        """Resolved headers (computed from headers)."""
+        return self._resolved_headers
 
 
 class ToolFilteringConfig(BaseModel):
@@ -629,9 +627,9 @@ class ToolFilteringConfig(BaseModel):
     If this config is present, tool filtering is enabled. If absent, all tools are used.
     """
 
-    embed_model: str = Field(
-        default="sentence-transformers/all-mpnet-base-v2",
-        description="Sentence transformer model for embeddings",
+    embed_model_path: Optional[str] = Field(
+        default=None,
+        description="Path to sentence transformer model for embeddings",
     )
 
     alpha: float = Field(

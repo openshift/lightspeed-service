@@ -209,19 +209,17 @@ class DocsSummarizer(QueryHelper):
                 # Resolve authorization headers from config
                 # Pattern adapted from LCore implementation
                 headers = {}
-                for name, value in server.resolved_authorization_headers.items():
+                for name, value in server.resolved_headers.items():
                     h_value = self._get_token_value(value, name, server.name)
                     if h_value is not None:
                         headers[name] = h_value
 
                 # Skip server if auth headers were configured but not all could be resolved
-                if server.authorization_headers and len(headers) != len(
-                    server.authorization_headers
-                ):
+                if server.headers and len(headers) != len(server.headers):
                     logger.warning(
                         "Skipping MCP server %s: required %d auth headers but only resolved %d",
                         server.name,
-                        len(server.authorization_headers),
+                        len(server.headers),
                         len(headers),
                     )
                     continue
