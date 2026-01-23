@@ -18,7 +18,6 @@ from . import test_api
 def test_valid_question_with_empty_attachment_list() -> None:
     """Check the REST API /v1/query with POST HTTP method using empty attachment list."""
     endpoint = "/v1/query"
-
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, endpoint, status_code=requests.codes.ok
     ):
@@ -236,8 +235,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -
         json_response = response.json()
         expected_response = {
             "detail": {
-                "response": "Unable to process this request",
-                "cause": "Attachment with improper type unknown_type detected",
+                "response": "Invalid attribute value",
+                "cause": "Invalid attatchment type unknown_type: must be one of frozenset" \
+                "({'alert', 'log', 'event', 'api object', 'error message', 'configuration', 'stack trace'})",
             }
         }
         assert json_response == expected_response
@@ -275,8 +275,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> N
         json_response = response.json()
         expected_response = {
             "detail": {
-                "response": "Unable to process this request",
-                "cause": "Attachment with improper content type unknown/type detected",
+                "response": "Invalid attribute value",
+                "cause": "Invalid attatchment content type unknown/type: must be one of frozenset" \
+                "({'application/json', 'application/xml', 'application/yaml', 'text/plain'})",
             }
         }
         assert json_response == expected_response

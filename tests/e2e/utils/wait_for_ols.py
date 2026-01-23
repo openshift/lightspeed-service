@@ -9,12 +9,15 @@ import warnings
 import requests
 from requests.exceptions import SSLError
 from urllib3.exceptions import InsecureRequestWarning
+from tests.e2e.utils.constants import (
+    BASIC_ENDPOINTS_TIMEOUT,
+)
 
 warnings.filterwarnings("ignore", category=InsecureRequestWarning)
 
 
 # ruff: noqa: S501
-def wait_for_ols(url, timeout=300, interval=10):
+def wait_for_ols(url, client, timeout=300, interval=10):
     """Wait for the OLS to become ready by checking its readiness endpoint.
 
     Args:
@@ -30,14 +33,20 @@ def wait_for_ols(url, timeout=300, interval=10):
     for attempt in range(1, attempts + 1):
         print(f"Checking OLS readiness, attempt {attempt} of {attempts}")
         try:
-            response = requests.get(f"{url}/readiness", verify=True, timeout=5)
+            response = client.get(
+                    "/readiness",
+                    timeout=BASIC_ENDPOINTS_TIMEOUT
+                    )
             if response.status_code == requests.codes.ok:
                 print("OLS is ready")
                 return True
         except SSLError:
             print("SSL error detected, retrying without SSL verification")
             try:
-                response = requests.get(f"{url}/readiness", verify=False, timeout=5)
+                response = client.get(
+                    "/readiness",
+                    timeout=BASIC_ENDPOINTS_TIMEOUT
+                    )
                 if response.status_code == requests.codes.ok:
                     print("OLS is ready")
                     return True
