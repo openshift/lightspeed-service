@@ -25,6 +25,9 @@ function cleanup_ols_operator() {
     # Deletes may fail if this is the first time running against
     # the cluster, so ignore failures
 
+    # scale the operator pod to 1 to assure finalizer will run
+    oc scale deployment lightspeed-operator-controller-manager -n openshift-lightspeed --replicas=1
+
     # delete the OLS operand
     oc delete --wait --ignore-not-found olsconfig/cluster
         

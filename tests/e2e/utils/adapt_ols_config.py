@@ -230,7 +230,30 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
         print("Old app server scaled down")
     except Exception as e:
         print(f"No existing app server to scale down (this is OK): {e}")
-
+    # Scaling operator to 1 replica to allow finalizer to run for olsconfig
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "1",
+        ]
+    )
+    # Wait for operator pod to be ready
+    retry_until_timeout_or_success(
+        60,
+        5,
+        lambda: (
+            pods := cluster_utils.get_pod_by_prefix(
+                prefix="lightspeed-operator-controller-manager", fail_not_found=False
+            )
+        )
+        and all(
+            status == "true"
+            for status in cluster_utils.get_container_ready_status(pods[0])
+        ),
+        "Waiting for operator to be ready",
+    )
     try:
         cluster_utils.run_oc(["delete", "olsconfig", "cluster", "--ignore-not-found"])
         print(" Old OLSConfig CR removed")
@@ -242,24 +265,6 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
         print("New OLSConfig CR applied")
     except Exception as e:
         raise RuntimeError(f"Failed to apply OLSConfig CR: {e}") from e
-
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "1",
-        ]
-    )
-    # Wait for operator
-    retry_until_timeout_or_success(
-        30,
-        5,
-        lambda: cluster_utils.get_pod_by_prefix(
-            prefix="lightspeed-operator-controller-manager", fail_not_found=False
-        ),
-        "Waiting for operator to start",
-    )
 
     print("Waiting for operator to reconcile OLSConfig CR (30 seconds)...")
     time.sleep(30)  # Let operator reconcile CR → deployment + configmap
