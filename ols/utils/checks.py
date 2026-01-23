@@ -101,14 +101,14 @@ def get_log_level(value: str) -> int:
     return log_level
 
 
-def resolve_authorization_headers(
-    authorization_headers: dict[str, str],
+def resolve_headers(
+    headers: dict[str, str],
     auth_module: Optional[str] = None,
 ) -> dict[str, str]:
     """Resolve authorization headers by reading secret files or preserving special values.
 
     Args:
-        authorization_headers: Map of header names to secret locations or special keywords.
+        headers: Map of header names to secret locations or special keywords.
             - If value is "kubernetes": preserved unchanged for later substitution during request.
               Only valid when authentication module is "k8s" or "noop-with-token".
               "noop-with-token" is for testing only - the real k8s token must be passed at
@@ -127,7 +127,7 @@ def resolve_authorization_headers(
 
     Examples:
         >>> # With file paths
-        >>> resolve_authorization_headers({"Authorization": "/var/secrets/token"})
+        >>> resolve_headers({"Authorization": "/var/secrets/token"})
         {"Authorization": "secret-value-from-file"}
 
         >>> # With kubernetes special case (kept as-is, requires k8s or noop-with-token auth)
@@ -138,13 +138,13 @@ def resolve_authorization_headers(
         {"Authorization": "kubernetes"}
 
         >>> # With client special case (kept as-is)
-        >>> resolve_authorization_headers({"Authorization": "client"})
+        >>> resolve_headers({"Authorization": "client"})
         {"Authorization": "client"}
     """
     logger = logging.getLogger(__name__)
     resolved: dict[str, str] = {}
 
-    for header_name, header_value in authorization_headers.items():
+    for header_name, header_value in headers.items():
         match header_value.strip():
             case constants.MCP_KUBERNETES_PLACEHOLDER:
                 # Validate that kubernetes placeholder is only used with k8s or noop-with-token auth
@@ -223,21 +223,21 @@ def validate_mcp_servers(
     valid_servers = []
 
     for server in servers:
-        if server.authorization_headers:
+        if server.headers:
             # Resolve headers with auth module context
-            resolved = resolve_authorization_headers(
-                server.authorization_headers,
+            resolved = resolve_headers(
+                server.headers,
                 auth_module=auth_module,
             )
             if not resolved:
-                # Already logged in resolve_authorization_headers
+                # Already logged in resolve_headers
                 logger.debug(
                     "MCP server '%s' excluded due to unresolvable authorization headers",
                     server.name,
                 )
                 continue
             # Store the resolved headers
-            server._resolved_authorization_headers = resolved
+            server._resolved_headers = resolved
         valid_servers.append(server)
 
     return valid_servers

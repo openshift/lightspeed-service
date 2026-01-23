@@ -53,7 +53,7 @@ def mcp_server_config_http_with_auth():
     return {
         "name": "bar",
         "url": "http://localhost:8081",
-        "authorization_headers": {"Authorization": "kubernetes"},
+        "headers": {"Authorization": "kubernetes"},
     }
 
 
@@ -1905,12 +1905,12 @@ def test_tls_config_incorrect_certificate_path():
 
     config2 = TLSConfig(
         {
-            "tls_certificate_path": "/etc/shadow",
+            "tls_certificate_path": "/nonexistent/path/cert.pem",
             "tls_key_path": "tests/config/key",
             "tls_key_password_path": "tests/config/password",
         }
     )
-    with pytest.raises(InvalidConfigurationError, match="is not readable"):
+    with pytest.raises(InvalidConfigurationError, match="is not a file"):
         config2.validate_yaml()
 
 

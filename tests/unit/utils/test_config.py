@@ -695,7 +695,7 @@ def test_valid_config_file():
         # First MCP server (the only one remaining)
         assert config.mcp_servers.servers[0].name == "foo"
         assert config.mcp_servers.servers[0].url == "http://localhost:8080"
-        assert config.mcp_servers.servers[0].authorization_headers == {}
+        assert config.mcp_servers.servers[0].headers == {}
         assert config.mcp_servers.servers[0].timeout is None
 
         # Second MCP server ("bar") was skipped during validation

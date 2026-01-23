@@ -44,7 +44,7 @@ mcp_servers:
     url: http://localhost:8080
   - name: bar
     url: http://127.0.0.1:8081
-    authorization_headers:
+    headers:
       X-API-Key: /path/to/secret
 dev_config:
   disable_auth: true
