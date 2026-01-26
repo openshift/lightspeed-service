@@ -131,7 +131,7 @@ def resolve_headers(
         {"Authorization": "secret-value-from-file"}
 
         >>> # With kubernetes special case (kept as-is, requires k8s or noop-with-token auth)
-        >>> resolve_authorization_headers(
+        >>> resolve_headers(
         ...     {"Authorization": "kubernetes"},
         ...     auth_module="k8s"
         ... )

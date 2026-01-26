@@ -76,8 +76,8 @@ class "LoggingConfig" as ols.app.models.config.LoggingConfig {
 class "MCPServerConfig" as ols.app.models.config.MCPServerConfig {
   name : str
   url : str
-  authorization_headers : dict[str, str]
-  resolved_authorization_headers : dict[str, str]
+  headers : dict[str, str]
+  resolved_headers : dict[str, str]
   timeout : Optional[int]
   resolve_auth_headers() -> Self
 }
