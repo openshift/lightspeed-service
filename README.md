@@ -725,7 +725,7 @@ Each MCP server requires:
 - `url`: The HTTP endpoint where the MCP server is running
 
 Optional fields:
-- `authorization_headers`: Authentication headers for secure communication
+- `headers`: Authentication headers for secure communication
 - `timeout`: Request timeout in seconds
 
 **Minimal Example:**
@@ -748,7 +748,7 @@ Store authentication tokens in secret files and reference them in your configura
 mcp_servers:
   - name: api-service
     url: http://api-service:8080
-    authorization_headers:
+    headers:
       Authorization: /var/secrets/api-token    # Path to file containing token
       X-API-Key: /var/secrets/api-key          # Multiple headers supported
     timeout: 30                                 # Optional timeout in seconds
@@ -762,7 +762,7 @@ Use the special `kubernetes` placeholder to automatically inject the authenticat
 mcp_servers:
   - name: openshift
     url: http://openshift-mcp-server:8080
-    authorization_headers:
+    headers:
       Authorization: kubernetes  # Uses user's k8s token from request
 ```
 
@@ -776,7 +776,7 @@ Use the `client` placeholder to allow clients to provide their own tokens per-re
 mcp_servers:
   - name: github
     url: http://github-mcp-server:8080
-    authorization_headers:
+    headers:
       Authorization: client  # Client provides token via MCP-HEADERS header
 ```
 
@@ -811,7 +811,7 @@ For cluster context gathering with the OpenShift MCP server:
 mcp_servers:
   - name: openshift
     url: http://openshift-mcp-server:8080
-    authorization_headers:
+    headers:
       Authorization: kubernetes  # Uses authenticated user's token
     timeout: 30
 ```
