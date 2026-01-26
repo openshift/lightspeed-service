@@ -114,6 +114,6 @@ dev_config:
 mcp_servers:
   - name: openshift
     url: http://localhost:8080
-    authorization_headers:
+    headers:
       Authorization: kubernetes  # Special placeholder - uses k8s token from request
     # timeout: 30  # Optional timeout in seconds
