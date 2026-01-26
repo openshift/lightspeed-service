@@ -55,6 +55,7 @@ def test_readiness():
 
 
 @pytest.mark.smoketest
+@retry(max_attempts=3, wait_between_runs=10)
 def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
