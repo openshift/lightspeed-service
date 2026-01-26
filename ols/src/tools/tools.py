@@ -7,6 +7,9 @@ import logging
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 
+from ols.constants import DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
+from ols.utils.token_handler import TokenHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,33 +39,67 @@ def get_tool_by_name(
 
 
 async def execute_tool_call(
-    tool_name: str, tool_args: dict, all_mcp_tools: list[StructuredTool]
-) -> tuple[str, str]:
-    """Execute a tool call and return the output and status."""
+    tool_name: str,
+    tool_args: dict,
+    all_mcp_tools: list[StructuredTool],
+    max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
+) -> tuple[str, str, bool]:
+    """Execute a tool call and return the output, status, and truncation flag.
+
+    Args:
+        tool_name: Name of the tool to execute
+        tool_args: Arguments to pass to the tool
+        all_mcp_tools: List of available MCP tools
+        max_tokens: Maximum tokens allowed for tool output
+
+    Returns:
+        Tuple of (status, tool_output, was_truncated)
+    """
+    was_truncated = False
     try:
         tool = get_tool_by_name(tool_name, all_mcp_tools)
         tool_output = await tool.arun(_jsonify(tool_args))  # type: ignore [attr-defined]
+
+        token_handler = TokenHandler()
+        tool_output, was_truncated = token_handler.truncate_tool_output(
+            tool_output, max_tokens
+        )
+
         status = "success"
         logger.debug(
-            "Tool: %s | Args: %s | Output: %s", tool_name, tool_args, tool_output
+            "Tool: %s | Args: %s | Output: %s | Truncated: %s",
+            tool_name,
+            tool_args,
+            tool_output[:500] if len(tool_output) > 500 else tool_output,
+            was_truncated,
         )
     except Exception as e:
-        # catching generic exception here - if it contains something it
-        # shouldn't (eg. token in openshift tools), it is responsibility
-        # of the mcp/openshift tools to ensure nothing is leaked
         tool_output = f"Error executing tool '{tool_name}': {e}"
         status = "error"
         logger.exception(tool_output)
-    return status, tool_output
+    return status, tool_output, was_truncated
 
 
 async def _execute_single_tool_call(
-    tool_call: dict, all_mcp_tools: list[StructuredTool]
+    tool_call: dict,
+    all_mcp_tools: list[StructuredTool],
+    max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
 ) -> ToolMessage:
-    """Execute a single tool call and return a ToolMessage."""
+    """Execute a single tool call and return a ToolMessage.
+
+    Args:
+        tool_call: Tool call dict with name, args, and id
+        all_mcp_tools: List of available MCP tools
+        max_tokens: Maximum tokens allowed for tool output
+
+    Returns:
+        ToolMessage with result. The additional_kwargs["truncated"] field
+        indicates if the output was truncated (for UI status).
+    """
     tool_name = tool_call.get("name")
     tool_args = tool_call.get("args", {})
     tool_id = tool_call.get("id")
+    was_truncated = False
 
     if tool_name is None:
         tool_output = "Error: Tool name is missing from tool call"
@@ -71,8 +108,8 @@ async def _execute_single_tool_call(
     else:
         try:
             raise_for_sensitive_tool_args(tool_args)
-            status, tool_output = await execute_tool_call(
-                tool_name, tool_args, all_mcp_tools
+            status, tool_output, was_truncated = await execute_tool_call(
+                tool_name, tool_args, all_mcp_tools, max_tokens
             )
         except Exception as e:
             tool_output = (
@@ -81,23 +118,38 @@ async def _execute_single_tool_call(
             status = "error"
             logger.exception(tool_output)
 
-    return ToolMessage(content=tool_output, status=status, tool_call_id=tool_id)
+    return ToolMessage(
+        content=tool_output,
+        status=status,
+        tool_call_id=tool_id,
+        additional_kwargs={"truncated": was_truncated},
+    )
 
 
 async def execute_tool_calls(
     tool_calls: list[dict],
     all_mcp_tools: list[StructuredTool],
+    max_tokens_per_output: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
 ) -> list[ToolMessage]:
-    """Execute tool calls in parallel and return ToolMessages."""
+    """Execute tool calls in parallel and return ToolMessages.
+
+    Args:
+        tool_calls: List of tool call dicts
+        all_mcp_tools: List of available MCP tools
+        max_tokens_per_output: Maximum tokens allowed per tool output
+
+    Returns:
+        List of ToolMessages. Each message's additional_kwargs["truncated"]
+        indicates if that tool's output was truncated.
+    """
     if not tool_calls:
         return []
 
-    # Create tasks for parallel execution
     tasks = [
-        _execute_single_tool_call(tool_call, all_mcp_tools) for tool_call in tool_calls
+        _execute_single_tool_call(tool_call, all_mcp_tools, max_tokens_per_output)
+        for tool_call in tool_calls
     ]
 
-    # Execute all tool calls in parallel
     tool_messages = await asyncio.gather(*tasks)
 
     return tool_messages

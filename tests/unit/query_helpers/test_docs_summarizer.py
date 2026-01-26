@@ -319,6 +319,8 @@ def test_tool_calling_tool_execution(caplog):
         mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        # Disable token reservation for tools in this test (test config has small context window)
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
         summarizer.create_response(question)
 
         assert "Tool: get_namespaces_mock" in caplog.text

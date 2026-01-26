@@ -78,20 +78,22 @@ async def test_execute_tool_call():
     with patch(
         "ols.src.tools.tools.get_tool_by_name", return_value=FakeTool(fake_tool_name)
     ):
-        status, output = await execute_tool_call(
+        status, output, was_truncated = await execute_tool_call(
             fake_tool_name, fake_tool_args, fake_tools
         )
         assert output == "fake_output_from_fake_tool"
         assert status == "success"
+        assert was_truncated is False
 
     with patch(
         "ols.src.tools.tools.get_tool_by_name", side_effect=Exception("Tool error")
     ):
-        status, output = await execute_tool_call(
+        status, output, was_truncated = await execute_tool_call(
             fake_tool_name, fake_tool_args, fake_tools
         )
         assert "Error executing tool" in output
         assert status == "error"
+        assert was_truncated is False
 
 
 @pytest.mark.asyncio
@@ -146,16 +148,19 @@ async def test_execute_tool_calls_with_missing_tool_name():
     ]
 
     with patch(
-        "ols.src.tools.tools.execute_tool_call", return_value=("success", "fake_output")
+        "ols.src.tools.tools.execute_tool_call",
+        return_value=("success", "fake_output", False),
     ):
         tool_messages = await execute_tool_calls(tool_calls, fake_tools)
         assert len(tool_messages) == 2
         assert tool_messages[0].content == "Error: Tool name is missing from tool call"
         assert tool_messages[0].status == "error"
         assert tool_messages[0].tool_call_id == "call_1"
+        assert tool_messages[0].additional_kwargs.get("truncated") is False
         assert tool_messages[1].content == "fake_output"
         assert tool_messages[1].status == "success"
         assert tool_messages[1].tool_call_id == "call_2"
+        assert tool_messages[1].additional_kwargs.get("truncated") is False
 
 
 def test_raise_for_sensitive_tool_args():
@@ -243,3 +248,104 @@ async def test_execute_tool_calls_preserves_tool_call_order():
     assert tool_messages[1].content == "fake_output_from_tool_a"
     assert tool_messages[2].tool_call_id == "call_b"
     assert tool_messages[2].content == "fake_output_from_tool_b"
+
+
+class LargeOutputTool(StructuredTool):
+    """Tool that returns a large output for testing truncation."""
+
+    def __init__(self, name: str, output_size: int = 100):
+        """Initialize with configurable output size."""
+        super().__init__(
+            name=name,
+            description=f"Large output tool {name}",
+            func=self._sync_run,
+            args_schema=FakeSchema,
+        )
+        self._output_size = output_size
+
+    def _sync_run(self, **kwargs) -> str:
+        """Sync run method."""
+        return "word " * self._output_size
+
+    async def arun(self, tool_args: Optional[dict] = None, **kwargs) -> str:
+        """Return a large output."""
+        return "word " * self._output_size
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_with_truncation():
+    """Test that large tool outputs are truncated."""
+    large_tool = LargeOutputTool(name="large_tool", output_size=5000)
+    fake_tools = [large_tool]
+
+    status, output, was_truncated = await execute_tool_call(
+        "large_tool", {}, fake_tools, max_tokens=100
+    )
+
+    assert status == "success"
+    assert was_truncated is True
+    assert "[OUTPUT TRUNCATED" in output
+    assert "Please ask a more specific question" in output
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_no_truncation_small_output():
+    """Test that small tool outputs are not truncated."""
+    small_tool = LargeOutputTool(name="small_tool", output_size=10)
+    fake_tools = [small_tool]
+
+    status, output, was_truncated = await execute_tool_call(
+        "small_tool", {}, fake_tools, max_tokens=1000
+    )
+
+    assert status == "success"
+    assert was_truncated is False
+    assert "[OUTPUT TRUNCATED" not in output
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_truncation_in_additional_kwargs():
+    """Test that truncation flag is stored in additional_kwargs."""
+    large_tool = LargeOutputTool(name="large_tool", output_size=5000)
+    small_tool = LargeOutputTool(name="small_tool", output_size=10)
+    fake_tools = [large_tool, small_tool]
+
+    tool_calls = [
+        {"name": "large_tool", "args": {}, "id": "call_large"},
+        {"name": "small_tool", "args": {}, "id": "call_small"},
+    ]
+
+    tool_messages = await execute_tool_calls(
+        tool_calls, fake_tools, max_tokens_per_output=100
+    )
+
+    assert len(tool_messages) == 2
+
+    # Large tool should be truncated
+    assert tool_messages[0].additional_kwargs.get("truncated") is True
+    assert "[OUTPUT TRUNCATED" in tool_messages[0].content
+
+    # Small tool should not be truncated
+    assert tool_messages[1].additional_kwargs.get("truncated") is False
+    assert "[OUTPUT TRUNCATED" not in tool_messages[1].content
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_custom_max_tokens():
+    """Test that custom max_tokens_per_output is respected."""
+    tool = LargeOutputTool(name="test_tool", output_size=500)
+    fake_tools = [tool]
+
+    tool_calls = [{"name": "test_tool", "args": {}, "id": "call_1"}]
+
+    # With high limit - no truncation
+    messages_high_limit = await execute_tool_calls(
+        tool_calls, fake_tools, max_tokens_per_output=10000
+    )
+    assert messages_high_limit[0].additional_kwargs.get("truncated") is False
+
+    # With low limit - truncation
+    messages_low_limit = await execute_tool_calls(
+        tool_calls, fake_tools, max_tokens_per_output=50
+    )
+    assert messages_low_limit[0].additional_kwargs.get("truncated") is True
