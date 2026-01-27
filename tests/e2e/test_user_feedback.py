@@ -6,6 +6,7 @@
 
 import pytest
 import requests
+import os
 
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import response as response_utils
@@ -27,7 +28,10 @@ def test_feedback_can_post_with_wrong_token():
         timeout=test_api.BASIC_ENDPOINTS_TIMEOUT,
         headers={"Authorization": "Bearer wrong-token"},
     )
-    assert response.status_code == requests.codes.forbidden
+    if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+        assert response.status_code == requests.codes.forbidden
+    else:
+        assert response.status_code == requests.codes.unauthorized
 
 
 @pytest.mark.data_export

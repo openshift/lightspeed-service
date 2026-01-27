@@ -92,11 +92,9 @@ def get_metric_labels(lines, info_node_name, value=None) -> dict:
     # info node was not found
     return {}
 
-import ipdb
+
 def get_enabled_model_and_provider(client):
     """Read configured model and provider from metrics."""
-    
-    ipdb.set_trace()
     
     if os.getenv("LCORE", 'False').lower() in ('true', '1', 't'):
         response = client.get("/v1/models", timeout=BASIC_ENDPOINTS_TIMEOUT)

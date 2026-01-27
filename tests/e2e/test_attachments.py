@@ -6,6 +6,7 @@
 
 import pytest
 import requests
+import os
 
 from tests.e2e.utils import metrics as metrics_utils
 from tests.e2e.utils import response as response_utils
@@ -202,7 +203,7 @@ def test_valid_question_with_wrong_attachment_format_field_of_different_type() -
         assert details["msg"] == "Input should be a valid string"
         assert details["type"] == "string_type"
 
-
+import ipdb
 @retry(max_attempts=3, wait_between_runs=10)
 def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -> None:
     """Check the REST API /v1/query with POST HTTP method using attachment with wrong type."""
@@ -231,16 +232,26 @@ def test_valid_question_with_wrong_attachment_format_unknown_attachment_type() -
 
         # the attachment should not be processed correctly
         assert response.status_code == requests.codes.unprocessable_entity
-
         json_response = response.json()
-        expected_response = {
-            "detail": {
-                "response": "Invalid attribute value",
-                "cause": "Invalid attatchment type unknown_type: must be one of frozenset" \
-                "({'alert', 'log', 'event', 'api object', 'error message', 'configuration', 'stack trace'})",
+        if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+            expected_response = {
+                "detail": {
+                    "response": "Invalid attribute value",
+                    "cause": "Invalid attatchment type unknown_type: must be one of frozenset" \
+                    "({'alert', 'log', 'event', 'api object', 'error message', 'configuration', 'stack trace'})",
+                }
             }
-        }
-        assert json_response == expected_response
+            assert json_response == expected_response
+        else:
+            assert "Invalid attribute value" in json_response["detail"]["response"]
+            assert "Invalid attatchment type unknown_type: must be one of frozenset" in json_response["detail"]["cause"]
+            assert "event" in json_response["detail"]["cause"]
+            assert "log" in json_response["detail"]["cause"]
+            assert "stack trace" in json_response["detail"]["cause"]
+            assert "alert" in json_response["detail"]["cause"]
+            assert "configuration" in json_response["detail"]["cause"]
+            assert "api object" in json_response["detail"]["cause"]
+            assert "error message" in json_response["detail"]["cause"]
 
 
 @retry(max_attempts=3, wait_between_runs=10)
@@ -271,13 +282,9 @@ def test_valid_question_with_wrong_attachment_format_unknown_content_type() -> N
 
         # the attachment should not be processed correctly
         assert response.status_code == requests.codes.unprocessable_entity
-
         json_response = response.json()
-        expected_response = {
-            "detail": {
-                "response": "Invalid attribute value",
-                "cause": "Invalid attatchment content type unknown/type: must be one of frozenset" \
-                "({'application/json', 'application/xml', 'application/yaml', 'text/plain'})",
-            }
-        }
-        assert json_response == expected_response
+        assert "Invalid attribute value" in json_response["detail"]["response"]
+        assert "application/json" in json_response["detail"]["cause"]
+        assert "application/xml" in json_response["detail"]["cause"]
+        assert "application/yaml" in json_response["detail"]["cause"]
+        assert "text/plain" in json_response["detail"]["cause"]

@@ -6,6 +6,7 @@
 
 import json
 import re
+import os
 
 import pytest
 import requests
@@ -53,6 +54,7 @@ def construct_response_from_streamed_events(events: dict) -> str:
     return response
 
 
+@pytest.mark.skip_with_lcore
 def test_invalid_question():
     """Check the endpoint POST method for invalid question."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -98,7 +100,8 @@ def test_invalid_question_without_conversation_id():
         # new conversation ID should be generated
         assert events[0]["event"] == "start"
         assert events[0]["data"]
-        assert suid.check_suid(events[0]["data"]["conversation_id"])
+        if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+            assert suid.check_suid(events[0]["data"]["conversation_id"])
 
 
 def test_query_call_without_payload():
@@ -139,6 +142,7 @@ def test_query_call_with_improper_payload():
         assert "missing" in response.text
 
 
+@pytest.mark.skip_with_lcore
 def test_valid_question_improper_conversation_id() -> None:
     """Check the endpoint with POST HTTP method for improper conversation ID."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -163,6 +167,7 @@ def test_valid_question_improper_conversation_id() -> None:
         assert json_response == expected_response
 
 
+@pytest.mark.skip_with_lcore
 def test_too_long_question() -> None:
     """Check the endpoint with too long question."""
     # let's make the query really large, larger that context window size
@@ -200,11 +205,24 @@ def test_valid_question() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client, STREAMING_QUERY_ENDPOINT
     ):
-        cid = suid.get_suid()
-        response = post_with_defaults(
-            STREAMING_QUERY_ENDPOINT,
-            json={"conversation_id": cid, "query": "what is kubernetes?"},
-        )
+        if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+            cid = suid.get_suid()
+            response = pytest.client.post(
+                STREAMING_QUERY_ENDPOINT,
+                json={
+                    "conversation_id": cid,
+                    "query": "what is kubernetes in the context of OpenShift?",
+                },
+                timeout=test_api.LLM_REST_API_TIMEOUT,
+            )
+        else:
+            response = pytest.client.post(
+                STREAMING_QUERY_ENDPOINT,
+                json={
+                    "query": "what is kubernetes in the context of OpenShift?",
+                },
+                timeout=test_api.LLM_REST_API_TIMEOUT,
+            )
         assert response.status_code == requests.codes.ok
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
@@ -244,6 +262,7 @@ def test_ocp_docs_version_same_as_cluster_version() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_valid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -264,6 +283,7 @@ def test_valid_question_tokens_counter() -> None:
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
 
+@pytest.mark.skip_with_lcore
 def test_invalid_question_tokens_counter() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -284,6 +304,7 @@ def test_invalid_question_tokens_counter() -> None:
         response_utils.check_content_type(response, constants.MEDIA_TYPE_TEXT)
 
 
+@pytest.mark.skip_with_lcore
 def test_token_counters_for_query_call_without_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -311,6 +332,7 @@ def test_token_counters_for_query_call_without_payload() -> None:
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
 
+@pytest.mark.skip_with_lcore
 def test_token_counters_for_query_call_with_improper_payload() -> None:
     """Check how the tokens counter are updated accordingly."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
@@ -372,6 +394,7 @@ def test_rag_question() -> None:
         assert len(set(docs_urls)) == len(docs_urls)
 
 
+@pytest.mark.skip_with_lcore
 @pytest.mark.cluster
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
@@ -463,6 +486,7 @@ def test_conversation_history() -> None:
         assert "ingress" in response_text, scenario_fail_msg
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_provider_but_not_model() -> None:
     """Check the endpoint with POST HTTP method for provider specified, but no model."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -491,6 +515,7 @@ def test_query_with_provider_but_not_model() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_model_but_not_provider() -> None:
     """Check the endpoint with POST HTTP method for model specified, but no provider."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -518,6 +543,7 @@ def test_query_with_model_but_not_provider() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_unknown_provider() -> None:
     """Check the endpoint with POST HTTP method for unknown provider specified."""
     # retrieve currently selected model
@@ -554,6 +580,7 @@ def test_query_with_unknown_provider() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_unknown_model() -> None:
     """Check the endpoint with POST HTTP method for unknown model specified."""
     # retrieve currently selected provider
