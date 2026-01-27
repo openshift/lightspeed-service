@@ -3,7 +3,6 @@
 Handles multi-provider test scenarios dynamically.
 """
 
-import json
 import os
 import time
 
@@ -11,8 +10,8 @@ import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
-from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.ols_installer import (
     create_secrets,
     get_service_account_tokens,
@@ -22,7 +21,7 @@ from tests.e2e.utils.ols_installer import (
     update_lcore_setting,
     update_ols_config,
 )
-from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
+from tests.e2e.utils.retry import retry_until_timeout_or_success
 
 
 def apply_olsconfig(provider_list: list[str]) -> None:
@@ -115,7 +114,7 @@ def wait_for_deployment() -> None:
     )
 
     print("Waiting for pods to be ready...")
-    cluster_utils.wait_for_running_pod()
+    cluster_utils.wait_for_running_pod(name=OLS_SERVICE_DEPLOYMENT)
 
 
 def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
