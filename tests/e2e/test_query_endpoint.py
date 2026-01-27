@@ -4,8 +4,8 @@
 # properly by linters
 # pyright: reportAttributeAccessIssue=false
 
-import re
 import os
+import re
 
 import pytest
 import requests
@@ -19,13 +19,11 @@ from tests.e2e.utils.decorators import retry
 from . import test_api
 
 QUERY_ENDPOINT = "/v1/query"
-import ipdb
+
 
 @pytest.mark.skip_with_lcore
 def test_invalid_question():
     """Check the REST API /v1/query with POST HTTP method for invalid question."""
-    ipdb.set_trace()
-    
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         cid = suid.get_suid()
         response = pytest.client.post(
@@ -429,7 +427,7 @@ def test_query_filter() -> None:
         assert "bar" not in response_words
 
         # Retrieve the pod name
-        ols_container_name = "lightspeed-stack-deployment"
+        ols_container_name = "lightspeed-service-api"
         pod_name = cluster_utils.get_pod_by_prefix()[0]
 
         # Check if filtered words are redacted in the logs
@@ -513,7 +511,7 @@ def test_query_with_provider_but_not_model() -> None:
         # error thrown on Pydantic level
         assert (
             json_response["detail"][0]["msg"]
-            == "Value error, Model must be specified if provider is specified"
+            == "Value error, LLM model must be specified when the provider is specified."
         )
 
 
@@ -542,7 +540,7 @@ def test_query_with_model_but_not_provider() -> None:
 
         assert (
             json_response["detail"][0]["msg"]
-            == "Value error, Provider must be specified if model is specified"
+            == "Value error, LLM provider must be specified when the model is specified."
         )
 
 
@@ -654,11 +652,10 @@ def test_tool_calling() -> None:
         # Special check for granite
         assert not json_response["response"].strip().startswith("<tool_call>")
 
-import ipdb
+
 @pytest.mark.byok1
 def test_rag_question_byok1() -> None:
     """Ensure response include expected top rag reference."""
-    ipdb.set_trace()
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
         response = pytest.client.post(
             QUERY_ENDPOINT,

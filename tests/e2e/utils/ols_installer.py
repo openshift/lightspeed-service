@@ -7,15 +7,17 @@ import subprocess
 import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
+from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
-from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
 
 disconnected = os.getenv("DISCONNECTED", "")
+
 
 def setup_service_accounts(namespace: str) -> None:
     """Set up service accounts and access roles.
@@ -87,6 +89,7 @@ def get_service_account_tokens() -> tuple[str, str]:
     token = cluster_utils.get_token_for("test-user")
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
     return token, metrics_token
+
 
 def update_lcore_setting() -> None:
     """Update the --use-lcore argument in the CSV if LCORE is enabled.
@@ -169,10 +172,10 @@ def update_lcore_setting() -> None:
         ]
     )
     cluster_utils.wait_for_running_pod(
-        name="lightspeed-operator-controller-manager",
-        namespace="openshift-lightspeed"
+        name="lightspeed-operator-controller-manager", namespace="openshift-lightspeed"
     )
     print("--use-lcore updated to true successfully")
+
 
 def update_ols_config() -> None:
     """Create the ols config configmap with log and collector config for e2e tests.
@@ -219,7 +222,6 @@ def update_ols_config() -> None:
     configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
     updated_configmap = yaml.dump(configmap)
 
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
     cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
 
 
@@ -273,7 +275,7 @@ def replace_ols_image(ols_image: str) -> None:
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-stack-deployment",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -290,7 +292,7 @@ def replace_ols_image(ols_image: str) -> None:
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
     patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
     cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-stack-deployment", "--type", "json", "-p", patch]
+        ["patch", f"deployment/{OLS_SERVICE_DEPLOYMENT}", "--type", "json", "-p", patch]
     )
 
 
@@ -435,7 +437,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
         print(msg)
         raise Exception(msg)
     print("Operator installed successfully")
-    
+
     provider = os.getenv("PROVIDER", "openai")
     creds = os.getenv("PROVIDER_KEY_PATH", "empty")
     update_lcore_setting()
@@ -513,13 +515,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             [
                 "get",
                 "deployment",
-                "lightspeed-stack-deployment",
+                f"{OLS_SERVICE_DEPLOYMENT}",
                 "--ignore-not-found",
                 "-o",
                 "name",
             ]
         ).stdout
-        == "deployment.apps/lightspeed-stack-deployment\n",
+        == f"deployment.apps/{OLS_SERVICE_DEPLOYMENT}\n",
         "Waiting for OLS API server deployment to be created",
     )
     if not r:
@@ -558,7 +560,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-stack-deployment",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -568,14 +570,14 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-stack-deployment",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "1",
         ]
     )
     print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
-    cluster_utils.wait_for_running_pod()
+    cluster_utils.wait_for_running_pod(name=OLS_SERVICE_DEPLOYMENT)
 
     print("-" * 50)
     print("OLS pod seems to be ready")
@@ -595,15 +597,22 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     # expect it to be (must-gather will also collect this)
     print(
         cluster_utils.run_oc(
-            ["get", "deployment", "lightspeed-stack-deployment", "-o", "yaml"]
+            ["get", "deployment", OLS_SERVICE_DEPLOYMENT, "-o", "yaml"]
         ).stdout
     )
     print("-" * 50)
+
+    # Set up route and get URL first
+    ols_url = setup_route()
+
     if not disconnected:
         # Configure exporter for e2e tests with proper settings
         try:
             print("Configuring exporter for e2e tests...")
+            # Create client for the exporter configuration
+            test_client = client_utils.get_http_client(ols_url, token)
             configure_exporter_for_e2e_tests(
+                client=test_client,
                 interval_seconds=3600,  # 1 hour to prevent interference
                 ingress_env="stage",
                 log_level="debug",
@@ -614,6 +623,4 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             print(f"Warning: Could not configure exporter: {e}")
             print("Tests may experience interference from data collector")
 
-    # Set up route and get URL
-    ols_url = setup_route()
     return ols_url, token, metrics_token
