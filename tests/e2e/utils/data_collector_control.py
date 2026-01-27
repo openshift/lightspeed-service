@@ -11,7 +11,7 @@ import time
 import yaml
 
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_USER_DATA_PATH
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT, OLS_USER_DATA_PATH
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 # Exporter config map constants
@@ -168,7 +168,7 @@ class DataCollectorControl:
         cluster_utils.run_oc(
             [
                 "scale",
-                "deployment/lightspeed-stack-deployment",
+                f"deployment/{OLS_SERVICE_DEPLOYMENT}",
                 "-n",
                 EXPORTER_NAMESPACE,
                 "--replicas=0",
@@ -203,13 +203,14 @@ class DataCollectorControl:
         time.sleep(5)
 
     def restart_exporter_container(
-        self, container_name: str = "lightspeed-to-dataverse-exporter"
+        self, client, container_name: str = "lightspeed-to-dataverse-exporter"
     ) -> None:
         """Restart the exporter by scaling deployment back up.
 
         The deployment controller will create a new pod with the updated config.
 
         Args:
+            client: httpx Client instance for making API calls.
             container_name: Name of the exporter container (for verification).
         """
         try:
@@ -217,7 +218,7 @@ class DataCollectorControl:
             cluster_utils.run_oc(
                 [
                     "scale",
-                    "deployment/lightspeed-stack-deployment",
+                    f"deployment/{OLS_SERVICE_DEPLOYMENT}",
                     "-n",
                     EXPORTER_NAMESPACE,
                     "--replicas=1",
@@ -249,7 +250,9 @@ class DataCollectorControl:
                         # Wait for OLS API to be ready (not just pod running)
                         print("Waiting for OLS API to be ready...")
                         ols_url = cluster_utils.get_ols_url("ols")
-                        if not wait_for_ols(ols_url, timeout=120, interval=5):
+                        if not wait_for_ols(
+                            ols_url, client=client, timeout=120, interval=5
+                        ):
                             print("Warning: OLS readiness check timed out")
                         else:
                             print("OLS API is ready")
@@ -310,6 +313,7 @@ class DataCollectorControl:
 
 
 def configure_exporter_for_e2e_tests(
+    client,
     interval_seconds: int = 3600,
     ingress_env: str = "stage",
     cp_offline_token: str | None = None,
@@ -319,6 +323,7 @@ def configure_exporter_for_e2e_tests(
     """Configure exporter for e2e tests with proper settings.
 
     Args:
+        client: httpx Client instance for making API calls.
         interval_seconds: Collection interval (default: 3600 = 1 hour).
         ingress_env: Ingress environment - "stage" or "prod" (default: "stage").
         cp_offline_token: Auth token for ingress server (required for stage).
@@ -344,7 +349,7 @@ def configure_exporter_for_e2e_tests(
         ingress_server_auth_token=cp_offline_token or None,
         log_level=log_level,
     )
-    controller.restart_exporter_container()
+    controller.restart_exporter_container(client)
 
 
 def patch_exporter_mode_to_manual() -> None:
@@ -379,7 +384,7 @@ def patch_exporter_mode_to_manual() -> None:
     cluster_utils.run_oc(
         [
             "patch",
-            "deployment/lightspeed-stack-deployment",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "-n",
             EXPORTER_NAMESPACE,
             "--type=json",
@@ -391,6 +396,7 @@ def patch_exporter_mode_to_manual() -> None:
 
 
 def prepare_for_data_collection_test(
+    client,
     short_interval_seconds: int = 5,
 ) -> DataCollectorControl:
     """Prepare the environment for testing data collection.
@@ -401,6 +407,7 @@ def prepare_for_data_collection_test(
     - No cleanup needed (operator will reconcile when it runs next)
 
     Args:
+        client: httpx Client instance for making API calls.
         short_interval_seconds: Collection interval for testing (default: 5s).
 
     Returns:
@@ -429,7 +436,7 @@ def prepare_for_data_collection_test(
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-stack-deployment",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "-n",
             EXPORTER_NAMESPACE,
             "--replicas=0",
@@ -468,7 +475,7 @@ def prepare_for_data_collection_test(
     patch_exporter_mode_to_manual()
 
     # Scale up and wait for pod
-    controller.restart_exporter_container()
+    controller.restart_exporter_container(client)
 
     # Wait for first collection cycle
     wait_time = short_interval_seconds + 3

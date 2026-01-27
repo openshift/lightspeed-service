@@ -4,12 +4,14 @@
 # properly by linters
 # pyright: reportAttributeAccessIssue=false
 
+import os
+
 import pytest
 import requests
-import os
 
 from tests.e2e.utils import cluster as cluster_utils
 from tests.e2e.utils import response as response_utils
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
 
 from . import test_api
 
@@ -38,7 +40,7 @@ def test_feedback_can_post_with_wrong_token():
 def test_feedback_storing_cluster():
     """Test if the feedbacks are stored properly."""
     feedbacks_path = test_api.OLS_USER_DATA_PATH + "/feedback"
-    pod_name = cluster_utils.get_pod_by_prefix()[0]
+    pod_name = cluster_utils.get_pod_by_prefix(OLS_SERVICE_DEPLOYMENT)[0]
 
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty

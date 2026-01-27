@@ -5,9 +5,9 @@
 # pyright: reportAttributeAccessIssue=false
 
 import json
+import os
 import re
 import time
-import os
 
 import pytest
 import requests
@@ -25,9 +25,9 @@ from tests.e2e.utils.constants import (
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
+    OLS_SERVICE_DEPLOYMENT,
     OLS_USER_DATA_COLLECTION_INTERVAL_SHORT,
     OLS_USER_DATA_PATH,
-    OLS_SERVICE_DEPLOYMENT
 )
 from tests.e2e.utils.data_collector_control import prepare_for_data_collection_test
 from tests.e2e.utils.decorators import retry
@@ -36,7 +36,6 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
-
 
 
 @pytest.fixture(name="postgres_connection", scope="module")
@@ -51,13 +50,20 @@ def test_readiness():
     """Test handler for /readiness REST API endpoint."""
     endpoint = "/readiness"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = pytest.client.get(
-            endpoint,
-            timeout=LLM_REST_API_TIMEOUT
-            )
+        response = pytest.client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
-        assert response.json() == {"ready": True, "reason": "All providers are healthy", "providers": []}
+        if os.getenv("LCORE", "False").lower() in ("true", "1", "t"):
+            assert response.json() == {
+                "ready": True,
+                "reason": "All providers are healthy",
+                "providers": [],
+            }
+        else:
+            assert response.json() == {
+                "ready": True,
+                "reason": "service is ready",
+            }
 
 
 @pytest.mark.smoketest
@@ -66,10 +72,7 @@ def test_liveness():
     """Test handler for /liveness REST API endpoint."""
     endpoint = "/liveness"
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, endpoint):
-        response = pytest.client.get(
-            endpoint,
-            timeout=BASIC_ENDPOINTS_TIMEOUT
-            )
+        response = pytest.client.get(endpoint, timeout=BASIC_ENDPOINTS_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
         assert response.json() == {"alive": True}
@@ -173,7 +176,7 @@ def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
     cluster_utils.wait_for_running_pod()
-    pod_name = cluster_utils.get_pod_by_prefix()[0]
+    pod_name = cluster_utils.get_pod_by_prefix(OLS_SERVICE_DEPLOYMENT)[0]
 
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty
@@ -239,6 +242,7 @@ def test_openapi_endpoint():
     response = pytest.client.get("/openapi.json", timeout=BASIC_ENDPOINTS_TIMEOUT)
     assert response.status_code == requests.codes.ok
     response_utils.check_content_type(response, "application/json")
+
     payload = response.json()
     assert payload is not None, "Incorrect response"
 
@@ -251,7 +255,7 @@ def test_openapi_endpoint():
     # check application description
     info = payload["info"]
     assert "description" in info, "Service description not provided"
-    assert "Lightspeed Core Service (LCS) service API specification" in info["description"]
+    assert f"{metadata.SERVICE_NAME} service API specification" in info["description"]
 
     # elementary check that all mandatory endpoints are covered
     paths = payload["paths"]
@@ -352,9 +356,11 @@ def test_user_data_collection():
 
     def get_last_log_line(logs: str) -> str:
         return [line for line in logs.split("\n") if line][-1]
+
     # Prepare: patch to manual mode, set short interval, configure stage ingress
     controller = prepare_for_data_collection_test(
-        short_interval_seconds=OLS_USER_DATA_COLLECTION_INTERVAL_SHORT
+        client=pytest.client,
+        short_interval_seconds=OLS_USER_DATA_COLLECTION_INTERVAL_SHORT,
     )
 
     data_collection_container_name = "lightspeed-to-dataverse-exporter"
@@ -434,7 +440,7 @@ def test_http_header_redaction():
             assert response.json() == {"alive": True}
 
     container_log = cluster_utils.get_container_log(
-        cluster_utils.get_pod_by_prefix()[0], "lightspeed-stack"
+        cluster_utils.get_pod_by_prefix()[0], "lightspeed-service-api"
     )
 
     for header in HTTP_REQUEST_HEADERS_TO_REDACT:
@@ -550,10 +556,15 @@ def update_olsconfig(limiters: list[dict]):
     updated_configmap = yaml.dump(configmap)
     cluster_utils.run_oc(["delete", "configmap", configmap_name])
     cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
-    
+
 
 @pytest.fixture
 def turn_off_operator_pod():
+    """Turn off operator pod fixture.
+
+    Turn off operator pod to modify lightspeed-stack
+    without waiting for lightspeed service pod to restart.
+    """
     cluster_utils.run_oc(
         [
             "scale",

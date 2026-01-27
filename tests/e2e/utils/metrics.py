@@ -1,7 +1,6 @@
 """Utilities for reading and checking metrics from REST API."""
 
 import requests
-import os
 
 from tests.e2e.utils.constants import BASIC_ENDPOINTS_TIMEOUT
 
@@ -23,7 +22,7 @@ def get_rest_api_counter_value(
 ):
     """Retrieve counter value from metrics."""
     response = read_metrics(client)
-    counter_name = "ls_rest_api_calls_total"
+    counter_name = "ols_rest_api_calls_total"
 
     # counters with labels have the following format:
     # rest_api_calls_total{path="/openapi.json",status_code="200"} 1.0
@@ -35,7 +34,7 @@ def get_rest_api_counter_value(
 def get_response_duration_seconds_value(client, path, default=None):
     """Retrieve counter value from metrics."""
     response = read_metrics(client)
-    counter_name = "ls_response_duration_seconds_sum"
+    counter_name = "ols_response_duration_seconds_sum"
 
     # counters with response durations have the following format:
     # response_duration_seconds_sum{path="/v1/query"} 0.123
@@ -95,16 +94,9 @@ def get_metric_labels(lines, info_node_name, value=None) -> dict:
 
 def get_enabled_model_and_provider(client):
     """Read configured model and provider from metrics."""
-    
-    if os.getenv("LCORE", 'False').lower() in ('true', '1', 't'):
-        response = client.get("/v1/models", timeout=BASIC_ENDPOINTS_TIMEOUT)
-        assert response.status_code == requests.codes.ok
-        assert response.text is not None
-    
-    else:
-        response = read_metrics(client)
-        lines = [line.strip() for line in response.split("\n")]
-        labels = get_metric_labels(lines, "ls_provider_model_configuration", "1.0")
+    response = read_metrics(client)
+    lines = [line.strip() for line in response.split("\n")]
+    labels = get_metric_labels(lines, "ols_provider_model_configuration", "1.0")
 
     return labels["model"], labels["provider"]
 
@@ -112,7 +104,7 @@ def get_enabled_model_and_provider(client):
 def get_enable_status_for_all_models(client):
     """Read states about all model and providers."""
     response = read_metrics(client)
-    counters = get_all_metric_counters(response, "ls_provider_model_configuration")
+    counters = get_all_metric_counters(response, "ols_provider_model_configuration")
     return [counter == 1.0 for counter in counters]
 
 
@@ -244,14 +236,14 @@ class TokenCounterChecker:
             return
         self.old_counter_token_sent_total = get_model_provider_counter_value(
             self.client,
-            "ls_llm_token_sent_total",
+            "ols_llm_token_sent_total",
             self.model,
             self.provider,
             default=0,
         )
         self.old_counter_token_received_total = get_model_provider_counter_value(
             self.client,
-            "ls_llm_token_received_total",
+            "ols_llm_token_received_total",
             self.model,
             self.provider,
             default=0,
@@ -263,7 +255,7 @@ class TokenCounterChecker:
             return
         # check if counter for sent tokens has been updated
         new_counter_token_sent_total = get_model_provider_counter_value(
-            self.client, "ls_llm_token_sent_total", self.model, self.provider
+            self.client, "ols_llm_token_sent_total", self.model, self.provider
         )
         check_token_counter_increases(
             "sent",
@@ -275,7 +267,7 @@ class TokenCounterChecker:
         # check if counter for received tokens has been updated
         new_counter_token_received_total = get_model_provider_counter_value(
             self.client,
-            "ls_llm_token_received_total",
+            "ols_llm_token_received_total",
             self.model,
             self.provider,
             default=0,

@@ -181,7 +181,7 @@ def get_running_pods(namespace: str = "openshift-lightspeed") -> list[str]:
 
 
 def get_pod_by_prefix(
-    prefix: str = "lightspeed-stack-deployment-",
+    prefix: str = "lightspeed-app-server-",
     namespace: str = "openshift-lightspeed",
     fail_not_found: bool = True,
 ) -> list[str]:
@@ -333,7 +333,7 @@ def get_container_ready_status(pod: str, namespace: str = "openshift-lightspeed"
 
 
 def wait_for_running_pod(
-    name: str = "lightspeed-stack-deployment-", namespace: str = "openshift-lightspeed"
+    name: str = "lightspeed-app-server-", namespace: str = "openshift-lightspeed"
 ):
     """Wait for the selected pod to be in running state."""
     r = retry_until_timeout_or_success(
@@ -362,10 +362,10 @@ def wait_for_running_pod(
             get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         )
         == 1,
-        "Waiting for service pod in running state",
+        f"Waiting for {name} pod in running state",
     )
     if not r:
-        raise Exception("Timed out waiting for new OLS pod to be ready")
+        raise Exception("Timed out waiting for {name} pod to be ready")
 
     def pod_has_containers_ready():
         pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
@@ -401,7 +401,7 @@ def wait_for_running_pod(
 
 
 def get_certificate_secret_name(
-    name: str = "lightspeed-stack-deployment", namespace: str = "openshift-lightspeed"
+    name: str = "lightspeed-app-server", namespace: str = "openshift-lightspeed"
 ) -> str:
     """Get the name of the certificates secret for the service."""
     try:
