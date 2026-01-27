@@ -207,29 +207,42 @@ def test_too_long_question() -> None:
         assert json_response["detail"]["response"] == "Prompt is too long"
 
 
-@pytest.mark.skip_with_lcore
 @pytest.mark.smoketest
 @pytest.mark.rag
 def test_valid_question() -> None:
     """Check the REST API /v1/query with POST HTTP method for valid question and no yaml."""
     with metrics_utils.RestAPICallCounterChecker(pytest.metrics_client, QUERY_ENDPOINT):
-        cid = suid.get_suid()
-        response = pytest.client.post(
-            QUERY_ENDPOINT,
-            json={
-                "conversation_id": cid,
-                "query": "what is kubernetes in the context of OpenShift?",
-            },
-            timeout=test_api.LLM_REST_API_TIMEOUT,
-        )
-        assert response.status_code == requests.codes.ok
+        if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+            cid = suid.get_suid()
+            response = pytest.client.post(
+                QUERY_ENDPOINT,
+                json={
+                    "conversation_id": cid,
+                    "query": "what is kubernetes in the context of OpenShift?",
+                },
+                timeout=test_api.LLM_REST_API_TIMEOUT,
+            )
+            assert response.status_code == requests.codes.ok
 
-        response_utils.check_content_type(response, "application/json")
-        print(vars(response))
-        json_response = response.json()
+            response_utils.check_content_type(response, "application/json")
+            print(vars(response))
+            json_response = response.json()
 
-        # checking a few major information from response
-        assert json_response["conversation_id"] == cid
+            # checking a few major information from response
+            assert json_response["conversation_id"] == cid
+        else:
+            response = pytest.client.post(
+                QUERY_ENDPOINT,
+                json={
+                    "query": "what is kubernetes in the context of OpenShift?",
+                },
+                timeout=test_api.LLM_REST_API_TIMEOUT,
+            )
+            assert response.status_code == requests.codes.ok
+
+            response_utils.check_content_type(response, "application/json")
+            print(vars(response))
+            json_response = response.json()
         assert re.search(
             r"kubernetes|openshift",
             json_response["response"],
@@ -474,6 +487,7 @@ def test_conversation_history() -> None:
         assert "ingress" in response_text, debug_msg
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_provider_but_not_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for provider specified, but no model."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -503,6 +517,7 @@ def test_query_with_provider_but_not_model() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_model_but_not_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for model specified, but no provider."""
     with metrics_utils.RestAPICallCounterChecker(
@@ -531,6 +546,7 @@ def test_query_with_model_but_not_provider() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_unknown_provider() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown provider specified."""
     # retrieve currently selected model
@@ -568,6 +584,7 @@ def test_query_with_unknown_provider() -> None:
         )
 
 
+@pytest.mark.skip_with_lcore
 def test_query_with_unknown_model() -> None:
     """Check the REST API /v1/query with POST HTTP method for unknown model specified."""
     # retrieve currently selected provider
