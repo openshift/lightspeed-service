@@ -135,7 +135,6 @@ def test_one_default_model_provider():
     ), "one model and provider should be selected as default"
 
 
-@pytest.mark.skip_with_lcore
 @pytest.mark.cluster
 def test_improper_token():
     """Test accessing /v1/query endpoint using improper auth. token."""
@@ -145,7 +144,10 @@ def test_improper_token():
         timeout=NON_LLM_REST_API_TIMEOUT,
         headers={"Authorization": "Bearer wrong-token"},
     )
-    assert response.status_code == requests.codes.forbidden
+    if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+        assert response.status_code == requests.codes.forbidden
+    else:
+        assert response.status_code == requests.codes.unauthorized
 
 
 @pytest.mark.skip_with_lcore
