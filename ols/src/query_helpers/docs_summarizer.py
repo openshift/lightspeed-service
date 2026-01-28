@@ -197,10 +197,14 @@ class DocsSummarizer(QueryHelper):
             self._system_prompt,
             self._tool_calling_enabled,
         ).generate_prompt(self.model)
+        max_tokens_for_tools = (
+            self.model_config.parameters.max_tokens_for_tools if self.mcp_servers else 0
+        )
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
             self.model_config.context_window_size,
             self.model_config.parameters.max_tokens_for_response,
+            max_tokens_for_tools,
         )
 
         # Retrieve RAG content
@@ -252,6 +256,7 @@ class DocsSummarizer(QueryHelper):
             final_prompt.format(**llm_input_values),
             self.model_config.context_window_size,
             self.model_config.parameters.max_tokens_for_response,
+            max_tokens_for_tools,
         )
 
         return final_prompt, llm_input_values, rag_chunks, truncated
@@ -388,10 +393,21 @@ class DocsSummarizer(QueryHelper):
 
                     # execute tools and add to messages
                     tool_calls_messages = await execute_tool_calls(
-                        tool_calls, all_mcp_tools
+                        tool_calls,
+                        all_mcp_tools,
+                        self.model_config.parameters.max_tokens_per_tool_output,
                     )
                     messages.extend(tool_calls_messages)
                     for tool_call_message in tool_calls_messages:
+                        was_truncated = tool_call_message.additional_kwargs.get(
+                            "truncated", False
+                        )
+                        # Determine UI status: use "truncated" if output was truncated,
+                        # otherwise use the langchain status (success/error)
+                        tool_status = (
+                            "truncated" if was_truncated else tool_call_message.status
+                        )
+
                         # Log tool result in JSON format
                         logger.info(
                             json.dumps(
@@ -399,6 +415,7 @@ class DocsSummarizer(QueryHelper):
                                     "event": "tool_result",
                                     "tool_id": tool_call_message.tool_call_id,
                                     "status": tool_call_message.status,
+                                    "truncated": was_truncated,
                                     "output_snippet": str(tool_call_message.content)[
                                         :1000
                                     ],  # Truncate to first 1000 chars
@@ -412,7 +429,7 @@ class DocsSummarizer(QueryHelper):
                             type="tool_result",
                             data={
                                 "id": tool_call_message.tool_call_id,
-                                "status": tool_call_message.status,
+                                "status": tool_status,
                                 "content": tool_call_message.content,
                                 "type": "tool_result",
                                 "round": i,
