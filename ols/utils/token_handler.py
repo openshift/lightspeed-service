@@ -248,7 +248,7 @@ class TokenHandler:
             if truncation occurred
         """
         tokens = self.text_to_tokens(text)
-        token_count = len(tokens)
+        token_count = TokenHandler._get_token_count(tokens)
 
         if token_count <= max_tokens:
             return text, False
@@ -261,7 +261,9 @@ class TokenHandler:
             "\n\n[OUTPUT TRUNCATED - The tool returned more data than can be "
             "processed. Please ask a more specific question to get complete results.]"
         )
-        warning_tokens = len(self.text_to_tokens(warning_message))
+        warning_tokens = TokenHandler._get_token_count(
+            self.text_to_tokens(warning_message)
+        )
 
         truncated_tokens = tokens[: max_tokens - warning_tokens]
         truncated_text = self.tokens_to_text(truncated_tokens)

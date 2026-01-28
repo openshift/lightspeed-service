@@ -1167,19 +1167,20 @@ def create_tool_calling_side_effect():
                         content="",
                         response_metadata={"finish_reason": "tool_calls"},
                         tool_calls=[
-                            {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_id1",
+                            },
                         ],
                     )
                 ]
             )
-        elif call_count == 2:
-            return async_mock_invoke(
-                [AIMessageChunk(content="You have 1 namespace.")]
-            )
-        else:
-            return async_mock_invoke(
-                [AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})]
-            )
+        if call_count == 2:
+            return async_mock_invoke([AIMessageChunk(content="You have 1 namespace.")])
+        return async_mock_invoke(
+            [AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})]
+        )
 
     return side_effect
 
