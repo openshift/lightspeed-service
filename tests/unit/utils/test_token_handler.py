@@ -367,12 +367,14 @@ class TestTokenHandler(TestCase):
         # End should be truncated (replaced with warning)
         assert "END_MARKER" not in result
 
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.1)
     def test_truncate_tool_output_exact_limit(self):
         """Test truncate_tool_output when output is exactly at limit."""
-        # Create output that's exactly at the limit
+        # Create output that's exactly at the weighted limit
         output = "test"
         tokens = self._token_handler_obj.text_to_tokens(output)
-        max_tokens = len(tokens)
+        # Account for buffer weight (ceil(len * 1.1))
+        max_tokens = ceil(len(tokens) * 1.1)
 
         result, was_truncated = self._token_handler_obj.truncate_tool_output(
             output, max_tokens=max_tokens
