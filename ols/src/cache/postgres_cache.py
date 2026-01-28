@@ -7,7 +7,12 @@ from typing import Any
 import psycopg2
 
 from ols.app.models.config import PostgresConfig
-from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
+from ols.app.models.models import (
+    CacheEntry,
+    ConversationData,
+    MessageDecoder,
+    MessageEncoder,
+)
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
 from ols.utils.connection_decorator import connection
@@ -18,8 +23,9 @@ logger = logging.getLogger(__name__)
 class PostgresCache(Cache):
     """Cache that uses Postgres to store cached values.
 
-    The cache itself is stored in following table:
+    The cache itself is stored in following tables:
 
+    Cache table:
     ```
          Column      |            Type             | Nullable | Default | Storage  |
     -----------------+-----------------------------+----------+---------+----------+
@@ -29,9 +35,20 @@ class PostgresCache(Cache):
      updated_at      | timestamp without time zone |          |         | plain    |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id)
-        "cache_key_key" UNIQUE CONSTRAINT, btree (key)
         "timestamps" btree (updated_at)
-    Access method: heap
+    ```
+
+    Conversations metadata table:
+    ```
+         Column                 |            Type             | Nullable | Default |
+    ---------------------------+-----------------------------+----------+---------+
+     user_id                    | text                        | not null |         |
+     conversation_id            | text                        | not null |         |
+     topic_summary              | text                        |          | ''      |
+     last_message_timestamp     | timestamp without time zone | not null |         |
+     message_count              | integer                     |          | 0       |
+    Indexes:
+        "conversations_pkey" PRIMARY KEY, btree (user_id, conversation_id)
     ```
     """
 
@@ -41,6 +58,17 @@ class PostgresCache(Cache):
             conversation_id text NOT NULL,
             value           bytea,
             updated_at      timestamp,
+            PRIMARY KEY(user_id, conversation_id)
+        );
+        """
+
+    CREATE_CONVERSATIONS_TABLE = """
+        CREATE TABLE IF NOT EXISTS conversations (
+            user_id                text NOT NULL,
+            conversation_id        text NOT NULL,
+            topic_summary          text DEFAULT '',
+            last_message_timestamp timestamp NOT NULL,
+            message_count          integer DEFAULT 0,
             PRIMARY KEY(user_id, conversation_id)
         );
         """
@@ -87,10 +115,35 @@ class PostgresCache(Cache):
         """
 
     LIST_CONVERSATIONS_STATEMENT = """
-        SELECT conversation_id
-        FROM cache
+        SELECT conversation_id, topic_summary,
+               EXTRACT(EPOCH FROM last_message_timestamp) as last_message_timestamp,
+               message_count
+        FROM conversations
         WHERE user_id=%s
-        ORDER BY updated_at DESC
+        ORDER BY last_message_timestamp DESC
+    """
+
+    INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT = """
+        INSERT INTO conversations
+            (user_id, conversation_id, topic_summary, last_message_timestamp, message_count)
+        VALUES (%s, %s, %s, CURRENT_TIMESTAMP, 0)
+        ON CONFLICT (user_id, conversation_id)
+        DO UPDATE SET topic_summary = EXCLUDED.topic_summary,
+                      last_message_timestamp = EXCLUDED.last_message_timestamp
+    """
+
+    UPSERT_CONVERSATION_STATEMENT = """
+        INSERT INTO conversations
+            (user_id, conversation_id, topic_summary, last_message_timestamp, message_count)
+        VALUES (%s, %s, '', CURRENT_TIMESTAMP, 1)
+        ON CONFLICT (user_id, conversation_id)
+        DO UPDATE SET last_message_timestamp = CURRENT_TIMESTAMP,
+                      message_count = conversations.message_count + 1
+    """
+
+    DELETE_CONVERSATION_METADATA_STATEMENT = """
+        DELETE FROM conversations
+         WHERE user_id=%s AND conversation_id=%s
     """
 
     ADVISORY_LOCK_STATEMENT = """
@@ -154,6 +207,9 @@ class PostgresCache(Cache):
 
         logger.info("Initializing table for cache")
         cursor.execute(PostgresCache.CREATE_CACHE_TABLE)
+
+        logger.info("Initializing table for conversations metadata")
+        cursor.execute(PostgresCache.CREATE_CONVERSATIONS_TABLE)
 
         logger.info("Initializing index for cache")
         cursor.execute(PostgresCache.CREATE_INDEX)
@@ -230,6 +286,11 @@ class PostgresCache(Cache):
                         conversation_id,
                         json.dumps([value], cls=MessageEncoder).encode("utf-8"),
                     )
+                # Update conversations metadata table
+                cursor.execute(
+                    PostgresCache.UPSERT_CONVERSATION_STATEMENT,
+                    (user_id, conversation_id),
+                )
                 PostgresCache._cleanup(cursor, self.capacity)
                 # commit is implicit at this point
             except psycopg2.DatabaseError as e:
@@ -253,13 +314,21 @@ class PostgresCache(Cache):
         """
         with self.connection.cursor() as cursor:
             try:
-                return PostgresCache._delete(cursor, user_id, conversation_id)
+                deleted = PostgresCache._delete(cursor, user_id, conversation_id)
+                # Also delete from conversations metadata table
+                cursor.execute(
+                    PostgresCache.DELETE_CONVERSATION_METADATA_STATEMENT,
+                    (user_id, conversation_id),
+                )
+                return deleted
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.delete: %s", e)
                 raise CacheError("PostgresCache.delete", e) from e
 
     @connection
-    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+    def list(
+        self, user_id: str, skip_user_id_check: bool = False
+    ) -> list[ConversationData]:
         """List all conversations for a given user_id.
 
         Args:
@@ -267,17 +336,52 @@ class PostgresCache(Cache):
             skip_user_id_check: Skip user_id suid check.
 
         Returns:
-            A list of conversation ids from the cache
+            A list of ConversationData objects containing conversation_id,
+            topic_summary, last_message_timestamp, and message_count.
 
         """
         with self.connection.cursor() as cursor:
             try:
                 cursor.execute(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,))
                 rows = cursor.fetchall()
-                return [row[0] for row in rows]
+                return [
+                    ConversationData(
+                        conversation_id=row[0],
+                        topic_summary=row[1] or "",
+                        last_message_timestamp=float(row[2]),
+                        message_count=row[3] or 0,
+                    )
+                    for row in rows
+                ]
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.list: %s", e)
                 raise CacheError("PostgresCache.list", e) from e
+
+    @connection
+    def set_topic_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        topic_summary: str,
+        skip_user_id_check: bool = False,
+    ) -> None:
+        """Set or update the topic summary for a conversation.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            topic_summary: The topic summary to store.
+            skip_user_id_check: Skip user_id suid check.
+        """
+        with self.connection.cursor() as cursor:
+            try:
+                cursor.execute(
+                    PostgresCache.INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT,
+                    (user_id, conversation_id, topic_summary),
+                )
+            except psycopg2.DatabaseError as e:
+                logger.error("PostgresCache.set_topic_summary: %s", e)
+                raise CacheError("PostgresCache.set_topic_summary", e) from e
 
     def ready(self) -> bool:
         """Check if the cache is ready.

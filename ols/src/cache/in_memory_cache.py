@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import threading
+import time
 from collections import deque
 from typing import TYPE_CHECKING, Any
 
-from ols.app.models.models import CacheEntry
+from ols.app.models.models import CacheEntry, ConversationData
 
 if TYPE_CHECKING:
     from ols.app.models.config import InMemoryCacheConfig
@@ -35,6 +36,8 @@ class InMemoryCache(Cache):
         self.total_entries: int = 0
         self.deque: deque[str] = deque()
         self.cache: dict[str, list[dict[str, Any]]] = {}
+        # Conversations metadata storage
+        self._conversations: dict[str, ConversationData] = {}
 
     def get(
         self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
@@ -92,6 +95,24 @@ class InMemoryCache(Cache):
             self.deque.appendleft(key)
             self.total_entries += 1
 
+            # Update conversations metadata
+            current_time = time.time()
+            if key in self._conversations:
+                conv_data = self._conversations[key]
+                self._conversations[key] = ConversationData(
+                    conversation_id=conversation_id,
+                    topic_summary=conv_data.topic_summary,
+                    last_message_timestamp=current_time,
+                    message_count=conv_data.message_count + 1,
+                )
+            else:
+                self._conversations[key] = ConversationData(
+                    conversation_id=conversation_id,
+                    topic_summary="",
+                    last_message_timestamp=current_time,
+                    message_count=1,
+                )
+
             # Evict oldest messages until we're within capacity
             if self.total_entries > self.capacity and self.deque:
                 oldest_key = self.deque[-1]
@@ -102,6 +123,9 @@ class InMemoryCache(Cache):
                 if len(oldest_list) == 0:
                     del self.cache[oldest_key]
                     self.deque.pop()
+                    # Also remove from conversations metadata
+                    if oldest_key in self._conversations:
+                        del self._conversations[oldest_key]
                 else:
                     self.cache[oldest_key] = oldest_list
 
@@ -128,9 +152,14 @@ class InMemoryCache(Cache):
             self.total_entries -= len(self.cache[key])
             del self.cache[key]
             self.deque.remove(key)
+            # Also remove from conversations metadata
+            if key in self._conversations:
+                del self._conversations[key]
             return True
 
-    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+    def list(
+        self, user_id: str, skip_user_id_check: bool = False
+    ) -> list[ConversationData]:
         """List all conversations for a given user_id.
 
         Args:
@@ -138,20 +167,58 @@ class InMemoryCache(Cache):
             skip_user_id_check: Skip user_id suid check.
 
         Returns:
-            A list of conversation ids from the cache
+            A list of ConversationData objects containing conversation_id,
+            topic_summary, last_message_timestamp, and message_count.
         """
-        conversation_ids = []
+        conversations: list[ConversationData] = []
         super()._check_user_id(user_id, skip_user_id_check)
         prefix = f"{user_id}{Cache.COMPOUND_KEY_SEPARATOR}"
 
         with self._lock:
-            for key in self.cache:
-                if key.startswith(prefix):
-                    # Extract conversation_id from the key
-                    conversation_id = key[len(prefix) :]
-                    conversation_ids.append(conversation_id)
+            conversations.extend(
+                conv
+                for key, conv in self._conversations.items()
+                if key.startswith(prefix)
+            )
 
-        return conversation_ids
+        # Sort by last_message_timestamp descending
+        conversations.sort(key=lambda x: x.last_message_timestamp, reverse=True)
+        return conversations
+
+    def set_topic_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        topic_summary: str,
+        skip_user_id_check: bool = False,
+    ) -> None:
+        """Set or update the topic summary for a conversation.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            topic_summary: The topic summary to store.
+            skip_user_id_check: Skip user_id suid check.
+        """
+        key = super().construct_key(user_id, conversation_id, skip_user_id_check)
+
+        with self._lock:
+            current_time = time.time()
+            if key in self._conversations:
+                conv_data = self._conversations[key]
+                self._conversations[key] = ConversationData(
+                    conversation_id=conversation_id,
+                    topic_summary=topic_summary,
+                    last_message_timestamp=current_time,
+                    message_count=conv_data.message_count,
+                )
+            else:
+                self._conversations[key] = ConversationData(
+                    conversation_id=conversation_id,
+                    topic_summary=topic_summary,
+                    last_message_timestamp=current_time,
+                    message_count=0,
+                )
 
     def ready(self) -> bool:
         """Check if the cache is ready.

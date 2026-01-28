@@ -242,6 +242,10 @@ def test_insert_or_append_operation():
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (user_id, conversation_id, conversation.encode("utf-8")),
         ),
+        call(
+            PostgresCache.UPSERT_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        ),
         call(PostgresCache.QUERY_TOTAL_ENTRIES),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -288,6 +292,10 @@ def test_insert_or_append_operation_append_item():
         call(
             PostgresCache.UPDATE_CONVERSATION_HISTORY_STATEMENT,
             (new_conversation.encode("utf-8"), user_id, conversation_id),
+        ),
+        call(
+            PostgresCache.UPSERT_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -351,6 +359,10 @@ def test_insert_or_append_operation_on_disconnected_db():
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (user_id, conversation_id, conversation.encode("utf-8")),
         ),
+        call(
+            PostgresCache.UPSERT_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        ),
         call(PostgresCache.QUERY_TOTAL_ENTRIES),
         call("SELECT 1"),
     ]
@@ -360,10 +372,11 @@ def test_insert_or_append_operation_on_disconnected_db():
 def test_list_operation():
     """Test the Cache.list operation."""
     # Mock conversation data to be returned by the database
+    # Format: (conversation_id, topic_summary, last_message_timestamp, message_count)
     mock_conversations = [
-        ("conversation_1", "First topic"),
-        ("conversation_2", "Second topic"),
-        ("conversation_3", "Third topic"),
+        ("conversation_1", "First topic", 1737370500.0, 2),
+        ("conversation_2", "Second topic", 1737370600.0, 5),
+        ("conversation_3", "Third topic", 1737370700.0, 3),
     ]
 
     # Mock the database cursor behavior
@@ -383,13 +396,14 @@ def test_list_operation():
         # Call the "list" operation
         result = cache.list(user_id)
 
-    # Verify the result matches the expected format
-    expected_result = [
-        "conversation_1",
-        "conversation_2",
-        "conversation_3",
-    ]
-    assert result == expected_result
+    # Verify the result matches the expected format (list of ConversationData)
+    assert len(result) == 3
+    assert result[0].conversation_id == "conversation_1"
+    assert result[0].topic_summary == "First topic"
+    assert result[0].last_message_timestamp == 1737370500.0
+    assert result[0].message_count == 2
+    assert result[1].conversation_id == "conversation_2"
+    assert result[2].conversation_id == "conversation_3"
 
     # multiple DB operations must be performed:
     # 1. check if connection to DB is alive
@@ -430,6 +444,7 @@ def test_list_operation_on_disconnected_db():
     # mock the query
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = None
+    mock_cursor.fetchall.return_value = []
 
     # do not use real PostgreSQL instance
     with patch("psycopg2.connect") as mock_connect:
@@ -444,7 +459,7 @@ def test_list_operation_on_disconnected_db():
         cache.connection = None
         assert not cache.connected()
         # DB operation should connect automatically
-        cache.list(user_id, conversation_id)
+        cache.list(user_id)
         assert cache.connected()
 
     # one DB operation must be performed:
@@ -453,6 +468,62 @@ def test_list_operation_on_disconnected_db():
         call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+
+def test_set_topic_summary_operation():
+    """Test the Cache.set_topic_summary operation."""
+    # Mock the database cursor behavior
+    mock_cursor = MagicMock()
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Call the "set_topic_summary" operation
+        cache.set_topic_summary(user_id, conversation_id, "Test Topic Summary")
+
+    # multiple DB operations must be performed:
+    # 1. check if connection to DB is alive
+    # 2. upsert topic summary
+    calls = [
+        call("SELECT 1"),
+        call(
+            PostgresCache.INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT,
+            (user_id, conversation_id, "Test Topic Summary"),
+        ),
+    ]
+    mock_cursor.execute.assert_has_calls(calls, any_order=False)
+
+
+def test_set_topic_summary_operation_on_exception():
+    """Test the Cache.set_topic_summary operation when an exception is raised."""
+    # Mock the database cursor behavior to raise an exception on the second execute call
+    # (first call is "SELECT 1" for connection check)
+    mock_cursor = MagicMock()
+    mock_cursor.execute.side_effect = [
+        None,  # SELECT 1 succeeds
+        psycopg2.DatabaseError("PLSQL error"),  # actual operation fails
+    ]
+
+    # do not use real PostgreSQL instance
+    with patch("psycopg2.connect") as mock_connect:
+        mock_connect.return_value.cursor.return_value.__enter__.return_value = (
+            mock_cursor
+        )
+
+        # Initialize Postgres cache
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Verify that the exception is raised
+        with pytest.raises(CacheError, match="PLSQL error"):
+            cache.set_topic_summary(user_id, conversation_id, "Test Topic")
 
 
 def test_delete_operation():

@@ -545,6 +545,167 @@ class AuthorizationResponse(BaseModel):
     }
 
 
+class ConversationData(BaseModel):
+    """Data for a single conversation in list response.
+
+    Attributes:
+        conversation_id: The conversation ID (UUID).
+        topic_summary: Summary/title of the conversation topic.
+        last_message_timestamp: Unix timestamp of the last message.
+        message_count: Number of messages in the conversation.
+    """
+
+    conversation_id: str
+    topic_summary: str = ""
+    last_message_timestamp: float
+    message_count: int = 0
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "topic_summary": "Kubernetes troubleshooting",
+                    "last_message_timestamp": 1737370502.0,
+                    "message_count": 4,
+                }
+            ]
+        }
+    }
+
+
+class ConversationsListResponse(BaseModel):
+    """Response for GET /v1/conversations endpoint.
+
+    Attributes:
+        conversations: List of conversation data objects.
+    """
+
+    conversations: list[ConversationData]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversations": [
+                        {
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "topic_summary": "Kubernetes troubleshooting",
+                            "last_message_timestamp": 1737370502.0,
+                            "message_count": 4,
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+
+
+class ConversationDetailResponse(BaseModel):
+    """Response for GET /v1/conversations/{id} endpoint.
+
+    Attributes:
+        conversation_id: The conversation ID (UUID).
+        chat_history: List of message exchanges in the conversation.
+    """
+
+    conversation_id: str
+    chat_history: list[dict]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "chat_history": [
+                        {
+                            "messages": [
+                                {"type": "user", "content": "How do I check pod logs?"},
+                                {
+                                    "type": "assistant",
+                                    "content": "Use kubectl logs <pod> ...",
+                                },
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class ConversationDeleteResponse(BaseModel):
+    """Response for DELETE /v1/conversations/{id} endpoint.
+
+    Attributes:
+        conversation_id: The conversation ID that was deleted.
+        response: Human-readable response message.
+        success: Whether the deletion was successful.
+    """
+
+    conversation_id: str
+    response: str
+    success: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "response": "Conversation deleted successfully",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
+class ConversationUpdateRequest(BaseModel):
+    """Request for PUT /v1/conversations/{id} endpoint.
+
+    Attributes:
+        topic_summary: The new topic summary for the conversation.
+    """
+
+    topic_summary: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "topic_summary": "Kubernetes troubleshooting",
+                }
+            ]
+        }
+    }
+
+
+class ConversationUpdateResponse(BaseModel):
+    """Response for PUT /v1/conversations/{id} endpoint.
+
+    Attributes:
+        conversation_id: The conversation ID that was updated.
+        success: Whether the update was successful.
+        message: Human-readable response message.
+    """
+
+    conversation_id: str
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "success": True,
+                    "message": "Topic summary updated successfully",
+                }
+            ]
+        }
+    }
+
+
 @dataclass
 class RagChunk:
     """Model representing a RAG chunk.

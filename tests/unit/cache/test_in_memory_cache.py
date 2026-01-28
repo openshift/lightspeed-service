@@ -181,8 +181,9 @@ def test_list_conversations(cache):
     conversations = cache.list(constants.DEFAULT_USER_UID)
 
     assert len(conversations) == 2
-    assert conversation_id_1 in conversations
-    assert conversation_id_2 in conversations
+    conversation_ids = [c.conversation_id for c in conversations]
+    assert conversation_id_1 in conversation_ids
+    assert conversation_id_2 in conversation_ids
 
 
 def test_list_conversations_skip_user_id_check(cache):
@@ -202,8 +203,9 @@ def test_list_conversations_skip_user_id_check(cache):
     conversations = cache.list(user_provided_user_id, skip_user_id_check)
 
     assert len(conversations) == 2
-    assert conversation_id_1 in conversations
-    assert conversation_id_2 in conversations
+    conversation_ids = [c.conversation_id for c in conversations]
+    assert conversation_id_1 in conversation_ids
+    assert conversation_id_2 in conversation_ids
 
 
 def test_list_no_conversations(cache):
@@ -224,8 +226,71 @@ def test_list_after_delete(cache):
 
     conversations = cache.list(constants.DEFAULT_USER_UID)
     assert len(conversations) == 1
-    assert conversation_id_2 in conversations
-    assert conversation_id_1 not in conversations
+    conversation_ids = [c.conversation_id for c in conversations]
+    assert conversation_id_2 in conversation_ids
+    assert conversation_id_1 not in conversation_ids
+
+
+def test_list_conversations_metadata(cache):
+    """Test that list returns ConversationData with correct metadata."""
+    conv_id = suid.get_suid()
+
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_2)
+
+    conversations = cache.list(constants.DEFAULT_USER_UID)
+
+    assert len(conversations) == 1
+    conv_data = conversations[0]
+    assert conv_data.conversation_id == conv_id
+    assert conv_data.message_count == 2
+    assert conv_data.topic_summary == ""
+    assert conv_data.last_message_timestamp > 0
+
+
+def test_set_topic_summary(cache):
+    """Test setting topic summary for a conversation."""
+    conv_id = suid.get_suid()
+
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_1)
+    cache.set_topic_summary(constants.DEFAULT_USER_UID, conv_id, "Test Topic")
+
+    conversations = cache.list(constants.DEFAULT_USER_UID)
+
+    assert len(conversations) == 1
+    assert conversations[0].topic_summary == "Test Topic"
+
+
+def test_set_topic_summary_creates_metadata(cache):
+    """Test that set_topic_summary creates metadata even if no cache entry exists."""
+    conv_id = suid.get_suid()
+
+    cache.set_topic_summary(constants.DEFAULT_USER_UID, conv_id, "New Topic")
+
+    conversations = cache.list(constants.DEFAULT_USER_UID)
+
+    assert len(conversations) == 1
+    assert conversations[0].conversation_id == conv_id
+    assert conversations[0].topic_summary == "New Topic"
+    assert conversations[0].message_count == 0
+
+
+def test_set_topic_summary_skip_user_id_check(cache):
+    """Test setting topic summary with skip_user_id_check."""
+    conv_id = suid.get_suid()
+    skip_user_id_check = True
+
+    cache.insert_or_append(
+        user_provided_user_id, conv_id, cache_entry_1, skip_user_id_check
+    )
+    cache.set_topic_summary(
+        user_provided_user_id, conv_id, "User Topic", skip_user_id_check
+    )
+
+    conversations = cache.list(user_provided_user_id, skip_user_id_check)
+
+    assert len(conversations) == 1
+    assert conversations[0].topic_summary == "User Topic"
 
 
 def test_ready(cache):
