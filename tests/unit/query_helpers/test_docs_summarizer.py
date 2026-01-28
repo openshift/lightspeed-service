@@ -296,7 +296,7 @@ def test_tool_calling_tool_execution(caplog):
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
-            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
             return_value=mcp_servers_config,
         ),
     ):
