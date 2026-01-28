@@ -189,6 +189,13 @@ class TestUpdateConversation:
 
     def test_update_conversation_success(self, mock_auth, mock_cache):
         """Test successful update of a conversation."""
+        mock_cache_entries = [
+            CacheEntry(
+                query=HumanMessage(content="Hello"),
+                response=AIMessage(content="Hi there!"),
+            ),
+        ]
+        mock_cache.get.return_value = mock_cache_entries
         conversation_id = "123e4567-e89b-12d3-a456-426614174000"
         update_request = ConversationUpdateRequest(topic_summary="Updated Topic")
 
@@ -200,9 +207,26 @@ class TestUpdateConversation:
         assert response.conversation_id == conversation_id
         assert response.success is True
         assert response.message == "Topic summary updated successfully"
+        mock_cache.get.assert_called_once_with("test-user-id", conversation_id, False)
         mock_cache.set_topic_summary.assert_called_once_with(
             "test-user-id", conversation_id, "Updated Topic", False
         )
+
+    def test_update_conversation_not_found(self, mock_auth, mock_cache):
+        """Test update of non-existent conversation returns 404."""
+        mock_cache.get.return_value = []
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        update_request = ConversationUpdateRequest(topic_summary="Updated Topic")
+
+        with patch("ols.config._conversation_cache", mock_cache):
+            with pytest.raises(HTTPException) as exc_info:
+                conversations.update_conversation(
+                    conversation_id, update_request, mock_auth
+                )
+
+        assert exc_info.value.status_code == 404
+        assert "Conversation not found" in exc_info.value.detail["response"]
+        mock_cache.set_topic_summary.assert_not_called()
 
     def test_update_conversation_invalid_id(self, mock_auth, mock_cache):
         """Test update with invalid conversation ID."""
@@ -216,6 +240,13 @@ class TestUpdateConversation:
 
     def test_update_conversation_error(self, mock_auth, mock_cache):
         """Test error handling when update fails."""
+        mock_cache_entries = [
+            CacheEntry(
+                query=HumanMessage(content="Hello"),
+                response=AIMessage(content="Hi there!"),
+            ),
+        ]
+        mock_cache.get.return_value = mock_cache_entries
         mock_cache.set_topic_summary.side_effect = Exception("Database error")
         conversation_id = "123e4567-e89b-12d3-a456-426614174000"
         update_request = ConversationUpdateRequest(topic_summary="Updated Topic")

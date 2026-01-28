@@ -281,6 +281,10 @@ update_conversation_responses: dict[int | str, dict[str, Any]] = {
         "description": "Client does not have permission to access resource",
         "model": ForbiddenResponse,
     },
+    404: {
+        "description": "Conversation not found",
+        "model": ErrorResponse,
+    },
     500: {
         "description": "Internal server error",
         "model": ErrorResponse,
@@ -322,6 +326,19 @@ def update_conversation(
     )
 
     try:
+        cache_entries = config.conversation_cache.get(
+            user_id, conversation_id, skip_user_id_check
+        )
+
+        if not cache_entries:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "response": "Conversation not found",
+                    "cause": f"Conversation {conversation_id} does not exist",
+                },
+            )
+
         config.conversation_cache.set_topic_summary(
             user_id, conversation_id, update_request.topic_summary, skip_user_id_check
         )
@@ -331,6 +348,8 @@ def update_conversation(
             success=True,
             message="Topic summary updated successfully",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error updating conversation %s: %s", conversation_id, e)
         raise HTTPException(
