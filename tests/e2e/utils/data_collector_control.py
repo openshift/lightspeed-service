@@ -7,11 +7,12 @@ for testing purposes.
 import json
 import os
 import time
+import pytest
 
 import yaml
 
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_USER_DATA_PATH
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT, OLS_USER_DATA_PATH
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 # Exporter config map constants
@@ -168,7 +169,7 @@ class DataCollectorControl:
         cluster_utils.run_oc(
             [
                 "scale",
-                "deployment/lightspeed-app-server",
+                "deployment/lightspeed-stack-deployment",
                 "-n",
                 EXPORTER_NAMESPACE,
                 "--replicas=0",
@@ -217,7 +218,7 @@ class DataCollectorControl:
             cluster_utils.run_oc(
                 [
                     "scale",
-                    "deployment/lightspeed-app-server",
+                    f"deployment/{OLS_SERVICE_DEPLOYMENT}",
                     "-n",
                     EXPORTER_NAMESPACE,
                     "--replicas=1",
@@ -249,7 +250,7 @@ class DataCollectorControl:
                         # Wait for OLS API to be ready (not just pod running)
                         print("Waiting for OLS API to be ready...")
                         ols_url = cluster_utils.get_ols_url("ols")
-                        if not wait_for_ols(ols_url, timeout=120, interval=5):
+                        if not wait_for_ols(ols_url, client=pytest.Client, timeout=120, interval=5):
                             print("Warning: OLS readiness check timed out")
                         else:
                             print("OLS API is ready")
@@ -379,7 +380,7 @@ def patch_exporter_mode_to_manual() -> None:
     cluster_utils.run_oc(
         [
             "patch",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "-n",
             EXPORTER_NAMESPACE,
             "--type=json",
@@ -429,7 +430,7 @@ def prepare_for_data_collection_test(
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "-n",
             EXPORTER_NAMESPACE,
             "--replicas=0",
