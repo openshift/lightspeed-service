@@ -291,6 +291,333 @@
                 }
             }
         },
+        "/v1/conversations": {
+            "get": {
+                "tags": [
+                    "conversations"
+                ],
+                "summary": "List Conversations",
+                "description": "List all conversations for the authenticated user.\n\nArgs:\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response containing list of conversations with metadata.",
+                "operationId": "list_conversations_v1_conversations_get",
+                "responses": {
+                    "200": {
+                        "description": "List of conversations retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationsListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/conversations/{conversation_id}": {
+            "get": {
+                "tags": [
+                    "conversations"
+                ],
+                "summary": "Get Conversation",
+                "description": "Get a specific conversation by ID.\n\nArgs:\n    conversation_id: The conversation ID to retrieve.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response containing conversation details with chat history.",
+                "operationId": "get_conversation_v1_conversations__conversation_id__get",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid conversation ID format",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "conversations"
+                ],
+                "summary": "Delete Conversation",
+                "description": "Delete a specific conversation by ID.\n\nArgs:\n    conversation_id: The conversation ID from the URL path.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating whether the deletion was successful.",
+                "operationId": "delete_conversation_v1_conversations__conversation_id__delete",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationDeleteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid conversation ID format",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "conversations"
+                ],
+                "summary": "Update Conversation",
+                "description": "Update a conversation's metadata (topic_summary).\n\nArgs:\n    conversation_id: The conversation ID from the URL path.\n    update_request: The request body containing topic_summary.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating whether the update was successful.",
+                "operationId": "update_conversation_v1_conversations__conversation_id__put",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversationUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Conversation updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationUpdateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid conversation ID format",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/readiness": {
             "get": {
                 "tags": [
@@ -519,6 +846,195 @@
                         "skip_user_id_check": false,
                         "user_id": "123e4567-e89b-12d3-a456-426614174000",
                         "username": "user1"
+                    }
+                ]
+            },
+            "ConversationData": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "topic_summary": {
+                        "type": "string",
+                        "title": "Topic Summary",
+                        "default": ""
+                    },
+                    "last_message_timestamp": {
+                        "type": "number",
+                        "title": "Last Message Timestamp"
+                    },
+                    "message_count": {
+                        "type": "integer",
+                        "title": "Message Count",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "last_message_timestamp"
+                ],
+                "title": "ConversationData",
+                "description": "Data for a single conversation in list response.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    topic_summary: Summary/title of the conversation topic.\n    last_message_timestamp: Unix timestamp of the last message.\n    message_count: Number of messages in the conversation.",
+                "examples": [
+                    {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "last_message_timestamp": 1737370502.0,
+                        "message_count": 4,
+                        "topic_summary": "Kubernetes troubleshooting"
+                    }
+                ]
+            },
+            "ConversationDeleteResponse": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "response": {
+                        "type": "string",
+                        "title": "Response"
+                    },
+                    "success": {
+                        "type": "boolean",
+                        "title": "Success"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "response",
+                    "success"
+                ],
+                "title": "ConversationDeleteResponse",
+                "description": "Response for DELETE /v1/conversations/{id} endpoint.\n\nAttributes:\n    conversation_id: The conversation ID that was deleted.\n    response: Human-readable response message.\n    success: Whether the deletion was successful.",
+                "examples": [
+                    {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "response": "Conversation deleted successfully",
+                        "success": true
+                    }
+                ]
+            },
+            "ConversationDetailResponse": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "chat_history": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Chat History"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "chat_history"
+                ],
+                "title": "ConversationDetailResponse",
+                "description": "Response for GET /v1/conversations/{id} endpoint.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: List of message exchanges in the conversation.",
+                "examples": [
+                    {
+                        "chat_history": [
+                            {
+                                "messages": [
+                                    {
+                                        "content": "How do I check pod logs?",
+                                        "type": "user"
+                                    },
+                                    {
+                                        "content": "Use kubectl logs <pod> ...",
+                                        "type": "assistant"
+                                    }
+                                ]
+                            }
+                        ],
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
+                    }
+                ]
+            },
+            "ConversationUpdateRequest": {
+                "properties": {
+                    "topic_summary": {
+                        "type": "string",
+                        "title": "Topic Summary"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "topic_summary"
+                ],
+                "title": "ConversationUpdateRequest",
+                "description": "Request for PUT /v1/conversations/{id} endpoint.\n\nAttributes:\n    topic_summary: The new topic summary for the conversation.",
+                "examples": [
+                    {
+                        "topic_summary": "Kubernetes troubleshooting"
+                    }
+                ]
+            },
+            "ConversationUpdateResponse": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "success": {
+                        "type": "boolean",
+                        "title": "Success"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "success",
+                    "message"
+                ],
+                "title": "ConversationUpdateResponse",
+                "description": "Response for PUT /v1/conversations/{id} endpoint.\n\nAttributes:\n    conversation_id: The conversation ID that was updated.\n    success: Whether the update was successful.\n    message: Human-readable response message.",
+                "examples": [
+                    {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "message": "Topic summary updated successfully",
+                        "success": true
+                    }
+                ]
+            },
+            "ConversationsListResponse": {
+                "properties": {
+                    "conversations": {
+                        "items": {
+                            "$ref": "#/components/schemas/ConversationData"
+                        },
+                        "type": "array",
+                        "title": "Conversations"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversations"
+                ],
+                "title": "ConversationsListResponse",
+                "description": "Response for GET /v1/conversations endpoint.\n\nAttributes:\n    conversations: List of conversation data objects.",
+                "examples": [
+                    {
+                        "conversations": [
+                            {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "last_message_timestamp": 1737370502.0,
+                                "message_count": 4,
+                                "topic_summary": "Kubernetes troubleshooting"
+                            }
+                        ]
                     }
                 ]
             },
