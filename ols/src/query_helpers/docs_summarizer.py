@@ -322,7 +322,9 @@ class DocsSummarizer(QueryHelper):
             # Track cumulative token usage for tool outputs
             tool_tokens_used = 0
             max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
-            max_tokens_per_tool = self.model_config.parameters.max_tokens_per_tool_output
+            max_tokens_per_tool = (
+                self.model_config.parameters.max_tokens_per_tool_output
+            )
             token_handler = TokenHandler()
 
             # Tool calling in a loop
@@ -400,7 +402,9 @@ class DocsSummarizer(QueryHelper):
                     # Calculate remaining budget for tools
                     remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
                     # Use the smaller of per-tool limit or remaining budget
-                    effective_per_tool_limit = min(max_tokens_per_tool, remaining_tool_budget)
+                    effective_per_tool_limit = min(
+                        max_tokens_per_tool, remaining_tool_budget
+                    )
 
                     logger.debug(
                         "Tool budget: used=%d, remaining=%d, per_tool_limit=%d",
@@ -413,7 +417,9 @@ class DocsSummarizer(QueryHelper):
                     tool_calls_messages = await execute_tool_calls(
                         tool_calls,
                         all_mcp_tools,
-                        max(effective_per_tool_limit, 100),  # Minimum 100 tokens per tool
+                        max(
+                            effective_per_tool_limit, 100
+                        ),  # Minimum 100 tokens per tool
                     )
                     messages.extend(tool_calls_messages)
 
