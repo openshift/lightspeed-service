@@ -319,6 +319,12 @@ class DocsSummarizer(QueryHelper):
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
             all_mcp_tools = await gather_mcp_tools(self.mcp_servers)
 
+            # Track cumulative token usage for tool outputs
+            tool_tokens_used = 0
+            max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
+            max_tokens_per_tool = self.model_config.parameters.max_tokens_per_tool_output
+            token_handler = TokenHandler()
+
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
 
@@ -391,13 +397,33 @@ class DocsSummarizer(QueryHelper):
 
                         yield StreamedChunk(type="tool_call", data=tool_call)
 
+                    # Calculate remaining budget for tools
+                    remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
+                    # Use the smaller of per-tool limit or remaining budget
+                    effective_per_tool_limit = min(max_tokens_per_tool, remaining_tool_budget)
+
+                    logger.debug(
+                        "Tool budget: used=%d, remaining=%d, per_tool_limit=%d",
+                        tool_tokens_used,
+                        remaining_tool_budget,
+                        effective_per_tool_limit,
+                    )
+
                     # execute tools and add to messages
                     tool_calls_messages = await execute_tool_calls(
                         tool_calls,
                         all_mcp_tools,
-                        self.model_config.parameters.max_tokens_per_tool_output,
+                        max(effective_per_tool_limit, 100),  # Minimum 100 tokens per tool
                     )
                     messages.extend(tool_calls_messages)
+
+                    # Track tokens used by tool outputs
+                    for tool_call_message in tool_calls_messages:
+                        content_tokens = token_handler.text_to_tokens(
+                            str(tool_call_message.content)
+                        )
+                        tool_tokens_used += len(content_tokens)
+
                     for tool_call_message in tool_calls_messages:
                         was_truncated = tool_call_message.additional_kwargs.get(
                             "truncated", False
