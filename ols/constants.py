@@ -200,6 +200,9 @@ DEFAULT_SSL_CIPHERS = "TLSv1"
 # Default authentication module
 DEFAULT_AUTHENTICATION_MODULE = "k8s"
 
+# Authentication module for testing with token
+NOOP_WITH_TOKEN_AUTHENTICATION_MODULE = "noop-with-token"  # noqa: S105
+
 # All supported authentication modules
 SUPPORTED_AUTHENTICATION_MODULES = {"k8s", "noop", "noop-with-token"}
 
@@ -224,16 +227,12 @@ NO_USER_TOKEN = ""
 USER_QUOTA_LIMITER = "user_limiter"
 CLUSTER_QUOTA_LIMITER = "cluster_limiter"
 
-# MCP transport types
-MCP_TRANSPORT_STDIO = "stdio"
-MCP_TRANSPORT_SSE = "sse"
-SSE_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
-SSE_TRANSPORT_DEFAULT_READ_TIMEOUT = 10  # in seconds
-STDIO_TRANSPORT_DEFAULT_ENCODING = "utf-8"
-STDIO_TRANSPORT_DEFAULT_ENV: dict[str, str | int] = {}
-STDIO_TRANSPORT_DEFAULT_CWD = "."
-STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
-STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT = 10  # in seconds
+# MCP transport default timeout
+MCP_HTTP_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
+
+# MCP authorization header placeholders
+MCP_KUBERNETES_PLACEHOLDER = "kubernetes"
+MCP_CLIENT_PLACEHOLDER = "client"
 
 # timeout value for a single llm with tools round
 # Keeping it really high at this moment (until this is configurable)

@@ -712,19 +712,114 @@ In order to dump the configuration, pass `--dump-config` command line option.
 
 > **⚠ Warning:** This feature is experimental and currently under development.
 
-OLS can gather real-time information from your cluster to assist with specific queries. You can enable this feature by adding the following configuration:
+OLS can gather real-time information from your cluster to assist with specific queries using MCP (Model Context Protocol) servers.
+
+## MCP Server Configuration
+
+MCP servers provide tools and capabilities to the AI agents. Only MCP servers defined in the `olsconfig.yaml` configuration are available to the agents.
+
+### Basic Configuration
+
+Each MCP server requires:
+- `name`: Unique identifier for the MCP server
+- `url`: The HTTP endpoint where the MCP server is running
+
+Optional fields:
+- `headers`: Authentication headers for secure communication
+- `timeout`: Request timeout in seconds
+
+**Minimal Example:**
+
 ```yaml
 mcp_servers:
   - name: openshift
-    transport: stdio
-    stdio:
-      command: python
-      args: 
-        - ./mcp_local/openshift.py
+    url: http://localhost:8080
 ```
-OLS utilizes tools based on the oc CLI to collect relevant cluster context. The following safeguards are in place:
-- Tools operate in read-only mode—they can retrieve data but cannot modify the cluster.
-- Tools run using only the user's token (from the request). If the user lacks the necessary permissions, tool outputs may include permission errors.
+
+### MCP Server Authentication
+
+OLS supports three methods for authenticating with MCP servers:
+
+#### 1. Static Tokens from Files (Recommended for Service Credentials)
+
+Store authentication tokens in secret files and reference them in your configuration. Ideal for API keys and service tokens:
+
+```yaml
+mcp_servers:
+  - name: api-service
+    url: http://api-service:8080
+    headers:
+      Authorization: /var/secrets/api-token    # Path to file containing token
+      X-API-Key: /var/secrets/api-key          # Multiple headers supported
+    timeout: 30                                 # Optional timeout in seconds
+```
+
+#### 2. Kubernetes Token (User Context)
+
+Use the special `kubernetes` placeholder to automatically inject the authenticated user's Kubernetes token. This requires the `k8s` authentication module:
+
+```yaml
+mcp_servers:
+  - name: openshift
+    url: http://openshift-mcp-server:8080
+    headers:
+      Authorization: kubernetes  # Uses user's k8s token from request
+```
+
+**Important**: The `kubernetes` placeholder only works when `authentication_config.module` is set to `k8s`. If not configured properly, the MCP server will be skipped with a warning.
+
+#### 3. Client-Provided Tokens (Per-Request)
+
+Use the `client` placeholder to allow clients to provide their own tokens per-request via the `MCP-HEADERS` HTTP header:
+
+```yaml
+mcp_servers:
+  - name: github
+    url: http://github-mcp-server:8080
+    headers:
+      Authorization: client  # Client provides token via MCP-HEADERS header
+```
+
+Clients can discover which servers accept client-provided tokens by calling:
+```bash
+GET /v1/mcp-auth/client-options
+```
+
+Response:
+```json
+{
+  "servers": [
+    {
+      "name": "github",
+      "client_auth_headers": ["Authorization"]
+    }
+  ]
+}
+```
+
+Then provide tokens in the query request:
+```bash
+curl -H "MCP-HEADERS: {\"github\": {\"Authorization\": \"Bearer github_token\"}}" \
+     -X POST /v1/query -d '{"query": "..."}'
+```
+
+### OpenShift MCP Server Example
+
+For cluster context gathering with the OpenShift MCP server:
+
+```yaml
+mcp_servers:
+  - name: openshift
+    url: http://openshift-mcp-server:8080
+    headers:
+      Authorization: kubernetes  # Uses authenticated user's token
+    timeout: 30
+```
+
+**Safeguards:**
+- Tools operate in read-only mode—they can retrieve data but cannot modify the cluster
+- Tools run using only the user's token (from the request)
+- If the user lacks necessary permissions, tool outputs may include permission errors
 
 
 # Usage
@@ -743,9 +838,6 @@ To enable GradIO web UI you need to have the following `dev_config` section in y
 ```yaml
 dev_config:
   enable_dev_ui: true
-  ...
-  ...
-  ...
 ```
 
 

@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from typing import Any, Literal, Optional, Self
+from typing import Any, Optional, Self
 
 from pydantic import (
     AnyHttpUrl,
@@ -11,6 +11,7 @@ from pydantic import (
     Field,
     FilePath,
     PositiveInt,
+    PrivateAttr,
     field_validator,
     model_validator,
 )
@@ -305,7 +306,7 @@ class ProviderConfig(BaseModel):
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
     project_id: Optional[str] = None
-    models: dict[str, ModelConfig] = {}
+    models: dict[str, ModelConfig] = Field(default_factory=dict)
     api_version: Optional[str] = None
     deployment_name: Optional[str] = None
     openai_config: Optional[OpenAIConfig] = None
@@ -538,7 +539,7 @@ class ProviderConfig(BaseModel):
 class LLMProviders(BaseModel):
     """LLM providers configuration."""
 
-    providers: dict[str, ProviderConfig] = {}
+    providers: dict[str, ProviderConfig] = Field(default_factory=dict)
 
     def __init__(
         self,
@@ -568,76 +569,86 @@ class LLMProviders(BaseModel):
             v.validate_yaml()
 
 
-class StdioTransportConfig(BaseModel):
-    """Stdio transport configuration for MCP server."""
-
-    command: str
-    args: list[str] = []
-    env: dict[str, str | int] = constants.STDIO_TRANSPORT_DEFAULT_ENV
-    cwd: str = constants.STDIO_TRANSPORT_DEFAULT_CWD
-    encoding: str = constants.STDIO_TRANSPORT_DEFAULT_ENCODING
-
-
-class SseTransportConfig(BaseModel):
-    """SSE transport configuration for MCP server."""
-
-    url: str
-    timeout: int = constants.SSE_TRANSPORT_DEFAULT_TIMEOUT
-    sse_read_timeout: int = constants.SSE_TRANSPORT_DEFAULT_READ_TIMEOUT
-    headers: dict[str, str] = Field(default_factory=dict)
-
-
-class StreamableHttpTransportConfig(BaseModel):
-    """Streamable HTTP transport configuration for MCP server."""
-
-    url: str
-    timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_TIMEOUT
-    sse_read_timeout: int = constants.STREAMABLE_HTTP_TRANSPORT_DEFAULT_READ_TIMEOUT
-    headers: dict[str, str] = Field(default_factory=dict)
-
-
 class MCPServerConfig(BaseModel):
-    """MCP server configuration."""
+    """MCP server configuration.
 
-    name: str
-    transport: Literal["sse", "stdio", "streamable_http"]
-    stdio: Optional[StdioTransportConfig] = None
-    sse: Optional[SseTransportConfig] = None
-    streamable_http: Optional[StreamableHttpTransportConfig] = None
+    MCP (Model Context Protocol) servers provide tools and capabilities to the
+    AI agents. These are configured by this structure. Only MCP servers
+    defined in the olsconfig.yaml configuration are available to the agents.
+    """
 
-    @model_validator(mode="after")
-    def correct_transport_specified(self) -> Self:
-        """Check if correct transport is specified."""
-        if self.transport == "stdio":
-            if self.stdio is None:
-                raise ValueError(
-                    "Stdio transport selected but 'stdio' config not provided"
-                )
-            if self.sse is not None or self.streamable_http is not None:
-                raise ValueError(
-                    "Stdio transport selected but 'sse' or 'streamable_http' "
-                    "config should not be provided"
-                )
-        elif self.transport == "sse":
-            if self.sse is None:
-                raise ValueError("SSE transport selected but 'sse' config not provided")
-            if self.stdio is not None or self.streamable_http is not None:
-                raise ValueError(
-                    "SSE transport selected but 'stdio' or 'streamable_http' "
-                    "config should not be provided"
-                )
-        elif self.transport == "streamable_http":
-            if self.streamable_http is None:
-                raise ValueError(
-                    "Streamable HTTP transport selected but 'streamable_http' "
-                    "config not provided"
-                )
-            if self.stdio is not None or self.sse is not None:
-                raise ValueError(
-                    "Streamable HTTP transport selected but 'stdio' or 'sse' "
-                    "config should not be provided"
-                )
-        return self
+    name: str = Field(
+        title="MCP name",
+        description="MCP server name that must be unique",
+    )
+
+    url: str = Field(
+        title="MCP server URL",
+        description="URL of the MCP server",
+    )
+
+    timeout: Optional[int] = Field(
+        default=None,
+        title="Request timeout",
+        description=(
+            "Timeout in seconds for requests to the MCP server. "
+            "If not specified, the default timeout will be used."
+        ),
+    )
+
+    headers: dict[str, str] = Field(
+        default_factory=dict,
+        title="Authorization headers",
+        description=(
+            "Headers to send to the MCP server. "
+            "The map contains the header name and the path to a file containing "
+            "the header value (secret). "
+            "There are 2 special cases: "
+            f"1. Usage of the kubernetes token in the header. "
+            f"To specify this use a string '{constants.MCP_KUBERNETES_PLACEHOLDER}' "
+            f"instead of the file path. "
+            f"2. Usage of the client provided token in the header. "
+            f"To specify this use a string '{constants.MCP_CLIENT_PLACEHOLDER}' "
+            f"instead of the file path."
+        ),
+    )
+
+    _resolved_headers: dict[str, str] = PrivateAttr(default_factory=dict)
+
+    @property
+    def resolved_headers(self) -> dict[str, str]:
+        """Resolved headers (computed from headers)."""
+        return self._resolved_headers
+
+
+class ToolFilteringConfig(BaseModel):
+    """Configuration for tool filtering using hybrid RAG retrieval.
+
+    If this config is present, tool filtering is enabled. If absent, all tools are used.
+    """
+
+    embed_model_path: Optional[str] = Field(
+        default=None,
+        description="Path to sentence transformer model for embeddings",
+    )
+
+    alpha: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description="Weight for dense vs sparse retrieval (1.0 = full dense, 0.0 = full sparse)",
+    )
+
+    top_k: int = Field(
+        default=10, ge=1, le=50, description="Number of tools to retrieve"
+    )
+
+    threshold: float = Field(
+        default=0.01,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity threshold for filtering results",
+    )
 
 
 class MCPServers(BaseModel):
@@ -1065,6 +1076,8 @@ class OLSConfig(BaseModel):
 
     proxy_config: Optional[ProxyConfig] = None
 
+    tool_filtering: Optional[ToolFilteringConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1117,6 +1130,8 @@ class OLSConfig(BaseModel):
         )
         self.quota_handlers = QuotaHandlersConfig(data.get("quota_handlers", None))
         self.proxy_config = ProxyConfig(data.get("proxy_config"))
+        if data.get("tool_filtering", None) is not None:
+            self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1140,6 +1155,7 @@ class OLSConfig(BaseModel):
                 == other.expire_llm_is_ready_persistent_state
                 and self.quota_handlers == other.quota_handlers
                 and self.proxy_config == other.proxy_config
+                and self.tool_filtering == other.tool_filtering
             )
         return False
 
@@ -1235,6 +1251,9 @@ class Config(BaseModel):
         # initialize MCP servers
         self.mcp_servers = MCPServers(servers=data.get("mcp_servers", []))
 
+        # Validate MCP servers now that auth config is available
+        self._validate_mcp_servers()
+
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
 
@@ -1271,6 +1290,21 @@ class Config(BaseModel):
             raise checks.InvalidConfigurationError(
                 f"default_model specifies an unknown model {selected_default_model}"
             )
+
+    def _validate_mcp_servers(self) -> None:
+        """Validate MCP servers with auth module context.
+
+        Filters out servers where authorization headers cannot be resolved.
+        """
+        auth_module = getattr(
+            getattr(self.ols_config, "authentication_config", None),
+            "module",
+            None,
+        )
+        self.mcp_servers.servers = checks.validate_mcp_servers(
+            self.mcp_servers.servers,
+            auth_module,
+        )
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""

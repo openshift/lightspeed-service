@@ -75,10 +75,11 @@ class "LoggingConfig" as ols.app.models.config.LoggingConfig {
 }
 class "MCPServerConfig" as ols.app.models.config.MCPServerConfig {
   name : str
-  sse : Optional[SseTransportConfig]
-  stdio : Optional[StdioTransportConfig]
-  transport : Literal['sse', 'stdio']
-  correct_transport_specified() -> Self
+  url : str
+  headers : dict[str, str]
+  resolved_headers : dict[str, str]
+  timeout : Optional[int]
+  resolve_auth_headers() -> Self
 }
 class "MCPServers" as ols.app.models.config.MCPServers {
   servers : list[MCPServerConfig]
@@ -195,18 +196,6 @@ class "ReferenceContentIndex" as ols.app.models.config.ReferenceContentIndex {
 }
 class "SchedulerConfig" as ols.app.models.config.SchedulerConfig {
   period : int
-}
-class "SseTransportConfig" as ols.app.models.config.SseTransportConfig {
-  sse_read_timeout : int
-  timeout : int
-  url : str
-}
-class "StdioTransportConfig" as ols.app.models.config.StdioTransportConfig {
-  args : list[str]
-  command : str
-  cwd : str
-  encoding : str
-  env : dict[str, str | int]
 }
 class "TLSConfig" as ols.app.models.config.TLSConfig {
   tls_certificate_path : Optional[FilePath]
