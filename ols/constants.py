@@ -85,6 +85,12 @@ DEFAULT_TOKENIZER_MODEL = "cl100k_base"
 # Example: 1.05 means we increase by 5%.
 TOKEN_BUFFER_WEIGHT = 1.1
 
+# Tool output token limits
+# Maximum tokens for a single tool output before truncation
+DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT = 8000
+# Total tokens reserved for all tool outputs (only used when MCP servers configured)
+DEFAULT_MAX_TOKENS_FOR_TOOLS = 32000
+
 
 # RAG related constants
 

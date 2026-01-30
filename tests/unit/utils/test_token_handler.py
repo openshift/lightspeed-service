@@ -266,3 +266,119 @@ class TestTokenHandler(TestCase):
         # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated
+
+    def test_available_tokens_with_tool_reservation(self):
+        """Test token calculation with reserved tokens for tools."""
+        context_window_size = 500
+        max_tokens_for_response = 20
+        max_tokens_for_tools = 100
+
+        prompt = ""
+
+        # Without tool reservation
+        available_without_tools = (
+            self._token_handler_obj.calculate_and_check_available_tokens(
+                prompt, context_window_size, max_tokens_for_response
+            )
+        )
+        assert available_without_tools == context_window_size - max_tokens_for_response
+
+        # With tool reservation
+        available_with_tools = (
+            self._token_handler_obj.calculate_and_check_available_tokens(
+                prompt,
+                context_window_size,
+                max_tokens_for_response,
+                max_tokens_for_tools,
+            )
+        )
+        assert (
+            available_with_tools
+            == context_window_size - max_tokens_for_response - max_tokens_for_tools
+        )
+
+        # Verify the difference equals the tool reservation
+        assert available_without_tools - available_with_tools == max_tokens_for_tools
+
+    def test_available_tokens_tool_reservation_causes_overflow(self):
+        """Test that tool reservation can cause prompt overflow error."""
+        context_window_size = 100
+        max_tokens_for_response = 20
+        max_tokens_for_tools = 50
+
+        # A prompt that fits without tool reservation but not with it
+        # Need a prompt of ~35-40 tokens to fit in 80 (100-20) but not in 30 (100-20-50)
+        prompt = "word " * 30  # roughly 30+ tokens with buffer
+
+        # Should work without tool reservation (80 tokens available)
+        available = self._token_handler_obj.calculate_and_check_available_tokens(
+            prompt, context_window_size, max_tokens_for_response
+        )
+        assert available > 0
+
+        # Should raise error with tool reservation (only 30 tokens available)
+        with pytest.raises(PromptTooLongError):
+            self._token_handler_obj.calculate_and_check_available_tokens(
+                prompt,
+                context_window_size,
+                max_tokens_for_response,
+                max_tokens_for_tools,
+            )
+
+    def test_truncate_tool_output_no_truncation_needed(self):
+        """Test truncate_tool_output when output is within limit."""
+        short_output = "This is a short tool output."
+
+        result, was_truncated = self._token_handler_obj.truncate_tool_output(
+            short_output, max_tokens=1000
+        )
+
+        assert result == short_output
+        assert was_truncated is False
+
+    def test_truncate_tool_output_truncation_needed(self):
+        """Test truncate_tool_output when output exceeds limit."""
+        # Create a long output that will exceed the limit
+        long_output = "word " * 500  # roughly 500 tokens
+
+        result, was_truncated = self._token_handler_obj.truncate_tool_output(
+            long_output, max_tokens=100
+        )
+
+        assert was_truncated is True
+        # Check that warning message is appended
+        assert "[OUTPUT TRUNCATED" in result
+        assert "Please ask a more specific question" in result
+        # Result should be shorter than original
+        assert len(result) < len(long_output)
+
+    def test_truncate_tool_output_preserves_beginning(self):
+        """Test that truncation keeps the beginning of the output."""
+        # Create output with recognizable start
+        long_output = "START_MARKER " + ("filler " * 500) + " END_MARKER"
+
+        result, was_truncated = self._token_handler_obj.truncate_tool_output(
+            long_output, max_tokens=100
+        )
+
+        assert was_truncated is True
+        # Beginning should be preserved
+        assert result.startswith("START_MARKER")
+        # End should be truncated (replaced with warning)
+        assert "END_MARKER" not in result
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.1)
+    def test_truncate_tool_output_exact_limit(self):
+        """Test truncate_tool_output when output is exactly at limit."""
+        # Create output that's exactly at the weighted limit
+        output = "test"
+        tokens = self._token_handler_obj.text_to_tokens(output)
+        # Account for buffer weight (ceil(len * 1.1))
+        max_tokens = ceil(len(tokens) * 1.1)
+
+        result, was_truncated = self._token_handler_obj.truncate_tool_output(
+            output, max_tokens=max_tokens
+        )
+
+        assert result == output
+        assert was_truncated is False

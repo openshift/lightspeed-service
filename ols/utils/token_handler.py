@@ -69,7 +69,11 @@ class TokenHandler:
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
     def calculate_and_check_available_tokens(
-        self, prompt: str, context_window_size: int, max_tokens_for_response: int
+        self,
+        prompt: str,
+        context_window_size: int,
+        max_tokens_for_response: int,
+        max_tokens_for_tools: int = 0,
     ) -> int:
         """Get available tokens that can be used for prompt augmentation.
 
@@ -77,14 +81,17 @@ class TokenHandler:
             prompt: format prompt template to string before passing as arg
             context_window_size: context window size of LLM
             max_tokens_for_response: max tokens allowed for response (estimation)
+            max_tokens_for_tools: tokens reserved for tool outputs (only when MCP
+                servers are configured, default 0 means no reservation)
 
         Returns:
             available_tokens: int, tokens that can be used for augmentation.
         """
         logger.debug(
-            "Context window size: %d, Max generated tokens: %d",
+            "Context window size: %d, Max generated tokens: %d, Reserved for tools: %d",
             context_window_size,
             max_tokens_for_response,
+            max_tokens_for_tools,
         )
 
         prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
@@ -93,14 +100,17 @@ class TokenHandler:
         # The context_window_size is the maximum number of tokens that
         # can be used for a "conversation" in the LLM model. This
         # includes prompt AND response. Hence we need to subtract the
-        # prompt tokens and max tokens for response from the context
-        # window size.
+        # prompt tokens, max tokens for response, and reserved tool tokens
+        # from the context window size.
         available_tokens = (
-            context_window_size - max_tokens_for_response - prompt_token_count
+            context_window_size
+            - max_tokens_for_response
+            - max_tokens_for_tools
+            - prompt_token_count
         )
 
         if available_tokens < 0:
-            limit = context_window_size - max_tokens_for_response
+            limit = context_window_size - max_tokens_for_response - max_tokens_for_tools
             raise PromptTooLongError(
                 f"Prompt length {prompt_token_count} exceeds LLM "
                 f"available context window limit {limit} tokens"
@@ -221,3 +231,41 @@ class TokenHandler:
             index += 1
 
         return history, False
+
+    def truncate_tool_output(self, text: str, max_tokens: int) -> tuple[str, bool]:
+        """Truncate tool output to fit within token limit.
+
+        When tool output exceeds the limit, truncate from the tail (keeping the
+        beginning which typically contains headers/summary) and append a warning
+        message for the LLM.
+
+        Args:
+            text: Tool output text to potentially truncate
+            max_tokens: Maximum tokens allowed for the output
+
+        Returns:
+            Tuple of (output_text, was_truncated) where was_truncated indicates
+            if truncation occurred
+        """
+        tokens = self.text_to_tokens(text)
+        token_count = TokenHandler._get_token_count(tokens)
+
+        if token_count <= max_tokens:
+            return text, False
+
+        logger.info(
+            "Truncating tool output from %d to %d tokens", token_count, max_tokens
+        )
+
+        warning_message = (
+            "\n\n[OUTPUT TRUNCATED - The tool returned more data than can be "
+            "processed. Please ask a more specific question to get complete results.]"
+        )
+        warning_tokens = TokenHandler._get_token_count(
+            self.text_to_tokens(warning_message)
+        )
+
+        truncated_tokens = tokens[: max_tokens - warning_tokens]
+        truncated_text = self.tokens_to_text(truncated_tokens)
+
+        return truncated_text + warning_message, True
