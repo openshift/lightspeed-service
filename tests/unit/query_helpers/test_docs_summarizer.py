@@ -332,6 +332,57 @@ def test_tool_calling_tool_execution(caplog):
         assert mock_invoke.call_count == 2
 
 
+def test_tool_token_tracking(caplog):
+    """Test that tool definitions and AIMessage tokens are tracked."""
+    caplog.set_level(10)  # Set debug level
+
+    question = "How many namespaces are there in my cluster?"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+        ) as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            return_value=mcp_servers_config,
+        ),
+    ):
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [
+                AIMessageChunk(
+                    content="",
+                    response_metadata={"finish_reason": "tool_calls"},
+                    tool_calls=[
+                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                    ],
+                )
+            ]
+        )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        # Disable token reservation for tools (test config has small context window)
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        summarizer.create_response(question)
+
+        # Verify tool definitions token counting is logged
+        assert "Tool definitions consume" in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_gather_mcp_tools_failure_isolation(caplog):
     """Test gather_mcp_tools isolates failures from individual MCP servers.

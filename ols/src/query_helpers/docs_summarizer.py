@@ -327,6 +327,22 @@ class DocsSummarizer(QueryHelper):
             )
             token_handler = TokenHandler()
 
+            # Account for tool definitions tokens (schemas sent to LLM)
+            if all_mcp_tools:
+                tool_definitions_text = json.dumps(
+                    [
+                        {"name": t.name, "description": t.description, "schema": t.args}
+                        for t in all_mcp_tools
+                    ]
+                )
+                tool_definitions_tokens = len(
+                    token_handler.text_to_tokens(tool_definitions_text)
+                )
+                tool_tokens_used += tool_definitions_tokens
+                logger.debug(
+                    "Tool definitions consume %d tokens", tool_definitions_tokens
+                )
+
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
 
@@ -379,9 +395,17 @@ class DocsSummarizer(QueryHelper):
                 if tool_call_chunks:
                     # assess tool calls and add to messages
                     tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                    messages.append(
-                        AIMessage(content="", type="ai", tool_calls=tool_calls)
+                    ai_tool_call_message = AIMessage(
+                        content="", type="ai", tool_calls=tool_calls
                     )
+                    messages.append(ai_tool_call_message)
+
+                    # Count tokens used by the AIMessage with tool calls
+                    ai_message_tokens = len(
+                        token_handler.text_to_tokens(json.dumps(tool_calls))
+                    )
+                    tool_tokens_used += ai_message_tokens
+
                     for tool_call in tool_calls:
                         # Log tool call in JSON format
                         logger.info(
