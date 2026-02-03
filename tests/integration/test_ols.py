@@ -431,15 +431,19 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
     # we need to import it here because these modules triggers config
     # load too -> causes exception in auth module because of missing config
     # values
-    from ols.app.endpoints.ols import retrieve_previous_input  # pylint: disable=C0415
     from ols.app.models.models import CacheEntry  # pylint: disable=C0415
 
+    # Store original method
+    original_get = config.conversation_cache.get
     actual_returned_history = []
 
-    def capture_return_value(*args, **kwargs):
+    def capture_cache_get(*args, **kwargs):
+        """Capture what the cache returns."""
         nonlocal actual_returned_history
-        actual_returned_history = retrieve_previous_input(*args, **kwargs)
-        return actual_returned_history
+        # Call the original cache.get() and capture its return
+        result = original_get(*args, **kwargs)
+        actual_returned_history = result or []
+        return result
 
     ml = mock_langchain_interface("test response")
     with (
@@ -448,9 +452,10 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
         ),
-        patch(
-            "ols.app.endpoints.ols.retrieve_previous_input",
-            side_effect=capture_return_value,
+        patch.object(
+            config.conversation_cache,
+            "get",
+            side_effect=capture_cache_get,
         ),
     ):
         conversation_id = suid.get_suid()
