@@ -783,11 +783,16 @@ class CacheEntry(BaseModel):
     Attributes:
         query: The query string.
         response: The response string.
+        attachments: List of attachments included in the query.
+        tool_calls: List of tool calls made during the response generation.
+        tool_results: List of tool results from the tool calls.
     """
 
     query: HumanMessage
     response: Optional[AIMessage] = AIMessage("")
     attachments: list[Attachment] = []
+    tool_calls: list[dict] = []
+    tool_results: list[dict] = []
 
     @field_validator("response")
     @classmethod
@@ -803,6 +808,8 @@ class CacheEntry(BaseModel):
             "human_query": self.query,
             "ai_response": self.response,
             "attachments": [attachment.model_dump() for attachment in self.attachments],
+            "tool_calls": self.tool_calls,
+            "tool_results": self.tool_results,
         }
 
     @classmethod
@@ -814,6 +821,8 @@ class CacheEntry(BaseModel):
             attachments=[
                 Attachment(**attachment) for attachment in data["attachments"]
             ],
+            tool_calls=data.get("tool_calls", []),
+            tool_results=data.get("tool_results", []),
         )
 
     @staticmethod
@@ -867,6 +876,8 @@ class MessageEncoder(json.JSONEncoder):
                 "query": self.default(o.query),  # Handle nested Message object
                 "response": self.default(o.response) if o.response else None,
                 "attachments": o.attachments,
+                "tool_calls": o.tool_calls,
+                "tool_results": o.tool_results,
             }
         return super().default(o)
 
@@ -909,6 +920,8 @@ class MessageDecoder(json.JSONDecoder):
                     self._decode_message(dct["response"]) if dct["response"] else None
                 ),
                 attachments=dct["attachments"],
+                tool_calls=dct.get("tool_calls", []),
+                tool_results=dct.get("tool_results", []),
             )
         if "type" in dct:
             message: Union[HumanMessage, AIMessage]
