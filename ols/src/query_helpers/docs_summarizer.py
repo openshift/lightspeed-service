@@ -335,7 +335,7 @@ class DocsSummarizer(QueryHelper):
                         for t in all_mcp_tools
                     ]
                 )
-                tool_definitions_tokens = len(
+                tool_definitions_tokens = TokenHandler._get_token_count(
                     token_handler.text_to_tokens(tool_definitions_text)
                 )
                 tool_tokens_used += tool_definitions_tokens
@@ -401,7 +401,7 @@ class DocsSummarizer(QueryHelper):
                     messages.append(ai_tool_call_message)
 
                     # Count tokens used by the AIMessage with tool calls
-                    ai_message_tokens = len(
+                    ai_message_tokens = TokenHandler._get_token_count(
                         token_handler.text_to_tokens(json.dumps(tool_calls))
                     )
                     tool_tokens_used += ai_message_tokens

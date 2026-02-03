@@ -1,6 +1,9 @@
 """Unit tests for DocsSummarizer class."""
 
+import json
 import logging
+import re
+from math import ceil
 from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
@@ -8,6 +11,8 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
+from ols.constants import TOKEN_BUFFER_WEIGHT
+from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import mock_tools_map
 
 # needs to be setup there before is_user_authorized is imported
@@ -333,7 +338,7 @@ def test_tool_calling_tool_execution(caplog):
 
 
 def test_tool_token_tracking(caplog):
-    """Test that tool definitions and AIMessage tokens are tracked."""
+    """Test that tool definitions and AIMessage tokens are tracked with buffer weight."""
     caplog.set_level(10)  # Set debug level
 
     question = "How many namespaces are there in my cluster?"
@@ -381,6 +386,26 @@ def test_tool_token_tracking(caplog):
 
         # Verify tool definitions token counting is logged
         assert "Tool definitions consume" in caplog.text
+
+        # Calculate expected token count with buffer weight applied
+        token_handler = TokenHandler()
+        tool_definitions_text = json.dumps(
+            [
+                {"name": t.name, "description": t.description, "schema": t.args}
+                for t in mock_tools_map
+            ]
+        )
+        raw_tokens = len(token_handler.text_to_tokens(tool_definitions_text))
+        expected_buffered_tokens = ceil(raw_tokens * TOKEN_BUFFER_WEIGHT)
+
+        # Extract logged token count and verify buffer weight was applied
+        match = re.search(r"Tool definitions consume (\d+) tokens", caplog.text)
+        assert match is not None, "Token count not found in logs"
+        logged_tokens = int(match.group(1))
+        assert logged_tokens == expected_buffered_tokens, (
+            f"Expected {expected_buffered_tokens} (raw={raw_tokens} * {TOKEN_BUFFER_WEIGHT}), "
+            f"got {logged_tokens}"
+        )
 
 
 @pytest.mark.asyncio
