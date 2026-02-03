@@ -965,7 +965,6 @@ class ProcessedRequest(BaseModel):
         user_id: The ID of the logged in user.
         conversation_id: Conversation ID.
         query_without_attachments: Query to LLM without attachments.
-        previous_input: Previous query to LLM.
         attachments: List of all attachments.
         valid: Whether the query is valid or not.
         timestamps: Timestamps for all operations.
@@ -976,7 +975,6 @@ class ProcessedRequest(BaseModel):
     user_id: str
     conversation_id: str
     query_without_attachments: str
-    previous_input: list[CacheEntry]
     attachments: list[Attachment]
     valid: bool
     timestamps: dict[str, float]

@@ -219,17 +219,24 @@ class PostgresCache(Cache):
 
     @connection
     def get(
-        self, user_id: str, conversation_id: str, skip_user_id_check: bool = False
-    ) -> list[CacheEntry]:
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool = False,
+        limit: int | None = None,
+    ) -> tuple[list[CacheEntry], bool]:
         """Get the value associated with the given key.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             skip_user_id_check: Skip user_id suid check.
+            limit: Optional maximum number of recent messages to retrieve.
 
         Returns:
-            The value associated with the key, or None if not found.
+            A tuple of (history, was_limited) where:
+            - history: List of CacheEntry objects (most recent messages if limited)
+            - was_limited: True if there were more messages than the limit
         """
         # just check if user_id and conversation_id are UUIDs
         super().construct_key(user_id, conversation_id, skip_user_id_check)
@@ -238,9 +245,13 @@ class PostgresCache(Cache):
             try:
                 value = PostgresCache._select(cursor, user_id, conversation_id)
                 if value is None:
-                    return []
+                    return ([], False)
                 history = [CacheEntry.from_dict(cache_entry) for cache_entry in value]
-                return history
+
+                if limit is not None and len(history) > limit:
+                    return (history[-limit:], True)
+
+                return (history, False)
             except psycopg2.DatabaseError as e:
                 logger.error("PostgresCache.get %s", e)
                 raise CacheError("PostgresCache.get", e) from e

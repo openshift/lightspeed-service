@@ -4,10 +4,12 @@
 import asyncio
 import json
 import logging
+import time
+from functools import wraps
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from llama_index.core.retrievers import BaseRetriever
@@ -15,7 +17,12 @@ from llama_index.core.retrievers import BaseRetriever
 from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
-from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
+from ols.app.models.models import (
+    CacheEntry,
+    RagChunk,
+    StreamedChunk,
+    SummarizerResponse,
+)
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
@@ -25,6 +32,75 @@ from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
+
+
+def retry_on_error(max_attempts: int = 3, initial_delay: float = 1.0) -> Callable:
+    """Retry decorator with exponential backoff for transient errors.
+
+    Args:
+        max_attempts: Maximum number of retry attempts (default: 3)
+        initial_delay: Initial delay in seconds before first retry (default: 1.0)
+
+    Returns:
+        Decorated function that retries on transient errors
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            delay = initial_delay
+            last_exception = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e).lower()
+
+                    # Check if error is transient (worth retrying)
+                    is_transient = any(
+                        keyword in error_msg
+                        for keyword in [
+                            "timeout",
+                            "timed out",
+                            "connection",
+                            "rate limit",
+                            "too many requests",
+                            "503",
+                            "502",
+                            "429",
+                        ]
+                    )
+
+                    if not is_transient or attempt == max_attempts:
+                        # Non-transient error or final attempt - give up
+                        logger.error(
+                            "Failed after %d attempt(s): %s",
+                            attempt,
+                            e,
+                        )
+                        raise
+
+                    # Transient error - retry with backoff
+                    logger.warning(
+                        "Transient error on attempt %d/%d: %s. Retrying in %.1fs...",
+                        attempt,
+                        max_attempts,
+                        e,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    delay *= 2  # Exponential backoff
+
+            # Should never reach here, but just in case
+            if last_exception:
+                raise last_exception
+            return None
+
+        return wrapper
+
+    return decorator
 
 
 def skip_special_chunk(
@@ -121,6 +197,217 @@ class DocsSummarizer(QueryHelper):
 
         set_debug(self.verbose)
 
+    def _retrieve_previous_input(
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool = False,
+        available_tokens: int | None = None,
+    ) -> tuple[list, bool]:
+        """Retrieve previous conversation history from cache.
+
+        Args:
+            user_id: The user ID.
+            conversation_id: The conversation ID.
+            skip_user_id_check: Whether to skip user ID validation.
+            available_tokens: Available token budget for history (used to estimate limit).
+
+        Returns:
+            A tuple of (history, was_limited) where:
+            - history: List of previous conversation entries (CacheEntry objects)
+            - was_limited: True if there were more messages than the limit
+        """
+        previous_input = []
+        was_limited = False
+        if conversation_id:
+            limit = None
+            if available_tokens is not None:
+                # Estimate message limit: assume ~50 tokens per message (conservative)
+                # to avoid losing context. Minimum of 10 messages ensures basic context.
+                limit = max(10, available_tokens // 50)
+
+            cache_content, was_limited = config.conversation_cache.get(
+                user_id, conversation_id, skip_user_id_check, limit=limit
+            )
+            if cache_content:
+                previous_input = cache_content
+                if was_limited:
+                    logger.info(
+                        "Conversation ID: %s - Retrieved last %d messages (more available)",
+                        conversation_id,
+                        len(previous_input),
+                    )
+                else:
+                    logger.info(
+                        "Conversation ID: %s - Retrieved %d messages",
+                        conversation_id,
+                        len(previous_input),
+                    )
+        return previous_input, was_limited
+
+    async def _summarize_entries(self, entries: list[CacheEntry]) -> str | None:
+        """Summarize a list of conversation cache entries.
+
+        Args:
+            entries: List of CacheEntry objects to summarize.
+
+        Returns:
+            A summary string of the conversation history, or None if
+            summarization failed or there are no entries.
+        """
+        if not entries:
+            return None
+
+        conversation_text = []
+        for entry in entries:
+            conversation_text.append(f"User: {entry.query.content}")
+            conversation_text.append(f"Assistant: {entry.response.content}")
+
+        full_conversation = "\n".join(conversation_text)
+
+        summarization_prompt = f"""Create a comprehensive but concise summary.
+
+Include:
+- Main topics and questions asked
+- Solutions, commands, or configurations provided
+- Decisions made or troubleshooting steps taken
+- Important technical details (error messages, resource names, configurations)
+- Any tasks or follow-up actions mentioned
+
+Exclude:
+- Greetings and pleasantries
+- Repetitive information
+
+Write in a clear style suitable for continuing the conversation later.
+
+Conversation history:
+{full_conversation}
+
+Summary:"""
+
+        @retry_on_error(max_attempts=3, initial_delay=1.0)
+        async def invoke_llm_with_retry() -> Any:
+            """Invoke LLM with retry logic."""
+            messages = [{"role": "user", "content": summarization_prompt}]
+            return await self.bare_llm.ainvoke(messages)
+
+        try:
+            response = await invoke_llm_with_retry()
+
+            if hasattr(response, "content"):
+                summary = response.content
+            else:
+                summary = str(response)
+
+            logger.info(
+                "Summarized %d conversation entries into %d characters",
+                len(entries),
+                len(summary),
+            )
+            return summary
+
+        except Exception as e:
+            logger.error("Failed to summarize conversation entries: %s", e)
+            return None
+
+    async def _compress_conversation_history(
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool,
+        entries_to_keep: int = 5,
+    ) -> list[CacheEntry]:
+        """Compress conversation history by summarizing old entries.
+
+        Reads the full conversation history, keeps the most recent entries as-is,
+        and summarizes all older entries into a single summary entry.
+        Updates the cache in-place.
+
+        Args:
+            user_id: User ID for the conversation.
+            conversation_id: Conversation ID.
+            skip_user_id_check: Whether to skip user ID validation.
+            entries_to_keep: Number of recent entries to keep unsummarized (default: 5).
+
+        Returns:
+            List of compressed cache entries (summary + recent entries),
+            or just recent entries if summarization fails,
+            or all entries if total ≤ entries_to_keep.
+        """
+        # Read full conversation history
+        full_cache_entries, _ = self._retrieve_previous_input(
+            user_id, conversation_id, skip_user_id_check, available_tokens=None
+        )
+
+        # No compression needed if we have entries_to_keep or fewer entries
+        if len(full_cache_entries) <= entries_to_keep:
+            logger.debug(
+                "Conversation has %d entries, no summarization needed (threshold: %d)",
+                len(full_cache_entries),
+                entries_to_keep,
+            )
+            return full_cache_entries
+
+        logger.info(
+            "Compressing conversation with %d entries (keeping last %d unsummarized)",
+            len(full_cache_entries),
+            entries_to_keep,
+        )
+
+        # Split: summarize all but last N
+        entries_to_summarize = full_cache_entries[:-entries_to_keep]
+        keep_entries = full_cache_entries[-entries_to_keep:]
+
+        # Generate summary
+        summary_text = await self._summarize_entries(entries_to_summarize)
+
+        if not summary_text:
+            logger.warning(
+                "Summarization failed, keeping only %d recent entries",
+                len(keep_entries),
+            )
+            return keep_entries
+
+        current_time = time.time()
+        summary_entry = CacheEntry(
+            query=HumanMessage(
+                content="[Previous conversation summary]",
+                response_metadata={"created_at": current_time},
+            ),
+            response=AIMessage(
+                content=summary_text,
+                response_metadata={
+                    "created_at": current_time,
+                    "provider": self.provider,
+                    "model": self.model,
+                },
+            ),
+        )
+
+        # Replace cache: delete old conversation, insert compressed version
+        try:
+            config.conversation_cache.delete(
+                user_id, conversation_id, skip_user_id_check
+            )
+            config.conversation_cache.insert_or_append(
+                user_id, conversation_id, summary_entry, skip_user_id_check
+            )
+            for entry in keep_entries:
+                config.conversation_cache.insert_or_append(
+                    user_id, conversation_id, entry, skip_user_id_check
+                )
+
+            logger.info(
+                "Successfully compressed conversation: %d entries → 1 summary + %d recent",
+                len(full_cache_entries),
+                len(keep_entries),
+            )
+            return [summary_entry, *keep_entries]
+
+        except Exception as e:
+            logger.error("Failed to update cache with compressed history: %s", e)
+            return keep_entries
+
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
         self.provider_config = config.llm_config.providers.get(self.provider)
@@ -134,27 +421,27 @@ class DocsSummarizer(QueryHelper):
             self.generic_llm_params,
         )
 
-    def _prepare_prompt(
+    async def _prepare_prompt(
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             query: The query to be summarized.
             rag_retriever: The retriever to get RAG data/context.
-            history: The history of the conversation (if available).
+            user_id: User ID for retrieving conversation history.
+            conversation_id: Conversation ID for retrieving history.
+            skip_user_id_check: Whether to skip user ID validation.
 
         Returns:
             A tuple containing the final prompt, input values, RAG chunks,
             and a flag for truncated history.
         """
-        # if history is not provided, initialize to empty history
-        if history is None:
-            history = []
-
         token_handler = TokenHandler()
 
         # Use sample text for context/history to get complete prompt
@@ -164,7 +451,7 @@ class DocsSummarizer(QueryHelper):
             # to ensure the further right available token calculation.
             query,
             ["sample"],
-            [AIMessage("sample")],
+            [],
             self._system_prompt,
             self._tool_calling_enabled,
         ).generate_prompt(self.model)
@@ -207,7 +494,26 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
 
-        # Truncate history
+        # Retrieve history from cache
+        if user_id and conversation_id:
+            cache_entries, was_limited = self._retrieve_previous_input(
+                user_id, conversation_id, skip_user_id_check, available_tokens
+            )
+
+            # If cache read was limited, compress the conversation for future requests
+            if was_limited:
+                logger.info("Cache read was limited, compressing conversation")
+                compressed_entries = await self._compress_conversation_history(
+                    user_id, conversation_id, skip_user_id_check
+                )
+                # Use compressed history for this request
+                cache_entries = compressed_entries
+
+            history = CacheEntry.cache_entries_to_history(cache_entries)
+        else:
+            history = []
+
+        # Apply token-based truncation to history
         history, truncated = token_handler.limit_conversation_history(
             history or [], available_tokens
         )
@@ -467,20 +773,26 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, rag_retriever, history
+        final_prompt, llm_input_values, rag_chunks, truncated = (
+            await self._prepare_prompt(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            )
         )
         messages = final_prompt.model_copy()
 
@@ -510,7 +822,9 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
 
@@ -520,7 +834,9 @@ class DocsSummarizer(QueryHelper):
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Returns:
             A SummarizerResponse object containing the complete response
@@ -532,22 +848,25 @@ class DocsSummarizer(QueryHelper):
             response_end: dict[str, Any] = {}
             tool_calls = []
             tool_results = []
-            async for chunk in self.generate_response(query, rag_retriever, history):
-                if chunk.type == "end":
-                    response_end = chunk.data
-                    break
-                if chunk.type == "tool_call":
-                    tool_calls.append(chunk.data)
-                elif chunk.type == "tool_result":
-                    tool_results.append(chunk.data)
-                elif chunk.type == "text":
-                    chunks.append(chunk.text)
-                else:
-                    # this "can't" happen as we control what chunk types
-                    # are yielded in the generator directly
-                    msg = f"Unknown chunk type: {chunk.type}"
-                    logger.warning(msg)
-                    raise ValueError(msg)
+            async for chunk in self.generate_response(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            ):
+                match chunk.type:
+                    case "end":
+                        response_end = chunk.data
+                        break
+                    case "tool_call":
+                        tool_calls.append(chunk.data)
+                    case "tool_result":
+                        tool_results.append(chunk.data)
+                    case "text":
+                        chunks.append(chunk.text)
+                    case _:
+                        # this "can't" happen as we control what chunk types
+                        # are yielded in the generator directly
+                        msg = f"Unknown chunk type: {chunk.type}"
+                        logger.warning(msg)
+                        raise ValueError(msg)
 
             return SummarizerResponse(
                 response="".join(chunks),

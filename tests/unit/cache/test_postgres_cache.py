@@ -13,12 +13,12 @@ from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
 from ols.utils import suid
 
-user_id = suid.get_suid()
-conversation_id = suid.get_suid()
-cache_entry_1 = CacheEntry(
+USER_ID = suid.get_suid()
+CONVERSATION_ID = suid.get_suid()
+CACHE_ENTRY_1 = CacheEntry(
     query=HumanMessage("用户消息"), response=AIMessage("人工智能信息")
 )
-cache_entry_2 = CacheEntry(
+CACHE_ENTRY_2 = CacheEntry(
     query=HumanMessage("user message"), response=AIMessage("ai message")
 )
 
@@ -59,8 +59,9 @@ def test_get_operation_on_empty_cache():
         cache = PostgresCache(config)
 
     # call the "get" operation
-    conversation = cache.get(user_id, conversation_id)
-    assert conversation == []
+    history, was_limited = cache.get(USER_ID, CONVERSATION_ID)
+    assert history == []
+    assert was_limited is False
 
     # multiple DB operations must be performed:
     # 1. check if connection to DB is alive
@@ -69,7 +70,7 @@ def test_get_operation_on_empty_cache():
         call("SELECT 1"),
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -96,7 +97,7 @@ def test_get_operation_invalid_value():
 
         # call the "get" operation
         with pytest.raises(ValueError, match="Invalid value read from cache:"):
-            cache.get(user_id, conversation_id)
+            cache.get(USER_ID, CONVERSATION_ID)
 
     # multiple DB operations must be performed:
     # 1. check if connection to DB is alive
@@ -105,7 +106,7 @@ def test_get_operation_invalid_value():
         call("SELECT 1"),
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -117,8 +118,8 @@ def test_get_operation_invalid_value():
 def test_get_operation_valid_value():
     """Test the Cache.get operation when valid value is returned from cache."""
     history = [
-        cache_entry_1,
-        cache_entry_2,
+        CACHE_ENTRY_1,
+        CACHE_ENTRY_2,
     ]
     conversation = json.dumps([ce.to_dict() for ce in history], cls=MessageEncoder)
     as_memview = memoryview(bytearray(conversation, "utf-8"))
@@ -139,7 +140,9 @@ def test_get_operation_valid_value():
 
     # call the "get" operation
     # unjsond history should be returned
-    assert cache.get(user_id, conversation_id) == history
+    result_history, was_limited = cache.get(USER_ID, CONVERSATION_ID)
+    assert result_history == history
+    assert was_limited is False
 
     # multiple DB operations must be performed:
     # 1. check if connection to DB is alive
@@ -148,7 +151,7 @@ def test_get_operation_valid_value():
         call("SELECT 1"),
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -175,7 +178,7 @@ def test_get_operation_on_exception():
 
     # error must be raised during cache operation
     with pytest.raises(CacheError, match="PLSQL error"):
-        cache.get(user_id, conversation_id)
+        cache.get(USER_ID, CONVERSATION_ID)
 
 
 def test_get_operation_on_disconnected_db():
@@ -197,13 +200,13 @@ def test_get_operation_on_disconnected_db():
         cache.connection = None
         assert not cache.connected()
         # DB operation should connect automatically
-        cache.get(user_id, conversation_id)
+        cache.get(USER_ID, CONVERSATION_ID)
         assert cache.connected()
 
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -211,7 +214,7 @@ def test_get_operation_on_disconnected_db():
 
 def test_insert_or_append_operation():
     """Test the Cache.insert_or_append operation for first item to be inserted."""
-    history = cache_entry_1
+    history = CACHE_ENTRY_1
     conversation = json.dumps([history.to_dict()], cls=MessageEncoder)
 
     # mock the query result
@@ -230,21 +233,21 @@ def test_insert_or_append_operation():
 
         # call the "insert_or_append" operation
         # to insert new conversation history
-        cache.insert_or_append(user_id, conversation_id, history)
+        cache.insert_or_append(USER_ID, CONVERSATION_ID, history)
 
     # multiple DB operations must be performed:
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
         call(
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id, conversation.encode("utf-8")),
+            (USER_ID, CONVERSATION_ID, conversation.encode("utf-8")),
         ),
         call(
             PostgresCache.UPSERT_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
         call(PostgresCache.QUERY_TOTAL_ENTRIES),
     ]
@@ -253,12 +256,12 @@ def test_insert_or_append_operation():
 
 def test_insert_or_append_operation_append_item():
     """Test the Cache.insert_or_append operation for more item to be inserted."""
-    stored_history = cache_entry_1
+    stored_history = CACHE_ENTRY_1
 
     old_conversation = json.dumps([stored_history.to_dict()], cls=MessageEncoder)
     as_memview = memoryview(bytearray(old_conversation, "utf-8"))
 
-    appended_history = cache_entry_2
+    appended_history = CACHE_ENTRY_2
 
     # create json object in the exactly same format
     whole_history = json.loads(old_conversation, cls=MessageDecoder)
@@ -281,21 +284,21 @@ def test_insert_or_append_operation_append_item():
 
         # call the "insert_or_append" operation
         # to append new history to the old one
-        cache.insert_or_append(user_id, conversation_id, appended_history)
+        cache.insert_or_append(USER_ID, CONVERSATION_ID, appended_history)
 
     # multiple DB operations must be performed:
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
         call(
             PostgresCache.UPDATE_CONVERSATION_HISTORY_STATEMENT,
-            (new_conversation.encode("utf-8"), user_id, conversation_id),
+            (new_conversation.encode("utf-8"), USER_ID, CONVERSATION_ID),
         ),
         call(
             PostgresCache.UPSERT_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -303,7 +306,7 @@ def test_insert_or_append_operation_append_item():
 
 def test_insert_or_append_operation_on_exception():
     """Test the Cache.insert_or_append operation when exception is thrown."""
-    history = cache_entry_1
+    history = CACHE_ENTRY_1
 
     # mock the query result
     mock_cursor = MagicMock()
@@ -321,12 +324,12 @@ def test_insert_or_append_operation_on_exception():
 
         # error must be raised during cache operation
         with pytest.raises(CacheError, match="PLSQL error"):
-            cache.insert_or_append(user_id, conversation_id, history)
+            cache.insert_or_append(USER_ID, CONVERSATION_ID, history)
 
 
 def test_insert_or_append_operation_on_disconnected_db():
     """Test the Cache.insert_or_append operation when DB is not connected."""
-    history = cache_entry_1
+    history = CACHE_ENTRY_1
     conversation = json.dumps([history.to_dict()], cls=MessageEncoder)
 
     # mock the query
@@ -346,22 +349,22 @@ def test_insert_or_append_operation_on_disconnected_db():
         cache.connection = None
         assert not cache.connected()
         # DB operation should connect automatically
-        cache.insert_or_append(user_id, conversation_id, cache_entry_1)
+        cache.insert_or_append(USER_ID, CONVERSATION_ID, CACHE_ENTRY_1)
         assert cache.connected()
 
     # multiple DB operations must be performed:
     calls = [
         call(
             PostgresCache.SELECT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
         call(
             PostgresCache.INSERT_CONVERSATION_HISTORY_STATEMENT,
-            (user_id, conversation_id, conversation.encode("utf-8")),
+            (USER_ID, CONVERSATION_ID, conversation.encode("utf-8")),
         ),
         call(
             PostgresCache.UPSERT_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
         call(PostgresCache.QUERY_TOTAL_ENTRIES),
         call("SELECT 1"),
@@ -372,7 +375,7 @@ def test_insert_or_append_operation_on_disconnected_db():
 def test_list_operation():
     """Test the Cache.list operation."""
     # Mock conversation data to be returned by the database
-    # Format: (conversation_id, topic_summary, last_message_timestamp, message_count)
+    # Format: (CONVERSATION_ID, topic_summary, last_message_timestamp, message_count)
     mock_conversations = [
         ("conversation_1", "First topic", 1737370500.0, 2),
         ("conversation_2", "Second topic", 1737370600.0, 5),
@@ -394,7 +397,7 @@ def test_list_operation():
         cache = PostgresCache(config)
 
         # Call the "list" operation
-        result = cache.list(user_id)
+        result = cache.list(USER_ID)
 
     # Verify the result matches the expected format (list of ConversationData)
     assert len(result) == 3
@@ -410,7 +413,7 @@ def test_list_operation():
     # 2. list conversations from DB
     calls = [
         call("SELECT 1"),
-        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)),
+        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (USER_ID,)),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
@@ -436,7 +439,7 @@ def test_list_operation_on_exception():
 
         # Verify that the exception is raised
         with pytest.raises(CacheError, match="PLSQL error"):
-            cache.list(user_id)
+            cache.list(USER_ID)
 
 
 def test_list_operation_on_disconnected_db():
@@ -459,13 +462,13 @@ def test_list_operation_on_disconnected_db():
         cache.connection = None
         assert not cache.connected()
         # DB operation should connect automatically
-        cache.list(user_id)
+        cache.list(USER_ID)
         assert cache.connected()
 
     # one DB operation must be performed:
     # 1. list conversations from DB
     calls = [
-        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (user_id,)),
+        call(PostgresCache.LIST_CONVERSATIONS_STATEMENT, (USER_ID,)),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
@@ -486,7 +489,7 @@ def test_set_topic_summary_operation():
         cache = PostgresCache(config)
 
         # Call the "set_topic_summary" operation
-        cache.set_topic_summary(user_id, conversation_id, "Test Topic Summary")
+        cache.set_topic_summary(USER_ID, CONVERSATION_ID, "Test Topic Summary")
 
     # multiple DB operations must be performed:
     # 1. check if connection to DB is alive
@@ -495,7 +498,7 @@ def test_set_topic_summary_operation():
         call("SELECT 1"),
         call(
             PostgresCache.INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT,
-            (user_id, conversation_id, "Test Topic Summary"),
+            (USER_ID, CONVERSATION_ID, "Test Topic Summary"),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -523,7 +526,7 @@ def test_set_topic_summary_operation_on_exception():
 
         # Verify that the exception is raised
         with pytest.raises(CacheError, match="PLSQL error"):
-            cache.set_topic_summary(user_id, conversation_id, "Test Topic")
+            cache.set_topic_summary(USER_ID, CONVERSATION_ID, "Test Topic")
 
 
 def test_delete_operation():
@@ -543,7 +546,7 @@ def test_delete_operation():
         cache = PostgresCache(config)
 
         # Call the "delete" operation
-        result = cache.delete(user_id, conversation_id)
+        result = cache.delete(USER_ID, CONVERSATION_ID)
 
     # Verify the result
     assert result is True
@@ -555,7 +558,7 @@ def test_delete_operation():
         call("SELECT 1"),
         call(
             PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -578,7 +581,7 @@ def test_delete_operation_not_found():
         cache = PostgresCache(config)
 
         # Call the "delete" operation
-        result = cache.delete(user_id, conversation_id)
+        result = cache.delete(USER_ID, CONVERSATION_ID)
 
     # Verify the result
     assert result is False
@@ -590,7 +593,7 @@ def test_delete_operation_not_found():
         call("SELECT 1"),
         call(
             PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -614,7 +617,7 @@ def test_delete_operation_on_exception():
 
         # Verify that the exception is raised
         with pytest.raises(psycopg2.DatabaseError, match="PLSQL error"):
-            cache.delete(user_id, conversation_id)
+            cache.delete(USER_ID, CONVERSATION_ID)
 
 
 def test_delete_operation_on_disconnected_db():
@@ -636,7 +639,7 @@ def test_delete_operation_on_disconnected_db():
         cache.connection = None
         assert not cache.connected()
         # DB operation should connect automatically
-        cache.delete(user_id, conversation_id)
+        cache.delete(USER_ID, CONVERSATION_ID)
         assert cache.connected()
 
     # one DB operations must be performed:
@@ -644,7 +647,7 @@ def test_delete_operation_on_disconnected_db():
     calls = [
         call(
             PostgresCache.DELETE_SINGLE_CONVERSATION_STATEMENT,
-            (user_id, conversation_id),
+            (USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
@@ -667,13 +670,13 @@ def test_cleanup_method_when_clean_not_needed():
 def test_cleanup_method_when_clean_performed():
     """Test the static method that cleans up PG cache by evicting one message."""
     # Prepare mock data for eviction: a conversation with 2 messages
-    value = [cache_entry_1.to_dict(), cache_entry_2.to_dict()]
+    value = [CACHE_ENTRY_1.to_dict(), CACHE_ENTRY_2.to_dict()]
     conversation = json.dumps(value, cls=MessageEncoder)
     value_bytes = conversation.encode("utf-8")
-    row = (user_id, conversation_id, value_bytes)
+    row = (USER_ID, CONVERSATION_ID, value_bytes)
 
     # After evicting the oldest message, the conversation has 1 message left
-    trimmed_value = [cache_entry_2.to_dict()]
+    trimmed_value = [CACHE_ENTRY_2.to_dict()]
     trimmed_conversation = json.dumps(trimmed_value, cls=MessageEncoder)
     trimmed_value_bytes = trimmed_conversation.encode("utf-8")
 
@@ -691,7 +694,7 @@ def test_cleanup_method_when_clean_performed():
         call(PostgresCache.SELECT_OLDEST_ROW),
         call(
             PostgresCache.UPDATE_CONVERSATION_HISTORY_STATEMENT,
-            (trimmed_value_bytes, user_id, conversation_id),
+            (trimmed_value_bytes, USER_ID, CONVERSATION_ID),
         ),
     ]
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
