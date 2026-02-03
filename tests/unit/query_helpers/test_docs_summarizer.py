@@ -5,9 +5,10 @@ import logging
 import re
 from math import ceil
 from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
@@ -19,24 +20,22 @@ from tests.mock_classes.mock_tools import mock_tools_map
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
 
-
-from ols.app.models.config import (  # noqa:E402
-    LoggingConfig,
-)
-from ols.src.query_helpers.docs_summarizer import (  # noqa:E402
+from ols.app.models.config import LoggingConfig  # noqa: E402
+from ols.app.models.models import CacheEntry  # noqa: E402
+from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
 )
-from ols.utils import suid  # noqa:E402
-from ols.utils.logging_configurator import configure_logging  # noqa:E402
-from tests import constants  # noqa:E402
-from tests.mock_classes.mock_langchain_interface import (  # noqa:E402
+from ols.utils import suid  # noqa: E402
+from ols.utils.logging_configurator import configure_logging  # noqa: E402
+from tests import constants  # noqa: E402
+from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
     mock_langchain_interface,
 )
-from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa:E402
-from tests.mock_classes.mock_retrievers import MockRetriever  # noqa:E402
+from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
+from tests.mock_classes.mock_retrievers import MockRetriever  # noqa: E402
 
-conversation_id = suid.get_suid()
+CONVERSATION_ID = suid.get_suid()
 
 
 def test_is_query_helper_subclass():
@@ -105,41 +104,66 @@ def test_summarize_history_provided():
     with (
         patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
         patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3),
+        patch("ols.config.conversation_cache.get") as mock_cache_get,
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        history = ["human: What is Kubernetes?"]
         rag_retriever = MockRetriever()
 
-        # first call with history provided
+        # first call with history in cache
+        mock_cache_get.return_value = (
+            [CacheEntry(query=HumanMessage("What is Kubernetes?"))],
+            False,
+        )
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary1 = summarizer.create_response(question, rag_retriever, history)
-            token_handler.assert_called_once_with(history, ANY)
+            summary1 = summarizer.create_response(
+                question, rag_retriever, "user-id", "conv-id"
+            )
+            # History is fetched internally and truncated
+            token_handler.assert_called_once()
             check_summary_result(summary1, question)
 
-        # second call without history provided
+        # second call without history in cache
+        mock_cache_get.return_value = ([], False)
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary2 = summarizer.create_response(question, rag_retriever)
-            token_handler.assert_called_once_with([], ANY)
+            summary2 = summarizer.create_response(
+                question, rag_retriever, "user-id", "conv-id2"
+            )
+            token_handler.assert_called_once()
             check_summary_result(summary2, question)
 
 
 def test_summarize_truncation():
     """Basic test for DocsSummarizer to check if truncation is done."""
-    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+    with (
+        patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
+        patch("ols.config.conversation_cache.get") as mock_cache_get,
+    ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
         rag_retriever = MockRetriever()
 
-        # too long history
-        history = [HumanMessage("What is Kubernetes?")] * 10000
-        summary = summarizer.create_response(question, rag_retriever, history)
+        # too long history - mock cache returning huge history
+        # Create many CacheEntry objects to trigger truncation
+        history = [
+            CacheEntry(
+                query=HumanMessage("What is Kubernetes?" * 100),
+                response=AIMessage(
+                    "Kubernetes is a container orchestration system." * 100
+                ),
+            )
+        ] * 100  # 100 large entries should definitely trigger truncation
+        mock_cache_get.return_value = (history, False)
+
+        summary = summarizer.create_response(
+            question, rag_retriever, "user-id", "conv-id"
+        )
 
         # truncation should be done
         assert summary.history_truncated

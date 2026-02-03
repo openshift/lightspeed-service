@@ -44,17 +44,24 @@ class Cache(ABC):
 
     @abstractmethod
     def get(
-        self, user_id: str, conversation_id: str, skip_user_id_check: bool
-    ) -> list[CacheEntry]:
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool,
+        limit: int | None = None,
+    ) -> tuple[list[CacheEntry], bool]:
         """Abstract method to retrieve a value from the cache.
 
         Args:
             user_id: User identification.
             conversation_id: Conversation ID unique for given user.
             skip_user_id_check: Skip user_id suid check.
+            limit: Optional maximum number of recent messages to retrieve.
 
         Returns:
-            The value (CacheEntry(s)) associated with the key, or None if not found.
+            A tuple of (history, was_limited) where:
+            - history: List of CacheEntry objects (most recent messages if limited)
+            - was_limited: True if there were more messages than the limit
         """
 
     @abstractmethod

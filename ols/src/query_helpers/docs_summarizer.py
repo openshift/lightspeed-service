@@ -7,7 +7,7 @@ import logging
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -16,7 +16,12 @@ from llama_index.core.retrievers import BaseRetriever
 from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
-from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
+from ols.app.models.models import (
+    CacheEntry,
+    RagChunk,
+    StreamedChunk,
+    SummarizerResponse,
+)
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
@@ -146,6 +151,54 @@ class DocsSummarizer(QueryHelper):
 
         set_debug(self.verbose)
 
+    def _retrieve_previous_input(
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool = False,
+        available_tokens: int | None = None,
+    ) -> tuple[list, bool]:
+        """Retrieve previous conversation history from cache.
+
+        Args:
+            user_id: The user ID.
+            conversation_id: The conversation ID.
+            skip_user_id_check: Whether to skip user ID validation.
+            available_tokens: Available token budget for history (used to estimate limit).
+
+        Returns:
+            A tuple of (history, was_limited) where:
+            - history: List of previous conversation entries (CacheEntry objects)
+            - was_limited: True if there were more messages than the limit
+        """
+        previous_input = []
+        was_limited = False
+        if conversation_id:
+            limit = None
+            if available_tokens is not None:
+                # Estimate message limit: assume ~50 tokens per message (conservative)
+                # to avoid losing context. Minimum of 10 messages ensures basic context.
+                limit = max(10, available_tokens // 50)
+
+            cache_content, was_limited = config.conversation_cache.get(
+                user_id, conversation_id, skip_user_id_check, limit=limit
+            )
+            if cache_content:
+                previous_input = cache_content
+                if was_limited:
+                    logger.info(
+                        "Conversation ID: %s - Retrieved last %d messages (more available)",
+                        conversation_id,
+                        len(previous_input),
+                    )
+                else:
+                    logger.info(
+                        "Conversation ID: %s - Retrieved %d messages",
+                        conversation_id,
+                        len(previous_input),
+                    )
+        return previous_input, was_limited
+
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
         self.provider_config = config.llm_config.providers.get(self.provider)
@@ -244,23 +297,23 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             query: The query to be summarized.
             rag_retriever: The retriever to get RAG data/context.
-            history: The history of the conversation (if available).
+            user_id: User ID for retrieving conversation history.
+            conversation_id: Conversation ID for retrieving history.
+            skip_user_id_check: Whether to skip user ID validation.
 
         Returns:
             A tuple containing the final prompt, input values, RAG chunks,
             and a flag for truncated history.
         """
-        # if history is not provided, initialize to empty history
-        if history is None:
-            history = []
-
         token_handler = TokenHandler()
 
         # Use sample text for context/history to get complete prompt
@@ -270,7 +323,7 @@ class DocsSummarizer(QueryHelper):
             # to ensure the further right available token calculation.
             query,
             ["sample"],
-            [AIMessage("sample")],
+            [],
             self._system_prompt,
             self._tool_calling_enabled,
         ).generate_prompt(self.model)
@@ -312,6 +365,16 @@ class DocsSummarizer(QueryHelper):
         rag_context = [rag_chunk.text for rag_chunk in rag_chunks]
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
+
+        # Retrieve history from cache (now that we know available tokens)
+        if user_id and conversation_id:
+            cache_entries, _ = self._retrieve_previous_input(
+                user_id, conversation_id, skip_user_id_check, available_tokens
+            )
+            # Convert cache entries to history (list of BaseMessage)
+            history = CacheEntry.cache_entries_to_history(cache_entries)
+        else:
+            history = []
 
         # Truncate history
         history, truncated = token_handler.limit_conversation_history(
@@ -573,20 +636,24 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
         final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, rag_retriever, history
+            query, rag_retriever, user_id, conversation_id, skip_user_id_check
         )
         messages = final_prompt.model_copy()
 
@@ -616,7 +683,9 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
 
@@ -626,7 +695,9 @@ class DocsSummarizer(QueryHelper):
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Returns:
             A SummarizerResponse object containing the complete response
@@ -638,22 +709,25 @@ class DocsSummarizer(QueryHelper):
             response_end: dict[str, Any] = {}
             tool_calls = []
             tool_results = []
-            async for chunk in self.generate_response(query, rag_retriever, history):
-                if chunk.type == "end":
-                    response_end = chunk.data
-                    break
-                if chunk.type == "tool_call":
-                    tool_calls.append(chunk.data)
-                elif chunk.type == "tool_result":
-                    tool_results.append(chunk.data)
-                elif chunk.type == "text":
-                    chunks.append(chunk.text)
-                else:
-                    # this "can't" happen as we control what chunk types
-                    # are yielded in the generator directly
-                    msg = f"Unknown chunk type: {chunk.type}"
-                    logger.warning(msg)
-                    raise ValueError(msg)
+            async for chunk in self.generate_response(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            ):
+                match chunk.type:
+                    case "end":
+                        response_end = chunk.data
+                        break
+                    case "tool_call":
+                        tool_calls.append(chunk.data)
+                    case "tool_result":
+                        tool_results.append(chunk.data)
+                    case "text":
+                        chunks.append(chunk.text)
+                    case _:
+                        # this "can't" happen as we control what chunk types
+                        # are yielded in the generator directly
+                        msg = f"Unknown chunk type: {chunk.type}"
+                        logger.warning(msg)
+                        raise ValueError(msg)
 
             return SummarizerResponse(
                 response="".join(chunks),
