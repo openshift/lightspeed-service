@@ -10,6 +10,8 @@ from ols import config, constants
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints.streaming_ols import (  # noqa:E402
+    LLM_HISTORY_COMPRESSION_END_EVENT,
+    LLM_HISTORY_COMPRESSION_START_EVENT,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
@@ -44,6 +46,8 @@ def test_event_type_are_not_changed():
     assert LLM_TOKEN_EVENT == "token"  # noqa: S105
     assert LLM_TOOL_CALL_EVENT == "tool_call"
     assert LLM_TOOL_RESULT_EVENT == "tool_result"
+    assert LLM_HISTORY_COMPRESSION_START_EVENT == "history_compression_start"
+    assert LLM_HISTORY_COMPRESSION_END_EVENT == "history_compression_end"
 
 
 def test_format_stream_data():
@@ -68,6 +72,16 @@ def test_stream_event():
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nTool result: {"token": "hi", "idx": 1}\n'
     )
+    assert (
+        stream_event(
+            data, LLM_HISTORY_COMPRESSION_START_EVENT, constants.MEDIA_TYPE_TEXT
+        )
+        == '\nHistory compression start: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(data, LLM_HISTORY_COMPRESSION_END_EVENT, constants.MEDIA_TYPE_TEXT)
+        == '\nHistory compression end: {"token": "hi", "idx": 1}\n'
+    )
 
     # json output
     assert (
@@ -81,6 +95,16 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_result", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(
+            data, LLM_HISTORY_COMPRESSION_START_EVENT, constants.MEDIA_TYPE_JSON
+        )
+        == 'data: {"event": "history_compression_start", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(data, LLM_HISTORY_COMPRESSION_END_EVENT, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "history_compression_end", "data": {"token": "hi", "idx": 1}}\n\n'
     )
 
 

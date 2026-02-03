@@ -32,6 +32,7 @@ from ols.app.models.models import (
     LLMRequest,
     RagChunk,
     ReferencedDocument,
+    StreamChunkType,
     StreamedChunk,
     SummarizerResponse,
     TokenCounter,
@@ -51,6 +52,8 @@ auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-acce
 LLM_TOKEN_EVENT = "token"  # noqa: S105
 LLM_TOOL_CALL_EVENT = "tool_call"
 LLM_TOOL_RESULT_EVENT = "tool_result"
+LLM_HISTORY_COMPRESSION_START_EVENT = StreamChunkType.HISTORY_COMPRESSION_START.value
+LLM_HISTORY_COMPRESSION_END_EVENT = StreamChunkType.HISTORY_COMPRESSION_END.value
 
 
 query_responses: dict[int | str, dict[str, Any]] = {
@@ -100,7 +103,8 @@ def conversation_request(
     summarizer_response = generate_response(
         processed_request.conversation_id,
         llm_request,
-        processed_request.previous_input,
+        processed_request.user_id,
+        processed_request.skip_user_id_check,
         streaming=True,
         user_token=processed_request.user_token,
         client_headers=client_headers,
@@ -157,20 +161,22 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
         str: The formatted string or JSON to yield.
     """
     if media_type == MEDIA_TYPE_TEXT:
-        if event_type == LLM_TOKEN_EVENT:
-            return data["token"]
-        if event_type == LLM_TOOL_CALL_EVENT:
-            return f"\nTool call: {json.dumps(data)}\n"
-        if event_type == LLM_TOOL_RESULT_EVENT:
-            return f"\nTool result: {json.dumps(data)}\n"
-        logger.error("Unknown event type: %s", event_type)
-        return ""
-    return format_stream_data(
-        {
-            "event": event_type,
-            "data": data,
-        }
-    )
+        text_output = ""
+        match event_type:
+            case "token":
+                text_output = data["token"]
+            case "tool_call":
+                text_output = f"\nTool call: {json.dumps(data)}\n"
+            case "tool_result":
+                text_output = f"\nTool result: {json.dumps(data)}\n"
+            case "history_compression_start":
+                text_output = f"\nHistory compression start: {json.dumps(data)}\n"
+            case "history_compression_end":
+                text_output = f"\nHistory compression end: {json.dumps(data)}\n"
+            case _:
+                logger.error("Unknown event type: %s", event_type)
+        return text_output
+    return format_stream_data({"event": event_type, "data": data})
 
 
 def stream_end_event(
@@ -341,7 +347,7 @@ def store_data(
     timestamps["store transcripts"] = time.time()
 
 
-async def response_processing_wrapper(
+async def response_processing_wrapper(  # noqa: C901
     generator: AsyncGenerator[Any, None],
     user_id: str,
     conversation_id: str,
@@ -385,39 +391,52 @@ async def response_processing_wrapper(
                 msg = f"Expecting StreamedChunk, but got {type(item)}: {item}"
                 logger.error(msg)
                 raise ValueError(msg)
-            if item.type == "tool_call":
-                tool_calls.append(item.data)
-                yield stream_event(
-                    data=item.data,
-                    event_type=LLM_TOOL_CALL_EVENT,
-                    media_type=media_type,
-                )
-            elif item.type == "tool_result":
-                tool_results.append(item.data)
-                yield stream_event(
-                    data=item.data,
-                    event_type=LLM_TOOL_RESULT_EVENT,
-                    media_type=media_type,
-                )
-            elif item.type == "text":
-                response += item.text
-                yield stream_event(
-                    data={"id": idx, "token": item.text},
-                    event_type=LLM_TOKEN_EVENT,
-                    media_type=media_type,
-                )
-                idx += 1
-            elif item.type == "end":
-                rag_chunks = item.data["rag_chunks"]
-                history_truncated = item.data["truncated"]
-                token_counter = item.data["token_counter"]
-            else:
-                msg = (
-                    "Yielded unknown item type from streaming generator, "
-                    f"item: {item}"
-                )
-                logger.error(msg)
-                raise ValueError(msg)
+            match item.type:
+                case StreamChunkType.TOOL_CALL:
+                    tool_calls.append(item.data)
+                    yield stream_event(
+                        data=item.data,
+                        event_type=LLM_TOOL_CALL_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.TOOL_RESULT:
+                    tool_results.append(item.data)
+                    yield stream_event(
+                        data=item.data,
+                        event_type=LLM_TOOL_RESULT_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.HISTORY_COMPRESSION_START:
+                    yield stream_event(
+                        data=item.data,
+                        event_type=LLM_HISTORY_COMPRESSION_START_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.HISTORY_COMPRESSION_END:
+                    yield stream_event(
+                        data=item.data,
+                        event_type=LLM_HISTORY_COMPRESSION_END_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.TEXT:
+                    response += item.text
+                    yield stream_event(
+                        data={"id": idx, "token": item.text},
+                        event_type=LLM_TOKEN_EVENT,
+                        media_type=media_type,
+                    )
+                    idx += 1
+                case StreamChunkType.END:
+                    rag_chunks = item.data["rag_chunks"]
+                    history_truncated = item.data["truncated"]
+                    token_counter = item.data["token_counter"]
+                case _:
+                    msg = (
+                        "Yielded unknown item type from streaming generator, "
+                        f"item: {item}"
+                    )
+                    logger.error(msg)
+                    raise ValueError(msg)
     except PromptTooLongError as summarizer_error:
         yield prompt_too_long_error(summarizer_error, media_type)
         return  # stop execution after error

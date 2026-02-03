@@ -144,13 +144,13 @@ def test_valid_question_improper_conversation_id() -> None:
     with metrics_utils.RestAPICallCounterChecker(
         pytest.metrics_client,
         STREAMING_QUERY_ENDPOINT,
-        status_code=requests.codes.internal_server_error,
+        status_code=requests.codes.bad_request,
     ):
         response = post_with_defaults(
             STREAMING_QUERY_ENDPOINT,
             json={"conversation_id": "not-uuid", "query": "what is kubernetes?"},
         )
-        assert response.status_code == requests.codes.internal_server_error
+        assert response.status_code == requests.codes.bad_request
 
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
         json_response = response.json()
