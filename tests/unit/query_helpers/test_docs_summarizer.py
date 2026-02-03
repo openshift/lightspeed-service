@@ -3,20 +3,22 @@
 import asyncio
 import logging
 from typing import ClassVar
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel
 
 from ols import config
 from ols.app.models.config import LoggingConfig, MCPServerConfig
-from ols.app.models.models import ChunkType
+from ols.app.models.models import StreamChunkType, StreamedChunk
 
 # needs to be setup before importing docs_summarizer
 config.ols_config.authentication_config.module = "k8s"
+
+from ols.app.models.models import CacheEntry  # noqa: E402
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
@@ -116,39 +118,63 @@ def test_summarize_history_provided():
     with (
         patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
         patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3),
+        patch("ols.config.conversation_cache.get") as mock_cache_get,
     ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
         question = "What's the ultimate question with answer 42?"
-        history = ["human: What is Kubernetes?"]
         rag_retriever = MockRetriever()
 
+        mock_cache_get.return_value = [
+            CacheEntry(query=HumanMessage("What is Kubernetes?"))
+        ]
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary1 = summarizer.create_response(question, rag_retriever, history)
-            token_handler.assert_called_once_with(history, ANY)
-            check_summary_result(summary1, question)
+            summary1 = summarizer.create_response(
+                question, rag_retriever, "user-id", "conv-id"
+            )
+            # Non-overflow path returns early from prepare_history (no second limit pass).
+            token_handler.assert_not_called()
+            check_summary_result(summary1, "What is Kubernetes?")
 
+        mock_cache_get.return_value = []
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary2 = summarizer.create_response(question, rag_retriever)
-            token_handler.assert_called_once_with([], ANY)
+            summary2 = summarizer.create_response(
+                question, rag_retriever, "user-id", "conv-id2"
+            )
+            token_handler.assert_not_called()
             check_summary_result(summary2, question)
 
 
 def test_summarize_truncation():
-    """Basic truncation check for very long history."""
-    with patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4):
+    """Basic test for DocsSummarizer to check compression avoids truncation."""
+    with (
+        patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4),
+        patch("ols.config.conversation_cache.get") as mock_cache_get,
+    ):
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        question = "What's the ultimate question with answer 42?"
+        rag_retriever = MockRetriever()
+
+        history = [
+            CacheEntry(
+                query=HumanMessage("What is Kubernetes?" * 100),
+                response=AIMessage(
+                    "Kubernetes is a container orchestration system." * 100
+                ),
+            )
+        ] * 100
+        mock_cache_get.return_value = history
+
         summary = summarizer.create_response(
-            "What's the ultimate question with answer 42?",
-            MockRetriever(),
-            [HumanMessage("What is Kubernetes?")] * 10000,
+            question, rag_retriever, "user-id", "conv-id"
         )
-        assert summary.history_truncated
+
+        assert not summary.history_truncated
 
 
 def test_summarize_no_reference_content():
@@ -194,6 +220,46 @@ async def test_response_generator():
         generated_content += item.text
 
     assert generated_content == question
+
+
+@pytest.mark.asyncio
+async def test_response_generator_emits_history_events_before_tokens():
+    """Test history compression events are emitted in order before text chunks."""
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(mock_langchain_interface("test response")())
+    )
+    question = "What's the ultimate question with answer 42?"
+
+    async def mock_prepare_history(**kwargs):
+        yield StreamedChunk(
+            type=StreamChunkType.HISTORY_COMPRESSION_START,
+            data={"status": "started"},
+        )
+        yield StreamedChunk(
+            type=StreamChunkType.HISTORY_COMPRESSION_END,
+            data={"status": "completed", "duration_ms": 1.0},
+        )
+        yield ([], False)
+
+    chunk_types: list[StreamChunkType] = []
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.prepare_history",
+        side_effect=mock_prepare_history,
+    ):
+        chunk_types.extend(
+            [item.type async for item in summarizer.generate_response(question)]
+        )
+
+    assert StreamChunkType.HISTORY_COMPRESSION_START in chunk_types
+    assert StreamChunkType.HISTORY_COMPRESSION_END in chunk_types
+    assert StreamChunkType.TEXT in chunk_types
+    assert chunk_types.index(
+        StreamChunkType.HISTORY_COMPRESSION_START
+    ) < chunk_types.index(StreamChunkType.HISTORY_COMPRESSION_END)
+    assert chunk_types.index(
+        StreamChunkType.HISTORY_COMPRESSION_END
+    ) < chunk_types.index(StreamChunkType.TEXT)
 
 
 async def async_mock_invoke(yield_values):
@@ -572,7 +638,7 @@ async def test_collect_round_llm_chunks_timeout_without_any_chunks():
     assert result.should_stop is True
     assert result.tool_call_chunks == []
     assert len(result.streamed_chunks) == 1
-    assert result.streamed_chunks[0].type == ChunkType.TEXT
+    assert result.streamed_chunks[0].type == StreamChunkType.TEXT
     assert (
         "I could not complete this request in time." in result.streamed_chunks[0].text
     )
@@ -607,7 +673,10 @@ async def test_collect_round_llm_chunks_timeout_after_partial_text():
 
     assert result.should_stop is True
     assert result.tool_call_chunks == []
-    assert [c.type for c in result.streamed_chunks] == [ChunkType.TEXT, ChunkType.TEXT]
+    assert [c.type for c in result.streamed_chunks] == [
+        StreamChunkType.TEXT,
+        StreamChunkType.TEXT,
+    ]
     assert result.streamed_chunks[0].text == "partial"
     assert (
         "I could not complete this request in time." in result.streamed_chunks[1].text
@@ -720,8 +789,8 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
         ]
 
     assert [chunk.type for chunk in streamed] == [
-        ChunkType.TOOL_CALL,
-        ChunkType.TOOL_RESULT,
+        StreamChunkType.TOOL_CALL,
+        StreamChunkType.TOOL_RESULT,
     ]
     assert streamed[1].data["type"] == "tool_result"
     assert "tool is unavailable" in streamed[1].data["content"]
@@ -779,7 +848,7 @@ def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(capl
         round_index=1,
     )
 
-    assert chunk.type == ChunkType.TOOL_RESULT
+    assert chunk.type == StreamChunkType.TOOL_RESULT
     assert chunk.data["server_name"] == "server-a"
     assert chunk.data["tool_meta"] == {"app": "ui"}
     assert '"has_meta": true' in caplog.text
@@ -827,7 +896,7 @@ async def test_iterate_with_tools_handles_tool_execution_error():
         ]
 
     assert len(chunks) == 1
-    assert chunks[0].type == ChunkType.TEXT
+    assert chunks[0].type == StreamChunkType.TEXT
     assert "I could not complete this request." in chunks[0].text
 
 
@@ -863,9 +932,9 @@ def test_streamed_chunks_from_list_content_text_and_reasoning():
         content, chunk_counter=10, is_final_round=False
     )
     assert len(chunks) == 2
-    assert chunks[0].type == ChunkType.TEXT
+    assert chunks[0].type == StreamChunkType.TEXT
     assert chunks[0].text == "hello"
-    assert chunks[1].type == ChunkType.REASONING
+    assert chunks[1].type == StreamChunkType.REASONING
     assert chunks[1].text == "thinking"
 
 
@@ -879,7 +948,7 @@ def test_streamed_chunks_from_list_content_multiple_reasoning_parts():
         content, chunk_counter=0, is_final_round=False
     )
     assert len(chunks) == 2
-    assert all(c.type == ChunkType.REASONING for c in chunks)
+    assert all(c.type == StreamChunkType.REASONING for c in chunks)
     assert chunks[0].text == "step 1"
     assert chunks[1].text == "step 2"
 
@@ -919,9 +988,9 @@ async def test_collect_round_llm_chunks_with_reasoning_list_content():
     assert result.tool_call_chunks == []
     assert len(result.all_chunks) == 2
     assert len(result.streamed_chunks) == 2
-    assert result.streamed_chunks[0].type == ChunkType.REASONING
+    assert result.streamed_chunks[0].type == StreamChunkType.REASONING
     assert result.streamed_chunks[0].text == "thinking hard"
-    assert result.streamed_chunks[1].type == ChunkType.TEXT
+    assert result.streamed_chunks[1].type == StreamChunkType.TEXT
     assert result.streamed_chunks[1].text == "the answer"
 
 
@@ -931,10 +1000,10 @@ def test_create_response_ignores_reasoning_chunks():
     from ols.app.models.models import StreamedChunk
 
     async def _fake_generate(self, *args, **kwargs):
-        yield StreamedChunk(type=ChunkType.REASONING, text="thinking")
-        yield StreamedChunk(type=ChunkType.TEXT, text="answer")
+        yield StreamedChunk(type=StreamChunkType.REASONING, text="thinking")
+        yield StreamedChunk(type=StreamChunkType.TEXT, text="answer")
         yield StreamedChunk(
-            type=ChunkType.END,
+            type=StreamChunkType.END,
             data={"rag_chunks": [], "truncated": False, "token_counter": None},
         )
 

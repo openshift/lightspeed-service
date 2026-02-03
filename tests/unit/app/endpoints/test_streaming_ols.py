@@ -5,14 +5,17 @@ import json
 import pytest
 
 from ols import config, constants
-from ols.app.models.models import ChunkType
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints.streaming_ols import (  # noqa:E402
-    TOKEN_KEY_REASONING,
-    TOKEN_KEY_TOKEN,
+    LLM_HISTORY_COMPRESSION_END_EVENT,
+    LLM_HISTORY_COMPRESSION_START_EVENT,
+    LLM_REASONING_EVENT,
+    LLM_TOKEN_EVENT,
+    LLM_TOOL_CALL_EVENT,
+    LLM_TOOL_RESULT_EVENT,
     build_referenced_docs,
     format_stream_data,
     generic_llm_error,
@@ -41,11 +44,12 @@ def _load_config():
 
 def test_event_type_are_not_changed():
     """Test that event types are not changed."""
-    assert TOKEN_KEY_TOKEN == "token"  # noqa: S105
-    assert TOKEN_KEY_REASONING == "reasoning"  # noqa: S105
-    assert ChunkType.TOOL_CALL.value == "tool_call"
-    assert ChunkType.TOOL_RESULT.value == "tool_result"
-    assert ChunkType.REASONING.value == "reasoning"
+    assert LLM_TOKEN_EVENT == "token"  # noqa: S105
+    assert LLM_REASONING_EVENT == "reasoning"
+    assert LLM_TOOL_CALL_EVENT == "tool_call"
+    assert LLM_TOOL_RESULT_EVENT == "tool_result"
+    assert LLM_HISTORY_COMPRESSION_START_EVENT == "history_compression_start"
+    assert LLM_HISTORY_COMPRESSION_END_EVENT == "history_compression_end"
 
 
 def test_format_stream_data():
@@ -61,28 +65,48 @@ def test_stream_event():
     data = {"token": "hi", "idx": 1}
 
     # text output
-    assert stream_event(data, TOKEN_KEY_TOKEN, constants.MEDIA_TYPE_TEXT) == "hi"
+    assert stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_TEXT) == "hi"
     assert (
-        stream_event(data, ChunkType.TOOL_CALL.value, constants.MEDIA_TYPE_TEXT)
+        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nTool call: {"token": "hi", "idx": 1}\n'
     )
     assert (
-        stream_event(data, ChunkType.TOOL_RESULT.value, constants.MEDIA_TYPE_TEXT)
+        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nTool result: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(
+            data, LLM_HISTORY_COMPRESSION_START_EVENT, constants.MEDIA_TYPE_TEXT
+        )
+        == '\nHistory compression start: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(data, LLM_HISTORY_COMPRESSION_END_EVENT, constants.MEDIA_TYPE_TEXT)
+        == '\nHistory compression end: {"token": "hi", "idx": 1}\n'
     )
 
     # json output
     assert (
-        stream_event(data, TOKEN_KEY_TOKEN, constants.MEDIA_TYPE_JSON)
+        stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "token", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
-        stream_event(data, ChunkType.TOOL_CALL.value, constants.MEDIA_TYPE_JSON)
+        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_call", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
-        stream_event(data, ChunkType.TOOL_RESULT.value, constants.MEDIA_TYPE_JSON)
+        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_result", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(
+            data, LLM_HISTORY_COMPRESSION_START_EVENT, constants.MEDIA_TYPE_JSON
+        )
+        == 'data: {"event": "history_compression_start", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(data, LLM_HISTORY_COMPRESSION_END_EVENT, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "history_compression_end", "data": {"token": "hi", "idx": 1}}\n\n'
     )
 
 
@@ -222,7 +246,7 @@ def test_stream_event_reasoning_text():
     """Test stream_event returns reasoning content for text media type."""
     data = {"reasoning": "thinking step"}
     assert (
-        stream_event(data, TOKEN_KEY_REASONING, constants.MEDIA_TYPE_TEXT)
+        stream_event(data, LLM_REASONING_EVENT, constants.MEDIA_TYPE_TEXT)
         == "thinking step"
     )
 
@@ -231,7 +255,7 @@ def test_stream_event_reasoning_json():
     """Test stream_event wraps reasoning in event envelope for JSON media type."""
     data = {"reasoning": "thinking step"}
     assert stream_event(
-        data, TOKEN_KEY_REASONING, constants.MEDIA_TYPE_JSON
+        data, LLM_REASONING_EVENT, constants.MEDIA_TYPE_JSON
     ) == format_stream_data(
         {
             "event": "reasoning",
