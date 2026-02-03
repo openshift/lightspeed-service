@@ -31,6 +31,7 @@ from tests.e2e.utils.constants import (
 )
 from tests.e2e.utils.data_collector_control import prepare_for_data_collection_test
 from tests.e2e.utils.decorators import retry
+from tests.e2e.utils.ols_installer import update_ols_config
 from tests.e2e.utils.postgres import (
     read_conversation_history,
     read_conversation_history_count,
@@ -335,6 +336,33 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "OpenShift" in deserialized[3].content
 
 
+@pytest.fixture
+def turn_off_operator_pod():
+    """Turn off operator pod fixture.
+
+    Turn off operator pod to modify lightspeed-stack
+    without waiting for lightspeed service pod to restart.
+    """
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "0",
+        ]
+    )
+    yield
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "1",
+        ]
+    )
+
+
+@pytest.mark.usefixtures("turn_off_operator_pod")
 @pytest.mark.data_export
 def test_user_data_collection():
     """Test user data collection and upload to ingress.
@@ -342,6 +370,7 @@ def test_user_data_collection():
     This test runs in isolation with the 'data_export' marker.
     It patches the exporter to use manual mode so it uses the ConfigMap token.
     """
+    update_ols_config()
 
     def filter_logs(logs: str, last_log_line: str) -> str:
         filtered_logs = []
@@ -556,32 +585,6 @@ def update_olsconfig(limiters: list[dict]):
     updated_configmap = yaml.dump(configmap)
     cluster_utils.run_oc(["delete", "configmap", configmap_name])
     cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
-
-
-@pytest.fixture
-def turn_off_operator_pod():
-    """Turn off operator pod fixture.
-
-    Turn off operator pod to modify lightspeed-stack
-    without waiting for lightspeed service pod to restart.
-    """
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "0",
-        ]
-    )
-    yield
-    cluster_utils.run_oc(
-        [
-            "scale",
-            "deployment/lightspeed-operator-controller-manager",
-            "--replicas",
-            "1",
-        ]
-    )
 
 
 @pytest.mark.usefixtures("turn_off_operator_pod")
