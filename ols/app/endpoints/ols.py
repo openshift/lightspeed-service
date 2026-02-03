@@ -125,7 +125,8 @@ def conversation_request(
     summarizer_response = generate_response(
         processed_request.conversation_id,
         llm_request,
-        processed_request.previous_input,
+        processed_request.user_id,
+        processed_request.skip_user_id_check,
         streaming=False,
         user_token=processed_request.user_token,
         client_headers=client_headers,
@@ -321,6 +322,14 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
     timestamps["retrieve user"] = time.time()
 
     conversation_id = retrieve_conversation_id(llm_request)
+    if not suid.check_suid(conversation_id):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "response": "Error retrieving conversation history",
+                "cause": f"Invalid conversation ID {conversation_id}",
+            },
+        )
     timestamps["retrieve conversation"] = time.time()
 
     skip_user_id_check = retrieve_skip_user_id_check(auth)
@@ -348,11 +357,6 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
         )
     )
 
-    previous_input = retrieve_previous_input(
-        user_id, llm_request.conversation_id, skip_user_id_check
-    )
-    timestamps["retrieve previous input"] = time.time()
-
     # Retrieve attachments from the request
     attachments = retrieve_attachments(llm_request)
 
@@ -368,12 +372,10 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
     validate_requested_provider_model(llm_request)
 
     check_tokens_available(config.quota_limiters, user_id)
-
     return ProcessedRequest(
         user_id=user_id,
         conversation_id=conversation_id,
         query_without_attachments=query_without_attachments,
-        previous_input=previous_input,
         attachments=attachments,
         timestamps=timestamps,
         skip_user_id_check=skip_user_id_check,
@@ -424,12 +426,7 @@ def log_processing_durations(timestamps: dict[str, float]) -> None:
     retrieve_user_duration = duration("start", "retrieve user")
     retrieve_conversation_duration = duration("retrieve user", "retrieve conversation")
     redact_query_duration = duration("retrieve conversation", "redact query")
-    retrieve_previous_input_duration = duration(
-        "redact query", "retrieve previous input"
-    )
-    append_attachmens_duration = duration(
-        "retrieve previous input", "append attachments"
-    )
+    append_attachmens_duration = duration("redact query", "append attachments")
     generate_response_duration = duration("append attachments", "generate response")
     store_transcripts_duration = duration("generate response", "store transcripts")
     add_references_duration = duration("store transcripts", "add references")
@@ -437,9 +434,10 @@ def log_processing_durations(timestamps: dict[str, float]) -> None:
 
     # these messages can be grepped from logs and easily transformed into CSV file
     # for further processing and analysis
+    # Note: History retrieval is now part of generate_response duration
     msg = (
         f"Processing durations: {retrieve_user_duration},{retrieve_conversation_duration},"
-        f"{redact_query_duration},{retrieve_previous_input_duration},{append_attachmens_duration},"
+        f"{redact_query_duration},{append_attachmens_duration},"
         f"{generate_response_duration},{store_transcripts_duration},"
         f"{add_references_duration},{total_duration}"
     )
@@ -475,35 +473,6 @@ def retrieve_conversation_id(llm_request: LLMRequest) -> str:
     return conversation_id
 
 
-def retrieve_previous_input(
-    user_id: str, conversation_id: str, skip_user_id_check: bool = False
-) -> list[CacheEntry]:
-    """Retrieve previous user input, if exists."""
-    try:
-        previous_input = []
-        if conversation_id:
-            cache_content = config.conversation_cache.get(
-                user_id, conversation_id, skip_user_id_check
-            )
-            if cache_content is not None:
-                previous_input = cache_content
-            logger.info(
-                "Conversation ID: %s Previous conversation input: %s",
-                conversation_id,
-                previous_input,
-            )
-        return previous_input
-    except Exception as e:
-        logger.error("Error retrieving previous user input for user %s", user_id)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Error retrieving conversation history",
-                "cause": str(e),
-            },
-        )
-
-
 def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
     """Retrieve attachments from the request."""
     attachments = llm_request.attachments
@@ -537,17 +506,19 @@ def retrieve_attachments(llm_request: LLMRequest) -> list[Attachment]:
 def generate_response(
     conversation_id: str,
     llm_request: LLMRequest,
-    previous_input: list[CacheEntry],
+    user_id: str,
+    skip_user_id_check: bool = False,
     streaming: bool = False,
     user_token: Optional[str] = None,
     client_headers: dict[str, dict[str, str]] | None = None,
 ) -> Union[SummarizerResponse, Generator]:
-    """Generate response based on validation result, previous input, and model output.
+    """Generate response based on validation result and model output.
 
     Args:
         conversation_id: The unique identifier for the conversation.
         llm_request: The request containing a query.
-        previous_input: The history of the conversation (if available).
+        user_id: The user ID.
+        skip_user_id_check: Whether to skip user ID validation.
         streaming: The flag indicating if the response should be streamed.
         user_token: The user token used for authorization.
         client_headers: Client-provided MCP headers for authentication.
@@ -563,15 +534,20 @@ def generate_response(
             user_token=user_token,
             client_headers=client_headers,
         )
-        history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
             return docs_summarizer.generate_response(
-                llm_request.query, config.rag_index_loader.get_retriever(), history
+                llm_request.query,
+                config.rag_index_loader.get_retriever(),
+                user_id=user_id,
+                conversation_id=conversation_id,
+                skip_user_id_check=skip_user_id_check,
             )
         response = docs_summarizer.create_response(
             llm_request.query,
             config.rag_index_loader.get_retriever(),
-            history,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            skip_user_id_check=skip_user_id_check,
         )
         logger.debug("%s Generated response: %s", conversation_id, response)
         return response
