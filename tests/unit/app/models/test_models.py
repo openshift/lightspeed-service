@@ -366,6 +366,8 @@ class TestCacheEntry:
         cache_entry = CacheEntry(query=HumanMessage("query"))
         assert cache_entry.query == HumanMessage("query")
         assert cache_entry.response == AIMessage("")
+        assert cache_entry.tool_calls == []
+        assert cache_entry.tool_results == []
 
         cache_entry = CacheEntry(query=HumanMessage("query"), response=None)
         assert cache_entry.query == HumanMessage("query")
@@ -378,6 +380,22 @@ class TestCacheEntry:
         assert cache_entry.response == AIMessage("response")
 
     @staticmethod
+    def test_with_tool_data():
+        """Test the CacheEntry model with tool_calls and tool_results."""
+        tool_calls = [{"name": "get_info", "args": {"id": "123"}, "id": "tc1"}]
+        tool_results = [{"id": "tc1", "status": "success", "content": "result"}]
+        cache_entry = CacheEntry(
+            query=HumanMessage("query"),
+            response=AIMessage("response"),
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+        )
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("response")
+        assert cache_entry.tool_calls == tool_calls
+        assert cache_entry.tool_results == tool_results
+
+    @staticmethod
     def test_to_dict():
         """Test the to_dict method of the CacheEntry model."""
         cache_entry = CacheEntry(
@@ -387,7 +405,24 @@ class TestCacheEntry:
             "human_query": HumanMessage("query"),
             "ai_response": AIMessage("response"),
             "attachments": [],
+            "tool_calls": [],
+            "tool_results": [],
         }
+
+    @staticmethod
+    def test_to_dict_with_tool_data():
+        """Test the to_dict method includes tool_calls and tool_results."""
+        tool_calls = [{"name": "get_info", "args": {"id": "123"}, "id": "tc1"}]
+        tool_results = [{"id": "tc1", "status": "success", "content": "result"}]
+        cache_entry = CacheEntry(
+            query=HumanMessage("query"),
+            response=AIMessage("response"),
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+        )
+        result = cache_entry.to_dict()
+        assert result["tool_calls"] == tool_calls
+        assert result["tool_results"] == tool_results
 
     @staticmethod
     def test_from_dict():
@@ -397,16 +432,37 @@ class TestCacheEntry:
             content_type="text/plain",
             content="this is attachment",
         )
+        tool_calls = [{"name": "get_info", "args": {"id": "123"}, "id": "tc1"}]
+        tool_results = [{"id": "tc1", "status": "success", "content": "result"}]
         cache_entry = CacheEntry.from_dict(
             {
                 "human_query": HumanMessage("query"),
                 "ai_response": AIMessage("response"),
                 "attachments": [attachment.model_dump()],
+                "tool_calls": tool_calls,
+                "tool_results": tool_results,
             }
         )
         assert cache_entry.query == HumanMessage("query")
         assert cache_entry.response == AIMessage("response")
         assert cache_entry.attachments == [attachment]
+        assert cache_entry.tool_calls == tool_calls
+        assert cache_entry.tool_results == tool_results
+
+    @staticmethod
+    def test_from_dict_backward_compatibility():
+        """Test from_dict handles old format without tool fields."""
+        cache_entry = CacheEntry.from_dict(
+            {
+                "human_query": HumanMessage("query"),
+                "ai_response": AIMessage("response"),
+                "attachments": [],
+            }
+        )
+        assert cache_entry.query == HumanMessage("query")
+        assert cache_entry.response == AIMessage("response")
+        assert cache_entry.tool_calls == []
+        assert cache_entry.tool_results == []
 
     @staticmethod
     def test_cache_entries_to_history():
@@ -520,9 +576,26 @@ def test_message_encoder_cache_entry():
         '{"__type__": "CacheEntry", '
         + '"query": {"type": "human", "content": "Hello", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
         + '"response": {"type": "ai", "content": "", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
-        + '"attachments": []}'
+        + '"attachments": [], "tool_calls": [], "tool_results": []}'
     )
     assert encoded == expected
+
+
+def test_message_encoder_cache_entry_with_tool_data():
+    """Test encoding cache entry with tool_calls and tool_results."""
+    tool_calls = [{"name": "get_info", "args": {"id": "123"}, "id": "tc1"}]
+    tool_results = [{"id": "tc1", "status": "success", "content": "result"}]
+    msg = CacheEntry(
+        query=HumanMessage("Hello"),
+        tool_calls=tool_calls,
+        tool_results=tool_results,
+    )
+    encoded = json.dumps(msg, cls=MessageEncoder)
+
+    assert encoded is not None
+    decoded = json.loads(encoded)
+    assert decoded["tool_calls"] == tool_calls
+    assert decoded["tool_results"] == tool_results
 
 
 def test_message_encoder_other_message():
@@ -602,11 +675,60 @@ def test_message_decoder_cache_entry():
         + '"query": {"type": "human", "content": "Hello", "response_metadata": {}, '
         + '"additional_kwargs": {}}, '
         + '"response": {"type": "ai", "content": "", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
+        + '"attachments": [], "tool_calls": [], "tool_results": []}',
+        cls=MessageDecoder,
+    )
+    assert msg is not None
+    assert type(msg) is CacheEntry
+    assert msg.tool_calls == []
+    assert msg.tool_results == []
+
+
+def test_message_decoder_cache_entry_with_tool_data():
+    """Test decoding cache entry with tool_calls and tool_results."""
+    tool_calls = [{"name": "get_info", "args": {"id": "123"}, "id": "tc1"}]
+    tool_results = [{"id": "tc1", "status": "success", "content": "result"}]
+    json_str = json.dumps(
+        {
+            "__type__": "CacheEntry",
+            "query": {
+                "type": "human",
+                "content": "Hello",
+                "response_metadata": {},
+                "additional_kwargs": {},
+            },
+            "response": {
+                "type": "ai",
+                "content": "",
+                "response_metadata": {},
+                "additional_kwargs": {},
+            },
+            "attachments": [],
+            "tool_calls": tool_calls,
+            "tool_results": tool_results,
+        }
+    )
+    msg = json.loads(json_str, cls=MessageDecoder)
+    assert msg is not None
+    assert type(msg) is CacheEntry
+    assert msg.tool_calls == tool_calls
+    assert msg.tool_results == tool_results
+
+
+def test_message_decoder_cache_entry_backward_compatibility():
+    """Test decoding old cache entry format without tool fields."""
+    msg = json.loads(
+        '{"__type__": "CacheEntry", '
+        + '"query": {"type": "human", "content": "Hello", "response_metadata": {}, '
+        + '"additional_kwargs": {}}, '
+        + '"response": {"type": "ai", "content": "", "response_metadata": {}, "additional_kwargs": {}}, '  # noqa: E501
         + '"attachments": []}',
         cls=MessageDecoder,
     )
     assert msg is not None
     assert type(msg) is CacheEntry
+    assert msg.tool_calls == []
+    assert msg.tool_results == []
 
 
 def test_message_decoder_other_message():
