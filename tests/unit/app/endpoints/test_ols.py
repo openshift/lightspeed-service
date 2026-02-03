@@ -64,60 +64,6 @@ def test_retrieve_conversation_id_existing_id():
 
 
 @pytest.mark.usefixtures("_load_config")
-def test_retrieve_previous_input_no_previous_history():
-    """Check how function to retrieve previous input handle empty history."""
-    llm_request = LLMRequest(query="Tell me about Kubernetes", conversation_id="")
-    assert llm_request.conversation_id is not None
-    llm_input = ols.retrieve_previous_input(
-        constants.DEFAULT_USER_UID, llm_request.conversation_id
-    )
-    assert llm_input == []
-
-
-@pytest.mark.usefixtures("_load_config")
-def test_retrieve_previous_input_empty_user_id():
-    """Check how function to retrieve previous input handle empty user ID."""
-    conversation_id = suid.get_suid()
-    llm_request = LLMRequest(
-        query="Tell me about Kubernetes", conversation_id=conversation_id
-    )
-    assert llm_request.conversation_id is not None
-    # cache must check if user ID is correct
-    with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.retrieve_previous_input("", llm_request.conversation_id)
-    with pytest.raises(HTTPException, match="Invalid user ID"):
-        ols.retrieve_previous_input(None, llm_request.conversation_id)
-
-
-@pytest.mark.usefixtures("_load_config")
-def test_retrieve_previous_input_improper_user_id():
-    """Check how function to retrieve previous input handle improper user ID."""
-    conversation_id = suid.get_suid()
-    llm_request = LLMRequest(
-        query="Tell me about Kubernetes", conversation_id=conversation_id
-    )
-    assert llm_request.conversation_id is not None
-    # cache must check if user ID is correct
-    with pytest.raises(HTTPException, match="Invalid user ID improper_user_id"):
-        ols.retrieve_previous_input("improper_user_id", llm_request.conversation_id)
-
-
-@pytest.mark.usefixtures("_load_config")
-def test_retrieve_previous_input_for_previous_history():
-    """Check how function to retrieve previous input handle existing history."""
-    conversation_id = suid.get_suid()
-    with patch("ols.config.conversation_cache.get") as get:
-        get.return_value = "input"
-        llm_request = LLMRequest(
-            query="Tell me about Kubernetes", conversation_id=conversation_id
-        )
-        assert llm_request.conversation_id is not None
-        previous_input = ols.retrieve_previous_input(
-            constants.DEFAULT_USER_UID, llm_request.conversation_id
-        )
-        assert previous_input == "input"
-
-
 @pytest.mark.usefixtures("_load_config")
 def test_retrieve_attachments_on_no_input():
     """Check the function to retrieve attachments from payload when attachments are not send."""
@@ -751,7 +697,7 @@ def test_conversation_request(auth):
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
         ) as mock_summarize,
-        patch("ols.config.conversation_cache.get"),
+        patch("ols.config.conversation_cache.get", return_value=[]),
     ):
         # valid question
         mock_validate_question.return_value = True
@@ -802,7 +748,7 @@ def test_conversation_request_dedup_ref_docs(auth):
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
         ) as mock_summarize,
-        patch("ols.config.conversation_cache.get"),
+        patch("ols.config.conversation_cache.get", return_value=[]),
     ):
         mock_rag_chunk = [
             RagChunk(text="text1", doc_url="url-b", doc_title="title-b"),
@@ -839,7 +785,7 @@ def test_conversation_request_on_wrong_configuration(auth):
         patch(
             "ols.src.query_helpers.question_validator.QuestionValidator.validate_question"
         ) as mock_validate_question,
-        patch("ols.config.conversation_cache.get"),
+        patch("ols.config.conversation_cache.get", return_value=[]),
     ):
         # mock invalid configuration
         message = "wrong model is configured"
@@ -857,9 +803,7 @@ def test_conversation_request_on_wrong_configuration(auth):
 def test_question_validation_in_conversation_start(auth):
     """Test if question validation is skipped in follow-up conversation."""
     with (
-        patch(
-            "ols.app.endpoints.ols.retrieve_previous_input", new=Mock(return_value=[])
-        ),
+        patch("ols.config.conversation_cache.get", new=Mock(return_value=[])),
         patch(
             "ols.app.endpoints.ols.validate_question",
             new=Mock(return_value=False),
@@ -881,7 +825,7 @@ def test_no_question_validation_in_follow_up_conversation(auth):
     """Test if question validation is skipped in follow-up conversation."""
     with (
         patch(
-            "ols.app.endpoints.ols.retrieve_previous_input",
+            "ols.config.conversation_cache.get",
             new=Mock(return_value=[CacheEntry(query=HumanMessage("some question"))]),
         ),
         patch(
