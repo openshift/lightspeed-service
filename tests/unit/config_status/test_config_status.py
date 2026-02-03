@@ -18,7 +18,6 @@ from ols.app.models.config import (
     QueryFilter,
     ReferenceContent,
     ReferenceContentIndex,
-    StdioTransportConfig,
     TLSSecurityProfile,
     UserDataCollection,
 )
@@ -130,14 +129,13 @@ class TestExtractConfigStatus:
         config = create_minimal_config()
         mcp_server = MCPServerConfig(
             name="test_server",
-            transport="stdio",
-            stdio=StdioTransportConfig(command="python", args=["test.py"]),
+            url="http://localhost:8080",
         )
         config.mcp_servers.servers = [mcp_server]
 
         status = extract_config_status(config)
 
-        assert status.mcp_servers == {"test_server": "stdio"}
+        assert status.mcp_servers == {"test_server": "http"}
 
     def test_extract_config_status_with_provider_tls_config(self):
         """Test extracting config status with provider TLS security profile."""
@@ -194,7 +192,7 @@ class TestStoreConfigStatus:
             query_redactor_enabled=True,
             query_filter_count=1,
             providers_with_tls_config=["my_openai"],
-            mcp_servers={"openshift": "stdio"},
+            mcp_servers={"openshift": "http"},
             quota_management_enabled=False,
             token_history_enabled=False,
             proxy_enabled=False,
@@ -212,14 +210,14 @@ class TestStoreConfigStatus:
         config_status_file = Path(storage_path) / "test-uuid.json"
         assert config_status_file.exists()
 
-        with open(config_status_file) as f:
+        with open(config_status_file, encoding="utf-8") as f:
             stored_data = json.load(f)
 
         assert stored_data["timestamp"] == "2024-01-01T00:00:00+00:00"
         assert stored_data["providers"] == {"openai": ["my_openai"]}
         assert stored_data["models"] == {"my_openai": ["gpt-4"]}
         assert stored_data["rag_indexes"] == ["ocp-docs-4_17", "user-docs-v1"]
-        assert stored_data["mcp_servers"] == {"openshift": "stdio"}
+        assert stored_data["mcp_servers"] == {"openshift": "http"}
 
     def test_store_config_status_creates_directory(self, tmpdir):
         """Test that store_config_status creates the storage directory if needed."""
