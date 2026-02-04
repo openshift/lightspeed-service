@@ -4,10 +4,12 @@
 import asyncio
 import json
 import logging
+import time
+from functools import wraps
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -30,6 +32,75 @@ from ols.src.tools.tools import execute_tool_calls
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
+
+
+def retry_on_error(max_attempts: int = 3, initial_delay: float = 1.0) -> Callable:
+    """Retry decorator with exponential backoff for transient errors.
+
+    Args:
+        max_attempts: Maximum number of retry attempts (default: 3)
+        initial_delay: Initial delay in seconds before first retry (default: 1.0)
+
+    Returns:
+        Decorated function that retries on transient errors
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            delay = initial_delay
+            last_exception = None
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e).lower()
+
+                    # Check if error is transient (worth retrying)
+                    is_transient = any(
+                        keyword in error_msg
+                        for keyword in [
+                            "timeout",
+                            "timed out",
+                            "connection",
+                            "rate limit",
+                            "too many requests",
+                            "503",
+                            "502",
+                            "429",
+                        ]
+                    )
+
+                    if not is_transient or attempt == max_attempts:
+                        # Non-transient error or final attempt - give up
+                        logger.error(
+                            "Failed after %d attempt(s): %s",
+                            attempt,
+                            e,
+                        )
+                        raise
+
+                    # Transient error - retry with backoff
+                    logger.warning(
+                        "Transient error on attempt %d/%d: %s. Retrying in %.1fs...",
+                        attempt,
+                        max_attempts,
+                        e,
+                        delay,
+                    )
+                    time.sleep(delay)
+                    delay *= 2  # Exponential backoff
+
+            # Should never reach here, but just in case
+            if last_exception:
+                raise last_exception
+            return None
+
+        return wrapper
+
+    return decorator
 
 
 def skip_special_chunk(
@@ -199,6 +270,158 @@ class DocsSummarizer(QueryHelper):
                     )
         return previous_input, was_limited
 
+    def _summarize_entries(self, entries: list[CacheEntry]) -> str | None:
+        """Summarize a list of conversation cache entries.
+
+        Args:
+            entries: List of CacheEntry objects to summarize.
+
+        Returns:
+            A summary string of the conversation history, or None if
+            summarization failed or there are no entries.
+        """
+        if not entries:
+            return None
+
+        conversation_text = []
+        for entry in entries:
+            conversation_text.append(f"User: {entry.query.content}")
+            conversation_text.append(f"Assistant: {entry.response.content}")
+
+        full_conversation = "\n".join(conversation_text)
+
+        summarization_prompt = f"""Create a comprehensive but concise summary.
+
+Include:
+- Main topics and questions asked
+- Solutions, commands, or configurations provided
+- Decisions made or troubleshooting steps taken
+- Important technical details (error messages, resource names, configurations)
+- Any tasks or follow-up actions mentioned
+
+Exclude:
+- Greetings and pleasantries
+- Repetitive information
+
+Write in a clear style suitable for continuing the conversation later.
+
+Conversation history:
+{full_conversation}
+
+Summary:"""
+
+        @retry_on_error(max_attempts=3, initial_delay=1.0)
+        def invoke_llm_with_retry() -> Any:
+            """Invoke LLM with retry logic."""
+            messages = [{"role": "user", "content": summarization_prompt}]
+            return self.bare_llm.invoke(messages)
+
+        try:
+            response = invoke_llm_with_retry()
+
+            if hasattr(response, "content"):
+                summary = response.content
+            else:
+                summary = str(response)
+
+            logger.info(
+                "Summarized %d conversation entries into %d characters",
+                len(entries),
+                len(summary),
+            )
+            return summary
+
+        except Exception as e:
+            logger.error("Failed to summarize conversation entries: %s", e)
+            return None
+
+    def _compress_conversation_history(
+        self,
+        user_id: str,
+        conversation_id: str,
+        skip_user_id_check: bool,
+        entries_to_keep: int = 5,
+    ) -> list[CacheEntry]:
+        """Compress conversation history by summarizing old entries.
+
+        Reads the full conversation history, keeps the most recent entries as-is,
+        and summarizes all older entries into a single summary entry.
+        Updates the cache in-place.
+
+        Args:
+            user_id: User ID for the conversation.
+            conversation_id: Conversation ID.
+            skip_user_id_check: Whether to skip user ID validation.
+            entries_to_keep: Number of recent entries to keep unsummarized (default: 5).
+
+        Returns:
+            List of compressed cache entries (summary + recent entries),
+            or just recent entries if summarization fails,
+            or all entries if total ≤ entries_to_keep.
+        """
+        # Read full conversation history
+        full_cache_entries, _ = self._retrieve_previous_input(
+            user_id, conversation_id, skip_user_id_check, available_tokens=None
+        )
+
+        # No compression needed if we have entries_to_keep or fewer entries
+        if len(full_cache_entries) <= entries_to_keep:
+            logger.debug(
+                "Conversation has %d entries, no summarization needed (threshold: %d)",
+                len(full_cache_entries),
+                entries_to_keep,
+            )
+            return full_cache_entries
+
+        logger.info(
+            "Compressing conversation with %d entries (keeping last %d unsummarized)",
+            len(full_cache_entries),
+            entries_to_keep,
+        )
+
+        # Split: summarize all but last N
+        entries_to_summarize = full_cache_entries[:-entries_to_keep]
+        keep_entries = full_cache_entries[-entries_to_keep:]
+
+        # Generate summary
+        summary_text = self._summarize_entries(entries_to_summarize)
+
+        if not summary_text:
+            logger.warning(
+                "Summarization failed, keeping only %d recent entries",
+                len(keep_entries),
+            )
+            return keep_entries
+
+        summary_entry = CacheEntry(
+            query=HumanMessage(content="[Previous conversation summary]"),
+            response=AIMessage(content=summary_text),
+        )
+
+        # Replace cache: delete old conversation, insert compressed version
+        try:
+            config.conversation_cache.delete(
+                user_id, conversation_id, skip_user_id_check
+            )
+            config.conversation_cache.insert_or_append(
+                user_id, conversation_id, summary_entry, skip_user_id_check
+            )
+            for entry in keep_entries:
+                config.conversation_cache.insert_or_append(
+                    user_id, conversation_id, entry, skip_user_id_check
+                )
+
+            logger.info(
+                "Successfully compressed conversation: %d entries → 1 summary + %d recent",
+                len(full_cache_entries),
+                len(keep_entries),
+            )
+            return [summary_entry, *keep_entries]
+
+        except Exception as e:
+            logger.error("Failed to update cache with compressed history: %s", e)
+            return keep_entries
+
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
         self.provider_config = config.llm_config.providers.get(self.provider)
@@ -366,17 +589,26 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
 
-        # Retrieve history from cache (now that we know available tokens)
+        # Retrieve history from cache
         if user_id and conversation_id:
-            cache_entries, _ = self._retrieve_previous_input(
+            cache_entries, was_limited = self._retrieve_previous_input(
                 user_id, conversation_id, skip_user_id_check, available_tokens
             )
-            # Convert cache entries to history (list of BaseMessage)
+
+            # If cache read was limited, compress the conversation for future requests
+            if was_limited:
+                logger.info("Cache read was limited, compressing conversation")
+                compressed_entries = self._compress_conversation_history(
+                    user_id, conversation_id, skip_user_id_check
+                )
+                # Use compressed history for this request
+                cache_entries = compressed_entries
+
             history = CacheEntry.cache_entries_to_history(cache_entries)
         else:
             history = []
 
-        # Truncate history
+        # Apply token-based truncation to history
         history, truncated = token_handler.limit_conversation_history(
             history or [], available_tokens
         )
