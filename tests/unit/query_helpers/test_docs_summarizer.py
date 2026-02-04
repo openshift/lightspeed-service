@@ -11,6 +11,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
+from ols.app.models.config import MCPServerConfig, MCPServers
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import mock_tools_map
@@ -359,7 +360,7 @@ def test_tool_token_tracking(caplog):
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
-            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
             return_value=mcp_servers_config,
         ),
     ):
@@ -536,3 +537,30 @@ async def test_gather_mcp_tools_empty_config():
         assert tools == []
         # get_tools should never be called
         mock_client_instance.get_tools.assert_not_called()
+
+
+def test_build_mcp_config_transport_is_streamable_http():
+    """Test _build_mcp_config sets transport to streamable_http for all servers."""
+    server1 = MCPServerConfig(name="server1", url="http://server1:8080/mcp")
+    server1._resolved_headers = {}
+
+    server2 = MCPServerConfig(name="server2", url="http://server2:9090/mcp", timeout=30)
+    server2._resolved_headers = {}
+
+    mock_mcp_servers = MCPServers(servers=[server1, server2])
+
+    with patch("ols.src.query_helpers.docs_summarizer.config") as mock_config:
+        mock_config.mcp_servers = mock_mcp_servers
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        mcp_config = summarizer._build_mcp_config()
+
+        assert "server1" in mcp_config
+        assert "server2" in mcp_config
+
+        assert mcp_config["server1"]["transport"] == "streamable_http"
+        assert mcp_config["server1"]["url"] == "http://server1:8080/mcp"
+
+        assert mcp_config["server2"]["transport"] == "streamable_http"
+        assert mcp_config["server2"]["url"] == "http://server2:9090/mcp"
+        assert mcp_config["server2"]["timeout"] == 30
