@@ -198,6 +198,8 @@ def conversation_request(
         processed_request.attachments,
         processed_request.timestamps,
         processed_request.skip_user_id_check,
+        tool_calls=summarizer_response.tool_calls,
+        tool_results=summarizer_response.tool_results,
     )
 
     if config.ols_config.user_data_collection.transcripts_disabled:
@@ -645,6 +647,8 @@ def store_conversation_history(
     attachments: list[Attachment],
     timestamps: dict[str, float],
     skip_user_id_check: bool = False,
+    tool_calls: Optional[list[dict]] = None,
+    tool_results: Optional[list[dict]] = None,
 ) -> None:
     """Store conversation history into selected cache.
 
@@ -674,6 +678,8 @@ def store_conversation_history(
                 query=query_message,
                 response=response_message,
                 attachments=attachments,
+                tool_calls=tool_calls or [],
+                tool_results=tool_results or [],
             )
             config.conversation_cache.insert_or_append(
                 user_id,

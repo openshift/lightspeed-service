@@ -323,6 +323,8 @@ def store_data(
         attachments,
         timestamps,
         skip_user_id_check,
+        tool_calls=tool_calls,
+        tool_results=tool_results,
     )
 
     if not config.ols_config.user_data_collection.transcripts_disabled:

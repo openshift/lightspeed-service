@@ -305,6 +305,71 @@ def test_store_conversation_history_improper_conversation_id():
 
 
 @pytest.mark.usefixtures("_load_config")
+def test_store_conversation_history_with_tool_data():
+    """Test if tool_calls and tool_results are stored in cache entry."""
+    conversation_id = suid.get_suid()
+    skip_user_id_check = False
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query)
+    response = "Here is information about Kubernetes"
+    tool_calls = [{"name": "get_info", "args": {"topic": "k8s"}, "id": "tc1"}]
+    tool_results = [{"id": "tc1", "status": "success", "content": "K8s info"}]
+
+    with patch("ols.config.conversation_cache.insert_or_append") as insert_or_append:
+        ols.store_conversation_history(
+            constants.DEFAULT_USER_UID,
+            conversation_id,
+            llm_request,
+            response,
+            [],
+            {},
+            skip_user_id_check,
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+        )
+
+        expected_history = CacheEntry(
+            query=HumanMessage(query),
+            response=AIMessage(response),
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+        )
+        insert_or_append.assert_called_with(
+            constants.DEFAULT_USER_UID,
+            conversation_id,
+            expected_history,
+            skip_user_id_check,
+        )
+
+
+@pytest.mark.usefixtures("_load_config")
+def test_store_conversation_history_without_tool_data():
+    """Test that tool_calls and tool_results default to empty lists."""
+    conversation_id = suid.get_suid()
+    skip_user_id_check = False
+    query = "Tell me about Kubernetes"
+    llm_request = LLMRequest(query=query)
+    response = "Here is information"
+
+    with patch("ols.config.conversation_cache.insert_or_append") as insert_or_append:
+        ols.store_conversation_history(
+            constants.DEFAULT_USER_UID,
+            conversation_id,
+            llm_request,
+            response,
+            [],
+            {},
+            skip_user_id_check,
+        )
+
+        # Verify the cache entry has empty tool_calls and tool_results
+        call_args = insert_or_append.call_args
+        cache_entry = call_args[0][2]  # Third positional argument is the cache entry
+        assert cache_entry.tool_calls == []
+        assert cache_entry.tool_results == []
+
+
+@pytest.mark.usefixtures("_load_config")
 def test_validate_question_valid_kw():
     """Check the behaviour of validate_question function using valid keyword."""
     conversation_id = suid.get_suid()
