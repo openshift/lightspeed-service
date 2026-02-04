@@ -938,7 +938,7 @@
                     "chat_history"
                 ],
                 "title": "ConversationDetailResponse",
-                "description": "Response for GET /v1/conversations/{id} endpoint.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: List of message exchanges in the conversation.",
+                "description": "Response for GET /v1/conversations/{id} endpoint.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: List of message exchanges in the conversation. Each exchange\n        includes messages, tool_calls, and tool_results.",
                 "examples": [
                     {
                         "chat_history": [
@@ -951,6 +951,25 @@
                                     {
                                         "content": "Use kubectl logs <pod> ...",
                                         "type": "assistant"
+                                    }
+                                ],
+                                "tool_calls": [
+                                    {
+                                        "args": {
+                                            "pod": "nginx"
+                                        },
+                                        "id": "tc1",
+                                        "name": "get_pod_info",
+                                        "type": "tool_call"
+                                    }
+                                ],
+                                "tool_results": [
+                                    {
+                                        "content": "Pod nginx is running",
+                                        "id": "tc1",
+                                        "round": 1,
+                                        "status": "success",
+                                        "type": "tool_result"
                                     }
                                 ]
                             }
