@@ -274,10 +274,14 @@ class DocsSummarizer(QueryHelper):
             self._system_prompt,
             self._tool_calling_enabled,
         ).generate_prompt(self.model)
+        max_tokens_for_tools = (
+            self.model_config.parameters.max_tokens_for_tools if self.mcp_servers else 0
+        )
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
             self.model_config.context_window_size,
             self.model_config.parameters.max_tokens_for_response,
+            max_tokens_for_tools,
         )
 
         # Retrieve RAG content
@@ -329,6 +333,7 @@ class DocsSummarizer(QueryHelper):
             final_prompt.format(**llm_input_values),
             self.model_config.context_window_size,
             self.model_config.parameters.max_tokens_for_response,
+            max_tokens_for_tools,
         )
 
         return final_prompt, llm_input_values, rag_chunks, truncated
@@ -391,6 +396,30 @@ class DocsSummarizer(QueryHelper):
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
             all_mcp_tools = await gather_mcp_tools(self.mcp_servers)
 
+            # Track cumulative token usage for tool outputs
+            tool_tokens_used = 0
+            max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
+            max_tokens_per_tool = (
+                self.model_config.parameters.max_tokens_per_tool_output
+            )
+            token_handler = TokenHandler()
+
+            # Account for tool definitions tokens (schemas sent to LLM)
+            if all_mcp_tools:
+                tool_definitions_text = json.dumps(
+                    [
+                        {"name": t.name, "description": t.description, "schema": t.args}
+                        for t in all_mcp_tools
+                    ]
+                )
+                tool_definitions_tokens = TokenHandler._get_token_count(
+                    token_handler.text_to_tokens(tool_definitions_text)
+                )
+                tool_tokens_used += tool_definitions_tokens
+                logger.debug(
+                    "Tool definitions consume %d tokens", tool_definitions_tokens
+                )
+
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
 
@@ -443,9 +472,17 @@ class DocsSummarizer(QueryHelper):
                 if tool_call_chunks:
                     # assess tool calls and add to messages
                     tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                    messages.append(
-                        AIMessage(content="", type="ai", tool_calls=tool_calls)
+                    ai_tool_call_message = AIMessage(
+                        content="", type="ai", tool_calls=tool_calls
                     )
+                    messages.append(ai_tool_call_message)
+
+                    # Count tokens used by the AIMessage with tool calls
+                    ai_message_tokens = TokenHandler._get_token_count(
+                        token_handler.text_to_tokens(json.dumps(tool_calls))
+                    )
+                    tool_tokens_used += ai_message_tokens
+
                     for tool_call in tool_calls:
                         # Log tool call in JSON format
                         logger.info(
@@ -463,12 +500,47 @@ class DocsSummarizer(QueryHelper):
 
                         yield StreamedChunk(type="tool_call", data=tool_call)
 
+                    # Calculate remaining budget for tools
+                    remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
+                    # Use the smaller of per-tool limit or remaining budget
+                    effective_per_tool_limit = min(
+                        max_tokens_per_tool, remaining_tool_budget
+                    )
+
+                    logger.debug(
+                        "Tool budget: used=%d, remaining=%d, per_tool_limit=%d",
+                        tool_tokens_used,
+                        remaining_tool_budget,
+                        effective_per_tool_limit,
+                    )
+
                     # execute tools and add to messages
                     tool_calls_messages = await execute_tool_calls(
-                        tool_calls, all_mcp_tools
+                        tool_calls,
+                        all_mcp_tools,
+                        max(
+                            effective_per_tool_limit, 100
+                        ),  # Minimum 100 tokens per tool
                     )
                     messages.extend(tool_calls_messages)
+
+                    # Track tokens used by tool outputs
                     for tool_call_message in tool_calls_messages:
+                        content_tokens = token_handler.text_to_tokens(
+                            str(tool_call_message.content)
+                        )
+                        tool_tokens_used += len(content_tokens)
+
+                    for tool_call_message in tool_calls_messages:
+                        was_truncated = tool_call_message.additional_kwargs.get(
+                            "truncated", False
+                        )
+                        # Determine UI status: use "truncated" if output was truncated,
+                        # otherwise use the langchain status (success/error)
+                        tool_status = (
+                            "truncated" if was_truncated else tool_call_message.status
+                        )
+
                         # Log tool result in JSON format
                         logger.info(
                             json.dumps(
@@ -476,6 +548,7 @@ class DocsSummarizer(QueryHelper):
                                     "event": "tool_result",
                                     "tool_id": tool_call_message.tool_call_id,
                                     "status": tool_call_message.status,
+                                    "truncated": was_truncated,
                                     "output_snippet": str(tool_call_message.content)[
                                         :1000
                                     ],  # Truncate to first 1000 chars
@@ -489,7 +562,7 @@ class DocsSummarizer(QueryHelper):
                             type="tool_result",
                             data={
                                 "id": tool_call_message.tool_call_id,
-                                "status": tool_call_message.status,
+                                "status": tool_status,
                                 "content": tool_call_message.content,
                                 "type": "tool_result",
                                 "round": i,

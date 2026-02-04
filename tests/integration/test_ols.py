@@ -1140,38 +1140,49 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     assert caplog.text.count("System prompt: " + system_prompt) == 0
 
 
-# TODO: consolidate this and the same function in test_docs_summarizer.py
-# into some reusable fixture
-async def fake_invoke_llm(*args, **kwargs):
-    """Fake invoke_llm function to simulate LLM behavior.
+async def async_mock_invoke(yield_values):
+    """Mock async invoke_llm function to simulate LLM behavior."""
+    for value in yield_values:
+        yield value
 
-    Yields depends on the number of calls
+
+def create_tool_calling_side_effect():
+    """Create a side_effect function for tool calling test.
+
+    Returns different responses based on call count:
+    - 1st call: yields tool_calls message
+    - 2nd call: yields final response message
+    - 3rd call: yields stop message
     """
-    # use an attribute on the function to track calls
-    if not hasattr(fake_invoke_llm, "call_count"):
-        fake_invoke_llm.call_count = 0
-    fake_invoke_llm.call_count += 1
+    call_count = 0
 
-    if fake_invoke_llm.call_count == 1:
-        # first call yields a message that requests tool calls
-        yield AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[
-                {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
-            ],
+    def side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+
+        if call_count == 1:
+            return async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_id1",
+                            },
+                        ],
+                    )
+                ]
+            )
+        if call_count == 2:
+            return async_mock_invoke([AIMessageChunk(content="You have 1 namespace.")])
+        return async_mock_invoke(
+            [AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})]
         )
-    elif fake_invoke_llm.call_count == 2:
-        # second call yields the final message.
-        yield AIMessageChunk(
-            content="You have 1 namespace.",
-        )
-    else:
-        # the end event
-        yield AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "stop"},
-        )
+
+    return side_effect
 
 
 def test_tool_calling(_setup, caplog) -> None:
@@ -1190,10 +1201,17 @@ def test_tool_calling(_setup, caplog) -> None:
             "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
         ) as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
-            new=fake_invoke_llm,
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.TokenHandler"
+            ".calculate_and_check_available_tokens",
+            return_value=1000,
+        ),
     ):
+        # Set up the mock to return different values on each call
+        mock_invoke.side_effect = create_tool_calling_side_effect()
+
         # Create mock tools map
         mock_mcp_client_instance = AsyncMock()
         mock_mcp_client_instance.get_tools.return_value = mock_tools_map

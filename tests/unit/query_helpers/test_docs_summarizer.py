@@ -1,6 +1,9 @@
 """Unit tests for DocsSummarizer class."""
 
+import json
 import logging
+import re
+from math import ceil
 from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
@@ -8,6 +11,8 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
+from ols.constants import TOKEN_BUFFER_WEIGHT
+from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import mock_tools_map
 
 # needs to be setup there before is_user_authorized is imported
@@ -319,6 +324,8 @@ def test_tool_calling_tool_execution(caplog):
         mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        # Disable token reservation for tools in this test (test config has small context window)
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
         summarizer.create_response(question)
 
         assert "Tool: get_namespaces_mock" in caplog.text
@@ -328,6 +335,77 @@ def test_tool_calling_tool_execution(caplog):
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
+
+
+def test_tool_token_tracking(caplog):
+    """Test that tool definitions and AIMessage tokens are tracked with buffer weight."""
+    caplog.set_level(10)  # Set debug level
+
+    question = "How many namespaces are there in my cluster?"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
+        ) as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.MCPConfigBuilder.dump_client_config",
+            return_value=mcp_servers_config,
+        ),
+    ):
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [
+                AIMessageChunk(
+                    content="",
+                    response_metadata={"finish_reason": "tool_calls"},
+                    tool_calls=[
+                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
+                    ],
+                )
+            ]
+        )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        # Disable token reservation for tools (test config has small context window)
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        summarizer.create_response(question)
+
+        # Verify tool definitions token counting is logged
+        assert "Tool definitions consume" in caplog.text
+
+        # Calculate expected token count with buffer weight applied
+        token_handler = TokenHandler()
+        tool_definitions_text = json.dumps(
+            [
+                {"name": t.name, "description": t.description, "schema": t.args}
+                for t in mock_tools_map
+            ]
+        )
+        raw_tokens = len(token_handler.text_to_tokens(tool_definitions_text))
+        expected_buffered_tokens = ceil(raw_tokens * TOKEN_BUFFER_WEIGHT)
+
+        # Extract logged token count and verify buffer weight was applied
+        match = re.search(r"Tool definitions consume (\d+) tokens", caplog.text)
+        assert match is not None, "Token count not found in logs"
+        logged_tokens = int(match.group(1))
+        assert logged_tokens == expected_buffered_tokens, (
+            f"Expected {expected_buffered_tokens} (raw={raw_tokens} * {TOKEN_BUFFER_WEIGHT}), "
+            f"got {logged_tokens}"
+        )
 
 
 @pytest.mark.asyncio

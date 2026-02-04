@@ -24,6 +24,10 @@ class ModelParameters(BaseModel):
     """Model parameters."""
 
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
+    max_tokens_per_tool_output: PositiveInt = (
+        constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
+    )
+    max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
 
 
 class ModelConfig(BaseModel):
