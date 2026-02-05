@@ -226,7 +226,7 @@ class DocsSummarizer(QueryHelper):
 
                 # Build MultiServerMCPClient config format
                 servers_config[server.name] = {
-                    "transport": "http",
+                    "transport": "streamable_http",
                     "url": server.url,
                 }
                 if headers:
