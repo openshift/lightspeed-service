@@ -72,6 +72,7 @@ class LLMRequest(BaseModel):
         model: The optional model.
         attachments: The optional attachments.
         media_type: The optional parameter for streaming response.
+        mcp_headers: Optional JSON object mapping MCP server names to header lists.
 
     Example:
         ```python
@@ -86,6 +87,7 @@ class LLMRequest(BaseModel):
     system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
     media_type: Optional[str] = MEDIA_TYPE_TEXT
+    mcp_headers: Optional[str] = None
 
     # provides examples for /docs endpoint
     model_config = {
@@ -116,6 +118,7 @@ class LLMRequest(BaseModel):
                         },
                     ],
                     "media_type": "text/plain",
+                    "mcp_headers": '{"github-mcp": [{"Authorization": "Bearer ghp_xxxxx"}]}',
                 }
             ]
         },

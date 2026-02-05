@@ -564,3 +564,177 @@ def test_build_mcp_config_transport_is_streamable_http():
         assert mcp_config["server2"]["transport"] == "streamable_http"
         assert mcp_config["server2"]["url"] == "http://server2:9090/mcp"
         assert mcp_config["server2"]["timeout"] == 30
+
+
+def test_resolve_server_headers_with_client_placeholder():
+    """Test _resolve_server_headers replaces client placeholder with client headers."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_"},
+    )
+    server._resolved_headers = {"Authorization": MCP_CLIENT_PLACEHOLDER}
+
+    client_headers = {"test-server": [{"Authorization": "Bearer client-token"}]}
+
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None), client_headers=client_headers
+    )
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer client-token"}
+
+
+def test_resolve_server_headers_with_kubernetes_placeholder():
+    """Test _resolve_server_headers replaces kubernetes placeholder with user token."""
+    from ols.constants import MCP_KUBERNETES_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes"},
+    )
+    server._resolved_headers = {"Authorization": MCP_KUBERNETES_PLACEHOLDER}
+
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None),
+        user_token="user-k8s-token",  # noqa: S106 # nosec
+    )
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer user-k8s-token"}
+
+
+def test_resolve_server_headers_missing_client_headers():
+    """Test _resolve_server_headers returns None when client headers missing."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_"},
+    )
+    server._resolved_headers = {"Authorization": MCP_CLIENT_PLACEHOLDER}
+
+    # No client headers provided
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is None
+
+
+def test_resolve_server_headers_missing_kubernetes_token():
+    """Test _resolve_server_headers returns None when kubernetes token missing."""
+    from ols.constants import MCP_KUBERNETES_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes"},
+    )
+    server._resolved_headers = {"Authorization": MCP_KUBERNETES_PLACEHOLDER}
+
+    # No user token provided
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is None
+
+
+def test_resolve_server_headers_with_multiple_client_header_dicts():
+    """Test _resolve_server_headers merges multiple client header dicts."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_", "X-Custom": "_client_"},
+    )
+    server._resolved_headers = {
+        "Authorization": MCP_CLIENT_PLACEHOLDER,
+        "X-Custom": MCP_CLIENT_PLACEHOLDER,
+    }
+
+    client_headers = {
+        "test-server": [
+            {"Authorization": "Bearer token"},
+            {"X-Custom": "custom-value"},
+        ]
+    }
+
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None), client_headers=client_headers
+    )
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer token", "X-Custom": "custom-value"}
+
+
+def test_resolve_server_headers_client_does_not_override_static_config():
+    """Test client headers don't override static server-configured headers."""
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "Bearer config-token"},
+    )
+    server._resolved_headers = {"Authorization": "Bearer config-token"}
+
+    # Client provides different authorization (should be ignored for non-placeholder)
+    client_headers = {"test-server": [{"Authorization": "Bearer client-token"}]}
+
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None), client_headers=client_headers
+    )
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    # Config header should be used (not client)
+    assert headers == {"Authorization": "Bearer config-token"}
+
+
+def test_resolve_server_headers_mixed_placeholders():
+    """Test _resolve_server_headers with mix of kubernetes and client placeholders."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER, MCP_KUBERNETES_PLACEHOLDER
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes", "X-API-Key": "_client_"},
+    )
+    server._resolved_headers = {
+        "Authorization": MCP_KUBERNETES_PLACEHOLDER,
+        "X-API-Key": MCP_CLIENT_PLACEHOLDER,
+    }
+
+    client_headers = {"test-server": [{"X-API-Key": "api-key-123"}]}
+
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None),
+        user_token="k8s-token",  # noqa: S106 # nosec
+        client_headers=client_headers,
+    )
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer k8s-token", "X-API-Key": "api-key-123"}
+
+
+def test_resolve_server_headers_no_placeholders():
+    """Test _resolve_server_headers with direct header values (no placeholders)."""
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "Bearer static-token"},
+    )
+    server._resolved_headers = {"Authorization": "Bearer static-token"}
+
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    headers = summarizer._resolve_server_headers(server)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer static-token"}

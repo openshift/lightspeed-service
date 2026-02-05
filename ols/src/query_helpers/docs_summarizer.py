@@ -120,12 +120,14 @@ class DocsSummarizer(QueryHelper):
         self,
         *args: Any,
         user_token: Optional[str] = None,
+        client_headers: dict[str, list[dict[str, str]]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the DocsSummarizer.
 
         Args:
             user_token: Optional user authentication token for tool access
+            client_headers: Optional client-provided MCP headers for authentication
             *args: Additional positional arguments passed to the parent class
             **kwargs: Additional keyword arguments passed to the parent class
         """
@@ -134,6 +136,7 @@ class DocsSummarizer(QueryHelper):
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
 
         # tools part
+        self.client_headers = client_headers or {}
         self.user_token = user_token
         self.mcp_servers = self._build_mcp_config()
 
@@ -189,6 +192,62 @@ class DocsSummarizer(QueryHelper):
         # Already resolved (from file) at config load time
         return value
 
+    def _resolve_server_headers(self, server: Any) -> dict[str, str] | None:
+        """Resolve headers for a single MCP server by replacing placeholders.
+
+        Args:
+            server: MCP server configuration
+
+        Returns:
+            Resolved headers dict, or None if resolution failed
+        """
+        headers = {}
+
+        # Loop through configured headers and replace placeholders
+        for header_name, header_value in server.resolved_headers.items():
+            match header_value:
+                case constants.MCP_KUBERNETES_PLACEHOLDER:
+                    # Replace "kubernetes" with actual k8s token
+                    if self.user_token:
+                        headers[header_name] = f"Bearer {self.user_token}"
+                    else:
+                        logger.warning(
+                            "MCP server %s requires kubernetes token but none available",
+                            server.name,
+                        )
+                        return None
+
+                case constants.MCP_CLIENT_PLACEHOLDER:
+                    # Replace "_client_" with value from client headers
+                    if self.client_headers and server.name in self.client_headers:
+                        # Find this header in client's list of header dicts
+                        found = False
+                        for client_header_dict in self.client_headers[server.name]:
+                            if header_name in client_header_dict:
+                                headers[header_name] = client_header_dict[header_name]
+                                found = True
+                                break
+
+                        if not found:
+                            logger.warning(
+                                "MCP server %s requires client header '%s' but not provided",
+                                server.name,
+                                header_name,
+                            )
+                            return None
+                    else:
+                        logger.warning(
+                            "MCP server %s requires client headers but none provided",
+                            server.name,
+                        )
+                        return None
+
+                case _:
+                    # Use value as-is (from file or direct config)
+                    headers[header_name] = header_value
+
+        return headers
+
     def _build_mcp_config(self) -> dict[str, Any]:
         """Build MCP client configuration from config.
 
@@ -206,22 +265,8 @@ class DocsSummarizer(QueryHelper):
 
         try:
             for server in config.mcp_servers.servers:
-                # Resolve authorization headers from config
-                # Pattern adapted from LCore implementation
-                headers = {}
-                for name, value in server.resolved_headers.items():
-                    h_value = self._get_token_value(value, name, server.name)
-                    if h_value is not None:
-                        headers[name] = h_value
-
-                # Skip server if auth headers were configured but not all could be resolved
-                if server.headers and len(headers) != len(server.headers):
-                    logger.warning(
-                        "Skipping MCP server %s: required %d auth headers but only resolved %d",
-                        server.name,
-                        len(server.headers),
-                        len(headers),
-                    )
+                headers = self._resolve_server_headers(server)
+                if headers is None:
                     continue
 
                 # Build MultiServerMCPClient config format
