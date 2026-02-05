@@ -295,15 +295,17 @@ def test_tool_calling_tool_execution(caplog):
 
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-        ) as mock_mcp_client_cls,
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
             return_value=mcp_servers_config,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.gather_mcp_tools",
+            new=AsyncMock(return_value=mock_tools_map),
         ),
     ):
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
@@ -353,15 +355,17 @@ def test_tool_token_tracking(caplog):
 
     with (
         patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-        ) as mock_mcp_client_cls,
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
             return_value=mcp_servers_config,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.gather_mcp_tools",
+            new=AsyncMock(return_value=mock_tools_map),
         ),
     ):
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
@@ -416,7 +420,7 @@ async def test_gather_mcp_tools_failure_isolation(caplog):
     When multiple MCP servers are configured and one is unreachable,
     tools from the working servers should still be returned.
     """
-    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+    from ols.utils.mcp_utils import gather_mcp_tools
 
     caplog.set_level(10)
 
@@ -439,9 +443,7 @@ async def test_gather_mcp_tools_failure_isolation(caplog):
             raise ConnectionError("Failed to connect to http://non-exist:8888/mcp")
         return []
 
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-    ) as mock_client_cls:
+    with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
         mock_client_instance = AsyncMock()
         mock_client_instance.get_tools.side_effect = mock_get_tools
         mock_client_cls.return_value = mock_client_instance
@@ -462,7 +464,7 @@ async def test_gather_mcp_tools_failure_isolation(caplog):
 @pytest.mark.asyncio
 async def test_gather_mcp_tools_all_servers_working(caplog):
     """Test gather_mcp_tools aggregates tools from all working servers."""
-    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+    from ols.utils.mcp_utils import gather_mcp_tools
 
     caplog.set_level(10)
 
@@ -475,9 +477,7 @@ async def test_gather_mcp_tools_all_servers_working(caplog):
         # Both servers return tools successfully
         return mock_tools_map
 
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-    ) as mock_client_cls:
+    with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
         mock_client_instance = AsyncMock()
         mock_client_instance.get_tools.side_effect = mock_get_tools
         mock_client_cls.return_value = mock_client_instance
@@ -493,7 +493,7 @@ async def test_gather_mcp_tools_all_servers_working(caplog):
 @pytest.mark.asyncio
 async def test_gather_mcp_tools_all_servers_failing(caplog):
     """Test gather_mcp_tools handles all servers failing gracefully."""
-    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+    from ols.utils.mcp_utils import gather_mcp_tools
 
     caplog.set_level(10)
 
@@ -505,9 +505,7 @@ async def test_gather_mcp_tools_all_servers_failing(caplog):
     async def mock_get_tools(server_name=None):
         raise ConnectionError(f"Failed to connect to {server_name}")
 
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-    ) as mock_client_cls:
+    with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
         mock_client_instance = AsyncMock()
         mock_client_instance.get_tools.side_effect = mock_get_tools
         mock_client_cls.return_value = mock_client_instance
@@ -523,11 +521,9 @@ async def test_gather_mcp_tools_all_servers_failing(caplog):
 @pytest.mark.asyncio
 async def test_gather_mcp_tools_empty_config():
     """Test gather_mcp_tools with no servers configured."""
-    from ols.src.query_helpers.docs_summarizer import gather_mcp_tools
+    from ols.utils.mcp_utils import gather_mcp_tools
 
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-    ) as mock_client_cls:
+    with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
         mock_client_instance = AsyncMock()
         mock_client_cls.return_value = mock_client_instance
 
@@ -540,7 +536,9 @@ async def test_gather_mcp_tools_empty_config():
 
 
 def test_build_mcp_config_transport_is_streamable_http():
-    """Test _build_mcp_config sets transport to streamable_http for all servers."""
+    """Test build_mcp_config sets transport to streamable_http for all servers."""
+    from ols.utils.mcp_utils import build_mcp_config
+
     server1 = MCPServerConfig(name="server1", url="http://server1:8080/mcp")
     server1._resolved_headers = {}
 
@@ -549,18 +547,191 @@ def test_build_mcp_config_transport_is_streamable_http():
 
     mock_mcp_servers = MCPServers(servers=[server1, server2])
 
-    with patch("ols.src.query_helpers.docs_summarizer.config") as mock_config:
-        mock_config.mcp_servers = mock_mcp_servers
+    mcp_config = build_mcp_config(
+        mock_mcp_servers, user_token=None, client_headers=None
+    )
 
-        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        mcp_config = summarizer._build_mcp_config()
+    assert "server1" in mcp_config
+    assert "server2" in mcp_config
 
-        assert "server1" in mcp_config
-        assert "server2" in mcp_config
+    assert mcp_config["server1"]["transport"] == "streamable_http"
+    assert mcp_config["server1"]["url"] == "http://server1:8080/mcp"
 
-        assert mcp_config["server1"]["transport"] == "streamable_http"
-        assert mcp_config["server1"]["url"] == "http://server1:8080/mcp"
+    assert mcp_config["server2"]["transport"] == "streamable_http"
+    assert mcp_config["server2"]["url"] == "http://server2:9090/mcp"
+    assert mcp_config["server2"]["timeout"] == 30
 
-        assert mcp_config["server2"]["transport"] == "streamable_http"
-        assert mcp_config["server2"]["url"] == "http://server2:9090/mcp"
-        assert mcp_config["server2"]["timeout"] == 30
+
+def test_resolve_server_headers_with_client_placeholder():
+    """Test resolve_server_headers replaces client placeholder with client headers."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_"},
+    )
+    server._resolved_headers = {"Authorization": MCP_CLIENT_PLACEHOLDER}
+
+    client_headers = {"test-server": {"Authorization": "Bearer client-token"}}
+
+    headers = resolve_server_headers(
+        server, user_token=None, client_headers=client_headers
+    )
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer client-token"}
+
+
+def test_resolve_server_headers_with_kubernetes_placeholder():
+    """Test resolve_server_headers replaces kubernetes placeholder with user token."""
+    from ols.constants import MCP_KUBERNETES_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes"},
+    )
+    server._resolved_headers = {"Authorization": MCP_KUBERNETES_PLACEHOLDER}
+
+    headers = resolve_server_headers(
+        server, user_token="user-k8s-token", client_headers=None  # noqa: S106 # nosec
+    )
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer user-k8s-token"}
+
+
+def test_resolve_server_headers_missing_client_headers():
+    """Test resolve_server_headers returns None when client headers missing."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_"},
+    )
+    server._resolved_headers = {"Authorization": MCP_CLIENT_PLACEHOLDER}
+
+    # No client headers provided
+    headers = resolve_server_headers(server, user_token=None, client_headers=None)
+
+    assert headers is None
+
+
+def test_resolve_server_headers_missing_kubernetes_token():
+    """Test resolve_server_headers returns None when kubernetes token missing."""
+    from ols.constants import MCP_KUBERNETES_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes"},
+    )
+    server._resolved_headers = {"Authorization": MCP_KUBERNETES_PLACEHOLDER}
+
+    # No user token provided
+    headers = resolve_server_headers(server, user_token=None, client_headers=None)
+
+    assert headers is None
+
+
+def test_resolve_server_headers_with_multiple_client_header_dicts():
+    """Test resolve_server_headers handles multiple headers in dict."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "_client_", "X-Custom": "_client_"},
+    )
+    server._resolved_headers = {
+        "Authorization": MCP_CLIENT_PLACEHOLDER,
+        "X-Custom": MCP_CLIENT_PLACEHOLDER,
+    }
+
+    client_headers = {
+        "test-server": {
+            "Authorization": "Bearer token",
+            "X-Custom": "custom-value",
+        }
+    }
+
+    headers = resolve_server_headers(
+        server, user_token=None, client_headers=client_headers
+    )
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer token", "X-Custom": "custom-value"}
+
+
+def test_resolve_server_headers_client_does_not_override_static_config():
+    """Test client headers don't override static server-configured headers."""
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "Bearer config-token"},
+    )
+    server._resolved_headers = {"Authorization": "Bearer config-token"}
+
+    # Client provides different authorization (should be ignored for non-placeholder)
+    client_headers = {"test-server": {"Authorization": "Bearer client-token"}}
+
+    headers = resolve_server_headers(
+        server, user_token=None, client_headers=client_headers
+    )
+
+    assert headers is not None
+    # Config header should be used (not client)
+    assert headers == {"Authorization": "Bearer config-token"}
+
+
+def test_resolve_server_headers_mixed_placeholders():
+    """Test resolve_server_headers with mix of kubernetes and client placeholders."""
+    from ols.constants import MCP_CLIENT_PLACEHOLDER, MCP_KUBERNETES_PLACEHOLDER
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "kubernetes", "X-API-Key": "_client_"},
+    )
+    server._resolved_headers = {
+        "Authorization": MCP_KUBERNETES_PLACEHOLDER,
+        "X-API-Key": MCP_CLIENT_PLACEHOLDER,
+    }
+
+    client_headers = {"test-server": {"X-API-Key": "api-key-123"}}
+
+    headers = resolve_server_headers(
+        server,
+        user_token="k8s-token",  # noqa: S106 # nosec
+        client_headers=client_headers,
+    )
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer k8s-token", "X-API-Key": "api-key-123"}
+
+
+def test_resolve_server_headers_no_placeholders():
+    """Test resolve_server_headers with direct header values (no placeholders)."""
+    from ols.utils.mcp_utils import resolve_server_headers
+
+    server = MCPServerConfig(
+        name="test-server",
+        url="http://test:8080/mcp",
+        headers={"Authorization": "Bearer static-token"},
+    )
+    server._resolved_headers = {"Authorization": "Bearer static-token"}
+
+    headers = resolve_server_headers(server, user_token=None, client_headers=None)
+
+    assert headers is not None
+    assert headers == {"Authorization": "Bearer static-token"}

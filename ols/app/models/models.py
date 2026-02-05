@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, Self, Union
 
 from langchain_core.language_models.llms import LLM
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
@@ -72,6 +72,7 @@ class LLMRequest(BaseModel):
         model: The optional model.
         attachments: The optional attachments.
         media_type: The optional parameter for streaming response.
+        mcp_headers: Optional JSON object mapping MCP server names to header lists.
 
     Example:
         ```python
@@ -86,6 +87,7 @@ class LLMRequest(BaseModel):
     system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
     media_type: Optional[str] = MEDIA_TYPE_TEXT
+    mcp_headers: Optional[dict[str, dict[str, str]]] = None
 
     # provides examples for /docs endpoint
     model_config = {
@@ -116,6 +118,7 @@ class LLMRequest(BaseModel):
                         },
                     ],
                     "media_type": "text/plain",
+                    "mcp_headers": '{"github-mcp": {"Authorization": "Bearer ghp_xxxxx"}}',
                 }
             ]
         },
@@ -976,3 +979,20 @@ class StreamedChunk:
     type: Literal["text", "tool_call", "tool_result", "end"]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
+
+
+class MCPServerHeaderInfo(BaseModel):
+    """Information about headers required for an MCP server."""
+
+    server_name: str = Field(description="Name of the MCP server")
+    required_headers: list[str] = Field(
+        description="List of header names that client must provide"
+    )
+
+
+class MCPHeadersResponse(BaseModel):
+    """Response model listing servers that require client headers."""
+
+    servers: list[MCPServerHeaderInfo] = Field(
+        description="List of servers requiring client-provided headers"
+    )

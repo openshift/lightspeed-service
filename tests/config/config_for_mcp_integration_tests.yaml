@@ -1,0 +1,32 @@
+llm_providers:
+  - name: test_provider
+    type: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: tests/config/empty_secret.txt
+    models:
+      - name: test-model
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 100
+  logging_config:
+    app_log_level: info
+  default_provider: test_provider
+  default_model: test-model
+
+mcp_servers:
+  - name: mock-file-auth
+    url: http://localhost:13000
+    headers:
+      Authorization: tests/config/mcp_test_token.txt
+  - name: mock-client-auth
+    url: http://localhost:13000
+    headers:
+      Authorization: client
+
+dev_config:
+  disable_auth: true
+  enable_dev_ui: false
+  disable_tls: true
