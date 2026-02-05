@@ -12,7 +12,7 @@
                     "query"
                 ],
                 "summary": "Conversation Request",
-                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query, conversation ID, and optional attachments.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n    user_id: Optional user ID used only when no-op auth is enabled.\n    mcp_headers: Raw MCP-Headers from HTTP request (will be parsed).\n\nReturns:\n    Response containing the processed information.",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The request containing a query, conversation ID, and optional attachments.\n    auth: The Authentication handler (FastAPI Depends) that will handle authentication Logic.\n    user_id: Optional user ID used only when no-op auth is enabled.\n\nReturns:\n    Response containing the processed information.",
                 "operationId": "conversation_request_v1_query_post",
                 "parameters": [
                     {
@@ -30,27 +30,6 @@
                             ],
                             "title": "User Id"
                         }
-                    },
-                    {
-                        "name": "mcp_headers",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "JSON object mapping MCP server names to lists of header objects. Use the /v1/mcp-requirements endpoint to discover which servers require headers.",
-                            "examples": [
-                                "{\"github-mcp\": [{\"Authorization\": \"Bearer ghp_xxxxx\"}]}"
-                            ],
-                            "title": "Mcp Headers"
-                        },
-                        "description": "JSON object mapping MCP server names to lists of header objects. Use the /v1/mcp-requirements endpoint to discover which servers require headers."
                     }
                 ],
                 "requestBody": {
@@ -133,7 +112,7 @@
                     "streaming_query"
                 ],
                 "summary": "Conversation Request",
-                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The incoming request containing query details.\n    auth: The authentication context, provided by dependency injection.\n    user_id: Optional user ID used only when no-op auth is enabled.\n    mcp_headers: Raw MCP-Headers from HTTP request (will be parsed).\n\nReturns:\n    StreamingResponse: The streaming response generated for the query.",
+                "description": "Handle conversation requests for the OLS endpoint.\n\nArgs:\n    llm_request: The incoming request containing query details.\n    auth: The authentication context, provided by dependency injection.\n    user_id: Optional user ID used only when no-op auth is enabled.\n\nReturns:\n    StreamingResponse: The streaming response generated for the query.",
                 "operationId": "conversation_request_v1_streaming_query_post",
                 "parameters": [
                     {
@@ -151,27 +130,6 @@
                             ],
                             "title": "User Id"
                         }
-                    },
-                    {
-                        "name": "mcp_headers",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "JSON object mapping MCP server names to lists of header objects. Use the /v1/mcp-requirements endpoint to discover which servers require headers.",
-                            "examples": [
-                                "{\"github-mcp\": [{\"Authorization\": \"Bearer ghp_xxxxx\"}]}"
-                            ],
-                            "title": "Mcp Headers"
-                        },
-                        "description": "JSON object mapping MCP server names to lists of header objects. Use the /v1/mcp-requirements endpoint to discover which servers require headers."
                     }
                 ],
                 "requestBody": {
@@ -1314,6 +1272,17 @@
                         ],
                         "title": "Media Type",
                         "default": "text/plain"
+                    },
+                    "mcp_headers": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mcp Headers"
                     }
                 },
                 "additionalProperties": false,
@@ -1322,7 +1291,7 @@
                     "query"
                 ],
                 "title": "LLMRequest",
-                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n    mcp_headers: Optional JSON object mapping MCP server names to header lists.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -1343,6 +1312,7 @@
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "mcp_headers": "{\"github-mcp\": [{\"Authorization\": \"Bearer ghp_xxxxx\"}]}",
                         "media_type": "text/plain",
                         "model": "model-name",
                         "provider": "openai",
