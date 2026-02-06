@@ -40,7 +40,6 @@ from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
-from ols.utils.mcp_headers import parse_mcp_headers
 from ols.utils.token_handler import PromptTooLongError
 
 KEYWORDS = keywords.KEYWORDS
@@ -135,8 +134,7 @@ def conversation_request(
             None,
         )
     else:
-        # Parse MCP headers only when needed
-        client_headers = parse_mcp_headers(llm_request.mcp_headers)
+        client_headers = llm_request.mcp_headers
 
         summarizer_response = generate_response(
             processed_request.conversation_id,

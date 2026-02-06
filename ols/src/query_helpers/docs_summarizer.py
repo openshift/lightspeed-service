@@ -10,7 +10,6 @@ from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from llama_index.core.retrievers import BaseRetriever
 
 from ols import config, constants
@@ -22,6 +21,7 @@ from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
+from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -83,36 +83,6 @@ def run_async_safely(coro: Callable) -> Any:
         raise
 
 
-async def gather_mcp_tools(mcp_servers: dict[str, Any]) -> list:
-    """Gather tools from multiple MCP servers with failure isolation.
-
-    Load tools from each MCP server individually so that if one server
-    is unreachable, tools from other servers are still available.
-
-    Args:
-        mcp_servers: Dictionary mapping server names to their configurations.
-
-    Returns:
-        List of tools from all successfully connected servers.
-    """
-    all_tools: list = []
-    mcp_client = MultiServerMCPClient(mcp_servers)
-
-    for server_name in mcp_servers:
-        try:
-            server_tools = await mcp_client.get_tools(server_name=server_name)
-            all_tools.extend(server_tools)
-            logger.info(
-                "Loaded %d tools from MCP server '%s'",
-                len(server_tools),
-                server_name,
-            )
-        except Exception as e:
-            logger.error("Failed to get tools from MCP server '%s': %s", server_name, e)
-
-    return all_tools
-
-
 class DocsSummarizer(QueryHelper):
     """A class for summarizing documentation context."""
 
@@ -120,7 +90,7 @@ class DocsSummarizer(QueryHelper):
         self,
         *args: Any,
         user_token: Optional[str] = None,
-        client_headers: dict[str, list[dict[str, str]]] | None = None,
+        client_headers: dict[str, dict[str, str]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the DocsSummarizer.
@@ -138,7 +108,9 @@ class DocsSummarizer(QueryHelper):
         # tools part
         self.client_headers = client_headers or {}
         self.user_token = user_token
-        self.mcp_servers = self._build_mcp_config()
+        self.mcp_servers = build_mcp_config(
+            config.mcp_servers, self.user_token, self.client_headers
+        )
 
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
@@ -161,129 +133,6 @@ class DocsSummarizer(QueryHelper):
             self.model,
             self.generic_llm_params,
         )
-
-    def _get_token_value(
-        self, value: str, header_name: str, server_name: str
-    ) -> Optional[str]:
-        """Resolve header value by substituting placeholders.
-
-        Args:
-            value: Header value (may be a placeholder or actual value)
-            header_name: Name of the header
-            server_name: Name of the MCP server (for logging)
-
-        Returns:
-            Resolved header value, or None if resolution failed
-        """
-        if value == constants.MCP_KUBERNETES_PLACEHOLDER:
-            # If we reach here, auth module is k8s (validated at config load)
-            # and user_token is guaranteed to be present from Authorization header
-            return f"Bearer {self.user_token}"
-
-        if value == constants.MCP_CLIENT_PLACEHOLDER:
-            # Client placeholder - value should come from client-provided headers
-            logger.debug(
-                "MCP server '%s' header '%s' requires client-provided value",
-                server_name,
-                header_name,
-            )
-            return None  # Will be filled from client headers
-
-        # Already resolved (from file) at config load time
-        return value
-
-    def _resolve_server_headers(self, server: Any) -> dict[str, str] | None:
-        """Resolve headers for a single MCP server by replacing placeholders.
-
-        Args:
-            server: MCP server configuration
-
-        Returns:
-            Resolved headers dict, or None if resolution failed
-        """
-        headers = {}
-
-        # Loop through configured headers and replace placeholders
-        for header_name, header_value in server.resolved_headers.items():
-            match header_value:
-                case constants.MCP_KUBERNETES_PLACEHOLDER:
-                    # Replace "kubernetes" with actual k8s token
-                    if self.user_token:
-                        headers[header_name] = f"Bearer {self.user_token}"
-                    else:
-                        logger.warning(
-                            "MCP server %s requires kubernetes token but none available",
-                            server.name,
-                        )
-                        return None
-
-                case constants.MCP_CLIENT_PLACEHOLDER:
-                    # Replace "_client_" with value from client headers
-                    if self.client_headers and server.name in self.client_headers:
-                        # Find this header in client's list of header dicts
-                        found = False
-                        for client_header_dict in self.client_headers[server.name]:
-                            if header_name in client_header_dict:
-                                headers[header_name] = client_header_dict[header_name]
-                                found = True
-                                break
-
-                        if not found:
-                            logger.warning(
-                                "MCP server %s requires client header '%s' but not provided",
-                                server.name,
-                                header_name,
-                            )
-                            return None
-                    else:
-                        logger.warning(
-                            "MCP server %s requires client headers but none provided",
-                            server.name,
-                        )
-                        return None
-
-                case _:
-                    # Use value as-is (from file or direct config)
-                    headers[header_name] = header_value
-
-        return headers
-
-    def _build_mcp_config(self) -> dict[str, Any]:
-        """Build MCP client configuration from config.
-
-        Resolves authorization headers, substituting placeholders with runtime values
-        (e.g., "kubernetes" → user token).
-
-        Returns:
-            Dictionary mapping server names to their config for MultiServerMCPClient.
-            Returns empty dict if no MCP servers configured or on error.
-        """
-        if not config.mcp_servers or not config.mcp_servers.servers:
-            return {}
-
-        servers_config: dict[str, Any] = {}
-
-        try:
-            for server in config.mcp_servers.servers:
-                headers = self._resolve_server_headers(server)
-                if headers is None:
-                    continue
-
-                # Build MultiServerMCPClient config format
-                servers_config[server.name] = {
-                    "transport": "streamable_http",
-                    "url": server.url,
-                }
-                if headers:
-                    servers_config[server.name]["headers"] = headers
-                if server.timeout:
-                    servers_config[server.name]["timeout"] = server.timeout
-
-        except Exception as e:
-            logger.error("Failed to build MCP config: %s", e)
-            return {}
-
-        return servers_config
 
     def _prepare_prompt(
         self,

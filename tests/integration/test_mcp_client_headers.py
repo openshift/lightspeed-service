@@ -9,7 +9,7 @@ The MCP client is mocked to avoid actual network connections, but we test
 that the correct servers are selected based on header availability.
 
 Test Coverage:
-- Discovery endpoint (/v1/mcp-requirements)
+- Discovery endpoint (/v1/mcp/client-auth-headers)
 - Query without client headers (graceful degradation - skips client-auth server)
 - Query WITH client headers (includes client-auth server)
 - Streaming query without client headers
@@ -20,7 +20,6 @@ Test Coverage:
 # properly by linters
 # pyright: reportAttributeAccessIssue=false
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -29,6 +28,9 @@ from fastapi.testclient import TestClient
 from ols import config
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
+
+# Patch path for MultiServerMCPClient - it's imported in ols.utils.mcp_utils
+MCP_CLIENT_PATCH_PATH = "ols.utils.mcp_utils.MultiServerMCPClient"
 
 
 @pytest.fixture(scope="function")
@@ -42,8 +44,8 @@ def _setup() -> None:
 
 
 def test_mcp_discovery_endpoint(_setup: None) -> None:
-    """Test the /v1/mcp-requirements discovery endpoint."""
-    response = pytest.client.get("/v1/mcp-requirements")  # type: ignore[attr-defined]
+    """Test the /v1/mcp/client-auth-headers discovery endpoint."""
+    response = pytest.client.get("/v1/mcp/client-auth-headers")  # type: ignore[attr-defined]
 
     assert response.status_code == 200
     data = response.json()
@@ -67,9 +69,9 @@ def test_query_without_client_headers(_setup: None) -> None:
     with (
         patch("ols.src.query_helpers.query_helper.load_llm", new=mock_llm_loader(ml)),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient",
+            MCP_CLIENT_PATCH_PATH,
             return_value=mock_mcp_client_instance,
-        ),
+        ) as mock_mcp_client_class,
     ):
         response = pytest.client.post(  # type: ignore[attr-defined]
             "/v1/query",
@@ -78,6 +80,18 @@ def test_query_without_client_headers(_setup: None) -> None:
 
         # Request should succeed
         assert response.status_code == 200
+
+        # Verify MCP client was called with only file-auth server (no client-auth)
+        mock_mcp_client_class.assert_called_once()
+        call_args = mock_mcp_client_class.call_args
+        mcp_config = call_args[0][0]
+
+        # Should only have mock-file-auth (client-auth requires client headers)
+        assert "mock-file-auth" in mcp_config
+        assert "mock-client-auth" not in mcp_config
+        assert mcp_config["mock-file-auth"]["headers"]["Authorization"] == (
+            "Bearer test-file-token-123"
+        )
 
 
 def test_query_with_client_headers(_setup: None) -> None:
@@ -93,13 +107,13 @@ def test_query_with_client_headers(_setup: None) -> None:
     with (
         patch("ols.src.query_helpers.query_helper.load_llm", new=mock_llm_loader(ml)),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient",
+            MCP_CLIENT_PATCH_PATH,
             return_value=mock_mcp_client_instance,
-        ),
+        ) as mock_mcp_client_class,
     ):
-        mcp_headers = json.dumps(
-            {"mock-client-auth": [{"Authorization": "Bearer my-client-token-456"}]}
-        )
+        mcp_headers = {
+            "mock-client-auth": {"Authorization": "Bearer my-client-token-456"}
+        }
 
         response = pytest.client.post(  # type: ignore[attr-defined]
             "/v1/query",
@@ -108,6 +122,27 @@ def test_query_with_client_headers(_setup: None) -> None:
 
         # Request should succeed with client headers
         assert response.status_code == 200
+
+        # Verify MCP client was initialized with correct config including headers
+        mock_mcp_client_class.assert_called_once()
+        call_args = mock_mcp_client_class.call_args
+        mcp_config = call_args[0][0]
+
+        # Verify both servers are included
+        assert "mock-file-auth" in mcp_config
+        assert "mock-client-auth" in mcp_config
+
+        # Verify the file-auth header
+        assert mcp_config["mock-file-auth"]["headers"]["Authorization"] == (
+            "Bearer test-file-token-123"
+        )
+
+        # Verify the client-provided header was passed through
+        assert "headers" in mcp_config["mock-client-auth"]
+        assert (
+            mcp_config["mock-client-auth"]["headers"]["Authorization"]
+            == "Bearer my-client-token-456"
+        )
 
 
 def test_streaming_query_without_client_headers(_setup: None) -> None:
@@ -123,9 +158,9 @@ def test_streaming_query_without_client_headers(_setup: None) -> None:
     with (
         patch("ols.src.query_helpers.query_helper.load_llm", new=mock_llm_loader(ml)),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient",
+            MCP_CLIENT_PATCH_PATH,
             return_value=mock_mcp_client_instance,
-        ),
+        ) as mock_mcp_client_class,
     ):
         response = pytest.client.post(  # type: ignore[attr-defined]
             "/v1/streaming_query",
@@ -134,6 +169,15 @@ def test_streaming_query_without_client_headers(_setup: None) -> None:
 
         # Request should succeed
         assert response.status_code == 200
+
+        # Verify MCP client was called with only file-auth server
+        mock_mcp_client_class.assert_called_once()
+        call_args = mock_mcp_client_class.call_args
+        mcp_config = call_args[0][0]
+
+        # Should only have mock-file-auth (client-auth requires client headers)
+        assert "mock-file-auth" in mcp_config
+        assert "mock-client-auth" not in mcp_config
 
 
 def test_streaming_query_with_client_headers(_setup: None) -> None:
@@ -149,17 +193,13 @@ def test_streaming_query_with_client_headers(_setup: None) -> None:
     with (
         patch("ols.src.query_helpers.query_helper.load_llm", new=mock_llm_loader(ml)),
         patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient",
+            MCP_CLIENT_PATCH_PATH,
             return_value=mock_mcp_client_instance,
-        ),
+        ) as mock_mcp_client_class,
     ):
-        mcp_headers = json.dumps(
-            {
-                "mock-client-auth": [
-                    {"Authorization": "Bearer streaming-client-token-789"}
-                ]
-            }
-        )
+        mcp_headers = {
+            "mock-client-auth": {"Authorization": "Bearer streaming-client-token-789"}
+        }
 
         response = pytest.client.post(  # type: ignore[attr-defined]
             "/v1/streaming_query",
@@ -168,3 +208,24 @@ def test_streaming_query_with_client_headers(_setup: None) -> None:
 
         # Request should succeed with client headers
         assert response.status_code == 200
+
+        # Verify MCP client was initialized with correct config including headers
+        mock_mcp_client_class.assert_called_once()
+        call_args = mock_mcp_client_class.call_args
+        mcp_config = call_args[0][0]
+
+        # Verify both servers are included
+        assert "mock-file-auth" in mcp_config
+        assert "mock-client-auth" in mcp_config
+
+        # Verify the file-auth header
+        assert mcp_config["mock-file-auth"]["headers"]["Authorization"] == (
+            "Bearer test-file-token-123"
+        )
+
+        # Verify the client-provided header was passed through
+        assert "headers" in mcp_config["mock-client-auth"]
+        assert (
+            mcp_config["mock-client-auth"]["headers"]["Authorization"]
+            == "Bearer streaming-client-token-789"
+        )

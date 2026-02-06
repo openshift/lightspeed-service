@@ -197,14 +197,14 @@
                 }
             }
         },
-        "/v1/mcp-requirements": {
+        "/v1/mcp/client-auth-headers": {
             "get": {
                 "tags": [
                     "mcp"
                 ],
-                "summary": "Get MCP servers requiring client headers",
-                "description": "Returns information about which MCP servers require client-provided authentication headers. Clients should include these headers in the MCP-Headers HTTP header when making queries.",
-                "operationId": "get_mcp_header_info_v1_mcp_requirements_get",
+                "summary": "Get MCP servers requiring client authorization headers",
+                "description": "Returns information about which MCP servers require client-provided authorization headers. Clients should include these headers in the MCP-Headers HTTP header when making queries.",
+                "operationId": "get_mcp_header_info_v1_mcp_client_auth_headers_get",
                 "responses": {
                     "200": {
                         "description": "List of servers requiring client headers",
@@ -1276,7 +1276,13 @@
                     "mcp_headers": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "additionalProperties": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "object"
                             },
                             {
                                 "type": "null"
@@ -1312,7 +1318,7 @@
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "mcp_headers": "{\"github-mcp\": [{\"Authorization\": \"Bearer ghp_xxxxx\"}]}",
+                        "mcp_headers": "{\"github-mcp\": {\"Authorization\": \"Bearer ghp_xxxxx\"}}",
                         "media_type": "text/plain",
                         "model": "model-name",
                         "provider": "openai",

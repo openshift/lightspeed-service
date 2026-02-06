@@ -3,11 +3,11 @@
 import logging
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
 
 from ols import config
+from ols.app.models.models import MCPHeadersResponse, MCPServerHeaderInfo
 from ols.src.auth.auth import get_auth_dependency
-from ols.utils.mcp_headers import get_servers_requiring_client_headers
+from ols.utils.mcp_utils import get_servers_requiring_client_headers
 
 logger = logging.getLogger(__name__)
 
@@ -15,30 +15,13 @@ router = APIRouter(tags=["mcp"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 
-class MCPServerHeaderInfo(BaseModel):
-    """Information about headers required for an MCP server."""
-
-    server_name: str = Field(..., description="Name of the MCP server")
-    required_headers: list[str] = Field(
-        ..., description="List of header names that client must provide"
-    )
-
-
-class MCPHeadersResponse(BaseModel):
-    """Response model listing servers that require client headers."""
-
-    servers: list[MCPServerHeaderInfo] = Field(
-        ..., description="List of servers requiring client-provided headers"
-    )
-
-
 @router.get(
-    "/mcp-requirements",
+    "/mcp/client-auth-headers",
     response_model=MCPHeadersResponse,
-    summary="Get MCP servers requiring client headers",
+    summary="Get MCP servers requiring client authorization headers",
     description=(
         "Returns information about which MCP servers require client-provided "
-        "authentication headers. Clients should include these headers in the "
+        "authorization headers. Clients should include these headers in the "
         "MCP-Headers HTTP header when making queries."
     ),
     responses={
