@@ -5,6 +5,7 @@
 # pyright: reportAttributeAccessIssue=false
 
 import json
+import os
 import re
 import time
 
@@ -24,11 +25,13 @@ from tests.e2e.utils.constants import (
     CONVERSATION_ID,
     LLM_REST_API_TIMEOUT,
     NON_LLM_REST_API_TIMEOUT,
+    OLS_SERVICE_DEPLOYMENT,
     OLS_USER_DATA_COLLECTION_INTERVAL_SHORT,
     OLS_USER_DATA_PATH,
 )
 from tests.e2e.utils.data_collector_control import prepare_for_data_collection_test
 from tests.e2e.utils.decorators import retry
+from tests.e2e.utils.ols_installer import update_ols_config
 from tests.e2e.utils.postgres import (
     read_conversation_history,
     read_conversation_history_count,
@@ -51,7 +54,17 @@ def test_readiness():
         response = pytest.client.get(endpoint, timeout=LLM_REST_API_TIMEOUT)
         assert response.status_code == requests.codes.ok
         response_utils.check_content_type(response, "application/json")
-        assert response.json() == {"ready": True, "reason": "service is ready"}
+        if os.getenv("LCORE", "False").lower() in ("true", "1", "t"):
+            assert response.json() == {
+                "ready": True,
+                "reason": "All providers are healthy",
+                "providers": [],
+            }
+        else:
+            assert response.json() == {
+                "ready": True,
+                "reason": "service is ready",
+            }
 
 
 @pytest.mark.smoketest
@@ -82,6 +95,16 @@ def test_metrics() -> None:
         "ols_llm_token_received_total",
         "ols_provider_model_configuration",
     )
+    if os.getenv("LCORE", "False").lower() in ("true", "1", "t"):
+        expected_counters = (
+            "ls_rest_api_calls_total",
+            "ls_llm_calls_total",
+            "ls_llm_calls_failures_total",
+            "ls_llm_validation_errors_total",
+            "ls_llm_token_sent_total",
+            "ls_llm_token_received_total",
+            "ls_provider_model_configuration",
+        )
 
     # check if all counters are present
     for expected_counter in expected_counters:
@@ -92,12 +115,12 @@ def test_metrics() -> None:
     assert 'response_duration_seconds_sum{path="/metrics"}' in response.text
 
 
+@pytest.mark.skip_with_lcore
 def test_model_provider():
     """Read configured model and provider from metrics."""
     model, provider = metrics_utils.get_enabled_model_and_provider(
         pytest.metrics_client
     )
-
     # enabled model must be one of our expected combinations
     assert model, provider in {
         ("gpt-4o-mini", "openai"),
@@ -106,6 +129,7 @@ def test_model_provider():
     }
 
 
+@pytest.mark.skip_with_lcore
 def test_one_default_model_provider():
     """Check if one model and provider is selected as default."""
     states = metrics_utils.get_enable_status_for_all_models(pytest.metrics_client)
@@ -124,9 +148,13 @@ def test_improper_token():
         timeout=NON_LLM_REST_API_TIMEOUT,
         headers={"Authorization": "Bearer wrong-token"},
     )
-    assert response.status_code == requests.codes.forbidden
+    if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+        assert response.status_code == requests.codes.forbidden
+    else:
+        assert response.status_code == requests.codes.unauthorized
 
 
+@pytest.mark.skip_with_lcore
 @pytest.mark.cluster
 def test_forbidden_user():
     """Test scenarios where we expect an unauthorized response.
@@ -149,7 +177,7 @@ def test_transcripts_storing_cluster():
     """Test if the transcripts are stored properly."""
     transcripts_path = OLS_USER_DATA_PATH + "/transcripts"
     cluster_utils.wait_for_running_pod()
-    pod_name = cluster_utils.get_pod_by_prefix()[0]
+    pod_name = cluster_utils.get_pod_by_prefix(OLS_SERVICE_DEPLOYMENT)[0]
 
     # there are multiple tests running agains cluster, so transcripts
     # can be already present - we need to ensure the storage is empty
@@ -175,7 +203,6 @@ def test_transcripts_storing_cluster():
         timeout=LLM_REST_API_TIMEOUT,
     )
     assert response.status_code == requests.codes.ok
-
     transcript = cluster_utils.get_single_existing_transcript(
         pod_name, transcripts_path
     )
@@ -209,6 +236,7 @@ def test_transcripts_storing_cluster():
     assert transcript["tool_calls"] == []
 
 
+@pytest.mark.skip_with_lcore
 @retry(max_attempts=3, wait_between_runs=10)
 def test_openapi_endpoint():
     """Test handler for /opanapi REST API endpoint."""
@@ -252,7 +280,6 @@ def test_cache_existence(postgres_connection):
     """Test the cache existence."""
     if postgres_connection is None:
         pytest.skip("Postgres is not accessible.")
-
     value = read_conversation_history_count(postgres_connection)
     # check if history exists at all
     assert value is not None
@@ -309,6 +336,33 @@ def test_conversation_in_postgres_cache(postgres_connection) -> None:
     assert "OpenShift" in deserialized[3].content
 
 
+@pytest.fixture
+def turn_off_operator_pod():
+    """Turn off operator pod fixture.
+
+    Turn off operator pod to modify lightspeed-stack
+    without waiting for lightspeed service pod to restart.
+    """
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "0",
+        ]
+    )
+    yield
+    cluster_utils.run_oc(
+        [
+            "scale",
+            "deployment/lightspeed-operator-controller-manager",
+            "--replicas",
+            "1",
+        ]
+    )
+
+
+@pytest.mark.usefixtures("turn_off_operator_pod")
 @pytest.mark.data_export
 def test_user_data_collection():
     """Test user data collection and upload to ingress.
@@ -316,6 +370,7 @@ def test_user_data_collection():
     This test runs in isolation with the 'data_export' marker.
     It patches the exporter to use manual mode so it uses the ConfigMap token.
     """
+    update_ols_config()
 
     def filter_logs(logs: str, last_log_line: str) -> str:
         filtered_logs = []
@@ -333,7 +388,8 @@ def test_user_data_collection():
 
     # Prepare: patch to manual mode, set short interval, configure stage ingress
     controller = prepare_for_data_collection_test(
-        short_interval_seconds=OLS_USER_DATA_COLLECTION_INTERVAL_SHORT
+        client=pytest.client,
+        short_interval_seconds=OLS_USER_DATA_COLLECTION_INTERVAL_SHORT,
     )
 
     data_collection_container_name = "lightspeed-to-dataverse-exporter"
@@ -361,7 +417,6 @@ def test_user_data_collection():
 
     # Get log point for next check
     last_log_line = get_last_log_line(container_log)
-
     # Create new data via feedback endpoint
     response = pytest.client.post(
         "/v1/feedback",
@@ -397,6 +452,7 @@ def test_user_data_collection():
     assert user_data == []
 
 
+@pytest.mark.skip_with_lcore
 @pytest.mark.cluster
 def test_http_header_redaction():
     """Test that sensitive HTTP headers are redacted from the logs."""
@@ -479,7 +535,7 @@ def test_ca_service_certs_rotation():
         name="lightspeed-operator-controller-manager", namespace="openshift-lightspeed"
     )
     cluster_utils.restart_deployment(
-        name="lightspeed-app-server", namespace="openshift-lightspeed"
+        name=OLS_SERVICE_DEPLOYMENT, namespace="openshift-lightspeed"
     )
     cluster_utils.restart_deployment(
         name="lightspeed-console-plugin", namespace="openshift-lightspeed"
@@ -503,17 +559,35 @@ def update_olsconfig(limiters: list[dict]):
         limiters: List of dictionaries containing limiter configurations
                  to set in ols_config.quota_handlers.limiters
     """
-    configmap_yaml = cluster_utils.run_oc(["get", "cm/olsconfig", "-o", "yaml"]).stdout
-    configmap = yaml.safe_load(configmap_yaml)
-    olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
-    olsconfig["ols_config"]["quota_handlers"]["limiters"] = limiters
-    configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
-    updated_configmap = yaml.dump(configmap)
+    is_lcore = os.getenv("LCORE", "False").lower() in ("true", "1", "t")
+    if is_lcore:
+        # LCORE environment: update lightspeed-stack-config ConfigMap
+        configmap_name = "lightspeed-stack-config"
+        config_file_key = "lightspeed-stack.yaml"
+        configmap_yaml = cluster_utils.run_oc(
+            ["get", f"cm/{configmap_name}", "-o", "yaml"]
+        ).stdout
+        configmap = yaml.safe_load(configmap_yaml)
+        stack_config = yaml.safe_load(configmap["data"][config_file_key])
+        stack_config["quota_handlers"]["limiters"] = limiters
+        configmap["data"][config_file_key] = yaml.dump(stack_config)
+    else:
+        # Standard environment: update olsconfig ConfigMap
+        configmap_name = "olsconfig"
+        configmap_yaml = cluster_utils.run_oc(
+            ["get", f"cm/{configmap_name}", "-o", "yaml"]
+        ).stdout
+        configmap = yaml.safe_load(configmap_yaml)
+        olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+        olsconfig["ols_config"]["quota_handlers"]["limiters"] = limiters
+        configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
 
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
+    updated_configmap = yaml.dump(configmap)
+    cluster_utils.run_oc(["delete", "configmap", configmap_name])
     cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
 
 
+@pytest.mark.usefixtures("turn_off_operator_pod")
 @pytest.mark.quota_limits
 def test_quota_limits():
     """Verify OLS quota limits."""
@@ -522,7 +596,6 @@ def test_quota_limits():
         json={"query": "what is kubernetes?"},
         timeout=LLM_REST_API_TIMEOUT,
     )
-
     # assert that the available quota is
     # less than the initial one hardcoded in the olsconfig
     assert (
@@ -539,7 +612,7 @@ def test_quota_limits():
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -558,7 +631,7 @@ def test_quota_limits():
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "1",
         ]
@@ -580,7 +653,7 @@ def test_quota_limits():
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -589,7 +662,7 @@ def test_quota_limits():
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "1",
         ]
