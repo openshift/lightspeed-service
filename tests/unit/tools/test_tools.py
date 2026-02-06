@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Optional
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from ols.src.tools.tools import (
     SENSITIVE_KEYWORDS,
+    _extract_text_from_tool_output,
     execute_tool_call,
     execute_tool_calls,
     get_tool_by_name,
@@ -22,32 +23,57 @@ class FakeSchema(BaseModel):
     """Fake schema for FakeTool."""
 
 
+def _make_fake_coroutine(
+    name: str, delay: float = 0.0, should_fail: bool = False
+) -> Any:
+    """Create async coroutine for FakeTool that ainvoke will use."""
+
+    async def _coro(**kwargs: Any) -> str:
+        if delay > 0:
+            await asyncio.sleep(delay)
+        if should_fail:
+            raise Exception("Tool execution failed")
+        return f"fake_output_from_{name}"
+
+    return _coro
+
+
 class FakeTool(StructuredTool):
     """Mock tool class that inherits from StructuredTool."""
 
     def __init__(self, name: str, delay: float = 0.0, should_fail: bool = False):
         """Initialize the tool with a name."""
-        # Initialize StructuredTool with required parameters
         super().__init__(
             name=name,
             description=f"Fake tool {name}",
-            func=self._sync_run,
+            func=lambda **kwargs: f"fake_output_from_{name}",
+            coroutine=_make_fake_coroutine(name, delay, should_fail),
             args_schema=FakeSchema,
         )
-        self._delay = delay
-        self._should_fail = should_fail
 
-    def _sync_run(self, **kwargs) -> str:
-        """Sync run method (required by StructuredTool)."""
-        return f"fake_output_from_{self.name}"
 
-    async def arun(self, tool_args: Optional[dict] = None, **kwargs) -> str:
-        """Mock async run method."""
-        if self._delay > 0:
-            await asyncio.sleep(self._delay)
-        if self._should_fail:
-            raise Exception("Tool execution failed")
-        return f"fake_output_from_{self.name}"
+class ContentBlockTool(StructuredTool):
+    """Mock tool that returns content blocks (langchain-mcp-adapters>=0.2.0 format)."""
+
+    def __init__(self, name: str):
+        """Initialize the tool."""
+
+        async def _content_block_coro(**kwargs: Any) -> Any:
+            return [
+                {
+                    "type": "text",
+                    "text": "pod1 Running\npod2 Running",
+                    "id": "lc_test_id",
+                }
+            ]
+
+        super().__init__(
+            name=name,
+            description=f"Content block tool {name}",
+            func=lambda **kwargs: "sync output",
+            coroutine=_content_block_coro,
+            args_schema=FakeSchema,
+        )
 
 
 def test_get_tool_by_name():
@@ -255,21 +281,17 @@ class LargeOutputTool(StructuredTool):
 
     def __init__(self, name: str, output_size: int = 100):
         """Initialize with configurable output size."""
+
+        async def _large_coro(**kwargs: Any) -> str:
+            return "word " * output_size
+
         super().__init__(
             name=name,
             description=f"Large output tool {name}",
-            func=self._sync_run,
+            func=lambda **kwargs: "word " * output_size,
+            coroutine=_large_coro,
             args_schema=FakeSchema,
         )
-        self._output_size = output_size
-
-    def _sync_run(self, **kwargs) -> str:
-        """Sync run method."""
-        return "word " * self._output_size
-
-    async def arun(self, tool_args: Optional[dict] = None, **kwargs) -> str:
-        """Return a large output."""
-        return "word " * self._output_size
 
 
 @pytest.mark.asyncio
@@ -349,3 +371,59 @@ async def test_execute_tool_calls_custom_max_tokens():
         tool_calls, fake_tools, max_tokens_per_output=50
     )
     assert messages_low_limit[0].additional_kwargs.get("truncated") is True
+
+
+def test_extract_text_from_tool_output_string():
+    """Test _extract_text_from_tool_output with a plain string."""
+    assert _extract_text_from_tool_output("hello") == "hello"
+
+
+def test_extract_text_from_tool_output_content_blocks():
+    """Test _extract_text_from_tool_output with LC standard content blocks."""
+    blocks = [
+        {"type": "text", "text": "pod1 Running", "id": "lc_1"},
+        {"type": "text", "text": "pod2 Running", "id": "lc_2"},
+    ]
+    result = _extract_text_from_tool_output(blocks)
+    assert result == "pod1 Running\npod2 Running"
+
+
+def test_extract_text_from_tool_output_single_content_block():
+    """Test _extract_text_from_tool_output with a single content block."""
+    blocks = [{"type": "text", "text": "some output", "id": "lc_1"}]
+    assert _extract_text_from_tool_output(blocks) == "some output"
+
+
+def test_extract_text_from_tool_output_mixed_list():
+    """Test _extract_text_from_tool_output with mixed list elements."""
+    blocks = [
+        {"type": "text", "text": "text content"},
+        "plain string",
+    ]
+    result = _extract_text_from_tool_output(blocks)
+    assert result == "text content\nplain string"
+
+
+def test_extract_text_from_tool_output_non_string_non_list():
+    """Test _extract_text_from_tool_output with unexpected types."""
+    assert _extract_text_from_tool_output(42) == "42"
+    assert _extract_text_from_tool_output(None) == "None"
+
+
+def test_extract_text_from_tool_output_empty_list():
+    """Test _extract_text_from_tool_output with empty list."""
+    assert _extract_text_from_tool_output([]) == ""
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_with_content_blocks():
+    """Test execute_tool_call handles content block output from MCP adapters 0.2+."""
+    content_block_tool = ContentBlockTool(name="content_tool")
+    fake_tools = [content_block_tool]
+
+    status, output, was_truncated = await execute_tool_call(
+        "content_tool", {}, fake_tools
+    )
+    assert status == "success"
+    assert output == "pod1 Running\npod2 Running"
+    assert was_truncated is False
