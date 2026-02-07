@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from typing import Any
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
@@ -14,6 +15,34 @@ logger = logging.getLogger(__name__)
 
 
 SENSITIVE_KEYWORDS = ["secret"]
+
+
+def _extract_text_from_tool_output(output: Any) -> str:
+    """Extract plain text from tool output.
+
+    Handle both old-style string output and new-style content block
+    list output from langchain-mcp-adapters>=0.2.0 which returns
+    LC standard content blocks like [{'type': 'text', 'text': '...'}].
+
+    Args:
+        output: Tool output, either a string or list of content blocks.
+
+    Returns:
+        Plain text string extracted from the output.
+    """
+    if isinstance(output, str):
+        return output
+    if isinstance(output, list):
+        parts = []
+        for block in output:
+            if isinstance(block, dict) and "text" in block:
+                parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+            else:
+                parts.append(str(block))
+        return "\n".join(parts)
+    return str(output)
 
 
 def raise_for_sensitive_tool_args(tool_args: dict) -> None:
@@ -58,7 +87,15 @@ async def execute_tool_call(
     was_truncated = False
     try:
         tool = get_tool_by_name(tool_name, all_mcp_tools)
-        tool_output = await tool.arun(_jsonify(tool_args))  # type: ignore [attr-defined]
+        result = await tool.ainvoke(_jsonify(tool_args))
+
+        # ainvoke may return (content, artifact) tuple for tools with
+        # response_format="content_and_artifact", or content directly.
+        # TODO: handle structured_content from artifact for MCP Apps.
+        if isinstance(result, tuple) and len(result) == 2:
+            tool_output = _extract_text_from_tool_output(result[0])
+        else:
+            tool_output = _extract_text_from_tool_output(result)
 
         token_handler = TokenHandler()
         tool_output, was_truncated = token_handler.truncate_tool_output(
