@@ -599,7 +599,7 @@ def test_tool_calling() -> None:
             QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "query": "What pods are currently running in the openshift-lightspeed namespace?",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )

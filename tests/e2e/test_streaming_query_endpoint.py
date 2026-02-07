@@ -598,7 +598,7 @@ def test_tool_calling_text() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "Get me current running pods in openshift-lightspeed namespace",
+                "query": "What pods are currently running in the openshift-lightspeed namespace?",
                 "media_type": constants.MEDIA_TYPE_TEXT,
             },
         )
@@ -627,7 +627,7 @@ def test_tool_calling_events() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "Get me current running pods in openshift-lightspeed namespace, use tools available to you",  # noqa: E501
+                "query": "What pods are currently running in the openshift-lightspeed namespace?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )
