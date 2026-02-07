@@ -99,7 +99,8 @@ def conversation_request(
         else generate_response(
             processed_request.conversation_id,
             llm_request,
-            processed_request.previous_input,
+            processed_request.user_id,
+            processed_request.skip_user_id_check,
             streaming=True,
             user_token=processed_request.user_token,
         )

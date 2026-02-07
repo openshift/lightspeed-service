@@ -9,12 +9,12 @@ from ols.app.models.models import CacheEntry
 from ols.src.cache.in_memory_cache import InMemoryCache
 from ols.utils import suid
 
-conversation_id = suid.get_suid()
-user_provided_user_id = "test-user1"
-cache_entry_1 = CacheEntry(
+CONVERSATION_ID = suid.get_suid()
+USER_PROVIDED_USER_ID = "test-user1"
+CACHE_ENTRY_1 = CacheEntry(
     query=HumanMessage("user message1"), response=AIMessage("ai message1")
 )
-cache_entry_2 = CacheEntry(
+CACHE_ENTRY_2 = CacheEntry(
     query=HumanMessage("user message2"), response=AIMessage("ai message2")
 )
 
@@ -32,43 +32,49 @@ def test_insert_or_append(cache):
     """Test the behavior of insert_or_append method."""
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
-        conversation_id,
-        cache_entry_1,
+        CONVERSATION_ID,
+        CACHE_ENTRY_1,
     )
 
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == [cache_entry_1]
+    history, was_limited = cache.get(constants.DEFAULT_USER_UID, CONVERSATION_ID)
+    assert history == [CACHE_ENTRY_1]
+    assert was_limited is False
 
 
 def test_insert_or_append_skip_user_id_check(cache):
     """Test the behavior of insert_or_append method."""
     skip_user_id_check = True
     cache.insert_or_append(
-        user_provided_user_id, conversation_id, cache_entry_1, skip_user_id_check
+        USER_PROVIDED_USER_ID, CONVERSATION_ID, CACHE_ENTRY_1, skip_user_id_check
     )
 
-    assert cache.get(user_provided_user_id, conversation_id, skip_user_id_check) == [
-        cache_entry_1
-    ]
+    history, was_limited = cache.get(
+        USER_PROVIDED_USER_ID, CONVERSATION_ID, skip_user_id_check
+    )
+    assert history == [CACHE_ENTRY_1]
+    assert was_limited is False
 
 
 def test_insert_or_append_existing_key(cache):
     """Test the behavior of insert_or_append method for existing item."""
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
-        conversation_id,
-        cache_entry_1,
+        CONVERSATION_ID,
+        CACHE_ENTRY_1,
     )
     cache.insert_or_append(
         constants.DEFAULT_USER_UID,
-        conversation_id,
-        cache_entry_2,
+        CONVERSATION_ID,
+        CACHE_ENTRY_2,
     )
     expected_cache = [
-        cache_entry_1,
-        cache_entry_2,
+        CACHE_ENTRY_1,
+        CACHE_ENTRY_2,
     ]
 
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) == expected_cache
+    history, was_limited = cache.get(constants.DEFAULT_USER_UID, CONVERSATION_ID)
+    assert history == expected_cache
+    assert was_limited is False
 
 
 def test_insert_or_append_overflow(cache):
@@ -83,17 +89,19 @@ def test_insert_or_append_overflow(cache):
         value = CacheEntry(query=HumanMessage(f"user query {i}"))
         cache.insert_or_append(
             user,
-            conversation_id,
+            CONVERSATION_ID,
             value,
         )
 
     # Ensure the oldest entry is evicted
-    assert cache.get(f"{user_name_prefix}0", conversation_id) is None
+    history, was_limited = cache.get(f"{user_name_prefix}0", CONVERSATION_ID)
+    assert history == []
+    assert was_limited is False
     # Ensure the newest entry is still present
     expected_result = [CacheEntry(query=HumanMessage(f"user query {i}"))]
-    assert (
-        cache.get(f"{user_name_prefix}{capacity}", conversation_id) == expected_result
-    )
+    history, was_limited = cache.get(f"{user_name_prefix}{capacity}", CONVERSATION_ID)
+    assert history == expected_result
+    assert was_limited is False
 
 
 def test_insert_or_append_eviction(cache):
@@ -105,7 +113,7 @@ def test_insert_or_append_eviction(cache):
     cache.capacity = capacity
     cache.insert_or_append(
         f"{user_name_prefix}{0}",
-        conversation_id,
+        CONVERSATION_ID,
         CacheEntry(query=HumanMessage("user query 0 intial entry")),
     )
     for i in range(capacity):
@@ -113,40 +121,49 @@ def test_insert_or_append_eviction(cache):
         value = CacheEntry(query=HumanMessage(f"user query {i}"))
         cache.insert_or_append(
             user,
-            conversation_id,
+            CONVERSATION_ID,
             value,
         )
 
     # Ensure the oldest entry is evicted
     expected_result = [CacheEntry(query=HumanMessage("user query 0"))]
-    assert cache.get(f"{user_name_prefix}0", conversation_id) == expected_result
+    history, was_limited = cache.get(f"{user_name_prefix}0", CONVERSATION_ID)
+    assert history == expected_result
+    assert was_limited is False
     # Ensure the newest entry is still present
     expected_result = [CacheEntry(query=HumanMessage(f"user query {i}"))]
-    assert (
-        cache.get(f"{user_name_prefix}{capacity - 1}", conversation_id)
-        == expected_result
+    history, was_limited = cache.get(
+        f"{user_name_prefix}{capacity - 1}", CONVERSATION_ID
     )
+    assert history == expected_result
+    assert was_limited is False
 
 
 def test_get_nonexistent_user(cache):
     """Test how non-existent items are handled by the cache."""
     # this UUID is different from DEFAULT_USER_UID
-    assert cache.get("ffffffff-ffff-ffff-ffff-ffffffffffff", conversation_id) is None
+    history, was_limited = cache.get(
+        "ffffffff-ffff-ffff-ffff-ffffffffffff", CONVERSATION_ID
+    )
+    assert history == []
+    assert was_limited is False
 
 
 def test_delete_existing_conversation(cache):
     """Test deleting an existing conversation."""
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id, cache_entry_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, CONVERSATION_ID, CACHE_ENTRY_1)
 
-    result = cache.delete(constants.DEFAULT_USER_UID, conversation_id)
+    result = cache.delete(constants.DEFAULT_USER_UID, CONVERSATION_ID)
 
     assert result is True
-    assert cache.get(constants.DEFAULT_USER_UID, conversation_id) is None
+    history, was_limited = cache.get(constants.DEFAULT_USER_UID, CONVERSATION_ID)
+    assert history == []
+    assert was_limited is False
 
 
 def test_delete_nonexistent_conversation(cache):
     """Test deleting a conversation that doesn't exist."""
-    result = cache.delete(constants.DEFAULT_USER_UID, conversation_id)
+    result = cache.delete(constants.DEFAULT_USER_UID, CONVERSATION_ID)
     assert result is False
 
 
@@ -160,13 +177,17 @@ def test_delete_skip_user_id_check(cache):
     """Test deleting an existing conversation."""
     skip_user_id_check = True
     cache.insert_or_append(
-        user_provided_user_id, conversation_id, cache_entry_1, skip_user_id_check
+        USER_PROVIDED_USER_ID, CONVERSATION_ID, CACHE_ENTRY_1, skip_user_id_check
     )
 
-    result = cache.delete(user_provided_user_id, conversation_id, skip_user_id_check)
+    result = cache.delete(USER_PROVIDED_USER_ID, CONVERSATION_ID, skip_user_id_check)
 
     assert result is True
-    assert cache.get(user_provided_user_id, conversation_id, skip_user_id_check) is None
+    history, was_limited = cache.get(
+        USER_PROVIDED_USER_ID, CONVERSATION_ID, skip_user_id_check
+    )
+    assert history == []
+    assert was_limited is False
 
 
 def test_list_conversations(cache):
@@ -175,8 +196,8 @@ def test_list_conversations(cache):
     conversation_id_1 = suid.get_suid()
     conversation_id_2 = suid.get_suid()
 
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_1, cache_entry_1)
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_2, cache_entry_2)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_1, CACHE_ENTRY_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_2, CACHE_ENTRY_2)
 
     conversations = cache.list(constants.DEFAULT_USER_UID)
 
@@ -194,13 +215,13 @@ def test_list_conversations_skip_user_id_check(cache):
     skip_user_id_check = True
 
     cache.insert_or_append(
-        user_provided_user_id, conversation_id_1, cache_entry_1, skip_user_id_check
+        USER_PROVIDED_USER_ID, conversation_id_1, CACHE_ENTRY_1, skip_user_id_check
     )
     cache.insert_or_append(
-        user_provided_user_id, conversation_id_2, cache_entry_2, skip_user_id_check
+        USER_PROVIDED_USER_ID, conversation_id_2, CACHE_ENTRY_2, skip_user_id_check
     )
 
-    conversations = cache.list(user_provided_user_id, skip_user_id_check)
+    conversations = cache.list(USER_PROVIDED_USER_ID, skip_user_id_check)
 
     assert len(conversations) == 2
     conversation_ids = [c.conversation_id for c in conversations]
@@ -219,8 +240,8 @@ def test_list_after_delete(cache):
     conversation_id_1 = suid.get_suid()
     conversation_id_2 = suid.get_suid()
 
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_1, cache_entry_1)
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_2, cache_entry_2)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_1, CACHE_ENTRY_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conversation_id_2, CACHE_ENTRY_2)
 
     cache.delete(constants.DEFAULT_USER_UID, conversation_id_1)
 
@@ -235,8 +256,8 @@ def test_list_conversations_metadata(cache):
     """Test that list returns ConversationData with correct metadata."""
     conv_id = suid.get_suid()
 
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_1)
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_2)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, CACHE_ENTRY_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, CACHE_ENTRY_2)
 
     conversations = cache.list(constants.DEFAULT_USER_UID)
 
@@ -252,7 +273,7 @@ def test_set_topic_summary(cache):
     """Test setting topic summary for a conversation."""
     conv_id = suid.get_suid()
 
-    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, cache_entry_1)
+    cache.insert_or_append(constants.DEFAULT_USER_UID, conv_id, CACHE_ENTRY_1)
     cache.set_topic_summary(constants.DEFAULT_USER_UID, conv_id, "Test Topic")
 
     conversations = cache.list(constants.DEFAULT_USER_UID)
@@ -281,13 +302,13 @@ def test_set_topic_summary_skip_user_id_check(cache):
     skip_user_id_check = True
 
     cache.insert_or_append(
-        user_provided_user_id, conv_id, cache_entry_1, skip_user_id_check
+        USER_PROVIDED_USER_ID, conv_id, CACHE_ENTRY_1, skip_user_id_check
     )
     cache.set_topic_summary(
-        user_provided_user_id, conv_id, "User Topic", skip_user_id_check
+        USER_PROVIDED_USER_ID, conv_id, "User Topic", skip_user_id_check
     )
 
-    conversations = cache.list(user_provided_user_id, skip_user_id_check)
+    conversations = cache.list(USER_PROVIDED_USER_ID, skip_user_id_check)
 
     assert len(conversations) == 1
     assert conversations[0].topic_summary == "User Topic"
@@ -322,14 +343,14 @@ def test_list_improper_user_id(cache, uuid):
 def test_delete_improper_user_id(cache, uuid):
     """Test delete with invalid user ID."""
     with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
-        cache.delete(uuid, conversation_id)
+        cache.delete(uuid, CONVERSATION_ID)
 
 
 @pytest.mark.parametrize("uuid", improper_user_uuids)
 def test_get_improper_user_id(cache, uuid):
     """Test how improper user ID is handled."""
     with pytest.raises(ValueError, match=f"Invalid user ID {uuid}"):
-        cache.get(uuid, conversation_id)
+        cache.get(uuid, CONVERSATION_ID)
 
 
 def test_get_improper_conversation_id(cache):
@@ -344,3 +365,42 @@ def test_singleton_pattern():
     cache1 = InMemoryCache(mc)
     cache2 = InMemoryCache(mc)
     assert cache1 is cache2
+
+
+def test_get_with_limit(cache):
+    """Test get method with limit parameter."""
+    # Insert 5 entries
+    for i in range(5):
+        entry = CacheEntry(
+            query=HumanMessage(f"query {i}"), response=AIMessage(f"response {i}")
+        )
+        cache.insert_or_append(constants.DEFAULT_USER_UID, CONVERSATION_ID, entry)
+
+    # Get with limit less than total
+    history, was_limited = cache.get(
+        constants.DEFAULT_USER_UID, CONVERSATION_ID, limit=3
+    )
+    assert len(history) == 3
+    assert was_limited is True
+    # Should return last 3 messages
+    assert history[0].query.content == "query 2"
+    assert history[2].query.content == "query 4"
+
+    # Get with limit equal to total
+    history, was_limited = cache.get(
+        constants.DEFAULT_USER_UID, CONVERSATION_ID, limit=5
+    )
+    assert len(history) == 5
+    assert was_limited is False
+
+    # Get with limit greater than total
+    history, was_limited = cache.get(
+        constants.DEFAULT_USER_UID, CONVERSATION_ID, limit=10
+    )
+    assert len(history) == 5
+    assert was_limited is False
+
+    # Get without limit
+    history, was_limited = cache.get(constants.DEFAULT_USER_UID, CONVERSATION_ID)
+    assert len(history) == 5
+    assert was_limited is False
