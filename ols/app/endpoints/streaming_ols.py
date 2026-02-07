@@ -7,7 +7,7 @@ streaming queries.
 import json
 import logging
 import time
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Generator, Optional, Union
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
@@ -33,6 +33,7 @@ from ols.app.models.models import (
     RagChunk,
     ReferencedDocument,
     StreamedChunk,
+    SummarizerResponse,
     TokenCounter,
     UnauthorizedResponse,
 )
@@ -93,17 +94,23 @@ def conversation_request(
     """
     processed_request = process_request(auth, llm_request)
 
-    summarizer_response = (
-        invalid_response_generator()
-        if not processed_request.valid
-        else generate_response(
+    summarizer_response: Union[
+        AsyncGenerator[StreamedChunk, None], SummarizerResponse, Generator
+    ]
+
+    if not processed_request.valid:
+        summarizer_response = invalid_response_generator()
+    else:
+        client_headers = llm_request.mcp_headers
+
+        summarizer_response = generate_response(
             processed_request.conversation_id,
             llm_request,
             processed_request.previous_input,
             streaming=True,
             user_token=processed_request.user_token,
+            client_headers=client_headers,
         )
-    )
 
     return StreamingResponse(
         response_processing_wrapper(

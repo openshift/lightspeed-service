@@ -197,6 +197,28 @@
                 }
             }
         },
+        "/v1/mcp/client-auth-headers": {
+            "get": {
+                "tags": [
+                    "mcp"
+                ],
+                "summary": "Get MCP servers requiring client authorization headers",
+                "description": "Returns information about which MCP servers require client-provided authorization headers. Clients should include these headers in the MCP-Headers HTTP header when making queries.",
+                "operationId": "get_mcp_header_info_v1_mcp_client_auth_headers_get",
+                "responses": {
+                    "200": {
+                        "description": "List of servers requiring client headers",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPHeadersResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback/status": {
             "get": {
                 "tags": [
@@ -1250,6 +1272,23 @@
                         ],
                         "title": "Media Type",
                         "default": "text/plain"
+                    },
+                    "mcp_headers": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mcp Headers"
                     }
                 },
                 "additionalProperties": false,
@@ -1258,7 +1297,7 @@
                     "query"
                 ],
                 "title": "LLMRequest",
-                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n    mcp_headers: Optional JSON object mapping MCP server names to header lists.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -1279,6 +1318,7 @@
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "mcp_headers": "{\"github-mcp\": {\"Authorization\": \"Bearer ghp_xxxxx\"}}",
                         "media_type": "text/plain",
                         "model": "model-name",
                         "provider": "openai",
@@ -1403,6 +1443,48 @@
                         "alive": true
                     }
                 ]
+            },
+            "MCPHeadersResponse": {
+                "properties": {
+                    "servers": {
+                        "items": {
+                            "$ref": "#/components/schemas/MCPServerHeaderInfo"
+                        },
+                        "type": "array",
+                        "title": "Servers",
+                        "description": "List of servers requiring client-provided headers"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "servers"
+                ],
+                "title": "MCPHeadersResponse",
+                "description": "Response model listing servers that require client headers."
+            },
+            "MCPServerHeaderInfo": {
+                "properties": {
+                    "server_name": {
+                        "type": "string",
+                        "title": "Server Name",
+                        "description": "Name of the MCP server"
+                    },
+                    "required_headers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Required Headers",
+                        "description": "List of header names that client must provide"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "server_name",
+                    "required_headers"
+                ],
+                "title": "MCPServerHeaderInfo",
+                "description": "Information about headers required for an MCP server."
             },
             "NotAvailableResponse": {
                 "properties": {
