@@ -1194,12 +1194,10 @@ def test_tool_calling(_setup, caplog) -> None:
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._build_mcp_config",
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
             return_value=mcp_servers,
         ),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.MultiServerMCPClient"
-        ) as mock_mcp_client_cls,
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
@@ -1207,6 +1205,10 @@ def test_tool_calling(_setup, caplog) -> None:
             "ols.src.query_helpers.docs_summarizer.TokenHandler"
             ".calculate_and_check_available_tokens",
             return_value=1000,
+        ),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.gather_mcp_tools",
+            new=AsyncMock(return_value=mock_tools_map),
         ),
     ):
         # Set up the mock to return different values on each call

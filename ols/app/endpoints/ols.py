@@ -134,12 +134,15 @@ def conversation_request(
             None,
         )
     else:
+        client_headers = llm_request.mcp_headers
+
         summarizer_response = generate_response(
             processed_request.conversation_id,
             llm_request,
             processed_request.previous_input,
             streaming=False,
             user_token=processed_request.user_token,
+            client_headers=client_headers,
         )
 
     processed_request.timestamps["generate response"] = time.time()
@@ -563,6 +566,7 @@ def generate_response(
     previous_input: list[CacheEntry],
     streaming: bool = False,
     user_token: Optional[str] = None,
+    client_headers: dict[str, dict[str, str]] | None = None,
 ) -> Union[SummarizerResponse, Generator]:
     """Generate response based on validation result, previous input, and model output.
 
@@ -572,6 +576,7 @@ def generate_response(
         previous_input: The history of the conversation (if available).
         streaming: The flag indicating if the response should be streamed.
         user_token: The user token used for authorization.
+        client_headers: Client-provided MCP headers for authentication.
 
     Returns:
         SummarizerResponse or Generator, depending on the streaming flag.
@@ -582,6 +587,7 @@ def generate_response(
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
             user_token=user_token,
+            client_headers=client_headers,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
