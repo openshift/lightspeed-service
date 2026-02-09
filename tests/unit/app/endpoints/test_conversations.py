@@ -123,6 +123,40 @@ class TestGetConversation:
         assert response.chat_history[0]["messages"][0]["content"] == "Hello"
         assert response.chat_history[0]["messages"][1]["type"] == "assistant"
         assert response.chat_history[0]["messages"][1]["content"] == "Hi there!"
+        # Verify empty tool_calls and tool_results for entries without tools
+        assert response.chat_history[0]["tool_calls"] == []
+        assert response.chat_history[0]["tool_results"] == []
+
+    def test_get_conversation_with_tool_data(self, mock_auth, mock_cache):
+        """Test retrieval of conversation with tool calls and results."""
+        tool_calls = [{"name": "get_info", "args": {"topic": "k8s"}, "id": "tc1"}]
+        tool_results = [{"id": "tc1", "status": "success", "content": "K8s info"}]
+        mock_cache_entries = [
+            CacheEntry(
+                query=HumanMessage(content="Tell me about Kubernetes"),
+                response=AIMessage(content="Here is info about K8s"),
+                tool_calls=tool_calls,
+                tool_results=tool_results,
+            ),
+        ]
+        mock_cache.get.return_value = mock_cache_entries
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+
+        with patch("ols.config._conversation_cache", mock_cache):
+            response = conversations.get_conversation(conversation_id, mock_auth)
+
+        assert response.conversation_id == conversation_id
+        assert len(response.chat_history) == 1
+        assert (
+            response.chat_history[0]["messages"][0]["content"]
+            == "Tell me about Kubernetes"
+        )
+        assert (
+            response.chat_history[0]["messages"][1]["content"]
+            == "Here is info about K8s"
+        )
+        assert response.chat_history[0]["tool_calls"] == tool_calls
+        assert response.chat_history[0]["tool_results"] == tool_results
 
     def test_get_conversation_not_found(self, mock_auth, mock_cache):
         """Test retrieval of non-existent conversation."""

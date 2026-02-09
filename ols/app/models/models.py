@@ -609,7 +609,8 @@ class ConversationDetailResponse(BaseModel):
 
     Attributes:
         conversation_id: The conversation ID (UUID).
-        chat_history: List of message exchanges in the conversation.
+        chat_history: List of message exchanges in the conversation. Each exchange
+            includes messages, tool_calls, and tool_results.
     """
 
     conversation_id: str
@@ -628,7 +629,24 @@ class ConversationDetailResponse(BaseModel):
                                     "type": "assistant",
                                     "content": "Use kubectl logs <pod> ...",
                                 },
-                            ]
+                            ],
+                            "tool_calls": [
+                                {
+                                    "name": "get_pod_info",
+                                    "args": {"pod": "nginx"},
+                                    "id": "tc1",
+                                    "type": "tool_call",
+                                }
+                            ],
+                            "tool_results": [
+                                {
+                                    "id": "tc1",
+                                    "status": "success",
+                                    "content": "Pod nginx is running",
+                                    "type": "tool_result",
+                                    "round": 1,
+                                }
+                            ],
                         }
                     ],
                 }

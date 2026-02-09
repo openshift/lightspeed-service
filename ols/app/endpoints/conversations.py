@@ -165,7 +165,13 @@ def get_conversation(
                 {"type": "user", "content": entry.query.content},
                 {"type": "assistant", "content": entry.response.content},
             ]
-            chat_history.append({"messages": messages})
+            chat_history.append(
+                {
+                    "messages": messages,
+                    "tool_calls": entry.tool_calls,
+                    "tool_results": entry.tool_results,
+                }
+            )
 
         return ConversationDetailResponse(
             conversation_id=conversation_id,
