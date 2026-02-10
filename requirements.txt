@@ -406,9 +406,9 @@ langchain-core==1.2.5 \
 langchain-ibm==1.0.1 \
     --hash=sha256:1418e65dd00f4ed5dc9afc565bd46ef60dffe2b06b3ef9fcd57a98df793c0f23 \
     --hash=sha256:5cb1e795e61174c1b62b9236c9a1f8f19f59c9d7f5912a1549e8c471970f33b1
-langchain-mcp-adapters==0.1.14 \
-    --hash=sha256:36f8131d0b3b5ca28df03440be4dc2a3636e2f73e3e4a0a266d606ffaa12adda \
-    --hash=sha256:b900d37d1a82261e408e663b7176a1a74cf0072e17ae9e4241c068093912394a
+langchain-mcp-adapters==0.2.1 \
+    --hash=sha256:58e64c44e8df29ca7eb3b656cf8c9931ef64386534d7ca261982e3bdc63f3176 \
+    --hash=sha256:9f96ad4c64230f6757297fec06fde19d772c99dbdfbca987f7b7cfd51ff77240
 langchain-openai==1.1.0 \
     --hash=sha256:243bb345d0260ea1326c2b6ac2237ec29f082ab457c59e9306bac349df4577e8 \
     --hash=sha256:9a33280c2e8315d013d64e6b15e583be347beb0d0f281755c335ae504ad0c184
