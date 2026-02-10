@@ -1,28 +1,29 @@
 """Configuration loader."""
 
+from __future__ import annotations
+
 import traceback
-from io import TextIOBase
-from typing import Any, Optional
+from functools import cached_property
+from typing import TYPE_CHECKING, Any, Optional
 
 import yaml
 
 import ols.app.models.config as config_model
-from ols.src.cache.cache import Cache
 from ols.src.cache.cache_factory import CacheFactory
-from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 from ols.src.quota.token_usage_history import TokenUsageHistory
 
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
 from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
+from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
 from ols.utils.redactor import Redactor
 
-# NOTE: Loading/importing something from llama_index bumps memory
-# consumption up to ~400MiB.
-# from llama_index.core.indices.base import BaseIndex
-# Here, we need it just for typing, so we use Any instead.
-BaseIndex = Any
+if TYPE_CHECKING:
+    from io import TextIOBase
+
+    from ols.src.cache.cache import Cache
+    from ols.src.quota.quota_limiter import QuotaLimiter
 
 
 class AppConfig:
@@ -44,6 +45,7 @@ class AppConfig:
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
         self._token_usage_history: Optional[TokenUsageHistory] = None
+        self.k8s_tools_resolved = False
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -59,6 +61,11 @@ class AppConfig:
     def mcp_servers(self) -> config_model.MCPServers:
         """Return the MCP servers configuration."""
         return self.config.mcp_servers
+
+    @cached_property
+    def mcp_servers_dict(self) -> dict[str, config_model.MCPServerConfig]:
+        """Return dictionary mapping MCP server names to their configuration."""
+        return {server.name: server for server in self.config.mcp_servers.servers}
 
     @property
     def dev_config(self) -> config_model.DevConfig:
@@ -105,17 +112,54 @@ class AppConfig:
         return self._query_filters
 
     @property
-    def rag_index(self) -> Optional[BaseIndex]:
-        """Return the RAG index."""
+    def rag_index(self) -> Optional[list[Any]]:
+        """Return the RAG index.
+
+        Returns a list of LlamaIndex BaseIndex objects, but we use Any because
+        the index_loader module is excluded from type checking.
+        """
         # TODO: OLS-380 Config object mirrors configuration
         return self.rag_index_loader.vector_indexes
 
     @property
-    def rag_index_loader(self) -> Optional[IndexLoader]:
+    def rag_index_loader(self) -> IndexLoader:
         """Return the RAG index loader."""
         if self._rag_index_loader is None:
             self._rag_index_loader = IndexLoader(self.ols_config.reference_content)
         return self._rag_index_loader
+
+    @cached_property
+    def tools_rag(self) -> Optional[ToolsRAG]:
+        """Return the ToolsRAG instance for tool filtering.
+
+        Only creates the instance if tool_filtering configuration exists in the config
+        and there are MCP servers configured.
+        """
+        if (
+            self.config.ols_config.tool_filtering is not None
+            and self.config.mcp_servers
+            and len(self.config.mcp_servers.servers) > 0
+        ):
+            tool_config = self.config.ols_config.tool_filtering
+            embed_model = self.rag_index_loader.embed_model
+            if embed_model is None or isinstance(embed_model, str):
+                from llama_index.embeddings.huggingface import (  # pylint: disable=import-outside-toplevel
+                    HuggingFaceEmbedding,
+                )
+
+                model_path = (
+                    tool_config.embed_model_path
+                    or "sentence-transformers/all-mpnet-base-v2"
+                )
+                embed_model = HuggingFaceEmbedding(model_name=model_path)
+
+            return ToolsRAG(
+                encode_fn=embed_model.get_text_embedding,
+                alpha=tool_config.alpha,
+                top_k=tool_config.top_k,
+                threshold=tool_config.threshold,
+            )
+        return None
 
     @property
     def proxy_config(self) -> Optional[config_model.ProxyConfig]:
@@ -154,6 +198,11 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+            # Clear cached_property if it exists
+            if "mcp_servers_dict" in self.__dict__:
+                del self.__dict__["mcp_servers_dict"]
+            if "tools_rag" in self.__dict__:
+                del self.__dict__["tools_rag"]
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

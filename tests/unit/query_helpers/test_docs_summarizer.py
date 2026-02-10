@@ -4,14 +4,14 @@ import json
 import logging
 import re
 from math import ceil
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.config import MCPServerConfig, MCPServers
+from ols.app.models.config import MCPServerConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import mock_tools_map
@@ -213,7 +213,6 @@ def test_tool_calling_one_iteration():
             [AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})]
         )
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer._tool_calling_enabled = True
         summarizer.create_response(question)
         assert mock_invoke.call_count == 1
 
@@ -247,14 +246,25 @@ def test_tool_calling_two_iteration():
     """Test tool calling - stops after two iterations."""
     question = "How many namespaces are there in my cluster?"
 
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
-        new=fake_invoke_llm,
-    ) as mock_invoke:
-        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer._tool_calling_enabled = True
-        summarizer.create_response(question)
-        assert mock_invoke.call_count == 2
+    with (
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            new=fake_invoke_llm,
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+    ):
+        # Mock config for get_mcp_tools
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
+
+        # Mock _gather_and_populate_tools to return tools
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=({"test": {}}, mock_tools_map)),
+        ):
+            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+            summarizer.create_response(question)
+            assert mock_invoke.call_count == 2
 
 
 def test_tool_calling_force_stop():
@@ -266,18 +276,27 @@ def test_tool_calling_force_stop():
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
     ):
-        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
-            [
-                AIMessageChunk(
-                    content="XYZ", response_metadata={"finish_reason": "tool_calls"}
-                )
-            ]
-        )
-        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer._tool_calling_enabled = True
-        summarizer.create_response(question)
-        assert mock_invoke.call_count == 3
+        # Mock config for get_mcp_tools
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
+
+        # Mock _gather_and_populate_tools to return tools
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=({"test": {}}, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="XYZ", response_metadata={"finish_reason": "tool_calls"}
+                    )
+                ]
+            )
+            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+            summarizer.create_response(question)
+            assert mock_invoke.call_count == 3
 
 
 def test_tool_calling_tool_execution(caplog):
@@ -299,27 +318,37 @@ def test_tool_calling_tool_execution(caplog):
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
-        patch(
-            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
-            return_value=mcp_servers_config,
-        ),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.gather_mcp_tools",
-            new=AsyncMock(return_value=mock_tools_map),
-        ),
+        patch("ols.utils.mcp_utils.config") as mock_config,
     ):
-        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
-            [
-                AIMessageChunk(
-                    content="",
-                    response_metadata={"finish_reason": "tool_calls"},
-                    tool_calls=[
-                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
-                        {"name": "invalid_function_name", "args": {}, "id": "call_id2"},
-                    ],
-                )
-            ]
-        )
+        # Mock config for get_mcp_tools
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
+
+        # Mock _gather_and_populate_tools to return tools
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_id1",
+                            },
+                            {
+                                "name": "invalid_function_name",
+                                "args": {},
+                                "id": "call_id2",
+                            },
+                        ],
+                    )
+                ]
+            )
 
         # Create mock MCP client - now get_tools is called with server_name parameter
         mock_mcp_client_instance = AsyncMock()
@@ -359,26 +388,32 @@ def test_tool_token_tracking(caplog):
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
-        patch(
-            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
-            return_value=mcp_servers_config,
-        ),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.gather_mcp_tools",
-            new=AsyncMock(return_value=mock_tools_map),
-        ),
+        patch("ols.utils.mcp_utils.config") as mock_config,
     ):
-        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
-            [
-                AIMessageChunk(
-                    content="",
-                    response_metadata={"finish_reason": "tool_calls"},
-                    tool_calls=[
-                        {"name": "get_namespaces_mock", "args": {}, "id": "call_id1"},
-                    ],
-                )
-            ]
-        )
+        # Mock config for get_mcp_tools
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
+
+        # Mock _gather_and_populate_tools to return tools
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_id1",
+                            },
+                        ],
+                    )
+                ]
+            )
 
         mock_mcp_client_instance = AsyncMock()
         mock_mcp_client_instance.get_tools.return_value = mock_tools_map
@@ -545,10 +580,8 @@ def test_build_mcp_config_transport_is_streamable_http():
     server2 = MCPServerConfig(name="server2", url="http://server2:9090/mcp", timeout=30)
     server2._resolved_headers = {}
 
-    mock_mcp_servers = MCPServers(servers=[server1, server2])
-
     mcp_config = build_mcp_config(
-        mock_mcp_servers, user_token=None, client_headers=None
+        [server1, server2], user_token=None, client_headers=None
     )
 
     assert "server1" in mcp_config
