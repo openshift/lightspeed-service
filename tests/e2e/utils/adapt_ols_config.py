@@ -9,10 +9,20 @@ import time
 import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
+from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
+from tests.e2e.utils.ols_installer import (
+    create_secrets,
+    get_service_account_tokens,
+    setup_rbac,
+    setup_route,
+    setup_service_accounts,
+    update_lcore_setting,
+    update_ols_config,
+)
 from tests.e2e.utils.retry import retry_until_timeout_or_success
-from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 
 def apply_olsconfig(provider_list: list[str]) -> None:
@@ -49,28 +59,21 @@ def update_ols_configmap() -> None:
     """Update OLS configmap with additional e2e test configurations.
 
     Configures logging levels and user data collector settings for testing.
+    This is a wrapper around update_ols_config that adds data_export specific settings.
     """
-    try:
-        # Get the current configmap
-        configmap_yaml = cluster_utils.run_oc(
-            ["get", "cm/olsconfig", "-o", "yaml"]
-        ).stdout
-        configmap = yaml.safe_load(configmap_yaml)
-        olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
+    # First apply the standard config updates
+    update_ols_config()
 
-        # Ensure proper logging config for e2e tests
-        if "ols_config" not in olsconfig:
-            olsconfig["ols_config"] = {}
-        if "logging_config" not in olsconfig["ols_config"]:
-            olsconfig["ols_config"]["logging_config"] = {}
+    # Then add data_export specific user data collection config if needed
+    ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+    if ols_config_suffix == "data_export":
+        try:
+            configmap_yaml = cluster_utils.run_oc(
+                ["get", "cm/olsconfig", "-o", "yaml"]
+            ).stdout
+            configmap = yaml.safe_load(configmap_yaml)
+            olsconfig = yaml.safe_load(configmap["data"][DEFAULT_CONFIGURATION_FILE])
 
-        # Set INFO level to avoid redacted logs
-        olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
-
-        # Configure user data collection only for data_export test suite
-        # Other test suites don't need it and the volume might not be mounted
-        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-        if ols_config_suffix == "data_export":
             olsconfig["ols_config"]["user_data_collection"] = {
                 "feedback_disabled": False,
                 "feedback_storage": "/app-root/ols-user-data/feedback",
@@ -78,82 +81,20 @@ def update_ols_configmap() -> None:
                 "transcripts_storage": "/app-root/ols-user-data/transcripts",
             }
 
-        # Update the configmap
-        configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
-        updated_configmap = yaml.dump(configmap)
-        cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
-        print("OLS configmap updated successfully")
-
-    except Exception as e:
-        raise RuntimeError(
-            f"Failed to update OLS configmap with e2e settings: {e}"
-        ) from e
-
-
-def setup_service_accounts(namespace: str) -> None:
-    """Set up service accounts and access roles.
-
-    Args:
-        namespace: The Kubernetes namespace to create service accounts in.
-    """
-    print("Ensuring 'test-user' service account exists...")
-    cluster_utils.run_oc(
-        ["create", "sa", "test-user", "-n", namespace],
-        ignore_existing_resource=True,
-    )
-
-    print("Ensuring 'metrics-test-user' service account exists...")
-    cluster_utils.run_oc(
-        ["create", "sa", "metrics-test-user", "-n", namespace],
-        ignore_existing_resource=True,
-    )
-
-    print("Granting access roles to service accounts...")
-    cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
-    cluster_utils.grant_sa_user_access(
-        "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
-    )
-
-
-def setup_rbac(namespace: str) -> None:
-    """Set up pod-reader role and binding.
-
-    Args:
-        namespace: The Kubernetes namespace for RBAC configuration.
-    """
-    print("Ensuring 'pod-reader' role and rolebinding exist...")
-    cluster_utils.run_oc(
-        [
-            "create",
-            "role",
-            "pod-reader",
-            "--verb=get,list",
-            "--resource=pods",
-            "--namespace",
-            namespace,
-        ],
-        ignore_existing_resource=True,
-    )
-
-    cluster_utils.run_oc(
-        [
-            "create",
-            "rolebinding",
-            "test-user-pod-reader",
-            "--role=pod-reader",
-            f"--serviceaccount={namespace}:test-user",
-            "--namespace",
-            namespace,
-        ],
-        ignore_existing_resource=True,
-    )
-    print("RBAC setup verified.")
+            configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
+            updated_configmap = yaml.dump(configmap)
+            cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
+            print("Data export configmap settings applied successfully")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to update OLS configmap with data export settings: {e}"
+            ) from e
 
 
 def wait_for_deployment() -> None:
     """Wait for OLS deployment and pods to be ready.
 
-    Ensures the lightspeed-app-server deployment is available and pods are running.
+    Ensures the service deployment is available and pods are running.
     """
     print("Waiting for OLS deployment to be available...")
     retry_until_timeout_or_success(
@@ -163,42 +104,18 @@ def wait_for_deployment() -> None:
             [
                 "get",
                 "deployment",
-                "lightspeed-app-server",
+                OLS_SERVICE_DEPLOYMENT,
                 "--ignore-not-found",
                 "-o",
                 "name",
             ]
         ).stdout.strip()
-        == "deployment.apps/lightspeed-app-server",
+        == f"deployment.apps/{OLS_SERVICE_DEPLOYMENT}",
         "Waiting for lightspeed-app-server deployment to be detected",
     )
 
     print("Waiting for pods to be ready...")
-    cluster_utils.wait_for_running_pod()
-
-
-def setup_route() -> str:
-    """Set up route and return OLS URL.
-
-    Returns:
-        The HTTPS URL for accessing the OLS service.
-    """
-    try:
-        cluster_utils.run_oc(["delete", "route", "ols"], ignore_existing_resource=False)
-    except Exception:
-        print("No existing route to delete. Continuing...")
-
-    print("Creating route for OLS access")
-    cluster_utils.run_oc(
-        ["create", "-f", "tests/config/operator_install/route.yaml"],
-        ignore_existing_resource=False,
-    )
-
-    url = cluster_utils.run_oc(
-        ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
-    ).stdout.strip("'")
-
-    return f"https://{url}"
+    cluster_utils.wait_for_running_pod(name=OLS_SERVICE_DEPLOYMENT)
 
 
 def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
@@ -215,21 +132,13 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     provider_list = provider_env.split() or ["openai"]
     ols_image = os.getenv("OLS_IMAGE", "")
     namespace = "openshift-lightspeed"
+    creds = os.getenv("PROVIDER_KEY_PATH", "empty")
+    cluster_utils.run_oc(
+        ["project", "openshift-lightspeed"], ignore_existing_resource=True
+    )
 
-    print("Checking for existing app server deployment...")
-    try:
-        cluster_utils.run_oc(
-            ["scale", "deployment/lightspeed-app-server", "--replicas", "0"]
-        )
-        retry_until_timeout_or_success(
-            30,
-            3,
-            lambda: not cluster_utils.get_pod_by_prefix(fail_not_found=False),
-            "Waiting for old app server pod to terminate",
-        )
-        print("Old app server scaled down")
-    except Exception as e:
-        print(f"No existing app server to scale down (this is OK): {e}")
+    # Update lcore setting if LCORE is enabled
+    update_lcore_setting()
     # Scaling operator to 1 replica to allow finalizer to run for olsconfig
     cluster_utils.run_oc(
         [
@@ -240,26 +149,14 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
         ]
     )
     # Wait for operator pod to be ready
-    retry_until_timeout_or_success(
-        60,
-        5,
-        lambda: (
-            pods := cluster_utils.get_pod_by_prefix(
-                prefix="lightspeed-operator-controller-manager", fail_not_found=False
-            )
-        )
-        and all(
-            status == "true"
-            for status in cluster_utils.get_container_ready_status(pods[0])
-        ),
-        "Waiting for operator to be ready",
-    )
+    cluster_utils.wait_for_running_pod("lightspeed-operator-controller-manager")
     try:
-        cluster_utils.run_oc(["delete", "olsconfig", "cluster", "--ignore-not-found"])
-        print(" Old OLSConfig CR removed")
+        cluster_utils.run_oc(["delete", "secret", "llmcreds", "--ignore-not-found"])
     except Exception as e:
-        print(f"Could not delete old OLSConfig: {e}")
-
+        print(f"Could not delete old secret: {e}")
+    creds_list = creds.split()
+    for i, prov in enumerate(provider_list):
+        create_secrets(prov, creds_list[i], len(provider_list))
     try:
         apply_olsconfig(provider_list)
         print("New OLSConfig CR applied")
@@ -278,7 +175,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
             [
                 "get",
                 "deployment",
-                "lightspeed-app-server",
+                OLS_SERVICE_DEPLOYMENT,
                 "--ignore-not-found",
                 "-o",
                 "jsonpath={.status.replicas}",
@@ -292,7 +189,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
             "scale",
             "deployment/lightspeed-operator-controller-manager",
             "--replicas",
-            "0",
+            "1",
         ]
     )
 
@@ -309,7 +206,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     # Scale down app server to apply e2e configurations
     print("Scaling down app server to apply e2e configurations...")
     cluster_utils.run_oc(
-        ["scale", "deployment/lightspeed-app-server", "--replicas", "0"]
+        ["scale", f"deployment/{OLS_SERVICE_DEPLOYMENT}", "--replicas", "0"]
     )
 
     retry_until_timeout_or_success(
@@ -322,7 +219,8 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
 
     # Update configmap with e2e-specific settings - FAIL FAST if this breaks
     print("Updating configmap with e2e test settings...")
-    update_ols_configmap()
+    if OLS_SERVICE_DEPLOYMENT == "lightspeed-app-server":
+        update_ols_configmap()
     print(" Configmap updated successfully")
     # Apply test image
     if ols_image:
@@ -336,7 +234,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
             cluster_utils.run_oc(
                 [
                     "patch",
-                    "deployment/lightspeed-app-server",
+                    f"deployment/{OLS_SERVICE_DEPLOYMENT}",
                     "--type",
                     "json",
                     "-p",
@@ -351,7 +249,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     # Scale back up
     print("Scaling up app server with new configuration...")
     cluster_utils.run_oc(
-        ["scale", "deployment/lightspeed-app-server", "--replicas", "1"]
+        ["scale", f"deployment/{OLS_SERVICE_DEPLOYMENT}", "--replicas", "1"]
     )
 
     # Wait for deployment to be ready
@@ -371,10 +269,19 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     except Exception as e:
         print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
+    # Fetch tokens for service accounts
+    token, metrics_token = get_service_account_tokens()
+
+    # Set up route and get URL
+    ols_url = setup_route()
+
     # Configure exporter for e2e tests with proper settings
     try:
         print("Configuring exporter for e2e tests...")
+        # Create client for the exporter configuration
+        test_client = client_utils.get_http_client(ols_url, token)
         configure_exporter_for_e2e_tests(
+            client=test_client,
             interval_seconds=3600,  # 1 hour to prevent interference
             ingress_env="stage",
             log_level="DEBUG",
@@ -384,19 +291,6 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     except Exception as e:
         print(f"Warning: Could not configure exporter: {e}")
         print("Tests may experience interference from data collector")
-
-    # Fetch tokens for service accounts
-    print("Fetching tokens for service accounts...")
-    token = cluster_utils.get_token_for("test-user")
-    metrics_token = cluster_utils.get_token_for("metrics-test-user")
-
-    # Set up route and get URL
-    ols_url = setup_route()
-
-    # Wait for OLS to be ready
-    print(f"Waiting for OLS to be ready at {ols_url}...")
-    if not wait_for_ols(ols_url, timeout=180):
-        raise RuntimeError("OLS failed to become ready after configuration")
 
     print("OLS configuration and access setup completed successfully.")
     return ols_url, token, metrics_token

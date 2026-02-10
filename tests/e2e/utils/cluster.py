@@ -362,10 +362,10 @@ def wait_for_running_pod(
             get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
         )
         == 1,
-        "Waiting for service pod in running state",
+        f"Waiting for {name} pod in running state",
     )
     if not r:
-        raise Exception("Timed out waiting for new OLS pod to be ready")
+        raise Exception("Timed out waiting for {name} pod to be ready")
 
     def pod_has_containers_ready():
         pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
