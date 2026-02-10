@@ -556,17 +556,25 @@ spec:
         memory: 8Gi
     pipelineTaskName: clair-scan
   - computeResources:
-      limits:
-        memory: 8Gi
+        limits:
+            memory: 12Gi
     pipelineTaskName: ecosystem-cert-preflight-checks
   - computeResources:
-      limits:
-        memory: 8Gi
+        limits:
+            memory: 10Gi
+    pipelineTaskName: sast-shell-check
+  - computeResources:
+        limits:
+            memory: 10Gi
     pipelineTaskName: sast-snyk-check
   - computeResources:
-      limits:
-        memory: 8Gi
+        limits:
+            memory: 12Gi
     pipelineTaskName: sast-unicode-check
+  - computeResources:
+        limits:
+            memory: 10Gi
+    pipelineTaskName: sast-shell-check
   - computeResources:
       limits:
         memory: 10Gi
