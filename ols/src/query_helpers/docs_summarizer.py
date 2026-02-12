@@ -7,7 +7,7 @@ import logging
 from typing import Any, AsyncGenerator, Callable, Optional
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from llama_index.core.retrievers import BaseRetriever
@@ -18,6 +18,7 @@ from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
+from ols.src.mcp.tool_registry import get_tool_ui_metadata, is_model_visible
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
@@ -290,6 +291,12 @@ class DocsSummarizer(QueryHelper):
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
             all_mcp_tools = await gather_mcp_tools(self.mcp_servers)
 
+            # Filter out app-only tools (visibility: ["app"]) before LLM binding
+            app_only = [t.name for t in all_mcp_tools if not is_model_visible(t.name)]
+            if app_only:
+                logger.info("Excluding %d app-only tools from LLM: %s", len(app_only), app_only)
+                all_mcp_tools = [t for t in all_mcp_tools if is_model_visible(t.name)]
+
             # Track cumulative token usage for tool outputs
             tool_tokens_used = 0
             max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
@@ -300,9 +307,21 @@ class DocsSummarizer(QueryHelper):
 
             # Account for tool definitions tokens (schemas sent to LLM)
             if all_mcp_tools:
+
+                def _safe_tool_args(tool: Any) -> dict:
+                    """Get tool args safely; some tools lack 'properties' in their schema."""
+                    try:
+                        return tool.args
+                    except KeyError:
+                        return {}
+
                 tool_definitions_text = json.dumps(
                     [
-                        {"name": t.name, "description": t.description, "schema": t.args}
+                        {
+                            "name": t.name,
+                            "description": t.description,
+                            "schema": _safe_tool_args(t),
+                        }
                         for t in all_mcp_tools
                     ]
                 )
@@ -416,51 +435,103 @@ class DocsSummarizer(QueryHelper):
                             effective_per_tool_limit, 100
                         ),  # Minimum 100 tokens per tool
                     )
-                    messages.extend(tool_calls_messages)
 
-                    # Track tokens used by tool outputs
+                    tool_id_to_name = {
+                        tc.get("id"): tc.get("name") for tc in tool_calls
+                    }
+
+                    # Build LLM context messages: use placeholders for MCP App
+                    # tools to save tokens (the UI shows the full data instead).
+                    # The original tool_calls_messages are NOT mutated.
+                    llm_messages = []
                     for tool_call_message in tool_calls_messages:
+                        tool_name = tool_id_to_name.get(
+                            tool_call_message.tool_call_id, "unknown"
+                        )
+                        ui_metadata = get_tool_ui_metadata(tool_name)
+                        if ui_metadata and ui_metadata.resource_uri:
+                            llm_messages.append(
+                                ToolMessage(
+                                    content=(
+                                        f"[Data displayed in interactive UI:"
+                                        f" {tool_name}]"
+                                    ),
+                                    status=tool_call_message.status,
+                                    tool_call_id=tool_call_message.tool_call_id,
+                                )
+                            )
+                        else:
+                            llm_messages.append(tool_call_message)
+
+                    messages.extend(llm_messages)
+
+                    # Track tokens used by tool outputs (after placeholder replacement)
+                    for llm_message in llm_messages:
                         content_tokens = token_handler.text_to_tokens(
-                            str(tool_call_message.content)
+                            str(llm_message.content)
                         )
                         tool_tokens_used += len(content_tokens)
 
+                    # Stream tool results to UI (original content, not placeholders)
                     for tool_call_message in tool_calls_messages:
                         was_truncated = tool_call_message.additional_kwargs.get(
                             "truncated", False
                         )
-                        # Determine UI status: use "truncated" if output was truncated,
-                        # otherwise use the langchain status (success/error)
                         tool_status = (
                             "truncated" if was_truncated else tool_call_message.status
                         )
 
-                        # Log tool result in JSON format
+                        tool_name = tool_id_to_name.get(
+                            tool_call_message.tool_call_id, "unknown"
+                        )
+                        ui_metadata = get_tool_ui_metadata(tool_name)
+
                         logger.info(
                             json.dumps(
                                 {
                                     "event": "tool_result",
                                     "tool_id": tool_call_message.tool_call_id,
+                                    "tool_name": tool_name,
                                     "status": tool_call_message.status,
                                     "truncated": was_truncated,
-                                    "output_snippet": str(tool_call_message.content)[
-                                        :1000
-                                    ],  # Truncate to first 1000 chars
+                                    "has_ui": ui_metadata is not None,
+                                    "output_snippet": str(
+                                        tool_call_message.content
+                                    )[:1000],
                                 },
                                 ensure_ascii=False,
                                 indent=2,
                             )
                         )
 
+                        tool_result_data: dict[str, Any] = {
+                            "id": tool_call_message.tool_call_id,
+                            "name": tool_name,
+                            "status": tool_status,
+                            "is_error": tool_status == "error",
+                            "content": tool_call_message.content,
+                            "type": "tool_result",
+                            "round": i,
+                        }
+
+                        if ui_metadata and ui_metadata.resource_uri:
+                            tool_result_data["ui_resource_uri"] = (
+                                ui_metadata.resource_uri
+                            )
+                            tool_result_data["server_name"] = ui_metadata.server_name
+
+                        # Forward structured_content from tool result if available
+                        structured = tool_call_message.additional_kwargs.get(
+                            "structured_content"
+                        ) or tool_call_message.additional_kwargs.get(
+                            "structuredContent"
+                        )
+                        if structured:
+                            tool_result_data["structured_content"] = structured
+
                         yield StreamedChunk(
                             type="tool_result",
-                            data={
-                                "id": tool_call_message.tool_call_id,
-                                "status": tool_status,
-                                "content": tool_call_message.content,
-                                "type": "tool_result",
-                                "round": i,
-                            },
+                            data=tool_result_data,
                         )
 
     async def generate_response(
