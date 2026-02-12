@@ -141,7 +141,7 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--eval_model",
-        default="ibm/granite-3-2-8b-instruct",
+        default="ibm/granite-3-3-8b-instruct",
         type=str,
         help="Model for which responses will be evaluated.",
     )
@@ -149,7 +149,7 @@ def pytest_addoption(parser):
         "--eval_provider_model_id",
         nargs="+",
         default=[
-            "watsonx+ibm/granite-3-2-8b-instruct",
+            "watsonx+ibm/granite-3-3-8b-instruct",
             "openai+gpt-4o-mini",
             "azure_openai+gpt-4o-mini",
         ],

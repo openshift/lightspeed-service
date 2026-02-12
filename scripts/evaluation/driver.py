@@ -14,7 +14,7 @@ def _args_parser(args):
     parser.add_argument(
         "--eval_provider_model_id",
         nargs="+",
-        default=["watsonx+ibm/granite-3-2-8b-instruct"],
+        default=["watsonx+ibm/granite-3-3-8b-instruct"],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
     )
