@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from starlette.datastructures import Headers
@@ -12,6 +13,22 @@ from ols import config, constants, version
 from ols.app import metrics, routers
 from ols.customize import metadata
 from ols.src.config_status import extract_config_status, store_config_status
+from ols.src.mcp.tool_registry import discover_tool_ui_metadata
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Handle application startup and shutdown events."""
+    logger.info("Discovering MCP tool UI metadata...")
+    try:
+        await discover_tool_ui_metadata()
+        logger.info("MCP tool UI metadata discovery completed")
+    except Exception as e:
+        logger.warning("Failed to discover MCP tool UI metadata: %s", e)
+    yield
+
 
 app = FastAPI(
     title=f"Swagger {metadata.SERVICE_NAME} service - OpenAPI",
@@ -21,10 +38,8 @@ app = FastAPI(
         "name": "Apache 2.0",
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
+    lifespan=lifespan,
 )
-
-
-logger = logging.getLogger(__name__)
 
 # Endpoints that don't require security headers (health checks, metrics, etc.)
 ENDPOINTS_WITHOUT_SECURITY_HEADERS = frozenset(
@@ -189,6 +204,7 @@ async def log_requests_responses(
 
 
 routers.include_routers(app)
+
 
 app_routes_paths = [
     route.path
