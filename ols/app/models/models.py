@@ -1014,3 +1014,77 @@ class MCPHeadersResponse(BaseModel):
     servers: list[MCPServerHeaderInfo] = Field(
         description="List of servers requiring client-provided headers"
     )
+
+
+class MCPAppResourceRequest(BaseModel):
+    """Request to fetch an MCP App UI resource.
+
+    Attributes:
+        resource_uri: The URI of the resource to fetch (e.g., ui://server/path.html).
+    """
+
+    resource_uri: str
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {"resource_uri": "ui://pod-utilization/mcp-app.html"},
+            ]
+        },
+    }
+
+
+class MCPAppResourceResponse(BaseModel):
+    """Response containing an MCP App UI resource.
+
+    Attributes:
+        uri: The URI of the resource.
+        mime_type: The MIME type of the resource content.
+        content: The resource content (HTML/JS/CSS).
+    """
+
+    uri: str
+    mime_type: str
+    content: str
+
+
+class MCPAppToolCallRequest(BaseModel):
+    """Request to call an MCP tool from the console.
+
+    Attributes:
+        server_name: The name of the MCP server to call.
+        tool_name: The name of the tool to call.
+        arguments: The arguments to pass to the tool.
+    """
+
+    server_name: str
+    tool_name: str
+    arguments: dict[str, Any] = {}
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "server_name": "pod-utilization",
+                    "tool_name": "get-pod-utilization",
+                    "arguments": {"namespace": "openshift-console"},
+                },
+            ]
+        },
+    }
+
+
+class MCPAppToolCallResponse(BaseModel):
+    """Response from an MCP tool call.
+
+    Attributes:
+        content: The text content returned by the tool.
+        structured_content: The structured content for the MCP App UI.
+        is_error: Whether the tool call resulted in an error.
+    """
+
+    content: list[dict[str, Any]]
+    structured_content: Optional[dict[str, Any]] = None
+    is_error: bool = False
