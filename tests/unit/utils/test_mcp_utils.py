@@ -72,6 +72,7 @@ def mock_tool():
     tool.name = "test_tool"
     tool.description = "A test tool"
     tool.metadata = {}
+    tool.args_schema = {"type": "object", "properties": {}}
     return tool
 
 
@@ -345,10 +346,12 @@ class TestGatherMcpTools:
             tool1 = MagicMock(spec=StructuredTool)
             tool1.name = "tool1"
             tool1.metadata = {}
+            tool1.args_schema = {"type": "object", "properties": {}}
 
             tool2 = MagicMock(spec=StructuredTool)
             tool2.name = "tool2"
             tool2.metadata = {}
+            tool2.args_schema = {"type": "object", "properties": {}}
 
             mock_client = AsyncMock()
             mock_client.get_tools.side_effect = [[tool1], [tool2]]
@@ -370,6 +373,7 @@ class TestGatherMcpTools:
             tool = MagicMock(spec=StructuredTool)
             tool.name = "good_tool"
             tool.metadata = {}
+            tool.args_schema = {"type": "object", "properties": {}}
 
             mock_client = AsyncMock()
             mock_client.get_tools.side_effect = [
@@ -394,10 +398,12 @@ class TestGatherMcpTools:
             tool1 = MagicMock(spec=StructuredTool)
             tool1.name = "allowed_tool"
             tool1.metadata = {}
+            tool1.args_schema = {"type": "object", "properties": {}}
 
             tool2 = MagicMock(spec=StructuredTool)
             tool2.name = "blocked_tool"
             tool2.metadata = {}
+            tool2.args_schema = {"type": "object", "properties": {}}
 
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = [tool1, tool2]
@@ -416,9 +422,9 @@ class TestGatherMcpTools:
     async def test_tool_without_metadata(self):
         """Test handling tools without metadata attribute."""
         with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
-            # Tool without metadata attribute
             tool = MagicMock(spec=StructuredTool)
             tool.name = "test_tool"
+            tool.args_schema = {"type": "object", "properties": {}}
             del tool.metadata
 
             mock_client = AsyncMock()
@@ -440,6 +446,7 @@ class TestGatherMcpTools:
             tool = MagicMock(spec=StructuredTool)
             tool.name = "test_tool"
             tool.metadata = None
+            tool.args_schema = {"type": "object", "properties": {}}
 
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = [tool]
