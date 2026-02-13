@@ -297,6 +297,7 @@ class FakeConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to fake provider."""
 
     stream: Optional[bool]
+    mcp_tool_call: Optional[bool]
     response: Optional[str]
     chunks: Optional[int]
     sleep: Optional[float]

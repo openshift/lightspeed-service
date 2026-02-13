@@ -128,6 +128,7 @@ WatsonxParameters = {
 
 FakeProviderParameters = {
     ProviderParameter("stream", bool),
+    ProviderParameter("mcp_tool_call", bool),
     ProviderParameter("response", str),
     ProviderParameter("chunks", int),
     ProviderParameter("sleep", float),
