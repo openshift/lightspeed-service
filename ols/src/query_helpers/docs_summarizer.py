@@ -4,12 +4,14 @@
 import asyncio
 import json
 import logging
-from typing import Any, AsyncGenerator, Callable, Optional
+from collections.abc import Coroutine
+from typing import Any, AsyncGenerator, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools.structured import StructuredTool
 from llama_index.core.retrievers import BaseRetriever
 
 from ols import config, constants
@@ -21,10 +23,14 @@ from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
-from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools
+from ols.utils.mcp_utils import ClientHeaders, get_mcp_tools
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
+
+# Type aliases for clarity and reusability
+MessageHistory: TypeAlias = list[BaseMessage]
+ToolsList: TypeAlias = list[StructuredTool]
 
 
 def skip_special_chunk(
@@ -72,7 +78,7 @@ def tool_calls_from_tool_calls_chunks(
     return response.tool_calls
 
 
-def run_async_safely(coro: Callable) -> Any:
+def run_async_safely(coro: Coroutine[Any, Any, Any]) -> Any:
     """Run an async function safely."""
     try:
         return asyncio.run(coro)
@@ -90,7 +96,7 @@ class DocsSummarizer(QueryHelper):
         self,
         *args: Any,
         user_token: Optional[str] = None,
-        client_headers: dict[str, dict[str, str]] | None = None,
+        client_headers: ClientHeaders | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the DocsSummarizer.
@@ -108,16 +114,6 @@ class DocsSummarizer(QueryHelper):
         # tools part
         self.client_headers = client_headers or {}
         self.user_token = user_token
-        self.mcp_servers = build_mcp_config(
-            config.mcp_servers, self.user_token, self.client_headers
-        )
-
-        if self.mcp_servers:
-            logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
-            self._tool_calling_enabled = True
-        else:
-            logger.debug("No MCP servers provided, tool calling is disabled")
-            self._tool_calling_enabled = False
 
         set_debug(self.verbose)
 
@@ -134,11 +130,16 @@ class DocsSummarizer(QueryHelper):
             self.generic_llm_params,
         )
 
+    @property
+    def _has_mcp_tools(self) -> bool:
+        """Check if MCP servers are configured."""
+        return config.mcp_servers is not None and len(config.mcp_servers.servers) > 0
+
     def _prepare_prompt(
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        history: Optional[MessageHistory] = None,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
@@ -166,10 +167,12 @@ class DocsSummarizer(QueryHelper):
             ["sample"],
             [AIMessage("sample")],
             self._system_prompt,
-            self._tool_calling_enabled,
+            self._has_mcp_tools,
         ).generate_prompt(self.model)
         max_tokens_for_tools = (
-            self.model_config.parameters.max_tokens_for_tools if self.mcp_servers else 0
+            self.model_config.parameters.max_tokens_for_tools
+            if self._has_mcp_tools
+            else 0
         )
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -217,7 +220,7 @@ class DocsSummarizer(QueryHelper):
             rag_context,
             history,
             self._system_prompt,
-            self._tool_calling_enabled,
+            self._has_mcp_tools,
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
@@ -236,7 +239,7 @@ class DocsSummarizer(QueryHelper):
         self,
         messages: ChatPromptTemplate,
         llm_input_values: dict[str, str],
-        tools_map: list[Callable],
+        tools_map: ToolsList,
         is_final_round: bool,
         token_counter: GenericTokenCounter,
     ) -> AsyncGenerator[AIMessageChunk, None]:
@@ -274,22 +277,21 @@ class DocsSummarizer(QueryHelper):
         max_rounds: int,
         llm_input_values: dict[str, str],
         token_counter: GenericTokenCounter,
+        all_mcp_tools: ToolsList,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Iterate through multiple rounds of LLM invocation with tool calling.
 
         Args:
             messages: The initial messages
             max_rounds: Maximum number of tool calling rounds
-            tools_map: Map of available tools
             llm_input_values: Input values for the LLM
             token_counter: Counter for tracking token usage
+            all_mcp_tools: List of MCP tools to use for tool calling
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
         async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT * max_rounds):
-            all_mcp_tools = await gather_mcp_tools(self.mcp_servers)
-
             # Track cumulative token usage for tool outputs
             tool_tokens_used = 0
             max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
@@ -317,7 +319,7 @@ class DocsSummarizer(QueryHelper):
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
 
-                is_final_round = (not self._tool_calling_enabled) or (i == max_rounds)
+                is_final_round = (not all_mcp_tools) or (i == max_rounds)
                 logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
                 tool_call_chunks = []
@@ -379,7 +381,7 @@ class DocsSummarizer(QueryHelper):
 
                     for tool_call in tool_calls:
                         # Log tool call in JSON format
-                        logger.info(
+                        logger.debug(
                             json.dumps(
                                 {
                                     "event": "tool_call",
@@ -436,7 +438,7 @@ class DocsSummarizer(QueryHelper):
                         )
 
                         # Log tool result in JSON format
-                        logger.info(
+                        logger.debug(
                             json.dumps(
                                 {
                                     "event": "tool_result",
@@ -467,7 +469,7 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        history: Optional[MessageHistory] = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
@@ -484,6 +486,9 @@ class DocsSummarizer(QueryHelper):
         )
         messages = final_prompt.model_copy()
 
+        # Get all MCP tools (will handle tools_rag population and filtering)
+        all_mcp_tools = await get_mcp_tools(query, self.user_token, self.client_headers)
+
         with TokenMetricUpdater(
             llm=self.bare_llm,
             provider=self.provider_config.type,
@@ -494,6 +499,7 @@ class DocsSummarizer(QueryHelper):
                 max_rounds=MAX_ITERATIONS,
                 token_counter=token_counter,
                 llm_input_values=llm_input_values,
+                all_mcp_tools=all_mcp_tools,
             ):
                 yield response
 
@@ -510,7 +516,7 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[list[BaseMessage]] = None,
+        history: Optional[MessageHistory] = None,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
 
