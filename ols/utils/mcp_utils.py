@@ -131,6 +131,23 @@ def resolve_server_headers(
     return headers
 
 
+def _fix_tool_schema(tool: Any) -> None:
+    """Ensure an MCP tool's args_schema has a 'properties' key.
+
+    Some MCP tools accept no arguments, producing a schema like
+    ``{"type": "object"}`` with no ``properties`` key. This causes two problems:
+
+    1. LangChain's ``BaseTool.args`` raises ``KeyError``.
+    2. OpenAI rejects the function call with *"object schema missing properties"*.
+
+    This function mutates the schema in-place so that an empty ``properties``
+    dict is always present.
+    """
+    schema = tool.args_schema
+    if isinstance(schema, dict) and "properties" not in schema:
+        schema["properties"] = {}
+
+
 async def gather_mcp_tools(mcp_servers: dict[str, Any]) -> list:
     """Gather tools from multiple MCP servers with failure isolation.
 
@@ -149,6 +166,8 @@ async def gather_mcp_tools(mcp_servers: dict[str, Any]) -> list:
     for server_name in mcp_servers:
         try:
             server_tools = await mcp_client.get_tools(server_name=server_name)
+            for tool in server_tools:
+                _fix_tool_schema(tool)
             all_tools.extend(server_tools)
             logger.info(
                 "Loaded %d tools from MCP server '%s'",
