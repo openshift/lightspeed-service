@@ -558,8 +558,12 @@ spec:
     pipelineTaskName: ecosystem-cert-preflight-checks
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 10Gi
     pipelineTaskName: sast-snyk-check
+  - computeResources:
+      limits:
+        memory: 6Gi
+    pipelineTaskName: sast-shell-check
   - computeResources:
       limits:
         memory: 8Gi
