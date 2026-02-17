@@ -9,6 +9,7 @@ __pypackages__
 venv
 .venv
 .pdm-python
+pdm.lock
 
 # ignore local configuration
 .env
@@ -67,6 +68,3 @@ benchmark_*.svg
 
 # distribution archives
 dist/
-
-# uv-related
-uv.lock
