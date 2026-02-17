@@ -533,6 +533,7 @@ spec:
         values:
         - 'false'
     workspaces:
+    - name: workspace
     - name: git-auth
       optional: true
     - name: netrc
@@ -577,6 +578,12 @@ spec:
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-service
   workspaces:
+  - name: workspace
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 5Gi
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
