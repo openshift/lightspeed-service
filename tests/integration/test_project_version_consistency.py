@@ -23,10 +23,18 @@ def read_version_from_openapi():
 def read_version_from_pyproject():
     """Read version from pyproject.toml file."""
     # it is not safe to just try to read version from pyproject.toml file directly
-    # the PDM tool itself is able to retrieve the version, even if the version
+    # the uv tool itself is able to retrieve the version, even if the version
     # is generated dynamically
     completed = subprocess.run(
-        ["pdm", "show", "--version"], capture_output=True, check=True  # noqa: S607
+        [  # noqa: S607
+            "uv",
+            "run",
+            "python",
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version('ols'))",
+        ],
+        capture_output=True,
+        check=True,
     )
     return completed.stdout.decode("utf-8").strip()
 
@@ -57,7 +65,7 @@ def test_project_version_consistency():
     openapi_version = read_version_from_openapi()
     check_semantic_version(openapi_version)
 
-    # version is dynamically put into pyproject.pdm
+    # version is dynamically put into pyproject.toml
     project_version = read_version_from_pyproject()
     check_semantic_version(project_version)
 
