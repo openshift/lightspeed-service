@@ -582,9 +582,7 @@ dev_config:
 def test_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
     try:
-        config._load_config_from_yaml_stream(
-            io.StringIO(
-                """
+        config._load_config_from_yaml_stream(io.StringIO("""
 ---
 llm_providers:
   - name: p1
@@ -660,9 +658,7 @@ dev_config:
   disable_tls: true
   llm_params:
     something: 5
-"""
-            )
-        )
+"""))
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
