@@ -19,8 +19,7 @@ python3 --version  # Should be 3.11.0 or higher
 ```bash
 # In lightspeed-service root (separate terminal)
 cd ..
-pdm install
-`pdm venv activate`
+uv sync
 make run
 ```
 

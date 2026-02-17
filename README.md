@@ -89,7 +89,7 @@ configure model, and connect to it.
         * [LLM providers interface implementations](#llm-providers-interface-implementations)
     * [Sequence diagram](#sequence-diagram)
     * [Token truncation algorithm](#token-truncation-algorithm)
-* [New `pdm` commands available in project repository](#new-pdm-commands-available-in-project-repository)
+* [Development workflow](#development-workflow)
 * [Additional tools](#additional-tools)
     * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
         * [Path](#path)
@@ -109,7 +109,7 @@ configure model, and connect to it.
 * Python 3.11 and Python 3.12
     - please note that currently Python 3.13 and Python 3.14 are not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
     - all sources are made (backward) compatible with Python 3.11; it is checked on CI
-* Git, pip and [PDM](https://github.com/pdm-project/pdm?tab=readme-ov-file#installation)
+* Git, pip and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 * An LLM API key or API secret (in case of Azure OpenAI)
 * (Optional) extra certificates to access LLM API
 
@@ -852,7 +852,7 @@ make run
 It is also possible to initialize virtual environment and start the service by using just one command:
 
 ```sh
-pdm start
+uv run python runner.py
 ```
 
 
@@ -1135,30 +1135,26 @@ The context window size is limited for all supported LLMs which means that token
 ![Token truncation](docs/token_truncation.png)
 
 
-# New `pdm` commands available in project repository
+# Development workflow
 
-```
-╭───────────────────────────────────┬──────┬────────────────────────────────────────────────╮
-│ Name                              │ Type │ Description                                    │
-├───────────────────────────────────┼──────┼────────────────────────────────────────────────┤
-│ benchmarks                        │ cmd  │ pdm run make benchmarks                        │
-│ check-types                       │ cmd  │ pdm run make check-types                       │
-│ coverage-report                   │ cmd  │ pdm run make coverage-report                   │
-│ generate-schema                   │ cmd  │ pdm run make schema                            │
-│ integration-tests-coverage-report │ cmd  │ pdm run make integration-tests-coverage-report │
-│ requirements                      │ cmd  │ pdm run make requirements.txt                  │
-│ security-check                    │ cmd  │ pdm run make security-check                    │
-│ start                             │ cmd  │ pdm run make run                               │
-│ test                              │ cmd  │ pdm run make test                              │
-│ test-e2e                          │ cmd  │ pdm run make test-e2e                          │
-│ test-integration                  │ cmd  │ pdm run make test-integration                  │
-│ test-unit                         │ cmd  │ pdm run make test-unit                         │
-│ unit-tests-coverage-report        │ cmd  │ pdm run make unit-tests-coverage-report        │
-│ verify-packages                   │ cmd  │ pdm run make verify-packages-completeness      │
-│ verify-sources                    │ cmd  │ pdm run make verify                            │
-│ version                           │ cmd  │ pdm run make print-version                     │
-╰───────────────────────────────────┴──────┴────────────────────────────────────────────────╯
-```
+Common development commands are available via `make` targets. Run `make help` to see all available options.
+
+Key commands:
+
+| Command | Description |
+|---------|-------------|
+| `make install-deps` | Install all dependencies |
+| `make run` | Start the development server |
+| `make test-unit` | Run unit tests |
+| `make test-integration` | Run integration tests |
+| `make test-e2e` | Run end-to-end tests |
+| `make format` | Format code (black + ruff) |
+| `make verify` | Run all linters and type checks |
+| `make check-types` | Run MyPy type checking |
+| `make security-check` | Run Bandit security scan |
+| `make benchmarks` | Run performance benchmarks |
+| `make schema` | Generate OpenAPI schema |
+| `make requirements.txt` | Generate requirements.txt with hashes |
 
 # Additional tools
 
@@ -1173,7 +1169,7 @@ This script re-generated OpenAPI schema for the Lightspeed Service REST API.
 ### Usage
 
 ```
-pdm generate-schema
+make schema
 ```
 
 ## Generating requirements.txt file
@@ -1182,7 +1178,7 @@ For Konflux hermetic builds, Cachi2 uses the `requirements.txt` format to genera
 
 To generate the `requirements.txt` file, follow these steps:  
 
-1. Run `pdm update` – updates dependencies to their latest versions allowed by our `pyproject.toml` pins, this also creates/updates a `pdm.lock`.
+1. Run `uv lock --upgrade` – updates dependencies to their latest versions allowed by our `pyproject.toml` pins, this also creates/updates `uv.lock`.
 2. Run `make requirements.txt` – generates the `requirements.txt` (contains wheel for all platforms/archs).
 
 

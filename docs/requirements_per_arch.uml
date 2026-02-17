@@ -18,7 +18,7 @@ footer Copyright © 2025 Red Hat, Inc. Author: Pavel Tisnovsky
                                   | specified
                                   v
                          +------------------+
-                         | pdm lock         |
+                         | uv lock          |
                          | cGRE             |
                          +--------+---------+
                                   |
@@ -28,7 +28,7 @@ footer Copyright © 2025 Red Hat, Inc. Author: Pavel Tisnovsky
                                   v
                          +------------------+
                          |                  |
-                         | pdm.lock         |
+                         | uv.lock          |
                          | cF99{d}          |
                          +--------+---------+
                                   |
