@@ -40,8 +40,7 @@ def long_yaml_content():
     for i in range(10000):
         numbers += f"- Number_{i}\n"
 
-    return (
-        """
+    return """
 kind: Pod
 metadata:
      name: private-reg
@@ -51,9 +50,7 @@ foods:
 - Strawberry
 - Mango
 numbers:
-"""
-        + numbers
-    )
+""" + numbers
 
 
 def test_format_attachment_empty_text_plain_format(benchmark):

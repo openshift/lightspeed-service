@@ -132,9 +132,7 @@ def test_parse_generic_llm_error_on_api_response_exception_with_message():
 
     # check the parsed error
     assert status_code == expected_status_code
-    expected = (
-        message
-        + """
+    expected = message + """
 {
   "error": "this is error",
   "extensions": {
@@ -144,7 +142,6 @@ def test_parse_generic_llm_error_on_api_response_exception_with_message():
   "message": "this is error message",
   "status_code": 400
 }"""
-    )
     assert error_message == expected
     assert cause == expected
 
@@ -171,9 +168,7 @@ def test_parse_generic_llm_error_on_api_response_exception_without_extensions_st
 
     # check the parsed error
     assert status_code == expected_status_code
-    expected = (
-        message
-        + """
+    expected = message + """
 {
   "error": "this is error",
   "extensions": {
@@ -183,7 +178,6 @@ def test_parse_generic_llm_error_on_api_response_exception_without_extensions_st
   "message": "this is error message",
   "status_code": 400
 }"""
-    )
     assert error_message == expected
     assert cause == expected
 
@@ -213,9 +207,7 @@ def test_parse_generic_llm_error_on_api_response_exception_with_extensions_state
 
     # check the parsed error
     assert status_code == expected_status_code
-    expected = (
-        message
-        + """
+    expected = message + """
 {
   "error": "this is error",
   "extensions": {
@@ -227,7 +219,6 @@ def test_parse_generic_llm_error_on_api_response_exception_with_extensions_state
   "message": "this is error message",
   "status_code": 400
 }"""
-    )
     assert error_message == expected
     assert cause == expected
 
