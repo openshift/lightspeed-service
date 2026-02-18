@@ -534,6 +534,7 @@ spec:
         values:
         - 'false'
     workspaces:
+    - name: workspace
     - name: git-auth
       optional: true
     - name: netrc
@@ -557,7 +558,7 @@ spec:
     pipelineTaskName: clair-scan
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 12Gi
     pipelineTaskName: ecosystem-cert-preflight-checks
   - computeResources:
       limits:
@@ -565,11 +566,11 @@ spec:
     pipelineTaskName: sast-snyk-check
   - computeResources:
       limits:
-        memory: 6Gi
+        memory: 10Gi
     pipelineTaskName: sast-shell-check
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 12Gi
     pipelineTaskName: sast-unicode-check
   - computeResources:
       limits:
@@ -580,6 +581,12 @@ spec:
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-service
   workspaces:
+  - name: workspace
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 5Gi
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
