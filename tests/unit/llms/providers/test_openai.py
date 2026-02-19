@@ -241,7 +241,7 @@ def test_params_replace_default_values_with_none(provider_config, fake_certifi_s
 @pytest.mark.parametrize(
     "model_name,should_have_params",
     [
-        ("gpt-4o", True),
+        ("gpt-5.1", True),
         ("gpt-5-mini", False),
         ("o1-mini", False),
     ],
