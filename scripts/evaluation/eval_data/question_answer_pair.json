@@ -5,7 +5,7 @@
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "text": [
-                        "Kubernetes is an open source container orchestration tool developed by Google that you can use to run and manage container-based workloads. It is commonly used to deploy an array of interconnected microservices, building an application in a cloud native way. Kubernetes can span hosts across on-premise, public, private, or hybrid clouds."
+                        "Kubernetes, often referred to as K8s, is an open-source container orchestration engine primarily used for automating the deployment, scaling, and management of containerized applications. It groups containers into logical units called pods and manages these pods across a cluster of machines. Kubernetes ensures that the desired state of your application matches the actual state, handling tasks like resource allocation, scheduling, health checks, and self-healing. It's built on a foundation of over a decade of Google's experience running production workloads, and it's now maintained by the Cloud Native Computing Foundation (CNCF). In the context of Red Hat OpenShift Container Platform, Kubernetes serves as the core component, providing the engine for managing containerized applications at scale across various environments, from on-premise to multi-cloud."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
@@ -53,7 +53,7 @@
                     ]
                 }
             }
-        },    
+        },
         "eval2": {
             "question": "what is openshift virtualization?",
             "answer": {
@@ -82,25 +82,25 @@
                     ]
                 }
             }
-        },    
+        },
         "eval3": {
             "question": "What is the purpose of the imagePullPolicy in Red Hat OpenShift Container Platform?",
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "text": [
-                        "The `imagePullPolicy` in Red Hat OpenShift Container Platform determines when and how the platform pulls container images from a registry. This setting is crucial for managing the deployment and maintenance of containerized applications.\n\nThere are three main options for `imagePullPolicy`:\n\n1. **Always**: This policy instructs OpenShift to always pull the latest version of the container image from the registry before starting a container. This ensures that the container runs with the most up-to-date image, which is beneficial for security updates and bug fixes.\n\n2. **IfNotPresent**: With this policy, OpenShift will only pull the image if it doesn't already exist on the node. If the image is present, the existing version will be used. This approach can save bandwidth and reduce deployment times for images that don't change frequently.\n\n3. **Never**: This policy tells OpenShift never to pull the image from the registry. Instead, it will use the locally cached version if available. This is useful for images that should remain static, ensuring consistency across deployments.\n\nBy configuring `imagePullPolicy` appropriately, you can balance the need for up-to-date images against the desire for efficient deployments and reduced network usage. This feature is essential for managing the lifecycle of containerized applications in a dynamic environment like OpenShift."
+                        "The `imagePullPolicy` in Red Hat OpenShift Container Platform is used to control when container images are pulled from registries or when locally cached copies are used when starting containers. It helps manage image updates and optimize pod startup performance. The possible values for `imagePullPolicy` are `Always`, `IfNotPresent`, and `Never`. \n\n- `Always`: Always pulls the image.\n- `IfNotPresent`: Pulls the image only if it doesn't already exist locally.\n- `Never`: Doesn't pull the image; uses the locally cached copy if available.\n\nHere's an example of how to set `imagePullPolicy` to `IfNotPresent` in a YAML file:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\n# ...\nspec:\n  # ...\n  template:\n    spec:\n      containers:\n      - name: my-app-container\n        image: registry.example.com/myapp:v1.2.3\n        imagePullPolicy: IfNotPresent\n        ports:\n        - containerPort: 8080\n```\n\nIn this example, the image tagged `v1.2.3` will only be pulled if it's not already present in the local cache."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.25,
                     "text": [
-                        "In Red Hat OpenShift Container Platform, the `imagePullPolicy` is a crucial setting that determines how the platform handles the pulling of container images from a container registry. The purpose of the `imagePullPolicy` is to control when and how images are fetched, which can impact deployment efficiency and resource usage. \n\nThere are three possible values for `imagePullPolicy`:\n\n1. **Always**: The image is always pulled from the registry whenever a pod is started. This ensures that the latest version of the image is used, but it can lead to increased network traffic and slower startup times if the image is large or if the network is slow.\n\n2. **IfNotPresent**: The image is pulled only if it is not already present on the node where the pod is being scheduled. This is a more efficient option as it reduces unnecessary pulls, but it may not always use the latest version of the image if it has been updated in the registry.\n\n3. **Never**: The image is never pulled from the registry. This setting is typically used in scenarios where the image is guaranteed to be present on the node, such as during local development or testing.\n\nChoosing the appropriate `imagePullPolicy` is important for balancing the need for the latest images with the efficiency of resource usage and deployment speed in OpenShift."
+                        "The `imagePullPolicy` in Red Hat OpenShift Container Platform controls when container images are pulled from registries or when locally cached copies are used when starting containers. This setting helps manage image updates and optimize pod startup performance.\n\nThe possible values for the `imagePullPolicy` parameter include:\n\n- **Always**: The image is always pulled from the registry, regardless of whether it exists locally.\n- **IfNotPresent**: The image is pulled only if it is not already present locally.\n- **Never**: The image is never pulled; only the local copy is used.\n\nBy configuring the `imagePullPolicy`, you can ensure that your applications use the appropriate version of images while optimizing resource usage and startup times. If the `imagePullPolicy` parameter is omitted, OpenShift automatically determines the policy based on the image tag, ensuring efficient behavior."
                     ]
                 },
                 "azure_openai+gpt-4o-mini+with_rag": {
                     "cutoff_score": 0.25,
                     "text": [
-                        "In Red Hat OpenShift Container Platform, the `imagePullPolicy` is a crucial setting that determines how the platform handles the pulling of container images from a container registry. The purpose of `imagePullPolicy` is to control when and how images are fetched, which can impact deployment efficiency and resource usage. \n\nThere are three possible values for `imagePullPolicy`:\n\n1. **Always**: The image is always pulled from the registry whenever a pod is started. This ensures that the latest version of the image is used, but it can lead to increased network traffic and slower startup times if the image is large or if there are many pods being created.\n\n2. **IfNotPresent**: The image is pulled only if it is not already present on the node. This is a more efficient option as it reduces unnecessary pulls, but it may not always use the latest version of the image if it has been updated in the registry.\n\n3. **Never**: The image is never pulled from the registry. This setting is typically used in scenarios where the image is guaranteed to be present on the node, such as during local development or testing.\n\nChoosing the appropriate `imagePullPolicy` helps optimize the deployment process and manage resource utilization effectively in OpenShift."
+                        "The `imagePullPolicy` in Red Hat OpenShift Container Platform controls when container images are pulled from registries or when locally cached copies are used when starting containers. This setting helps manage image updates and optimize pod startup performance.\n\nThe possible values for the `imagePullPolicy` parameter include:\n\n- **Always**: The image is always pulled from the registry, regardless of whether it exists locally.\n- **IfNotPresent**: The image is pulled only if it is not already present on the node.\n- **Never**: The image is never pulled; it must be present locally.\n\nBy configuring the `imagePullPolicy`, you can ensure that your applications use the appropriate version of the image while optimizing resource usage and startup times. If the `imagePullPolicy` parameter is omitted, OpenShift automatically determines the policy based on the image tag, ensuring efficient behavior."
                     ]
                 },
                 "ground_truth+with_rag": {
@@ -109,13 +109,13 @@
                     ]
                 }
             }
-        },    
+        },
         "eval4": {
             "question": "How does Red Hat OpenShift Pipelines automate deployments?",
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "text": [
-                        "Red Hat OpenShift Pipelines automates deployments by using Tekton building blocks to abstract away the underlying implementation details. It leverages standard custom resource definitions (CRDs) for defining CI/CD pipelines that are portable across Kubernetes distributions. This allows for serverless, cloud-native, continuous integration, and continuous deployment systems that run in isolated containers, enabling decentralized teams working on microservices-based architecture to automate deployments efficiently."
+                        "Red Hat OpenShift Pipelines automates deployments by leveraging continuous integration and continuous delivery (CI/CD) practices. It uses Tekton building blocks, which introduce standard custom resource definitions (CRDs) for defining CI/CD pipelines. These pipelines are portable across Kubernetes distributions, allowing for automated deployments across multiple platforms while abstracting away the underlying implementation details. \n\nIn essence, OpenShift Pipelines takes your code, integrates it with necessary dependencies, builds the application, and then deploys it, all as part of a defined pipeline. This process can be triggered by various events, such as code commits, ensuring that the latest, tested code is consistently and reliably deployed to your environment."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
@@ -135,13 +135,13 @@
                     ]
                 }
             }
-        },    
+        },
         "eval5": {
             "question": "what is a limitrange?",
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "text": [
-                        "A LimitRange in OpenShift sets resource usage limits for each kind of resource in a Namespace. It defines a min/max usage limit for resources that match on kind. This allows you to specify the minimum and maximum CPU and memory limits for all containers across a pod in a given project."
+                        "A LimitRange in Kubernetes sets resource usage limits for each kind of resource in a Namespace. It defines a min/max usage limit for resources that match on kind, ensuring that pods, containers, images, image streams, and persistent volume claims do not exceed these limits. The LimitRange object includes a list of LimitRangeItem objects that enforce these limits. If a resource does not set an explicit value, and if the constraint supports a default value, the default value is applied to the resource."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
@@ -162,13 +162,13 @@
                     ]
                 }
             }
-        },    
+        },
         "eval6": {
             "question": "What is the purpose of the Vertical Pod Autoscaler Operator in Openshift?",
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "text": [
-                        "The Vertical Pod Autoscaler Operator (VPA) in OpenShift is used to automatically adjust the resource requests and limits of pods based on their usage. It helps optimize resource utilization and can improve the performance and stability of applications running on the platform. The VPA can be installed using the Red Hat OpenShift Container Platform web console or CLI."
+                        "The Vertical Pod Autoscaler (VPA) Operator in OpenShift is designed to automatically adjust the CPU and memory requests and limits of your pods to ensure they're optimally utilizing cluster resources. It does this by analyzing historical resource usage data and making recommendations for adjustments. This helps in improving resource efficiency, reducing costs, and enhancing overall cluster performance.\n\nThe VPA Operator consists of three main components:\n\n1. **Admission Controller**: This component intercepts pod creation requests and applies VPA recommendations before the pods are scheduled.\n2. **Recommender**: This component periodically analyzes running pods and suggests adjustments to their resource requests and limits.\n3. **Updater**: This component applies the recommendations made by the Recommender to the actual pods.\n\nEach of these components can be customized with different resource constraints and tolerations to fit your specific needs. For instance, you might want to specify certain nodes where the VPA pods should run or define how they should react to specific node taints.\n\nHere's an example of how you might configure tolerations for the VPA pods in the spec section of the VerticalPodAutoscalerController:\n\n```yaml\napiVersion: autoscaling.openshift.io/v1\nkind: VerticalPodAutoscalerController\nmetadata:\n  name: default\n  namespace: openshift-vertical-pod-autoscaler\nspec:\n  # ...\n  deploymentOverrides:\n    admission:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n    recommender:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n    updater:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n```\n\nIn this example, the VPA pods (admission, recommender, and updater) are configured to tolerate nodes with a specific taint (\"my-example-node-taint-key\") and avoid scheduling on them (`effect: \"NoSchedule\"`). Adjust these configurations according to your cluster's specific requirements and taint strategy."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
@@ -189,7 +189,7 @@
                     ]
                 }
             }
-        },    
+        },
         "eval7": {
             "question": "Is there a doc on updating clusters?",
             "answer": {
@@ -220,7 +220,7 @@
                     ]
                 }
             }
-        },    
+        },
         "eval8": {
             "question": "How do I find my clusterID?",
             "answer": {
@@ -247,7 +247,7 @@
                     ]
                 }
             }
-        },    
+        },
         "eval9": {
             "question": "do you recommend using DeploymentConfig?",
             "answer": {
@@ -275,14 +275,14 @@
                     ]
                 }
             }
-        },    
+        },
         "eval10": {
             "question": "give me sample deployment yaml that uses MongoDB image",
             "answer": {
                 "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
-                        "Here's an example deployment YAML that uses the MongoDB image:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-nationalparks\nspec:\n  selector:\n    matchLabels:\n      app.kubernetes.io/name: mongodb-nationalparks\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app.kubernetes.io/name: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: quay.io/centos7/mongodb-36-centos7:latest\n        ports:\n        - containerPort: 27017\n        env:\n        - name: MONGODB_USER\n          value: mongodb\n        - name: MONGODB_PASSWORD\n          value: mongodb\n        - name: MONGODB_DATABASE\n          value: nationalparks\n        - name: MONGODB_ADMIN_PASSWORD\n          value: mongodb\n```\nThis YAML defines a Deployment that creates a MongoDB pod with the name `mongodb-nationalparks`. The pod uses the official MongoDB image from Quay.io, which is based on CentOS 7. The container exposes port 27017, and there are environment variables set to connect to the MongoDB instance with the specified credentials and database name."
+                        "Based on the provided context, here's a sample Deployment YAML that uses the MongoDB image from the Red Hat Registry:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-deployment\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: mongodb-nationalparks\n  template:\n    metadata:\n      labels:\n        app: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: registry.redhat.io/rhmap47/mongodb\n        ports:\n        - containerPort: 27017\n          protocol: TCP\n        env:\n        - name: MONGODB_USER\n          value: mongodb\n        - name: MONGODB_PASSWORD\n          value: mongodb\n        - name: MONGODB_DATABASE\n          value: mongodb\n        - name: MONGODB_ADMIN_PASSWORD\n          value: mongodb\n```\n\nThis YAML defines a Deployment named `mongodb-deployment` with a single replica. It uses the MongoDB image from the Red Hat Registry (`registry.redhat.io/rhmap47/mongodb`) and exposes port 27017. The necessary environment variables for MongoDB are also included.\n\nPlease note that this is a basic example and might need adjustments based on your specific requirements, such as resource limits, storage, or network policies."
                     ]
                 },
                 "openai+gpt-4o-mini+with_rag": {
