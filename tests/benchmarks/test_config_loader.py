@@ -44,9 +44,7 @@ def read_empty_config_stream():
 
 def read_valid_config_stream():
     """Check if a valid configuration stream is handled correctly."""
-    config._load_config_from_yaml_stream(
-        io.StringIO(
-            """
+    config._load_config_from_yaml_stream(io.StringIO("""
 ---
 llm_providers:
   - name: p1
@@ -88,9 +86,7 @@ dev_config:
   disable_tls: true
   llm_params:
     something: 5
-"""
-        )
-    )
+"""))
 
 
 def test_load_empty_config_stream(benchmark):
@@ -106,9 +102,7 @@ def test_load_valid_config_stream(benchmark):
 def read_invalid_config_stream():
     """Check if a invalid configuration stream is handled correctly."""
     with pytest.raises(Exception):
-        config._load_config_from_yaml_stream(
-            io.StringIO(
-                """
+        config._load_config_from_yaml_stream(io.StringIO("""
 ---
 llm_providers:
   - name: p1
@@ -145,9 +139,7 @@ dev_config:
   disable_tls: true
   llm_params:
     something: 5
-"""
-            )
-        )
+"""))
 
 
 def test_load_invalid_config_stream(benchmark):
