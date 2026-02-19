@@ -584,6 +584,8 @@ spec:
   - name: workspace
     volumeClaimTemplate:
       spec:
+        accessModes:
+          - ReadWriteOnce
         resources:
           requests:
             storage: 5Gi
