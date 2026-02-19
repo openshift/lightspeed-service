@@ -3,7 +3,7 @@
 # LLM Configuration
 llm:
   provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
-  model: "gpt-4o-mini"        # Model name for the provider
+  model: "gpt-4.1-mini"        # Model name for the provider
   temperature: 0.0            # Generation temperature
   max_tokens: 512             # Maximum tokens in response
   timeout: 300                # Request timeout in seconds
@@ -19,7 +19,7 @@ api:
 
   # API input configuration
   provider: "openai"                   # LLM provider for queries
-  model: "gpt-4o-mini"                 # Model to use for queries
+  model: "gpt-4.1-mini"                 # Model to use for queries
   no_tools: null                       # Whether to bypass tools and MCP servers (optional)
   system_prompt: null                  # System prompt (default None)
 

@@ -15,14 +15,14 @@ spec:
         type: azure_openai
         credentialsSecretRef:
           name: azure-openaicreds
-        deploymentName: gpt-4o-mini
+        deploymentName: gpt-4.1-mini
         models:
-          - name: gpt-4o-mini
+          - name: gpt-4.1-mini
         url: 'https://ols-test.openai.azure.com/'
       - credentialsSecretRef:
           name: openaicreds
         models:
-          - name: gpt-4o-mini
+          - name: gpt-4.1-mini
         name: openai
         type: openai
       - credentialsSecretRef:
@@ -33,7 +33,7 @@ spec:
         name: watsonx
         type: watsonx
   ols:
-    defaultModel: gpt-4o-mini
+    defaultModel: gpt-4.1-mini
     defaultProvider: openai
     deployment:
       replicas: 1

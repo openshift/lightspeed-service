@@ -568,7 +568,7 @@ def test_token_is_reused(provider_config):
 @pytest.mark.parametrize(
     "model_name,should_have_params",
     [
-        ("gpt-4o", True),
+        ("gpt-5.1", True),
         ("gpt-5-mini", False),
         ("o1-mini", False),
     ],

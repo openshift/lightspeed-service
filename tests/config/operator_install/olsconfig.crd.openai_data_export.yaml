@@ -14,11 +14,11 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gpt-4o-mini
+          - name: gpt-4.1-mini
         name: openai
         type: openai
   ols:
-    defaultModel: gpt-4o-mini
+    defaultModel: gpt-4.1-mini
     defaultProvider: openai
     deployment:
       replicas: 1
