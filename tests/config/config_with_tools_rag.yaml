@@ -1,0 +1,50 @@
+---
+llm_providers:
+  - name: p1
+    type: bam
+    url: "https://url1"
+    credentials_path: tests/config/secret/apitoken
+    bam_config:
+      url: "http://localhost:1234"
+      credentials_path: tests/config/secret/apitoken
+    models:
+      - name: m1
+        url: "https://murl1"
+        credentials_path: tests/config/secret/apitoken
+        context_window_size: 8000
+        parameters:
+          max_tokens_for_response: 2000
+          max_tokens_for_tools: 2000
+          max_tokens_per_tool_output: 500
+ols_config:
+  max_workers: 1
+  reference_content:
+    indexes:
+      - product_docs_index_path: "tests/config"
+        product_docs_index_id: product
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+  default_provider: p1
+  default_model: m1
+  user_data_collection:
+    transcripts_disabled: true
+  tool_filtering:
+    alpha: 0.6
+    top_k: 3
+    threshold: 0.01
+
+mcp_servers:
+  - name: test-k8s-server
+    url: http://localhost:3001/mcp
+  - name: test-file-server
+    url: http://localhost:3002/mcp
+
+dev_config:
+  enable_dev_ui: true
+  disable_auth: true
+  disable_tls: true
