@@ -44,6 +44,7 @@ class AppConfig:
         self._conversation_cache: Optional[Cache] = None
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
         self._token_usage_history: Optional[TokenUsageHistory] = None
+        self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -64,6 +65,16 @@ class AppConfig:
     def dev_config(self) -> config_model.DevConfig:
         """Return the dev configuration."""
         return self.config.dev_config
+
+    @property
+    def tools_approval(self) -> config_model.ToolsApprovalConfig:
+        """Return the tools approval configuration."""
+        if self._tools_approval is None:
+            if self.config.ols_config.tools_approval is not None:
+                self._tools_approval = self.config.ols_config.tools_approval
+            else:
+                self._tools_approval = config_model.ToolsApprovalConfig()
+        return self._tools_approval
 
     @property
     def conversation_cache(self) -> Cache:
@@ -154,6 +165,7 @@ class AppConfig:
             # values
             self._query_filters = None
             self._rag_index_loader = None
+            self._tools_approval = None
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+from enum import StrEnum
 from typing import Any, Optional, Self
 
 from pydantic import (
@@ -656,6 +657,37 @@ class ToolFilteringConfig(BaseModel):
     )
 
 
+class ApprovalType(StrEnum):
+    """Approval strategy for tool execution."""
+
+    NEVER = "never"
+    ALWAYS = "always"
+    TOOL_ANNOTATIONS = "tool_annotations"
+
+
+class ToolsApprovalConfig(BaseModel):
+    """Configuration for tool execution approval.
+
+    Controls whether tool calls require user approval before execution.
+    """
+
+    approval_type: ApprovalType = Field(
+        default=ApprovalType.NEVER,
+        description=(
+            "Approval strategy for tool execution. "
+            "'never' - execute tools without approval, "
+            "'always' - all tool calls require approval, "
+            "'tool_annotations' - approval based on per-tool annotations"
+        ),
+    )
+
+    approval_timeout: int = Field(
+        default=600,
+        ge=1,
+        description="Timeout in seconds for waiting for user approval",
+    )
+
+
 class MCPServers(BaseModel):
     """MCP servers configuration."""
 
@@ -1083,6 +1115,8 @@ class OLSConfig(BaseModel):
 
     tool_filtering: Optional[ToolFilteringConfig] = None
 
+    tools_approval: Optional[ToolsApprovalConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1137,6 +1171,8 @@ class OLSConfig(BaseModel):
         self.proxy_config = ProxyConfig(data.get("proxy_config"))
         if data.get("tool_filtering", None) is not None:
             self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
+        if data.get("tools_approval", None) is not None:
+            self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
 
     def __eq__(self, other: object) -> bool:
         """Compare two objects for equality."""
@@ -1161,6 +1197,7 @@ class OLSConfig(BaseModel):
                 and self.quota_handlers == other.quota_handlers
                 and self.proxy_config == other.proxy_config
                 and self.tool_filtering == other.tool_filtering
+                and self.tools_approval == other.tools_approval
             )
         return False
 
