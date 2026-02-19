@@ -9,8 +9,8 @@
 - Last Execution date: `2025-08-31`
 - Evaluated Provider/Models:
     - (watsonx) ibm/granite-3-2-8b-instruct (API Version: 2025-04-02)
-    - (azure) gpt-4o-mini (Model Version: 2024-07-18, API Version: 2024-02-15-preview)
-- Judge provider/model (LLM based eval): (openai) gpt-4o-mini
+    - (azure) gpt-4.1-mini (Model Version: 2025-04-14, API Version: 2025-04-14)
+- Judge provider/model (LLM based eval): (openai) gpt-4.1-mini
 - QnA evaluation dataset: [QnAs from OCP doc](../ocp_doc_qna-edited.parquet)
 - API run mode: without tool calling
 - RAG SHA: 338e5ec469754d1ac190852ab0d997a99892acbe262bf75971ed91234e3d184a

@@ -39,10 +39,10 @@ function run_suites() {
   # empty test_tags means run all tests
   if [ -z "${DISCONNECTED:-}" ]; then
     # Tests for not disconnected environments
-    run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
+    run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
-    run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
+    run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-3-8b-instruct" "$OLS_IMAGE" "default"
@@ -55,15 +55,15 @@ function run_suites() {
     # smoke tests for RHELAI VLLM-compatible provider
     run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
-    
-    run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
+
+    run_suite "certificates" "certificates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
     (( rc = rc || $? ))
 
     # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
     # Run tool calling - Enable tool_calling
-    run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
+    run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
-    run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
+    run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
     run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-3-8b-instruct" "$OLS_IMAGE" "tool_calling"
     (( rc = rc || $? ))
@@ -74,11 +74,11 @@ function run_suites() {
     run_suite "watsonx_byok2" "byok2" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-3-3-8b-instruct" "$OLS_IMAGE" "byok2"
 
     # quota limits tests, independent of provider therefore only testing one
-    run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "quota"
+    run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "quota"
     (( rc = rc || $? ))
 
     # exporter test
-    run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "data_export"
+    run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "data_export"
     (( rc = rc || $? ))
 
   else

@@ -150,8 +150,8 @@ def pytest_addoption(parser):
         nargs="+",
         default=[
             "watsonx+ibm/granite-3-3-8b-instruct",
-            "openai+gpt-4o-mini",
-            "azure_openai+gpt-4o-mini",
+            "openai+gpt-4.1-mini",
+            "azure_openai+gpt-4.1-mini",
         ],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
