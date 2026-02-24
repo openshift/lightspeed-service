@@ -523,9 +523,7 @@ jiter==0.10.0 \
     --hash=sha256:db16e4848b7e826edca4ccdd5b145939758dadf0dc06e7007ad0e9cfb5928ae7 \
     --hash=sha256:dc347c87944983481e138dea467c0551080c86b9d21de6ea9306efb12ca8f606 \
     --hash=sha256:f62cf8ba0618eda841b9bf61797f21c5ebd15a7a1e19daab76e4e4b498d515b2
-    # via
-    #   ols
-    #   openai
+    # via openai
 jmespath==1.0.1 \
     --hash=sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe

@@ -120,7 +120,6 @@ dependencies = [
     "transformers>=4.50.3",
     "langchain-mcp-adapters>=0.2.1",
     "mcp>=1.23.0",
-    "jiter==0.10.0",  # checksum mismatches in 0.11.1 and 0.13.0
     "qdrant-client>=1.13.3",  # For ToolsRAG vector storage (pure Python, no Rust/Cargo)
     "rank-bm25>=0.2.2",  # For ToolsRAG sparse retrieval
 ]
