@@ -24,7 +24,7 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
     stream_event,
     stream_start_event,
 )
-from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
+from ols.app.models.models import RagChunk, StreamChunkType, TokenCounter  # noqa:E402
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
 
@@ -50,6 +50,7 @@ def test_event_type_are_not_changed():
     assert LLM_TOOL_RESULT_EVENT == "tool_result"
     assert LLM_HISTORY_COMPRESSION_START_EVENT == "history_compression_start"
     assert LLM_HISTORY_COMPRESSION_END_EVENT == "history_compression_end"
+    assert StreamChunkType.APPROVAL_REQUIRED.value == "approval_required"
 
 
 def test_format_stream_data():
@@ -69,6 +70,12 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nTool call: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(
+            data, StreamChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_TEXT
+        )
+        == '\nApproval request: {"token": "hi", "idx": 1}\n'
     )
     assert (
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
@@ -93,6 +100,12 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_call", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(
+            data, StreamChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_JSON
+        )
+        == 'data: {"event": "approval_required", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)

@@ -112,6 +112,9 @@ ols_config:
       - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
       - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     minTLSVersion: VersionTLS13
+mcp_servers:
+  - name: mock-server
+    url: http://localhost:13000
 dev_config:
   enable_dev_ui: true
   disable_auth: true
