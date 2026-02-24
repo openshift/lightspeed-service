@@ -1,0 +1,85 @@
+# LightSpeed Evaluation Framework Configuration
+# OLS Provider: WatsonX Granite (ibm/granite-4-h-small)
+# Judge LLM: OpenAI GPT-4.1-mini
+
+# Judge LLM Configuration
+# Uses OpenAI GPT-4.1-mini for evaluation scoring.
+# Requires OPENAI_API_KEY environment variable.
+llm:
+  provider: "openai"
+  model: "gpt-4.1-mini"
+  temperature: 0.0
+  max_tokens: 512
+  timeout: 300
+  num_retries: 3
+
+# OLS API Configuration
+# Targets the OLS /query endpoint using WatsonX Granite as the backend LLM.
+# api_base is overridden at runtime with the actual OLS service URL.
+# Requires WATSONX_API_KEY environment variable (used by OLS, not by this tool).
+api:
+  enabled: true
+  api_base: http://localhost:8080
+  endpoint_type: query
+  timeout: 300
+  provider: "watsonx"
+  model: "ibm/granite-4-h-small"
+  no_tools: false
+  system_prompt: null
+
+# Metrics evaluated per conversation turn
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      threshold: 0.7
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true
+
+# Output Configuration
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:
+    - csv
+    - json
+
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8]
+  dpi: 300
+  enabled_graphs:
+    - "score_distribution"
+    - "status_breakdown"
+
+# Environment Variables
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+# Logging Configuration
+logging:
+  source_level: INFO
+  package_level: ERROR
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING

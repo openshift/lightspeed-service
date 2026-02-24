@@ -91,6 +91,7 @@ def pytest_sessionstart():
 
     pytest.client = client_utils.get_http_client(ols_url, token)
     pytest.metrics_client = client_utils.get_http_client(ols_url, metrics_token)
+    pytest.ols_url = ols_url
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
@@ -141,7 +142,7 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--eval_model",
-        default="ibm/granite-3-3-8b-instruct",
+        default="ibm/granite-4-h-small",
         type=str,
         help="Model for which responses will be evaluated.",
     )
@@ -149,9 +150,9 @@ def pytest_addoption(parser):
         "--eval_provider_model_id",
         nargs="+",
         default=[
-            "watsonx+ibm/granite-3-3-8b-instruct",
-            "openai+gpt-4.1-mini",
-            "azure_openai+gpt-4.1-mini",
+            "watsonx+ibm/granite-4-h-small",
+            "openai+gpt-4o-mini",
+            "azure_openai+gpt-4o-mini",
         ],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",
