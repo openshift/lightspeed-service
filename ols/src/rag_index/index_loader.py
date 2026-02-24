@@ -218,6 +218,15 @@ class IndexLoader:
             )
         return self._indexes
 
+    @property
+    def embed_model(self) -> Any:
+        """Get the embedding model instance.
+
+        Returns:
+            The embedding model (HuggingFaceEmbedding or default string).
+        """
+        return getattr(self, "_embed_model", None)
+
     def get_retriever(
         self, similarity_top_k=RAG_CONTENT_LIMIT
     ) -> Optional[BaseRetriever]:
