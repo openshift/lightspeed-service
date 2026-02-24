@@ -1,0 +1,36 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        projectID: ad629765-c373-4731-9d69-dc701724c081
+        models:
+          - name: ibm/granite-4-h-small
+        name: watsonx
+        type: watsonx
+      - credentialsSecretRef:
+          name: openai-llmcreds
+        models:
+          - name: gpt-4.1-mini
+        name: openai
+        type: openai
+  ols:
+    defaultModel: ibm/granite-4-h-small
+    defaultProvider: watsonx
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: INFO
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
