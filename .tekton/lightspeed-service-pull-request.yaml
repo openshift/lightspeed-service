@@ -576,9 +576,9 @@ spec:
     pipelineTaskName: sast-unicode-check
   - computeResources:
       limits:
-        memory: 10Gi
+        memory: 12Gi
       requests:
-        memory: 10Gi
+        memory: 12Gi
     pipelineTaskName: build-source-image
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-service
