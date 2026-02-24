@@ -27,6 +27,13 @@ from tests.mock_classes.mock_llm_loader import mock_llm_loader
 from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
 
 
+def _streaming_kwargs(endpoint: str) -> dict[str, str]:
+    """Extra request fields for the streaming endpoint."""
+    if endpoint == "/v1/streaming_query":
+        return {"media_type": constants.MEDIA_TYPE_TEXT}
+    return {}
+
+
 @pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
@@ -286,6 +293,7 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+                    **_streaming_kwargs(endpoint),
                 },
             )
 
@@ -557,6 +565,7 @@ metadata:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query",
+                    **_streaming_kwargs(endpoint),
                     "attachments": [
                         {
                             "attachment_type": "configuration",
@@ -628,6 +637,7 @@ metadata:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query",
+                    **_streaming_kwargs(endpoint),
                     "attachments": [
                         {
                             "attachment_type": "configuration",
@@ -898,11 +908,12 @@ logs:
                 ],
             },
         )
-        if response.headers["content-type"] == "application/json":
-            # non-streaming responses return JSON
+        if endpoint == "/v1/query":
+            # non-streaming endpoint returns HTTP error response
             assert response.status_code == requests.codes.request_entity_too_large
         else:
-            # streaming_query returns bytes
+            # streaming endpoint returns a streamed error payload
+            assert response.status_code == requests.codes.ok
             error_response = response.text
             assert "Prompt is too long" in error_response
             assert "exceeds LLM available context window limit" in error_response
@@ -915,7 +926,11 @@ def test_post_too_long_query(_setup, endpoint):
     conversation_id = suid.get_suid()
     response = pytest.client.post(
         endpoint,
-        json={"conversation_id": conversation_id, "query": query},
+        json={
+            "conversation_id": conversation_id,
+            "query": query,
+            **_streaming_kwargs(endpoint),
+        },
     )
 
     if response.headers["content-type"] == "application/json":
