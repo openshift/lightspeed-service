@@ -5,15 +5,13 @@ import json
 import pytest
 
 from ols import config, constants
-from ols.app.models.models import StreamedChunk
+from ols.app.models.models import ChunkType, StreamedChunk
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
 
 from ols.app.endpoints.streaming_ols import (  # noqa:E402
-    LLM_TOKEN_EVENT,
-    LLM_TOOL_CALL_EVENT,
-    LLM_TOOL_RESULT_EVENT,
+    TOKEN_KEY_TOKEN,
     build_referenced_docs,
     format_stream_data,
     generic_llm_error,
@@ -44,9 +42,10 @@ def _load_config():
 
 def test_event_type_are_not_changed():
     """Test that event types are not changed."""
-    assert LLM_TOKEN_EVENT == "token"  # noqa: S105
-    assert LLM_TOOL_CALL_EVENT == "tool_call"
-    assert LLM_TOOL_RESULT_EVENT == "tool_result"
+    assert TOKEN_KEY_TOKEN == "token"  # noqa: S105
+    assert ChunkType.TOOL_CALL.value == "tool_call"
+    assert ChunkType.APPROVAL_REQUIRED.value == "approval_required"
+    assert ChunkType.TOOL_RESULT.value == "tool_result"
 
 
 def test_format_stream_data():
@@ -75,27 +74,35 @@ def test_stream_event():
     data = {"token": "hi", "idx": 1}
 
     # text output
-    assert stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_TEXT) == "hi"
+    assert stream_event(data, TOKEN_KEY_TOKEN, constants.MEDIA_TYPE_TEXT) == "hi"
     assert (
-        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_TEXT)
+        stream_event(data, ChunkType.TOOL_CALL.value, constants.MEDIA_TYPE_TEXT)
         == '\nTool call: {"token": "hi", "idx": 1}\n'
     )
     assert (
-        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
+        stream_event(data, ChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_TEXT)
+        == '\nApproval request: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(data, ChunkType.TOOL_RESULT.value, constants.MEDIA_TYPE_TEXT)
         == '\nTool result: {"token": "hi", "idx": 1}\n'
     )
 
     # json output
     assert (
-        stream_event(data, LLM_TOKEN_EVENT, constants.MEDIA_TYPE_JSON)
+        stream_event(data, TOKEN_KEY_TOKEN, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "token", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
-        stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_JSON)
+        stream_event(data, ChunkType.TOOL_CALL.value, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_call", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
-        stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)
+        stream_event(data, ChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_JSON)
+        == 'data: {"event": "approval_required", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(data, ChunkType.TOOL_RESULT.value, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_result", "data": {"token": "hi", "idx": 1}}\n\n'
     )
 
