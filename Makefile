@@ -121,7 +121,7 @@ schema:	## Generate OpenAPI schema file
 	uv run python scripts/generate_openapi_schema.py docs/openapi.json
 
 requirements.txt:	pyproject.toml uv.lock ## Generate requirements.txt file containing hashes for all non-devel packages
-	uv export --format requirements.txt --no-dev --no-extra evaluation --no-emit-project --output-file requirements.txt
+	uv export --format requirements-txt --no-dev --no-extra evaluation --no-editable --no-emit-package ols --output-file requirements.txt
 
 verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
