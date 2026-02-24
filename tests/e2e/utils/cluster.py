@@ -384,8 +384,9 @@ def wait_for_running_pod(
         ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
         tool_calling_enabled = "tool_calling" in ols_config_suffix
 
-        if tool_calling_enabled:
-            return ready_containers >= 2
+        if name == "lightspeed-app-server-":
+            if tool_calling_enabled:
+                return ready_containers >= 2
         return ready_containers >= 1
 
     # wait for the containers in the server pod to become ready
