@@ -28,7 +28,7 @@ from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls
+from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import TokenHandler
 
@@ -624,7 +624,7 @@ class DocsSummarizer(QueryHelper):
             type=StreamChunkType.TOOL_RESULT, data=tool_result_data
         )
 
-    async def _process_tool_calls_for_round(
+    async def _process_tool_calls_for_round(  # noqa: C901  # pylint: disable=R0912
         self,
         *,
         round_index: int,
@@ -747,15 +747,24 @@ class DocsSummarizer(QueryHelper):
                         )
                     )
             else:
-                tool_calls_dicts = [
-                    {"name": tool.name, "args": tool_args, "id": tool_id}
-                    for tool_id, tool_args, tool in tool_call_definitions
-                ]
-                tool_calls_messages = await execute_tool_calls(
-                    tool_calls_dicts,
-                    list(all_tools_dict.values()),
+                async for execution_event in execute_tool_calls_stream(
+                    tool_call_definitions,
                     remaining_tool_budget,
-                )
+                    streaming=self.streaming,
+                ):
+                    match execution_event.event:
+                        case StreamChunkType.APPROVAL_REQUIRED:
+                            yield StreamedChunk(
+                                type=StreamChunkType.APPROVAL_REQUIRED,
+                                data=execution_event.data,
+                            )
+                        case StreamChunkType.TOOL_RESULT:
+                            tool_calls_messages.append(execution_event.data)
+                        case _:
+                            logger.warning(
+                                "Ignoring unexpected tool execution event: %s",
+                                execution_event,
+                            )
 
         # Merge synthetic skipped outcomes with real execution outcomes and
         # append all of them to conversation state for the next LLM turn.

@@ -2,11 +2,23 @@
 
 import asyncio
 import logging
-from typing import Any
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from typing import Any, Literal, TypeAlias, TypedDict
+from uuid import uuid4
 
+from aiostream import stream
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 
+from ols import config
+from ols.app.models.models import StreamChunkType
+from ols.src.tools.approval import (
+    get_approval_decision,
+    need_validation,
+    normalize_tool_annotation,
+    register_pending_approval,
+)
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -14,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 MAX_TOOL_CALL_RETRIES = 2
 RETRY_BACKOFF_SECONDS = 0.2
-DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
+RATE_LIMIT_RETRY_BACKOFF_SECONDS = 1.0
 
 _TRUNCATION_WARNING = (
     "\n\n[OUTPUT TRUNCATED - The tool returned more data than can be "
@@ -25,20 +37,63 @@ _TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
 )
 
 
-def _is_retryable_tool_error(error: Exception) -> bool:
+class ApprovalRequiredPayload(TypedDict):
+    """Payload for approval_required events."""
+
+    approval_id: str
+    tool_name: str
+    tool_description: str
+    tool_args: dict[str, object]
+    tool_annotation: dict[str, object]
+
+
+@dataclass(slots=True)
+class ApprovalRequiredEvent:
+    """Approval-required event emitted during tool execution."""
+
+    data: ApprovalRequiredPayload
+    event: Literal[StreamChunkType.APPROVAL_REQUIRED] = (
+        StreamChunkType.APPROVAL_REQUIRED
+    )
+
+
+@dataclass(slots=True)
+class ToolResultEvent:
+    """Tool-result event emitted during tool execution."""
+
+    data: ToolMessage
+    event: Literal[StreamChunkType.TOOL_RESULT] = StreamChunkType.TOOL_RESULT
+
+
+ToolExecutionEvent = ApprovalRequiredEvent | ToolResultEvent
+ToolCallDefinition: TypeAlias = tuple[str, dict[str, object], StructuredTool]
+
+
+class _ApprovalNotGrantedError(Exception):
+    """Internal control-flow signal when approval is denied or times out."""
+
+
+def _is_transient_tool_error(error: Exception) -> bool:
     """Return true if a tool execution error is likely transient."""
+    # Canonical timeout/connection exceptions: usually safe to retry.
     if isinstance(error, (TimeoutError, asyncio.TimeoutError, ConnectionError)):
         return True
+    # OS/network stack errors (e.g., socket issues) are often transient.
+    if isinstance(error, OSError):
+        return True
+    # Fallback text matching for provider-specific exception types/messages.
     error_text = str(error).lower()
     return any(
         token in error_text
-        for token in (
-            "timeout",
-            "temporarily unavailable",
-            "temporary failure",
-            "connection reset",
-            "connection closed",
-        )
+        for token in ("timeout", "temporar", "connection reset", "connection closed")
+    )
+
+
+def _is_rate_limited_tool_error(error: Exception) -> bool:
+    """Return true if a tool execution error indicates rate-limiting."""
+    error_text = str(error).lower()
+    return any(
+        token in error_text for token in ("rate limit", "429", "too many requests")
     )
 
 
@@ -120,143 +175,318 @@ def get_tool_by_name(
 
 
 async def execute_tool_call(
-    tool_name: str,
-    tool_args: dict,
-    all_mcp_tools: list[StructuredTool],
+    tool: StructuredTool,
+    tool_args: dict[str, object],
     tools_token_budget: int,
-) -> tuple[str, bool, dict | None]:
-    """Execute a tool call and return output, truncation flag, and structured content.
+) -> tuple[str, str, bool, dict | None]:
+    """Execute a tool call and return output, status, truncation flag, and structured content.
 
     Args:
-        tool_name: Name of the tool to execute
+        tool: Tool instance to execute
         tool_args: Arguments to pass to the tool
-        all_mcp_tools: List of available MCP tools
         tools_token_budget: Remaining token budget for tool outputs
 
     Returns:
-        Tuple of (tool_output, was_truncated, structured_content).
+        Tuple of (status, tool_output, was_truncated, structured_content)
     """
     structured_content: dict | None = None
-    tool = get_tool_by_name(tool_name, all_mcp_tools)
-    tool_output_raw, artifact = await tool.coroutine(**tool_args)  # type: ignore[misc]
-    tool_output, was_truncated = _extract_text_from_tool_output(
-        tool_output_raw, tools_token_budget
-    )
-    if isinstance(artifact, dict):
-        structured_content = artifact.get("structured_content")
+    tool_name = tool.name
+    result = await tool.coroutine(**tool_args)  # type: ignore[misc]
 
+    # coroutine may return (content, artifact) tuple for tools with
+    # response_format="content_and_artifact", or content directly.
+    if isinstance(result, tuple) and len(result) == 2:
+        tool_output, was_truncated = _extract_text_from_tool_output(
+            result[0], tools_token_budget
+        )
+        if isinstance(result[1], dict):
+            structured_content = result[1].get("structured_content")
+    else:
+        tool_output, was_truncated = _extract_text_from_tool_output(
+            result, tools_token_budget
+        )
+
+    status = "success"
     logger.debug(
-        "Tool: %s | Args: %s | Output: %s | Truncated: %s"
-        " | Has structured_content: %s",
+        "Tool: %s | Args: %s | Output: %s | Truncated: %s | Has structured_content: %s",
         tool_name,
         tool_args,
         tool_output[:200] if len(tool_output) > 200 else tool_output,
         was_truncated,
         structured_content is not None,
     )
-    return tool_output, was_truncated, structured_content
+    return status, tool_output, was_truncated, structured_content
 
 
-async def _execute_single_tool_call(
-    tool_call: dict,
-    all_mcp_tools: list[StructuredTool],
-    tools_token_budget: int,
-) -> ToolMessage:
-    """Execute a single tool call and return a ToolMessage.
+def _tool_result_event(
+    *,
+    content: str,
+    status: str,
+    tool_call_id: str,
+    truncated: bool,
+    structured_content: dict | None = None,
+) -> ToolExecutionEvent:
+    """Build a tool_result event payload.
 
     Args:
-        tool_call: Tool call dict with name, args, and id.
-        all_mcp_tools: List of available MCP tools.
-        tools_token_budget: Remaining token budget for tool outputs.
+        content: Tool output text passed to both LLM and client stream.
+        status: Tool execution status value (success/error).
+        tool_call_id: Correlation ID of the originating tool call.
+        truncated: Whether tool output was truncated due to token limit.
+        structured_content: Optional structured data from tool artifact (MCP Apps).
 
     Returns:
-        ToolMessage with result. The additional_kwargs contains:
-        - "truncated": bool indicating if output was truncated
-        - "structured_content": dict with structured data (if available)
+        Tool result event containing a ToolMessage payload.
     """
-    tool_name = tool_call.get("name")
-    tool_args = tool_call.get("args", {})
-    tool_id = tool_call.get("id")
-    was_truncated = False
-    structured_content: dict | None = None
-
-    if tool_name is None:
-        tool_output = (
-            f"Error: Tool name is missing from tool call. {DO_NOT_RETRY_REMINDER}"
-        )
-        status = "error"
-        logger.error("Tool call missing name: %s", tool_call)
-    else:
-        attempts = MAX_TOOL_CALL_RETRIES + 1
-        last_error_text = "unknown error"
-        for attempt in range(attempts):
-            try:
-                tool_output, was_truncated, structured_content = (
-                    await execute_tool_call(
-                        tool_name, tool_args, all_mcp_tools, tools_token_budget
-                    )
-                )
-                status = "success"
-                break
-            except Exception as error:
-                last_error_text = str(error)
-                if attempt < MAX_TOOL_CALL_RETRIES and _is_retryable_tool_error(error):
-                    logger.warning(
-                        "Retrying tool '%s' after transient error on attempt %d/%d: %s",
-                        tool_name,
-                        attempt + 1,
-                        attempts,
-                        error,
-                    )
-                    await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
-                    continue
-                tool_output = (
-                    f"Tool '{tool_name}' execution failed after {attempt + 1} "
-                    f"attempt(s): {last_error_text}. {DO_NOT_RETRY_REMINDER}"
-                )
-                status = "error"
-                logger.exception(tool_output)
-                break
-
-    additional_kwargs: dict = {"truncated": was_truncated}
+    additional_kwargs: dict = {"truncated": truncated}
     if structured_content is not None:
         additional_kwargs["structured_content"] = structured_content
-
-    return ToolMessage(
-        content=tool_output,
-        status=status,
-        tool_call_id=tool_id,
-        additional_kwargs=additional_kwargs,
+    return ToolResultEvent(
+        data=ToolMessage(
+            content=content,
+            status=status,
+            tool_call_id=tool_call_id,
+            additional_kwargs=additional_kwargs,
+        )
     )
 
 
-async def execute_tool_calls(
-    tool_calls: list[dict],
-    all_mcp_tools: list[StructuredTool],
-    tools_token_budget: int,
-) -> list[ToolMessage]:
-    """Execute tool calls in parallel and return ToolMessages.
+def _approval_required_event(
+    *,
+    approval_id: str,
+    tool_name: str,
+    tool_description: str,
+    tool_args: dict[str, object],
+    tool_annotation: dict[str, object],
+) -> ApprovalRequiredEvent:
+    """Build an approval_required event payload."""
+    return ApprovalRequiredEvent(
+        data={
+            "approval_id": approval_id,
+            "tool_name": tool_name,
+            "tool_description": tool_description,
+            "tool_args": tool_args,
+            "tool_annotation": tool_annotation,
+        }
+    )
+
+
+def _approval_rejection_event(
+    *,
+    tool_name: str,
+    tool_call_id: str,
+    outcome: str,
+) -> ToolExecutionEvent:
+    """Build non-retryable tool_result event for rejected/timed-out approvals.
 
     Args:
-        tool_calls: List of tool call dicts
-        all_mcp_tools: List of available MCP tools
-        tools_token_budget: Remaining token budget for tool outputs
+        tool_name: Name of the tool gated by approval.
+        tool_call_id: Correlation ID of the originating tool call.
+        outcome: Approval decision outcome (for example "timeout" or "rejected").
 
     Returns:
-        List of ToolMessages. Each message's additional_kwargs["truncated"]
-        indicates if that tool's output was truncated.
+        Tool-result event with error status and retry guidance.
     """
+    if outcome == "timeout":
+        rejection_content = (
+            f"Tool '{tool_name}' approval timed out. "
+            "Do not retry this exact tool call."
+        )
+    else:
+        rejection_content = (
+            f"Tool '{tool_name}' execution was rejected. "
+            "Do not retry this exact tool call."
+        )
+    return _tool_result_event(
+        content=rejection_content,
+        status="error",
+        tool_call_id=tool_call_id,
+        truncated=False,
+    )
+
+
+async def _evaluate_and_emit_approval_event(
+    *,
+    tool_id: str,
+    tool: StructuredTool,
+    tool_args: dict[str, object],
+    streaming: bool,
+) -> AsyncGenerator[ToolExecutionEvent, None]:
+    """Evaluate approval policy and emit approval events as needed.
+
+    Args:
+        tool_id: Correlation ID of the originating tool call.
+        tool: Tool being considered for execution.
+        tool_args: Tool arguments included in approval-required payloads.
+        streaming: Whether this call originated from the streaming endpoint.
+
+    Yields:
+        Approval-required event immediately when approval is needed, followed
+        by a rejection/timeout tool-result event when approval is not granted.
+
+    Raise:
+        _ApprovalNotGrantedError: when approval is explicitly denied or times out.
+    """
+    tool_name = tool.name
+
+    tool_metadata = tool.metadata if isinstance(tool.metadata, dict) else {}
+    tool_annotation = normalize_tool_annotation(tool_metadata)
+    need_approval = need_validation(
+        streaming=streaming,
+        approval_type=config.tools_approval.approval_type,
+        tool_annotation=tool_annotation,
+    )
+    if not need_approval:
+        return
+
+    approval_id = str(uuid4())
+    register_pending_approval(approval_id=approval_id)
+    yield _approval_required_event(
+        approval_id=approval_id,
+        tool_name=tool_name,
+        tool_description=tool.description,
+        tool_args=tool_args,
+        tool_annotation=tool_annotation,
+    )
+    outcome = await get_approval_decision(
+        approval_id=approval_id,
+        timeout_seconds=config.tools_approval.approval_timeout,
+    )
+    if outcome != "approved":
+        yield _approval_rejection_event(
+            tool_name=tool_name,
+            tool_call_id=tool_id,
+            outcome=outcome,
+        )
+        raise _ApprovalNotGrantedError()
+
+
+async def _execute_with_retries(
+    *,
+    tool_id: str,
+    tool: StructuredTool,
+    tool_args: dict[str, object],
+    tools_token_budget: int,
+) -> ToolExecutionEvent:
+    """Execute one tool call with retry policy and convert result into tool_result event.
+
+    Args:
+        tool_id: Correlation ID of the originating tool call.
+        tool: Tool to execute.
+        tool_args: Arguments passed to the tool.
+        tools_token_budget: Remaining token budget for tool output truncation.
+
+    Returns:
+        Final tool-result event representing either success or terminal failure.
+    """
+    tool_name = tool.name
+    attempts = MAX_TOOL_CALL_RETRIES + 1
+    last_error_text = "unknown error"
+    was_truncated = False
+
+    for attempt in range(attempts):
+        try:
+            _status, tool_output, was_truncated, structured_content = (
+                await execute_tool_call(tool, tool_args, tools_token_budget)
+            )
+            return _tool_result_event(
+                content=tool_output,
+                status="success",
+                tool_call_id=tool_id,
+                truncated=was_truncated,
+                structured_content=structured_content,
+            )
+        except Exception as error:
+            last_error_text = str(error)
+            is_rate_limited_error = _is_rate_limited_tool_error(error)
+            should_retry = _is_transient_tool_error(error) or is_rate_limited_error
+            if attempt < MAX_TOOL_CALL_RETRIES and should_retry:
+                logger.warning(
+                    "Retrying tool '%s' after local transient failure on attempt %d/%d: %s",
+                    tool_name,
+                    attempt + 1,
+                    attempts,
+                    error,
+                )
+                backoff_base = (
+                    RATE_LIMIT_RETRY_BACKOFF_SECONDS
+                    if is_rate_limited_error
+                    else RETRY_BACKOFF_SECONDS
+                )
+                await asyncio.sleep(backoff_base * (2**attempt))
+                continue
+            break
+
+    reason = " ".join(last_error_text.split())
+    if len(reason) > 220:
+        reason = f"{reason[:217]}..."
+    tool_output = f"Tool '{tool_name}' failed: {reason}"
+    return _tool_result_event(
+        content=tool_output,
+        status="error",
+        tool_call_id=tool_id,
+        truncated=was_truncated,
+    )
+
+
+async def _execute_single_tool_call_stream(
+    tool_call: ToolCallDefinition,
+    tools_token_budget: int,
+    streaming: bool = False,
+) -> AsyncGenerator[ToolExecutionEvent, None]:
+    """Execute a single tool call and emit execution events.
+
+    Args:
+        tool_call: Tuple of (tool_id, tool_args, tool)
+        tools_token_budget: Remaining token budget for tool output truncation
+        streaming: Whether this call originated from the streaming endpoint
+
+    Yields:
+        Approval-required or tool-result events.
+    """
+    tool_id, tool_args, tool = tool_call
+
+    try:
+        async for approval_event in _evaluate_and_emit_approval_event(
+            tool_id=tool_id,
+            tool=tool,
+            tool_args=tool_args,
+            streaming=streaming,
+        ):
+            yield approval_event
+    # Approval rejection/timeout already emitted a terminal tool_result event;
+    # stop here to avoid executing the tool without approval.
+    except _ApprovalNotGrantedError:
+        return
+
+    yield await _execute_with_retries(
+        tool_id=tool_id,
+        tool=tool,
+        tool_args=tool_args,
+        tools_token_budget=tools_token_budget,
+    )
+
+
+async def execute_tool_calls_stream(
+    tool_calls: list[ToolCallDefinition],
+    tools_token_budget: int,
+    streaming: bool = False,
+) -> AsyncGenerator[ToolExecutionEvent, None]:
+    """Execute tool calls in parallel and stream execution events."""
     if not tool_calls:
-        return []
+        return
 
-    tasks = [
-        _execute_single_tool_call(tool_call, all_mcp_tools, tools_token_budget)
-        for tool_call in tool_calls
-    ]
-
-    tool_messages = await asyncio.gather(*tasks)
-
-    return tool_messages
+    # Merge runs all per-tool generators concurrently on the event loop.
+    merged = stream.merge(
+        *(
+            _execute_single_tool_call_stream(tc, tools_token_budget, streaming)
+            for tc in tool_calls
+        )
+    )
+    # Yield events (approval_required / tool_result) as they arrive from any tool.
+    async with merged.stream() as streamer:
+        async for event in streamer:
+            yield event
 
 
 def enforce_tool_token_budget(

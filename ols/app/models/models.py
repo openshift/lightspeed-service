@@ -993,6 +993,7 @@ class StreamChunkType(StrEnum):
 
     TEXT = "text"
     TOOL_CALL = "tool_call"
+    APPROVAL_REQUIRED = "approval_required"
     TOOL_RESULT = "tool_result"
     HISTORY_COMPRESSION_START = "history_compression_start"
     HISTORY_COMPRESSION_END = "history_compression_end"
