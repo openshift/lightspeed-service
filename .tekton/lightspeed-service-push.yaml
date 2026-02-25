@@ -587,7 +587,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 5Gi
+            storage: 10Gi
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
