@@ -63,10 +63,8 @@ class K8sClientSingleton:
                     )
                     configuration.api_key_prefix["authorization"] = "Bearer"
                 else:
-                    logger.debug(
-                        "no Auth Token Override was provided,\
-                            procceeding with in-cluster config load"
-                    )
+                    logger.debug("no Auth Token Override was provided,\
+                            procceeding with in-cluster config load")
                     try:
                         logger.info("loading in-cluster config")
                         kubernetes.config.load_incluster_config(

@@ -53,16 +53,16 @@ git clone https://github.com/YOUR-GIT-PROFILE/lightspeed-service.git
 # move into the directory
 cd lightspeed-service
 
-# setup your environment with pdm
-pdm install
+# setup your environment with uv
+uv sync --group dev
 
-# Now you can run test commands trough make targets, or prefix the rest of commands with `pdm run`, eg. `pdm run make test`
+# Now you can run test commands through make targets, or prefix commands with `uv run`
 
 # run unit+integration tests
-pdm run test-unit && pdm run test-integration
+make test-unit && make test-integration
 
 # run e2e tests (that requires a running OLS instance)
-pdm run test-e2e
+make test-e2e
 
 # code formatting
 # (this is also run automatically as part of pre-commit hook if configured)
@@ -177,13 +177,13 @@ Static security check is performed by _Bandit_ tool. The check can be started by
 make security-check
 ```
 
-or within PDM-controlled environment:
+or within the uv-managed environment:
 
 ```
-pdm run security-check
+uv run bandit -c pyproject.toml -r .
 ```
 
-Please note that the _Bandit_ tool needs to be installed via PDM. It is included in `pyproject.toml` in the `[dev-dependencies]` section and is locked to specific version.
+Please note that the _Bandit_ tool needs to be installed via uv. It is included in `pyproject.toml` in the `[dependency-groups]` section and is locked to specific version.
 
 
 ## Testing
@@ -359,7 +359,7 @@ ols/app/endpoints/feedback.py                    45     24    47%   37-39, 51, 6
 Benchmarks for selected functions and methods can be run by using following command:
 
 ```
-pdm run benchmarks
+make benchmarks
 ```
 
 ### `pytest-benchmark` package
@@ -420,19 +420,19 @@ Legend:
 
 ## Updating Dependencies
 
-We are using the [PDM tool](https://github.com/pdm-project/pdm) to manage our dependencies.
+We are using [uv](https://docs.astral.sh/uv/) to manage our dependencies.
 
 To add a new dependency do:
-1. `pdm add mystery-package` - PDM will add it to `pyproject.toml` automatically
-2. re-lock with `pdm lock` - this will update a `pdm.lock` with a new dependency
+1. `uv add mystery-package` - uv will add it to `pyproject.toml` automatically
+2. re-lock with `uv lock` - this will update `uv.lock` with the new dependency
 
 To update any package to higher version do:
 1. update the version in `pyproject.toml`
-2. run `pdm update package_to_be_updated` - this will update a `pdm.lock` file
+2. run `uv lock --upgrade-package package_to_be_updated` - this will update the `uv.lock` file
 
-As we need to be Konflux-ready (https://redhat-appstudio.github.io/appstudio.docs.ui.io/), we need to have pinned versions in the `pyproject.toml`. If you added a new dependency without an explicit version pin, the PDM tool resolves its version in the lock. You need to search for the dependency you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
+As we need to be Konflux-ready (https://redhat-appstudio.github.io/appstudio.docs.ui.io/), we need to have pinned versions in the `pyproject.toml`. If you added a new dependency without an explicit version pin, uv resolves its version in the lock. You need to search for the dependency you've added in the lock file and whatever version you find there, use it to pin it in `pyproject.toml`.
 
-NOTE: don't directly edit `pdm.lock` file. It contains hash that is checked, so any modification should be done via `pdm` command only.
+NOTE: don't directly edit `uv.lock` file. It contains hashes that are checked, so any modification should be done via `uv` command only.
 
 
 ## Code style

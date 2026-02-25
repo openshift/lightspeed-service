@@ -14,7 +14,7 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 
 ### Python Version & Dependencies
 - **Python 3.11/3.12** - Target version py311 in all code
-- **PDM** - Package manager (not pip/poetry)
+- **uv** - Package manager (not pip/poetry/pdm)
 - **Dependencies** - Always check existing imports before adding new ones
 
 ### Code Quality Tools

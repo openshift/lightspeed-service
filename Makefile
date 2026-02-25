@@ -20,117 +20,108 @@ images: ## Build container images
 	scripts/build-container.sh
 
 install-tools:	install-woke ## Install required utilities/tools
-	# OLS 1085: Service build failure issue caused by newest PDM version
-	# (right now we need to stick to PDM specified in pyproject.toml file)
-	@command -v pdm > /dev/null || { echo >&2 "pdm is not installed. Installing..."; pip install pdm; }
-	pdm --version
-	# this is quick fix for OLS-758: "Verify" CI job is broken after new Mypy 1.10.1 was released 2 days ago
-	# CI job configuration would need to be updated in follow-up task
-	# pip uninstall -v -y mypy 2> /dev/null || true
-	export PIP_DEFAULT_TIMEOUT=100
+	@command -v uv > /dev/null || { echo >&2 "uv is not installed. Installing..."; curl -LsSf https://astral.sh/uv/install.sh | sh; }
+	uv --version
 	# install all dependencies, including devel ones
-	pdm --no-cache install --group default,dev,evaluation --fail-fast -v
-	# display setuptools version
-	pdm show setuptools
+	uv sync --group dev --extra evaluation
 	# check that correct mypy version is installed
-	# mypy --version
-	pdm run mypy --version
+	uv run mypy --version
 	# check that correct Black version is installed
-	pdm run black --version
+	uv run black --version
 	# check that correct Ruff version is installed
-	pdm run ruff --version
+	uv run ruff --version
 	# check that correct Pydocstyle version is installed
-	pdm run pydocstyle --version
+	uv run pydocstyle --version
 
 
 install-woke: ## Install woke, required for Inclusive Naming scan
 	@command -v ./woke > /dev/null || { echo >&2 "woke is not installed. Installing..."; curl -sSfL https://git.io/getwoke | bash -s -- -b ./; }
 
-pdm-lock-check: ## Check that the pdm.lock file is in a good shape
-	pdm lock --check
+uv-lock-check: ## Check that the uv.lock file is in a good shape
+	uv lock --check
 
-install-deps: install-tools pdm-lock-check ## Install all required dependencies needed to run the service, according to pdm.lock
-	@for a in 1 2 3 4 5; do pdm sync && break || sleep 15; done
+install-deps: install-tools uv-lock-check ## Install all required dependencies needed to run the service, according to uv.lock
+	@for a in 1 2 3 4 5; do uv sync && break || sleep 15; done
 
-install-deps-test: install-tools pdm-lock-check ## Install all required dev dependencies needed to test the service, according to pdm.lock
-	@for a in 1 2 3 4 5; do pdm sync --dev && break || sleep 15; done
+install-deps-test: install-tools uv-lock-check ## Install all required dev dependencies needed to test the service, according to uv.lock
+	@for a in 1 2 3 4 5; do uv sync --group dev && break || sleep 15; done
 
 update-deps: ## Check pyproject.toml for changes, update the lock file if needed, then sync.
-	pdm update
+	uv lock --upgrade && uv sync
 
 run: ## Run the service locally
-	python runner.py
+	uv run python runner.py
 
 print-version: ## Print the service version
-	python runner.py --version
+	uv run python runner.py --version
 
 test: test-unit test-integration test-e2e ## Run all tests
 
 benchmarks: ## Run benchmarks
 	@echo "Running benchmarks..."
-	pdm run pytest tests/benchmarks --benchmark-histogram
+	uv run pytest tests/benchmarks --benchmark-histogram
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" pdm run pytest tests/unit tests/mcp_local --cov=ols --cov=mcp_local --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
-	pdm run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" uv run pytest tests/unit tests/mcp_local --cov=ols --cov=mcp_local --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml"
+	uv run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_unit.json" "${ARTIFACT_DIR}/coverage_unit.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_unit.out"
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" pdm run pytest tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
-	pdm run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
+	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" uv run pytest tests/integration --cov=ols --cov=runner --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=60
+	uv run scripts/transform_coverage_report.py "${ARTIFACT_DIR}/coverage_integration.json" "${ARTIFACT_DIR}/coverage_integration.out"
 	scripts/codecov.sh "${ARTIFACT_DIR}/coverage_integration.out"
 
 check-coverage: test-unit test-integration  ## Unit tests and integration tests overall code coverage check
-	coverage combine --keep "${ARTIFACT_DIR}/.coverage.unit" "${ARTIFACT_DIR}/.coverage.integration"
+	uv run coverage combine --keep "${ARTIFACT_DIR}/.coverage.unit" "${ARTIFACT_DIR}/.coverage.integration"
 	# the threshold should be very high there, in theory it should reach 100%
-	coverage report -m --fail-under=94
+	uv run coverage report -m --fail-under=94
 
 test-e2e: ## Run e2e tests - requires running OLS server
 	@echo "Running e2e tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	pdm run pytest tests/e2e --ignore=tests/e2e/evaluation -s --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	uv run pytest tests/e2e --ignore=tests/e2e/evaluation -s --durations=0 -o junit_suite_name="${SUITE_ID}" -m "${TEST_TAGS}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_provider ${PROVIDER} --eval_model ${MODEL} --eval_out_dir ${ARTIFACT_DIR} --rp_name=ols-e2e-tests
 
 test-eval: ## Run evaluation tests - requires running OLS server
 	@echo "Running evaluation tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	pdm run pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	uv run --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_out_dir ${ARTIFACT_DIR}
 
 coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
 
 unit-tests-coverage-report:	test-unit ## Export unit test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit" -d htmlcov-unit
+	uv run coverage html --data-file="${ARTIFACT_DIR}/.coverage.unit" -d htmlcov-unit
 
 integration-tests-coverage-report:	test-integration ## Export integration test coverage report into interactive HTML
-	coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
+	uv run coverage html --data-file="${ARTIFACT_DIR}/.coverage.integration" -d htmlcov-integration
 
 check-types: ## Checks type hints in sources
-	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 security-check: ## Check the project for security issues
-	bandit -c pyproject.toml -r .
+	uv run bandit -c pyproject.toml -r .
 
 format: ## Format the code into unified format
-	pdm run black .
-	pdm run ruff check . --fix
+	uv run black .
+	uv run ruff check . --fix
 
 verify:	install-woke install-deps-test ## Verify the code using various linters
-	pdm run black . --check
-	pdm run ruff check .
+	uv run black . --check
+	uv run ruff check .
 	./woke . --exit-1-on-failure
-	pdm run pylint ols scripts tests runner.py
-	pdm run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+	uv run --extra evaluation pylint ols scripts tests runner.py
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
 
 schema:	## Generate OpenAPI schema file
-	pdm run python scripts/generate_openapi_schema.py docs/openapi.json
+	uv run python scripts/generate_openapi_schema.py docs/openapi.json
 
-requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
-	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
+requirements.txt:	pyproject.toml uv.lock ## Generate requirements.txt file containing hashes for all non-devel packages
+	uv export --format requirements-txt --no-dev --no-extra evaluation --no-editable --no-emit-package ols --output-file requirements.txt
 
 verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
@@ -158,10 +149,10 @@ llms.puml: ## Generate PlantUML class diagram for LLM plugin system
 	mv docs/packages.puml docs/llms_packages.uml
 
 distribution-archives: ## Generate distribution archives to be uploaded into Python registry
-	pdm run python -m build
+	uv run python -m build
 
 upload-distribution-archives: ## Upload distribution archives into Python registry
-	pdm run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
+	uv run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
 shellcheck: ## Run shellcheck
 	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" | tar -xJv \
