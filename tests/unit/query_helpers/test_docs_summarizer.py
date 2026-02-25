@@ -217,6 +217,29 @@ def test_tool_calling_one_iteration():
         assert mock_invoke.call_count == 1
 
 
+def test_tool_calling_drains_chunks_after_stop():
+    """Test that chunks after finish_reason=stop are consumed but not forwarded."""
+    question = "How many namespaces are there in my cluster?"
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+    ) as mock_invoke:
+        mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+            [
+                AIMessageChunk(content="Hello", response_metadata={}),
+                AIMessageChunk(content="", response_metadata={"finish_reason": "stop"}),
+                AIMessageChunk(content="trailing1", response_metadata={}),
+                AIMessageChunk(content="trailing2", response_metadata={}),
+            ]
+        )
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer._tool_calling_enabled = True
+        summary = summarizer.create_response(question)
+        assert mock_invoke.call_count == 1
+        assert "Hello" in summary.response
+        assert "trailing" not in summary.response
+
+
 async def fake_invoke_llm(*args, **kwargs):
     """Fake invoke_llm function to simulate LLM behavior.
 

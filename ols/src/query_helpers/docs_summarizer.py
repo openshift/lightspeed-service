@@ -271,7 +271,7 @@ class DocsSummarizer(QueryHelper):
         ):
             yield chunk  # type: ignore [misc]
 
-    async def iterate_with_tools(  # noqa: C901
+    async def iterate_with_tools(  # noqa: C901  # pylint: disable=R0912,R0915
         self,
         messages: ChatPromptTemplate,
         max_rounds: int,
@@ -324,6 +324,7 @@ class DocsSummarizer(QueryHelper):
 
                 tool_call_chunks = []
                 chunk_counter = 0
+                stop_generation = False
                 # invoke LLM and process response chunks
                 async for chunk in self._invoke_llm(
                     messages,
@@ -332,6 +333,9 @@ class DocsSummarizer(QueryHelper):
                     is_final_round=is_final_round,
                     token_counter=token_counter,
                 ):
+                    if stop_generation:
+                        continue
+
                     # TODO: Temporary fix for fake-llm (load test) which gives
                     # output as string. Currently every method that we use gives us
                     # proper output, except fake-llm. We need to move to a different
@@ -344,9 +348,9 @@ class DocsSummarizer(QueryHelper):
                         yield StreamedChunk(type="text", text=chunk)
                         break
 
-                    # check if LLM has finished generating
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                        return
+                        stop_generation = True
+                        continue
 
                     # collect tool chunk or yield text
                     if getattr(chunk, "tool_call_chunks", None):
@@ -359,6 +363,9 @@ class DocsSummarizer(QueryHelper):
                             yield StreamedChunk(type="text", text=chunk.content)
 
                     chunk_counter += 1
+
+                if stop_generation:
+                    return
 
                 # exit if this was the final round
                 if is_final_round:
