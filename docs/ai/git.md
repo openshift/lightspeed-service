@@ -30,6 +30,7 @@ The PR template is at `.github/PULL_REQUEST_TEMPLATE.md`. Populate all sections:
 
 Run in order and fix all failures before committing:
 
-1. `make verify` — linters and type checks
-2. `make test-unit` — unit tests
-3. Confirm 90%+ coverage is maintained for changed code
+1. `make test-unit` — unit tests
+2. `make test-integration` — integration tests
+3. `make verify` — linters and type checks
+4. Confirm 90%+ coverage is maintained for changed code
