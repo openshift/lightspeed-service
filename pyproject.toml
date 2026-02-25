@@ -137,6 +137,7 @@ evaluation = [
     "pandas>=2.1.4",
     "rouge-score>=0.1.2",
     "ragas>=0.2.14",
+    "datasets>=3.0.0",
     "fastparquet>=2024.11.0",
     "tqdm>=4.67.1",
 ]
