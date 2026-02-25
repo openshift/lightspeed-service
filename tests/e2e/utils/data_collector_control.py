@@ -341,7 +341,7 @@ def configure_exporter_for_e2e_tests(
         collection_interval=interval_seconds,
         ingress_server_url=ingress_url,
         data_dir=data_dir,
-        ingress_server_auth_token=cp_offline_token if cp_offline_token else None,
+        ingress_server_auth_token=cp_offline_token or None,
         log_level=log_level,
     )
     controller.restart_exporter_container()
@@ -460,7 +460,7 @@ def prepare_for_data_collection_test(
     controller.update_exporter_config(
         collection_interval=short_interval_seconds,
         ingress_server_url=stage_ingress_url,
-        ingress_server_auth_token=cp_offline_token if cp_offline_token else None,
+        ingress_server_auth_token=cp_offline_token or None,
     )
 
     # Patch deployment to use manual mode (uses ConfigMap token instead of cluster auth)

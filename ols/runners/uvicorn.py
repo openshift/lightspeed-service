@@ -20,10 +20,8 @@ def start_uvicorn(config: AppConfig) -> None:
         if config.dev_config.run_on_localhost
         else "0.0.0.0"  # noqa: S104 # nosec: B104
     )
-    port = (
-        config.dev_config.uvicorn_port_number
-        if config.dev_config.uvicorn_port_number
-        else 8080 if config.dev_config.disable_tls else 8443
+    port = config.dev_config.uvicorn_port_number or (
+        8080 if config.dev_config.disable_tls else 8443
     )
     log_level = config.ols_config.logging_config.uvicorn_log_level
 
