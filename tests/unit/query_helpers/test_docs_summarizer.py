@@ -14,7 +14,7 @@ from ols import config
 from ols.app.models.config import MCPServerConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import TokenHandler
-from tests.mock_classes.mock_tools import mock_tools_map
+from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
@@ -384,8 +384,7 @@ def test_tool_calling_tool_execution(caplog):
         summarizer.create_response(question)
 
         assert "Tool: get_namespaces_mock" in caplog.text
-        tool_output = mock_tools_map[0].invoke({})
-        assert f"Output: {tool_output}" in caplog.text
+        assert f"Output: {NAMESPACES_OUTPUT}" in caplog.text
 
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 

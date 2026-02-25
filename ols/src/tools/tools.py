@@ -72,8 +72,8 @@ async def execute_tool_call(
     tool_args: dict,
     all_mcp_tools: list[StructuredTool],
     max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
-) -> tuple[str, str, bool]:
-    """Execute a tool call and return the output, status, and truncation flag.
+) -> tuple[str, str, bool, dict | None]:
+    """Execute a tool call and return output, status, truncation flag, and structured content.
 
     Args:
         tool_name: Name of the tool to execute
@@ -82,20 +82,16 @@ async def execute_tool_call(
         max_tokens: Maximum tokens allowed for tool output
 
     Returns:
-        Tuple of (status, tool_output, was_truncated)
+        Tuple of (status, tool_output, was_truncated, structured_content).
     """
     was_truncated = False
+    structured_content: dict | None = None
     try:
         tool = get_tool_by_name(tool_name, all_mcp_tools)
-        result = await tool.ainvoke(_jsonify(tool_args))
-
-        # ainvoke may return (content, artifact) tuple for tools with
-        # response_format="content_and_artifact", or content directly.
-        # TODO: handle structured_content from artifact for MCP Apps.
-        if isinstance(result, tuple) and len(result) == 2:
-            tool_output = _extract_text_from_tool_output(result[0])
-        else:
-            tool_output = _extract_text_from_tool_output(result)
+        tool_output_raw, artifact = await tool.coroutine(**_jsonify(tool_args))  # type: ignore[misc]
+        tool_output = _extract_text_from_tool_output(tool_output_raw)
+        if isinstance(artifact, dict):
+            structured_content = artifact.get("structured_content")
 
         token_handler = TokenHandler()
         tool_output, was_truncated = token_handler.truncate_tool_output(
@@ -104,17 +100,19 @@ async def execute_tool_call(
 
         status = "success"
         logger.debug(
-            "Tool: %s | Args: %s | Output: %s | Truncated: %s",
+            "Tool: %s | Args: %s | Output: %s | Truncated: %s"
+            " | Has structured_content: %s",
             tool_name,
             tool_args,
             tool_output[:500] if len(tool_output) > 500 else tool_output,
             was_truncated,
+            structured_content is not None,
         )
     except Exception as e:
         tool_output = f"Error executing tool '{tool_name}': {e}"
         status = "error"
         logger.exception(tool_output)
-    return status, tool_output, was_truncated
+    return status, tool_output, was_truncated, structured_content
 
 
 async def _execute_single_tool_call(
@@ -125,18 +123,20 @@ async def _execute_single_tool_call(
     """Execute a single tool call and return a ToolMessage.
 
     Args:
-        tool_call: Tool call dict with name, args, and id
-        all_mcp_tools: List of available MCP tools
-        max_tokens: Maximum tokens allowed for tool output
+        tool_call: Tool call dict with name, args, and id.
+        all_mcp_tools: List of available MCP tools.
+        max_tokens: Maximum tokens allowed for tool output.
 
     Returns:
-        ToolMessage with result. The additional_kwargs["truncated"] field
-        indicates if the output was truncated (for UI status).
+        ToolMessage with result. The additional_kwargs contains:
+        - "truncated": bool indicating if output was truncated
+        - "structured_content": dict with structured data (if available)
     """
     tool_name = tool_call.get("name")
     tool_args = tool_call.get("args", {})
     tool_id = tool_call.get("id")
     was_truncated = False
+    structured_content: dict | None = None
 
     if tool_name is None:
         tool_output = "Error: Tool name is missing from tool call"
@@ -145,8 +145,8 @@ async def _execute_single_tool_call(
     else:
         try:
             raise_for_sensitive_tool_args(tool_args)
-            status, tool_output, was_truncated = await execute_tool_call(
-                tool_name, tool_args, all_mcp_tools, max_tokens
+            status, tool_output, was_truncated, structured_content = (
+                await execute_tool_call(tool_name, tool_args, all_mcp_tools, max_tokens)
             )
         except Exception as e:
             tool_output = (
@@ -155,11 +155,15 @@ async def _execute_single_tool_call(
             status = "error"
             logger.exception(tool_output)
 
+    additional_kwargs: dict = {"truncated": was_truncated}
+    if structured_content is not None:
+        additional_kwargs["structured_content"] = structured_content
+
     return ToolMessage(
         content=tool_output,
         status=status,
         tool_call_id=tool_id,
-        additional_kwargs={"truncated": was_truncated},
+        additional_kwargs=additional_kwargs,
     )
 
 
