@@ -56,6 +56,15 @@ def skip_special_chunk(
     return False
 
 
+def _extract_reasoning_text(block: dict[str, Any]) -> str:
+    """Extract reasoning summary text from a reasoning content block."""
+    parts = []
+    for summary_item in block.get("summary", []):
+        if isinstance(summary_item, dict):
+            parts.append(summary_item.get("text", ""))
+    return "".join(parts)
+
+
 def tool_calls_from_tool_calls_chunks(
     tool_calls_chunks: list[AIMessageChunk],
 ) -> list[dict[str, Any]]:
@@ -323,6 +332,7 @@ class DocsSummarizer(QueryHelper):
                 logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
                 tool_call_chunks = []
+                all_chunks: list[AIMessageChunk] = []
                 chunk_counter = 0
                 stop_generation = False
                 # invoke LLM and process response chunks
@@ -352,14 +362,32 @@ class DocsSummarizer(QueryHelper):
                         stop_generation = True
                         continue
 
-                    # collect tool chunk or yield text
+                    all_chunks.append(chunk)
+
+                    # collect tool chunk or yield text/reasoning
                     if getattr(chunk, "tool_call_chunks", None):
                         tool_call_chunks.append(chunk)
+                    elif isinstance(chunk.content, list):
+                        for block in chunk.content:
+                            if not isinstance(block, dict):
+                                continue
+                            block_type = block.get("type")
+                            if block_type == "reasoning":
+                                reasoning_text = _extract_reasoning_text(block)
+                                if reasoning_text:
+                                    yield StreamedChunk(
+                                        type="reasoning", text=reasoning_text
+                                    )
+                            elif block_type == "text":
+                                text = block.get("text", "")
+                                if text and not skip_special_chunk(
+                                    text, chunk_counter, self.model, is_final_round
+                                ):
+                                    yield StreamedChunk(type="text", text=text)
                     else:
                         if not skip_special_chunk(
                             chunk.content, chunk_counter, self.model, is_final_round
                         ):
-                            # stream text chunks directly
                             yield StreamedChunk(type="text", text=chunk.content)
 
                     chunk_counter += 1
@@ -372,15 +400,32 @@ class DocsSummarizer(QueryHelper):
                     break
 
                 # tool calling part
+                if not tool_call_chunks:
+                    break
+
                 if tool_call_chunks:
                     # assess tool calls and add to messages
                     tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
-                    ai_tool_call_message = AIMessage(
-                        content="", type="ai", tool_calls=tool_calls
-                    )
+
+                    # Accumulate the full AI message (reasoning + tool calls)
+                    # so reasoning context is preserved between rounds per
+                    # OpenAI's "Keeping reasoning items in context" guidance.
+                    if all_chunks:
+                        accumulated = all_chunks[0]
+                        for c in all_chunks[1:]:
+                            accumulated += c  # type: ignore [assignment]
+                        ai_tool_call_message = AIMessage(
+                            content=accumulated.content,
+                            tool_calls=tool_calls,
+                            additional_kwargs=accumulated.additional_kwargs,
+                        )
+                    else:
+                        ai_tool_call_message = AIMessage(
+                            content="", type="ai", tool_calls=tool_calls
+                        )
                     messages.append(ai_tool_call_message)
 
-                    # Count tokens used by the AIMessage with tool calls
+                    # Count tokens used by the AIMessage with tool callsm,
                     ai_message_tokens = TokenHandler._get_token_count(
                         token_handler.text_to_tokens(json.dumps(tool_calls))
                     )
@@ -561,11 +606,11 @@ class DocsSummarizer(QueryHelper):
                     tool_calls.append(chunk.data)
                 elif chunk.type == "tool_result":
                     tool_results.append(chunk.data)
+                elif chunk.type == "reasoning":
+                    pass
                 elif chunk.type == "text":
                     chunks.append(chunk.text)
                 else:
-                    # this "can't" happen as we control what chunk types
-                    # are yielded in the generator directly
                     msg = f"Unknown chunk type: {chunk.type}"
                     logger.warning(msg)
                     raise ValueError(msg)

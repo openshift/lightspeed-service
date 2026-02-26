@@ -54,6 +54,7 @@ auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-acce
 LLM_TOKEN_EVENT = "token"  # noqa: S105
 LLM_TOOL_CALL_EVENT = "tool_call"
 LLM_TOOL_RESULT_EVENT = "tool_result"
+LLM_REASONING_EVENT = "reasoning"
 
 
 query_responses: dict[int | str, dict[str, Any]] = {
@@ -175,6 +176,8 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
     if media_type == MEDIA_TYPE_TEXT:
         if event_type == LLM_TOKEN_EVENT:
             return data["token"]
+        if event_type == LLM_REASONING_EVENT:
+            return data["reasoning"]
         if event_type == LLM_TOOL_CALL_EVENT:
             return f"\nTool call: {json.dumps(data)}\n"
         if event_type == LLM_TOOL_RESULT_EVENT:
@@ -411,6 +414,13 @@ async def response_processing_wrapper(
                     event_type=LLM_TOOL_RESULT_EVENT,
                     media_type=media_type,
                 )
+            elif item.type == "reasoning":
+                yield stream_event(
+                    data={"id": idx, "reasoning": item.text},
+                    event_type=LLM_REASONING_EVENT,
+                    media_type=media_type,
+                )
+                idx += 1
             elif item.type == "text":
                 response += item.text
                 yield stream_event(

@@ -994,7 +994,7 @@ class StreamedChunk:
         data: Additional data associated with the chunk (for non-text chunks)
     """
 
-    type: Literal["text", "tool_call", "tool_result", "end"]
+    type: Literal["text", "tool_call", "tool_result", "end", "reasoning"]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 
