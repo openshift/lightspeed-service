@@ -14,7 +14,12 @@ from ols import config
 from ols.app.models.config import MCPServerConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import TokenHandler
-from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
+from tests.mock_classes.mock_tools import (
+    NAMESPACES_OUTPUT,
+    POD_STRUCTURED_CONTENT,
+    mock_tools_map,
+    mock_tools_with_structured_content,
+)
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
@@ -389,6 +394,124 @@ def test_tool_calling_tool_execution(caplog):
         assert "Error: Tool 'invalid_function_name' not found." in caplog.text
 
         assert mock_invoke.call_count == 2
+
+
+def test_tool_result_includes_structured_content():
+    """Test that tool_result chunks include structured_content from artifact."""
+    question = "What are pod metrics?"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+    ):
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]
+
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(
+                return_value=(mcp_servers_config, mock_tools_with_structured_content)
+            ),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_pod_metrics_mock",
+                                "args": {},
+                                "id": "call_pod1",
+                            },
+                        ],
+                    )
+                ]
+            )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = (
+            mock_tools_with_structured_content
+        )
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        result = summarizer.create_response(question)
+
+        assert len(result.tool_results) == 1
+        tool_result = result.tool_results[0]
+
+        assert tool_result["id"] == "call_pod1"
+        assert tool_result["structured_content"] == POD_STRUCTURED_CONTENT
+
+
+def test_tool_result_without_structured_content_has_no_key():
+    """Test that tool_result omits structured_content when not present."""
+    question = "How many namespaces are there in my cluster?"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+    ):
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]
+
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_ns1",
+                            },
+                        ],
+                    )
+                ]
+            )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        result = summarizer.create_response(question)
+
+        assert len(result.tool_results) == 1
+        tool_result = result.tool_results[0]
+
+        assert tool_result["id"] == "call_ns1"
+        assert "structured_content" not in tool_result
 
 
 def test_tool_token_tracking(caplog):
