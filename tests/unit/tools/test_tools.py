@@ -26,14 +26,14 @@ class FakeSchema(BaseModel):
 def _make_fake_coroutine(
     name: str, delay: float = 0.0, should_fail: bool = False
 ) -> Any:
-    """Create async coroutine for FakeTool that ainvoke will use."""
+    """Create async coroutine returning (content, artifact) like MCP adapters."""
 
-    async def _coro(**kwargs: Any) -> str:
+    async def _coro(**kwargs: Any) -> tuple:
         if delay > 0:
             await asyncio.sleep(delay)
         if should_fail:
             raise Exception("Tool execution failed")
-        return f"fake_output_from_{name}"
+        return f"fake_output_from_{name}", {}
 
     return _coro
 
@@ -59,13 +59,14 @@ class ContentBlockTool(StructuredTool):
         """Initialize the tool."""
 
         async def _content_block_coro(**kwargs: Any) -> Any:
-            return [
+            content = [
                 {
                     "type": "text",
                     "text": "pod1 Running\npod2 Running",
                     "id": "lc_test_id",
                 }
             ]
+            return content, {}
 
         super().__init__(
             name=name,
@@ -104,22 +105,24 @@ async def test_execute_tool_call():
     with patch(
         "ols.src.tools.tools.get_tool_by_name", return_value=FakeTool(fake_tool_name)
     ):
-        status, output, was_truncated = await execute_tool_call(
+        status, output, was_truncated, structured = await execute_tool_call(
             fake_tool_name, fake_tool_args, fake_tools
         )
         assert output == "fake_output_from_fake_tool"
         assert status == "success"
         assert was_truncated is False
+        assert structured is None
 
     with patch(
         "ols.src.tools.tools.get_tool_by_name", side_effect=Exception("Tool error")
     ):
-        status, output, was_truncated = await execute_tool_call(
+        status, output, was_truncated, structured = await execute_tool_call(
             fake_tool_name, fake_tool_args, fake_tools
         )
         assert "Error executing tool" in output
         assert status == "error"
         assert was_truncated is False
+        assert structured is None
 
 
 @pytest.mark.asyncio
@@ -175,7 +178,7 @@ async def test_execute_tool_calls_with_missing_tool_name():
 
     with patch(
         "ols.src.tools.tools.execute_tool_call",
-        return_value=("success", "fake_output", False),
+        return_value=("success", "fake_output", False, None),
     ):
         tool_messages = await execute_tool_calls(tool_calls, fake_tools)
         assert len(tool_messages) == 2
@@ -282,8 +285,8 @@ class LargeOutputTool(StructuredTool):
     def __init__(self, name: str, output_size: int = 100):
         """Initialize with configurable output size."""
 
-        async def _large_coro(**kwargs: Any) -> str:
-            return "word " * output_size
+        async def _large_coro(**kwargs: Any) -> tuple:
+            return "word " * output_size, {}
 
         super().__init__(
             name=name,
@@ -300,12 +303,13 @@ async def test_execute_tool_call_with_truncation():
     large_tool = LargeOutputTool(name="large_tool", output_size=5000)
     fake_tools = [large_tool]
 
-    status, output, was_truncated = await execute_tool_call(
+    status, output, was_truncated, structured = await execute_tool_call(
         "large_tool", {}, fake_tools, max_tokens=100
     )
 
     assert status == "success"
     assert was_truncated is True
+    assert structured is None
     assert "[OUTPUT TRUNCATED" in output
     assert "Please ask a more specific question" in output
 
@@ -316,12 +320,13 @@ async def test_execute_tool_call_no_truncation_small_output():
     small_tool = LargeOutputTool(name="small_tool", output_size=10)
     fake_tools = [small_tool]
 
-    status, output, was_truncated = await execute_tool_call(
+    status, output, was_truncated, structured = await execute_tool_call(
         "small_tool", {}, fake_tools, max_tokens=1000
     )
 
     assert status == "success"
     assert was_truncated is False
+    assert structured is None
     assert "[OUTPUT TRUNCATED" not in output
 
 
@@ -421,9 +426,100 @@ async def test_execute_tool_call_with_content_blocks():
     content_block_tool = ContentBlockTool(name="content_tool")
     fake_tools = [content_block_tool]
 
-    status, output, was_truncated = await execute_tool_call(
+    status, output, was_truncated, structured = await execute_tool_call(
         "content_tool", {}, fake_tools
     )
     assert status == "success"
     assert output == "pod1 Running\npod2 Running"
     assert was_truncated is False
+    assert structured is None
+
+
+class ArtifactTool(StructuredTool):
+    """Mock tool that returns (content, artifact) tuple like langchain-mcp-adapters 0.2+."""
+
+    def __init__(self, name: str):
+        """Initialize the tool."""
+
+        async def _artifact_coro(**kwargs: Any) -> Any:
+            content = [{"type": "text", "text": "Pod utilization summary"}]
+            artifact = {
+                "structured_content": {
+                    "pods": [
+                        {"name": "pod1", "cpu": 45, "memory": 62},
+                        {"name": "pod2", "cpu": 12, "memory": 34},
+                    ],
+                    "summary": {"totalPods": 2, "avgCpu": 28, "avgMemory": 48},
+                }
+            }
+            return content, artifact
+
+        super().__init__(
+            name=name,
+            description=f"Artifact tool {name}",
+            func=lambda **kwargs: "sync output",
+            coroutine=_artifact_coro,
+            response_format="content_and_artifact",
+            args_schema=FakeSchema,
+        )
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_with_structured_content():
+    """Test execute_tool_call captures structured_content from artifact tuple."""
+    artifact_tool = ArtifactTool(name="artifact_tool")
+    fake_tools = [artifact_tool]
+
+    status, output, was_truncated, structured = await execute_tool_call(
+        "artifact_tool", {}, fake_tools
+    )
+    assert status == "success"
+    assert output == "Pod utilization summary"
+    assert was_truncated is False
+    assert structured is not None
+    assert "pods" in structured
+    assert len(structured["pods"]) == 2
+    assert structured["summary"]["totalPods"] == 2
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_structured_content_propagated_to_tool_message():
+    """Test structured_content is forwarded in ToolMessage additional_kwargs."""
+    artifact_tool = ArtifactTool(name="artifact_tool")
+    fake_tools = [artifact_tool]
+
+    tool_calls = [{"name": "artifact_tool", "args": {}, "id": "call_art"}]
+    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+
+    assert len(tool_messages) == 1
+    msg = tool_messages[0]
+    assert msg.status == "success"
+    assert msg.content == "Pod utilization summary"
+    assert msg.additional_kwargs.get("truncated") is False
+    structured = msg.additional_kwargs.get("structured_content")
+    assert structured is not None
+    assert structured["summary"]["totalPods"] == 2
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_artifact_without_structured_content():
+    """Test that artifact dicts without structured_content key return None."""
+
+    async def _coro(**kwargs: Any) -> Any:
+        return [{"type": "text", "text": "plain result"}], {"other_key": "value"}
+
+    tool = StructuredTool(
+        name="no_sc_tool",
+        description="Tool with artifact but no structured_content",
+        func=lambda **kwargs: "sync",
+        coroutine=_coro,
+        response_format="content_and_artifact",
+        args_schema=FakeSchema,
+    )
+
+    status, output, _was_truncated, structured = await execute_tool_call(
+        "no_sc_tool", {}, [tool]
+    )
+    assert status == "success"
+    assert output == "plain result"
+    assert structured is None

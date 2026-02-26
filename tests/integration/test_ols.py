@@ -25,7 +25,7 @@ from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
-from tests.mock_classes.mock_tools import mock_tools_map
+from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
 
 INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
@@ -1238,8 +1238,7 @@ def test_tool_calling(_setup, caplog) -> None:
                 assert mock_invoke.call_count == 3
 
                 assert "Tool: get_namespaces_mock" in caplog.text
-                tool_output = mock_tools_map[0].invoke({})
-                assert f"Output: {tool_output}" in caplog.text
+                assert f"Output: {NAMESPACES_OUTPUT}" in caplog.text
 
                 assert response.status_code == requests.codes.ok
                 assert response.json()["response"] == "You have 1 namespace."
