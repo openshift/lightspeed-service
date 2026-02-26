@@ -461,15 +461,23 @@ class DocsSummarizer(QueryHelper):
                             )
                         )
 
+                        tool_result_data: dict[str, Any] = {
+                            "id": tool_call_message.tool_call_id,
+                            "status": tool_status,
+                            "content": tool_call_message.content,
+                            "type": "tool_result",
+                            "round": i,
+                        }
+
+                        structured_content = tool_call_message.additional_kwargs.get(
+                            "structured_content"
+                        )
+                        if structured_content:
+                            tool_result_data["structured_content"] = structured_content
+
                         yield StreamedChunk(
                             type="tool_result",
-                            data={
-                                "id": tool_call_message.tool_call_id,
-                                "status": tool_status,
-                                "content": tool_call_message.content,
-                                "type": "tool_result",
-                                "round": i,
-                            },
+                            data=tool_result_data,
                         )
 
     async def generate_response(
