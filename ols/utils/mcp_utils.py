@@ -149,21 +149,25 @@ def resolve_server_headers(
     return headers
 
 
-def _fix_tool_schema(tool: StructuredTool) -> None:
-    """Ensure an MCP tool's args_schema has a 'properties' key.
+def _normalize_tool_schema(tool: StructuredTool) -> None:
+    """Normalize an MCP tool's dict schema for OpenAI compatibility.
 
-    Some MCP tools accept no arguments, producing a schema like
-    ``{"type": "object"}`` with no ``properties`` key. This causes two problems:
+    Some MCP tools accept no arguments, producing a valid JSON Schema like
+    ``{"type": "object"}`` with no ``properties`` key. This causes:
 
-    1. LangChain's ``BaseTool.args`` raises ``KeyError``.
-    2. OpenAI rejects the function call with *"object schema missing properties"*.
+    1. LangChain's ``BaseTool.args`` raises ``KeyError("properties")``.
+    2. OpenAI rejects the function with *"object schema missing properties"*.
 
-    This function mutates the schema in-place so that an empty ``properties``
-    dict is always present.
+    Only dict schemas with ``"type": "object"`` are patched. Pydantic model
+    schemas always include ``properties`` and are left untouched.
     """
     schema = tool.args_schema
-    if isinstance(schema, dict) and "properties" not in schema:
-        schema["properties"] = {}
+    if not isinstance(schema, dict):
+        return
+    if schema.get("type") != "object":
+        return
+    schema.setdefault("properties", {})
+    schema.setdefault("required", [])
 
 
 async def gather_mcp_tools(
@@ -198,7 +202,7 @@ async def gather_mcp_tools(
 
             # Add MCP server name to each tool's metadata
             for tool in server_tools:
-                _fix_tool_schema(tool)
+                _normalize_tool_schema(tool)
                 if not hasattr(tool, "metadata") or tool.metadata is None:
                     tool.metadata = {}
                 tool.metadata["mcp_server"] = server_name

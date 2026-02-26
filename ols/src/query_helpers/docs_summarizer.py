@@ -310,7 +310,11 @@ class DocsSummarizer(QueryHelper):
                             "schema": (
                                 t.args_schema
                                 if isinstance(t.args_schema, dict)
-                                else t.args_schema.model_json_schema()
+                                else (
+                                    t.args_schema.model_json_schema()
+                                    if t.args_schema is not None
+                                    else {}
+                                )
                             ),
                         }
                         for t in all_mcp_tools

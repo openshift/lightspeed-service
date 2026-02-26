@@ -13,7 +13,7 @@ from langchain_core.messages.ai import AIMessageChunk
 from ols import config
 from ols.app.models.config import MCPServerConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
-from ols.utils.mcp_utils import _fix_tool_schema, gather_mcp_tools
+from ols.utils.mcp_utils import _normalize_tool_schema, gather_mcp_tools
 from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import mock_tools_map
 
@@ -602,34 +602,36 @@ async def test_gather_mcp_tools_empty_config():
         mock_client_instance.get_tools.assert_not_called()
 
 
-def test_fix_tool_schema_adds_missing_properties():
-    """Test _fix_tool_schema adds empty properties to schema without one."""
+def test_normalize_tool_schema_adds_missing_properties_and_required():
+    """Test _normalize_tool_schema patches a bare object schema."""
     tool = Mock()
     tool.args_schema = {"type": "object"}
 
-    _fix_tool_schema(tool)
+    _normalize_tool_schema(tool)
 
-    assert tool.args_schema == {"type": "object", "properties": {}}
+    assert tool.args_schema == {"type": "object", "properties": {}, "required": []}
 
 
-def test_fix_tool_schema_preserves_existing_properties():
-    """Test _fix_tool_schema does not overwrite existing properties."""
+def test_normalize_tool_schema_preserves_existing_properties():
+    """Test _normalize_tool_schema does not overwrite existing properties."""
     tool = Mock()
     tool.args_schema = {
         "type": "object",
         "properties": {"name": {"type": "string"}},
+        "required": ["name"],
     }
 
-    _fix_tool_schema(tool)
+    _normalize_tool_schema(tool)
 
     assert tool.args_schema == {
         "type": "object",
         "properties": {"name": {"type": "string"}},
+        "required": ["name"],
     }
 
 
-def test_fix_tool_schema_skips_non_dict_schema():
-    """Test _fix_tool_schema is a no-op when args_schema is not a dict."""
+def test_normalize_tool_schema_skips_non_dict_schema():
+    """Test _normalize_tool_schema is a no-op when args_schema is not a dict."""
 
     class MySchema:
         pass
@@ -637,9 +639,19 @@ def test_fix_tool_schema_skips_non_dict_schema():
     tool = Mock()
     tool.args_schema = MySchema
 
-    _fix_tool_schema(tool)
+    _normalize_tool_schema(tool)
 
     assert tool.args_schema is MySchema
+
+
+def test_normalize_tool_schema_skips_non_object_type():
+    """Test _normalize_tool_schema is a no-op for non-object schemas."""
+    tool = Mock()
+    tool.args_schema = {"type": "string"}
+
+    _normalize_tool_schema(tool)
+
+    assert tool.args_schema == {"type": "string"}
 
 
 @pytest.mark.asyncio
@@ -679,11 +691,16 @@ async def test_gather_mcp_tools_fixes_schemas_without_properties():
 
         assert len(tools) == 2
 
-        assert tools[0].args_schema == {"type": "object", "properties": {}}
+        assert tools[0].args_schema == {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
 
         assert tools[1].args_schema == {
             "type": "object",
             "properties": {"query": {"type": "string"}},
+            "required": [],
         }
 
 
