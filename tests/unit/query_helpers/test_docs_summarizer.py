@@ -1035,3 +1035,121 @@ def test_tool_result_without_meta_has_no_tool_meta_key():
         assert tool_result["id"] == "call_ns1"
         assert tool_result["name"] == "get_namespaces_mock"
         assert "tool_meta" not in tool_result
+
+
+def test_tool_call_includes_tool_meta():
+    """Test that tool_call events include tool_meta and server_name from metadata."""
+    question = "How many namespaces are there in my cluster?"
+
+    mcp_servers_config = {
+        "test-server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    mock_server = MagicMock()
+    mock_server.name = "test-server"
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+    ):
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [mock_server]
+
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_with_meta)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_with_meta_mock",
+                                "args": {},
+                                "id": "call_meta1",
+                            },
+                        ],
+                    )
+                ]
+            )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_with_meta
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        result = summarizer.create_response(question)
+
+        assert len(result.tool_calls) == 1
+        tool_call = result.tool_calls[0]
+
+        assert tool_call["name"] == "get_namespaces_with_meta_mock"
+        assert tool_call["server_name"] == "test-server"
+        assert tool_call["tool_meta"] == MOCK_TOOL_META
+
+
+def test_tool_call_without_meta_has_no_tool_meta_key():
+    """Test that tool_call events omit tool_meta when tool has no _meta."""
+    question = "How many namespaces are there in my cluster?"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    with (
+        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+    ):
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]
+
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {
+                                "name": "get_namespaces_mock",
+                                "args": {},
+                                "id": "call_ns1",
+                            },
+                        ],
+                    )
+                ]
+            )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        summarizer.model_config.parameters.max_tokens_for_tools = 0
+        result = summarizer.create_response(question)
+
+        assert len(result.tool_calls) == 1
+        tool_call = result.tool_calls[0]
+
+        assert tool_call["name"] == "get_namespaces_mock"
+        assert "tool_meta" not in tool_call

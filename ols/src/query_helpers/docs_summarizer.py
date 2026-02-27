@@ -89,6 +89,40 @@ def run_async_safely(coro: Coroutine[Any, Any, Any]) -> Any:
         raise
 
 
+def _enrich_tool_call(
+    tool_call: dict[str, Any],
+    all_mcp_tools: ToolsList,
+) -> dict[str, Any]:
+    """Enrich a tool_call dict with metadata from the StructuredTool.
+
+    Adds tool_meta and server_name so the UI can start preloading
+    UI resources (e.g. MCP Apps iframes) before the tool result arrives.
+
+    Args:
+        tool_call: LLM-generated tool call dict (name, args, id).
+        all_mcp_tools: Available tools (carry metadata from MCP servers).
+
+    Returns:
+        Enriched tool call dict. Original keys are preserved.
+    """
+    enriched: dict[str, Any] = {**tool_call}
+    tool_obj = next((t for t in all_mcp_tools if t.name == tool_call.get("name")), None)
+    if not tool_obj:
+        return enriched
+
+    tool_metadata = tool_obj.metadata or {}
+
+    server_name = tool_metadata.get("mcp_server")
+    if server_name:
+        enriched["server_name"] = server_name
+
+    tool_meta = tool_metadata.get("_meta")
+    if tool_meta:
+        enriched["tool_meta"] = tool_meta
+
+    return enriched
+
+
 def _build_tool_result_chunks(
     tool_calls: list[dict[str, Any]],
     tool_calls_messages: list[ToolMessage],
@@ -460,7 +494,8 @@ class DocsSummarizer(QueryHelper):
                     tool_tokens_used += ai_message_tokens
 
                     for tool_call in tool_calls:
-                        # Log tool call in JSON format
+                        enriched = _enrich_tool_call(tool_call, all_mcp_tools)
+
                         logger.debug(
                             json.dumps(
                                 {
@@ -474,7 +509,7 @@ class DocsSummarizer(QueryHelper):
                             )
                         )
 
-                        yield StreamedChunk(type="tool_call", data=tool_call)
+                        yield StreamedChunk(type="tool_call", data=enriched)
 
                     # Calculate remaining budget for tools
                     remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
