@@ -30,6 +30,13 @@ from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
 INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 
+def _streaming_payload(endpoint: str) -> dict[str, str]:
+    """Force plain-text stream payloads for streaming endpoint assertions."""
+    if endpoint == "/v1/streaming_query":
+        return {"media_type": constants.MEDIA_TYPE_TEXT}
+    return {}
+
+
 @pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
@@ -89,12 +96,16 @@ def test_post_question_on_invalid_question(_setup, endpoint):
         conversation_id = suid.get_suid()
         response = pytest.client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query",
+                **_streaming_payload(endpoint),
+            },
         )
         assert response.status_code == requests.codes.ok
 
-        if response.headers["content-type"] == "application/json":
-            # non-streaming responses return JSON
+        if endpoint == "/v1/query":
+            # non-streaming endpoint returns JSON
             expected_response = {
                 "conversation_id": conversation_id,
                 "response": INVALID_QUERY_RESP,
@@ -108,11 +119,14 @@ def test_post_question_on_invalid_question(_setup, endpoint):
             }
             actual_response = response.json()
         else:
-            # streaming_query returns bytes
+            # streaming endpoint returns SSE text payload
             expected_response = INVALID_QUERY_RESP
             actual_response = response.text
 
-        assert actual_response == expected_response
+        if endpoint == "/v1/query":
+            assert actual_response == expected_response
+        else:
+            assert expected_response in actual_response
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -355,7 +369,11 @@ def test_post_question_with_keyword(_setup, endpoint) -> None:
         conversation_id = suid.get_suid()
         response = pytest.client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": query},
+            json={
+                "conversation_id": conversation_id,
+                "query": query,
+                **_streaming_payload(endpoint),
+            },
         )
         assert response.status_code == requests.codes.ok
 
@@ -407,6 +425,7 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+                    **_streaming_payload(endpoint),
                 },
             )
 
@@ -675,6 +694,7 @@ metadata:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query",
+                    **_streaming_payload(endpoint),
                     "attachments": [
                         {
                             "attachment_type": "configuration",
@@ -1028,11 +1048,12 @@ logs:
                     ],
                 },
             )
-            if response.headers["content-type"] == "application/json":
-                # non-streaming responses return JSON
+            if endpoint == "/v1/query":
+                # non-streaming endpoint returns JSON error response
                 assert response.status_code == requests.codes.request_entity_too_large
             else:
-                # streaming_query returns bytes
+                # streaming endpoint returns streamed error payload
+                assert response.status_code == requests.codes.ok
                 error_response = response.text
                 assert "Prompt is too long" in error_response
                 assert "exceeds LLM available context window limit" in error_response
@@ -1045,7 +1066,11 @@ def test_post_too_long_query(_setup, endpoint):
     conversation_id = suid.get_suid()
     response = pytest.client.post(
         endpoint,
-        json={"conversation_id": conversation_id, "query": query},
+        json={
+            "conversation_id": conversation_id,
+            "query": query,
+            **_streaming_payload(endpoint),
+        },
     )
 
     if response.headers["content-type"] == "application/json":
