@@ -434,27 +434,37 @@ class DocsSummarizer(QueryHelper):
                         )
                         tool_tokens_used += len(content_tokens)
 
+                    tool_id_to_name = {
+                        tc.get("id"): tc.get("name") for tc in tool_calls
+                    }
+                    tools_by_name = {t.name: t for t in all_mcp_tools}
+
                     for tool_call_message in tool_calls_messages:
                         was_truncated = tool_call_message.additional_kwargs.get(
                             "truncated", False
                         )
-                        # Determine UI status: use "truncated" if output was truncated,
-                        # otherwise use the langchain status (success/error)
                         tool_status = (
                             "truncated" if was_truncated else tool_call_message.status
                         )
 
-                        # Log tool result in JSON format
+                        tool_name = tool_id_to_name.get(
+                            tool_call_message.tool_call_id, "unknown"
+                        )
+                        tool_obj = tools_by_name.get(tool_name)
+                        tool_metadata = (tool_obj.metadata or {}) if tool_obj else {}
+
                         logger.debug(
                             json.dumps(
                                 {
                                     "event": "tool_result",
                                     "tool_id": tool_call_message.tool_call_id,
+                                    "tool_name": tool_name,
                                     "status": tool_call_message.status,
                                     "truncated": was_truncated,
+                                    "has_meta": "_meta" in tool_metadata,
                                     "output_snippet": str(tool_call_message.content)[
                                         :1000
-                                    ],  # Truncate to first 1000 chars
+                                    ],
                                 },
                                 ensure_ascii=False,
                                 indent=2,
@@ -463,11 +473,20 @@ class DocsSummarizer(QueryHelper):
 
                         tool_result_data: dict[str, Any] = {
                             "id": tool_call_message.tool_call_id,
+                            "name": tool_name,
                             "status": tool_status,
                             "content": tool_call_message.content,
                             "type": "tool_result",
                             "round": i,
                         }
+
+                        server_name = tool_metadata.get("mcp_server")
+                        if server_name:
+                            tool_result_data["server_name"] = server_name
+
+                        tool_meta = tool_metadata.get("_meta")
+                        if tool_meta:
+                            tool_result_data["tool_meta"] = tool_meta
 
                         structured_content = tool_call_message.additional_kwargs.get(
                             "structured_content"
