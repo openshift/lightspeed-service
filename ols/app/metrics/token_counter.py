@@ -43,6 +43,8 @@ class GenericTokenCounter(AsyncCallbackHandler):  # pylint: disable=R0901
     ) -> None:
         """Compute token count when llm token is yielded."""
         if token is not None and token != "":
+            if not isinstance(token, str):
+                token = str(token)
             self.token_counter.output_tokens += self.tokens_count(token)
 
     async def on_llm_start(
