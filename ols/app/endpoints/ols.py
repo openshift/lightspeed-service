@@ -1,13 +1,12 @@
 """Handlers for all OLS-related REST API endpoints."""
 
-import dataclasses
 import json
 import logging
 import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Generator, Optional, Union
+from typing import Any, AsyncGenerator, Optional, Union
 
 import psycopg2
 import pytz
@@ -27,6 +26,7 @@ from ols.app.models.models import (
     PromptTooLongResponse,
     RagChunk,
     ReferencedDocument,
+    StreamedChunk,
     SummarizerResponse,
     TokenCounter,
     UnauthorizedResponse,
@@ -123,7 +123,7 @@ def conversation_request(
     """
     processed_request = process_request(auth, llm_request)
 
-    summarizer_response: SummarizerResponse | Generator
+    summarizer_response: SummarizerResponse | AsyncGenerator[StreamedChunk, None]
 
     if not processed_request.valid:
         # response containing info about query that can not be validated
@@ -567,7 +567,7 @@ def generate_response(
     streaming: bool = False,
     user_token: Optional[str] = None,
     client_headers: dict[str, dict[str, str]] | None = None,
-) -> Union[SummarizerResponse, Generator]:
+) -> Union[SummarizerResponse, AsyncGenerator[StreamedChunk, None]]:
     """Generate response based on validation result, previous input, and model output.
 
     Args:
@@ -579,7 +579,7 @@ def generate_response(
         client_headers: Client-provided MCP headers for authentication.
 
     Returns:
-        SummarizerResponse or Generator, depending on the streaming flag.
+        SummarizerResponse or async StreamedChunk generator, depending on streaming flag.
     """
     try:
         docs_summarizer = DocsSummarizer(
@@ -588,6 +588,7 @@ def generate_response(
             system_prompt=llm_request.system_prompt,
             user_token=user_token,
             client_headers=client_headers,
+            streaming=streaming,
         )
         history = CacheEntry.cache_entries_to_history(previous_input)
         if streaming:
@@ -903,7 +904,14 @@ def store_transcript(
         "redacted_query": redacted_query,
         "query_is_valid": query_is_valid,
         "llm_response": response,
-        "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
+        "rag_chunks": [
+            {
+                "text": rag_chunk.text,
+                "doc_url": rag_chunk.doc_url,
+                "doc_title": rag_chunk.doc_title,
+            }
+            for rag_chunk in rag_chunks
+        ],
         "truncated": truncated,
         "tool_calls": merge_tools_info(tool_calls, tool_results),
         "attachments": [attachment.model_dump() for attachment in attachments],
