@@ -1,15 +1,17 @@
 """Functions to install the service onto an OCP cluster using the OLS operator."""
 
+import json
 import os
 import subprocess
 
 import yaml
 
 from ols.constants import DEFAULT_CONFIGURATION_FILE
+from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
-from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
@@ -17,31 +19,38 @@ OC_COMMAND_RETRY_DELAY = 5
 disconnected = os.getenv("DISCONNECTED", "")
 
 
-def create_and_config_sas() -> tuple[str, str]:
-    """Create and provide access to service accounts for testing.
+def setup_service_accounts(namespace: str) -> None:
+    """Set up service accounts and access roles.
 
-    Returns:
-        tuple containing token and metrics token.
+    Args:
+        namespace: The Kubernetes namespace to create service accounts in.
     """
+    print("Ensuring 'test-user' service account exists...")
     cluster_utils.run_oc(
-        ["project", "openshift-lightspeed"], ignore_existing_resource=True
+        ["create", "sa", "test-user", "-n", namespace],
+        ignore_existing_resource=True,
     )
-    cluster_utils.create_user("test-user", ignore_existing_resource=True)
-    cluster_utils.create_user("metrics-test-user", ignore_existing_resource=True)
-    token = cluster_utils.get_token_for("test-user")
-    metrics_token = cluster_utils.get_token_for("metrics-test-user")
-    print("created test service account users")
 
-    # grant the test service accounts permission to query ols and retrieve metrics
+    print("Ensuring 'metrics-test-user' service account exists...")
+    cluster_utils.run_oc(
+        ["create", "sa", "metrics-test-user", "-n", namespace],
+        ignore_existing_resource=True,
+    )
+
+    print("Granting access roles to service accounts...")
     cluster_utils.grant_sa_user_access("test-user", "lightspeed-operator-query-access")
     cluster_utils.grant_sa_user_access(
         "metrics-test-user", "lightspeed-operator-ols-metrics-reader"
     )
-    print("test service account permissions granted")
 
-    # grant pod listing permission to test-user - to test the tools,
-    # more specifically the we need the test-user be able to see pods
-    # in the namespace
+
+def setup_rbac(namespace: str) -> None:
+    """Set up pod-reader role and binding.
+
+    Args:
+        namespace: The Kubernetes namespace for RBAC configuration.
+    """
+    print("Ensuring 'pod-reader' role and rolebinding exist...")
     cluster_utils.run_oc(
         [
             "create",
@@ -49,7 +58,8 @@ def create_and_config_sas() -> tuple[str, str]:
             "pod-reader",
             "--verb=get,list",
             "--resource=pods",
-            "--namespace=openshift-lightspeed",
+            "--namespace",
+            namespace,
         ],
         ignore_existing_resource=True,
     )
@@ -60,15 +70,111 @@ def create_and_config_sas() -> tuple[str, str]:
             "rolebinding",
             "test-user-pod-reader",
             "--role=pod-reader",
-            "--serviceaccount=openshift-lightspeed:test-user",
-            "--namespace=openshift-lightspeed",
+            f"--serviceaccount={namespace}:test-user",
+            "--namespace",
+            namespace,
         ],
         ignore_existing_resource=True,
     )
+    print("RBAC setup verified.")
 
-    print("Granted test-user permission to list pods.")
 
+def get_service_account_tokens() -> tuple[str, str]:
+    """Get tokens for test service accounts.
+
+    Returns:
+        tuple containing token and metrics token.
+    """
+    print("Fetching tokens for service accounts...")
+    token = cluster_utils.get_token_for("test-user")
+    metrics_token = cluster_utils.get_token_for("metrics-test-user")
     return token, metrics_token
+
+
+def update_lcore_setting() -> None:
+    """Update the --use-lcore argument in the CSV if LCORE is enabled.
+
+    Checks if LCORE environment variable is enabled and ensures the
+    --use-lcore argument in the ClusterServiceVersion is set to true.
+    """
+    if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
+        print("LCORE not enabled, skipping CSV update")
+        return
+
+    print("LCORE enabled, checking CSV configuration...")
+    namespace = "openshift-lightspeed"
+
+    # Get the CSV name
+    csv_name_result = cluster_utils.run_oc(
+        ["get", "csv", "-n", namespace, "-o", "name"]
+    )
+    csv_full_name = csv_name_result.stdout.strip()
+    if not csv_full_name:
+        print("No CSV found in namespace, skipping LCORE update")
+        return
+
+    csv_name = csv_full_name.replace("clusterserviceversion.operators.coreos.com/", "")
+
+    # Get current args from the CSV
+    args_result = cluster_utils.run_oc(
+        [
+            "get",
+            "csv",
+            csv_name,
+            "-n",
+            namespace,
+            "-o",
+            "json",
+        ]
+    )
+    csv_data = json.loads(args_result.stdout)
+    args = csv_data["spec"]["install"]["spec"]["deployments"][0]["spec"]["template"][
+        "spec"
+    ]["containers"][0]["args"]
+
+    # Check if --use-lcore exists and its value
+    lcore_arg_index = None
+    lcore_value = None
+    for i, arg in enumerate(args):
+        if arg.startswith("--use-lcore="):
+            lcore_arg_index = i
+            lcore_value = arg.split("=", 1)[1]
+            break
+
+    if lcore_arg_index is None:
+        print("--use-lcore argument not found in CSV")
+        return
+
+    if lcore_value == "true":
+        print("--use-lcore already set to true, no update needed")
+        return
+
+    print(f"--use-lcore is set to {lcore_value}, updating to true...")
+
+    # Update the argument
+    patch = (
+        f'[{{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/'
+        f'template/spec/containers/0/args/{lcore_arg_index}", '
+        f'"value": "--use-lcore=true"}}]'
+    )
+
+    cluster_utils.run_oc(
+        [
+            "patch",
+            "csv",
+            csv_name,
+            "-n",
+            namespace,
+            "--type",
+            "json",
+            "-p",
+            patch,
+        ]
+    )
+    cluster_utils.wait_for_running_pod(
+        name="lightspeed-operator-controller-manager", namespace="openshift-lightspeed"
+    )
+    print("--use-lcore updated to true successfully")
 
 
 def update_ols_config() -> None:
@@ -116,8 +222,31 @@ def update_ols_config() -> None:
     configmap["data"][DEFAULT_CONFIGURATION_FILE] = yaml.dump(olsconfig)
     updated_configmap = yaml.dump(configmap)
 
-    cluster_utils.run_oc(["delete", "configmap", "olsconfig"])
     cluster_utils.run_oc(["apply", "-f", "-"], command=updated_configmap)
+
+
+def setup_route() -> str:
+    """Set up route and return OLS URL.
+
+    Returns:
+        The HTTPS URL for accessing the OLS service.
+    """
+    try:
+        cluster_utils.run_oc(["delete", "route", "ols"], ignore_existing_resource=False)
+    except Exception:
+        print("No existing route to delete. Continuing...")
+
+    print("Creating route for OLS access")
+    cluster_utils.run_oc(
+        ["create", "-f", "tests/config/operator_install/route.yaml"],
+        ignore_existing_resource=False,
+    )
+
+    url = cluster_utils.run_oc(
+        ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
+    ).stdout.strip("'")
+
+    return f"https://{url}"
 
 
 def replace_ols_image(ols_image: str) -> None:
@@ -146,7 +275,7 @@ def replace_ols_image(ols_image: str) -> None:
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -163,7 +292,7 @@ def replace_ols_image(ols_image: str) -> None:
     # update the OLS deployment to use the new image from CI/OLS_IMAGE env var
     patch = f"""[{{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value":"{ols_image}"}}]"""  # noqa: E501
     cluster_utils.run_oc(
-        ["patch", "deployment/lightspeed-app-server", "--type", "json", "-p", patch]
+        ["patch", f"deployment/{OLS_SERVICE_DEPLOYMENT}", "--type", "json", "-p", patch]
     )
 
 
@@ -283,8 +412,10 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     cluster_utils.run_oc(
         ["project", "openshift-lightspeed"], ignore_existing_resource=True
     )
-    token, metrics_token = create_and_config_sas()
-
+    namespace = "openshift-lightspeed"
+    setup_service_accounts(namespace)
+    setup_rbac(namespace)
+    token, metrics_token = get_service_account_tokens()
     # wait for the operator to install
     # time.sleep(3)  # not sure if it is needed but it fails sometimes
     r = retry_until_timeout_or_success(
@@ -309,6 +440,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     provider = os.getenv("PROVIDER", "openai")
     creds = os.getenv("PROVIDER_KEY_PATH", "empty")
+    update_lcore_setting()
     # create the llm api key secret ols will mount
     provider_list = provider.split()
     creds_list = creds.split()
@@ -383,13 +515,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             [
                 "get",
                 "deployment",
-                "lightspeed-app-server",
+                f"{OLS_SERVICE_DEPLOYMENT}",
                 "--ignore-not-found",
                 "-o",
                 "name",
             ]
         ).stdout
-        == "deployment.apps/lightspeed-app-server\n",
+        == f"deployment.apps/{OLS_SERVICE_DEPLOYMENT}\n",
         "Waiting for OLS API server deployment to be created",
     )
     if not r:
@@ -428,7 +560,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "0",
         ]
@@ -438,14 +570,14 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     cluster_utils.run_oc(
         [
             "scale",
-            "deployment/lightspeed-app-server",
+            f"deployment/{OLS_SERVICE_DEPLOYMENT}",
             "--replicas",
             "1",
         ]
     )
     print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
-    cluster_utils.wait_for_running_pod()
+    cluster_utils.wait_for_running_pod(name=OLS_SERVICE_DEPLOYMENT)
 
     print("-" * 50)
     print("OLS pod seems to be ready")
@@ -465,15 +597,22 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     # expect it to be (must-gather will also collect this)
     print(
         cluster_utils.run_oc(
-            ["get", "deployment", "lightspeed-app-server", "-o", "yaml"]
+            ["get", "deployment", OLS_SERVICE_DEPLOYMENT, "-o", "yaml"]
         ).stdout
     )
     print("-" * 50)
+
+    # Set up route and get URL first
+    ols_url = setup_route()
+
     if not disconnected:
         # Configure exporter for e2e tests with proper settings
         try:
             print("Configuring exporter for e2e tests...")
+            # Create client for the exporter configuration
+            test_client = client_utils.get_http_client(ols_url, token)
             configure_exporter_for_e2e_tests(
+                client=test_client,
                 interval_seconds=3600,  # 1 hour to prevent interference
                 ingress_env="stage",
                 log_level="debug",
@@ -484,22 +623,4 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             print(f"Warning: Could not configure exporter: {e}")
             print("Tests may experience interference from data collector")
 
-    try:
-        cluster_utils.run_oc(
-            [
-                "delete",
-                "route",
-                "ols",
-            ],
-        )
-    except subprocess.CalledProcessError:
-        print("No route exists, creating it.")
-    # create a route so tests can access OLS directly
-    cluster_utils.run_oc(["create", "-f", "tests/config/operator_install/route.yaml"])
-
-    url = cluster_utils.run_oc(
-        ["get", "route", "ols", "-o", "jsonpath='{.spec.host}'"]
-    ).stdout.strip("'")
-    ols_url = f"https://{url}"
-    wait_for_ols(ols_url)
     return ols_url, token, metrics_token

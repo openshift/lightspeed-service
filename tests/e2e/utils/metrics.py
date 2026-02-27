@@ -96,7 +96,6 @@ def get_enabled_model_and_provider(client):
     """Read configured model and provider from metrics."""
     response = read_metrics(client)
     lines = [line.strip() for line in response.split("\n")]
-
     labels = get_metric_labels(lines, "ols_provider_model_configuration", "1.0")
 
     return labels["model"], labels["provider"]

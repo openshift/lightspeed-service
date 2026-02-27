@@ -1,5 +1,7 @@
 """Constants for end-to-end tests."""
 
+import os
+
 # timeout settings
 BASIC_ENDPOINTS_TIMEOUT = 5
 NON_LLM_REST_API_TIMEOUT = 20
@@ -17,4 +19,10 @@ OLS_USER_DATA_COLLECTION_INTERVAL_LONG = (
 )
 OLS_USER_DATA_COLLECTION_INTERVAL_SHORT = (
     5  # 5 seconds - used only in data collection test
+)
+
+OLS_SERVICE_DEPLOYMENT = (
+    "lightspeed-stack-deployment"
+    if os.getenv("LCORE", "False").lower() in ("true", "1", "t")
+    else "lightspeed-app-server"
 )
