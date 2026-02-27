@@ -30,6 +30,13 @@ from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
 INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 
+def _request_media_type(endpoint: str) -> str | None:
+    """Return media type override for endpoint-specific test stability."""
+    if endpoint == "/v1/streaming_query":
+        return constants.MEDIA_TYPE_TEXT
+    return None
+
+
 @pytest.fixture(scope="function")
 def _setup():
     """Setups the test client."""
@@ -89,7 +96,15 @@ def test_post_question_on_invalid_question(_setup, endpoint):
         conversation_id = suid.get_suid()
         response = pytest.client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query",
+                **(
+                    {"media_type": _request_media_type(endpoint)}
+                    if _request_media_type(endpoint)
+                    else {}
+                ),
+            },
         )
         assert response.status_code == requests.codes.ok
 
@@ -355,7 +370,15 @@ def test_post_question_with_keyword(_setup, endpoint) -> None:
         conversation_id = suid.get_suid()
         response = pytest.client.post(
             endpoint,
-            json={"conversation_id": conversation_id, "query": query},
+            json={
+                "conversation_id": conversation_id,
+                "query": query,
+                **(
+                    {"media_type": _request_media_type(endpoint)}
+                    if _request_media_type(endpoint)
+                    else {}
+                ),
+            },
         )
         assert response.status_code == requests.codes.ok
 
@@ -407,6 +430,11 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+                    **(
+                        {"media_type": _request_media_type(endpoint)}
+                        if _request_media_type(endpoint)
+                        else {}
+                    ),
                 },
             )
 
@@ -675,6 +703,11 @@ metadata:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query",
+                    **(
+                        {"media_type": _request_media_type(endpoint)}
+                        if _request_media_type(endpoint)
+                        else {}
+                    ),
                     "attachments": [
                         {
                             "attachment_type": "configuration",
@@ -746,6 +779,11 @@ metadata:
                 json={
                     "conversation_id": conversation_id,
                     "query": "test query",
+                    **(
+                        {"media_type": _request_media_type(endpoint)}
+                        if _request_media_type(endpoint)
+                        else {}
+                    ),
                     "attachments": [
                         {
                             "attachment_type": "configuration",
@@ -1028,11 +1066,12 @@ logs:
                     ],
                 },
             )
-            if response.headers["content-type"] == "application/json":
-                # non-streaming responses return JSON
+            if endpoint == "/v1/query":
+                # non-streaming endpoint returns HTTP error response
                 assert response.status_code == requests.codes.request_entity_too_large
             else:
-                # streaming_query returns bytes
+                # streaming endpoint returns a streamed error payload
+                assert response.status_code == requests.codes.ok
                 error_response = response.text
                 assert "Prompt is too long" in error_response
                 assert "exceeds LLM available context window limit" in error_response
@@ -1045,7 +1084,15 @@ def test_post_too_long_query(_setup, endpoint):
     conversation_id = suid.get_suid()
     response = pytest.client.post(
         endpoint,
-        json={"conversation_id": conversation_id, "query": query},
+        json={
+            "conversation_id": conversation_id,
+            "query": query,
+            **(
+                {"media_type": _request_media_type(endpoint)}
+                if _request_media_type(endpoint)
+                else {}
+            ),
+        },
     )
 
     if response.headers["content-type"] == "application/json":

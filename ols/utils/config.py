@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
     from ols.src.cache.cache import Cache
     from ols.src.quota.quota_limiter import QuotaLimiter
+    from ols.src.tools.approval import PendingApprovalStore
 
 
 class AppConfig:
@@ -47,6 +48,7 @@ class AppConfig:
         self._token_usage_history: Optional[TokenUsageHistory] = None
         self.k8s_tools_resolved = False
         self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
+        self._pending_approval_store: Optional["PendingApprovalStore"] = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -91,6 +93,17 @@ class AppConfig:
                 self.ols_config.conversation_cache
             )
         return self._conversation_cache
+
+    @property
+    def pending_approval_store(self) -> "PendingApprovalStore":
+        """Return the pending approval store for tool approval flow."""
+        if self._pending_approval_store is None:
+            from ols.src.tools.approval import (  # pylint: disable=import-outside-toplevel
+                PendingApprovalStore,
+            )
+
+            self._pending_approval_store = PendingApprovalStore()
+        return self._pending_approval_store
 
     @property
     def quota_limiters(self) -> list[QuotaLimiter]:
@@ -210,6 +223,7 @@ class AppConfig:
             self._query_filters = None
             self._rag_index_loader = None
             self._tools_approval = None
+            self._pending_approval_store = None
             # Clear cached_property if it exists
             if "mcp_servers_dict" in self.__dict__:
                 del self.__dict__["mcp_servers_dict"]
