@@ -304,7 +304,19 @@ class DocsSummarizer(QueryHelper):
             if all_mcp_tools:
                 tool_definitions_text = json.dumps(
                     [
-                        {"name": t.name, "description": t.description, "schema": t.args}
+                        {
+                            "name": t.name,
+                            "description": t.description,
+                            "schema": (
+                                t.args_schema
+                                if isinstance(t.args_schema, dict)
+                                else (
+                                    t.args_schema.model_json_schema()
+                                    if t.args_schema is not None
+                                    else {}
+                                )
+                            ),
+                        }
                         for t in all_mcp_tools
                     ]
                 )

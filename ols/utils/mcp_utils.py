@@ -149,6 +149,27 @@ def resolve_server_headers(
     return headers
 
 
+def _normalize_tool_schema(tool: StructuredTool) -> None:
+    """Normalize an MCP tool's dict schema for OpenAI compatibility.
+
+    Some MCP tools accept no arguments, producing a valid JSON Schema like
+    ``{"type": "object"}`` with no ``properties`` key. This causes:
+
+    1. LangChain's ``BaseTool.args`` raises ``KeyError("properties")``.
+    2. OpenAI rejects the function with *"object schema missing properties"*.
+
+    Only dict schemas with ``"type": "object"`` are patched. Pydantic model
+    schemas always include ``properties`` and are left untouched.
+    """
+    schema = tool.args_schema
+    if not isinstance(schema, dict):
+        return
+    if schema.get("type") != "object":
+        return
+    schema.setdefault("properties", {})
+    schema.setdefault("required", [])
+
+
 async def gather_mcp_tools(
     mcp_servers: MCPServersDict, allowed_tool_names: Optional[set[str]] = None
 ) -> list[StructuredTool]:
@@ -181,6 +202,7 @@ async def gather_mcp_tools(
 
             # Add MCP server name to each tool's metadata
             for tool in server_tools:
+                _normalize_tool_schema(tool)
                 if not hasattr(tool, "metadata") or tool.metadata is None:
                     tool.metadata = {}
                 tool.metadata["mcp_server"] = server_name
