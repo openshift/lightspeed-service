@@ -8,7 +8,7 @@ from collections.abc import Coroutine
 from typing import Any, AsyncGenerator, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
@@ -17,10 +17,15 @@ from llama_index.core.retrievers import BaseRetriever
 from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
-from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
+from ols.app.models.models import (
+    RagChunk,
+    StreamedChunk,
+    SummarizerResponse,
+)
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.customize import reranker
 from ols.src.prompts.prompt_generator import GeneratePrompt
+from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
 from ols.utils.mcp_utils import ClientHeaders, get_mcp_tools
@@ -29,7 +34,6 @@ from ols.utils.token_handler import TokenHandler
 logger = logging.getLogger(__name__)
 
 # Type aliases for clarity and reusability
-MessageHistory: TypeAlias = list[BaseMessage]
 ToolsList: TypeAlias = list[StructuredTool]
 
 
@@ -135,27 +139,27 @@ class DocsSummarizer(QueryHelper):
         """Check if MCP servers are configured."""
         return config.mcp_servers is not None and len(config.mcp_servers.servers) > 0
 
-    def _prepare_prompt(
+    async def _prepare_prompt(
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
         """Summarize the given query based on the provided conversation context.
 
         Args:
             query: The query to be summarized.
             rag_retriever: The retriever to get RAG data/context.
-            history: The history of the conversation (if available).
+            user_id: User ID for retrieving conversation history.
+            conversation_id: Conversation ID for retrieving history.
+            skip_user_id_check: Whether to skip user ID validation.
 
         Returns:
             A tuple containing the final prompt, input values, RAG chunks,
             and a flag for truncated history.
         """
-        # if history is not provided, initialize to empty history
-        if history is None:
-            history = []
-
         token_handler = TokenHandler()
 
         # Use sample text for context/history to get complete prompt
@@ -210,9 +214,15 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
 
-        # Truncate history
-        history, truncated = token_handler.limit_conversation_history(
-            history or [], available_tokens
+        history, truncated = await prepare_history(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            skip_user_id_check=skip_user_id_check,
+            available_tokens=available_tokens,
+            provider=self.provider,
+            model=self.model,
+            bare_llm=self.bare_llm,
+            token_handler=token_handler,
         )
 
         final_prompt, llm_input_values = GeneratePrompt(
@@ -484,20 +494,26 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, rag_retriever, history
+        final_prompt, llm_input_values, rag_chunks, truncated = (
+            await self._prepare_prompt(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            )
         )
         messages = final_prompt.model_copy()
 
@@ -531,7 +547,9 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
 
@@ -541,7 +559,9 @@ class DocsSummarizer(QueryHelper):
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Returns:
             A SummarizerResponse object containing the complete response
@@ -553,22 +573,25 @@ class DocsSummarizer(QueryHelper):
             response_end: dict[str, Any] = {}
             tool_calls = []
             tool_results = []
-            async for chunk in self.generate_response(query, rag_retriever, history):
-                if chunk.type == "end":
-                    response_end = chunk.data
-                    break
-                if chunk.type == "tool_call":
-                    tool_calls.append(chunk.data)
-                elif chunk.type == "tool_result":
-                    tool_results.append(chunk.data)
-                elif chunk.type == "text":
-                    chunks.append(chunk.text)
-                else:
-                    # this "can't" happen as we control what chunk types
-                    # are yielded in the generator directly
-                    msg = f"Unknown chunk type: {chunk.type}"
-                    logger.warning(msg)
-                    raise ValueError(msg)
+            async for chunk in self.generate_response(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            ):
+                match chunk.type:
+                    case "end":
+                        response_end = chunk.data
+                        break
+                    case "tool_call":
+                        tool_calls.append(chunk.data)
+                    case "tool_result":
+                        tool_results.append(chunk.data)
+                    case "text":
+                        chunks.append(chunk.text)
+                    case _:
+                        # this "can't" happen as we control what chunk types
+                        # are yielded in the generator directly
+                        msg = f"Unknown chunk type: {chunk.type}"
+                        logger.warning(msg)
+                        raise ValueError(msg)
 
             return SummarizerResponse(
                 response="".join(chunks),
