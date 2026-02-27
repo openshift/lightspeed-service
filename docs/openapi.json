@@ -219,6 +219,180 @@
                 }
             }
         },
+        "/v1/mcp-apps/resources": {
+            "post": {
+                "tags": [
+                    "mcp-apps"
+                ],
+                "summary": "Get Mcp App Resource",
+                "description": "Fetch a ui:// resource from an MCP server.\n\nArgs:\n    request: Resource request with URI and server name.\n    user_id: Authenticated user ID.\n\nReturns:\n    The resource content (HTML/JS/CSS) with metadata.",
+                "operationId": "get_mcp_app_resource_v1_mcp_apps_resources_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MCPAppResourceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Resource fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPAppResourceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid resource URI",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Server or resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/mcp-apps/tools/call": {
+            "post": {
+                "tags": [
+                    "mcp-apps"
+                ],
+                "summary": "Call Mcp App Tool",
+                "description": "Proxy a tool call from an app iframe to an MCP server.\n\nArgs:\n    request: Tool call request with server, tool name, and arguments.\n    user_id: Authenticated user ID.\n\nReturns:\n    Tool call result with content blocks and optional structured content.",
+                "operationId": "call_mcp_app_tool_v1_mcp_apps_tools_call_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MCPAppToolCallRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tool call successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPAppToolCallResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Server not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback/status": {
             "get": {
                 "tags": [
@@ -1462,6 +1636,143 @@
                         "alive": true
                     }
                 ]
+            },
+            "MCPAppResourceRequest": {
+                "properties": {
+                    "resource_uri": {
+                        "type": "string",
+                        "title": "Resource Uri"
+                    },
+                    "server_name": {
+                        "type": "string",
+                        "title": "Server Name"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "resource_uri",
+                    "server_name"
+                ],
+                "title": "MCPAppResourceRequest",
+                "description": "Request to fetch a ui:// resource from an MCP server.\n\nAttributes:\n    resource_uri: The ui:// resource URI to fetch.\n    server_name: The MCP server that owns the resource.",
+                "examples": [
+                    {
+                        "resource_uri": "ui://pod-utilization/dashboard.html",
+                        "server_name": "pod-utilization-server"
+                    }
+                ]
+            },
+            "MCPAppResourceResponse": {
+                "properties": {
+                    "uri": {
+                        "type": "string",
+                        "title": "Uri"
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "title": "Mime Type"
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "title": "Content Type",
+                        "default": "text"
+                    },
+                    "meta": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Meta"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "uri",
+                    "mime_type",
+                    "content"
+                ],
+                "title": "MCPAppResourceResponse",
+                "description": "Response containing a ui:// resource fetched from an MCP server.\n\nAttributes:\n    uri: The URI of the returned resource.\n    mime_type: MIME type of the resource content.\n    content: The resource content (HTML/JS/CSS as text, or base64 for blobs).\n    content_type: Whether content is \"text\" or \"blob\" (base64).\n    meta: Resource-level metadata from the MCP server (CSP, permissions, etc.)."
+            },
+            "MCPAppToolCallRequest": {
+                "properties": {
+                    "server_name": {
+                        "type": "string",
+                        "title": "Server Name"
+                    },
+                    "tool_name": {
+                        "type": "string",
+                        "title": "Tool Name"
+                    },
+                    "arguments": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Arguments",
+                        "default": {}
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "server_name",
+                    "tool_name"
+                ],
+                "title": "MCPAppToolCallRequest",
+                "description": "Request to call an MCP tool directly (from an app iframe).\n\nAttributes:\n    server_name: The MCP server to call.\n    tool_name: The tool to invoke.\n    arguments: Arguments to pass to the tool.",
+                "examples": [
+                    {
+                        "arguments": {
+                            "namespace": "openshift-console"
+                        },
+                        "server_name": "pod-utilization-server",
+                        "tool_name": "get-pod-utilization"
+                    }
+                ]
+            },
+            "MCPAppToolCallResponse": {
+                "properties": {
+                    "content": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Content"
+                    },
+                    "structured_content": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Structured Content"
+                    },
+                    "is_error": {
+                        "type": "boolean",
+                        "title": "Is Error",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "content"
+                ],
+                "title": "MCPAppToolCallResponse",
+                "description": "Response from a proxied MCP tool call.\n\nAttributes:\n    content: Content blocks returned by the tool.\n    structured_content: Structured data for the app UI (if available).\n    is_error: Whether the tool call resulted in an error."
             },
             "MCPHeadersResponse": {
                 "properties": {

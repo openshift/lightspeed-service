@@ -1014,3 +1014,86 @@ class MCPHeadersResponse(BaseModel):
     servers: list[MCPServerHeaderInfo] = Field(
         description="List of servers requiring client-provided headers"
     )
+
+
+class MCPAppResourceRequest(BaseModel):
+    """Request to fetch a ui:// resource from an MCP server.
+
+    Attributes:
+        resource_uri: The ui:// resource URI to fetch.
+        server_name: The MCP server that owns the resource.
+    """
+
+    resource_uri: str
+    server_name: str
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "resource_uri": "ui://pod-utilization/dashboard.html",
+                    "server_name": "pod-utilization-server",
+                },
+            ]
+        },
+    }
+
+
+class MCPAppResourceResponse(BaseModel):
+    """Response containing a ui:// resource fetched from an MCP server.
+
+    Attributes:
+        uri: The URI of the returned resource.
+        mime_type: MIME type of the resource content.
+        content: The resource content (HTML/JS/CSS as text, or base64 for blobs).
+        content_type: Whether content is "text" or "blob" (base64).
+        meta: Resource-level metadata from the MCP server (CSP, permissions, etc.).
+    """
+
+    uri: str
+    mime_type: str
+    content: str
+    content_type: str = "text"
+    meta: Optional[dict[str, Any]] = None
+
+
+class MCPAppToolCallRequest(BaseModel):
+    """Request to call an MCP tool directly (from an app iframe).
+
+    Attributes:
+        server_name: The MCP server to call.
+        tool_name: The tool to invoke.
+        arguments: Arguments to pass to the tool.
+    """
+
+    server_name: str
+    tool_name: str
+    arguments: dict[str, Any] = {}
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "server_name": "pod-utilization-server",
+                    "tool_name": "get-pod-utilization",
+                    "arguments": {"namespace": "openshift-console"},
+                },
+            ]
+        },
+    }
+
+
+class MCPAppToolCallResponse(BaseModel):
+    """Response from a proxied MCP tool call.
+
+    Attributes:
+        content: Content blocks returned by the tool.
+        structured_content: Structured data for the app UI (if available).
+        is_error: Whether the tool call resulted in an error.
+    """
+
+    content: list[dict[str, Any]]
+    structured_content: Optional[dict[str, Any]] = None
+    is_error: bool = False
