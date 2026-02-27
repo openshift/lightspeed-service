@@ -1,7 +1,9 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e images run format verify
+.PHONY: test test-unit test-e2e test-eval test-lseval-periodic images run format verify
+
+export PATH := $(HOME)/.local/bin:$(PATH)
 
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 TEST_TAGS := $(if $(TEST_TAGS),$(TEST_TAGS),"")
@@ -90,7 +92,13 @@ test-eval: ## Run evaluation tests - requires running OLS server
 	@echo "Running evaluation tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	uv run --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_out_dir ${ARTIFACT_DIR}
+	--eval_out_dir ${ARTIFACT_DIR} -m "not lseval"
+
+test-lseval-periodic: ## Run LSEval periodic evaluation - requires running OLS server with WatsonX and Azure OpenAI judge keys
+	@echo "Running LSEval periodic evaluation..."
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	uv run --extra lseval pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	--eval_out_dir ${ARTIFACT_DIR} -m lseval
 
 coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
 
