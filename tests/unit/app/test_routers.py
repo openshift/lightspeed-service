@@ -10,6 +10,7 @@ from ols.app.endpoints import (  # noqa:E402
     conversations,
     feedback,
     health,
+    mcp_apps,
     mcp_client_headers,
     ols,
     streaming_ols,
@@ -36,11 +37,12 @@ def test_include_routers():
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 8
+    assert len(app.routers) == 9
     assert authorized.router in app.routers
     assert conversations.router in app.routers
     assert feedback.router in app.routers
     assert health.router in app.routers
+    assert mcp_apps.router in app.routers
     assert mcp_client_headers.router in app.routers
     assert metrics.router in app.routers
     assert ols.router in app.routers

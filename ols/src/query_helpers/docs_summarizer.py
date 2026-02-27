@@ -8,7 +8,7 @@ from collections.abc import Coroutine
 from typing import Any, AsyncGenerator, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
@@ -87,6 +87,113 @@ def run_async_safely(coro: Coroutine[Any, Any, Any]) -> Any:
             logger.warning("Using existing event loop as one is already running")
             return asyncio.get_event_loop().run_until_complete(coro)
         raise
+
+
+def _enrich_tool_call(
+    tool_call: dict[str, Any],
+    all_mcp_tools: ToolsList,
+) -> dict[str, Any]:
+    """Enrich a tool_call dict with metadata from the StructuredTool.
+
+    Adds tool_meta and server_name so the UI can start preloading
+    UI resources (e.g. MCP Apps iframes) before the tool result arrives.
+
+    Args:
+        tool_call: LLM-generated tool call dict (name, args, id).
+        all_mcp_tools: Available tools (carry metadata from MCP servers).
+
+    Returns:
+        Enriched tool call dict. Original keys are preserved.
+    """
+    enriched: dict[str, Any] = {**tool_call}
+    tool_obj = next((t for t in all_mcp_tools if t.name == tool_call.get("name")), None)
+    if not tool_obj:
+        return enriched
+
+    tool_metadata = tool_obj.metadata or {}
+
+    server_name = tool_metadata.get("mcp_server")
+    if server_name:
+        enriched["server_name"] = server_name
+
+    tool_meta = tool_metadata.get("_meta")
+    if tool_meta:
+        enriched["tool_meta"] = tool_meta
+
+    return enriched
+
+
+def _build_tool_result_chunks(
+    tool_calls: list[dict[str, Any]],
+    tool_calls_messages: list[ToolMessage],
+    all_mcp_tools: ToolsList,
+    round_number: int,
+) -> list[StreamedChunk]:
+    """Build StreamedChunk objects for tool results with metadata.
+
+    Args:
+        tool_calls: LLM-generated tool call dicts (name, args, id).
+        tool_calls_messages: Executed ToolMessage results.
+        all_mcp_tools: Available tools (carry metadata from MCP servers).
+        round_number: Current tool-calling round index.
+
+    Returns:
+        List of StreamedChunk objects with type "tool_result".
+    """
+    tool_id_to_name = {tc.get("id"): tc.get("name") for tc in tool_calls}
+    tools_by_name = {t.name: t for t in all_mcp_tools}
+    chunks: list[StreamedChunk] = []
+
+    for tool_call_message in tool_calls_messages:
+        was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
+        tool_status = "truncated" if was_truncated else tool_call_message.status
+
+        tool_name = tool_id_to_name.get(tool_call_message.tool_call_id, "unknown")
+        tool_obj = tools_by_name.get(tool_name)
+        tool_metadata = (tool_obj.metadata or {}) if tool_obj else {}
+
+        logger.debug(
+            json.dumps(
+                {
+                    "event": "tool_result",
+                    "tool_id": tool_call_message.tool_call_id,
+                    "tool_name": tool_name,
+                    "status": tool_call_message.status,
+                    "truncated": was_truncated,
+                    "has_meta": "_meta" in tool_metadata,
+                    "output_snippet": str(tool_call_message.content)[:1000],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+
+        tool_result_data: dict[str, Any] = {
+            "id": tool_call_message.tool_call_id,
+            "name": tool_name,
+            "status": tool_status,
+            "content": tool_call_message.content,
+            "type": "tool_result",
+            "round": round_number,
+        }
+
+        server_name = tool_metadata.get("mcp_server")
+        if server_name:
+            tool_result_data["server_name"] = server_name
+
+        tool_meta = tool_metadata.get("_meta")
+        if tool_meta:
+            tool_result_data["tool_meta"] = tool_meta
+
+        structured_content = tool_call_message.additional_kwargs.get(
+            "structured_content"
+        )
+        if structured_content:
+            tool_result_data["structured_content"] = structured_content
+
+        chunks.append(StreamedChunk(type="tool_result", data=tool_result_data))
+
+    return chunks
 
 
 class DocsSummarizer(QueryHelper):
@@ -387,7 +494,8 @@ class DocsSummarizer(QueryHelper):
                     tool_tokens_used += ai_message_tokens
 
                     for tool_call in tool_calls:
-                        # Log tool call in JSON format
+                        enriched = _enrich_tool_call(tool_call, all_mcp_tools)
+
                         logger.debug(
                             json.dumps(
                                 {
@@ -401,7 +509,7 @@ class DocsSummarizer(QueryHelper):
                             )
                         )
 
-                        yield StreamedChunk(type="tool_call", data=tool_call)
+                        yield StreamedChunk(type="tool_call", data=enriched)
 
                     # Calculate remaining budget for tools
                     remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
@@ -434,51 +542,10 @@ class DocsSummarizer(QueryHelper):
                         )
                         tool_tokens_used += len(content_tokens)
 
-                    for tool_call_message in tool_calls_messages:
-                        was_truncated = tool_call_message.additional_kwargs.get(
-                            "truncated", False
-                        )
-                        # Determine UI status: use "truncated" if output was truncated,
-                        # otherwise use the langchain status (success/error)
-                        tool_status = (
-                            "truncated" if was_truncated else tool_call_message.status
-                        )
-
-                        # Log tool result in JSON format
-                        logger.debug(
-                            json.dumps(
-                                {
-                                    "event": "tool_result",
-                                    "tool_id": tool_call_message.tool_call_id,
-                                    "status": tool_call_message.status,
-                                    "truncated": was_truncated,
-                                    "output_snippet": str(tool_call_message.content)[
-                                        :1000
-                                    ],  # Truncate to first 1000 chars
-                                },
-                                ensure_ascii=False,
-                                indent=2,
-                            )
-                        )
-
-                        tool_result_data: dict[str, Any] = {
-                            "id": tool_call_message.tool_call_id,
-                            "status": tool_status,
-                            "content": tool_call_message.content,
-                            "type": "tool_result",
-                            "round": i,
-                        }
-
-                        structured_content = tool_call_message.additional_kwargs.get(
-                            "structured_content"
-                        )
-                        if structured_content:
-                            tool_result_data["structured_content"] = structured_content
-
-                        yield StreamedChunk(
-                            type="tool_result",
-                            data=tool_result_data,
-                        )
+                    for result_chunk in _build_tool_result_chunks(
+                        tool_calls, tool_calls_messages, all_mcp_tools, i
+                    ):
+                        yield result_chunk
 
     async def generate_response(
         self,
