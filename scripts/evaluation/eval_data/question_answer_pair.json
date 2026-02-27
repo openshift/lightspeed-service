@@ -3,7 +3,7 @@
         "eval1": {
             "question": "what is kubernetes?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "Kubernetes, often referred to as K8s, is an open-source container orchestration engine primarily used for automating the deployment, scaling, and management of containerized applications. It groups containers into logical units called pods and manages these pods across a cluster of machines. Kubernetes ensures that the desired state of your application matches the actual state, handling tasks like resource allocation, scheduling, health checks, and self-healing. It's built on a foundation of over a decade of Google's experience running production workloads, and it's now maintained by the Cloud Native Computing Foundation (CNCF). In the context of Red Hat OpenShift Container Platform, Kubernetes serves as the core component, providing the engine for managing containerized applications at scale across various environments, from on-premise to multi-cloud."
                     ]
@@ -26,7 +26,7 @@
                 },
                 "ground_truth": {
                     "cutoff_score": {
-                        "watsonx+ibm/granite-3-3-8b-instruct+without_rag": 0.3,
+                        "watsonx+ibm/granite-4-h-small+without_rag": 0.3,
                         "openai+gpt-4o-mini+without_rag": 0.2,
                         "azure_openai+gpt-4o-mini+without_rag": 0.2
                     },
@@ -36,7 +36,7 @@
                 },
                 "ground_truth+with_rag": {
                     "cutoff_score": {
-                        "watsonx+ibm/granite-3-3-8b-instruct+with_rag": 0.2,
+                        "watsonx+ibm/granite-4-h-small+with_rag": 0.2,
                         "openai+gpt-4o-mini+with_rag": 0.2,
                         "azure_openai+gpt-4o-mini+with_rag": 0.2
                     },
@@ -57,7 +57,7 @@
         "eval2": {
             "question": "what is openshift virtualization?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
                         "OpenShift Virtualization is an add-on to Red Hat OpenShift Container Platform that allows you to run and manage virtual machine workloads alongside container workloads. It adds new objects into your Red Hat OpenShift Container Platform cluster by using Kubernetes custom resources to enable virtualization tasks such as creating and managing Linux and Windows virtual machines, running pod and VM workloads alongside each other in a cluster, connecting to virtual machines through various consoles and CLI tools, importing and cloning existing virtual machines, managing network interface controllers and storage disks attached to virtual machines, and live migrating virtual machines between nodes. An enhanced web console provides a graphical portal to manage these virtualized resources alongside the Red Hat OpenShift Container Platform cluster containers and infrastructure."
@@ -86,7 +86,7 @@
         "eval3": {
             "question": "What is the purpose of the imagePullPolicy in Red Hat OpenShift Container Platform?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "The `imagePullPolicy` in Red Hat OpenShift Container Platform is used to control when container images are pulled from registries or when locally cached copies are used when starting containers. It helps manage image updates and optimize pod startup performance. The possible values for `imagePullPolicy` are `Always`, `IfNotPresent`, and `Never`. \n\n- `Always`: Always pulls the image.\n- `IfNotPresent`: Pulls the image only if it doesn't already exist locally.\n- `Never`: Doesn't pull the image; uses the locally cached copy if available.\n\nHere's an example of how to set `imagePullPolicy` to `IfNotPresent` in a YAML file:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\n# ...\nspec:\n  # ...\n  template:\n    spec:\n      containers:\n      - name: my-app-container\n        image: registry.example.com/myapp:v1.2.3\n        imagePullPolicy: IfNotPresent\n        ports:\n        - containerPort: 8080\n```\n\nIn this example, the image tagged `v1.2.3` will only be pulled if it's not already present in the local cache."
                     ]
@@ -113,7 +113,7 @@
         "eval4": {
             "question": "How does Red Hat OpenShift Pipelines automate deployments?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "Red Hat OpenShift Pipelines automates deployments by leveraging continuous integration and continuous delivery (CI/CD) practices. It uses Tekton building blocks, which introduce standard custom resource definitions (CRDs) for defining CI/CD pipelines. These pipelines are portable across Kubernetes distributions, allowing for automated deployments across multiple platforms while abstracting away the underlying implementation details. \n\nIn essence, OpenShift Pipelines takes your code, integrates it with necessary dependencies, builds the application, and then deploys it, all as part of a defined pipeline. This process can be triggered by various events, such as code commits, ensuring that the latest, tested code is consistently and reliably deployed to your environment."
                     ]
@@ -139,7 +139,7 @@
         "eval5": {
             "question": "what is a limitrange?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "A LimitRange in Kubernetes sets resource usage limits for each kind of resource in a Namespace. It defines a min/max usage limit for resources that match on kind, ensuring that pods, containers, images, image streams, and persistent volume claims do not exceed these limits. The LimitRange object includes a list of LimitRangeItem objects that enforce these limits. If a resource does not set an explicit value, and if the constraint supports a default value, the default value is applied to the resource."
                     ]
@@ -166,7 +166,7 @@
         "eval6": {
             "question": "What is the purpose of the Vertical Pod Autoscaler Operator in Openshift?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "The Vertical Pod Autoscaler (VPA) Operator in OpenShift is designed to automatically adjust the CPU and memory requests and limits of your pods to ensure they're optimally utilizing cluster resources. It does this by analyzing historical resource usage data and making recommendations for adjustments. This helps in improving resource efficiency, reducing costs, and enhancing overall cluster performance.\n\nThe VPA Operator consists of three main components:\n\n1. **Admission Controller**: This component intercepts pod creation requests and applies VPA recommendations before the pods are scheduled.\n2. **Recommender**: This component periodically analyzes running pods and suggests adjustments to their resource requests and limits.\n3. **Updater**: This component applies the recommendations made by the Recommender to the actual pods.\n\nEach of these components can be customized with different resource constraints and tolerations to fit your specific needs. For instance, you might want to specify certain nodes where the VPA pods should run or define how they should react to specific node taints.\n\nHere's an example of how you might configure tolerations for the VPA pods in the spec section of the VerticalPodAutoscalerController:\n\n```yaml\napiVersion: autoscaling.openshift.io/v1\nkind: VerticalPodAutoscalerController\nmetadata:\n  name: default\n  namespace: openshift-vertical-pod-autoscaler\nspec:\n  # ...\n  deploymentOverrides:\n    admission:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n    recommender:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n    updater:\n      container:\n        resources: {}\n      nodeSelector:\n        node-role.kubernetes.io/worker: \"\"\n      tolerations: \n      - key: \"my-example-node-taint-key\"\n        operator: \"Exists\"\n        effect: \"NoSchedule\"\n```\n\nIn this example, the VPA pods (admission, recommender, and updater) are configured to tolerate nodes with a specific taint (\"my-example-node-taint-key\") and avoid scheduling on them (`effect: \"NoSchedule\"`). Adjust these configurations according to your cluster's specific requirements and taint strategy."
                     ]
@@ -193,7 +193,7 @@
         "eval7": {
             "question": "Is there a doc on updating clusters?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "cutoff_score": 0.25,
                     "text": [
                         "Yes, there is documentation on updating clusters. The process involves creating custom Machine Config Pools (MCPs), labeling nodes, pausing and unpausing MCPs, and performing the cluster update in stages. This approach helps manage larger clusters with numerous worker nodes, reducing the risk of errors affecting the entire cluster.\n\nHere's a summary of the key steps:\n\n1. **Create Custom MCPs**: Depending on your cluster size and roles (control plane vs. data plane), split your worker nodes into at least 2 MCP groups. For instance, in a cluster with 15 worker nodes (10 control plane, 5 data plane), you would create 2 MCP groups for each role.\n\n2. **Label Nodes**: Label each node that you don't want to update immediately and move them to the custom MCPs.\n\n3. **Pause MCPs**: Pause the custom MCPs to prevent updates to those nodes initially.\n\n4. **Perform Cluster Update**: Proceed with the cluster update.\n\n5. **Unpause MCPs**: Unpause one custom MCP, triggering the update on those nodes.\n\n6. **Test Applications**: Thoroughly test the applications on those newly-updated nodes to ensure they function as expected.\n\n7. **Optional Removal of Labels**: Optionally, remove the custom labels from the remaining nodes in small batches and test the applications on those nodes.\n\nThis method allows you to control the number of nodes taken down at a time, enabling better management of larger clusters. It's crucial to plan the implementation carefully and consider potential issues, such as hardware failures or nodes needing resets, by staggering the update using MCP node labels.\n\nFor more detailed guidance, you can refer to the provided document, which includes examples for clusters with different numbers of worker nodes and specific instructions on applying MachineConfigPool labels to nodes before the update. Additionally, it discusses strategies for dividing worker nodes into MCP groups and staggering the cluster update process.",
@@ -224,7 +224,7 @@
         "eval8": {
             "question": "How do I find my clusterID?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "You can have your cluster ID autofilled by using the Red Hat OpenShift Container Platform web console or manually obtain it using the web console or the OpenShift CLI (oc).\n\nAs a user with the cluster-admin role, follow these steps to view the cluster ID in the web console:\n\n1. Navigate to Home -> Overview.\n2. The value is available in the Cluster ID field of the Details section."
                     ]
@@ -251,7 +251,7 @@
         "eval9": {
             "question": "do you recommend using DeploymentConfig?",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "text": [
                         "No, as of Red Hat OpenShift Container Platform 4.14, DeploymentConfig objects are deprecated and should not be used for new installations. Instead, use Deployment objects or another alternative to provide declarative updates for pods."
                     ]
@@ -279,7 +279,7 @@
         "eval10": {
             "question": "give me sample deployment yaml that uses MongoDB image",
             "answer": {
-                "watsonx+ibm/granite-3-3-8b-instruct+with_rag": {
+                "watsonx+ibm/granite-4-h-small+with_rag": {
                     "cutoff_score": 0.35,
                     "text": [
                         "Based on the provided context, here's a sample Deployment YAML that uses the MongoDB image from the Red Hat Registry:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: mongodb-deployment\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: mongodb-nationalparks\n  template:\n    metadata:\n      labels:\n        app: mongodb-nationalparks\n    spec:\n      containers:\n      - name: mongodb\n        image: registry.redhat.io/rhmap47/mongodb\n        ports:\n        - containerPort: 27017\n          protocol: TCP\n        env:\n        - name: MONGODB_USER\n          value: mongodb\n        - name: MONGODB_PASSWORD\n          value: mongodb\n        - name: MONGODB_DATABASE\n          value: mongodb\n        - name: MONGODB_ADMIN_PASSWORD\n          value: mongodb\n```\n\nThis YAML defines a Deployment named `mongodb-deployment` with a single replica. It uses the MongoDB image from the Red Hat Registry (`registry.redhat.io/rhmap47/mongodb`) and exposes port 27017. The necessary environment variables for MongoDB are also included.\n\nPlease note that this is a basic example and might need adjustments based on your specific requirements, such as resource limits, storage, or network policies."
