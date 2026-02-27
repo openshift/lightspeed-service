@@ -15,6 +15,26 @@ logger = logging.getLogger(__name__)
 
 
 SENSITIVE_KEYWORDS = ["secret"]
+MAX_TOOL_CALL_RETRIES = 2
+RETRY_BACKOFF_SECONDS = 0.2
+DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
+
+
+def _is_retryable_tool_error(error: Exception) -> bool:
+    """Return true if a tool execution error is likely transient."""
+    if isinstance(error, (TimeoutError, asyncio.TimeoutError, ConnectionError)):
+        return True
+    error_text = str(error).lower()
+    return any(
+        token in error_text
+        for token in (
+            "timeout",
+            "temporarily unavailable",
+            "temporary failure",
+            "connection reset",
+            "connection closed",
+        )
+    )
 
 
 def _extract_text_from_tool_output(output: Any) -> str:
@@ -72,8 +92,8 @@ async def execute_tool_call(
     tool_args: dict,
     all_mcp_tools: list[StructuredTool],
     max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
-) -> tuple[str, str, bool, dict | None]:
-    """Execute a tool call and return output, status, truncation flag, and structured content.
+) -> tuple[str, bool, dict | None]:
+    """Execute a tool call and return output, truncation flag, and structured content.
 
     Args:
         tool_name: Name of the tool to execute
@@ -82,37 +102,31 @@ async def execute_tool_call(
         max_tokens: Maximum tokens allowed for tool output
 
     Returns:
-        Tuple of (status, tool_output, was_truncated, structured_content).
+        Tuple of (tool_output, was_truncated, structured_content).
     """
     was_truncated = False
     structured_content: dict | None = None
-    try:
-        tool = get_tool_by_name(tool_name, all_mcp_tools)
-        tool_output_raw, artifact = await tool.coroutine(**_jsonify(tool_args))  # type: ignore[misc]
-        tool_output = _extract_text_from_tool_output(tool_output_raw)
-        if isinstance(artifact, dict):
-            structured_content = artifact.get("structured_content")
+    tool = get_tool_by_name(tool_name, all_mcp_tools)
+    tool_output_raw, artifact = await tool.coroutine(**_jsonify(tool_args))  # type: ignore[misc]
+    tool_output = _extract_text_from_tool_output(tool_output_raw)
+    if isinstance(artifact, dict):
+        structured_content = artifact.get("structured_content")
 
-        token_handler = TokenHandler()
-        tool_output, was_truncated = token_handler.truncate_tool_output(
-            tool_output, max_tokens
-        )
+    token_handler = TokenHandler()
+    tool_output, was_truncated = token_handler.truncate_tool_output(
+        tool_output, max_tokens
+    )
 
-        status = "success"
-        logger.debug(
-            "Tool: %s | Args: %s | Output: %s | Truncated: %s"
-            " | Has structured_content: %s",
-            tool_name,
-            tool_args,
-            tool_output[:500] if len(tool_output) > 500 else tool_output,
-            was_truncated,
-            structured_content is not None,
-        )
-    except Exception as e:
-        tool_output = f"Error executing tool '{tool_name}': {e}"
-        status = "error"
-        logger.exception(tool_output)
-    return status, tool_output, was_truncated, structured_content
+    logger.debug(
+        "Tool: %s | Args: %s | Output: %s | Truncated: %s"
+        " | Has structured_content: %s",
+        tool_name,
+        tool_args,
+        tool_output[:500] if len(tool_output) > 500 else tool_output,
+        was_truncated,
+        structured_content is not None,
+    )
+    return tool_output, was_truncated, structured_content
 
 
 async def _execute_single_tool_call(
@@ -139,19 +153,51 @@ async def _execute_single_tool_call(
     structured_content: dict | None = None
 
     if tool_name is None:
-        tool_output = "Error: Tool name is missing from tool call"
+        tool_output = (
+            f"Error: Tool name is missing from tool call. {DO_NOT_RETRY_REMINDER}"
+        )
         status = "error"
         logger.error("Tool call missing name: %s", tool_call)
     else:
         try:
             raise_for_sensitive_tool_args(tool_args)
-            status, tool_output, was_truncated, structured_content = (
-                await execute_tool_call(tool_name, tool_args, all_mcp_tools, max_tokens)
-            )
+            attempts = MAX_TOOL_CALL_RETRIES + 1
+            last_error_text = "unknown error"
+            for attempt in range(attempts):
+                try:
+                    tool_output, was_truncated, structured_content = (
+                        await execute_tool_call(
+                            tool_name, tool_args, all_mcp_tools, max_tokens
+                        )
+                    )
+                    status = "success"
+                    break
+                except Exception as error:
+                    last_error_text = str(error)
+                    if attempt < MAX_TOOL_CALL_RETRIES and _is_retryable_tool_error(
+                        error
+                    ):
+                        logger.warning(
+                            "Retrying tool '%s' after transient error on attempt %d/%d: %s",
+                            tool_name,
+                            attempt + 1,
+                            attempts,
+                            error,
+                        )
+                        await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
+                        continue
+                    tool_output = (
+                        f"Tool '{tool_name}' execution failed after {attempt + 1} "
+                        f"attempt(s): {last_error_text}. {DO_NOT_RETRY_REMINDER}"
+                    )
+                    status = "error"
+                    logger.exception(tool_output)
+                    break
         except Exception as e:
             tool_output = (
                 f"Error executing tool '{tool_name}' with args {tool_args}: {e}"
             )
+            tool_output = f"{tool_output}. {DO_NOT_RETRY_REMINDER}"
             status = "error"
             logger.exception(tool_output)
 

@@ -10,6 +10,7 @@ from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel
 
 from ols.src.tools.tools import (
+    DO_NOT_RETRY_REMINDER,
     SENSITIVE_KEYWORDS,
     _extract_text_from_tool_output,
     execute_tool_call,
@@ -105,24 +106,18 @@ async def test_execute_tool_call():
     with patch(
         "ols.src.tools.tools.get_tool_by_name", return_value=FakeTool(fake_tool_name)
     ):
-        status, output, was_truncated, structured = await execute_tool_call(
+        output, was_truncated, structured = await execute_tool_call(
             fake_tool_name, fake_tool_args, fake_tools
         )
         assert output == "fake_output_from_fake_tool"
-        assert status == "success"
         assert was_truncated is False
         assert structured is None
 
     with patch(
         "ols.src.tools.tools.get_tool_by_name", side_effect=Exception("Tool error")
     ):
-        status, output, was_truncated, structured = await execute_tool_call(
-            fake_tool_name, fake_tool_args, fake_tools
-        )
-        assert "Error executing tool" in output
-        assert status == "error"
-        assert was_truncated is False
-        assert structured is None
+        with pytest.raises(Exception, match="Tool error"):
+            await execute_tool_call(fake_tool_name, fake_tool_args, fake_tools)
 
 
 @pytest.mark.asyncio
@@ -178,11 +173,14 @@ async def test_execute_tool_calls_with_missing_tool_name():
 
     with patch(
         "ols.src.tools.tools.execute_tool_call",
-        return_value=("success", "fake_output", False, None),
+        return_value=("fake_output", False, None),
     ):
         tool_messages = await execute_tool_calls(tool_calls, fake_tools)
         assert len(tool_messages) == 2
-        assert tool_messages[0].content == "Error: Tool name is missing from tool call"
+        assert (
+            tool_messages[0].content
+            == "Error: Tool name is missing from tool call. Do not retry this exact tool call."
+        )
         assert tool_messages[0].status == "error"
         assert tool_messages[0].tool_call_id == "call_1"
         assert tool_messages[0].additional_kwargs.get("truncated") is False
@@ -219,6 +217,7 @@ async def test_execute_sensitive_tool_calls():
     assert tool_messages[0].status == "error"
     assert "Sensitive keyword" in tool_messages[0].content
     assert "are not allowed" in tool_messages[0].content
+    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
 
 
 @pytest.mark.asyncio
@@ -245,11 +244,106 @@ async def test_execute_tool_calls_mixed_success_and_failure():
 
     # Second call should fail due to tool raising exception
     assert tool_messages[1].status == "error"
+    assert "execution failed after 1 attempt(s)" in tool_messages[1].content
     assert "Tool execution failed" in tool_messages[1].content
+    assert DO_NOT_RETRY_REMINDER in tool_messages[1].content
 
     # Third call should fail due to nonexistent tool
     assert tool_messages[2].status == "error"
     assert "Tool 'nonexistent_tool' not found" in tool_messages[2].content
+    assert "execution failed after 1 attempt(s)" in tool_messages[2].content
+    assert DO_NOT_RETRY_REMINDER in tool_messages[2].content
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_retries_transient_error_then_succeeds():
+    """Retry transient error and succeed on the next attempt."""
+    call_count = 0
+
+    async def _flaky_coro(**kwargs: Any) -> tuple:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ConnectionError("connection reset by peer")
+        return "ok_after_retry", {}
+
+    tool = StructuredTool(
+        name="flaky_tool",
+        description="Flaky tool",
+        func=lambda **kwargs: "sync",
+        coroutine=_flaky_coro,
+        args_schema=FakeSchema,
+    )
+
+    tool_messages = await execute_tool_calls(
+        [{"name": "flaky_tool", "args": {}, "id": "call_1"}],
+        [tool],
+    )
+
+    assert len(tool_messages) == 1
+    assert call_count == 2
+    assert tool_messages[0].status == "success"
+    assert tool_messages[0].content == "ok_after_retry"
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_retry_exhausted_returns_no_retry_reminder():
+    """Return error with retry-exhausted message and no-retry reminder."""
+    call_count = 0
+
+    async def _always_timeout(**kwargs: Any) -> tuple:
+        nonlocal call_count
+        call_count += 1
+        raise ConnectionError("timeout during MCP call")
+
+    tool = StructuredTool(
+        name="timeout_tool",
+        description="Always fails with retryable error",
+        func=lambda **kwargs: "sync",
+        coroutine=_always_timeout,
+        args_schema=FakeSchema,
+    )
+
+    tool_messages = await execute_tool_calls(
+        [{"name": "timeout_tool", "args": {}, "id": "call_1"}],
+        [tool],
+    )
+
+    assert len(tool_messages) == 1
+    assert call_count == 3
+    assert tool_messages[0].status == "error"
+    assert "execution failed after 3 attempt(s)" in tool_messages[0].content
+    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_non_retryable_error_does_not_retry():
+    """Do not retry non-transient exceptions."""
+    call_count = 0
+
+    async def _non_retryable_failure(**kwargs: Any) -> tuple:
+        nonlocal call_count
+        call_count += 1
+        raise ValueError("invalid tool arguments")
+
+    tool = StructuredTool(
+        name="bad_tool",
+        description="Always fails with non-retryable error",
+        func=lambda **kwargs: "sync",
+        coroutine=_non_retryable_failure,
+        args_schema=FakeSchema,
+    )
+
+    tool_messages = await execute_tool_calls(
+        [{"name": "bad_tool", "args": {}, "id": "call_1"}],
+        [tool],
+    )
+
+    assert len(tool_messages) == 1
+    assert call_count == 1
+    assert tool_messages[0].status == "error"
+    assert "execution failed after 1 attempt(s)" in tool_messages[0].content
+    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
 
 
 @pytest.mark.asyncio
@@ -303,11 +397,10 @@ async def test_execute_tool_call_with_truncation():
     large_tool = LargeOutputTool(name="large_tool", output_size=5000)
     fake_tools = [large_tool]
 
-    status, output, was_truncated, structured = await execute_tool_call(
+    output, was_truncated, structured = await execute_tool_call(
         "large_tool", {}, fake_tools, max_tokens=100
     )
 
-    assert status == "success"
     assert was_truncated is True
     assert structured is None
     assert "[OUTPUT TRUNCATED" in output
@@ -320,11 +413,10 @@ async def test_execute_tool_call_no_truncation_small_output():
     small_tool = LargeOutputTool(name="small_tool", output_size=10)
     fake_tools = [small_tool]
 
-    status, output, was_truncated, structured = await execute_tool_call(
+    output, was_truncated, structured = await execute_tool_call(
         "small_tool", {}, fake_tools, max_tokens=1000
     )
 
-    assert status == "success"
     assert was_truncated is False
     assert structured is None
     assert "[OUTPUT TRUNCATED" not in output
@@ -426,10 +518,9 @@ async def test_execute_tool_call_with_content_blocks():
     content_block_tool = ContentBlockTool(name="content_tool")
     fake_tools = [content_block_tool]
 
-    status, output, was_truncated, structured = await execute_tool_call(
+    output, was_truncated, structured = await execute_tool_call(
         "content_tool", {}, fake_tools
     )
-    assert status == "success"
     assert output == "pod1 Running\npod2 Running"
     assert was_truncated is False
     assert structured is None
@@ -470,10 +561,9 @@ async def test_execute_tool_call_with_structured_content():
     artifact_tool = ArtifactTool(name="artifact_tool")
     fake_tools = [artifact_tool]
 
-    status, output, was_truncated, structured = await execute_tool_call(
+    output, was_truncated, structured = await execute_tool_call(
         "artifact_tool", {}, fake_tools
     )
-    assert status == "success"
     assert output == "Pod utilization summary"
     assert was_truncated is False
     assert structured is not None
@@ -513,13 +603,11 @@ async def test_execute_tool_call_artifact_without_structured_content():
         description="Tool with artifact but no structured_content",
         func=lambda **kwargs: "sync",
         coroutine=_coro,
-        response_format="content_and_artifact",
         args_schema=FakeSchema,
     )
 
-    status, output, _was_truncated, structured = await execute_tool_call(
+    output, _was_truncated, structured = await execute_tool_call(
         "no_sc_tool", {}, [tool]
     )
-    assert status == "success"
     assert output == "plain result"
     assert structured is None
