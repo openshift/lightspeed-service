@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from math import ceil
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage
@@ -13,6 +13,7 @@ from langchain_core.messages.ai import AIMessageChunk
 from ols import config
 from ols.app.models.config import MCPServerConfig
 from ols.constants import TOKEN_BUFFER_WEIGHT
+from ols.utils.mcp_utils import _normalize_tool_schema, gather_mcp_tools
 from ols.utils.token_handler import TokenHandler
 from tests.mock_classes.mock_tools import (
     NAMESPACES_OUTPUT,
@@ -576,7 +577,15 @@ def test_tool_token_tracking(caplog):
         token_handler = TokenHandler()
         tool_definitions_text = json.dumps(
             [
-                {"name": t.name, "description": t.description, "schema": t.args}
+                {
+                    "name": t.name,
+                    "description": t.description,
+                    "schema": (
+                        t.args_schema
+                        if isinstance(t.args_schema, dict)
+                        else t.args_schema.model_json_schema()
+                    ),
+                }
                 for t in mock_tools_map
             ]
         )
@@ -713,6 +722,108 @@ async def test_gather_mcp_tools_empty_config():
         assert tools == []
         # get_tools should never be called
         mock_client_instance.get_tools.assert_not_called()
+
+
+def test_normalize_tool_schema_adds_missing_properties_and_required():
+    """Test _normalize_tool_schema patches a bare object schema."""
+    tool = Mock()
+    tool.args_schema = {"type": "object"}
+
+    _normalize_tool_schema(tool)
+
+    assert tool.args_schema == {"type": "object", "properties": {}, "required": []}
+
+
+def test_normalize_tool_schema_preserves_existing_properties():
+    """Test _normalize_tool_schema does not overwrite existing properties."""
+    tool = Mock()
+    tool.args_schema = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"],
+    }
+
+    _normalize_tool_schema(tool)
+
+    assert tool.args_schema == {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"],
+    }
+
+
+def test_normalize_tool_schema_skips_non_dict_schema():
+    """Test _normalize_tool_schema is a no-op when args_schema is not a dict."""
+
+    class MySchema:
+        pass
+
+    tool = Mock()
+    tool.args_schema = MySchema
+
+    _normalize_tool_schema(tool)
+
+    assert tool.args_schema is MySchema
+
+
+def test_normalize_tool_schema_skips_non_object_type():
+    """Test _normalize_tool_schema is a no-op for non-object schemas."""
+    tool = Mock()
+    tool.args_schema = {"type": "string"}
+
+    _normalize_tool_schema(tool)
+
+    assert tool.args_schema == {"type": "string"}
+
+
+@pytest.mark.asyncio
+async def test_gather_mcp_tools_fixes_schemas_without_properties():
+    """Test gather_mcp_tools patches tool schemas that lack 'properties'.
+
+    MCP tools with no arguments produce schemas like {"type": "object"}
+    without a "properties" key. This causes KeyError in LangChain and
+    400 errors from OpenAI. gather_mcp_tools must fix these schemas.
+    """
+    mcp_servers = {
+        "server": {"transport": "streamable_http", "url": "http://server:8080/mcp"},
+    }
+
+    no_args_tool = Mock()
+    no_args_tool.args_schema = {"type": "object"}
+    no_args_tool.name = "no_args_tool"
+    no_args_tool.metadata = {}
+
+    with_args_tool = Mock()
+    with_args_tool.args_schema = {
+        "type": "object",
+        "properties": {"query": {"type": "string"}},
+    }
+    with_args_tool.name = "with_args_tool"
+    with_args_tool.metadata = {}
+
+    async def mock_get_tools(server_name=None):
+        return [no_args_tool, with_args_tool]
+
+    with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get_tools.side_effect = mock_get_tools
+        mock_client_cls.return_value = mock_client_instance
+
+        tools = await gather_mcp_tools(mcp_servers)
+
+        assert len(tools) == 2
+
+        assert tools[0].args_schema == {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+
+        assert tools[1].args_schema == {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": [],
+        }
 
 
 def test_build_mcp_config_transport_is_streamable_http():
