@@ -1022,10 +1022,12 @@ class MCPAppResourceRequest(BaseModel):
     Attributes:
         resource_uri: The ui:// resource URI to fetch.
         server_name: The MCP server that owns the resource.
+        mcp_headers: Optional client-provided headers for MCP server authentication.
     """
 
     resource_uri: str
     server_name: str
+    mcp_headers: Optional[dict[str, dict[str, str]]] = None
 
     model_config = {
         "extra": "forbid",
@@ -1065,11 +1067,13 @@ class MCPAppToolCallRequest(BaseModel):
         server_name: The MCP server to call.
         tool_name: The tool to invoke.
         arguments: Arguments to pass to the tool.
+        mcp_headers: Optional client-provided headers for MCP server authentication.
     """
 
     server_name: str
     tool_name: str
     arguments: dict[str, Any] = {}
+    mcp_headers: Optional[dict[str, dict[str, str]]] = None
 
     model_config = {
         "extra": "forbid",

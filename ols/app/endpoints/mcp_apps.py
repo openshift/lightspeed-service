@@ -5,8 +5,9 @@ proxy tool calls to MCP servers on behalf of app iframes.
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
@@ -22,7 +23,7 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.src.auth.auth import get_auth_dependency
-from ols.utils.mcp_utils import resolve_server_headers
+from ols.utils.mcp_utils import ClientHeaders, resolve_server_headers
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +31,26 @@ router = APIRouter(prefix="/mcp-apps", tags=["mcp-apps"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 
-def _get_server_config(server_name: str) -> dict[str, Any]:
+def _get_server_config(
+    server_name: str,
+    user_token: Optional[str] = None,
+    client_headers: ClientHeaders | None = None,
+) -> dict[str, Any]:
     """Look up an MCP server by name and return its connection parameters.
 
     Args:
         server_name: Name of the MCP server as defined in olsconfig.yaml.
+        user_token: User's kubernetes token for servers using the "kubernetes" placeholder.
+        client_headers: Client-provided headers for servers using the "client" placeholder.
 
     Returns:
         Dict with url, timeout, and resolved_headers for the server.
 
     Raises:
         HTTPException 404: If no MCP servers are configured or the name is unknown.
+        HTTPException 401: If header resolution fails (missing required credentials).
     """
-    if not config.mcp_servers or not config.mcp_servers.servers:
+    if not config.mcp_servers.servers:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No MCP servers configured",
@@ -55,12 +63,17 @@ def _get_server_config(server_name: str) -> dict[str, Any]:
             detail=f"MCP server '{server_name}' not found",
         )
 
-    headers = resolve_server_headers(server, user_token=None, client_headers=None)
+    headers = resolve_server_headers(server, user_token, client_headers)
+    if headers is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Missing required credentials for MCP server '{server_name}'",
+        )
 
     return {
         "url": server.url,
         "timeout": server.timeout or 30,
-        "headers": headers or {},
+        "headers": headers,
     }
 
 
@@ -83,13 +96,13 @@ resource_responses: dict[int | str, dict[str, Any]] = {
 @router.post("/resources", responses=resource_responses)
 async def get_mcp_app_resource(
     request: MCPAppResourceRequest,
-    user_id: str = Depends(auth_dependency),
+    auth: tuple[str, str, bool, str] = Depends(auth_dependency),
 ) -> MCPAppResourceResponse:
     """Fetch a ui:// resource from an MCP server.
 
     Args:
         request: Resource request with URI and server name.
-        user_id: Authenticated user ID.
+        auth: Authentication tuple (user_id, username, skip_check, user_token).
 
     Returns:
         The resource content (HTML/JS/CSS) with metadata.
@@ -100,13 +113,19 @@ async def get_mcp_app_resource(
             detail=f"Invalid resource URI: {request.resource_uri}. Expected ui://...",
         )
 
-    server_config = _get_server_config(request.server_name)
+    user_token = auth[3]
+    server_config = _get_server_config(
+        request.server_name, user_token, request.mcp_headers
+    )
 
     try:
-        async with streamable_http_client(
-            url=server_config["url"],
+        http_client = httpx.AsyncClient(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
+        )
+        async with streamable_http_client(
+            url=server_config["url"],
+            http_client=http_client,
         ) as (read_stream, write_stream, _):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
@@ -153,24 +172,30 @@ tool_call_responses: dict[int | str, dict[str, Any]] = {
 @router.post("/tools/call", responses=tool_call_responses)
 async def call_mcp_app_tool(
     request: MCPAppToolCallRequest,
-    user_id: str = Depends(auth_dependency),
+    auth: tuple[str, str, bool, str] = Depends(auth_dependency),
 ) -> MCPAppToolCallResponse:
     """Proxy a tool call from an app iframe to an MCP server.
 
     Args:
         request: Tool call request with server, tool name, and arguments.
-        user_id: Authenticated user ID.
+        auth: Authentication tuple (user_id, username, skip_check, user_token).
 
     Returns:
         Tool call result with content blocks and optional structured content.
     """
-    server_config = _get_server_config(request.server_name)
+    user_token = auth[3]
+    server_config = _get_server_config(
+        request.server_name, user_token, request.mcp_headers
+    )
 
     try:
-        async with streamable_http_client(
-            url=server_config["url"],
+        http_client = httpx.AsyncClient(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
+        )
+        async with streamable_http_client(
+            url=server_config["url"],
+            http_client=http_client,
         ) as (read_stream, write_stream, _):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()

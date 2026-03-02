@@ -225,7 +225,7 @@
                     "mcp-apps"
                 ],
                 "summary": "Get Mcp App Resource",
-                "description": "Fetch a ui:// resource from an MCP server.\n\nArgs:\n    request: Resource request with URI and server name.\n    user_id: Authenticated user ID.\n\nReturns:\n    The resource content (HTML/JS/CSS) with metadata.",
+                "description": "Fetch a ui:// resource from an MCP server.\n\nArgs:\n    request: Resource request with URI and server name.\n    auth: Authentication tuple (user_id, username, skip_check, user_token).\n\nReturns:\n    The resource content (HTML/JS/CSS) with metadata.",
                 "operationId": "get_mcp_app_resource_v1_mcp_apps_resources_post",
                 "requestBody": {
                     "content": {
@@ -317,7 +317,7 @@
                     "mcp-apps"
                 ],
                 "summary": "Call Mcp App Tool",
-                "description": "Proxy a tool call from an app iframe to an MCP server.\n\nArgs:\n    request: Tool call request with server, tool name, and arguments.\n    user_id: Authenticated user ID.\n\nReturns:\n    Tool call result with content blocks and optional structured content.",
+                "description": "Proxy a tool call from an app iframe to an MCP server.\n\nArgs:\n    request: Tool call request with server, tool name, and arguments.\n    auth: Authentication tuple (user_id, username, skip_check, user_token).\n\nReturns:\n    Tool call result with content blocks and optional structured content.",
                 "operationId": "call_mcp_app_tool_v1_mcp_apps_tools_call_post",
                 "requestBody": {
                     "content": {
@@ -1646,6 +1646,23 @@
                     "server_name": {
                         "type": "string",
                         "title": "Server Name"
+                    },
+                    "mcp_headers": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mcp Headers"
                     }
                 },
                 "additionalProperties": false,
@@ -1655,7 +1672,7 @@
                     "server_name"
                 ],
                 "title": "MCPAppResourceRequest",
-                "description": "Request to fetch a ui:// resource from an MCP server.\n\nAttributes:\n    resource_uri: The ui:// resource URI to fetch.\n    server_name: The MCP server that owns the resource.",
+                "description": "Request to fetch a ui:// resource from an MCP server.\n\nAttributes:\n    resource_uri: The ui:// resource URI to fetch.\n    server_name: The MCP server that owns the resource.\n    mcp_headers: Optional client-provided headers for MCP server authentication.",
                 "examples": [
                     {
                         "resource_uri": "ui://pod-utilization/dashboard.html",
@@ -1719,6 +1736,23 @@
                         "type": "object",
                         "title": "Arguments",
                         "default": {}
+                    },
+                    "mcp_headers": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mcp Headers"
                     }
                 },
                 "additionalProperties": false,
@@ -1728,7 +1762,7 @@
                     "tool_name"
                 ],
                 "title": "MCPAppToolCallRequest",
-                "description": "Request to call an MCP tool directly (from an app iframe).\n\nAttributes:\n    server_name: The MCP server to call.\n    tool_name: The tool to invoke.\n    arguments: Arguments to pass to the tool.",
+                "description": "Request to call an MCP tool directly (from an app iframe).\n\nAttributes:\n    server_name: The MCP server to call.\n    tool_name: The tool to invoke.\n    arguments: Arguments to pass to the tool.\n    mcp_headers: Optional client-provided headers for MCP server authentication.",
                 "examples": [
                     {
                         "arguments": {
