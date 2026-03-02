@@ -11,7 +11,7 @@ import yaml
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT, LCORE_ENABLED
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.ols_installer import (
     create_secrets,
@@ -138,7 +138,8 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     )
 
     # Update lcore setting if LCORE is enabled
-    update_lcore_setting()
+    if LCORE_ENABLED:
+        update_lcore_setting()
     # Scaling operator to 1 replica to allow finalizer to run for olsconfig
     cluster_utils.run_oc(
         [
@@ -189,7 +190,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
             "scale",
             "deployment/lightspeed-operator-controller-manager",
             "--replicas",
-            "1",
+            "0",
         ]
     )
 
@@ -219,7 +220,7 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
 
     # Update configmap with e2e-specific settings - FAIL FAST if this breaks
     print("Updating configmap with e2e test settings...")
-    if OLS_SERVICE_DEPLOYMENT == "lightspeed-app-server":
+    if not LCORE_ENABLED:
         update_ols_configmap()
     print(" Configmap updated successfully")
     # Apply test image

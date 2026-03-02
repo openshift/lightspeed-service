@@ -9,7 +9,7 @@ import yaml
 from ols.constants import DEFAULT_CONFIGURATION_FILE
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
-from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT
+from tests.e2e.utils.constants import OLS_SERVICE_DEPLOYMENT, LCORE_ENABLED
 from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_tests
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 
@@ -97,10 +97,6 @@ def update_lcore_setting() -> None:
     Checks if LCORE environment variable is enabled and ensures the
     --use-lcore argument in the ClusterServiceVersion is set to true.
     """
-    if os.getenv("LCORE", "False").lower() not in ("true", "1", "t"):
-        print("LCORE not enabled, skipping CSV update")
-        return
-
     print("LCORE enabled, checking CSV configuration...")
     namespace = "openshift-lightspeed"
 
@@ -440,7 +436,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     provider = os.getenv("PROVIDER", "openai")
     creds = os.getenv("PROVIDER_KEY_PATH", "empty")
-    update_lcore_setting()
+    if LCORE_ENABLED:
+        update_lcore_setting()
     # create the llm api key secret ols will mount
     provider_list = provider.split()
     creds_list = creds.split()

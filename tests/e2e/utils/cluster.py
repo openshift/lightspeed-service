@@ -365,7 +365,7 @@ def wait_for_running_pod(
         f"Waiting for {name} pod in running state",
     )
     if not r:
-        raise Exception("Timed out waiting for {name} pod to be ready")
+        raise Exception(f"Timed out waiting for {name} pod to be ready")
 
     def pod_has_containers_ready():
         pods = get_pod_by_prefix(prefix=name, namespace=namespace, fail_not_found=False)
