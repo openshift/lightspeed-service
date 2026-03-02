@@ -1,6 +1,10 @@
 """Mocked tools for tool calling."""
 
+from typing import Any
+
 from langchain.tools import tool
+from langchain_core.tools.structured import StructuredTool
+from pydantic import BaseModel
 
 NAMESPACES_OUTPUT = """
 NAME                                               STATUS   AGE
@@ -13,6 +17,13 @@ POD_STRUCTURED_CONTENT = {
         {"name": "pod2", "cpu": 12, "memory": 34},
     ],
     "summary": {"totalPods": 2, "avgCpu": 28, "avgMemory": 48},
+}
+
+MOCK_TOOL_META = {
+    "ui": {
+        "resourceUri": "ui://test-server/dashboard.html",
+        "visibility": ["model", "app"],
+    }
 }
 
 
@@ -28,5 +39,28 @@ async def get_pod_metrics_mock() -> tuple[str, dict]:
     return "Pod utilization summary", {"structured_content": POD_STRUCTURED_CONTENT}
 
 
+class _EmptySchema(BaseModel):
+    pass
+
+
+async def _namespaces_with_meta_coro(**kwargs: Any) -> tuple[str, dict]:
+    return NAMESPACES_OUTPUT, {}
+
+
+get_namespaces_with_meta_mock = StructuredTool(
+    name="get_namespaces_with_meta_mock",
+    description="Fetch the list of all namespaces in the cluster.",
+    func=lambda **kwargs: (NAMESPACES_OUTPUT, {}),
+    coroutine=_namespaces_with_meta_coro,
+    response_format="content_and_artifact",
+    args_schema=_EmptySchema,
+    metadata={
+        "_meta": MOCK_TOOL_META,
+        "mcp_server": "test-server",
+    },
+)
+
+
 mock_tools_map = [get_namespaces_mock]
 mock_tools_with_structured_content = [get_pod_metrics_mock]
+mock_tools_with_meta = [get_namespaces_with_meta_mock]
