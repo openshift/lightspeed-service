@@ -34,48 +34,64 @@ Read diffs per area (endpoints, models, utils, tests) rather than one massive di
 
 ## 3. Evaluate How It's Implemented
 
-- **Architecture**: Is logic in the right layer? (endpoints vs utils vs models)
-- **Data flow**: How does data travel through the system? Any unnecessary transformations?
-- **Error handling**: Are errors caught at the right level? Silent failures vs exceptions?
-- **Duplication**: Is code copy-pasted across files?
-- Is there a dead code
-- Relevant documentation updates
+Only raise issues if you have a concrete concern — not as a checklist to fill:
+
+- **Architecture**: Is logic clearly in the wrong layer? (e.g. business logic leaking into an endpoint)
+- **Error handling**: Are errors silently swallowed, or is an exception missing where failure is plausible?
+- **Duplication**: Is the same logic copy-pasted, not just similar-looking?
+- **Dead code / docs**: Is there obviously unused code or a doc update that's clearly missing?
+
+Skip this section if nothing stands out.
 
 ## 4. Assess Naming
 
-- Do file names match what they contain?
-- Do function/class names describe their behavior?
-- Are types self-documenting or do they need aliases?
-- Is naming consistent with existing codebase patterns?
+Only flag naming if it is genuinely misleading or inconsistent with established patterns in the codebase. Do not flag stylistic preferences or minor wording variations.
 
 ## 5. Check Pythonic Patterns
 
-- Pydantic models for validation instead of hand-rolled parsing
-- Type hints on all public functions (avoid `Any` where possible)
-- `TypeAlias` for complex repeated types
-- Proper use of framework features (FastAPI dependencies, Pydantic validators)
-- No JSON-inside-JSON when native types work
-- Imports at the top (justification is required otherwise)
+Only flag if the pattern causes a real problem (correctness, type safety, maintainability), not just because an alternative exists:
+
+- Hand-rolled parsing where Pydantic would enforce correctness
+- Missing type hints on public functions, or `Any` used where a concrete type is knowable
+- Improper use of framework features (e.g. bypassing FastAPI dependency injection, skipping Pydantic validators)
+- JSON-inside-JSON when native types work
+
+Skip this section if nothing meaningful to flag.
 
 ## 6. Ask Critical Questions
 
-Focus on design decisions that have long-term impact:
+Only ask questions where the answer is genuinely unclear from the code and matters for correctness or design. Do not manufacture questions for completeness.
 
-- Why was this approach chosen over alternatives?
-- What happens when input is invalid/missing/malformed?
-- Are there security implications? (token logging, size limits, injection)
-- Do tests verify behavior or just status codes?
-- Is the API contract clear to consumers? (OpenAPI schema, examples)
-- Is PR bundling other/unrelated changes to its main goal, that should be separated as separate PRs - or at least commits?
+- What happens on invalid/missing/malformed input — if error paths are not visible in the diff?
+- Are there security implications not addressed? (token logging, size limits, injection)
+- Do tests cover behavior (specific assertions) or just confirm the code runs?
+- Is the PR clearly bundling unrelated changes that should be in a separate PR?
 
-## 7. Output Format
+Skip this section if the design is clear and the concerns above don't apply.
+
+## 7. Verify Each Issue with a Subagent
+
+Before writing the final output, launch one subagent per candidate issue to confirm it is real. Do this in parallel for all issues found in sections 3–6.
+
+Each subagent task should:
+- Receive the specific concern as its prompt (e.g. "Is error X silently swallowed? Check `foo.py` lines 40-55 and any callers.")
+- Read the relevant file(s) and any related context (callers, tests, existing patterns in the codebase)
+- Return a verdict: **confirmed** / **not an issue** / **unsure**, with a one-sentence rationale
+
+After all subagents complete:
+- Drop any issue whose verdict is **not an issue**
+- Downgrade confidence to **unsure** for any issue whose verdict is **unsure**
+- Only **confirmed** issues appear in the issues table at full confidence
+
+This step exists to filter out false positives before they reach the output. Do not skip it when there are candidate issues.
+
+## 8. Output Format
 
 Structure the review as:
 
 1. **Summary**: What the PR does (2-3 sentences)
-2. **File-by-file analysis**: Role of each changed file
-3. **Issues table**: Priority (must-fix / should-fix / nice-to-have), issue, location
-4. **What's good**: Acknowledge well-done aspects
-5. **Critical questions**: Design decisions that need answers
-6. **Confidence notes**: Flag each concern with a confidence level (certain / likely / unsure).
-7. **Closing reminder**: Always end the review with: *"You, as a human, need to evaluate these AI findings instead of just copying them as review comments. That would just shift the responsibility of validation to the PR creator."*
+2. **File-by-file analysis**: Role of each changed file (one line each; skip files with trivial changes)
+3. **Issues table**: Only issues confirmed by subagent verification (section 7) — Priority (must-fix / should-fix / nice-to-have), issue, location, confidence. If there are no confirmed issues, say so explicitly.
+4. **What's good**: Acknowledge well-done aspects — keep this genuine, not filler
+5. **Critical questions**: Only if section 6 above produced anything; omit otherwise
+6. **Closing reminder**: Always end the review with: *"You, as a human, need to evaluate these AI findings instead of just copying them as review comments. That would just shift the responsibility of validation to the PR creator."*
