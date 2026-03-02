@@ -500,9 +500,9 @@ class DocsSummarizer(QueryHelper):
                             json.dumps(
                                 {
                                     "event": "tool_call",
-                                    "tool_name": tool_call.get("name", "unknown"),
-                                    "arguments": tool_call.get("args", {}),
-                                    "tool_id": tool_call.get("id", "unknown"),
+                                    "tool_name": enriched.get("name", "unknown"),
+                                    "arguments": enriched.get("args", {}),
+                                    "tool_id": enriched.get("id", "unknown"),
                                 },
                                 ensure_ascii=False,
                                 indent=2,
