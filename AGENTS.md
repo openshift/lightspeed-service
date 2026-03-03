@@ -95,7 +95,6 @@ You MUST read the relevant file before working in a specific area — don't skip
 - Adding or modifying an LLM provider → `docs/ai/providers.md`
 - Adding or modifying config models → `docs/ai/config.md`
 - Writing or debugging tests → `docs/ai/testing.md`
-- Creating commits or pull requests → `docs/ai/git.md`
 
 ## Common Patterns
 
