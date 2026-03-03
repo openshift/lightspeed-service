@@ -1056,7 +1056,7 @@ class MCPAppResourceResponse(BaseModel):
     uri: str
     mime_type: str
     content: str
-    content_type: str = "text"
+    content_type: Literal["text", "blob"] = "text"
     meta: Optional[dict[str, Any]] = None
 
 

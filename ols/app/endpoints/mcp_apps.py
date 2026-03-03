@@ -113,40 +113,40 @@ async def get_mcp_app_resource(
             detail=f"Invalid resource URI: {request.resource_uri}. Expected ui://...",
         )
 
-    user_token = auth[3]
+    _, _, _, user_token = auth
     server_config = _get_server_config(
         request.server_name, user_token, request.mcp_headers
     )
 
     try:
-        http_client = httpx.AsyncClient(
+        async with httpx.AsyncClient(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
-        )
-        async with streamable_http_client(
-            url=server_config["url"],
-            http_client=http_client,
-        ) as (read_stream, write_stream, _):
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                result = await session.read_resource(request.resource_uri)
+        ) as http_client:
+            async with streamable_http_client(
+                url=server_config["url"],
+                http_client=http_client,
+            ) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    result = await session.read_resource(request.resource_uri)
 
-                if not result.contents:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Resource not found: {request.resource_uri}",
+                    if not result.contents:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Resource not found: {request.resource_uri}",
+                        )
+
+                    content = result.contents[0]
+                    is_text = hasattr(content, "text")
+
+                    return MCPAppResourceResponse(
+                        uri=str(content.uri),
+                        mime_type=getattr(content, "mimeType", None) or "text/html",
+                        content=content.text if is_text else getattr(content, "blob", ""),
+                        content_type="text" if is_text else "blob",
+                        meta=getattr(content, "meta", None),
                     )
-
-                content = result.contents[0]
-                is_text = hasattr(content, "text")
-
-                return MCPAppResourceResponse(
-                    uri=str(content.uri),
-                    mime_type=getattr(content, "mimeType", None) or "text/html",
-                    content=content.text if is_text else getattr(content, "blob", ""),
-                    content_type="text" if is_text else "blob",
-                    meta=getattr(content, "meta", None),
-                )
     except HTTPException:
         raise
     except Exception as e:
@@ -183,60 +183,60 @@ async def call_mcp_app_tool(
     Returns:
         Tool call result with content blocks and optional structured content.
     """
-    user_token = auth[3]
+    _, _, _, user_token = auth
     server_config = _get_server_config(
         request.server_name, user_token, request.mcp_headers
     )
 
     try:
-        http_client = httpx.AsyncClient(
+        async with httpx.AsyncClient(
             headers=server_config["headers"],
             timeout=server_config["timeout"],
-        )
-        async with streamable_http_client(
-            url=server_config["url"],
-            http_client=http_client,
-        ) as (read_stream, write_stream, _):
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                result = await session.call_tool(
-                    request.tool_name,
-                    arguments=request.arguments,
-                )
+        ) as http_client:
+            async with streamable_http_client(
+                url=server_config["url"],
+                http_client=http_client,
+            ) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    result = await session.call_tool(
+                        request.tool_name,
+                        arguments=request.arguments,
+                    )
 
-                content_list: list[dict[str, Any]] = []
-                for item in result.content:
-                    match item.type:
-                        case "text":
-                            content_list.append({"type": "text", "text": item.text})
-                        case "image":
-                            content_list.append(
-                                {
-                                    "type": "image",
-                                    "data": item.data,
-                                    "mimeType": item.mimeType,
-                                }
-                            )
-                        case "audio":
-                            content_list.append(
-                                {
-                                    "type": "audio",
-                                    "data": item.data,
-                                    "mimeType": item.mimeType,
-                                }
-                            )
-                        case _:
-                            logger.warning(
-                                "Unsupported content type '%s' from tool '%s'",
-                                item.type,
-                                request.tool_name,
-                            )
+                    content_list: list[dict[str, Any]] = []
+                    for item in result.content:
+                        match item.type:
+                            case "text":
+                                content_list.append({"type": "text", "text": item.text})
+                            case "image":
+                                content_list.append(
+                                    {
+                                        "type": "image",
+                                        "data": item.data,
+                                        "mimeType": item.mimeType,
+                                    }
+                                )
+                            case "audio":
+                                content_list.append(
+                                    {
+                                        "type": "audio",
+                                        "data": item.data,
+                                        "mimeType": item.mimeType,
+                                    }
+                                )
+                            case _:
+                                logger.warning(
+                                    "Unsupported content type '%s' from tool '%s'",
+                                    item.type,
+                                    request.tool_name,
+                                )
 
-                return MCPAppToolCallResponse(
-                    content=content_list,
-                    structured_content=result.structuredContent,
-                    is_error=result.isError,
-                )
+                    return MCPAppToolCallResponse(
+                        content=content_list,
+                        structured_content=result.structuredContent,
+                        is_error=result.isError,
+                    )
     except HTTPException:
         raise
     except Exception as e:
