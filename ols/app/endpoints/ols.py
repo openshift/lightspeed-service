@@ -31,19 +31,14 @@ from ols.app.models.models import (
     TokenCounter,
     UnauthorizedResponse,
 )
-from ols.customize import keywords, prompts
 from ols.src.auth.auth import get_auth_dependency
 from ols.src.llms.llm_loader import LLMConfigurationError, resolve_provider_config
 from ols.src.query_helpers.attachment_appender import append_attachments_to_query
 from ols.src.query_helpers.docs_summarizer import DocsSummarizer
-from ols.src.query_helpers.question_validator import QuestionValidator
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
 from ols.utils.token_handler import PromptTooLongError
-
-KEYWORDS = keywords.KEYWORDS
-INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 logger = logging.getLogger(__name__)
 
@@ -125,25 +120,16 @@ def conversation_request(
 
     summarizer_response: SummarizerResponse | Generator
 
-    if not processed_request.valid:
-        # response containing info about query that can not be validated
-        summarizer_response = SummarizerResponse(
-            INVALID_QUERY_RESP,
-            [],
-            False,
-            None,
-        )
-    else:
-        client_headers = llm_request.mcp_headers
+    client_headers = llm_request.mcp_headers
 
-        summarizer_response = generate_response(
-            processed_request.conversation_id,
-            llm_request,
-            processed_request.previous_input,
-            streaming=False,
-            user_token=processed_request.user_token,
-            client_headers=client_headers,
-        )
+    summarizer_response = generate_response(
+        processed_request.conversation_id,
+        llm_request,
+        processed_request.previous_input,
+        streaming=False,
+        user_token=processed_request.user_token,
+        client_headers=client_headers,
+    )
 
     processed_request.timestamps["generate response"] = time.time()
 
@@ -211,7 +197,6 @@ def conversation_request(
         store_transcript(
             processed_request.user_id,
             processed_request.conversation_id,
-            processed_request.valid,
             processed_request.query_without_attachments,
             llm_request,
             summarizer_response.response,
@@ -384,22 +369,12 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
 
     check_tokens_available(config.quota_limiters, user_id)
 
-    # Validate the query
-    if not previous_input:
-        valid = validate_question(conversation_id, llm_request)
-    else:
-        logger.debug("follow-up conversation - skipping question validation")
-        valid = True
-
-    timestamps["validate question"] = time.time()
-
     return ProcessedRequest(
         user_id=user_id,
         conversation_id=conversation_id,
         query_without_attachments=query_without_attachments,
         previous_input=previous_input,
         attachments=attachments,
-        valid=valid,
         timestamps=timestamps,
         skip_user_id_check=skip_user_id_check,
         user_token=user_token,
@@ -455,8 +430,7 @@ def log_processing_durations(timestamps: dict[str, float]) -> None:
     append_attachmens_duration = duration(
         "retrieve previous input", "append attachments"
     )
-    validate_question_duration = duration("append attachments", "validate question")
-    generate_response_duration = duration("validate question", "generate response")
+    generate_response_duration = duration("append attachments", "generate response")
     store_transcripts_duration = duration("generate response", "store transcripts")
     add_references_duration = duration("store transcripts", "add references")
     total_duration = duration("start", "add references")
@@ -466,7 +440,7 @@ def log_processing_durations(timestamps: dict[str, float]) -> None:
     msg = (
         f"Processing durations: {retrieve_user_duration},{retrieve_conversation_duration},"
         f"{redact_query_duration},{retrieve_previous_input_duration},{append_attachmens_duration},"
-        f"{validate_question_duration},{generate_response_duration},{store_transcripts_duration},"
+        f"{generate_response_duration},{store_transcripts_duration},"
         f"{add_references_duration},{total_duration}"
     )
 
@@ -637,7 +611,7 @@ def validate_requested_provider_model(llm_request: LLMRequest) -> None:
     try:
         resolve_provider_config(provider, model, config.config.llm_providers)
     except LLMConfigurationError as e:
-        metrics.llm_calls_validation_errors_total.inc()
+        metrics.llm_calls_failures_total.inc()
         logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -769,82 +743,6 @@ def redact_attachments(
         )
 
 
-def _validate_question_llm(conversation_id: str, llm_request: LLMRequest) -> bool:
-    """Validate user question using llm, raise HTTPException in case of any problem."""
-    # Validate the query
-    try:
-        question_validator = QuestionValidator(
-            provider=llm_request.provider,
-            model=llm_request.model,
-            system_prompt=llm_request.system_prompt,
-        )
-        return question_validator.validate_question(conversation_id, llm_request.query)
-    except LLMConfigurationError as e:
-        metrics.llm_calls_validation_errors_total.inc()
-        logger.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"response": "Unable to process this request", "cause": str(e)},
-        )
-    except PromptTooLongError as e:
-        logger.error("Prompt is too long: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "response": "Prompt is too long",
-                "cause": str(e),
-            },
-        )
-    except Exception as validation_error:
-        metrics.llm_calls_failures_total.inc()
-        logger.error("Error while validating question")
-        logger.exception(validation_error)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Error while validating question",
-                "cause": str(validation_error),
-            },
-        )
-
-
-def _validate_question_keyword(query: str) -> bool:
-    """Validate user question using keyword."""
-    # Current implementation is without any tokenizer method, lemmatization/n-grams.
-    # Add valid keywords to keywords.py file.
-    query_temp = query.lower()
-    for kw in KEYWORDS:
-        if kw in query_temp:
-            return True
-    # query_temp = {q_word.lower().strip(".?,") for q_word in query.split()}
-    # common_words = config.keywords.intersection(query_temp)
-    # if len(common_words) > 0:
-    #     return constants.SUBJECT_ALLOWED
-
-    logger.debug("No matching keyword found for query: %s", query)
-    return False
-
-
-def validate_question(conversation_id: str, llm_request: LLMRequest) -> bool:
-    """Validate user question."""
-    match config.ols_config.query_validation_method:
-        case constants.QueryValidationMethod.LLM:
-            logger.debug("LLM based query validation.")
-            return _validate_question_llm(conversation_id, llm_request)
-
-        case constants.QueryValidationMethod.KEYWORD:
-            logger.debug("Keyword based query validation.")
-            return _validate_question_keyword(llm_request.query)
-
-        case _:
-            # Query validation disabled by default
-            logger.debug(
-                "%s Question validation is disabled. Treating question as valid.",
-                conversation_id,
-            )
-            return True
-
-
 def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
     """Construct path to transcripts."""
     # these two normalizations are required by Snyk as it detects
@@ -861,7 +759,6 @@ def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
 def store_transcript(
     user_id: str,
     conversation_id: str,
-    query_is_valid: bool,
     redacted_query: str,
     llm_request: LLMRequest,
     response: str,
@@ -876,7 +773,6 @@ def store_transcript(
     Args:
         user_id: The user ID (UUID).
         conversation_id: The conversation ID (UUID).
-        query_is_valid: The result of the query validation.
         redacted_query: The redacted query (without attachments).
         llm_request: The request containing a query.
         response: The response to store.
@@ -901,7 +797,6 @@ def store_transcript(
             "timestamp": datetime.now(pytz.UTC).isoformat(),
         },
         "redacted_query": redacted_query,
-        "query_is_valid": query_is_valid,
         "llm_response": response,
         "rag_chunks": [dataclasses.asdict(rag_chunk) for rag_chunk in rag_chunks],
         "truncated": truncated,

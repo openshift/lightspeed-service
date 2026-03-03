@@ -1101,7 +1101,6 @@ class OLSConfig(BaseModel):
     expire_llm_is_ready_persistent_state: Optional[int] = -1
     max_workers: Optional[int] = None
     query_filters: Optional[list[QueryFilter]] = None
-    query_validation_method: Optional[str] = constants.QueryValidationMethod.DISABLED
 
     user_data_collection: UserDataCollection = UserDataCollection()
     tls_security_profile: Optional[TLSSecurityProfile] = None
@@ -1149,9 +1148,6 @@ class OLSConfig(BaseModel):
             self.query_filters = []
             for item in data.get("query_filters", None):
                 self.query_filters.append(QueryFilter(item))
-        self.query_validation_method = data.get(
-            "query_validation_method", constants.QueryValidationMethod.DISABLED
-        )
         self.user_data_collection = UserDataCollection(
             **data.get("user_data_collection", {})
         )
@@ -1185,7 +1181,6 @@ class OLSConfig(BaseModel):
                 and self.default_model == other.default_model
                 and self.max_workers == other.max_workers
                 and self.query_filters == other.query_filters
-                and self.query_validation_method == other.query_validation_method
                 and self.tls_config == other.tls_config
                 and self.certificate_directory == other.certificate_directory
                 and self.system_prompt == other.system_prompt
@@ -1218,13 +1213,6 @@ class OLSConfig(BaseModel):
             self.authentication_config.validate_yaml()
         if self.proxy_config is not None:
             self.proxy_config.validate_yaml()
-
-        valid_query_validation_methods = list(constants.QueryValidationMethod)
-        if self.query_validation_method not in valid_query_validation_methods:
-            raise checks.InvalidConfigurationError(
-                f"Invalid query validation method: {self.query_validation_method}\n"
-                f"Available options are {valid_query_validation_methods}"
-            )
 
 
 class DevConfig(BaseModel):

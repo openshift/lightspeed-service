@@ -967,7 +967,6 @@ class ProcessedRequest(BaseModel):
         query_without_attachments: Query to LLM without attachments.
         previous_input: Previous query to LLM.
         attachments: List of all attachments.
-        valid: Whether the query is valid or not.
         timestamps: Timestamps for all operations.
         skip_user_id_check: Flag to skip user ID checking in handler.
         user_token: User token (if provided).
@@ -978,7 +977,6 @@ class ProcessedRequest(BaseModel):
     query_without_attachments: str
     previous_input: list[CacheEntry]
     attachments: list[Attachment]
-    valid: bool
     timestamps: dict[str, float]
     skip_user_id_check: bool
     user_token: str

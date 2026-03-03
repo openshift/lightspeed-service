@@ -2166,9 +2166,6 @@ def test_ols_config(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
-    assert (
-        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
-    )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig(
@@ -2204,9 +2201,6 @@ def test_ols_config_with_auth_config(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
-    assert (
-        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
-    )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig(module="foo")
@@ -2247,9 +2241,6 @@ def test_ols_config_with_tls_security_profile(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
-    assert (
-        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
-    )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig(
@@ -2443,7 +2434,6 @@ def test_config():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "query_validation_method": "disabled",
                 "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
                 "expire_llm_is_ready_persistent_state": 2,
@@ -2517,10 +2507,6 @@ def test_config():
     assert config.ols_config.conversation_cache.type == "memory"
     assert config.ols_config.conversation_cache.memory.max_entries == 100
     assert config.ols_config.logging_config.app_log_level == logging.ERROR
-    assert (
-        config.ols_config.query_validation_method
-        == constants.QueryValidationMethod.DISABLED
-    )
     assert config.ols_config.certificate_directory == "/foo/bar/baz"
     assert config.ols_config.system_prompt_path is None
     assert config.ols_config.system_prompt is None
@@ -2587,7 +2573,6 @@ def test_config_equality():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "query_validation_method": "disabled",
                 "certificate_directory": "/foo/bar/baz",
                 "authentication_config": {"module": "foo"},
                 "expire_llm_is_ready_persistent_state": 2,
@@ -2636,7 +2621,6 @@ def test_config_default_certificate_directory():
                 "logging_config": {
                     "app_log_level": "error",
                 },
-                "query_validation_method": "disabled",
             },
             "dev_config": {"disable_tls": "true"},
         }
@@ -2781,25 +2765,6 @@ def test_config_improper_model():
                 "dev_config": {"disable_tls": "true"},
             }
         ).validate_yaml()
-
-
-def test_ols_config_with_invalid_validation_method():
-    """Test the Ols config with invalid validation method."""
-    ols_config = {
-        "conversation_cache": {
-            "type": "memory",
-            "memory": {
-                "max_entries": 100,
-            },
-        },
-        "query_validation_method": False,
-    }
-
-    with pytest.raises(
-        InvalidConfigurationError,
-        match="Invalid query validation method",
-    ):
-        OLSConfig(ols_config).validate_yaml(True)
 
 
 def test_logging_config_equality():
@@ -3681,9 +3646,6 @@ def test_ols_config_with_system_prompt(tmpdir):
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
-    assert (
-        ols_config.query_validation_method == constants.QueryValidationMethod.DISABLED
-    )
     assert ols_config.user_data_collection == UserDataCollection()
     assert ols_config.reference_content is None
     assert ols_config.authentication_config == AuthenticationConfig(

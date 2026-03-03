@@ -183,11 +183,9 @@ def test_transcripts_storing_cluster():
     assert transcript["metadata"]  # just check if it is not empty
     assert transcript["redacted_query"] == "what is kubernetes?"
     # we don't want llm response influence this test
-    assert "query_is_valid" in transcript
     assert "llm_response" in transcript
     assert "rag_chunks" in transcript
 
-    assert transcript["query_is_valid"]
     assert isinstance(transcript["rag_chunks"], list)
     assert len(transcript["rag_chunks"])
     assert transcript["rag_chunks"][0]["text"]

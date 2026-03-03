@@ -22,7 +22,6 @@ package "OpenShift LightSpeed service" as ols {
     component "Query handler" as handler
     component "History" as history
     component "Redactor" as redactor
-    component "Question\nvalidator" as question_validator
     component "Document\nsummarizer" as document_summarizer
     component "LLM providers\nregistry" as llm_register
     component "Configuration\nloader" as config_loader
@@ -30,9 +29,7 @@ package "OpenShift LightSpeed service" as ols {
     auth -> handler
     handler -d-> history
     handler -d-> redactor
-    handler -d-> question_validator
     handler -d-> document_summarizer
-    question_validator --> llm_register
     document_summarizer --> llm_register
     llm_register -[hidden]> config_loader
 }
