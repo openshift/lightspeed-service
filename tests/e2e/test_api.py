@@ -77,7 +77,6 @@ def test_metrics() -> None:
         "ols_rest_api_calls_total",
         "ols_llm_calls_total",
         "ols_llm_calls_failures_total",
-        "ols_llm_validation_errors_total",
         "ols_llm_token_sent_total",
         "ols_llm_token_received_total",
         "ols_provider_model_configuration",
