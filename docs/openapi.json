@@ -1290,7 +1290,7 @@
                             }
                         ],
                         "title": "Media Type",
-                        "default": "text/plain"
+                        "default": "application/json"
                     },
                     "mcp_headers": {
                         "anyOf": [

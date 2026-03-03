@@ -3,7 +3,8 @@
 import json
 from collections import OrderedDict
 from dataclasses import field
-from typing import Any, Literal, Optional, Self, Union
+from enum import Enum
+from typing import Any, Optional, Self, Union
 
 from langchain_core.language_models.llms import LLM
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -86,7 +87,7 @@ class LLMRequest(BaseModel):
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
-    media_type: Optional[str] = MEDIA_TYPE_TEXT
+    media_type: Optional[str] = MEDIA_TYPE_JSON
     mcp_headers: Optional[dict[str, dict[str, str]]] = None
 
     # provides examples for /docs endpoint
@@ -984,6 +985,16 @@ class ProcessedRequest(BaseModel):
     user_token: str
 
 
+class ChunkType(str, Enum):
+    """Supported streamed chunk types."""
+
+    TEXT = "text"
+    TOOL_CALL = "tool_call"
+    APPROVAL_REQUIRED = "approval_required"
+    TOOL_RESULT = "tool_result"
+    END = "end"
+
+
 @dataclass
 class StreamedChunk:
     """Represents a chunk of streamed data from the LLM.
@@ -994,7 +1005,7 @@ class StreamedChunk:
         data: Additional data associated with the chunk (for non-text chunks)
     """
 
-    type: Literal["text", "tool_call", "tool_result", "end"]
+    type: ChunkType
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 
