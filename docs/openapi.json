@@ -1696,6 +1696,10 @@
                     },
                     "content_type": {
                         "type": "string",
+                        "enum": [
+                            "text",
+                            "blob"
+                        ],
                         "title": "Content Type",
                         "default": "text"
                     },

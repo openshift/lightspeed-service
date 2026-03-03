@@ -143,7 +143,9 @@ async def get_mcp_app_resource(
                     return MCPAppResourceResponse(
                         uri=str(content.uri),
                         mime_type=getattr(content, "mimeType", None) or "text/html",
-                        content=content.text if is_text else getattr(content, "blob", ""),
+                        content=(
+                            content.text if is_text else getattr(content, "blob", "")
+                        ),
                         content_type="text" if is_text else "blob",
                         meta=getattr(content, "meta", None),
                     )
