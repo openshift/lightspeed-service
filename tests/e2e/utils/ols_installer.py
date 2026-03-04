@@ -377,8 +377,8 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
     # wait for the ols api server deployment to be created
     r = retry_until_timeout_or_success(
-        30,
-        6,
+        OC_COMMAND_RETRY_COUNT,
+        OC_COMMAND_RETRY_DELAY,
         lambda: cluster_utils.run_oc(
             [
                 "get",

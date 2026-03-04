@@ -20,6 +20,9 @@ line-length = 100
 [tool.hatch.version]
 path = "ols/version.py"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
 fail_under = 90
@@ -140,6 +143,9 @@ evaluation = [
     "datasets>=3.0.0",
     "fastparquet>=2024.11.0",
     "tqdm>=4.67.1",
+]
+lseval = [
+    "lightspeed-evaluation @ git+https://github.com/lightspeed-core/lightspeed-evaluation.git@v0.4.0",
 ]
 
 [tool.hatch.build.targets.wheel]
