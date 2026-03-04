@@ -1,6 +1,7 @@
 """Module for parsing errors from different LLMs."""
 
 import json
+import logging
 
 from fastapi import status
 from genai.exceptions import ApiResponseException
@@ -8,6 +9,8 @@ from ibm_watsonx_ai.wml_client_error import ApiRequestFailure
 from openai import BadRequestError
 
 from ols import config
+
+logger = logging.getLogger(__name__)
 
 # Constants for default messages and status codes
 DEFAULT_ERROR_MESSAGE = "An error occurred during LLM invocation. Please contact your OpenShift Lightspeed administrator."  # noqa: E501
@@ -51,6 +54,16 @@ def parse_bam_error(e: ApiResponseException) -> tuple[int, str, str]:
 
 def parse_watsonx_error(e: ApiRequestFailure) -> tuple[int, str, str]:
     """Parse Watsonx error."""
+    status_code = e.response.status_code
+    logger.error(
+        "WatsonX API error: status_code=%d, reason=%s, url=%s, error_msg=%s, "
+        "response_text=%s",
+        status_code,
+        e.response.reason,
+        getattr(e.response, "url", "unknown"),
+        e.error_msg,
+        e.response.text[:500] if e.response.text else "empty",
+    )
     try:
         errors = json.loads(e.response.text)["errors"]
         if len(errors) != 1 or errors[0].get("message") is None:
@@ -59,11 +72,16 @@ def parse_watsonx_error(e: ApiRequestFailure) -> tuple[int, str, str]:
     except (json.JSONDecodeError, KeyError, ValueError):
         # fallback to response reason if message is not found
         response_text = e.response.reason
-    return e.response.status_code, response_text, e.error_msg
+    return status_code, response_text, e.error_msg
 
 
 def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
     """Try to parse generic LLM error."""
+    logger.error(
+        "LLM error received: type=%s, message=%s",
+        type(e).__name__,
+        str(e)[:500],
+    )
     match e:
         case BadRequestError():
             return parse_openai_error(e)
