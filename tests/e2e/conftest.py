@@ -94,7 +94,7 @@ def pytest_sessionstart():
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at url: {ols_url} with provider: {provider}...")
-    OLS_READY = wait_for_ols(ols_url)
+    OLS_READY = wait_for_ols(ols_url, pytest.client)
     print(f"OLS is ready: {OLS_READY}")
     # Gather OLS artifacts in case OLS does not become ready
     if on_cluster and not OLS_READY:
@@ -129,6 +129,17 @@ def pytest_runtest_makereport(item, call) -> TestReport:
         pytest.exit("OLS did not become ready!", 1)
     # If OLS did come up cleanly during setup, then just generate normal test reports for all tests
     return TestReport.from_item_and_call(item, call)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests marked with @pytest.mark.skip_with_lcore when LCORE is enabled."""
+    lcore_enabled = os.getenv("LCORE", "False").lower() in ("true", "1", "t")
+
+    if lcore_enabled:
+        skip_lcore = pytest.mark.skip(reason="LCORE environment variable is enabled")
+        for item in items:
+            if "skip_with_lcore" in item.keywords:
+                item.add_marker(skip_lcore)
 
 
 def pytest_addoption(parser):
