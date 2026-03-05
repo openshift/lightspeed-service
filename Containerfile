@@ -5,31 +5,11 @@ ARG HERMETIC=false
 FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
 
 FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
-ARG HERMETIC=false
 ARG VERSION
 ARG APP_ROOT=/app-root
-ARG BUILDARCH
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
     python3.11 python3.11-devel python3.11-pip
-
-# conditional installation of OpenShift CLI
-
-ENV BUILDARCH=${BUILDARCH}
-ENV HERMETIC=${HERMETIC}
-RUN if [ "$HERMETIC" == "true" ]; then \
-      microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs openshift-clients; \
-    else \
-      OC_CLIENT_TAR_GZ=openshift-client-linux-${BUILDARCH}-rhel9-4.17.16.tar.gz; \
-      microdnf install -y tar gzip && \
-      curl -LO "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.17.16/${OC_CLIENT_TAR_GZ}" && \
-      tar xvfz ${OC_CLIENT_TAR_GZ} -C /usr/local/bin && \
-      rm -f ${OC_CLIENT_TAR_GZ} && \
-      chmod +x /usr/local/bin/oc && \
-      microdnf remove -y tar gzip; \
-    fi
-
-RUN oc version --client
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
