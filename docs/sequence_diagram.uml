@@ -17,7 +17,6 @@ footer Copyright © 2024 Red Hat, Inc. Author: Pavel Tisnovsky
 actor "User" as user
 participant "Lightspeed\nService" as ols
 control "Redactor" as redactor
-control "Question\nValidator" as question_validator
 control "Document\nSummarizer" as document_summarizer
 database "Conversation\ncache" as cache
 database "Vector\ndatabase" as vector_db
@@ -44,21 +43,8 @@ ols -> ols: Attachments
 ols -> redactor: Redact attachments
 redactor -> ols: Redacted attachments
 
-== Validation ==
-
-ols -> question_validator: Validate question
-question_validator -> llm: Query
-llm -> question_validator: Valid or invalid
-
 == Answer generation ==
 
-alt "Invalid question case"
-question_validator -> ols: Invalid question
-ols -> user: Your question\nis not valid
-end
-
-alt "Valid question case"
-question_validator -> ols: Valid question
 ols -> document_summarizer: Summarize document
 document_summarizer -> vector_db: Read vector DB (RAG)
 vector_db -> document_summarizer: RAG DB content
@@ -66,7 +52,6 @@ document_summarizer -> llm: Query
 llm -> document_summarizer: Answer
 document_summarizer -> ols: Summary
 ols -> user: Answer to\nyour question
-end
 
 
 

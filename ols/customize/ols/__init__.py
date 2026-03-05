@@ -1,1 +1,1 @@
-"""Customized prompts/keywords for OpenShift Lightspeed Service (ols)."""
+"""Customized prompts for OpenShift Lightspeed Service (ols)."""

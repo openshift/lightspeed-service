@@ -19,15 +19,12 @@ from ols.app.models.config import (
     ProviderConfig,
     QueryFilter,
 )
-from ols.customize import prompts
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from ols.utils.logging_configurator import configure_logging
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
-
-INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 
 @pytest.fixture(scope="function")
@@ -82,49 +79,9 @@ def test_post_question_without_payload(_setup, endpoint):
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
-def test_post_question_on_invalid_question(_setup, endpoint):
-    """Check the REST API /v1/query for invalid question."""
-    # let's pretend the question is invalid without even asking LLM
-    with patch("ols.app.endpoints.ols.validate_question", return_value=False):
-        conversation_id = suid.get_suid()
-        response = pytest.client.post(
-            endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
-        )
-        assert response.status_code == requests.codes.ok
-
-        if response.headers["content-type"] == "application/json":
-            # non-streaming responses return JSON
-            expected_response = {
-                "conversation_id": conversation_id,
-                "response": INVALID_QUERY_RESP,
-                "referenced_documents": [],
-                "truncated": False,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "available_quotas": {},
-                "tool_calls": [],
-                "tool_results": [],
-            }
-            actual_response = response.json()
-        else:
-            # streaming_query returns bytes
-            expected_response = INVALID_QUERY_RESP
-            actual_response = response.text
-
-        assert actual_response == expected_response
-
-
-@pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
 def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint):
     """Check the REST API query endpoints when generic response type is returned."""
-    # let's pretend the question is valid and generic one
-    answer = True
     with (
-        patch(
-            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
-            return_value=answer,
-        ),
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response",
             side_effect=Exception("summarizer error"),
@@ -148,37 +105,6 @@ def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint
         }
 
         assert response.json() == expected_json
-
-
-@pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
-def test_post_question_that_is_not_validated(_setup, endpoint):
-    """Check the REST API query endpoints for question that is not validated."""
-    # let's pretend the question can not be validated
-    with (
-        patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=Exception("can not validate"),
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
-        ),
-    ):
-        conversation_id = suid.get_suid()
-        response = pytest.client.post(
-            endpoint,
-            json={"conversation_id": conversation_id, "query": "test query"},
-        )
-
-        # error should be returned
-        assert response.status_code == requests.codes.internal_server_error
-        expected_details = {
-            "detail": {
-                "cause": "can not validate",
-                "response": "Error while validating question",
-            }
-        }
-        assert response.json() == expected_details
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -257,28 +183,24 @@ def test_unsupported_model_in_post(_setup, endpoint):
     provider_config.models = {}  # no models configured
     config.llm_config.providers = {test_provider: provider_config}
 
-    with patch(
-        "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-        constants.QueryValidationMethod.LLM,
-    ):
-        response = pytest.client.post(
-            endpoint,
-            json={
-                "query": "hello?",
-                "provider": test_provider,
-                "model": "model-name",
-            },
-        )
+    response = pytest.client.post(
+        endpoint,
+        json={
+            "query": "hello?",
+            "provider": test_provider,
+            "model": "model-name",
+        },
+    )
 
-        assert response.status_code == requests.codes.unprocessable
-        expected_json = {
-            "detail": {
-                "cause": "Model 'model-name' is not a valid model for "
-                "provider 'test-provider'. Valid models are: []",
-                "response": "Unable to process this request",
-            }
+    assert response.status_code == requests.codes.unprocessable
+    expected_json = {
+        "detail": {
+            "cause": "Model 'model-name' is not a valid model for "
+            "provider 'test-provider'. Valid models are: []",
+            "response": "Unable to process this request",
         }
-        assert response.json() == expected_json
+    }
+    assert response.json() == expected_json
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -286,27 +208,23 @@ def test_post_question_improper_conversation_id(_setup, endpoint) -> None:
     """Check the REST API query endpoints with improper conversation ID."""
     assert config.dev_config is not None
     config.dev_config.disable_auth = True
-    answer = True
-    with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question", return_value=answer
-    ):
-        conversation_id = "not-correct-uuid"
-        response = pytest.client.post(
-            endpoint,
-            json={
-                "conversation_id": conversation_id,
-                "query": "test query",
-            },
-        )
-        # error should be returned
-        assert response.status_code == requests.codes.internal_server_error
-        expected_details = {
-            "detail": {
-                "cause": "Invalid conversation ID not-correct-uuid",
-                "response": "Error retrieving conversation history",
-            }
+    conversation_id = "not-correct-uuid"
+    response = pytest.client.post(
+        endpoint,
+        json={
+            "conversation_id": conversation_id,
+            "query": "test query",
+        },
+    )
+    # error should be returned
+    assert response.status_code == requests.codes.internal_server_error
+    expected_details = {
+        "detail": {
+            "cause": "Invalid conversation ID not-correct-uuid",
+            "response": "Error retrieving conversation history",
         }
-        assert response.json() == expected_details
+    }
+    assert response.json() == expected_details
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -333,49 +251,8 @@ def test_post_question_on_noyaml_response_type(_setup, endpoint) -> None:
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
-def test_post_question_with_keyword(_setup, endpoint) -> None:
-    """Check the REST API /v1/query with keyword validation."""
-    query = "What is Openshift ?"
-
-    ml = mock_langchain_interface(None)
-    with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
-        patch(
-            "ols.src.query_helpers.query_helper.load_llm",
-            new=mock_llm_loader(ml()),
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.KEYWORD,
-        ),
-        patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question"
-        ) as mock_llm_validation,
-    ):
-        conversation_id = suid.get_suid()
-        response = pytest.client.post(
-            endpoint,
-            json={"conversation_id": conversation_id, "query": query},
-        )
-        assert response.status_code == requests.codes.ok
-
-        if response.headers["content-type"] == "application/json":
-            # non-streaming responses return JSON
-            actual_response = response.json()["response"]
-        else:
-            # streaming_query returns bytes
-            actual_response = response.text
-
-        # Currently mock invoke passes same query as response text.
-        assert query in actual_response
-        assert mock_llm_validation.call_count == 0
-
-
-@pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
 def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
     """Check the REST API query endpoints with query filters."""
-    answer = True
-
     query_filters = [
         QueryFilter(
             {
@@ -389,10 +266,6 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
-        patch(
-            "ols.src.query_helpers.question_validator.QuestionValidator.validate_question",
-            return_value=answer,
-        ),
     ):
         ml = mock_langchain_interface("test response")
         with (
@@ -493,32 +366,29 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
 def test_post_question_without_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints without attachments."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             response = pytest.client.post(
@@ -536,32 +406,29 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
 @pytest.mark.attachment
 def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints with empty list of attachments."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             response = pytest.client.post(
@@ -580,32 +447,29 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
 @pytest.mark.attachment
 def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one attachment."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             response = pytest.client.post(
@@ -637,32 +501,29 @@ this is attachment
 @pytest.mark.attachment
 def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with YAML attachment."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             yaml = """
@@ -703,32 +564,29 @@ metadata:
 @pytest.mark.attachment
 def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
     """Check the REST API query endpoints with two YAML attachments."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             yaml1 = """
@@ -789,32 +647,29 @@ metadata:
 @pytest.mark.attachment
 def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one YAML without kind attachment."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             yaml = """
@@ -853,32 +708,29 @@ metadata:
 @pytest.mark.attachment
 def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one YAML without name attachment."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             yaml = """
@@ -919,32 +771,29 @@ metadata:
 @pytest.mark.attachment
 def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with one invalid YAML attachment."""
-    answer = True
     query_passed = None
 
-    def validate_question(_conversation_id, query):
-        """Closure called indirectly to validate the question."""
+    from ols.src.query_helpers.attachment_appender import (  # pylint: disable=C0415
+        append_attachments_to_query as real_append,
+    )
+
+    def capture_append(query, attachments):
         nonlocal query_passed
-        query_passed = query
-        return answer
+        result = real_append(query, attachments)
+        query_passed = result
+        return result
 
     with (
         patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
         patch(
-            "ols.app.endpoints.ols.QuestionValidator.validate_question",
-            side_effect=validate_question,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
+            "ols.app.endpoints.ols.append_attachments_to_query",
+            side_effect=capture_append,
         ),
     ):
         ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
+        with patch(
+            "ols.src.query_helpers.query_helper.load_llm",
+            new=mock_llm_loader(ml()),
         ):
             conversation_id = suid.get_suid()
             yaml = """
@@ -985,12 +834,6 @@ kind: Pod
 @pytest.mark.attachment
 def test_post_question_with_large_attachment(_setup, endpoint) -> None:
     """Check the REST API query endpoints with large attachment."""
-    answer = True
-
-    def validate_question(_conversation_id, _query):
-        """Closure called indirectly to validate the question."""
-        return answer
-
     # generate large YAML content that exceeds token limit
     yaml = """
 kind: Pod
@@ -1001,41 +844,35 @@ logs:
     for i in range(10000):
         yaml += f"    log{i}: 'this is log message #{i}"
 
+    ml = mock_langchain_interface("test response")
     with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question",
-        side_effect=validate_question,
+        "ols.src.query_helpers.query_helper.load_llm",
+        new=mock_llm_loader(ml()),
     ):
-        ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
-        ):
-            conversation_id = suid.get_suid()
+        conversation_id = suid.get_suid()
 
-            response = pytest.client.post(
-                endpoint,
-                json={
-                    "conversation_id": conversation_id,
-                    "query": "test query",
-                    "attachments": [
-                        {
-                            "attachment_type": "configuration",
-                            "content": yaml,
-                            "content_type": "application/yaml",
-                        },
-                    ],
-                },
-            )
-            if response.headers["content-type"] == "application/json":
-                # non-streaming responses return JSON
-                assert response.status_code == requests.codes.request_entity_too_large
-            else:
-                # streaming_query returns bytes
-                error_response = response.text
-                assert "Prompt is too long" in error_response
-                assert "exceeds LLM available context window limit" in error_response
+        response = pytest.client.post(
+            endpoint,
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query",
+                "attachments": [
+                    {
+                        "attachment_type": "configuration",
+                        "content": yaml,
+                        "content_type": "application/yaml",
+                    },
+                ],
+            },
+        )
+        if response.headers["content-type"] == "application/json":
+            # non-streaming responses return JSON
+            assert response.status_code == requests.codes.request_entity_too_large
+        else:
+            # streaming_query returns bytes
+            error_response = response.text
+            assert "Prompt is too long" in error_response
+            assert "exceeds LLM available context window limit" in error_response
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -1069,30 +906,22 @@ def _post_with_system_prompt_override(_setup, caplog, query, system_prompt):
     logger = logging.getLogger("ols")
     logger.handlers = [caplog.handler]  # add caplog handler to logger
 
+    ml = mock_langchain_interface("test response")
     with patch(
-        "ols.app.endpoints.ols.QuestionValidator.validate_question",
-        side_effect=lambda x, y: True,
+        "ols.src.query_helpers.query_helper.load_llm",
+        new=mock_llm_loader(ml()),
     ):
-        ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
-        ):
-            conversation_id = suid.get_suid()
-            response = pytest.client.post(
-                "/v1/query",
-                json={
-                    "conversation_id": conversation_id,
-                    "query": query,
-                    "system_prompt": system_prompt,
-                },
-            )
-            assert response.status_code == requests.codes.ok
+        conversation_id = suid.get_suid()
+        response = pytest.client.post(
+            "/v1/query",
+            json={
+                "conversation_id": conversation_id,
+                "query": query,
+                "system_prompt": system_prompt,
+            },
+        )
+        assert response.status_code == requests.codes.ok
 
-    # Specified system prompt should appear twice in query_helper outputs:
-    # One is from question_validator and another from docs_summarizer.
     assert response.status_code == requests.codes.ok
 
 
@@ -1101,21 +930,14 @@ def test_post_with_system_prompt_override(_setup, caplog):
     query = "test query"
     system_prompt = "You are an expert in something marvelous."
 
-    with (
-        patch(
-            "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
-            True,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
+        True,
     ):
         _post_with_system_prompt_override(_setup, caplog, query, system_prompt)
 
-    # Specified system prompt should appear twice in query_helper debug log outputs.
-    # One is from question_validator and another is from docs_summarizer.
-    assert caplog.text.count("System prompt: " + system_prompt) == 2
+    # Specified system prompt should appear in docs_summarizer debug log outputs.
+    assert caplog.text.count("System prompt: " + system_prompt) == 1
 
 
 def test_post_with_system_prompt_override_disabled(_setup, caplog):
@@ -1127,10 +949,6 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
         patch(
             "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
             False,
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.ols_config.query_validation_method",
-            constants.QueryValidationMethod.LLM,
         ),
     ):
         _post_with_system_prompt_override(_setup, caplog, query, system_prompt)

@@ -32,7 +32,6 @@ ols_config:
     uvicorn_log_level: info
   default_provider: ollama
   default_model: 'llama3.1:latest'
-  query_validation_method: llm
   user_data_collection:
     feedback_disabled: false
     feedback_storage: "/tmp/data/feedback"

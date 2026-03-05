@@ -38,12 +38,9 @@ from ols.app.models.models import (
     UnauthorizedResponse,
 )
 from ols.constants import MEDIA_TYPE_TEXT
-from ols.customize import prompts
 from ols.src.auth.auth import get_auth_dependency
 from ols.utils import errors_parsing
 from ols.utils.token_handler import PromptTooLongError
-
-INVALID_QUERY_RESP = prompts.INVALID_QUERY_RESP
 
 logger = logging.getLogger(__name__)
 
@@ -98,19 +95,16 @@ def conversation_request(
         AsyncGenerator[StreamedChunk, None], SummarizerResponse, Generator
     ]
 
-    if not processed_request.valid:
-        summarizer_response = invalid_response_generator()
-    else:
-        client_headers = llm_request.mcp_headers
+    client_headers = llm_request.mcp_headers
 
-        summarizer_response = generate_response(
-            processed_request.conversation_id,
-            llm_request,
-            processed_request.previous_input,
-            streaming=True,
-            user_token=processed_request.user_token,
-            client_headers=client_headers,
-        )
+    summarizer_response = generate_response(
+        processed_request.conversation_id,
+        llm_request,
+        processed_request.previous_input,
+        streaming=True,
+        user_token=processed_request.user_token,
+        client_headers=client_headers,
+    )
 
     return StreamingResponse(
         response_processing_wrapper(
@@ -119,7 +113,6 @@ def conversation_request(
             processed_request.conversation_id,
             llm_request,
             processed_request.attachments,
-            processed_request.valid,
             processed_request.query_without_attachments,
             llm_request.media_type,
             processed_request.timestamps,
@@ -128,15 +121,6 @@ def conversation_request(
         status_code=status.HTTP_200_OK,
         media_type=llm_request.media_type,
     )
-
-
-async def invalid_response_generator() -> AsyncGenerator[StreamedChunk, None]:
-    """Yield an invalid query response.
-
-    Yields:
-        str: The response indicating invalid query.
-    """
-    yield StreamedChunk(type="text", text=INVALID_QUERY_RESP)
 
 
 def format_stream_data(d: dict) -> str:
@@ -298,7 +282,6 @@ def store_data(
     tool_calls: list[dict],
     tool_results: list[ToolMessage],
     attachments: list[Attachment],
-    valid: bool,
     query_without_attachments: str,
     rag_chunks: list[RagChunk],
     history_truncated: bool,
@@ -315,7 +298,6 @@ def store_data(
         tool_calls: list of tool requests made in the query.
         tool_results: list of tool results from the query.
         attachments: list of attachments included in the query.
-        valid: Indicates if the query was valid.
         query_without_attachments: Query content excluding attachments.
         rag_chunks: list of RAG (Retrieve-And-Generate) chunks used in the response.
         history_truncated: Indicates if the conversation history was truncated.
@@ -338,7 +320,6 @@ def store_data(
         store_transcript(
             user_id,
             conversation_id,
-            valid,
             query_without_attachments,
             llm_request,
             response,
@@ -357,7 +338,6 @@ async def response_processing_wrapper(
     conversation_id: str,
     llm_request: LLMRequest,
     attachments: list[Attachment],
-    valid: bool,
     query_without_attachments: str,
     media_type: str,
     timestamps: dict[str, float],
@@ -371,7 +351,6 @@ async def response_processing_wrapper(
         conversation_id: The conversation ID (UUID).
         llm_request: The original request.
         attachments: list of attachments included in the query.
-        valid: Indicates if the query was valid.
         query_without_attachments: Query content excluding attachments.
         media_type: Media type of the response (e.g. text or JSON).
         timestamps: Dictionary tracking timestamps for various stages.
@@ -462,7 +441,6 @@ async def response_processing_wrapper(
         tool_calls,
         tool_results,
         attachments,
-        valid,
         query_without_attachments,
         rag_chunks,
         history_truncated,

@@ -3,14 +3,6 @@
 # ruff: noqa: E501
 """Prompt templates/constants."""
 
-from ols.constants import SUBJECT_ALLOWED, SUBJECT_REJECTED
-
-# Default responses
-INVALID_QUERY_RESP = (
-    "Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, "
-    "please ask me a question related to OpenShift."
-)
-
 QUERY_SYSTEM_INSTRUCTION = """# ROLE
 You are "OpenShift Lightspeed," an expert AI virtual assistant specializing in
 OpenShift and related Red Hat products and services. Your persona is that of a
@@ -102,34 +94,4 @@ Use the retrieved document to answer the question.
 
 USE_HISTORY_INSTRUCTION = """
 Use the previous chat history to interact and help the user.
-"""
-
-# {{query}} is escaped because it will be replaced as a parameter at time of use
-QUESTION_VALIDATOR_PROMPT_TEMPLATE = f"""
-Instructions:
-- You are a question classifying tool
-- You are an expert in kubernetes and openshift
-- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response
-- If a question appears to be related to kubernetes or openshift technologies, answer with the word {SUBJECT_ALLOWED}, otherwise answer with the word {SUBJECT_REJECTED}
-- Do not explain your answer, just provide the one-word response
-
-
-Example Question:
-Why is the sky blue?
-Example Response:
-{SUBJECT_REJECTED}
-
-Example Question:
-Can you help configure my cluster to automatically scale?
-Example Response:
-{SUBJECT_ALLOWED}
-
-Example Question:
-How do I accomplish $task in openshift?
-Example Response:
-{SUBJECT_ALLOWED}
-
-Question:
-{{query}}
-Response:
 """

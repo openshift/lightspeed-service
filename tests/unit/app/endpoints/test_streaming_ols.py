@@ -5,7 +5,6 @@ import json
 import pytest
 
 from ols import config, constants
-from ols.app.models.models import StreamedChunk
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
@@ -17,14 +16,12 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
     build_referenced_docs,
     format_stream_data,
     generic_llm_error,
-    invalid_response_generator,
     prompt_too_long_error,
     stream_end_event,
     stream_event,
     stream_start_event,
 )
 from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
-from ols.customize import prompts  # noqa:E402
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
 
@@ -55,19 +52,6 @@ def test_format_stream_data():
     expected = f"data: {json.dumps(data)}\n\n"
     actual = format_stream_data(data)
     assert actual == expected
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("_load_config")
-async def test_invalid_response_generator():
-    """Test invalid_response_generator."""
-    generator = invalid_response_generator()
-
-    response = await drain_generator(generator)
-
-    assert len(response) == 1
-    assert isinstance(response[0], StreamedChunk)
-    assert response[0].text == prompts.INVALID_QUERY_RESP
 
 
 def test_stream_event():

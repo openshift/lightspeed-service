@@ -36,9 +36,6 @@ llm_calls_total = Counter(
     "ols_llm_calls_total", "LLM calls counter", ["provider", "model"]
 )
 llm_calls_failures_total = Counter("ols_llm_calls_failures_total", "LLM calls failures")
-llm_calls_validation_errors_total = Counter(
-    "ols_llm_validation_errors_total", "LLM validation errors"
-)
 
 llm_token_sent_total = Counter(
     "ols_llm_token_sent_total", "LLM tokens sent", ["provider", "model"]

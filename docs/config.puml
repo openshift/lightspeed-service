@@ -110,7 +110,6 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   logging_config : Optional[LoggingConfig]
   max_workers : Optional[int]
   query_filters : Optional[list[QueryFilter]]
-  query_validation_method : Optional[str]
   quota_handlers : Optional[QuotaHandlersConfig]
   reference_content : Optional[ReferenceContent]
   system_prompt : Optional[str]

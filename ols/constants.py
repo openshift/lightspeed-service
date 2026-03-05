@@ -4,21 +4,6 @@ import os
 import ssl
 from enum import StrEnum
 
-
-# Query validation methods
-class QueryValidationMethod(StrEnum):
-    """Possible options for query validation method."""
-
-    KEYWORD = "keyword"
-    LLM = "llm"
-    DISABLED = "disabled"
-
-
-# Query validation responses
-SUBJECT_REJECTED = "REJECTED"
-SUBJECT_ALLOWED = "ALLOWED"
-
-
 # providers
 PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"

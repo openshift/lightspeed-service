@@ -3,7 +3,6 @@
 from .metrics import (
     llm_calls_failures_total,
     llm_calls_total,
-    llm_calls_validation_errors_total,
     llm_token_received_total,
     llm_token_sent_total,
     provider_model_configuration,
@@ -18,7 +17,6 @@ __all__ = [
     "TokenMetricUpdater",
     "llm_calls_failures_total",
     "llm_calls_total",
-    "llm_calls_validation_errors_total",
     "llm_token_received_total",
     "llm_token_sent_total",
     "provider_model_configuration",
