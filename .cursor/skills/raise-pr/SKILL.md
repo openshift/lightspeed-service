@@ -11,31 +11,39 @@ disable-model-invocation: true
 Run:
 
 ```bash
+git fetch upstream
 git branch --show-current
-git log --oneline origin/main..HEAD
-git diff origin/main --stat
+git log --oneline upstream/main..HEAD
+git diff upstream/main --stat
 gh pr list --head "$(git branch --show-current)" --state open
 ```
 
-**The default is always a new branch from `main`.** Only reuse the current branch if the user explicitly confirms it.
+**The default is always a new branch from `upstream/main`.** Only reuse the current branch if the user explicitly confirms it. Never branch from `origin/main` — the fork may have stale commits that will appear in the PR.
 
 Present this summary and ask before proceeding:
 
-> "You are currently on branch `<branch>`. It has `<N>` commit(s) ahead of `origin/main` touching: `<files>`.
+> "You are currently on branch `<branch>`. It has `<N>` commit(s) ahead of `upstream/main` touching: `<files>`.
 > [If an open PR exists]: ⚠️ This branch already has an open PR: `<url>`. Pushing here would add commits to that existing PR.
-> Should I create a **new branch** from `main` (recommended), or use the current branch?"
+> Should I create a **new branch** from `upstream/main` (recommended), or use the current branch?"
 
 **Do not continue until the user answers.**
 
 If creating a new branch:
 
 ```bash
-git fetch origin
-git checkout main
-git pull origin main
-git checkout -b <short-description>
+git fetch upstream
+git checkout -b <short-description> upstream/main
 # cherry-pick intended commits from the old branch if needed
 git cherry-pick <sha1> <sha2> ...
+```
+
+Also sync the fork's `main` to keep it clean:
+
+```bash
+git checkout main
+git reset --hard upstream/main
+git push --force-with-lease origin main
+git checkout <new-branch>
 ```
 
 Branch naming: `<type>/<short-description>` — e.g. `feat/add-mcp-stdio-server`, `fix/token-quota-reset`.
