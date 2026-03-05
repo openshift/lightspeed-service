@@ -62,7 +62,6 @@ RUN echo "Verifying dependencies installation..." && \
     echo "All dependencies installed and verified successfully!"
 
 COPY ols ./ols
-COPY mcp_local ./mcp_local
 
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
