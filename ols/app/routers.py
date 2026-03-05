@@ -7,6 +7,7 @@ from ols.app.endpoints import (
     conversations,
     feedback,
     health,
+    mcp_apps,
     mcp_client_headers,
     ols,
     streaming_ols,
@@ -23,6 +24,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(ols.router, prefix="/v1")
     app.include_router(streaming_ols.router, prefix="/v1")
     app.include_router(mcp_client_headers.router, prefix="/v1")
+    app.include_router(mcp_apps.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(conversations.router, prefix="/v1")
     app.include_router(health.router)
