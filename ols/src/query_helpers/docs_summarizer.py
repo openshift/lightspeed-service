@@ -4,6 +4,7 @@
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Coroutine
 from typing import Any, AsyncGenerator, Optional, TypeAlias
 
@@ -372,11 +373,27 @@ class DocsSummarizer(QueryHelper):
 
         # create and execute the chain
         chain = messages | llm
-        async for chunk in chain.astream(
-            input=llm_input_values,
-            config={"callbacks": [token_counter]},
-        ):
-            yield chunk  # type: ignore [misc]
+        llm_start_time = time.monotonic()
+        try:
+            async for chunk in chain.astream(
+                input=llm_input_values,
+                config={"callbacks": [token_counter]},
+            ):
+                yield chunk  # type: ignore [misc]
+        except Exception:
+            logger.error(
+                "LLM invocation failed: provider=%s, model=%s, elapsed=%.2fs",
+                self.provider,
+                self.model,
+                time.monotonic() - llm_start_time,
+            )
+            raise
+        logger.info(
+            "LLM invocation completed: provider=%s, model=%s, elapsed=%.2fs",
+            self.provider,
+            self.model,
+            time.monotonic() - llm_start_time,
+        )
 
     async def iterate_with_tools(  # noqa: C901  # pylint: disable=R0912,R0915
         self,

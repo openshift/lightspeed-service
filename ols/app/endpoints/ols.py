@@ -585,10 +585,22 @@ def generate_response(
             },
         )
     except Exception as summarizer_error:
-        logger.error("Error while obtaining answer for user question")
+        logger.error(
+            "Error while obtaining answer for user question: "
+            "provider=%s, model=%s, error_type=%s",
+            llm_request.provider or config.ols_config.default_provider,
+            llm_request.model or config.ols_config.default_model,
+            type(summarizer_error).__name__,
+        )
         logger.exception(summarizer_error)
         status_code, response_text, cause = errors_parsing.parse_generic_llm_error(
             summarizer_error
+        )
+        logger.error(
+            "Parsed LLM error: status_code=%d, response_text=%s, cause=%s",
+            status_code,
+            response_text,
+            cause[:500] if cause else "none",
         )
         response_text, cause = errors_parsing.handle_known_errors(response_text, cause)
         raise HTTPException(

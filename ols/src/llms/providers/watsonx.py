@@ -59,6 +59,12 @@ class Watsonx(LLMProvider):
         if self.project_id is None:
             raise ValueError("Project ID must be specified")
 
+        logger.info(
+            "Loading WatsonX LLM: model=%s, url=%s, project_id=%s",
+            self.model,
+            self.url,
+            self.project_id,
+        )
         return ChatWatsonx(
             model_id=self.model,
             url=self.url,
