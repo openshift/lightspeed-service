@@ -553,7 +553,9 @@ spec:
     pipelineTaskName: build-images
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 12Gi
+      requests:
+        memory: 12Gi
     pipelineTaskName: clair-scan
   - computeResources:
       limits:
