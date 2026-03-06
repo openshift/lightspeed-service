@@ -45,7 +45,11 @@ class OpenAI(LLMProvider):
         }
 
         # gpt-5 and o-series models don't support certain parameters
-        if not ("gpt-5" in self.model or self.model.startswith("o")):
+        if "gpt-5" in self.model or self.model.startswith("o"):
+            default_parameters["reasoning"] = {"effort": "low", "summary": "auto"}
+            default_parameters["output_version"] = "responses/v1"
+            default_parameters["verbosity"] = "low"
+        else:
             default_parameters["temperature"] = 0.01
             default_parameters["top_p"] = 0.95
             default_parameters["frequency_penalty"] = 1.03

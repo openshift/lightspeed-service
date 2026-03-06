@@ -70,6 +70,9 @@ OpenAIParameters = {
     ProviderParameter("verbose", bool),
     ProviderParameter("http_client", httpx.Client),
     ProviderParameter("http_async_client", httpx.AsyncClient),
+    ProviderParameter("reasoning", dict),
+    ProviderParameter("output_version", str),
+    ProviderParameter("verbosity", str),
 }
 
 RHOAIVLLMParameters = {
