@@ -556,7 +556,9 @@ spec:
     pipelineTaskName: build-images
   - computeResources:
       limits:
-        memory: 8Gi
+        memory: 12Gi
+      requests:
+        memory: 12Gi
     pipelineTaskName: clair-scan
   - computeResources:
       limits:
@@ -574,12 +576,20 @@ spec:
       limits:
         memory: 12Gi
     pipelineTaskName: sast-unicode-check
-  - computeResources:
-      limits:
-        memory: 12Gi
-      requests:
-        memory: 12Gi
-    pipelineTaskName: build-source-image
+  - pipelineTaskName: build-source-image
+    stepSpecs:
+      - name: use-trusted-artifact
+        computeResources:
+          requests:
+            memory: 6Gi
+          limits:
+            memory: 6Gi
+      - name: build
+        computeResources:
+          requests:
+            memory: 8Gi
+          limits:
+            memory: 8Gi
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-service
   workspaces:
