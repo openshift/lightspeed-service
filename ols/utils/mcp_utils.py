@@ -1,8 +1,11 @@
 """Utilities for parsing and validating MCP client headers."""
 
 import logging
-from typing import Optional, TypeAlias, TypedDict
+import os
+import ssl
+from typing import Callable, Optional, TypeAlias, TypedDict
 
+import httpx
 from langchain_core.tools.structured import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -12,6 +15,12 @@ from ols.app.models.config import MCPServerConfig, MCPServers
 logger = logging.getLogger(__name__)
 
 
+McpHttpClientFactory: TypeAlias = Callable[
+    [dict[str, str] | None, httpx.Timeout | None, httpx.Auth | None],
+    httpx.AsyncClient,
+]
+
+
 class MCPServerTransport(TypedDict, total=False):
     """Type definition for MCP server transport configuration."""
 
@@ -19,11 +28,35 @@ class MCPServerTransport(TypedDict, total=False):
     url: str
     headers: dict[str, str]
     timeout: int
+    httpx_client_factory: McpHttpClientFactory
 
 
 # Type aliases for clarity and reusability
 ClientHeaders: TypeAlias = dict[str, dict[str, str]]
 MCPServersDict: TypeAlias = dict[str, MCPServerTransport]
+
+
+def _build_httpx_factory(ca_bundle_path: str) -> McpHttpClientFactory:
+    """Build an httpx client factory that uses the given CA bundle for TLS verification.
+
+    Args:
+        ca_bundle_path: Path to the PEM file containing trusted CA certificates.
+
+    Returns:
+        A callable that produces httpx.AsyncClient instances with the custom SSL context.
+    """
+    ssl_context = ssl.create_default_context(cafile=ca_bundle_path)
+
+    def factory(
+        headers: dict[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+        auth: httpx.Auth | None = None,
+    ) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            verify=ssl_context, headers=headers, timeout=timeout, auth=auth
+        )
+
+    return factory
 
 
 def get_servers_requiring_client_headers(
@@ -214,7 +247,14 @@ async def gather_mcp_tools(
                 server_name,
             )
         except Exception as e:
-            logger.error("Failed to get tools from MCP server '%s': %s", server_name, e)
+            causes = e.exceptions if isinstance(e, ExceptionGroup) else [e]
+            for exc in causes:
+                logger.error(
+                    "Failed to get tools from MCP server '%s': %s: %s",
+                    server_name,
+                    type(exc).__name__,
+                    exc,
+                )
 
     return all_tools
 
@@ -443,6 +483,16 @@ def build_mcp_config(
 
     servers_config: MCPServersDict = {}
 
+    httpx_factory: McpHttpClientFactory | None = None
+    if config.ols_config.certificate_directory:
+        ca_bundle = os.path.join(
+            config.ols_config.certificate_directory,
+            constants.CERTIFICATE_STORAGE_FILENAME,
+        )
+        if os.path.isfile(ca_bundle):
+            httpx_factory = _build_httpx_factory(ca_bundle)
+            logger.debug("MCP connections will use custom CA bundle: %s", ca_bundle)
+
     try:
         for server in servers_list:
             headers = resolve_server_headers(server, user_token, client_headers)
@@ -458,6 +508,8 @@ def build_mcp_config(
                 server_config["headers"] = headers
             if server.timeout:
                 server_config["timeout"] = server.timeout
+            if httpx_factory is not None:
+                server_config["httpx_client_factory"] = httpx_factory
 
             servers_config[server.name] = server_config
 
