@@ -74,13 +74,6 @@ arches:
     name: expat
     evr: 2.5.0-3.el9_5.1
     sourcerpm: expat-2.5.0-3.el9_5.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/g/gzip-1.12-1.el9.aarch64.rpm
-    repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 169809
-    checksum: sha256:45710df49b439ddc4a2848fd3877367761b574234ae28b6be46f1cf54f3fcdca
-    name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/l/libpkgconf-1.7.3-10.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 38310
@@ -116,33 +109,7 @@ arches:
     name: pkgconf-pkg-config
     evr: 1.7.3-10.el9
     sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/t/tar-1.34-7.el9.aarch64.rpm
-    repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 900197
-    checksum: sha256:44552dea889d350403c3074a33d7cb274b3f57553e47db998745df13f931b458
-    name: tar
-    evr: 2:1.34-7.el9
-    sourcerpm: tar-1.34-7.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
-    repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 469639
-    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
-    name: bash-completion
-    evr: 1:2.11-5.el9
-    sourcerpm: bash-completion-2.11-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.17/os/Packages/o/openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.aarch64.rpm
-    repoid: rhocp-4.17-for-rhel-9-aarch64-rpms
-    size: 55803930
-    checksum: sha256:659ed390de010bce3d235539a61fa5ce888f7bcf156593093dc24aa6e9df0120
-    name: openshift-clients
-    evr: 4.17.0-202502191804.p0.g2510f85.assembly.stream.el9
-    sourcerpm: openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.src.rpm
-  source:
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/aarch64/rhocp/4.17/source/SRPMS/Packages/o/openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.src.rpm
-    repoid: rhocp-4.17-for-rhel-9-aarch64-source-rpms
-    size: 16713750
-    checksum: sha256:4a56c1f40e5fe25e540821429041725c8bbd026b4dfea3535238d005afd63ca5
-    name: openshift-clients
+  source: []
 - arch: x86_64
   packages:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libnsl2-2.0.0-1.el9.x86_64.rpm
@@ -222,13 +189,6 @@ arches:
     name: expat
     evr: 2.5.0-3.el9_5.1
     sourcerpm: expat-2.5.0-3.el9_5.1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/g/gzip-1.12-1.el9.x86_64.rpm
-    repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 171206
-    checksum: sha256:c8b3e0414d55b1eedb0185a564ac6cb2368bee2fd5f995447d045f6a714488ac
-    name: gzip
-    evr: 1.12-1.el9
-    sourcerpm: gzip-1.12-1.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libpkgconf-1.7.3-10.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 38387
@@ -264,32 +224,5 @@ arches:
     name: pkgconf-pkg-config
     evr: 1.7.3-10.el9
     sourcerpm: pkgconf-1.7.3-10.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/t/tar-1.34-7.el9.x86_64.rpm
-    repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 910235
-    checksum: sha256:17f2e592a2c04c050b690afeb9042e02521a0b5ee3288dad837463f4acf542c3
-    name: tar
-    evr: 2:1.34-7.el9
-    sourcerpm: tar-1.34-7.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/b/bash-completion-2.11-5.el9.noarch.rpm
-    repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 469639
-    checksum: sha256:3b4ae87f0e9a13cda47f1c009eb2c63135dc22b2b4dd89a6310f8e8fbb59e30a
-    name: bash-completion
-    evr: 1:2.11-5.el9
-    sourcerpm: bash-completion-2.11-5.el9.src.rpm
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.17/os/Packages/o/openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.x86_64.rpm
-    repoid: rhocp-4.17-for-rhel-9-x86_64-rpms
-    size: 56565664
-    checksum: sha256:9fe8372cc763160abae2fef75b3c1f8e45ce5c8e95cac6e9f8456158a045aa90
-    name: openshift-clients
-    evr: 4.17.0-202502191804.p0.g2510f85.assembly.stream.el9
-    sourcerpm: openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.src.rpm
-  source:
-  - url: https://cdn.redhat.com/content/dist/layered/rhel9/x86_64/rhocp/4.17/source/SRPMS/Packages/o/openshift-clients-4.17.0-202502191804.p0.g2510f85.assembly.stream.el9.src.rpm
-    repoid: rhocp-4.17-for-rhel-9-x86_64-source-rpms
-    size: 16713750
-    checksum: sha256:4a56c1f40e5fe25e540821429041725c8bbd026b4dfea3535238d005afd63ca5
-    name: openshift-clients
-    evr: 4.17.0-202502191804.p0.g2510f85.assembly.stream.el9
+  source: []
   module_metadata: []
