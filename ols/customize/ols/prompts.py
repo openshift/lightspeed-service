@@ -75,11 +75,7 @@ Refer tool response / output before providing your response.
 # Currently only additional instructions are concatenated to original
 # doc summarizer prompt. Depending upon performance dedicated prompt will be used.
 AGENT_SYSTEM_INSTRUCTION = """
-* Think twice before executing a tool, double-check if the tool arguments are \
-really correct for your use case/need.
-* Execute as many tools as possible to gather all information. When you are \
-satisfied with all the details then answer user query.
-* Do not request same tool/function call with same argument.
+* Do not call the same tool with the same arguments more than once.
 
 Style guide:
 * Be extremely concise.
