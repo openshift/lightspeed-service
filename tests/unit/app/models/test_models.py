@@ -23,7 +23,7 @@ from ols.app.models.models import (
     SummarizerResponse,
     ToolCall,
 )
-from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
+from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT, QueryMode
 from ols.utils import suid
 
 
@@ -134,6 +134,39 @@ class TestLLM:
 
         with pytest.raises(ValidationError, match="Invalid media type: 'unknown'"):
             LLMRequest(query=query, media_type="unknown")
+
+    @staticmethod
+    def test_llm_request_mode_default():
+        """Test that mode defaults to ASK when not specified."""
+        llm_request = LLMRequest(query="irrelevant")
+        assert llm_request.mode == QueryMode.ASK
+
+    @staticmethod
+    def test_llm_request_mode_ask():
+        """Test that mode can be explicitly set to ASK."""
+        llm_request = LLMRequest(query="irrelevant", mode=QueryMode.ASK)
+        assert llm_request.mode == QueryMode.ASK
+
+    @staticmethod
+    def test_llm_request_mode_troubleshooting():
+        """Test that mode can be set to TROUBLESHOOTING."""
+        llm_request = LLMRequest(query="irrelevant", mode=QueryMode.TROUBLESHOOTING)
+        assert llm_request.mode == QueryMode.TROUBLESHOOTING
+
+    @staticmethod
+    def test_llm_request_mode_string_values():
+        """Test that mode accepts valid string values."""
+        llm_request = LLMRequest(query="irrelevant", mode="ask")
+        assert llm_request.mode == QueryMode.ASK
+
+        llm_request = LLMRequest(query="irrelevant", mode="troubleshooting")
+        assert llm_request.mode == QueryMode.TROUBLESHOOTING
+
+    @staticmethod
+    def test_llm_request_mode_invalid():
+        """Test that an invalid mode value is rejected."""
+        with pytest.raises(ValidationError):
+            LLMRequest(query="irrelevant", mode="unknown_mode")
 
 
 class TestStatusResponse:
