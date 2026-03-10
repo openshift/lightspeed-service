@@ -22,7 +22,6 @@ from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import MAX_ITERATIONS, GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.rag_index.reranker import rerank
 from ols.src.tools.tools import execute_tool_calls
 from ols.utils.mcp_utils import ClientHeaders, get_mcp_tools
 from ols.utils.token_handler import TokenHandler
@@ -293,9 +292,6 @@ class DocsSummarizer(QueryHelper):
         if rag_retriever:
             retrieved_nodes = rag_retriever.retrieve(query)
             logger.info("Retrieved %d documents from indexes", len(retrieved_nodes))
-
-            retrieved_nodes = rerank(retrieved_nodes)
-            logger.info("After reranking: %d documents", len(retrieved_nodes))
 
             # Logging top retrieved candidates with scores
             for i, node in enumerate(retrieved_nodes[:5]):
