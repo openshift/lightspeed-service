@@ -338,7 +338,9 @@ class TestBuildMcpConfig:
         mock_ctx.assert_called_once_with(cafile=str(ca_bundle))
 
         factory(headers={"X-Test": "1"})
-        mock_client_cls.assert_called_once_with(verify=mock_ssl, headers={"X-Test": "1"})
+        mock_client_cls.assert_called_once_with(
+            verify=mock_ssl, headers={"X-Test": "1"}
+        )
 
     def test_httpx_factory_absent_when_no_certificate_directory(self, mock_file_server):
         """Test that httpx_client_factory is absent when certificate_directory is None."""
