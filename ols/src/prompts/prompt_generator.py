@@ -9,7 +9,7 @@ from langchain_core.prompts import (
 )
 
 from ols.constants import ModelFamily
-from ols.customize import prompts
+from ols.src.prompts import prompts
 
 
 def format_retrieved_chunk(rag_content: str) -> str:

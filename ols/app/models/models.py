@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
-from ols.customize import prompts
+from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 from ols.utils import suid
 
 
@@ -99,7 +99,7 @@ class LLMRequest(BaseModel):
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "provider": "openai",
                     "model": "model-name",
-                    "system_prompt": prompts.QUERY_SYSTEM_INSTRUCTION,
+                    "system_prompt": QUERY_SYSTEM_INSTRUCTION,
                     "attachments": [
                         {
                             "attachment_type": "log",

@@ -12,8 +12,11 @@ import pytest
 import requests
 import yaml
 
-from ols.constants import DEFAULT_CONFIGURATION_FILE, HTTP_REQUEST_HEADERS_TO_REDACT
-from ols.customize import metadata
+from ols.constants import (
+    DEFAULT_CONFIGURATION_FILE,
+    HTTP_REQUEST_HEADERS_TO_REDACT,
+    SERVICE_NAME,
+)
 from ols.utils import suid
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster as cluster_utils
@@ -225,7 +228,7 @@ def test_openapi_endpoint():
     # check application description
     info = payload["info"]
     assert "description" in info, "Service description not provided"
-    assert f"{metadata.SERVICE_NAME} service API specification" in info["description"]
+    assert f"{SERVICE_NAME} service API specification" in info["description"]
 
     # elementary check that all mandatory endpoints are covered
     paths = payload["paths"]

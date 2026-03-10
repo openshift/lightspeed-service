@@ -232,7 +232,10 @@ def test_post_question_on_noyaml_response_type(_setup, endpoint) -> None:
     """Check the REST API query endpoints when call is success."""
     ml = mock_langchain_interface("test response")
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -265,7 +268,10 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
     config.ols_config.query_filters = query_filters
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
     ):
         ml = mock_langchain_interface("test response")
         with (
@@ -316,7 +322,10 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 
     ml = mock_langchain_interface("test response")
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -379,7 +388,10 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -419,7 +431,10 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -460,7 +475,10 @@ def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -514,7 +532,10 @@ def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -577,7 +598,10 @@ def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -660,7 +684,10 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -721,7 +748,10 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -784,7 +814,10 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> Non
         return result
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.append_attachments_to_query",
             side_effect=capture_append,
@@ -945,7 +978,10 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     query = "test query"
     system_prompt = "You are an expert in something marvelous."
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch(
             "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
             False,
@@ -1010,7 +1046,10 @@ def test_tool_calling(_setup, caplog) -> None:
     mcp_servers = {"fake-server": {"transport": "http", "url": "http://fake-server"}}
 
     with (
-        patch("ols.customize.prompts.QUERY_SYSTEM_INSTRUCTION", "System Instruction"),
+        patch(
+            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
+            "System Instruction",
+        ),
         patch("ols.utils.mcp_utils.config") as mock_config,
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
