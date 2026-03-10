@@ -8,7 +8,6 @@ from langchain_core.tools.structured import StructuredTool
 from ols import constants
 from ols.app.models.config import MCPServerConfig
 from ols.utils.mcp_utils import (
-    _build_httpx_factory,
     build_mcp_config,
     gather_mcp_tools,
     get_mcp_tools,
@@ -318,20 +317,30 @@ class TestBuildMcpConfig:
     def test_httpx_factory_included_when_cert_bundle_present(
         self, mock_file_server, tmp_path
     ):
-        """Test that httpx_client_factory is set when the CA bundle exists."""
+        """Test that httpx_client_factory is set with correct SSL context."""
         ca_bundle = tmp_path / "ols.pem"
         ca_bundle.write_text("fake-cert")
 
         with (
             patch("ols.utils.mcp_utils.config") as mock_config,
-            patch("ssl.create_default_context"),
+            patch("ssl.create_default_context") as mock_ctx,
+            patch("ols.utils.mcp_utils.httpx.AsyncClient") as mock_client_cls,
         ):
+            mock_ssl = MagicMock()
+            mock_ctx.return_value = mock_ssl
             mock_config.ols_config.certificate_directory = str(tmp_path)
             result = build_mcp_config([mock_file_server], None, None)
 
         assert "file-server" in result
-        assert "httpx_client_factory" in result["file-server"]
-        assert callable(result["file-server"]["httpx_client_factory"])
+        factory = result["file-server"]["httpx_client_factory"]
+        assert callable(factory)
+
+        mock_ctx.assert_called_once_with(cafile=str(ca_bundle))
+
+        factory(headers={"X-Test": "1"})
+        mock_client_cls.assert_called_once_with(
+            verify=mock_ssl, headers={"X-Test": "1"}
+        )
 
     def test_httpx_factory_absent_when_no_certificate_directory(self, mock_file_server):
         """Test that httpx_client_factory is absent when certificate_directory is None."""
@@ -352,58 +361,6 @@ class TestBuildMcpConfig:
 
         assert "file-server" in result
         assert "httpx_client_factory" not in result["file-server"]
-
-
-class TestBuildHttpxFactory:
-    """Tests for _build_httpx_factory helper."""
-
-    def test_returns_callable(self, tmp_path):
-        """Test that _build_httpx_factory returns a callable."""
-        ca_bundle = tmp_path / "ols.pem"
-        ca_bundle.write_text("fake-cert")
-
-        with patch("ssl.create_default_context"):
-            factory = _build_httpx_factory(str(ca_bundle))
-
-        assert callable(factory)
-
-    def test_factory_produces_async_client(self, tmp_path):
-        """Test that the factory callable returns an httpx.AsyncClient."""
-        ca_bundle = tmp_path / "ols.pem"
-        ca_bundle.write_text("fake-cert")
-
-        with (
-            patch("ssl.create_default_context") as mock_ctx,
-            patch("ols.utils.mcp_utils.httpx.AsyncClient") as mock_client_cls,
-        ):
-            mock_ssl = MagicMock()
-            mock_ctx.return_value = mock_ssl
-            factory = _build_httpx_factory(str(ca_bundle))
-            factory()
-            mock_client_cls.assert_called_once()
-
-    def test_factory_passes_ssl_context(self, tmp_path):
-        """Test that the factory uses the SSL context built from the CA bundle path."""
-        ca_bundle = tmp_path / "ols.pem"
-        ca_bundle.write_text("fake-cert")
-
-        with (
-            patch("ssl.create_default_context") as mock_ctx,
-            patch("ols.utils.mcp_utils.httpx.AsyncClient") as mock_client_cls,
-        ):
-            mock_ssl = MagicMock()
-            mock_ctx.return_value = mock_ssl
-            factory = _build_httpx_factory(str(ca_bundle))
-
-            mock_ctx.assert_called_once_with(cafile=str(ca_bundle))
-
-            factory(headers={"X-Test": "1"})
-            mock_client_cls.assert_called_once_with(
-                verify=mock_ssl,
-                headers={"X-Test": "1"},
-                timeout=None,
-                auth=None,
-            )
 
 
 @pytest.mark.asyncio

@@ -1,24 +1,20 @@
 """Utilities for parsing and validating MCP client headers."""
 
+import functools
 import logging
 import os
 import ssl
-from typing import Callable, Optional, TypeAlias, TypedDict
+from typing import Optional, TypeAlias, TypedDict
 
 import httpx
 from langchain_core.tools.structured import StructuredTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_mcp_adapters.sessions import McpHttpClientFactory
 
 from ols import config, constants
 from ols.app.models.config import MCPServerConfig, MCPServers
 
 logger = logging.getLogger(__name__)
-
-
-McpHttpClientFactory: TypeAlias = Callable[
-    [dict[str, str] | None, httpx.Timeout | None, httpx.Auth | None],
-    httpx.AsyncClient,
-]
 
 
 class MCPServerTransport(TypedDict, total=False):
@@ -34,29 +30,6 @@ class MCPServerTransport(TypedDict, total=False):
 # Type aliases for clarity and reusability
 ClientHeaders: TypeAlias = dict[str, dict[str, str]]
 MCPServersDict: TypeAlias = dict[str, MCPServerTransport]
-
-
-def _build_httpx_factory(ca_bundle_path: str) -> McpHttpClientFactory:
-    """Build an httpx client factory that uses the given CA bundle for TLS verification.
-
-    Args:
-        ca_bundle_path: Path to the PEM file containing trusted CA certificates.
-
-    Returns:
-        A callable that produces httpx.AsyncClient instances with the custom SSL context.
-    """
-    ssl_context = ssl.create_default_context(cafile=ca_bundle_path)
-
-    def factory(
-        headers: dict[str, str] | None = None,
-        timeout: httpx.Timeout | None = None,
-        auth: httpx.Auth | None = None,
-    ) -> httpx.AsyncClient:
-        return httpx.AsyncClient(
-            verify=ssl_context, headers=headers, timeout=timeout, auth=auth
-        )
-
-    return factory
 
 
 def get_servers_requiring_client_headers(
@@ -490,7 +463,8 @@ def build_mcp_config(
             constants.CERTIFICATE_STORAGE_FILENAME,
         )
         if os.path.isfile(ca_bundle):
-            httpx_factory = _build_httpx_factory(ca_bundle)
+            ssl_context = ssl.create_default_context(cafile=ca_bundle)
+            httpx_factory = functools.partial(httpx.AsyncClient, verify=ssl_context)
             logger.debug("MCP connections will use custom CA bundle: %s", ca_bundle)
 
     try:
