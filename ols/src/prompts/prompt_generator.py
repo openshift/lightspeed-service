@@ -1,5 +1,7 @@
 """Prompt generator based on model / context."""
 
+from datetime import datetime, timezone
+
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -38,8 +40,9 @@ class GeneratePrompt:
     def generate_prompt(self, model: str) -> tuple[ChatPromptTemplate, dict]:
         """Generate prompt."""
         prompt_message = []
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         sys_intruction = self._sys_instruction.strip()
-        llm_input_values: dict = {"query": self._query}
+        llm_input_values: dict = {"query": self._query, "time": now_utc}
 
         if self._tool_call:
             agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()
