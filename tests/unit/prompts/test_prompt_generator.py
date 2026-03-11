@@ -1,5 +1,6 @@
 """Unit tests for PromptGenerator."""
 
+import re
 from unittest.mock import patch
 
 import pytest
@@ -49,7 +50,8 @@ def test_generate_prompt_default_prompt(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
+    assert "time" in llm_input_values
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -88,7 +90,8 @@ def test_generate_prompt_without_rag_context(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
+    assert "time" in llm_input_values
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -123,7 +126,8 @@ def test_generate_prompt_without_history(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
+    assert "time" in llm_input_values
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 2
@@ -155,7 +159,8 @@ def test_generate_prompt_without_rag_without_history(model):
     ).generate_prompt(model)
 
     assert prompt.input_variables == ["query"]
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
+    assert "time" in llm_input_values
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 2
@@ -193,7 +198,8 @@ def test_generate_prompt_with_tool_call(model):
         ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
+    assert "time" in llm_input_values
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -226,3 +232,23 @@ def test_generate_prompt_with_tool_call(model):
         "AI: First AI message\n"
         f"Human: {query}"
     )
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_resolves_time_variable(model):
+    """Test that {time} in system instruction is resolved to a UTC timestamp."""
+    instruction_with_time = "Current time is {time}."
+
+    prompt, llm_input_values = GeneratePrompt(
+        query,
+        [],
+        [],
+        instruction_with_time,
+    ).generate_prompt(model)
+
+    assert "time" in llm_input_values
+    assert re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", llm_input_values["time"])
+
+    formatted = prompt.format(**llm_input_values)
+    assert "{time}" not in formatted
+    assert "UTC" in formatted
