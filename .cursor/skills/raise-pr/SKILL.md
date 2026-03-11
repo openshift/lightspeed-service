@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # Create a PR
 
-## Step 1: Verify branching
-
-Run:
+## Step 1: Branch
 
 ```bash
 git fetch upstream
@@ -18,35 +16,24 @@ git diff upstream/main --stat
 gh pr list --head "$(git branch --show-current)" --state open
 ```
 
-**The default is always a new branch from `upstream/main`.** Only reuse the current branch if the user explicitly confirms it. Never branch from `origin/main` — the fork may have stale commits that will appear in the PR.
-
-Present this summary and ask before proceeding:
+Present the summary and ask before proceeding:
 
 > "You are currently on branch `<branch>`. It has `<N>` commit(s) ahead of `upstream/main` touching: `<files>`.
-> [If an open PR exists]: ⚠️ This branch already has an open PR: `<url>`. Pushing here would add commits to that existing PR.
+> [If an open PR exists]: This branch already has an open PR: `<url>`. Pushing here would add commits to that existing PR.
 > Should I create a **new branch** from `upstream/main` (recommended), or use the current branch?"
 
 **Do not continue until the user answers.**
 
-If creating a new branch:
+If creating a new branch — git carries uncommitted changes automatically:
 
 ```bash
 git fetch upstream
-git checkout -b <short-description> upstream/main
+git checkout -b <type>/<short-description> upstream/main
 # cherry-pick intended commits from the old branch if needed
 git cherry-pick <sha1> <sha2> ...
 ```
 
-Also sync the fork's `main` to keep it clean:
-
-```bash
-git checkout main
-git reset --hard upstream/main
-git push --force-with-lease origin main
-git checkout <new-branch>
-```
-
-Branch naming: `<type>/<short-description>` — e.g. `feat/add-mcp-stdio-server`, `fix/token-quota-reset`.
+Never branch from `origin/main` — the fork may have stale commits that will appear in the PR.
 
 ## Step 2: Pre-commit checks
 
@@ -57,49 +44,21 @@ Run in order and fix all failures before proceeding:
 3. `make verify`
 4. Confirm 90%+ coverage is maintained for changed code
 
-## Step 3: Gather context
+## Step 3: Commit and push
 
 If a Jira issue ID has not been provided, ask the user for it before proceeding.
 
-Run these in parallel to understand the changes:
-
-```bash
-git status
-git diff HEAD
-git log --oneline -10
-```
-
-## Step 4: Commit
-
-Write a short imperative sentence, no period, no conventional prefix:
-
-```
-Remove question validation subsystem
-Fix spurious GeneratorExit errors in LangChain streaming logs
-Add quota enforcement for WatsonX provider
-```
-
-- Single line unless the change genuinely needs more explanation
-- Do not reference the Jira/issue number in the commit message
+Commit message: short imperative sentence, no period, no conventional prefix, no Jira ID.
 
 ```bash
 git add -A   # or only the relevant files
 git commit -m "<message>"
-```
-
-## Step 5: Push
-
-```bash
 git push -u origin HEAD
 ```
 
-## Step 6: Open the PR
+## Step 4: Open the PR
 
 Title format: `<JIRA-ID>: <same short imperative sentence as commit>`
-
-```
-OLS-2681: Remove question validation subsystem
-```
 
 Read `.github/PULL_REQUEST_TEMPLATE.md` and populate all sections:
 
