@@ -207,6 +207,9 @@ CONFIGURATION_DUMP_FILE_NAME = "configuration.json"
 # configuration file
 CONFIGURATION_FILE_NAME_ENV_VARIABLE = "OLS_CONFIG_FILE"
 
+# Service name used in OpenAPI specification
+SERVICE_NAME = "OpenShift LightSpeed"
+
 # Response streaming media types
 MEDIA_TYPE_TEXT = "text/plain"
 MEDIA_TYPE_JSON = "application/json"

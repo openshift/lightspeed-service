@@ -9,7 +9,7 @@ import requests
 from fastapi import FastAPI
 
 from ols import config
-from ols.customize import prompts
+from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,7 @@ class GradioUI:
         additional_inputs = [use_history, provider, model]
         if config.dev_config.enable_system_prompt_override:
             system_prompt = gr.TextArea(
-                value=config.ols_config.system_prompt
-                or prompts.QUERY_SYSTEM_INSTRUCTION,
+                value=config.ols_config.system_prompt or QUERY_SYSTEM_INSTRUCTION,
                 label="System prompt",
             )
             additional_inputs.append(system_prompt)

@@ -13,8 +13,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from ols import config
-from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE
-from ols.customize import metadata
+from ols.constants import CONFIGURATION_FILE_NAME_ENV_VARIABLE, SERVICE_NAME
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -54,7 +53,7 @@ def test_openapi_endpoint():
     # check application description
     info = payload["info"]
     assert "description" in info, "Service description not provided"
-    assert f"{metadata.SERVICE_NAME} service API specification" in info["description"]
+    assert f"{SERVICE_NAME} service API specification" in info["description"]
 
     # elementary check that all mandatory endpoints are covered
     paths = payload["paths"]

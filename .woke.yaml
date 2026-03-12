@@ -5,8 +5,7 @@ ignore_files:
   - '**/*.cache'         # Exclude files ending with .cache
   - '__pycache__/**/*'   # Exclude Python cache directories
   - '.*'                 # Exclude all files starting with .
-  - 'ols/customize/ols/keywords.py'
-  - ols/customize/ols/prompts.py
+  - ols/src/prompts/prompts.py
   - docs/openapi.json
   - eval/eval_data*
 

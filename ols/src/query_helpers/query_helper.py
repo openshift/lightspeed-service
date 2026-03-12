@@ -7,8 +7,8 @@ from typing import Optional
 from langchain_core.language_models.llms import LLM
 
 from ols import config
-from ols.customize import prompts
 from ols.src.llms.llm_loader import load_llm
+from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,6 @@ class QueryHelper:
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)
             or config.ols_config.system_prompt
-            or prompts.QUERY_SYSTEM_INSTRUCTION
+            or QUERY_SYSTEM_INSTRUCTION
         )
         logger.debug("System prompt: %s", self._system_prompt)
