@@ -19,7 +19,7 @@ from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
-from ols.constants import MAX_ITERATIONS, GenericLLMParameters
+from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
@@ -419,6 +419,8 @@ class DocsSummarizer(QueryHelper):
                 self.model_config.parameters.max_tokens_per_tool_output
             )
             token_handler = TokenHandler()
+            rounds_used = 0
+            stop_reason = "loop_completion"
 
             # Account for tool definitions tokens (schemas sent to LLM)
             if all_mcp_tools:
@@ -450,6 +452,7 @@ class DocsSummarizer(QueryHelper):
 
             # Tool calling in a loop
             for i in range(1, max_rounds + 1):
+                rounds_used = i
 
                 is_final_round = (not all_mcp_tools) or (i == max_rounds)
                 logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
@@ -497,10 +500,18 @@ class DocsSummarizer(QueryHelper):
                     chunk_counter += 1
 
                 if stop_generation:
+                    stop_reason = "finish_reason_stop"
+                    logger.info(
+                        "Tool loop completed: rounds_used=%d max_rounds=%d stop_reason=%s",
+                        rounds_used,
+                        max_rounds,
+                        stop_reason,
+                    )
                     return
 
                 # exit if this was the final round
                 if is_final_round:
+                    stop_reason = "final_round"
                     break
 
                 # tool calling part
@@ -572,6 +583,17 @@ class DocsSummarizer(QueryHelper):
                     ):
                         yield result_chunk
 
+            logger.info(
+                "Tool loop completed: rounds_used=%d max_rounds=%d stop_reason=%s",
+                rounds_used,
+                max_rounds,
+                stop_reason,
+            )
+
+    def _get_max_iterations(self) -> int:
+        """Return configured max rounds for tool-calling loop."""
+        return config.ols_config.max_iterations
+
     async def generate_response(
         self,
         query: str,
@@ -603,7 +625,7 @@ class DocsSummarizer(QueryHelper):
         ) as token_counter:
             async for response in self.iterate_with_tools(
                 messages=messages,
-                max_rounds=MAX_ITERATIONS,
+                max_rounds=self._get_max_iterations(),
                 token_counter=token_counter,
                 llm_input_values=llm_input_values,
                 all_mcp_tools=all_mcp_tools,

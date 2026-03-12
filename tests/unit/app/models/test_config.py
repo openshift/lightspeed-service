@@ -2163,6 +2163,7 @@ def test_ols_config(tmpdir):
     )
     assert ols_config.default_provider == "test_default_provider"
     assert ols_config.default_model == "test_default_model"
+    assert ols_config.max_iterations == constants.DEFAULT_MAX_ITERATIONS
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
@@ -2176,6 +2177,18 @@ def test_ols_config(tmpdir):
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile == TLSSecurityProfile()
+
+
+def test_ols_config_with_custom_max_iterations():
+    """Test OLSConfig max_iterations override."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "max_iterations": 7,
+        }
+    )
+    assert ols_config.max_iterations == 7
 
 
 def test_ols_config_with_auth_config(tmpdir):
@@ -2302,6 +2315,12 @@ def test_ols_config_equality(subtests):
     with subtests.test(msg="Different attribute: default_model"):
         ols_config_1, ols_config_2 = get_ols_configs()
         ols_config_1.default_model = "my_own_model"
+        assert ols_config_1 != ols_config_2
+
+    # max_iterations attribute (int)
+    with subtests.test(msg="Different attribute: max_iterations"):
+        ols_config_1, ols_config_2 = get_ols_configs()
+        ols_config_1.max_iterations = 7
         assert ols_config_1 != ols_config_2
 
     # certificate_directory attribute (str/dir)
