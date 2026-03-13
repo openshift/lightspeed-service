@@ -275,7 +275,10 @@ def test_tool_calling_force_stop():
     question = "How many namespaces are there in my cluster?"
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 3),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=3,
+        ),
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
@@ -316,7 +319,10 @@ def test_tool_calling_tool_execution(caplog):
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -383,7 +389,10 @@ def test_tool_result_includes_structured_content():
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -444,7 +453,10 @@ def test_tool_result_without_structured_content_has_no_key():
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -503,7 +515,10 @@ def test_tool_token_tracking(caplog):
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -1015,7 +1030,10 @@ def test_tool_result_includes_tool_meta():
     mock_server.name = "test-server"
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -1074,7 +1092,10 @@ def test_tool_result_without_meta_has_no_tool_meta_key():
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -1135,7 +1156,10 @@ def test_tool_call_includes_tool_meta():
     mock_server.name = "test-server"
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
@@ -1193,7 +1217,10 @@ def test_tool_call_without_meta_has_no_tool_meta_key():
     }
 
     with (
-        patch("ols.src.query_helpers.docs_summarizer.MAX_ITERATIONS", 2),
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"

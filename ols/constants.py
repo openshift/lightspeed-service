@@ -44,10 +44,6 @@ class GenericLLMParameters:
     TEMPERATURE = "temperature"
 
 
-# Max Iteration for tool calling
-MAX_ITERATIONS = 5
-
-
 # Token related constants
 
 # It is important to set correct context window, otherwise there will be potential
@@ -62,6 +58,7 @@ DEFAULT_CONTEXT_WINDOW_SIZE = 128000
 # It should be in reasonable proportion to context window limit; otherwise unnecessary
 # truncation will happen. If not set, default value will be used.
 DEFAULT_MAX_TOKENS_FOR_RESPONSE = 4096
+DEFAULT_MAX_ITERATIONS = 5
 
 
 # Tokenizer model to generate tokens (for an approximated token calculation)
