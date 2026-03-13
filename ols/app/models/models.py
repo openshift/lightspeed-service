@@ -749,13 +749,15 @@ class TokenCounter:
     Attributes:
         llm: LLM instance
         input_tokens: number of tokens sent to LLM
-        output_tokens: number of tokens received from LLM
+        output_tokens: number of text tokens received from LLM
+        reasoning_tokens: number of reasoning summary tokens received from LLM
         llm_calls: number of LLM calls
     """
 
     llm: Optional[LLM] = None
     input_tokens: int = 0
     output_tokens: int = 0
+    reasoning_tokens: int = 0
     llm_calls: int = 0
 
 
@@ -992,7 +994,7 @@ class StreamedChunk:
         data: Additional data associated with the chunk (for non-text chunks)
     """
 
-    type: Literal["text", "tool_call", "tool_result", "end"]
+    type: Literal["text", "tool_call", "tool_result", "end", "reasoning"]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 

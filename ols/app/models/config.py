@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from enum import StrEnum
-from typing import Any, Optional, Self
+from typing import Any, Literal, Optional, Self
 
 from pydantic import (
     AnyHttpUrl,
@@ -29,6 +29,10 @@ class ModelParameters(BaseModel):
         constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
     )
     max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
+
+    reasoning_effort: Literal["low", "medium", "high"] = "low"
+    reasoning_summary: Literal["auto", "concise", "detailed"] = "concise"
+    verbosity: Literal["low", "medium", "high"] = "low"
 
 
 class ModelConfig(BaseModel):

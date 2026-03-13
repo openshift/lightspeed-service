@@ -17,6 +17,7 @@ from ols import config, constants
 from ols.app.endpoints.ols import (
     calc_input_tokens,
     calc_output_tokens,
+    calc_reasoning_tokens,
     consume_tokens,
     generate_response,
     get_available_quotas,
@@ -51,6 +52,7 @@ auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-acce
 LLM_TOKEN_EVENT = "token"  # noqa: S105
 LLM_TOOL_CALL_EVENT = "tool_call"
 LLM_TOOL_RESULT_EVENT = "tool_result"
+LLM_REASONING_EVENT = "reasoning"
 
 
 query_responses: dict[int | str, dict[str, Any]] = {
@@ -159,6 +161,8 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
     if media_type == MEDIA_TYPE_TEXT:
         if event_type == LLM_TOKEN_EVENT:
             return data["token"]
+        if event_type == LLM_REASONING_EVENT:
+            return data["reasoning"]
         if event_type == LLM_TOOL_CALL_EVENT:
             return f"\nTool call: {json.dumps(data)}\n"
         if event_type == LLM_TOOL_RESULT_EVENT:
@@ -198,6 +202,7 @@ def stream_end_event(
                     "truncated": truncated,
                     "input_tokens": calc_input_tokens(token_counter),
                     "output_tokens": calc_output_tokens(token_counter),
+                    "reasoning_tokens": calc_reasoning_tokens(token_counter),
                 },
                 "available_quotas": available_quotas,
             }
@@ -377,6 +382,7 @@ async def response_processing_wrapper(
     tool_results: list = []
     history_truncated: bool = False
     idx: int = 0
+    was_reasoning: bool = False
     token_counter: Optional[TokenCounter] = None
 
     try:
@@ -399,7 +405,18 @@ async def response_processing_wrapper(
                     event_type=LLM_TOOL_RESULT_EVENT,
                     media_type=media_type,
                 )
+            elif item.type == "reasoning":
+                was_reasoning = True
+                yield stream_event(
+                    data={"id": idx, "reasoning": item.text},
+                    event_type=LLM_REASONING_EVENT,
+                    media_type=media_type,
+                )
+                idx += 1
             elif item.type == "text":
+                if was_reasoning and media_type == MEDIA_TYPE_TEXT:
+                    yield "\n\n"
+                    was_reasoning = False
                 response += item.text
                 yield stream_event(
                     data={"id": idx, "token": item.text},
