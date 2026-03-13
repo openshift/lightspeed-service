@@ -8,6 +8,11 @@ llm_providers:
     models:
       - name: model-name-1
       - name: model-name-2
+        # Reasoning model settings (GPT-5, o-series). Omit for non-reasoning models.
+        # parameters:
+        #   reasoning_effort: low      # low | medium | high (default: low)
+        #   reasoning_summary: concise  # auto | concise | detailed (default: concise)
+        #   verbosity: low             # low | medium | high (default: low)
   - name: my_azure_openai
     type: azure_openai
     url: "https://myendpoint.openai.azure.com/"

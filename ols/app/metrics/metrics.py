@@ -43,6 +43,11 @@ llm_token_sent_total = Counter(
 llm_token_received_total = Counter(
     "ols_llm_token_received_total", "LLM tokens received", ["provider", "model"]
 )
+llm_reasoning_token_total = Counter(
+    "ols_llm_reasoning_token_total",
+    "LLM reasoning summary tokens received",
+    ["provider", "model"],
+)
 
 # metric that indicates what provider + model customers are using so we can
 # understand what is popular/important
