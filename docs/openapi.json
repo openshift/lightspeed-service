@@ -393,6 +393,86 @@
                 }
             }
         },
+        "/v1/tool-approvals/decision": {
+            "post": {
+                "tags": [
+                    "tool-approvals"
+                ],
+                "summary": "Submit Tool Approval Decision",
+                "description": "Submit user decision for a pending tool approval request.",
+                "operationId": "submit_tool_approval_decision_v1_tool_approvals_decision_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToolApprovalDecisionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Approval decision applied successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Client does not have permission to access resource",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Approval request not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Approval request already resolved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback/status": {
             "get": {
                 "tags": [
@@ -1979,6 +2059,32 @@
                         "status": {
                             "enabled": true
                         }
+                    }
+                ]
+            },
+            "ToolApprovalDecisionRequest": {
+                "properties": {
+                    "approval_id": {
+                        "type": "string",
+                        "title": "Approval Id"
+                    },
+                    "approved": {
+                        "type": "boolean",
+                        "title": "Approved"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "approval_id",
+                    "approved"
+                ],
+                "title": "ToolApprovalDecisionRequest",
+                "description": "Request payload to submit a tool-approval decision.\n\nAttributes:\n    approval_id: Unique identifier of a pending approval request.\n    approved: True to approve tool execution, False to reject it.",
+                "examples": [
+                    {
+                        "approval_id": "a89a5d3f-4bda-4eab-9f90-61d8e7b06dd2",
+                        "approved": true
                     }
                 ]
             },
