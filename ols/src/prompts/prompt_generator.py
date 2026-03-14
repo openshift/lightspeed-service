@@ -42,7 +42,9 @@ class GeneratePrompt:
         prompt_message = []
         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         sys_intruction = self._sys_instruction.strip()
-        llm_input_values: dict = {"query": self._query, "time": now_utc}
+        # TODO: retrieve cluster version dynamically
+        version = "4.20.13"
+        llm_input_values: dict = {"query": self._query, "time": now_utc, "version": version}
 
         if self._tool_call:
             agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()

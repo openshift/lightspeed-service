@@ -252,3 +252,23 @@ def test_generate_prompt_resolves_time_variable(model):
     formatted = prompt.format(**llm_input_values)
     assert "{time}" not in formatted
     assert "UTC" in formatted
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_resolves_version_variable(model):
+    """Test that {version} in system instruction is resolved to a version string."""
+    instruction_with_version = "OpenShift version: {version}."
+
+    prompt, llm_input_values = GeneratePrompt(
+        query,
+        [],
+        [],
+        instruction_with_version,
+    ).generate_prompt(model)
+
+    assert "version" in llm_input_values
+    assert re.match(r"\d+\.\d+\.\d+", llm_input_values["version"])
+
+    formatted = prompt.format(**llm_input_values)
+    assert "{version}" not in formatted
+    assert llm_input_values["version"] in formatted
