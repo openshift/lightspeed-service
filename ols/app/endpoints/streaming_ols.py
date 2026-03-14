@@ -11,7 +11,6 @@ from typing import Any, AsyncGenerator, Generator, Optional, Union
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import ToolMessage
 
 from ols import config, constants
 from ols.app.endpoints.ols import (
@@ -27,6 +26,7 @@ from ols.app.endpoints.ols import (
 )
 from ols.app.models.models import (
     Attachment,
+    ChunkType,
     ErrorResponse,
     ForbiddenResponse,
     LLMRequest,
@@ -48,9 +48,13 @@ router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency(config.ols_config, virtual_path="/ols-access")
 
 
-LLM_TOKEN_EVENT = "token"  # noqa: S105
-LLM_TOOL_CALL_EVENT = "tool_call"
-LLM_TOOL_RESULT_EVENT = "tool_result"
+STREAM_KEY_EVENT = "event"
+STREAM_KEY_DATA = "data"
+TOKEN_KEY_ID = "id"  # noqa: S105
+TOKEN_KEY_TOKEN = "token"  # noqa: S105
+END_KEY_RAG_CHUNKS = "rag_chunks"
+END_KEY_TRUNCATED = "truncated"
+END_KEY_TOKEN_COUNTER = "token_counter"  # noqa: S105
 
 
 query_responses: dict[int | str, dict[str, Any]] = {
@@ -123,7 +127,7 @@ def conversation_request(
     )
 
 
-def format_stream_data(d: dict) -> str:
+def format_stream_data(d: dict[str, object]) -> str:
     """Format outbound data in the Event Stream Format."""
     data = json.dumps(d)
     return f"data: {data}\n\n"
@@ -145,7 +149,7 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_event(data: dict, event_type: str, media_type: str) -> str:
+def stream_event(data: dict[str, object], event_type: str, media_type: str) -> str:
     """Build an item to yield based on media type.
 
     Args:
@@ -157,18 +161,22 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
         str: The formatted string or JSON to yield.
     """
     if media_type == MEDIA_TYPE_TEXT:
-        if event_type == LLM_TOKEN_EVENT:
-            return data["token"]
-        if event_type == LLM_TOOL_CALL_EVENT:
-            return f"\nTool call: {json.dumps(data)}\n"
-        if event_type == LLM_TOOL_RESULT_EVENT:
-            return f"\nTool result: {json.dumps(data)}\n"
-        logger.error("Unknown event type: %s", event_type)
-        return ""
+        match event_type:
+            case "token":
+                return data[TOKEN_KEY_TOKEN]
+            case ChunkType.TOOL_CALL.value:
+                return f"\nTool call: {json.dumps(data)}\n"
+            case ChunkType.APPROVAL_REQUIRED.value:
+                return f"\nApproval request: {json.dumps(data)}\n"
+            case ChunkType.TOOL_RESULT.value:
+                return f"\nTool result: {json.dumps(data)}\n"
+            case _:
+                logger.error("Unknown event type: %s", event_type)
+                return ""
     return format_stream_data(
         {
-            "event": event_type,
-            "data": data,
+            STREAM_KEY_EVENT: event_type,
+            STREAM_KEY_DATA: data,
         }
     )
 
@@ -288,8 +296,8 @@ def store_data(
     conversation_id: str,
     llm_request: LLMRequest,
     response: str,
-    tool_calls: list[dict],
-    tool_results: list[ToolMessage],
+    tool_calls: list[dict[str, object]],
+    tool_results: list[dict[str, object]],
     attachments: list[Attachment],
     query_without_attachments: str,
     rag_chunks: list[RagChunk],
@@ -341,8 +349,8 @@ def store_data(
     timestamps["store transcripts"] = time.time()
 
 
-async def response_processing_wrapper(
-    generator: AsyncGenerator[Any, None],
+async def response_processing_wrapper(  # noqa: C901
+    generator: AsyncGenerator[StreamedChunk, None],
     user_id: str,
     conversation_id: str,
     llm_request: LLMRequest,
@@ -372,9 +380,9 @@ async def response_processing_wrapper(
         yield stream_start_event(conversation_id)
 
     response: str = ""
-    rag_chunks: list = []
-    tool_calls: list = []
-    tool_results: list = []
+    rag_chunks: list[RagChunk] = []
+    tool_calls: list[dict[str, object]] = []
+    tool_results: list[dict[str, object]] = []
     history_truncated: bool = False
     idx: int = 0
     token_counter: Optional[TokenCounter] = None
@@ -385,39 +393,46 @@ async def response_processing_wrapper(
                 msg = f"Expecting StreamedChunk, but got {type(item)}: {item}"
                 logger.error(msg)
                 raise ValueError(msg)
-            if item.type == "tool_call":
-                tool_calls.append(item.data)
-                yield stream_event(
-                    data=item.data,
-                    event_type=LLM_TOOL_CALL_EVENT,
-                    media_type=media_type,
-                )
-            elif item.type == "tool_result":
-                tool_results.append(item.data)
-                yield stream_event(
-                    data=item.data,
-                    event_type=LLM_TOOL_RESULT_EVENT,
-                    media_type=media_type,
-                )
-            elif item.type == "text":
-                response += item.text
-                yield stream_event(
-                    data={"id": idx, "token": item.text},
-                    event_type=LLM_TOKEN_EVENT,
-                    media_type=media_type,
-                )
-                idx += 1
-            elif item.type == "end":
-                rag_chunks = item.data["rag_chunks"]
-                history_truncated = item.data["truncated"]
-                token_counter = item.data["token_counter"]
-            else:
-                msg = (
-                    "Yielded unknown item type from streaming generator, "
-                    f"item: {item}"
-                )
-                logger.error(msg)
-                raise ValueError(msg)
+            match item.type:
+                case ChunkType.TOOL_CALL:
+                    tool_calls.append(item.data)
+                    yield stream_event(
+                        data=item.data,
+                        event_type=ChunkType.TOOL_CALL.value,
+                        media_type=media_type,
+                    )
+                case ChunkType.APPROVAL_REQUIRED:
+                    yield stream_event(
+                        data=item.data,
+                        event_type=ChunkType.APPROVAL_REQUIRED.value,
+                        media_type=media_type,
+                    )
+                case ChunkType.TOOL_RESULT:
+                    tool_results.append(item.data)
+                    yield stream_event(
+                        data=item.data,
+                        event_type=ChunkType.TOOL_RESULT.value,
+                        media_type=media_type,
+                    )
+                case ChunkType.TEXT:
+                    response += item.text
+                    yield stream_event(
+                        data={TOKEN_KEY_ID: idx, TOKEN_KEY_TOKEN: item.text},
+                        event_type=TOKEN_KEY_TOKEN,
+                        media_type=media_type,
+                    )
+                    idx += 1
+                case ChunkType.END:
+                    rag_chunks = item.data[END_KEY_RAG_CHUNKS]
+                    history_truncated = item.data[END_KEY_TRUNCATED]
+                    token_counter = item.data[END_KEY_TOKEN_COUNTER]
+                case _:
+                    msg = (
+                        "Yielded unknown item type from streaming generator, "
+                        f"item: {item}"
+                    )
+                    logger.error(msg)
+                    raise ValueError(msg)
     except PromptTooLongError as summarizer_error:
         yield prompt_too_long_error(summarizer_error, media_type)
         return  # stop execution after error
