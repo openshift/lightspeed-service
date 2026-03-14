@@ -1099,3 +1099,27 @@ class MCPAppToolCallResponse(BaseModel):
     content: list[dict[str, Any]]
     structured_content: Optional[dict[str, Any]] = None
     is_error: bool = False
+
+
+class ToolApprovalDecisionRequest(BaseModel):
+    """Request payload to submit a tool-approval decision.
+
+    Attributes:
+        approval_id: Unique identifier of a pending approval request.
+        approved: True to approve tool execution, False to reject it.
+    """
+
+    approval_id: str
+    approved: bool
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "approval_id": "a89a5d3f-4bda-4eab-9f90-61d8e7b06dd2",
+                    "approved": True,
+                }
+            ]
+        },
+    }
