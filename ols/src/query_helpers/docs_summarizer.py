@@ -18,9 +18,15 @@ from llama_index.core.retrievers import BaseRetriever
 from ols import config, constants
 from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
-from ols.app.models.models import RagChunk, StreamedChunk, SummarizerResponse
+from ols.app.models.models import (
+    RagChunk,
+    StreamChunkType,
+    StreamedChunk,
+    SummarizerResponse,
+)
 from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
+from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import execute_tool_calls
 from ols.utils.mcp_utils import ClientHeaders, get_mcp_tools
@@ -29,7 +35,6 @@ from ols.utils.token_handler import TokenHandler
 logger = logging.getLogger(__name__)
 
 # Type aliases for clarity and reusability
-MessageHistory: TypeAlias = list[BaseMessage]
 ToolsList: TypeAlias = list[StructuredTool]
 
 
@@ -191,7 +196,9 @@ def _build_tool_result_chunks(
         if structured_content:
             tool_result_data["structured_content"] = structured_content
 
-        chunks.append(StreamedChunk(type="tool_result", data=tool_result_data))
+        chunks.append(
+            StreamedChunk(type=StreamChunkType.TOOL_RESULT, data=tool_result_data)
+        )
 
     return chunks
 
@@ -242,27 +249,21 @@ class DocsSummarizer(QueryHelper):
         """Check if MCP servers are configured."""
         return config.mcp_servers is not None and len(config.mcp_servers.servers) > 0
 
-    def _prepare_prompt(
+    async def _prepare_prompt_context(
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
-    ) -> tuple[ChatPromptTemplate, dict[str, str], list[RagChunk], bool]:
-        """Summarize the given query based on the provided conversation context.
+    ) -> tuple[TokenHandler, list[RagChunk], int, int]:
+        """Prepare token budget and RAG context for prompt construction.
 
         Args:
             query: The query to be summarized.
             rag_retriever: The retriever to get RAG data/context.
-            history: The history of the conversation (if available).
 
         Returns:
-            A tuple containing the final prompt, input values, RAG chunks,
-            and a flag for truncated history.
+            A tuple containing token handler, RAG chunks, available token budget,
+            and max tokens reserved for tools.
         """
-        # if history is not provided, initialize to empty history
-        if history is None:
-            history = []
-
         token_handler = TokenHandler()
 
         # Use sample text for context/history to get complete prompt
@@ -314,10 +315,29 @@ class DocsSummarizer(QueryHelper):
         if len(rag_context) == 0:
             logger.debug("Using llm to answer the query without reference content")
 
-        # Truncate history
-        history, truncated = token_handler.limit_conversation_history(
-            history or [], available_tokens
-        )
+        return token_handler, rag_chunks, available_tokens, max_tokens_for_tools
+
+    def _build_final_prompt(
+        self,
+        query: str,
+        history: list[BaseMessage],
+        rag_chunks: list[RagChunk],
+        token_handler: TokenHandler,
+        max_tokens_for_tools: int,
+    ) -> tuple[ChatPromptTemplate, dict[str, str]]:
+        """Build final prompt from query, context, and prepared history.
+
+        Args:
+            query: The query to be summarized.
+            history: Prepared conversation history to include in prompt.
+            rag_chunks: Retrieved/truncated RAG chunks.
+            token_handler: Token helper used for final prompt-size validation.
+            max_tokens_for_tools: Reserved tool token budget for final validation.
+
+        Returns:
+            Final prompt and input values for LLM invocation.
+        """
+        rag_context = [rag_chunk.text for rag_chunk in rag_chunks]
 
         final_prompt, llm_input_values = GeneratePrompt(
             query,
@@ -337,7 +357,7 @@ class DocsSummarizer(QueryHelper):
             max_tokens_for_tools,
         )
 
-        return final_prompt, llm_input_values, rag_chunks, truncated
+        return final_prompt, llm_input_values
 
     async def _invoke_llm(
         self,
@@ -480,7 +500,7 @@ class DocsSummarizer(QueryHelper):
                     # (load test can be run with tool calling set to False till we
                     # have a permanent fix)
                     if isinstance(chunk, str):
-                        yield StreamedChunk(type="text", text=chunk)
+                        yield StreamedChunk(type=StreamChunkType.TEXT, text=chunk)
                         break
 
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
@@ -495,7 +515,9 @@ class DocsSummarizer(QueryHelper):
                             chunk.content, chunk_counter, self.model, is_final_round
                         ):
                             # stream text chunks directly
-                            yield StreamedChunk(type="text", text=chunk.content)
+                            yield StreamedChunk(
+                                type=StreamChunkType.TEXT, text=chunk.content
+                            )
 
                     chunk_counter += 1
 
@@ -545,7 +567,9 @@ class DocsSummarizer(QueryHelper):
                             )
                         )
 
-                        yield StreamedChunk(type="tool_call", data=enriched)
+                        yield StreamedChunk(
+                            type=StreamChunkType.TOOL_CALL, data=enriched
+                        )
 
                     # Calculate remaining budget for tools
                     remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
@@ -594,24 +618,88 @@ class DocsSummarizer(QueryHelper):
         """Return configured max rounds for tool-calling loop."""
         return config.ols_config.max_iterations
 
-    async def generate_response(
+    async def generate_response(  # noqa: C901
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Generate a response for the given query.
 
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        final_prompt, llm_input_values, rag_chunks, truncated = self._prepare_prompt(
-            query, rag_retriever, history
+        token_handler, rag_chunks, available_tokens, max_tokens_for_tools = (
+            await self._prepare_prompt_context(query, rag_retriever)
+        )
+        history_event_queue: asyncio.Queue[dict[str, object]] = asyncio.Queue()
+
+        async def emit_history_event(event: dict[str, object]) -> None:
+            await history_event_queue.put(event)
+
+        def to_history_chunk(event: dict[str, object]) -> StreamedChunk | None:
+            event_name = event.get("event")
+            event_data = {k: v for k, v in event.items() if k != "event"}
+            match event_name:
+                case StreamChunkType.HISTORY_COMPRESSION_START.value:
+                    return StreamedChunk(
+                        type=StreamChunkType.HISTORY_COMPRESSION_START,
+                        data=event_data,
+                    )
+                case StreamChunkType.HISTORY_COMPRESSION_END.value:
+                    return StreamedChunk(
+                        type=StreamChunkType.HISTORY_COMPRESSION_END,
+                        data=event_data,
+                    )
+                case _:
+                    logger.warning("Unknown history event emitted: %s", event_name)
+                    return None
+
+        history_task = asyncio.create_task(
+            prepare_history(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                skip_user_id_check=skip_user_id_check,
+                available_tokens=available_tokens,
+                provider=self.provider,
+                model=self.model,
+                bare_llm=self.bare_llm,
+                token_handler=token_handler,
+                emit_event=emit_history_event,
+            )
+        )
+
+        while not history_task.done():
+            try:
+                event = await asyncio.wait_for(history_event_queue.get(), timeout=0.05)
+            except TimeoutError:
+                continue
+            chunk = to_history_chunk(event)
+            if chunk is not None:
+                yield chunk
+
+        history, truncated = await history_task
+
+        while not history_event_queue.empty():
+            chunk = to_history_chunk(history_event_queue.get_nowait())
+            if chunk is not None:
+                yield chunk
+
+        final_prompt, llm_input_values = self._build_final_prompt(
+            query=query,
+            history=history,
+            rag_chunks=rag_chunks,
+            token_handler=token_handler,
+            max_tokens_for_tools=max_tokens_for_tools,
         )
         messages = final_prompt.model_copy()
 
@@ -633,7 +721,7 @@ class DocsSummarizer(QueryHelper):
                 yield response
 
         yield StreamedChunk(
-            type="end",
+            type=StreamChunkType.END,
             data={
                 "rag_chunks": rag_chunks,
                 "truncated": truncated,
@@ -645,7 +733,9 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-        history: Optional[MessageHistory] = None,
+        user_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        skip_user_id_check: bool = False,
     ) -> SummarizerResponse:
         """Create a synchronous response for the given query.
 
@@ -655,7 +745,9 @@ class DocsSummarizer(QueryHelper):
         Args:
             query: The query to be answered
             rag_retriever: Retriever for RAG context
-            history: Optional conversation history
+            user_id: User ID for retrieving conversation history
+            conversation_id: Conversation ID for retrieving history
+            skip_user_id_check: Whether to skip user ID validation
 
         Returns:
             A SummarizerResponse object containing the complete response
@@ -667,22 +759,31 @@ class DocsSummarizer(QueryHelper):
             response_end: dict[str, Any] = {}
             tool_calls = []
             tool_results = []
-            async for chunk in self.generate_response(query, rag_retriever, history):
-                if chunk.type == "end":
-                    response_end = chunk.data
-                    break
-                if chunk.type == "tool_call":
-                    tool_calls.append(chunk.data)
-                elif chunk.type == "tool_result":
-                    tool_results.append(chunk.data)
-                elif chunk.type == "text":
-                    chunks.append(chunk.text)
-                else:
-                    # this "can't" happen as we control what chunk types
-                    # are yielded in the generator directly
-                    msg = f"Unknown chunk type: {chunk.type}"
-                    logger.warning(msg)
-                    raise ValueError(msg)
+            async for chunk in self.generate_response(
+                query, rag_retriever, user_id, conversation_id, skip_user_id_check
+            ):
+                match chunk.type:
+                    case StreamChunkType.END:
+                        response_end = chunk.data
+                        break
+                    case StreamChunkType.TOOL_CALL:
+                        tool_calls.append(chunk.data)
+                    case StreamChunkType.TOOL_RESULT:
+                        tool_results.append(chunk.data)
+                    case StreamChunkType.TEXT:
+                        chunks.append(chunk.text)
+                    case (
+                        StreamChunkType.HISTORY_COMPRESSION_START
+                        | StreamChunkType.HISTORY_COMPRESSION_END
+                    ):
+                        # Compression metadata is relevant only for streaming clients.
+                        continue
+                    case _:
+                        # this "can't" happen as we control what chunk types
+                        # are yielded in the generator directly
+                        msg = f"Unknown chunk type: {chunk.type}"
+                        logger.warning(msg)
+                        raise ValueError(msg)
 
             return SummarizerResponse(
                 response="".join(chunks),
