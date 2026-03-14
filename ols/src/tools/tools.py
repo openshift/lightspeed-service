@@ -20,8 +20,8 @@ RETRY_BACKOFF_SECONDS = 0.2
 DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
 
 
-def _is_retryable_tool_error(error: Exception) -> bool:
-    """Return true if a tool execution error is likely transient."""
+def _is_transient_error(error: Exception) -> bool:
+    """Return true if the error is likely transient and worth retrying automatically."""
     if isinstance(error, (TimeoutError, asyncio.TimeoutError, ConnectionError)):
         return True
     error_text = str(error).lower()
@@ -152,54 +152,61 @@ async def _execute_single_tool_call(
     was_truncated = False
     structured_content: dict | None = None
 
-    if tool_name is None:
-        tool_output = (
-            f"Error: Tool name is missing from tool call. {DO_NOT_RETRY_REMINDER}"
-        )
+    # Scenario 1: precondition failure — tool name missing, tool unknown, or sensitive args.
+    # The LLM must not retry; no argument change can make this call valid.
+    try:
+        if tool_name is None:
+            raise ValueError("Tool name is missing from tool call")
+        raise_for_sensitive_tool_args(tool_args)
+        get_tool_by_name(tool_name, all_mcp_tools)
+    except Exception as e:
+        tool_output = f"Error: {e}. {DO_NOT_RETRY_REMINDER}"
         status = "error"
-        logger.error("Tool call missing name: %s", tool_call)
+        logger.error(tool_output)
     else:
-        try:
-            raise_for_sensitive_tool_args(tool_args)
-            attempts = MAX_TOOL_CALL_RETRIES + 1
-            last_error_text = "unknown error"
-            for attempt in range(attempts):
-                try:
-                    tool_output, was_truncated, structured_content = (
-                        await execute_tool_call(
-                            tool_name, tool_args, all_mcp_tools, max_tokens
-                        )
+        attempts = MAX_TOOL_CALL_RETRIES + 1
+        last_error_text = "unknown error"
+        for attempt in range(attempts):
+            try:
+                tool_output, was_truncated, structured_content = (
+                    await execute_tool_call(
+                        tool_name, tool_args, all_mcp_tools, max_tokens
                     )
-                    status = "success"
-                    break
-                except Exception as error:
-                    last_error_text = str(error)
-                    if attempt < MAX_TOOL_CALL_RETRIES and _is_retryable_tool_error(
-                        error
-                    ):
-                        logger.warning(
-                            "Retrying tool '%s' after transient error on attempt %d/%d: %s",
-                            tool_name,
-                            attempt + 1,
-                            attempts,
-                            error,
-                        )
-                        await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
-                        continue
-                    tool_output = (
-                        f"Tool '{tool_name}' execution failed after {attempt + 1} "
-                        f"attempt(s): {last_error_text}. {DO_NOT_RETRY_REMINDER}"
+                )
+                status = "success"
+                break
+            except Exception as error:
+                last_error_text = str(error)
+                # Scenario 2: transient infrastructure error — retry automatically with same args.
+                if attempt < MAX_TOOL_CALL_RETRIES and _is_transient_error(error):
+                    logger.warning(
+                        "Retrying tool '%s' after transient error on attempt %d/%d: %s",
+                        tool_name,
+                        attempt + 1,
+                        attempts,
+                        error,
                     )
-                    status = "error"
-                    logger.exception(tool_output)
-                    break
-        except Exception as e:
-            tool_output = (
-                f"Error executing tool '{tool_name}' with args {tool_args}: {e}"
-            )
-            tool_output = f"{tool_output}. {DO_NOT_RETRY_REMINDER}"
-            status = "error"
-            logger.exception(tool_output)
+                    await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
+                    continue
+                # Scenario 3a: non-transient error on the very first attempt — the LLM likely
+                # sent bad args. No reminder: the LLM is free to retry with corrected args.
+                # Scenario 3b: anything else (retries exhausted, or non-transient after a prior
+                # transient retry) — retrying in any form is unlikely to help.
+                is_first_attempt_non_transient = (
+                    attempt == 0 and not _is_transient_error(error)
+                )
+                retry_note = (
+                    ""
+                    if is_first_attempt_non_transient
+                    else f" {DO_NOT_RETRY_REMINDER}"
+                )
+                tool_output = (
+                    f"Tool '{tool_name}' execution failed after {attempt + 1} "
+                    f"attempt(s): {last_error_text}.{retry_note}"
+                )
+                status = "error"
+                logger.exception(tool_output)
+                break
 
     additional_kwargs: dict = {"truncated": was_truncated}
     if structured_content is not None:
