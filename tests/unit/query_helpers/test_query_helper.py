@@ -3,7 +3,10 @@
 from ols import config
 from ols.constants import QueryMode
 from ols.src.llms.llm_loader import load_llm
-from ols.src.prompts import prompts
+from ols.src.prompts.prompts import (
+    QUERY_SYSTEM_INSTRUCTION,
+    TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+)
 from ols.src.query_helpers.query_helper import QueryHelper
 
 
@@ -36,7 +39,7 @@ def test_ask_mode_uses_query_system_instruction():
 
     qh = QueryHelper(mode=QueryMode.ASK)
 
-    assert qh._system_prompt == prompts.QUERY_SYSTEM_INSTRUCTION
+    assert qh._system_prompt == QUERY_SYSTEM_INSTRUCTION
 
 
 def test_troubleshooting_mode_uses_troubleshooting_instruction():
@@ -46,7 +49,7 @@ def test_troubleshooting_mode_uses_troubleshooting_instruction():
 
     qh = QueryHelper(mode=QueryMode.TROUBLESHOOTING)
 
-    assert qh._system_prompt == prompts.TROUBLESHOOTING_SYSTEM_INSTRUCTION
+    assert qh._system_prompt == TROUBLESHOOTING_SYSTEM_INSTRUCTION
 
 
 def test_config_system_prompt_takes_precedence_over_mode():

@@ -9,7 +9,10 @@ from langchain_core.language_models.llms import LLM
 from ols import config
 from ols.constants import QueryMode
 from ols.src.llms.llm_loader import load_llm
-from ols.src.prompts import prompts
+from ols.src.prompts.prompts import (
+    QUERY_SYSTEM_INSTRUCTION,
+    TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +39,8 @@ class QueryHelper:
         self.llm_loader = llm_loader or load_llm
 
         default_prompt_by_mode = {
-            QueryMode.ASK: prompts.QUERY_SYSTEM_INSTRUCTION,
-            QueryMode.TROUBLESHOOTING: prompts.TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+            QueryMode.ASK: QUERY_SYSTEM_INSTRUCTION,
+            QueryMode.TROUBLESHOOTING: TROUBLESHOOTING_SYSTEM_INSTRUCTION,
         }
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)
