@@ -158,11 +158,11 @@ async def _execute_single_tool_call(
         if tool_name is None:
             raise ValueError("Tool name is missing from tool call")
         raise_for_sensitive_tool_args(tool_args)
-        get_tool_by_name(tool_name, all_mcp_tools)
+        get_tool_by_name(tool_name, all_mcp_tools)  # raise for unknown tool
     except Exception as e:
         tool_output = f"Error: {e}. {DO_NOT_RETRY_REMINDER}"
         status = "error"
-        logger.error(tool_output)
+        logger.error("%s, Tool call: %s", tool_output, tool_call)
     else:
         attempts = MAX_TOOL_CALL_RETRIES + 1
         last_error_text = "unknown error"
