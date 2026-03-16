@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
-from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
+from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT, QueryMode
 from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 from ols.utils import suid
 
@@ -73,6 +73,7 @@ class LLMRequest(BaseModel):
         attachments: The optional attachments.
         media_type: The optional parameter for streaming response.
         mcp_headers: Optional JSON object mapping MCP server names to header lists.
+        mode: The query mode controlling which system prompt is used.
 
     Example:
         ```python
@@ -88,6 +89,7 @@ class LLMRequest(BaseModel):
     attachments: Optional[list[Attachment]] = None
     media_type: Optional[str] = MEDIA_TYPE_TEXT
     mcp_headers: Optional[dict[str, dict[str, str]]] = None
+    mode: QueryMode = QueryMode.ASK
 
     # provides examples for /docs endpoint
     model_config = {
@@ -119,6 +121,7 @@ class LLMRequest(BaseModel):
                     ],
                     "media_type": "text/plain",
                     "mcp_headers": '{"github-mcp": {"Authorization": "Bearer ghp_xxxxx"}}',
+                    "mode": "ask",
                 }
             ]
         },
@@ -970,6 +973,7 @@ class ProcessedRequest(BaseModel):
         timestamps: Timestamps for all operations.
         skip_user_id_check: Flag to skip user ID checking in handler.
         user_token: User token (if provided).
+        mode: The query mode controlling which system prompt is used.
     """
 
     user_id: str
@@ -980,6 +984,7 @@ class ProcessedRequest(BaseModel):
     timestamps: dict[str, float]
     skip_user_id_check: bool
     user_token: str
+    mode: QueryMode
 
 
 @dataclass
