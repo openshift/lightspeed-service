@@ -659,6 +659,37 @@ class ToolFilteringConfig(BaseModel):
     )
 
 
+class SkillsConfig(BaseModel):
+    """Configuration for skill selection using hybrid RAG retrieval.
+
+    If this config is present, skill selection is enabled. If absent, no skills are used.
+    """
+
+    skills_dir: str = Field(
+        default="skills",
+        description="Path to directory containing skill subdirectories",
+    )
+
+    embed_model_path: Optional[str] = Field(
+        default=None,
+        description="Path to sentence transformer model for embeddings",
+    )
+
+    alpha: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description="Weight for dense vs sparse retrieval (1.0 = full dense, 0.0 = full sparse)",
+    )
+
+    threshold: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score to accept a skill match",
+    )
+
+
 class ApprovalType(StrEnum):
     """Approval strategy for tool execution."""
 
@@ -1073,6 +1104,8 @@ class OLSConfig(BaseModel):
 
     tools_approval: Optional[ToolsApprovalConfig] = None
 
+    skills: Optional[SkillsConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1129,6 +1162,8 @@ class OLSConfig(BaseModel):
             self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
         if data.get("tools_approval", None) is not None:
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
+        if data.get("skills", None) is not None:
+            self.skills = SkillsConfig(**data.get("skills"))
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""

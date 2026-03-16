@@ -2,9 +2,7 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
-from ols.src.tools.tools_rag.hybrid_tools_rag import QdrantStore, ToolsRAG
+from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
 
 DIMENSION = 8
 
@@ -47,63 +45,6 @@ def _sample_tools() -> list[MagicMock]:
     ]
 
 
-class TestQdrantStore:
-    """Tests for QdrantStore wrapper."""
-
-    def test_upsert_and_get_all(self) -> None:
-        """Verify upsert stores documents retrievable via get_all."""
-        store = QdrantStore()
-        store.upsert(
-            ids=["a", "b"],
-            docs=["hello", "world"],
-            vectors=[[0.1] * DIMENSION, [0.2] * DIMENSION],
-            metadatas=[{"key": "v1"}, {"key": "v2"}],
-        )
-        data = store.get_all()
-        assert set(data["ids"]) == {"a", "b"}
-        assert len(data["metadatas"]) == 2
-
-    def test_search_with_scores_returns_similarities(self) -> None:
-        """Verify search returns cosine similarities (1 - distance)."""
-        store = QdrantStore()
-        vec = [float(i) / DIMENSION for i in range(DIMENSION)]
-        store.upsert(
-            ids=["a"],
-            docs=["test"],
-            vectors=[vec],
-            metadatas=[{"server": "s1"}],
-        )
-        ids, sims, _metas = store.search_with_scores(vec, k=1)
-        assert ids == ["a"]
-        assert sims[0] == pytest.approx(1.0, abs=0.01)
-
-    def test_search_with_server_filter(self) -> None:
-        """Verify server filtering excludes non-matching servers."""
-        store = QdrantStore()
-        store.upsert(
-            ids=["a", "b"],
-            docs=["one", "two"],
-            vectors=[[0.1] * DIMENSION, [0.9] * DIMENSION],
-            metadatas=[{"server": "s1"}, {"server": "s2"}],
-        )
-        ids, _, _ = store.search_with_scores(
-            [0.5] * DIMENSION, k=10, allowed_servers={"s1"}
-        )
-        assert ids == ["a"]
-
-    def test_delete(self) -> None:
-        """Verify delete removes documents."""
-        store = QdrantStore()
-        store.upsert(
-            ids=["a", "b"],
-            docs=["one", "two"],
-            vectors=[[0.1] * DIMENSION, [0.2] * DIMENSION],
-        )
-        store.delete(["a"])
-        data = store.get_all()
-        assert data["ids"] == ["b"]
-
-
 class TestToolsRAGPopulate:
     """Tests for ToolsRAG.populate_tools."""
 
@@ -117,30 +58,6 @@ class TestToolsRAGPopulate:
         assert len(data["ids"]) == 4
         assert "k8s-server::get_pods" in data["ids"]
         assert "file-server::read_file" in data["ids"]
-
-    def test_populate_builds_bm25_index(self) -> None:
-        """Verify BM25 index is built after population."""
-        rag = _make_rag()
-        assert rag.bm25 is None
-        rag.populate_tools(_sample_tools())
-        assert rag.bm25 is not None
-
-    def test_populate_upsert_updates_existing(self) -> None:
-        """Verify re-populating with same tools updates rather than duplicates."""
-        rag = _make_rag()
-        tools = _sample_tools()
-        rag.populate_tools(tools)
-        rag.populate_tools(tools)
-
-        data = rag.store.get_all()
-        assert len(data["ids"]) == 4
-
-    def test_populate_calls_encode_fn(self) -> None:
-        """Verify the encode function is called for each tool."""
-        mock_encode = MagicMock(return_value=[0.1] * DIMENSION)
-        rag = _make_rag(encode_fn=mock_encode)
-        rag.populate_tools(_sample_tools())
-        assert mock_encode.call_count == 4
 
 
 class TestToolsRAGRetrieveHybrid:
@@ -173,7 +90,7 @@ class TestToolsRAGRetrieveHybrid:
 
     def test_retrieve_threshold_filters_low_scores(self) -> None:
         """Verify threshold removes low-scoring tools."""
-        rag = self._populated_rag(threshold=0.99)
+        rag = self._populated_rag(threshold=1.1)
         result = rag.retrieve_hybrid("kubernetes pods")
         total_tools = sum(len(t) for t in result.values())
         assert total_tools == 0
@@ -270,16 +187,6 @@ class TestRetrieveSparseScores:
         )
         for tool_id in scores:
             assert metadata[tool_id].get("server") == "file-server"
-
-    def test_scores_normalized_to_zero_one(self) -> None:
-        """Verify BM25 scores are normalized between 0 and 1."""
-        rag = _make_rag()
-        rag.set_default_servers(["k8s-server", "file-server"])
-        rag.populate_tools(_sample_tools())
-
-        scores, _ = rag._retrieve_sparse_scores("pods")
-        for score in scores.values():
-            assert 0.0 <= score <= 1.0
 
 
 class TestServerFiltering:

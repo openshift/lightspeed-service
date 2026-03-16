@@ -33,6 +33,7 @@ from ols.app.models.config import (
     ReasoningSummary,
     ReferenceContent,
     ReferenceContentIndex,
+    SkillsConfig,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -4049,3 +4050,27 @@ def test_proxy_config_no_proxy_env_var_with_certificates(monkeypatch):
     assert proxy_config.no_proxy_hosts == no_proxy.split(",")
     assert str(proxy_config.proxy_ca_cert_path) == "tests/config/empty_cert.crt"
     assert str(proxy_config.proxy_url) == "http://proxy.example.com:1234"
+
+
+def test_skills_config_defaults():
+    """Test SkillsConfig with default values."""
+    cfg = SkillsConfig()
+    assert cfg.skills_dir == "skills"
+    assert cfg.alpha == 0.8
+    assert cfg.threshold == 0.35
+
+
+def test_skills_config_custom_values():
+    """Test SkillsConfig with custom values."""
+    cfg = SkillsConfig(skills_dir="/opt/skills", alpha=0.5, threshold=0.4)
+    assert cfg.skills_dir == "/opt/skills"
+    assert cfg.alpha == 0.5
+    assert cfg.threshold == 0.4
+
+
+def test_skills_config_validation():
+    """Test SkillsConfig field validation boundaries."""
+    with pytest.raises(ValidationError, match="greater than or equal to 0"):
+        SkillsConfig(alpha=-0.1)
+    with pytest.raises(ValidationError, match="less than or equal to 1"):
+        SkillsConfig(alpha=1.1)
