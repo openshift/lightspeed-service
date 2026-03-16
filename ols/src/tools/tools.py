@@ -239,5 +239,3 @@ async def execute_tool_calls(
     tool_messages = await asyncio.gather(*tasks)
 
     return tool_messages
-
-
