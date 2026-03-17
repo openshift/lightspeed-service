@@ -14,7 +14,6 @@ from ols.utils.token_handler import TokenHandler
 logger = logging.getLogger(__name__)
 
 
-SENSITIVE_KEYWORDS = ["secret"]
 MAX_TOOL_CALL_RETRIES = 2
 RETRY_BACKOFF_SECONDS = 0.2
 DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
@@ -63,15 +62,6 @@ def _extract_text_from_tool_output(output: Any) -> str:
                 parts.append(str(block))
         return "\n".join(parts)
     return str(output)
-
-
-def raise_for_sensitive_tool_args(tool_args: dict) -> None:
-    """Check tool arguments for sensitive content and raise an exception if found."""
-    for key, value in tool_args.items():
-        if any(keyword in str(value).lower() for keyword in SENSITIVE_KEYWORDS):
-            raise ValueError(
-                f"Sensitive keyword in tool arguments {key}={value} are not allowed."
-            )
 
 
 def get_tool_by_name(
@@ -159,47 +149,36 @@ async def _execute_single_tool_call(
         status = "error"
         logger.error("Tool call missing name: %s", tool_call)
     else:
-        try:
-            raise_for_sensitive_tool_args(tool_args)
-            attempts = MAX_TOOL_CALL_RETRIES + 1
-            last_error_text = "unknown error"
-            for attempt in range(attempts):
-                try:
-                    tool_output, was_truncated, structured_content = (
-                        await execute_tool_call(
-                            tool_name, tool_args, all_mcp_tools, max_tokens
-                        )
+        attempts = MAX_TOOL_CALL_RETRIES + 1
+        last_error_text = "unknown error"
+        for attempt in range(attempts):
+            try:
+                tool_output, was_truncated, structured_content = (
+                    await execute_tool_call(
+                        tool_name, tool_args, all_mcp_tools, max_tokens
                     )
-                    status = "success"
-                    break
-                except Exception as error:
-                    last_error_text = str(error)
-                    if attempt < MAX_TOOL_CALL_RETRIES and _is_retryable_tool_error(
-                        error
-                    ):
-                        logger.warning(
-                            "Retrying tool '%s' after transient error on attempt %d/%d: %s",
-                            tool_name,
-                            attempt + 1,
-                            attempts,
-                            error,
-                        )
-                        await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
-                        continue
-                    tool_output = (
-                        f"Tool '{tool_name}' execution failed after {attempt + 1} "
-                        f"attempt(s): {last_error_text}. {DO_NOT_RETRY_REMINDER}"
+                )
+                status = "success"
+                break
+            except Exception as error:
+                last_error_text = str(error)
+                if attempt < MAX_TOOL_CALL_RETRIES and _is_retryable_tool_error(error):
+                    logger.warning(
+                        "Retrying tool '%s' after transient error on attempt %d/%d: %s",
+                        tool_name,
+                        attempt + 1,
+                        attempts,
+                        error,
                     )
-                    status = "error"
-                    logger.exception(tool_output)
-                    break
-        except Exception as e:
-            tool_output = (
-                f"Error executing tool '{tool_name}' with args {tool_args}: {e}"
-            )
-            tool_output = f"{tool_output}. {DO_NOT_RETRY_REMINDER}"
-            status = "error"
-            logger.exception(tool_output)
+                    await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2**attempt))
+                    continue
+                tool_output = (
+                    f"Tool '{tool_name}' execution failed after {attempt + 1} "
+                    f"attempt(s): {last_error_text}. {DO_NOT_RETRY_REMINDER}"
+                )
+                status = "error"
+                logger.exception(tool_output)
+                break
 
     additional_kwargs: dict = {"truncated": was_truncated}
     if structured_content is not None:
