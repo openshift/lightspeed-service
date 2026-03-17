@@ -549,15 +549,16 @@ class DocsSummarizer(QueryHelper):
 
                     # Calculate remaining budget for tools
                     remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
-                    # Use the smaller of per-tool limit or remaining budget
-                    effective_per_tool_limit = min(
-                        max_tokens_per_tool, remaining_tool_budget
-                    )
+                    # Distribute remaining budget evenly across tools in the batch so
+                    # a single batch cannot consume more than the remaining budget in total.
+                    per_tool_share = remaining_tool_budget // max(len(tool_calls), 1)
+                    effective_per_tool_limit = min(max_tokens_per_tool, per_tool_share)
 
                     logger.debug(
-                        "Tool budget: used=%d, remaining=%d, per_tool_limit=%d",
+                        "Tool budget: used=%d, remaining=%d, batch_size=%d, per_tool_limit=%d",
                         tool_tokens_used,
                         remaining_tool_budget,
+                        len(tool_calls),
                         effective_per_tool_limit,
                     )
 

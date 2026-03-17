@@ -1263,3 +1263,86 @@ def test_tool_call_without_meta_has_no_tool_meta_key():
 
         assert tool_call["name"] == "get_namespaces_mock"
         assert "tool_meta" not in tool_call
+
+
+def test_tool_budget_distributed_across_batch(caplog):
+    """Test that remaining budget is divided evenly across tools in a batch.
+
+    When the LLM requests N tools in one round, each tool should receive at most
+    remaining_budget // N tokens, so a single batch cannot exceed the remaining budget.
+    """
+    caplog.set_level(10)
+
+    question = "List all namespaces twice"
+
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+
+    captured_per_tool_limit: list[int] = []
+
+    async def fake_execute_tool_calls(
+        tool_calls: list, all_mcp_tools: list, max_tokens_per_output: int = 8000
+    ):
+        captured_per_tool_limit.append(max_tokens_per_output)
+        from langchain_core.messages import ToolMessage
+
+        return [
+            ToolMessage(content="result", tool_call_id=tc["id"]) for tc in tool_calls
+        ]
+
+    with (
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._get_max_iterations",
+            return_value=2,
+        ),
+        patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        ) as mock_invoke,
+        patch("ols.utils.mcp_utils.config") as mock_config,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.execute_tool_calls",
+            side_effect=fake_execute_tool_calls,
+        ),
+    ):
+        mock_config.tools_rag = None
+        mock_config.mcp_servers.servers = [MagicMock()]
+
+        with patch(
+            "ols.utils.mcp_utils._gather_and_populate_tools",
+            new=AsyncMock(return_value=(mcp_servers_config, mock_tools_map)),
+        ):
+            mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
+                [
+                    AIMessageChunk(
+                        content="",
+                        response_metadata={"finish_reason": "tool_calls"},
+                        tool_calls=[
+                            {"name": "get_namespaces_mock", "args": {}, "id": "id1"},
+                            {"name": "get_namespaces_mock", "args": {}, "id": "id2"},
+                        ],
+                    )
+                ]
+            )
+
+        mock_mcp_client_instance = AsyncMock()
+        mock_mcp_client_instance.get_tools.return_value = mock_tools_map
+        mock_mcp_client_cls.return_value = mock_mcp_client_instance
+
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+        # Set a tight total budget so the distribution effect is observable.
+        # With 2 tools and a 1000-token budget the per-tool share must be <= 500.
+        summarizer.model_config.parameters.max_tokens_for_tools = 1000
+        summarizer.model_config.parameters.max_tokens_per_tool_output = 800
+        summarizer.create_response(question)
+
+    assert len(captured_per_tool_limit) == 1, "execute_tool_calls should be called once"
+    # remaining_budget <= 1000; with 2 tools the per-tool share must be <= 500
+    assert (
+        captured_per_tool_limit[0] <= 500
+    ), f"Expected per-tool limit <= 500 (budget / 2), got {captured_per_tool_limit[0]}"
+    assert "batch_size=2" in caplog.text
