@@ -121,4 +121,5 @@ Unknown parameters (not in the provider's `ProviderParameter` set) are silently 
 | `PROVIDER_RHOAI_VLLM` | `rhoai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_RHELAI_VLLM` | `rhelai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_WATSONX` | `watsonx.py` | `WatsonxLLM` |
+| `PROVIDER_GOOGLE_VERTEX` | `google_vertex.py` | `ChatAnthropicVertex` |
 | `PROVIDER_FAKE` | `fake_provider.py` | `FakeListLLM` / `FakeStreamingListLLM` |
