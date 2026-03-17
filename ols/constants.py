@@ -5,7 +5,6 @@ import ssl
 from enum import StrEnum
 
 # providers
-PROVIDER_BAM = "bam"
 PROVIDER_OPENAI = "openai"
 PROVIDER_AZURE_OPENAI = "azure_openai"
 PROVIDER_WATSONX = "watsonx"
@@ -14,7 +13,6 @@ PROVIDER_RHELAI_VLLM = "rhelai_vllm"
 PROVIDER_FAKE = "fake_provider"
 SUPPORTED_PROVIDER_TYPES = frozenset(
     {
-        PROVIDER_BAM,
         PROVIDER_OPENAI,
         PROVIDER_AZURE_OPENAI,
         PROVIDER_WATSONX,

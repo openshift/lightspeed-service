@@ -288,12 +288,6 @@ class WatsonxConfig(ProviderSpecificConfig, extra="forbid"):
     project_id: Optional[str] = None
 
 
-class BAMConfig(ProviderSpecificConfig, extra="forbid"):
-    """Configuration specific to BAM provider."""
-
-    credentials_path: str  # required attribute
-
-
 class FakeConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to fake provider."""
 
@@ -318,7 +312,6 @@ class ProviderConfig(BaseModel):
     openai_config: Optional[OpenAIConfig] = None
     azure_config: Optional[AzureOpenAIConfig] = None
     watsonx_config: Optional[WatsonxConfig] = None
-    bam_config: Optional[BAMConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
@@ -474,11 +467,6 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(rhelai_vllm_config)
                     self.read_api_key(rhelai_vllm_config)
                     self.rhelai_vllm_config = RHELAIVLLMConfig(**rhelai_vllm_config)
-                case constants.PROVIDER_BAM:
-                    bam_config = data.get("bam_config")
-                    self.check_provider_config(bam_config)
-                    self.read_api_key(bam_config)
-                    self.bam_config = BAMConfig(**bam_config)
                 case constants.PROVIDER_WATSONX:
                     watsonx_config = data.get("watsonx_config")
                     self.check_provider_config(watsonx_config)
@@ -527,7 +515,6 @@ class ProviderConfig(BaseModel):
                 and self.rhoai_vllm_config == other.rhoai_vllm_config
                 and self.rhelai_vllm_config == other.rhelai_vllm_config
                 and self.watsonx_config == other.watsonx_config
-                and self.bam_config == other.bam_config
                 and self.tls_security_profile == other.tls_security_profile
             )
         return False

@@ -192,9 +192,9 @@ def test_provider_model_configuration_metrics():
     """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(pytest.client)
     print(response_text)
-    for provider in ("bam", "openai"):
+    for provider in ("p1", "p2"):
         for model in ("m1", "m2"):
-            if provider == "bam" and model == "m1":
+            if provider == "p1" and model == "m1":
                 # default/enabled model should have a metric value of 1.0
                 assert (
                     f'provider_model_configuration{{model="{model}",provider="{provider}"}} 1.0'

@@ -1,10 +1,10 @@
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: "https://url1"
     credentials_path: tests/config/secret/apitoken
-    bam_config:
+    openai_config:
       url: "http://localhost:1234"
       credentials_path: tests/config/secret/apitoken
     models:

@@ -369,7 +369,7 @@ def test_provider_config():
     provider_config = ProviderConfig(
         {
             "name": "test_name",
-            "type": "bam",
+            "type": "openai",
             "url": "test_url",
             "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
@@ -383,7 +383,7 @@ def test_provider_config():
         }
     )
     assert provider_config.name == "test_name"
-    assert provider_config.type == "bam"
+    assert provider_config.type == "openai"
     assert provider_config.url == "test_url"
     assert provider_config.credentials == "secret_key"
     assert provider_config.project_id == "test_project_id"
@@ -402,7 +402,6 @@ def test_provider_config():
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
     provider_config = ProviderConfig()
     assert provider_config.name is None
@@ -414,13 +413,12 @@ def test_provider_config():
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
     assert provider_config.tls_security_profile is None
 
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
             {
-                "name": "bam",
+                "name": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "models": [],
@@ -431,7 +429,7 @@ def test_provider_config():
     with pytest.raises(InvalidConfigurationError) as excinfo:
         ProviderConfig(
             {
-                "name": "bam",
+                "name": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "models": [
@@ -450,7 +448,7 @@ def test_provider_config_improper_path_to_secret():
     with pytest.raises(FileNotFoundError):
         ProviderConfig(
             {
-                "name": "bam",
+                "name": "openai",
                 "url": "test_url",
                 "credentials_path": "foo",
                 "models": [
@@ -466,7 +464,7 @@ def test_provider_config_improper_path_to_secret():
     # now let's ignore LLM secrets-related errors
     ProviderConfig(
         {
-            "name": "bam",
+            "name": "openai",
             "url": "test_url",
             "credentials_path": "foo",
             "models": [
@@ -486,7 +484,7 @@ def test_provider_config_with_tls_security_profile():
     provider_config = ProviderConfig(
         {
             "name": "test_name",
-            "type": "bam",
+            "type": "openai",
             "url": "test_url",
             "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
@@ -570,16 +568,16 @@ def test_that_url_is_required_provider_parameter():
             }
         )
 
-    # provider type is set to "bam"
+    # provider type is set to "openai" and config missing url
     with pytest.raises(ValidationError, match="url"):
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
-                "bam_config": {
+                "openai_config": {
                     "credentials_path": "tests/config/secret/apitoken",
                 },
                 "models": [
@@ -640,16 +638,16 @@ def test_that_credentials_is_required_provider_parameter():
             }
         )
 
-    # provider type is set to "bam"
+    # provider type is set to "openai" and config missing credentials
     with pytest.raises(ValidationError, match="credentials"):
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
-                "bam_config": {
+                "openai_config": {
                     "url": "http://localhost",
                 },
                 "models": [
@@ -731,7 +729,6 @@ def test_provider_config_azure_openai_specific():
     assert provider_config.rhoai_vllm_config is None
     assert provider_config.rhelai_vllm_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
 
 def test_provider_config_apitoken_only():
@@ -774,7 +771,6 @@ def test_provider_config_apitoken_only():
     assert provider_config.rhoai_vllm_config is None
     assert provider_config.rhelai_vllm_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
 
 def test_provider_config_azure_openai_unknown_parameters():
@@ -841,7 +837,6 @@ def test_provider_config_openai_specific():
     assert provider_config.rhelai_vllm_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
 
 def test_provider_config_openai_unknown_parameters():
@@ -908,7 +903,6 @@ def test_provider_config_rhoai_vllm_specific():
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
 
 def test_provider_config_rhoai_vllm_unknown_parameters():
@@ -976,7 +970,6 @@ def test_provider_config_rhelai_vllm_specific():
     assert provider_config.openai_config is None
     assert provider_config.azure_config is None
     assert provider_config.watsonx_config is None
-    assert provider_config.bam_config is None
 
 
 def test_provider_config_rhelai_vllm_unknown_parameters():
@@ -1045,7 +1038,6 @@ def test_provider_config_watsonx_specific():
     assert provider_config.rhelai_vllm_config is None
     assert provider_config.azure_config is None
     assert provider_config.openai_config is None
-    assert provider_config.bam_config is None
 
     assert provider_config.api_version is None
 
@@ -1078,80 +1070,17 @@ def test_provider_config_watsonx_unknown_parameters():
         )
 
 
-def test_provider_config_bam_specific():
-    """Test if BAM-specific config is loaded and validated."""
-    # provider type is set to "bam" and BAM-specific configuration is there
-    provider_config = ProviderConfig(
-        {
-            "name": "test_name",
-            "type": "bam",
-            "url": "test_url",
-            "credentials_path": "tests/config/secret/apitoken",
-            "project_id": "test_project_id",
-            "bam_config": {
-                "url": "http://localhost",
-                "credentials_path": "tests/config/secret/apitoken",
-            },
-            "models": [
-                {
-                    "name": "test_model_name",
-                    "url": "http://test.url/",
-                    "credentials_path": "tests/config/secret/apitoken",
-                }
-            ],
-        }
-    )
-    # BAM-specific configuration must be present
-    assert provider_config.bam_config is not None
-    assert str(provider_config.bam_config.url) == "http://localhost/"
-    assert provider_config.bam_config.api_key == "secret_key"
-
-    # configuration for other providers must not be set
-    assert provider_config.rhoai_vllm_config is None
-    assert provider_config.rhelai_vllm_config is None
-    assert provider_config.azure_config is None
-    assert provider_config.openai_config is None
-    assert provider_config.watsonx_config is None
-
-
-def test_provider_config_bam_unknown_parameters():
-    """Test if unknown BAM parameters are detected."""
-    # provider type is set to "bam" and BAM-specific configuration is there
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        ProviderConfig(
-            {
-                "name": "test_name",
-                "type": "bam",
-                "url": "test_url",
-                "credentials_path": "tests/config/secret/apitoken",
-                "project_id": "test_project_id",
-                "bam_config": {
-                    "unknown_parameter": "unknown value",
-                    "url": "http://localhost",
-                    "credentials_path": "tests/config/secret/apitoken",
-                },
-                "models": [
-                    {
-                        "name": "test_model_name",
-                        "url": "http://test.url/",
-                        "credentials_path": "tests/config/secret/apitoken",
-                    }
-                ],
-            }
-        )
-
-
 def test_improper_provider_specific_config():
     """Test if check for improper provider-specific config is performed."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="provider type bam selected, but configuration is set for different provider",
+        match="provider type watsonx selected, but configuration is set for different provider",
     ):
-        # provider type is set to "bam" but OpenAI-specific configuration is there
+        # provider type is set to "watsonx" but OpenAI-specific configuration is there
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "watsonx",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
@@ -1173,13 +1102,13 @@ def test_multiple_provider_specific_configs():
     """Test if check for multiple provider-specific configs is performed."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="multiple provider-specific configurations found, but just one is expected for provider bam",  # noqa: E501
+        match="multiple provider-specific configurations found, but just one is expected for provider watsonx",  # noqa: E501
     ):
         # two provider-specific configurations is in the configuration
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "watsonx",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
@@ -1201,7 +1130,7 @@ def test_multiple_provider_specific_configs():
 
 
 providers = (
-    constants.PROVIDER_BAM,
+    constants.PROVIDER_OPENAI,
     constants.PROVIDER_OPENAI,
     constants.PROVIDER_AZURE_OPENAI,
     constants.PROVIDER_WATSONX,
@@ -1244,7 +1173,7 @@ def test_provider_config_explicit_tokens():
     provider_config = ProviderConfig(
         {
             "name": "test_name",
-            "type": "bam",
+            "type": "openai",
             "url": "test_url",
             "credentials_path": "tests/config/secret/apitoken",
             "project_id": "test_project_id",
@@ -1273,7 +1202,7 @@ def test_provider_config_improper_context_window_size_value():
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
@@ -1298,7 +1227,7 @@ def test_provider_config_improper_context_window_size_type():
         ProviderConfig(
             {
                 "name": "test_name",
-                "type": "bam",
+                "type": "openai",
                 "url": "test_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "project_id": "test_project_id",
@@ -1335,7 +1264,7 @@ def test_provider_config_validation_proper_config():
     """Test the ProviderConfig model validation."""
     provider_config = ProviderConfig(
         {
-            "name": "bam",
+            "name": "openai",
             "url": "http://test.url",
             "credentials_path": "tests/config/secret/apitoken",
             "models": [
@@ -1355,7 +1284,7 @@ def test_provider_config_validation_improper_url():
     """Test the ProviderConfig model validation for improper URL."""
     provider_config = ProviderConfig(
         {
-            "name": "bam",
+            "name": "openai",
             "url": "httpXXX://test.url",
             "credentials_path": "tests/config/secret/apitoken",
             "models": [
@@ -1376,7 +1305,7 @@ def test_provider_config_validation_missing_name():
     """Test the ProviderConfig model validation for missing name."""
     provider_config = ProviderConfig(
         {
-            "type": "bam",
+            "type": "openai",
             "url": "httpXXX://test.url",
             "credentials_path": "tests/config/secret/apitoken",
             "models": [
@@ -1397,7 +1326,7 @@ def test_provider_config_validation_no_credentials_path():
     """Test the ProviderConfig model validation when path to credentials is not provided."""
     provider_config = ProviderConfig(
         {
-            "name": "bam",
+            "name": "openai",
             "url": "http://test.url",
             "credentials_path": None,
             "models": [
@@ -1420,7 +1349,7 @@ def test_llm_providers():
         [
             {
                 "name": "test_provider_name",
-                "type": "bam",
+                "type": "openai",
                 "url": "test_provider_url",
                 "credentials_path": "tests/config/secret/apitoken",
                 "models": [
@@ -1438,7 +1367,7 @@ def test_llm_providers():
         llm_providers.providers["test_provider_name"].name == "test_provider_name"
     )  # pyright: ignore[reportIndexIssue]
     assert (
-        llm_providers.providers["test_provider_name"].type == "bam"
+        llm_providers.providers["test_provider_name"].type == "openai"
     )  # pyright: ignore[reportIndexIssue]
     assert (
         llm_providers.providers["test_provider_name"].url == "test_provider_url"
@@ -1491,7 +1420,7 @@ def test_llm_providers_type_defaulting():
     llm_providers = LLMProviders(
         [
             {
-                "name": "bam",
+                "name": "openai",
                 "models": [
                     {
                         "name": "m1",
@@ -1503,17 +1432,17 @@ def test_llm_providers_type_defaulting():
     )
     assert len(llm_providers.providers) == 1
     assert (
-        llm_providers.providers["bam"].name == "bam"
+        llm_providers.providers["openai"].name == "openai"
     )  # pyright: ignore[reportIndexIssue]
     assert (
-        llm_providers.providers["bam"].type == "bam"
+        llm_providers.providers["openai"].type == "openai"
     )  # pyright: ignore[reportIndexIssue]
 
     llm_providers = LLMProviders(
         [
             {
-                "name": "test_provider",
-                "type": "bam",
+                "name": "openai",
+                "type": "openai",
                 "models": [
                     {
                         "name": "m1",
@@ -1525,10 +1454,10 @@ def test_llm_providers_type_defaulting():
     )
     assert len(llm_providers.providers) == 1
     assert (
-        llm_providers.providers["test_provider"].name == "test_provider"
+        llm_providers.providers["openai"].name == "openai"
     )  # pyright: ignore[reportIndexIssue]
     assert (
-        llm_providers.providers["test_provider"].type == "bam"
+        llm_providers.providers["openai"].type == "openai"
     )  # pyright: ignore[reportIndexIssue]
 
 
@@ -1547,7 +1476,7 @@ def test_llm_providers_type_validation():
     with pytest.raises(InvalidConfigurationError) as excinfo:
         LLMProviders(
             [
-                {"name": "bam", "type": "invalid_type"},
+                {"name": "openai", "type": "invalid_type"},
             ]
         )
     assert "invalid provider type: invalid_type" in str(excinfo.value)
@@ -1607,7 +1536,7 @@ def test_llm_providers_watsonx_required_projectid():
     llm_providers = LLMProviders(
         [
             {
-                "name": "test_provider",
+                "name": "openai",
                 "type": "watsonx",
                 "project_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
                 "models": [
@@ -1618,14 +1547,14 @@ def test_llm_providers_watsonx_required_projectid():
     )
     assert len(llm_providers.providers) == 1
     assert (
-        llm_providers.providers["test_provider"].name == "test_provider"
+        llm_providers.providers["openai"].name == "openai"
     )  # pyright: ignore[reportIndexIssue]
     assert (
-        llm_providers.providers["test_provider"].type == "watsonx"
+        llm_providers.providers["openai"].type == "watsonx"
     )  # pyright: ignore[reportIndexIssue]
     assert (
         llm_providers.providers[
-            "test_provider"
+            "openai"
         ].project_id  # pyright: ignore[reportIndexIssue]
         == "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     )
@@ -2403,7 +2332,7 @@ def test_config():
             "llm_providers": [
                 {
                     "name": "test_provider_name",
-                    "type": "bam",
+                    "type": "openai",
                     "url": "test_provider_url",
                     "credentials_path": "tests/config/secret/apitoken",
                     "models": [
@@ -2518,7 +2447,7 @@ def test_config():
     )
     assert (
         config.llm_providers.providers["test_provider_name"].certificates_store
-        is None  # pyright: ignore[reportIndexIssue]
+        == "/foo/bar/baz/ols.pem"  # pyright: ignore[reportIndexIssue]
     )
 
     assert config.ols_config.default_provider == "test_default_provider"
@@ -2542,7 +2471,7 @@ def test_config_equality():
             "llm_providers": [
                 {
                     "name": "test_provider_name",
-                    "type": "bam",
+                    "type": "openai",
                     "url": "test_provider_url",
                     "credentials_path": "tests/config/secret/apitoken",
                     "models": [
@@ -2616,7 +2545,7 @@ def test_config_default_certificate_directory():
             "llm_providers": [
                 {
                     "name": "test_provider_name",
-                    "type": "bam",
+                    "type": "openai",
                     "url": "test_provider_url",
                     "credentials_path": "tests/config/secret/apitoken",
                     "models": [
@@ -2658,7 +2587,7 @@ def test_config_improper_missing_model():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret/apitoken",
                         "models": [
@@ -2692,7 +2621,7 @@ def test_config_improper_missing_provider():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret/apitoken",
                         "models": [
@@ -2756,7 +2685,7 @@ def test_config_improper_model():
                 "llm_providers": [
                     {
                         "name": "test_provider_name",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "http://test_provider_url",
                         "credentials_path": "tests/config/secret/apitoken",
                         "models": [
