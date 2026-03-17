@@ -242,16 +242,17 @@ async def test_execute_tool_calls_mixed_success_and_failure():
     assert tool_messages[0].status == "success"
     assert tool_messages[0].content == "fake_output_from_success_tool"
 
-    # Second call should fail due to tool raising exception
+    # Second call should fail due to tool raising non-transient exception (Scenario 3a).
+    # No DO_NOT_RETRY_REMINDER: LLM may retry with corrected arguments.
     assert tool_messages[1].status == "error"
     assert "execution failed after 1 attempt(s)" in tool_messages[1].content
     assert "Tool execution failed" in tool_messages[1].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[1].content
+    assert DO_NOT_RETRY_REMINDER not in tool_messages[1].content
 
-    # Third call should fail due to nonexistent tool
+    # Third call should fail due to nonexistent tool (Scenario 1 precondition).
+    # DO_NOT_RETRY_REMINDER is always included: no argument change can make this valid.
     assert tool_messages[2].status == "error"
     assert "Tool 'nonexistent_tool' not found" in tool_messages[2].content
-    assert "execution failed after 1 attempt(s)" in tool_messages[2].content
     assert DO_NOT_RETRY_REMINDER in tool_messages[2].content
 
 
@@ -343,7 +344,8 @@ async def test_execute_tool_calls_non_retryable_error_does_not_retry():
     assert call_count == 1
     assert tool_messages[0].status == "error"
     assert "execution failed after 1 attempt(s)" in tool_messages[0].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
+    # Scenario 3a: non-transient error, first attempt — LLM may retry with corrected args.
+    assert DO_NOT_RETRY_REMINDER not in tool_messages[0].content
 
 
 @pytest.mark.asyncio
