@@ -116,7 +116,7 @@ def test_post_question_with_provider_but_not_model(_setup, endpoint):
         json={
             "conversation_id": conversation_id,
             "query": "test query",
-            "provider": constants.PROVIDER_BAM,
+            "provider": constants.PROVIDER_OPENAI,
         },
     )
     assert response.status_code == requests.codes.unprocessable

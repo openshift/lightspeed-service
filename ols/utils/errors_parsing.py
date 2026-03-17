@@ -4,7 +4,6 @@ import json
 import logging
 
 from fastapi import status
-from genai.exceptions import ApiResponseException
 from ibm_watsonx_ai.wml_client_error import ApiRequestFailure
 from openai import BadRequestError
 
@@ -40,18 +39,6 @@ def parse_openai_error(e: BadRequestError) -> tuple[int, str, str]:
     return e.status_code, response_text, e.message
 
 
-def parse_bam_error(e: ApiResponseException) -> tuple[int, str, str]:
-    """Parse BAM error."""
-    if (
-        e.response.extensions.state is not None
-        and "message" in e.response.extensions.state
-    ):
-        response_text = e.response.extensions.state["message"]
-    else:
-        response_text = e.message
-    return e.response.status_code, response_text, e.message
-
-
 def parse_watsonx_error(e: ApiRequestFailure) -> tuple[int, str, str]:
     """Parse Watsonx error."""
     status_code = e.response.status_code
@@ -85,8 +72,6 @@ def parse_generic_llm_error(e: Exception) -> tuple[int, str, str]:
     match e:
         case BadRequestError():
             return parse_openai_error(e)
-        case ApiResponseException():
-            return parse_bam_error(e)
         case ApiRequestFailure():
             return parse_watsonx_error(e)
         case _:

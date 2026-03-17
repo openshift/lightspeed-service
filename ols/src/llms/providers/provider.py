@@ -15,7 +15,6 @@ from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
-    PROVIDER_BAM,
     PROVIDER_FAKE,
     PROVIDER_OPENAI,
     PROVIDER_RHELAI_VLLM,
@@ -104,17 +103,6 @@ RHELAIVLLMParameters = {
     ProviderParameter("http_async_client", httpx.AsyncClient),
 }
 
-BAMParameters = {
-    ProviderParameter("decoding_method", str),
-    ProviderParameter("max_new_tokens", int),
-    ProviderParameter("min_new_tokens", int),
-    ProviderParameter("random_seed", int),
-    ProviderParameter("top_k", int),
-    ProviderParameter("top_p", float),
-    ProviderParameter("repetition_penalty", float),
-    ProviderParameter("temperature", float),
-}
-
 WatsonxParameters = {
     ProviderParameter(GenParams.DECODING_METHOD, str),
     ProviderParameter(GenParams.MIN_NEW_TOKENS, int),
@@ -140,7 +128,6 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_OPENAI: OpenAIParameters,
     PROVIDER_RHELAI_VLLM: RHELAIVLLMParameters,
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParameters,
-    PROVIDER_BAM: BAMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
     PROVIDER_FAKE: FakeProviderParameters,
 }
@@ -165,12 +152,6 @@ RHOAIVLLMParametersMapping: dict[str, str] = {
     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_completion_tokens",
 }
 
-# Generic to BAM parameters mapping
-BAMParametersMapping: dict[str, str] = {
-    GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: "min_new_tokens",
-    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_new_tokens",
-}
-
 # Generic to Watsonx parameters mapping
 WatsonxParametersMapping: dict[str, str] = {
     GenericLLMParameters.MIN_TOKENS_FOR_RESPONSE: GenParams.MIN_NEW_TOKENS,
@@ -189,7 +170,6 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_OPENAI: OpenAIParametersMapping,
     PROVIDER_RHELAI_VLLM: RHELAIVLLMParametersMapping,
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParametersMapping,
-    PROVIDER_BAM: BAMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
     PROVIDER_FAKE: FakeProviderParametersMapping,
 }

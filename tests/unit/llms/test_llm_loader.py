@@ -51,18 +51,18 @@ def test_unknown_provider_error():
 
 def test_model_config_missing_error():
     """Test raise when model configuration is unknown."""
-    providers = LLMProviders([{"name": "bam", "models": [{"name": "model"}]}])
+    providers = LLMProviders([{"name": "openai", "models": [{"name": "model"}]}])
     config.config.llm_providers = providers
 
     message = "Model 'bla' is not a valid model for provider"
     with pytest.raises(ModelConfigMissingError, match=message):
-        load_llm(provider="bam", model="bla")
+        load_llm(provider="openai", model="bla")
 
 
 def test_unsupported_provider_error():
     """Test raise when provider is not in the registry (not implemented)."""
     providers = LLMProviders(
-        [{"name": "some-provider", "type": "bam", "models": [{"name": "model"}]}]
+        [{"name": "some-provider", "type": "openai", "models": [{"name": "model"}]}]
     )
     config.config.llm_providers = providers
 
