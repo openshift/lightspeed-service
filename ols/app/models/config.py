@@ -335,6 +335,13 @@ class WatsonxConfig(ProviderSpecificConfig, extra="forbid"):
     project_id: Optional[str] = None
 
 
+class GoogleVertexConfig(BaseModel, extra="forbid"):
+    """Configuration specific to Google Vertex AI provider."""
+
+    project: str  # required attribute
+    location: str  # required attribute
+
+
 class FakeConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to fake provider."""
 
@@ -361,6 +368,7 @@ class ProviderConfig(BaseModel):
     watsonx_config: Optional[WatsonxConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
+    google_vertex_config: Optional[GoogleVertexConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
     certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
@@ -519,6 +527,12 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(watsonx_config)
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
+                case constants.PROVIDER_GOOGLE_VERTEX:
+                    google_vertex_config = data.get("google_vertex_config")
+                    self.check_provider_config(google_vertex_config)
+                    self.google_vertex_config = GoogleVertexConfig(
+                        **google_vertex_config
+                    )
                 case constants.PROVIDER_FAKE:
                     fake_provider_config = data.get("fake_provider_config")
                     self.fake_provider_config = FakeConfig(**fake_provider_config)
@@ -546,6 +560,26 @@ class ProviderConfig(BaseModel):
                 f"provider type {self.type} selected, "
                 "but configuration is set for different provider"
             )
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two objects for equality."""
+        if isinstance(other, ProviderConfig):
+            return (
+                self.name == other.name
+                and self.type == other.type
+                and self.url == other.url
+                and self.credentials == other.credentials
+                and self.project_id == other.project_id
+                and self.models == other.models
+                and self.azure_config == other.azure_config
+                and self.openai_config == other.openai_config
+                and self.rhoai_vllm_config == other.rhoai_vllm_config
+                and self.rhelai_vllm_config == other.rhelai_vllm_config
+                and self.watsonx_config == other.watsonx_config
+                and self.google_vertex_config == other.google_vertex_config
+                and self.tls_security_profile == other.tls_security_profile
+            )
+        return False
 
     def validate_yaml(self) -> None:
         """Validate provider config."""

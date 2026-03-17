@@ -11,6 +11,7 @@ PROVIDER_WATSONX = "watsonx"
 PROVIDER_RHOAI_VLLM = "rhoai_vllm"
 PROVIDER_RHELAI_VLLM = "rhelai_vllm"
 PROVIDER_FAKE = "fake_provider"
+PROVIDER_GOOGLE_VERTEX = "google_vertex"
 SUPPORTED_PROVIDER_TYPES = frozenset(
     {
         PROVIDER_OPENAI,
@@ -19,6 +20,7 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
         PROVIDER_RHOAI_VLLM,
         PROVIDER_RHELAI_VLLM,
         PROVIDER_FAKE,
+        PROVIDER_GOOGLE_VERTEX,
     }
 )
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
