@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from ols import constants
 from ols.app.models.config import Config
 from ols.runners.uvicorn import start_uvicorn
 
@@ -49,7 +50,7 @@ def test_start_uvicorn(default_config):
             ssl_certfile=None,
             ssl_keyfile_password=None,
             ssl_version=17,
-            ssl_ciphers="TLSv1",
+            ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
             access_log=False,
         )
 
@@ -70,7 +71,7 @@ def test_start_uvicorn_with_tls(default_config):
             ssl_certfile=None,
             ssl_keyfile_password=None,
             ssl_version=17,
-            ssl_ciphers="TLSv1",
+            ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
             access_log=False,
         )
 
@@ -91,7 +92,7 @@ def test_start_uvicorn_on_localhost(default_config):
             ssl_certfile=None,
             ssl_keyfile_password=None,
             ssl_version=17,
-            ssl_ciphers="TLSv1",
+            ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
             access_log=False,
         )
 
@@ -112,6 +113,6 @@ def test_start_uvicorn_on_non_default_port(default_config):
             ssl_certfile=None,
             ssl_keyfile_password=None,
             ssl_version=17,
-            ssl_ciphers="TLSv1",
+            ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
             access_log=False,
         )
