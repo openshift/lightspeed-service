@@ -38,7 +38,8 @@ Only raise issues if you have a concrete concern — not as a checklist to fill:
 
 - **Architecture**: Is logic clearly in the wrong layer? (e.g. business logic leaking into an endpoint)
 - **Error handling**: Are errors silently swallowed, or is an exception missing where failure is plausible?
-- **Duplication**: Is the same logic copy-pasted, not just similar-looking?
+- **Duplication**: Run the [find-duplication](../find-duplication/SKILL.md) skill in branch mode, scoped to the PR's changed files.
+- **Complexity**: Run the [find-complexity](../find-complexity/SKILL.md) skill in branch mode, scoped to the PR's changed files. Flag any function the PR adds or worsens to grade C or higher.
 - **Dead code / docs**: Is there obviously unused code or a doc update that's clearly missing?
 
 Skip this section if nothing stands out.
