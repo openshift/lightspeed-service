@@ -84,7 +84,7 @@ def provider_config_with_specific_params():
             "credentials_path": "tests/config/secret/apitoken",
             "project_id": "01234567-89ab-cdef-0123-456789abcdef",
             "watsonx_config": {
-                "url": "http://bam.com",
+                "url": "http://watsonx.example.com",
                 "credentials_path": "tests/config/secret2/apitoken",
                 "project_id": "ffffffff-89ab-cdef-0123-456789abcdef",
             },
@@ -180,7 +180,7 @@ def test_params_handling_specific_params(provider_config_with_specific_params):
 
         # parameters taken from provier-specific configuration
         # which takes precedence over regular configuration
-        assert watsonx.url == "http://bam.com/"
+        assert watsonx.url == "http://watsonx.example.com/"
         assert watsonx.credentials == "secret_key_2"
         assert watsonx.project_id == "ffffffff-89ab-cdef-0123-456789abcdef"
 

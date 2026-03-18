@@ -1,4 +1,4 @@
-"""Unit tests for BAM provider."""
+"""Unit tests for fake provider."""
 
 from unittest.mock import MagicMock, patch
 

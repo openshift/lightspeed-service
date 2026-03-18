@@ -10,7 +10,7 @@ AI](https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-a
 AI](https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux/ai),
 and [Watsonx](https://www.ibm.com/watsonx) are officially supported as
 backends. Other providers, even ones that are not fully supported, can be used
-as well. For example, it is possible to use BAM (IBM's research environment).
+as well.
 It is also possible to run [InstructLab](https://instructlab.ai/) locally,
 configure model, and connect to it.
 
@@ -28,7 +28,6 @@ configure model, and connect to it.
         * [WatsonX](#watsonx)
         * [OpenShift AI](#openshift-ai)
         * [RHEL AI](#rhel-ai)
-        * [BAM (not officially supported)](#bam-not-officially-supported)
         * [Locally running InstructLab](#locally-running-instructlab)
     * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
 * [Configuration](#configuration)
@@ -148,13 +147,6 @@ Please look at into [Generating API keys for authentication](https://www.ibm.com
 
 (TODO: to be updated)
 
-### BAM (not officially supported)
-    1. Get a BAM API Key at [https://bam.res.ibm.com](https://bam.res.ibm.com)
-        * Login with your IBM W3 Id credentials.
-        * Copy the API Key from the Documentation section.
-        ![BAM API Key](docs/bam_api_key.png)
-    2. BAM API URL: https://bam-api.res.ibm.com
-
 ### Locally running InstructLab
 
 Depends on configuration, but usually it is not needed to generate or use API key.
@@ -185,14 +177,14 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
 ## 2. Configure LLM providers
 
-   The example configuration file defines providers for six LLM providers: BAM, OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI (RHEL AI), but defines BAM as the default provider. If you prefer to use a different LLM provider than BAM, such as OpenAI, ensure that the provider definition points to a file containing a valid OpenAI, Watsonx etc. API key, and change the `default_model` and `default_provider` values to reference the selected provider and model.
+   The example configuration file defines providers for OpenAI, Azure OpenAI, Watsonx, OpenShift AI VLLM (RHOAI VLLM), and RHELAI (RHEL AI). Ensure the provider definition points to a file containing a valid API key, and set `default_model` and `default_provider` to reference the selected provider and model.
 
    The example configuration also defines locally running provider InstructLab which is OpenAI-compatible and can use
    several models. Please look at [instructlab pages](https://github.com/instructlab/instructlab/tree/main) for detailed
    information on how to set up and run this provider.
 
    API credentials are in turn loaded from files specified in the config YAML by the `credentials_path` attributes. If these paths are relative,
-   they are relative to the current working directory. To use the example olsconfig.yaml as is, place your BAM API Key into a file named `bam_api_key.txt` in your working directory.
+   they are relative to the current working directory.
 
    [!NOTE]
    There are two supported methods to provide credentials for Azure OpenAI:
@@ -305,7 +297,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
    1. Common providers configuration options
 
        - `name`: unique name, can be any proper YAML literal
-       - `type`: provider type: any of `bam`, `openai`, `azure_openai`, `rhoai_vllm`, `rhelai_vllm`, or `watsonx`
+       - `type`: provider type: any of `openai`, `azure_openai`, `rhoai_vllm`, `rhelai_vllm`, or `watsonx`
        - `url`: URL to be used to call LLM via REST API
        - `api_key`: path to secret (token) used to call LLM via REST API
        - `models`: list of models configuration (model name + model-specific parameters)
@@ -877,8 +869,8 @@ In the `examples` folder is a set of YAML manifests,
 `openshift-lightspeed.yaml`. This includes all the resources necessary to get
 OpenShift Lightspeed running in a cluster. It is configured expecting to only
 use OpenAI as the inference endpoint, but you can easily modify these manifests,
-looking at the `olsconfig.yaml` to see how to alter it to work with BAM as the
-provider.
+looking at the `olsconfig.yaml` to see how to alter it to work with another
+supported provider.
 
 There is a commented-out OpenShift Route with TLS Edge termination available if
 you wish to use it.
@@ -1111,7 +1103,6 @@ Currently there exist the following LLM providers implementations:
 1. RHEL AI
 1. OpenShift AI
 1. WatsonX
-1. BAM
 1. Fake provider (to be used by tests and benchmarks)
 
 
