@@ -191,18 +191,13 @@ def test_metrics_duration():
 def test_provider_model_configuration_metrics():
     """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(pytest.client)
-    print(response_text)
-    for provider in ("p1", "p2"):
-        for model in ("m1", "m2"):
-            if provider == "p1" and model == "m1":
-                # default/enabled model should have a metric value of 1.0
-                assert (
-                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 1.0'
-                    in response_text
-                )
-            else:
-                # non-enabled models should have a metric value of 0.0
-                assert (
-                    f'provider_model_configuration{{model="{model}",provider="{provider}"}} 0.0'
-                    in response_text
-                )
+    expected_metrics = (
+        'ols_provider_model_configuration{model="m1",provider="openai"} 1.0',
+        'ols_provider_model_configuration{model="m2",provider="openai"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="watsonx"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="azure_openai"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="rhoai_vllm"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="rhelai_vllm"} 0.0',
+    )
+    for expected in expected_metrics:
+        assert expected in response_text

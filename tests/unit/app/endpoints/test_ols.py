@@ -591,19 +591,19 @@ def test_attachments_redact_on_redact_error():
 def test_conversation_request(auth):
     """Test conversation request API endpoint."""
     with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
-        ) as mock_summarize,
+        patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer,
         patch("ols.config.conversation_cache.get"),
     ):
         mock_response = (
             "Kubernetes is an open-source container-orchestration system..."  # summary
         )
-        mock_summarize.return_value = SummarizerResponse(
-            response=mock_response,
-            rag_chunks=[],
-            history_truncated=False,
-            token_counter=None,
+        mock_docs_summarizer.return_value.create_response.return_value = (
+            SummarizerResponse(
+                response=mock_response,
+                rag_chunks=[],
+                history_truncated=False,
+                token_counter=None,
+            )
         )
         llm_request = LLMRequest(query="Tell me about Kubernetes")
         response = ols.conversation_request(llm_request, auth)
@@ -620,9 +620,7 @@ def test_conversation_request(auth):
 def test_conversation_request_dedup_ref_docs(auth):
     """Test deduplication of referenced docs."""
     with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
-        ) as mock_summarize,
+        patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer,
         patch("ols.config.conversation_cache.get"),
     ):
         mock_rag_chunk = [
@@ -632,11 +630,13 @@ def test_conversation_request_dedup_ref_docs(auth):
             ),  # duplicate doc
             RagChunk(text="text3", doc_url="url-a", doc_title="title-a"),
         ]
-        mock_summarize.return_value = SummarizerResponse(
-            response="some response",
-            rag_chunks=mock_rag_chunk,
-            history_truncated=False,
-            token_counter=None,
+        mock_docs_summarizer.return_value.create_response.return_value = (
+            SummarizerResponse(
+                response="some response",
+                rag_chunks=mock_rag_chunk,
+                history_truncated=False,
+                token_counter=None,
+            )
         )
         llm_request = LLMRequest(query="some query")
         response = ols.conversation_request(llm_request, auth)
@@ -655,14 +655,14 @@ def test_generate_response_valid_subject():
     mock_response = (
         "Kubernetes is an open-source container-orchestration system..."  # summary
     )
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response"
-    ) as mock_summarize:
-        mock_summarize.return_value = SummarizerResponse(
-            mock_response,
-            [],
-            False,
-            token_counter=None,
+    with patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer:
+        mock_docs_summarizer.return_value.create_response.return_value = (
+            SummarizerResponse(
+                mock_response,
+                [],
+                False,
+                token_counter=None,
+            )
         )
 
         # prepare arguments for DocsSummarizer
