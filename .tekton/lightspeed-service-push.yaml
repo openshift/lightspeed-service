@@ -33,7 +33,29 @@ spec:
   - name: build-source-image
     value: 'true'
   - name: prefetch-input
-    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true"}]'
+    value:  |
+      [
+         {
+           "type": "rpm",
+           "path": "."
+         },
+         {
+           "type": "pip",
+           "path": ".",
+           "requirements_files": [
+             "requirements.hashes.wheel.txt",
+             "requirements.hashes.source.txt",
+             "requirements.hermetic.txt"
+           ],
+           "requirements_build_files": ["requirements-build.txt"],
+           "binary": {
+             "packages": "aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anyio,attrs,certifi,cffi,click,colorama,cryptography,dataclasses-json,deprecated,distlib,distro,durationpy,faiss-cpu,filetype,frozenlist,fsspec,grpcio,h11,h2,hf-xet,hpack,httpcore,httpx,httpx-sse,hyperframe,idna,jinja2,jiter,jmespath,joblib,jsonpatch,jsonschema,jsonschema-specifications,langchain-community,marshmallow,mcp,mpmath,multidict,mypy-extensions,nest-asyncio,networkx,numpy,oauthlib,orjson,packaging,pandas,pillow,portalocker,prometheus-client,propcache,psycopg2-binary,pyasn1-modules,pycparser,pydantic,pydantic-core,python-dateutil,python-multipart,pyyaml,referencing,requests,requests-oauthlib,requests-toolbelt,rpds-py,safetensors,scikit-learn,scipy,setuptools,six,sniffio,sqlalchemy,sympy,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,triton,typing-extensions,typing-inspect,typing-inspection,tzdata,urllib3,uuid-utils,websocket-client,xxhash,yarl,zipp,zstandard,uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25",
+             "os": "linux",
+             "arch": "x86_64,aarch64",
+             "py_version": 312
+           }
+         }
+      ]
   - name: hermetic
     value: 'true'
   - name: build-args-file

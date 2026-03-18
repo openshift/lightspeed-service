@@ -1,15 +1,65 @@
 # vim: set filetype=dockerfile
 ARG LIGHTSPEED_RAG_CONTENT_IMAGE=quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/own-app-lightspeed-rag-content@sha256:51c25627274f0c8a1651dbc986a713bf4fc388b1b1037e3df759a28049d81382
-ARG HERMETIC=false
+ARG BUILDER_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal
+FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} AS lightspeed-rag-content
 
-FROM --platform=linux/amd64 ${LIGHTSPEED_RAG_CONTENT_IMAGE} as lightspeed-rag-content
-
-FROM --platform=$BUILDPLATFORM registry.redhat.io/ubi9/ubi-minimal:latest
-ARG VERSION
+FROM --platform=$BUILDPLATFORM ${BUILDER_BASE_IMAGE} AS builder
+ARG BUILDER_DNF_COMMAND=dnf
 ARG APP_ROOT=/app-root
 
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip
+USER root
+
+RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
+    gcc gcc-c++ cmake cargo
+
+# UV_PYTHON_DOWNLOADS=0 : Disable Python interpreter downloads and use the system interpreter.
+# UV_COMPILE_BYTECODE=0 : Disable bytecode compilation.
+# UV_LINK_MODE=copy : Use copy mode for linking.
+# MATURIN_NO_INSTALL_RUST=1 : Disable Rust installation.
+ENV UV_COMPILE_BYTECODE=0 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0 \
+    MATURIN_NO_INSTALL_RUST=1
+
+WORKDIR /app-root
+
+# Add explicit files and directories
+# (avoid accidental inclusion of local directories or env files or credentials)
+COPY runner.py requirements.hashes.wheel.txt requirements.hashes.source.txt pyproject.toml uv.lock LICENSE README.md ./
+
+COPY ols ./ols
+
+# Install uv package manager
+RUN pip install "uv>=0.8.15"
+
+# Bundle additional dependencies for library mode.
+# Source cachi2 environment for hermetic builds if available, otherwise use normal installation
+# cachi2.env has these env vars:
+# PIP_FIND_LINKS=/cachi2/output/deps/pip
+# PIP_NO_INDEX=true
+RUN if [ -f /cachi2/cachi2.env ]; then \
+    . /cachi2/cachi2.env && \
+    uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
+    . .venv/bin/activate && \
+    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt ;\
+    else \
+    uv sync --locked --no-dev --no-cache ;\
+    fi
+
+# Add executables from .venv to system PATH
+ENV PATH="/app-root/.venv/bin:$PATH"
+
+# Verify all dependencies are installed correctly
+RUN echo "Verifying dependencies installation..." && \
+    pip check && \
+    python -c "import yaml, fastapi, langchain, llama_index, uvicorn, pydantic" && \
+    echo "All dependencies installed and verified successfully!"
+
+FROM ${RUNTIME_BASE_IMAGE}
+ARG APP_ROOT=/app-root
+
+WORKDIR /app-root
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
@@ -20,46 +70,34 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUTF8=1 \
     PYTHONIOENCODING=UTF-8 \
     LANG=en_US.UTF-8 \
-    PIP_NO_CACHE_DIR=off \
     LLAMA_INDEX_CACHE_DIR=/tmp/llama_index
 
-WORKDIR /app-root
-
+COPY --from=builder /app-root/.venv .venv
+COPY ols ./ols
+COPY runner.py /app-root/runner.py
 COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
 COPY --from=lightspeed-rag-content /rag/embeddings_model ./embeddings_model
-
-# Add explicit files and directories
-# (avoid accidental inclusion of local directories or env files or credentials)
-COPY runner.py requirements.txt ./
-
-RUN pip3.11 install --upgrade pip
-RUN pip3.11 install --no-cache-dir --ignore-installed -r requirements.txt
-
-# Verify all dependencies are installed correctly
-RUN echo "Verifying dependencies installation..." && \
-    pip3.11 check && \
-    python3.11 -c "import yaml, fastapi, langchain, llama_index, uvicorn, pydantic" && \
-    echo "All dependencies installed and verified successfully!"
-
-COPY ols ./ols
 
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
 
+# Add executables from .venv to system PATH
+ENV PATH="/app-root/.venv/bin:$PATH"
+
 # Run the application
 EXPOSE 8080
 EXPOSE 8443
-CMD ["python3.11", "runner.py"]
+ENTRYPOINT ["python", "runner.py"]
 
 LABEL io.k8s.display-name="OpenShift LightSpeed Service" \
-      io.k8s.description="AI-powered OpenShift Assistant Service." \
-      io.openshift.tags="openshift-lightspeed,ols" \
-      description="Red Hat OpenShift Lightspeed Service" \
-      summary="Red Hat OpenShift Lightspeed Service" \
-      com.redhat.component=openshift-lightspeed-service \
-      name="openshift-lightspeed/lightspeed-service-api-rhel9" \
-      cpe="cpe:/a:redhat:openshift_lightspeed:1::el9" \
-      vendor="Red Hat, Inc."
+    io.k8s.description="AI-powered OpenShift Assistant Service." \
+    io.openshift.tags="openshift-lightspeed,ols" \
+    description="Red Hat OpenShift Lightspeed Service" \
+    summary="Red Hat OpenShift Lightspeed Service" \
+    com.redhat.component=openshift-lightspeed-service \
+    name="openshift-lightspeed/lightspeed-service-api-rhel9" \
+    cpe="cpe:/a:redhat:openshift_lightspeed:1::el9" \
+    vendor="Red Hat, Inc."
 
 
 # no-root user is checked in Konflux

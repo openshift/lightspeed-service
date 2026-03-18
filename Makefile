@@ -167,6 +167,12 @@ shellcheck: ## Run shellcheck
 	shellcheck --version
 	shellcheck -- */*.sh
 
+konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
+	./scripts/konflux_requirements.sh
+
+konflux-rpm-lock:	## Generate rpm.lock.yaml file for konflux build
+	./scripts/generate-rpm-lock.sh
+
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''

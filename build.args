@@ -1,1 +1,4 @@
-HERMETIC=true
+BUILDER_BASE_IMAGE=registry.redhat.io/rhai/base-image-cpu-rhel9:3.3
+BUILDER_DNF_COMMAND=dnf
+RUNTIME_BASE_IMAGE=registry.redhat.io/rhai/base-image-cpu-rhel9:3.3
+RUNTIME_DNF_COMMAND=dnf
