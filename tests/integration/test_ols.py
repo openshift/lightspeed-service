@@ -22,6 +22,7 @@ from ols.app.models.config import (
 from ols.utils import suid
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
 from ols.utils.logging_configurator import configure_logging
+from ols.utils.token_handler import PromptTooLongError
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
 from tests.mock_classes.mock_llm_loader import mock_llm_loader
 from tests.mock_classes.mock_tools import NAMESPACES_OUTPUT, mock_tools_map
@@ -81,16 +82,13 @@ def test_post_question_without_payload(_setup, endpoint):
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
 def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint):
     """Check the REST API query endpoints when generic response type is returned."""
-    with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response",
-            side_effect=Exception("summarizer error"),
-        ),
-        patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.generate_response",
-            side_effect=Exception("summarizer error"),
-        ),
-    ):
+    with patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer:
+        mock_docs_summarizer.return_value.create_response.side_effect = Exception(
+            "summarizer error"
+        )
+        mock_docs_summarizer.return_value.generate_response.side_effect = Exception(
+            "summarizer error"
+        )
         conversation_id = suid.get_suid()
         response = pytest.client.post(
             endpoint,
@@ -116,7 +114,7 @@ def test_post_question_with_provider_but_not_model(_setup, endpoint):
         json={
             "conversation_id": conversation_id,
             "query": "test query",
-            "provider": constants.PROVIDER_BAM,
+            "provider": constants.PROVIDER_OPENAI,
         },
     )
     assert response.status_code == requests.codes.unprocessable
@@ -912,11 +910,18 @@ logs:
 def test_post_too_long_query(_setup, endpoint):
     """Check the REST API query endpoints for query that is too long."""
     query = "test query" * 1000
-    conversation_id = suid.get_suid()
-    response = pytest.client.post(
-        endpoint,
-        json={"conversation_id": conversation_id, "query": query},
-    )
+    with patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer:
+        mock_docs_summarizer.return_value.create_response.side_effect = (
+            PromptTooLongError("test query exceeds LLM available context window limit")
+        )
+        mock_docs_summarizer.return_value.generate_response.side_effect = (
+            PromptTooLongError("test query exceeds LLM available context window limit")
+        )
+        conversation_id = suid.get_suid()
+        response = pytest.client.post(
+            endpoint,
+            json={"conversation_id": conversation_id, "query": query},
+        )
 
     if response.headers["content-type"] == "application/json":
         # non-streaming responses return JSON

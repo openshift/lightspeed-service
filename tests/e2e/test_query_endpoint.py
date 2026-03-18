@@ -474,7 +474,7 @@ def test_query_with_provider_but_not_model() -> None:
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
-                "provider": "bam",
+                "provider": "openai",
             },
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )

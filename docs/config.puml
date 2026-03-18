@@ -16,9 +16,6 @@ class "AzureOpenAIConfig" as ols.app.models.config.AzureOpenAIConfig {
   deployment_name : str
   tenant_id : Optional[str]
 }
-class "BAMConfig" as ols.app.models.config.BAMConfig {
-  credentials_path : str
-}
 class "Config" as ols.app.models.config.Config {
   dev_config
   llm_providers
@@ -138,7 +135,6 @@ class "PostgresConfig" as ols.app.models.config.PostgresConfig {
 class "ProviderConfig" as ols.app.models.config.ProviderConfig {
   api_version : Optional[str]
   azure_config : Optional[AzureOpenAIConfig]
-  bam_config : Optional[BAMConfig]
   certificates_store : Optional[str]
   credentials : Optional[str]
   deployment_name : Optional[str]
@@ -220,7 +216,6 @@ class "WatsonxConfig" as ols.app.models.config.WatsonxConfig {
   project_id : Optional[str]
 }
 ols.app.models.config.AzureOpenAIConfig --|> ols.app.models.config.ProviderSpecificConfig
-ols.app.models.config.BAMConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.FakeConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.OpenAIConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.RHELAIVLLMConfig --|> ols.app.models.config.ProviderSpecificConfig
@@ -228,7 +223,6 @@ ols.app.models.config.RHOAIVLLMConfig --|> ols.app.models.config.ProviderSpecifi
 ols.app.models.config.WatsonxConfig --|> ols.app.models.config.ProviderSpecificConfig
 ols.app.models.config.AuthenticationConfig --* ols.app.models.config.OLSConfig : authentication_config
 ols.app.models.config.AzureOpenAIConfig --* ols.app.models.config.ProviderConfig : azure_config
-ols.app.models.config.BAMConfig --* ols.app.models.config.ProviderConfig : bam_config
 ols.app.models.config.ConversationCacheConfig --* ols.app.models.config.OLSConfig : conversation_cache
 ols.app.models.config.DevConfig --* ols.app.models.config.Config : dev_config
 ols.app.models.config.FakeConfig --* ols.app.models.config.ProviderConfig : fake_provider_config

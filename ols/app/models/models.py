@@ -283,7 +283,7 @@ class ErrorResponse(BaseModel):
                 {
                     "detail": {
                         "response": "Error while validation question",
-                        "cause": "Failed to handle request to https://bam-api.res.ibm.com/v2/text",
+                        "cause": "Failed to handle request to https://api.openai.com/v1/chat/completions",
                     },
                 },
                 {

@@ -476,7 +476,7 @@ def test_query_with_provider_but_not_model() -> None:
             json={
                 "conversation_id": "",
                 "query": "what is kubernetes?",
-                "provider": "bam",
+                "provider": "openai",
             },
         )
         assert response.status_code == requests.codes.unprocessable_entity

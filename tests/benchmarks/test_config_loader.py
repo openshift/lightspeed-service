@@ -48,7 +48,7 @@ def read_valid_config_stream():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     credentials_path: tests/config/secret/apitoken
     models:
@@ -60,7 +60,7 @@ llm_providers:
       - name: m3
         url: 'https://murl3'
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1
@@ -106,7 +106,7 @@ def read_invalid_config_stream():
 ---
 llm_providers:
   - name: p1
-    type: bam-invalid
+    type: openai-invalid
     url: 'http://url1'
     credentials_path: tests/config/secret/apitoken
     models:
@@ -116,7 +116,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1

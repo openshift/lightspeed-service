@@ -14,12 +14,6 @@ class "AzureOpenAI" as ols.src.llms.providers.azure_openai.AzureOpenAI {
   resolve_access_token(azure_config: AzureOpenAIConfig) -> Optional[str]
   retrieve_access_token(azure_config: AzureOpenAIConfig) -> Optional[AccessToken]
 }
-class "BAM" as ols.src.llms.providers.bam.BAM {
-  credentials : Optional[str]
-  default_params
-  url : str
-  load() -> LLM
-}
 class "FakeProvider" as ols.src.llms.providers.fake_provider.FakeProvider {
   default_params
   load() -> LLM
@@ -77,7 +71,6 @@ ols.src.llms.llm_loader.ModelConfigMissingError --|> ols.src.llms.llm_loader.LLM
 ols.src.llms.llm_loader.UnknownProviderError --|> ols.src.llms.llm_loader.LLMConfigurationError
 ols.src.llms.llm_loader.UnsupportedProviderError --|> ols.src.llms.llm_loader.LLMConfigurationError
 ols.src.llms.providers.azure_openai.AzureOpenAI --|> ols.src.llms.providers.provider.LLMProvider
-ols.src.llms.providers.bam.BAM --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.fake_provider.FakeProvider --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.openai.OpenAI --|> ols.src.llms.providers.provider.LLMProvider
 ols.src.llms.providers.provider.LLMProvider --|> ols.src.llms.providers.provider.AbstractLLMProvider

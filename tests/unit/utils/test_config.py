@@ -61,7 +61,7 @@ def test_invalid_dev_config():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -103,7 +103,7 @@ def test_invalid_config_missing_ols_config_section():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -111,7 +111,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1
@@ -131,7 +131,7 @@ def test_invalid_config_invalid_model_url():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -139,7 +139,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1
@@ -164,7 +164,7 @@ def test_invalid_config_invalid_provider_url():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'not-valid-url'
     models:
       - name: m1
@@ -172,7 +172,7 @@ llm_providers:
       - name: m2
         url: 'https://murl2'
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1
@@ -194,7 +194,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: foobar
     models:
       - name: m1
@@ -217,7 +217,7 @@ def test_invalid_config_missing_provider_name():
 ---
 llm_providers:
   - foo: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -240,7 +240,7 @@ def test_invalid_config_unknown_provider_name():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -267,7 +267,7 @@ def test_invalid_config_unknown_model_name():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -294,7 +294,7 @@ def test_invalid_config_missing_default_model():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -320,7 +320,7 @@ def test_invalid_config_missing_default_provider():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -346,7 +346,7 @@ def test_invalid_config_for_memory_cache():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -371,7 +371,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     models:
       - name: m1
@@ -397,7 +397,7 @@ def test_invalid_config_improper_credentials():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     credentials_path: no_such_file
 ols_config:
@@ -415,7 +415,7 @@ ols_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     credentials_path: tests/config/secret/apitoken
     models:
@@ -440,7 +440,7 @@ def test_invalid_config_improper_reference_content():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -469,7 +469,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -497,7 +497,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -524,7 +524,7 @@ dev_config:
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -555,7 +555,7 @@ def test_unreadable_directory():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     credentials_path: tests/config/secret/apitoken
     models:
       - name: m1
@@ -586,7 +586,7 @@ def test_valid_config_stream():
 ---
 llm_providers:
   - name: p1
-    type: bam
+    type: openai
     url: 'http://url1'
     credentials_path: tests/config/secret/apitoken
     models:
@@ -602,7 +602,7 @@ llm_providers:
           - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
       minTLSVersion: VersionTLS13
   - name: p2
-    type: bam
+    type: openai
     url: 'https://url2'
     models:
       - name: m1
@@ -672,7 +672,7 @@ def test_valid_config_file():
         # Verify LLM providers
         assert "p1" in config.config.llm_providers.providers
         assert "p2" in config.config.llm_providers.providers
-        assert config.config.llm_providers.providers["p1"].type == "bam"
+        assert config.config.llm_providers.providers["p1"].type == "openai"
         assert config.config.llm_providers.providers["p2"].type == "openai"
 
         # Verify OLS config
@@ -713,7 +713,7 @@ def test_valid_config_file_without_certificate_directory():
                 "llm_providers": [
                     {
                         "name": "p1",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "https://url1",
                         "credentials_path": "tests/config/secret/apitoken",
                         "models": [
@@ -786,7 +786,7 @@ def test_valid_config_file_with_postgres():
                 "llm_providers": [
                     {
                         "name": "p1",
-                        "type": "bam",
+                        "type": "openai",
                         "url": "https://url1",
                         "credentials_path": "tests/config/secret/apitoken",
                         "models": [
@@ -1034,108 +1034,6 @@ def test_valid_config_with_azure_openai_api_version():
         provider_config = config.config.llm_providers.providers.get("p1")
         assert provider_config is not None
         assert provider_config.api_version == "2024-12-31"
-    except Exception as e:
-        print(traceback.format_exc())
-        pytest.fail(f"loading valid configuration failed: {e}")
-
-
-def test_valid_config_with_bam():
-    """Check if a valid configuration file with BAM is handled correctly."""
-    try:
-        config.reload_from_yaml_file("tests/config/valid_config_with_bam.yaml")
-
-        expected_config = Config(
-            {
-                "llm_providers": [
-                    {
-                        "name": "p1",
-                        "type": "bam",
-                        "url": "https://url1",
-                        "credentials_path": "tests/config/secret/apitoken",
-                        "deployment_name": "test",
-                        "bam_config": {
-                            "url": "http://localhost:1234",
-                            "credentials_path": "tests/config/secret/apitoken",
-                        },
-                        "models": [
-                            {
-                                "name": "m1",
-                                "url": "https://murl1",
-                            },
-                        ],
-                    },
-                ],
-                "ols_config": {
-                    "conversation_cache": {
-                        "type": "postgres",
-                        "postgres": {
-                            "host": "foobar.com",
-                            "port": "1234",
-                            "dbname": "test",
-                            "user": "user",
-                            "password_path": "tests/config/postgres_password.txt",
-                            "ca_cert_path": "tests/config/postgres_cert.crt",
-                            "ssl_mode": "require",
-                        },
-                    },
-                    "default_provider": "p1",
-                    "default_model": "m1",
-                },
-            }
-        )
-        assert config.config == expected_config
-        provider_config = config.config.llm_providers.providers.get("p1")
-        assert provider_config is not None
-        assert provider_config.api_version is None
-    except Exception as e:
-        print(traceback.format_exc())
-        pytest.fail(f"loading valid configuration failed: {e}")
-
-
-def test_valid_config_with_bam_credentials_path_only_in_provider_config():
-    """Check if a valid configuration file with BAM is handled correctly."""
-    try:
-        config.reload_from_yaml_file("tests/config/valid_config_with_bam_2.yaml")
-
-        expected_config = Config(
-            {
-                "llm_providers": [
-                    {
-                        "name": "p1",
-                        "type": "bam",
-                        "url": "https://url1",
-                        "deployment_name": "test",
-                        "bam_config": {
-                            "url": "http://localhost:1234",
-                            "credentials_path": "tests/config/secret/apitoken",
-                        },
-                        "models": [
-                            {
-                                "name": "m1",
-                                "url": "https://murl1",
-                            },
-                        ],
-                    },
-                ],
-                "ols_config": {
-                    "conversation_cache": {
-                        "type": "postgres",
-                        "postgres": {
-                            "host": "foobar.com",
-                            "port": "1234",
-                            "dbname": "test",
-                            "user": "user",
-                            "password_path": "tests/config/postgres_password.txt",
-                            "ca_cert_path": "tests/config/postgres_cert.crt",
-                            "ssl_mode": "require",
-                        },
-                    },
-                    "default_provider": "p1",
-                    "default_model": "m1",
-                },
-            }
-        )
-        assert config.config == expected_config
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
