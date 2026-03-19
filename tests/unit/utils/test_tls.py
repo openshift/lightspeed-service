@@ -95,7 +95,7 @@ ciphers_for_tls_profile = (
         (
             "TLS_AES_128_GCM_SHA256",
             "ECDHE-ECDSA-AES128-GCM-SHA256",
-            "AES128-GCM-SHA256",
+            "DHE-RSA-CHACHA20-POLY1305",
         ),
     ),
     (

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ols import config
+from ols import config, constants
 from ols.runners.quota_scheduler import start_quota_scheduler
 from ols.runners.uvicorn import start_uvicorn
 
@@ -33,7 +33,7 @@ def test_start_uvicorn_minimal_setup():
             ssl_certfile=None,
             ssl_keyfile_password=None,
             ssl_version=ssl.PROTOCOL_TLS_SERVER,
-            ssl_ciphers="TLSv1",
+            ssl_ciphers=constants.DEFAULT_SSL_CIPHERS,
             access_log=False,
         )
 
