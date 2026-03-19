@@ -13,20 +13,13 @@ spec:
     providers:
       - credentialsSecretRef:
           name: llmcreds
-        projectID: ad629765-c373-4731-9d69-dc701724c081
         models:
-          - name: ibm/granite-4-h-small
-        name: watsonx
-        type: watsonx
-      - credentialsSecretRef:
-          name: openai-llmcreds
-        models:
-          - name: gpt-4.1-mini
+          - name: gpt-4o-mini
         name: openai
         type: openai
   ols:
-    defaultModel: ibm/granite-4-h-small
-    defaultProvider: watsonx
+    defaultModel: gpt-4o-mini
+    defaultProvider: openai
     deployment:
       replicas: 1
     disableAuth: false

@@ -1,6 +1,6 @@
 # LightSpeed Evaluation Framework Configuration
-# OLS Provider: WatsonX Granite (ibm/granite-4-h-small)
-# Judge LLM: OpenAI GPT-4.1-mini
+# OLS Provider: OpenAI GPT-4o-mini (older mini model, being evaluated)
+# Judge LLM: OpenAI GPT-4.1-mini (newer mini model, scoring responses)
 
 # Judge LLM Configuration
 # Uses OpenAI GPT-4.1-mini for evaluation scoring.
@@ -14,16 +14,16 @@ llm:
   num_retries: 3
 
 # OLS API Configuration
-# Targets the OLS /query endpoint using WatsonX Granite as the backend LLM.
+# Targets the OLS /query endpoint using OpenAI GPT-4o-mini as the backend LLM.
 # api_base is overridden at runtime with the actual OLS service URL.
-# Requires WATSONX_API_KEY environment variable (used by OLS, not by this tool).
+# Requires OPENAI_API_KEY environment variable (used by OLS via K8s secret).
 api:
   enabled: true
   api_base: http://localhost:8080
   endpoint_type: query
   timeout: 300
-  provider: "watsonx"
-  model: "ibm/granite-4-h-small"
+  provider: "openai"
+  model: "gpt-4o-mini"
   no_tools: false
   system_prompt: null
 
