@@ -1652,7 +1652,6 @@ def test_tls_security_profile_correct_values():
 
 
 tls_types = (
-    tls.TLSProfiles.OLD_TYPE,
     tls.TLSProfiles.INTERMEDIATE_TYPE,
     tls.TLSProfiles.MODERN_TYPE,
     tls.TLSProfiles.CUSTOM_TYPE,
@@ -1660,8 +1659,6 @@ tls_types = (
 
 
 tls_versions = (
-    tls.TLSProtocolVersion.VERSION_TLS_10,
-    tls.TLSProtocolVersion.VERSION_TLS_11,
     tls.TLSProtocolVersion.VERSION_TLS_12,
     tls.TLSProtocolVersion.VERSION_TLS_13,
 )
@@ -1682,6 +1679,42 @@ def test_tls_security_profile_validate_yaml(tls_type, min_tls_version):
         }
     )
     tls_security_profile.validate_yaml()
+
+
+def test_tls_security_profile_validate_rejected_old_type():
+    """Test that OldType profile is rejected per prod-sec requirements."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "OldType",
+            "minTLSVersion": "VersionTLS12",
+            "ciphers": [],
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="does not meet minimum security requirements",
+    ):
+        tls_security_profile.validate_yaml()
+
+
+@pytest.mark.parametrize(
+    "tls_version",
+    (tls.TLSProtocolVersion.VERSION_TLS_10, tls.TLSProtocolVersion.VERSION_TLS_11),
+)
+def test_tls_security_profile_validate_rejected_tls_version(tls_version):
+    """Test that TLS versions below 1.2 are rejected per prod-sec requirements."""
+    tls_security_profile = TLSSecurityProfile(
+        {
+            "type": "Custom",
+            "minTLSVersion": tls_version,
+            "ciphers": [],
+        }
+    )
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="is below the required minimum",
+    ):
+        tls_security_profile.validate_yaml()
 
 
 def test_tls_security_profile_validate_invalid_yaml_type():
@@ -1723,7 +1756,6 @@ def test_tls_security_profile_validate_invalid_yaml_min_tls_version():
 
 
 tls_types_without_custom = (
-    tls.TLSProfiles.OLD_TYPE,
     tls.TLSProfiles.INTERMEDIATE_TYPE,
     tls.TLSProfiles.MODERN_TYPE,
 )

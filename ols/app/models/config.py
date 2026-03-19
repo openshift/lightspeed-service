@@ -214,27 +214,47 @@ class TLSSecurityProfile(BaseModel):
             self.min_tls_version = data.get("minTLSVersion")
             self.ciphers = data.get("ciphers")
 
+    _REJECTED_TLS_PROFILES = frozenset({tls.TLSProfiles.OLD_TYPE})
+    _MIN_ALLOWED_TLS_VERSION = tls.TLSProtocolVersion.VERSION_TLS_12
+
+    def _validate_profile_type(self) -> None:
+        """Validate TLS profile type against known and allowed profiles."""
+        try:
+            profile = tls.TLSProfiles(self.profile_type)
+        except ValueError:
+            raise checks.InvalidConfigurationError(
+                f"Invalid TLS profile type '{self.profile_type}'"
+            )
+        if profile in self._REJECTED_TLS_PROFILES:
+            raise checks.InvalidConfigurationError(
+                f"TLS profile '{self.profile_type}' does not meet minimum "
+                f"security requirements (TLS 1.2+). "
+                f"Use 'IntermediateType' or 'ModernType' instead."
+            )
+
+    def _validate_min_tls_version(self) -> None:
+        """Validate minimum TLS version meets security floor."""
+        try:
+            version = tls.TLSProtocolVersion(self.min_tls_version)
+        except ValueError:
+            raise checks.InvalidConfigurationError(
+                f"Invalid minimal TLS version '{self.min_tls_version}'"
+            )
+        allowed = list(tls.TLSProtocolVersion)
+        if allowed.index(version) < allowed.index(self._MIN_ALLOWED_TLS_VERSION):
+            raise checks.InvalidConfigurationError(
+                f"Minimum TLS version '{self.min_tls_version}' is below the "
+                f"required minimum '{self._MIN_ALLOWED_TLS_VERSION.value}'. "
+                f"Use 'VersionTLS12' or higher."
+            )
+
     def validate_yaml(self) -> None:
         """Validate structure content."""
-        # check the TLS profile type
         if self.profile_type is not None:
-            try:
-                tls.TLSProfiles(self.profile_type)
-            except ValueError:
-                raise checks.InvalidConfigurationError(
-                    f"Invalid TLS profile type '{self.profile_type}'"
-                )
-        # check the TLS protocol version
+            self._validate_profile_type()
         if self.min_tls_version is not None:
-            try:
-                tls.TLSProtocolVersion(self.min_tls_version)
-            except ValueError:
-                raise checks.InvalidConfigurationError(
-                    f"Invalid minimal TLS version '{self.min_tls_version}'"
-                )
-        # check ciphers
+            self._validate_min_tls_version()
         if self.ciphers is not None:
-            # just perform the check for non-custom TLS profile type
             if self.profile_type is not None and self.profile_type != "Custom":
                 supported_ciphers = tls.TLS_CIPHERS[tls.TLSProfiles(self.profile_type)]
                 for cipher in self.ciphers:
