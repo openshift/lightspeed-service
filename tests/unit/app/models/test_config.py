@@ -222,15 +222,36 @@ def test_model_parameters():
         default_params.max_tokens_for_response
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
+    assert default_params.reasoning_effort == "low"
+    assert default_params.reasoning_summary == "concise"
+    assert default_params.verbosity == "low"
 
     parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
     assert parameters.max_tokens_for_response == 10
     assert not hasattr(parameters, "unknown_param")
 
+    reasoning_params = ModelParameters(
+        reasoning_effort="high",
+        reasoning_summary="detailed",
+        verbosity="medium",
+    )
+    assert reasoning_params.reasoning_effort == "high"
+    assert reasoning_params.reasoning_summary == "detailed"
+    assert reasoning_params.verbosity == "medium"
+
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         ModelParameters(max_tokens_for_response=-1)
+
+    with pytest.raises(ValidationError):
+        ModelParameters(reasoning_effort="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError):
+        ModelParameters(reasoning_summary="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError):
+        ModelParameters(verbosity="invalid")  # type: ignore[arg-type]
 
 
 def test_model_config():
