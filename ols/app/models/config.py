@@ -520,25 +520,6 @@ class ProviderConfig(BaseModel):
                 "but configuration is set for different provider"
             )
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ProviderConfig):
-            return (
-                self.name == other.name
-                and self.type == other.type
-                and self.url == other.url
-                and self.credentials == other.credentials
-                and self.project_id == other.project_id
-                and self.models == other.models
-                and self.azure_config == other.azure_config
-                and self.openai_config == other.openai_config
-                and self.rhoai_vllm_config == other.rhoai_vllm_config
-                and self.rhelai_vllm_config == other.rhelai_vllm_config
-                and self.watsonx_config == other.watsonx_config
-                and self.tls_security_profile == other.tls_security_profile
-            )
-        return False
-
     def validate_yaml(self) -> None:
         """Validate provider config."""
         if self.name is None:
@@ -569,12 +550,6 @@ class LLMProviders(BaseModel):
                 raise checks.InvalidConfigurationError("provider name is missing")
             provider = ProviderConfig(p, ignore_llm_secrets, certificate_directory)
             self.providers[p["name"]] = provider
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, LLMProviders):
-            return self.providers == other.providers
-        return False
 
     def validate_yaml(self) -> None:
         """Validate LLM config."""
@@ -764,12 +739,6 @@ class InMemoryCacheConfig(BaseModel):
                 " max_entries needs to be a non-negative integer"
             ) from e
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, InMemoryCacheConfig):
-            return self.max_entries == other.max_entries
-        return False
-
     def validate_yaml(self) -> None:
         """Validate memory cache config."""
 
@@ -797,18 +766,8 @@ class QueryFilter(BaseModel):
                 "name, pattern and replace_with need to be specified"
             ) from e
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, QueryFilter):
-            return (
-                self.name == other.name
-                and self.pattern == other.pattern
-                and self.replace_with == other.replace_with
-            )
-        return False
-
     def validate_yaml(self) -> None:
-        """Validate memory cache config."""
+        """Validate query filter config."""
         if self.name is None:
             raise checks.InvalidConfigurationError("name is missing")
         if self.pattern is None:
@@ -858,16 +817,6 @@ class ConversationCacheConfig(BaseModel):
                     raise checks.InvalidConfigurationError(
                         f"unknown conversation cache type: {self.type}"
                     )
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ConversationCacheConfig):
-            return (
-                self.type == other.type
-                and self.memory == other.memory
-                and self.postgres == other.postgres
-            )
-        return False
 
     def validate_yaml(self) -> None:
         """Validate conversation cache config."""
@@ -920,16 +869,6 @@ class ReferenceContentIndex(BaseModel):
         self.product_docs_index_id = data.get("product_docs_index_id", None)
         self.product_docs_origin = data.get("product_docs_origin", None)
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ReferenceContentIndex):
-            return (
-                self.product_docs_index_path == other.product_docs_index_path
-                and self.product_docs_index_id == other.product_docs_index_id
-                and self.product_docs_origin == other.product_docs_origin
-            )
-        return False
-
     def validate_yaml(self) -> None:
         """Validate reference content index config."""
         if self.product_docs_index_path is not None:
@@ -975,16 +914,6 @@ class ReferenceContent(BaseModel):
             self.indexes = [ReferenceContentIndex(i) for i in data["indexes"]]
         else:
             self.indexes = None
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, ReferenceContent):
-            return (
-                self.indexes == other.indexes
-                and self.embeddings_model_path == other.embeddings_model_path
-            )
-
-        return False
 
     def validate_yaml(self) -> None:
         """Validate reference content config."""
@@ -1181,33 +1110,6 @@ class OLSConfig(BaseModel):
         if data.get("tools_approval", None) is not None:
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
 
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, OLSConfig):
-            return (
-                self.conversation_cache == other.conversation_cache
-                and self.logging_config == other.logging_config
-                and self.reference_content == other.reference_content
-                and self.default_provider == other.default_provider
-                and self.default_model == other.default_model
-                and self.max_iterations == other.max_iterations
-                and self.max_workers == other.max_workers
-                and self.query_filters == other.query_filters
-                and self.tls_config == other.tls_config
-                and self.certificate_directory == other.certificate_directory
-                and self.system_prompt == other.system_prompt
-                and self.system_prompt_path == other.system_prompt_path
-                and self.tls_security_profile == other.tls_security_profile
-                and self.authentication_config == other.authentication_config
-                and self.expire_llm_is_ready_persistent_state
-                == other.expire_llm_is_ready_persistent_state
-                and self.quota_handlers == other.quota_handlers
-                and self.proxy_config == other.proxy_config
-                and self.tool_filtering == other.tool_filtering
-                and self.tools_approval == other.tools_approval
-            )
-        return False
-
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
         if self.conversation_cache is not None:
@@ -1239,22 +1141,6 @@ class DevConfig(BaseModel):
     run_on_localhost: bool = False
     enable_system_prompt_override: bool = False
     uvicorn_port_number: Optional[int] = None
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, DevConfig):
-            return (
-                self.enable_dev_ui == other.enable_dev_ui
-                and self.llm_params == other.llm_params
-                and self.disable_auth == other.disable_auth
-                and self.disable_tls == other.disable_tls
-                and self.pyroscope_url == other.pyroscope_url
-                and self.k8s_auth_token == other.k8s_auth_token
-                and self.run_on_localhost == other.run_on_localhost
-                and self.enable_system_prompt_override
-                == other.enable_system_prompt_override
-            )
-        return False
 
 
 class Config(BaseModel):
@@ -1298,16 +1184,6 @@ class Config(BaseModel):
 
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
-
-    def __eq__(self, other: object) -> bool:
-        """Compare two objects for equality."""
-        if isinstance(other, Config):
-            return (
-                self.ols_config == other.ols_config
-                and self.llm_providers == other.llm_providers
-                and self.mcp_servers == other.mcp_servers
-            )
-        return False
 
     def _validate_default_provider_and_model(self) -> None:
         selected_default_provider = self.ols_config.default_provider
