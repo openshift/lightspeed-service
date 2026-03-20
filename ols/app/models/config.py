@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from enum import StrEnum
-from typing import Any, Literal, Optional, Self
+from typing import Any, Optional, Self
 
 from pydantic import (
     AnyHttpUrl,
@@ -21,6 +21,22 @@ from ols import constants
 from ols.utils import checks, tls
 
 
+class ReasoningLevel(StrEnum):
+    """Allowed levels for reasoning effort and verbosity."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ReasoningSummary(StrEnum):
+    """Allowed values for reasoning summaries."""
+
+    AUTO = "auto"
+    CONCISE = "concise"
+    DETAILED = "detailed"
+
+
 class ModelParameters(BaseModel):
     """Model parameters."""
 
@@ -30,9 +46,9 @@ class ModelParameters(BaseModel):
     )
     max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
 
-    reasoning_effort: Literal["low", "medium", "high"] = "low"
-    reasoning_summary: Literal["auto", "concise", "detailed"] = "concise"
-    verbosity: Literal["low", "medium", "high"] = "low"
+    reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
+    reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
+    verbosity: ReasoningLevel = ReasoningLevel.LOW
 
 
 class ModelConfig(BaseModel):

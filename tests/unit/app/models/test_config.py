@@ -29,6 +29,8 @@ from ols.app.models.config import (
     ProxyConfig,
     QueryFilter,
     QuotaHandlersConfig,
+    ReasoningLevel,
+    ReasoningSummary,
     ReferenceContent,
     ReferenceContentIndex,
     TLSConfig,
@@ -222,9 +224,9 @@ def test_model_parameters():
         default_params.max_tokens_for_response
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
-    assert default_params.reasoning_effort == "low"
-    assert default_params.reasoning_summary == "concise"
-    assert default_params.verbosity == "low"
+    assert default_params.reasoning_effort == ReasoningLevel.LOW
+    assert default_params.reasoning_summary == ReasoningSummary.CONCISE
+    assert default_params.verbosity == ReasoningLevel.LOW
 
     parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
@@ -236,9 +238,9 @@ def test_model_parameters():
         reasoning_summary="detailed",
         verbosity="medium",
     )
-    assert reasoning_params.reasoning_effort == "high"
-    assert reasoning_params.reasoning_summary == "detailed"
-    assert reasoning_params.verbosity == "medium"
+    assert reasoning_params.reasoning_effort == ReasoningLevel.HIGH
+    assert reasoning_params.reasoning_summary == ReasoningSummary.DETAILED
+    assert reasoning_params.verbosity == ReasoningLevel.MEDIUM
 
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
