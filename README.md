@@ -1173,20 +1173,6 @@ To generate the `requirements.txt` file, follow these steps:
 2. Run `make requirements.txt` – generates the `requirements.txt` (contains wheel for all platforms/archs).
 
 
-## Uploading artifact containing the pytest results and configuration to an s3 bucket.
-
-### Path
-
-[scripts/upload_artifact_s3.py](scripts/upload_artifact_s3.py)
-
-### Usage
-
-A dictionary containing the credentials of the S3 bucket must be specified, containing the keys:
-- `AWS_BUCKET`
-- `AWS_REGION`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
 ## Question and Answer Quality Evaluation
 There is an extensive suite of evaluation tools and scripts available in this 
 repository if you are interested in exploring different LLMs and their 
