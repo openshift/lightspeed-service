@@ -16,12 +16,12 @@ from ols.app.models.models import (
 )
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
-from ols.utils.connection_decorator import connection
+from ols.utils.postgres import PostgresBase, connection
 
 logger = logging.getLogger(__name__)
 
 
-class PostgresCache(Cache):
+class PostgresCache(Cache, PostgresBase):
     """Cache that uses Postgres to store cached values.
 
     The cache itself is stored in following tables:
@@ -151,87 +151,20 @@ class PostgresCache(Cache):
         SELECT pg_advisory_xact_lock(hashtext(%s || %s))
     """
 
-    INIT_ADVISORY_LOCK_STATEMENT = """
-        SELECT pg_advisory_xact_lock(hashtext('ols_cache_init'))
-    """
-
     def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
-        self.postgres_config = config
         self._tx_lock = threading.Lock()
-
-        # initialize connection to DB
-        self.connect()
         self.capacity = config.max_entries
+        super().__init__(config)
 
-    # pylint: disable=W0201
-    def connect(self) -> None:
-        """Initialize connection to database."""
-        logger.info("Connecting to storage")
-        # make sure the connection will have known state
-        # even if PG is not alive
-        self.connection = None
-        config = self.postgres_config
-        self.connection = psycopg2.connect(
-            host=config.host,
-            port=config.port,
-            user=config.user,
-            password=config.password,
-            dbname=config.dbname,
-            sslmode=config.ssl_mode,
-            sslrootcert=config.ca_cert_path,
-            gssencmode=config.gss_encmode,
-        )
-        try:
-            self.initialize_cache()
-        except Exception as e:
-            self.connection.close()
-            logger.exception("Error initializing Postgres cache:\n%s", e)
-            raise
-        self.connection.autocommit = True
-
-    def connected(self) -> bool:
-        """Check if connection to cache is alive."""
-        if self.connection is None:
-            logger.warning("Not connected, need to reconnect later")
-            return False
-        try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
-            logger.info("Connection to storage is ok")
-            return True
-        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
-            logger.error("Disconnected from storage: %s", e)
-            return False
-
-    def initialize_cache(self) -> None:
-        """Initialize cache - clean it up etc."""
-        # cursor as context manager is not used there on purpose
-        # any CREATE statement can raise it's own exception
-        # and it should not interfere with other statements
-        cursor = self.connection.cursor()
-
-        # Bound the advisory lock wait so a crashed peer does not cause an indefinite hang.
-        cursor.execute("SET LOCAL lock_timeout = '60s'")
-
-        # Serialize schema initialization across multiple instances that may start
-        # concurrently (e.g. during an OCP rolling upgrade). Without this lock,
-        # concurrent CREATE INDEX statements from two pods cause one to block
-        # indefinitely waiting for the other's transaction-level DDL lock.
-        logger.info("Acquiring advisory lock for cache initialization")
-        cursor.execute(PostgresCache.INIT_ADVISORY_LOCK_STATEMENT)
-
-        logger.info("Initializing table for cache")
-        cursor.execute(PostgresCache.CREATE_CACHE_TABLE)
-
-        logger.info("Initializing table for conversations metadata")
-        cursor.execute(PostgresCache.CREATE_CONVERSATIONS_TABLE)
-
-        logger.info("Initializing index for cache")
-        cursor.execute(PostgresCache.CREATE_INDEX)
-
-        cursor.close()
-        self.connection.commit()
+    @property
+    def _ddl_statements(self) -> list[str]:
+        """Return DDL statements for cache tables and indexes."""
+        return [
+            self.CREATE_CACHE_TABLE,
+            self.CREATE_CONVERSATIONS_TABLE,
+            self.CREATE_INDEX,
+        ]
 
     @connection
     def get(

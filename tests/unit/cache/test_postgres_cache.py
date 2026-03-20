@@ -23,44 +23,6 @@ cache_entry_2 = CacheEntry(
 )
 
 
-def test_init_cache_failure_detection():
-    """Test the exception handling for Cache.initialize_cache operation."""
-    exception_message = "Exception during initializing the cache."
-
-    # do not use real PostgreSQL instance
-    with patch("psycopg2.connect") as mock_connect:
-        mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
-            exception_message
-        )
-
-        # try to connect to mocked Postgres
-        config = PostgresConfig()
-        with pytest.raises(Exception, match=exception_message):
-            PostgresCache(config)
-
-        # connection must be closed in case of exception
-        mock_connect.return_value.close.assert_called_once_with()
-
-
-def test_initialize_cache_sql_sequence():
-    """Test that initialize_cache executes the expected SQL in order."""
-    with patch("psycopg2.connect") as mock_connect:
-        init_cursor = mock_connect.return_value.cursor.return_value
-        config = PostgresConfig()
-        PostgresCache(config)
-
-    init_cursor.execute.assert_has_calls(
-        [
-            call("SET LOCAL lock_timeout = '60s'"),
-            call(PostgresCache.INIT_ADVISORY_LOCK_STATEMENT),
-            call(PostgresCache.CREATE_CACHE_TABLE),
-            call(PostgresCache.CREATE_CONVERSATIONS_TABLE),
-            call(PostgresCache.CREATE_INDEX),
-        ]
-    )
-    mock_connect.return_value.commit.assert_called_once()
-
-
 def test_get_operation_on_empty_cache():
     """Test the Cache.get operation on empty cache."""
     # mock the query result - empty cache

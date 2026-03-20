@@ -9,25 +9,6 @@ from ols.app.models.config import PostgresConfig
 from ols.src.quota.user_quota_limiter import UserQuotaLimiter
 
 
-def test_init_storage_failure_detection():
-    """Test the exception handling for storage initialize operation."""
-    exception_message = "Exception during PostgreSQL storage."
-
-    # do not use connection to real PostgreSQL instance
-    with patch("psycopg2.connect") as mock_connect:
-        mock_connect.return_value.cursor.return_value.execute.side_effect = Exception(
-            exception_message
-        )
-
-        # try to connect to mocked Postgres
-        config = PostgresConfig()
-        with pytest.raises(Exception, match=exception_message):
-            UserQuotaLimiter(config, 0)
-
-        # connection must be closed in case of exception
-        mock_connect.return_value.close.assert_called_once_with()
-
-
 def test_init_quota():
     """Test the init quota operation."""
     quota_limit = 100

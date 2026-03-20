@@ -6,12 +6,12 @@ from datetime import datetime
 from ols.app.models.config import PostgresConfig
 from ols.src.quota.quota_exceed_error import QuotaExceedError
 from ols.src.quota.quota_limiter import QuotaLimiter
-from ols.utils.connection_decorator import connection
+from ols.utils.postgres import PostgresBase, connection
 
 logger = logging.getLogger(__name__)
 
 
-class RevokableQuotaLimiter(QuotaLimiter):
+class RevokableQuotaLimiter(QuotaLimiter, PostgresBase):
     """Simple quota limiter where quota can be revoked."""
 
     CREATE_QUOTA_TABLE = """
@@ -60,7 +60,12 @@ class RevokableQuotaLimiter(QuotaLimiter):
         self.subject_type = subject_type
         self.initial_quota = initial_quota
         self.increase_by = increase_by
-        self.connection_config = connection_config
+        PostgresBase.__init__(self, connection_config)
+
+    @property
+    def _ddl_statements(self) -> list[str]:
+        """Return DDL statements for quota limiter tables."""
+        return [self.CREATE_QUOTA_TABLE]
 
     @connection
     def available_quota(self, subject_id: str = "") -> int:
@@ -147,14 +152,6 @@ class RevokableQuotaLimiter(QuotaLimiter):
                 (-to_be_consumed, updated_at, subject_id, self.subject_type),
             )
             self.connection.commit()
-
-    def _initialize_tables(self) -> None:
-        """Initialize tables used by quota limiter."""
-        logger.info("Initializing tables for quota limiter")
-        cursor = self.connection.cursor()
-        cursor.execute(RevokableQuotaLimiter.CREATE_QUOTA_TABLE)
-        cursor.close()
-        self.connection.commit()
 
     def _init_quota(self, subject_id: str = "") -> None:
         """Initialize quota for given ID."""
