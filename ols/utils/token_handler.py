@@ -1,9 +1,10 @@
 """Utility to handle tokens."""
 
+import json
 import logging
 from math import ceil
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -67,6 +68,47 @@ class TokenHandler:
         # buffer so that there is less chance of under-estimation.
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
+
+    def measure_tokens(self, text: str) -> int:
+        """Return the buffered token count for a text string.
+
+        This is the single entry point for all token measurement in the codebase.
+        All callers that need a token count for arbitrary text should use this
+        method to ensure consistent buffered counting.
+
+        Args:
+            text: the string to measure.
+
+        Returns:
+            Approximate token count with safety buffer applied.
+        """
+        return TokenHandler._get_token_count(self.text_to_tokens(text))
+
+    def measure_message(self, message: BaseMessage) -> int:
+        """Return the token cost of a message in conversation context.
+
+        Dispatches on message type so that structured fields (tool_calls on
+        AIMessage, name on ToolMessage) are included in the count. Adds +1
+        per message for the inter-message newline separator, matching the
+        existing conversation-history convention.
+
+        Args:
+            message: any LangChain BaseMessage subclass.
+
+        Returns:
+            Buffered token count for the message including separator overhead.
+        """
+        if isinstance(message, AIMessage) and message.tool_calls:
+            base_cost = self.measure_tokens(f"{message.type}: {message.content}")
+            tool_calls_cost = self.measure_tokens(json.dumps(message.tool_calls))
+            return base_cost + tool_calls_cost + 1
+
+        if isinstance(message, ToolMessage) and message.name:
+            return self.measure_tokens(
+                f"tool ({message.name}): {message.content}"
+            ) + 1
+
+        return self.measure_tokens(f"{message.type}: {message.content}") + 1
 
     def calculate_and_check_available_tokens(
         self,
@@ -216,10 +258,7 @@ class TokenHandler:
         index = 0
 
         for message in reversed(history):
-            message_length = TokenHandler._get_token_count(
-                self.text_to_tokens(f"{message.type}: {message.content}")
-            )
-            total_length += message_length + 1  # 1 for new-line char
+            total_length += self.measure_message(message)
 
             # if total length of already checked messages is higher than limit
             # then skip all remaining messages (we need to skip from top)

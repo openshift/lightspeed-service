@@ -4,7 +4,7 @@ from math import ceil
 from unittest import TestCase, mock
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
@@ -382,3 +382,130 @@ class TestTokenHandler(TestCase):
 
         assert result == output
         assert was_truncated is False
+
+    def test_measure_tokens_matches_internal_counting(self):
+        """Test that measure_tokens produces the same result as the internal path."""
+        text = "What is Kubernetes?"
+        tokens = self._token_handler_obj.text_to_tokens(text)
+        expected = ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
+        assert self._token_handler_obj.measure_tokens(text) == expected
+
+    def test_measure_tokens_empty_string(self):
+        """Test measure_tokens with empty input."""
+        assert self._token_handler_obj.measure_tokens("") == 0
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_human_message(self):
+        """Test measure_message for HumanMessage matches legacy formula."""
+        msg = HumanMessage("hello world")
+        legacy = (
+            TokenHandler._get_token_count(
+                self._token_handler_obj.text_to_tokens(
+                    f"{msg.type}: {msg.content}"
+                )
+            )
+            + 1
+        )
+        assert self._token_handler_obj.measure_message(msg) == legacy
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_ai_message_content_only(self):
+        """Test measure_message for AIMessage without tool_calls matches legacy formula."""
+        msg = AIMessage("some response text")
+        legacy = (
+            TokenHandler._get_token_count(
+                self._token_handler_obj.text_to_tokens(
+                    f"{msg.type}: {msg.content}"
+                )
+            )
+            + 1
+        )
+        assert self._token_handler_obj.measure_message(msg) == legacy
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_ai_message_with_tool_calls(self):
+        """Test measure_message for AIMessage with tool_calls includes serialized calls."""
+        import json
+
+        tool_calls = [
+            {"name": "get_pods", "args": {"namespace": "default"}, "id": "call_1"}
+        ]
+        msg = AIMessage(content="", tool_calls=tool_calls)
+
+        content_only = (
+            TokenHandler._get_token_count(
+                self._token_handler_obj.text_to_tokens(
+                    f"{msg.type}: {msg.content}"
+                )
+            )
+            + 1
+        )
+        measured = self._token_handler_obj.measure_message(msg)
+        assert measured > content_only
+
+        expected_tool_cost = self._token_handler_obj.measure_tokens(
+            json.dumps(msg.tool_calls)
+        )
+        assert measured == content_only + expected_tool_cost
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_tool_message_with_name(self):
+        """Test measure_message for ToolMessage includes tool name."""
+        msg = ToolMessage(
+            content="pod list output", tool_call_id="call_1", name="get_pods"
+        )
+        expected = (
+            self._token_handler_obj.measure_tokens(
+                f"tool ({msg.name}): {msg.content}"
+            )
+            + 1
+        )
+        assert self._token_handler_obj.measure_message(msg) == expected
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_tool_message_without_name(self):
+        """Test measure_message for ToolMessage without name falls back to generic path."""
+        msg = ToolMessage(content="some output", tool_call_id="call_1")
+        generic = (
+            TokenHandler._get_token_count(
+                self._token_handler_obj.text_to_tokens(
+                    f"{msg.type}: {msg.content}"
+                )
+            )
+            + 1
+        )
+        assert self._token_handler_obj.measure_message(msg) == generic
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_limit_conversation_history_with_tool_messages(self):
+        """Test history truncation with a mixed history containing tool messages."""
+        tool_calls = [
+            {"name": "get_pods", "args": {"namespace": "default"}, "id": "call_1"}
+        ]
+        history = [
+            HumanMessage("list pods"),
+            AIMessage(content="", tool_calls=tool_calls),
+            ToolMessage(
+                content="pod1, pod2", tool_call_id="call_1", name="get_pods"
+            ),
+            AIMessage("Here are your pods: pod1, pod2"),
+        ]
+
+        total_cost = sum(
+            self._token_handler_obj.measure_message(m) for m in history
+        )
+
+        full_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(history, total_cost)
+        )
+        assert full_history == history
+        assert not truncated
+
+        last_msg_cost = self._token_handler_obj.measure_message(history[-1])
+        truncated_history, truncated = (
+            self._token_handler_obj.limit_conversation_history(
+                history, last_msg_cost
+            )
+        )
+        assert truncated
+        assert truncated_history == [history[-1]]
