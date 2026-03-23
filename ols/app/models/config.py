@@ -21,6 +21,22 @@ from ols import constants
 from ols.utils import checks, tls
 
 
+class ReasoningLevel(StrEnum):
+    """Allowed levels for reasoning effort and verbosity."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ReasoningSummary(StrEnum):
+    """Allowed values for reasoning summaries."""
+
+    AUTO = "auto"
+    CONCISE = "concise"
+    DETAILED = "detailed"
+
+
 class ModelParameters(BaseModel):
     """Model parameters."""
 
@@ -29,6 +45,10 @@ class ModelParameters(BaseModel):
         constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
     )
     max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
+
+    reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
+    reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
+    verbosity: ReasoningLevel = ReasoningLevel.LOW
 
 
 class ModelConfig(BaseModel):

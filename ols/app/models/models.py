@@ -750,13 +750,15 @@ class TokenCounter:
     Attributes:
         llm: LLM instance
         input_tokens: number of tokens sent to LLM
-        output_tokens: number of tokens received from LLM
+        output_tokens: number of text tokens received from LLM
+        reasoning_tokens: number of reasoning summary tokens received from LLM
         llm_calls: number of LLM calls
     """
 
     llm: Optional[LLM] = None
     input_tokens: int = 0
     output_tokens: int = 0
+    reasoning_tokens: int = 0
     llm_calls: int = 0
 
 
@@ -990,6 +992,7 @@ class ChunkType(str, Enum):
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     END = "end"
+    REASONING = "reasoning"
 
 
 @dataclass

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     Attachment,
     CacheEntry,
+    ChunkType,
     FeedbackRequest,
     FeedbackResponse,
     LivenessResponse,
@@ -21,6 +22,7 @@ from ols.app.models.models import (
     ReferencedDocument,
     StatusResponse,
     SummarizerResponse,
+    TokenCounter,
     ToolCall,
 )
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
@@ -779,3 +781,19 @@ class TestSummarizerResponse:
         )
         assert summarizer_response.tool_calls == []
         assert summarizer_response.tool_results == []
+
+
+class TestReasoningModelFields:
+    """Unit tests for reasoning-related model fields."""
+
+    @staticmethod
+    def test_token_counter_reasoning_tokens_default():
+        """Test TokenCounter defaults including reasoning_tokens."""
+        counter = TokenCounter()
+        assert counter.reasoning_tokens == 0
+        assert counter.output_tokens == 0
+
+    @staticmethod
+    def test_chunk_type_reasoning_value():
+        """Test ChunkType includes reasoning stream chunks."""
+        assert ChunkType.REASONING.value == "reasoning"

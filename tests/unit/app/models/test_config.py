@@ -29,6 +29,8 @@ from ols.app.models.config import (
     ProxyConfig,
     QueryFilter,
     QuotaHandlersConfig,
+    ReasoningLevel,
+    ReasoningSummary,
     ReferenceContent,
     ReferenceContentIndex,
     TLSConfig,
@@ -222,15 +224,36 @@ def test_model_parameters():
         default_params.max_tokens_for_response
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
+    assert default_params.reasoning_effort == ReasoningLevel.LOW
+    assert default_params.reasoning_summary == ReasoningSummary.CONCISE
+    assert default_params.verbosity == ReasoningLevel.LOW
 
     parameters = ModelParameters(max_tokens_for_response=10, unknown_param="hello")
 
     assert parameters.max_tokens_for_response == 10
     assert not hasattr(parameters, "unknown_param")
 
+    reasoning_params = ModelParameters(
+        reasoning_effort="high",
+        reasoning_summary="detailed",
+        verbosity="medium",
+    )
+    assert reasoning_params.reasoning_effort == ReasoningLevel.HIGH
+    assert reasoning_params.reasoning_summary == ReasoningSummary.DETAILED
+    assert reasoning_params.verbosity == ReasoningLevel.MEDIUM
+
     # max_tokens_for_response needs to be positive integer
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
         ModelParameters(max_tokens_for_response=-1)
+
+    with pytest.raises(ValidationError):
+        ModelParameters(reasoning_effort="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError):
+        ModelParameters(reasoning_summary="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(ValidationError):
+        ModelParameters(verbosity="invalid")  # type: ignore[arg-type]
 
 
 def test_model_config():
