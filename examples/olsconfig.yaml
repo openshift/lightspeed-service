@@ -35,6 +35,16 @@ llm_providers:
     credentials_path: rhelai_api_key.txt
     models:
       - name: model-name
+  - name: my_google_vertex
+    type: google_vertex
+    url: "https://us-east5-aiplatform.googleapis.com"
+    credentials_path: gcp_credentials.txt
+    project_id: my-gcp-project
+    google_vertex_config:
+      project: my-gcp-project
+      location: us-east5
+    models:
+      - name: claude-opus-4-6
   - name: instructlab
     type: openai
     url: "http://localhost:8000/v1"

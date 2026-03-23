@@ -16,6 +16,7 @@ from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_FAKE,
+    PROVIDER_GOOGLE_VERTEX,
     PROVIDER_OPENAI,
     PROVIDER_RHELAI_VLLM,
     PROVIDER_RHOAI_VLLM,
@@ -122,6 +123,16 @@ FakeProviderParameters = {
     ProviderParameter("sleep", float),
 }
 
+GoogleVertexParameters = {
+    ProviderParameter("model_name", str),
+    ProviderParameter("project", str),
+    ProviderParameter("location", str),
+    ProviderParameter("max_output_tokens", int),
+    ProviderParameter("temperature", float),
+    ProviderParameter("top_p", float),
+    ProviderParameter("top_k", int),
+}
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
@@ -130,6 +141,7 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
     PROVIDER_FAKE: FakeProviderParameters,
+    PROVIDER_GOOGLE_VERTEX: GoogleVertexParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
@@ -164,6 +176,11 @@ WatsonxParametersMapping: dict[str, str] = {
 # Generic to fake parameter mapping
 FakeProviderParametersMapping: dict[str, str] = {}
 
+# Generic to Google Vertex parameters mapping
+GoogleVertexParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
+}
+
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
@@ -172,6 +189,7 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
     PROVIDER_FAKE: FakeProviderParametersMapping,
+    PROVIDER_GOOGLE_VERTEX: GoogleVertexParametersMapping,
 }
 
 
@@ -372,8 +390,8 @@ class LLMProvider(AbstractLLMProvider):
                 "No security profiles. creating httpx.Client with verify %s", verify
             )
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxies=proxy, mounts=mounts)
-            return httpx.Client(verify=verify, proxies=proxy, mounts=mounts)
+                return httpx.AsyncClient(verify=verify, proxy=proxy, mounts=mounts)
+            return httpx.Client(verify=verify, proxy=proxy, mounts=mounts)
 
         # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
@@ -401,5 +419,5 @@ class LLMProvider(AbstractLLMProvider):
             "With security profile, creating httpx.Client with verify %s", context
         )
         if use_async:
-            return httpx.AsyncClient(verify=context, proxies=proxy)
-        return httpx.Client(verify=context, proxies=proxy)
+            return httpx.AsyncClient(verify=context, proxy=proxy)
+        return httpx.Client(verify=context, proxy=proxy)
