@@ -34,17 +34,20 @@ def wait_for_ols(url, timeout=300, interval=10):
             if response.status_code == requests.codes.ok:
                 print("OLS is ready")
                 return True
-        except SSLError:
-            print("SSL error detected, retrying without SSL verification")
+            print(f"OLS not ready, status code: {response.status_code}")
+        except SSLError as e:
+            print(f"SSL error detected: {e}")
+            print("Retrying without SSL verification")
             try:
                 response = requests.get(f"{url}/readiness", verify=False, timeout=5)
                 if response.status_code == requests.codes.ok:
                     print("OLS is ready")
                     return True
-            except requests.RequestException:
-                pass
-        except requests.RequestException:
-            pass
+                print(f"OLS not ready (no-verify), status code: {response.status_code}")
+            except requests.RequestException as retry_err:
+                print(f"Request failed after SSL retry: {retry_err}")
+        except requests.RequestException as e:
+            print(f"Request failed: {e}")
         time.sleep(interval)
     print("Timed out waiting for OLS to become available")
     return False
