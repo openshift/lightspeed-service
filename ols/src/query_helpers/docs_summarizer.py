@@ -22,7 +22,7 @@ from ols.app.models.models import ChunkType, RagChunk, StreamedChunk, Summarizer
 from ols.constants import GenericLLMParameters
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
-from ols.src.tools.tools import execute_tool_calls
+from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import TokenHandler
 
@@ -669,6 +669,10 @@ class DocsSummarizer(QueryHelper):
         # Merge synthetic skipped outcomes with real execution outcomes and
         # append all of them to conversation state for the next LLM turn.
         all_tool_messages = skipped_tool_messages + tool_calls_messages
+        if remaining_tool_budget > 0:
+            all_tool_messages = enforce_tool_token_budget(
+                all_tool_messages, remaining_tool_budget
+            )
         messages.extend(all_tool_messages)
 
         for tool_call_message in all_tool_messages:

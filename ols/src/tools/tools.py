@@ -17,6 +17,14 @@ MAX_TOOL_CALL_RETRIES = 2
 RETRY_BACKOFF_SECONDS = 0.2
 DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
 
+_TRUNCATION_WARNING = (
+    "\n\n[OUTPUT TRUNCATED - The tool returned more data than can be "
+    "processed. Please ask a more specific question to get complete results.]"
+)
+_TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
+    TokenHandler().text_to_tokens(_TRUNCATION_WARNING)
+)
+
 
 def _is_retryable_tool_error(error: Exception) -> bool:
     """Return true if a tool execution error is likely transient."""
@@ -35,32 +43,67 @@ def _is_retryable_tool_error(error: Exception) -> bool:
     )
 
 
-def _extract_text_from_tool_output(output: Any) -> str:
-    """Extract plain text from tool output.
+_CHARS_PER_TOKEN_ESTIMATE = 4
+
+
+def _extract_text_from_tool_output(
+    output: Any, max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
+) -> tuple[str, bool]:
+    """Extract plain text from tool output with a character-level size guard.
 
     Handle both old-style string output and new-style content block
     list output from langchain-mcp-adapters>=0.2.0 which returns
     LC standard content blocks like [{'type': 'text', 'text': '...'}].
 
+    Neither LangChain nor the MCP SDK provide a mechanism to limit tool
+    response size at the transport layer, so a cheap character-level limit
+    (max_tokens * 4) is applied here before any tokenization to avoid the
+    CPU cost of tokenizing arbitrarily large tool responses. Strings are
+    cut at the last newline boundary; lists are truncated by dropping
+    trailing blocks that would exceed the limit.
+
     Args:
         output: Tool output, either a string or list of content blocks.
+        max_tokens: Token budget for the output; used to derive a cheap
+            character limit so we never tokenize an arbitrarily large string.
 
     Returns:
-        Plain text string extracted from the output.
+        Tuple of (extracted text, was_truncated).
     """
-    if isinstance(output, str):
-        return output
-    if isinstance(output, list):
-        parts = []
-        for block in output:
-            if isinstance(block, dict) and "text" in block:
-                parts.append(block["text"])
-            elif isinstance(block, str):
-                parts.append(block)
-            else:
-                parts.append(str(block))
-        return "\n".join(parts)
-    return str(output)
+    max_chars = max_tokens * _CHARS_PER_TOKEN_ESTIMATE
+
+    if not isinstance(output, list):
+        output = str(output)
+        if len(output) <= max_chars:
+            return output, False
+        cut = output[:max_chars].rfind("\n")
+        text = output[:cut].rstrip("\r") if cut > 0 else output[:max_chars]
+        logger.warning(
+            "Tool output pre-truncated from %d to %d chars (limit %d)",
+            len(output),
+            len(text),
+            max_chars,
+        )
+        return text + _TRUNCATION_WARNING, True
+
+    parts: list[str] = []
+    total = 0
+    for block in output:
+        chunk = (
+            block["text"] if isinstance(block, dict) and "text" in block else str(block)
+        )
+        if total + len(chunk) > max_chars:
+            logger.warning(
+                "Tool output pre-truncated at block %d of %d (limit %d chars)",
+                len(parts),
+                len(output),
+                max_chars,
+            )
+            return "\n".join(parts) + _TRUNCATION_WARNING, True
+        parts.append(chunk)
+        total += len(chunk)
+
+    return "\n".join(parts), False
 
 
 def get_tool_by_name(
@@ -93,25 +136,21 @@ async def execute_tool_call(
     Returns:
         Tuple of (tool_output, was_truncated, structured_content).
     """
-    was_truncated = False
     structured_content: dict | None = None
     tool = get_tool_by_name(tool_name, all_mcp_tools)
     tool_output_raw, artifact = await tool.coroutine(**tool_args)  # type: ignore[misc]
-    tool_output = _extract_text_from_tool_output(tool_output_raw)
+    tool_output, was_truncated = _extract_text_from_tool_output(
+        tool_output_raw, max_tokens
+    )
     if isinstance(artifact, dict):
         structured_content = artifact.get("structured_content")
-
-    token_handler = TokenHandler()
-    tool_output, was_truncated = token_handler.truncate_tool_output(
-        tool_output, max_tokens
-    )
 
     logger.debug(
         "Tool: %s | Args: %s | Output: %s | Truncated: %s"
         " | Has structured_content: %s",
         tool_name,
         tool_args,
-        tool_output[:500] if len(tool_output) > 500 else tool_output,
+        tool_output[:200] if len(tool_output) > 200 else tool_output,
         was_truncated,
         structured_content is not None,
     )
@@ -216,5 +255,90 @@ async def execute_tool_calls(
     ]
 
     tool_messages = await asyncio.gather(*tasks)
+
+    return tool_messages
+
+
+def enforce_tool_token_budget(
+    tool_messages: list[ToolMessage],
+    remaining_budget: int,
+) -> list[ToolMessage]:
+    """Ensure combined tool outputs fit within the remaining token budget.
+
+    Uses a three-tier strategy to avoid unnecessary tokenization:
+    1. Cheap character-based estimate — skip tokenization if clearly under budget.
+    2. Precise tokenization — only if the estimate suggests overflow.
+    3. Truncation — if the longest message dominates (>= 2x excess), only it
+       is shrunk; otherwise all messages are scaled proportionally.
+
+    Args:
+        tool_messages: Tool result messages to enforce budget on.
+        remaining_budget: Remaining token budget for tool outputs.
+
+    Returns:
+        The same list of ToolMessages, with oversized ones truncated in place.
+    """
+    if not tool_messages:
+        return tool_messages
+
+    # Tier 1: cheap char-based estimate (~4 chars/token). The 0.9 factor
+    # compensates for the approximation; if we're clearly under budget,
+    # skip the expensive tokenization entirely.
+    estimated_tokens = sum(
+        len(str(msg.content)) // _CHARS_PER_TOKEN_ESTIMATE for msg in tool_messages
+    )
+    if estimated_tokens <= int(remaining_budget * 0.9):
+        return tool_messages
+
+    # Tier 2: precise tokenization. The char estimate was ambiguous,
+    # so tokenize each message to get exact counts.
+    token_handler = TokenHandler()
+    token_lists = [
+        token_handler.text_to_tokens(str(msg.content)) for msg in tool_messages
+    ]
+    token_counts = [TokenHandler._get_token_count(t) for t in token_lists]
+    total = sum(token_counts)
+    if total <= remaining_budget:
+        return tool_messages
+
+    logger.warning(
+        "Tool outputs (%d tokens) exceed remaining budget (%d), truncating",
+        total,
+        remaining_budget,
+    )
+
+    excess = total - remaining_budget
+    longest_idx = max(range(len(token_counts)), key=lambda i: token_counts[i])
+
+    # Tier 3: if the longest message alone can absorb the excess while
+    # retaining at least half its content, shrink only that one.
+    # Otherwise scale all messages proportionally to fit the budget.
+    if token_counts[longest_idx] // 2 >= excess:
+        targets = [longest_idx]
+        limits = [token_counts[longest_idx] - excess]
+    else:
+        ratio = remaining_budget / total
+        targets = list(range(len(token_counts)))
+        limits = [max(1, int(token_counts[i] * ratio)) for i in targets]
+
+    # Truncate targeted messages using pre-computed token lists (no
+    # re-tokenization). Cut at the last newline to avoid mid-line splits.
+    for idx, limit in zip(targets, limits):
+        if token_counts[idx] <= limit:
+            continue
+        raw = token_handler.tokens_to_text(
+            token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
+        )
+        cut = raw.rfind("\n")
+        truncated_text = (
+            raw[:cut].rstrip("\r") if cut > 0 else raw
+        ) + _TRUNCATION_WARNING
+        msg = tool_messages[idx]
+        tool_messages[idx] = ToolMessage(
+            content=truncated_text,
+            status=msg.status,
+            tool_call_id=msg.tool_call_id,
+            additional_kwargs={**msg.additional_kwargs, "truncated": True},
+        )
 
     return tool_messages

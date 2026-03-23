@@ -6,12 +6,14 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel
 
 from ols.src.tools.tools import (
     DO_NOT_RETRY_REMINDER,
     _extract_text_from_tool_output,
+    enforce_tool_token_budget,
     execute_tool_call,
     execute_tool_calls,
     get_tool_by_name,
@@ -440,7 +442,7 @@ async def test_execute_tool_calls_custom_max_tokens():
 
 def test_extract_text_from_tool_output_string():
     """Test _extract_text_from_tool_output with a plain string."""
-    assert _extract_text_from_tool_output("hello") == "hello"
+    assert _extract_text_from_tool_output("hello") == ("hello", False)
 
 
 def test_extract_text_from_tool_output_content_blocks():
@@ -449,14 +451,15 @@ def test_extract_text_from_tool_output_content_blocks():
         {"type": "text", "text": "pod1 Running", "id": "lc_1"},
         {"type": "text", "text": "pod2 Running", "id": "lc_2"},
     ]
-    result = _extract_text_from_tool_output(blocks)
-    assert result == "pod1 Running\npod2 Running"
+    text, truncated = _extract_text_from_tool_output(blocks)
+    assert text == "pod1 Running\npod2 Running"
+    assert truncated is False
 
 
 def test_extract_text_from_tool_output_single_content_block():
     """Test _extract_text_from_tool_output with a single content block."""
     blocks = [{"type": "text", "text": "some output", "id": "lc_1"}]
-    assert _extract_text_from_tool_output(blocks) == "some output"
+    assert _extract_text_from_tool_output(blocks) == ("some output", False)
 
 
 def test_extract_text_from_tool_output_mixed_list():
@@ -465,19 +468,41 @@ def test_extract_text_from_tool_output_mixed_list():
         {"type": "text", "text": "text content"},
         "plain string",
     ]
-    result = _extract_text_from_tool_output(blocks)
-    assert result == "text content\nplain string"
+    text, truncated = _extract_text_from_tool_output(blocks)
+    assert text == "text content\nplain string"
+    assert truncated is False
 
 
 def test_extract_text_from_tool_output_non_string_non_list():
     """Test _extract_text_from_tool_output with unexpected types."""
-    assert _extract_text_from_tool_output(42) == "42"
-    assert _extract_text_from_tool_output(None) == "None"
+    assert _extract_text_from_tool_output(42) == ("42", False)
+    assert _extract_text_from_tool_output(None) == ("None", False)
 
 
 def test_extract_text_from_tool_output_empty_list():
     """Test _extract_text_from_tool_output with empty list."""
-    assert _extract_text_from_tool_output([]) == ""
+    assert _extract_text_from_tool_output([]) == ("", False)
+
+
+def test_extract_text_from_tool_output_string_truncation():
+    """Test that a long string is truncated at the last newline boundary."""
+    long_output = "line\n" * 5000
+    text, truncated = _extract_text_from_tool_output(long_output, max_tokens=10)
+    assert truncated is True
+    assert len(text) < len(long_output)
+    assert not text.endswith("\n\n")
+
+
+def test_extract_text_from_tool_output_list_block_truncation():
+    """Test that list blocks are dropped when they exceed the char limit."""
+    blocks = [
+        {"type": "text", "text": "block " * 200},
+        {"type": "text", "text": "block " * 200},
+        {"type": "text", "text": "block " * 200},
+    ]
+    text, truncated = _extract_text_from_tool_output(blocks, max_tokens=10)
+    assert truncated is True
+    assert len(text) < sum(len(b["text"]) for b in blocks)
 
 
 @pytest.mark.asyncio
@@ -579,3 +604,71 @@ async def test_execute_tool_call_artifact_without_structured_content():
     )
     assert output == "plain result"
     assert structured is None
+
+
+def _make_tool_message(content: str, tool_call_id: str = "id") -> ToolMessage:
+    """Create a ToolMessage for testing."""
+    return ToolMessage(
+        content=content,
+        status="success",
+        tool_call_id=tool_call_id,
+        additional_kwargs={"truncated": False},
+    )
+
+
+def test_enforce_tool_token_budget_empty_list():
+    """Test that an empty list is returned unchanged."""
+    assert enforce_tool_token_budget([], 100) == []
+
+
+def test_enforce_tool_token_budget_under_budget():
+    """Test that small messages pass through without truncation."""
+    msgs = [_make_tool_message("short reply", "c1")]
+    result = enforce_tool_token_budget(msgs, 10000)
+    assert len(result) == 1
+    assert result[0].content == "short reply"
+    assert result[0].additional_kwargs["truncated"] is False
+
+
+def test_enforce_tool_token_budget_truncates_longest():
+    """Test that only the longest message is truncated when it dominates."""
+    long_content = "line\n" * 2000
+    short_content = "ok"
+    msgs = [
+        _make_tool_message(long_content, "c_long"),
+        _make_tool_message(short_content, "c_short"),
+    ]
+    result = enforce_tool_token_budget(msgs, 2500)
+
+    assert result[0].additional_kwargs["truncated"] is True
+    assert "[OUTPUT TRUNCATED" in result[0].content
+    assert len(result[0].content) < len(long_content)
+
+    assert result[1].content == short_content
+    assert result[1].additional_kwargs["truncated"] is False
+
+
+def test_enforce_tool_token_budget_proportional_truncation():
+    """Test proportional truncation when no single message dominates."""
+    content_a = "word " * 500
+    content_b = "data " * 500
+    msgs = [
+        _make_tool_message(content_a, "c_a"),
+        _make_tool_message(content_b, "c_b"),
+    ]
+    result = enforce_tool_token_budget(msgs, 20)
+
+    assert result[0].additional_kwargs["truncated"] is True
+    assert result[1].additional_kwargs["truncated"] is True
+    assert "[OUTPUT TRUNCATED" in result[0].content
+    assert "[OUTPUT TRUNCATED" in result[1].content
+
+
+def test_enforce_tool_token_budget_preserves_metadata():
+    """Test that tool_call_id and status are preserved after truncation."""
+    msgs = [_make_tool_message("word " * 1000, "my_call_id")]
+    msgs[0].status = "success"
+    result = enforce_tool_token_budget(msgs, 20)
+
+    assert result[0].tool_call_id == "my_call_id"
+    assert result[0].status == "success"
