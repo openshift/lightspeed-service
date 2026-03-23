@@ -51,6 +51,7 @@ STREAM_KEY_EVENT = "event"
 STREAM_KEY_DATA = "data"
 TOKEN_KEY_ID = "id"  # noqa: S105
 TOKEN_KEY_TOKEN = "token"  # noqa: S105
+TOKEN_KEY_REASONING = "reasoning"  # noqa: S105
 END_KEY_RAG_CHUNKS = "rag_chunks"
 END_KEY_TRUNCATED = "truncated"
 END_KEY_TOKEN_COUNTER = "token_counter"  # noqa: S105
@@ -163,6 +164,8 @@ def stream_event(data: dict[str, object], event_type: str, media_type: str) -> s
         match event_type:
             case _ if event_type == TOKEN_KEY_TOKEN:
                 return data[TOKEN_KEY_TOKEN]
+            case _ if event_type == TOKEN_KEY_REASONING:
+                return data[TOKEN_KEY_REASONING]
             case ChunkType.TOOL_CALL.value:
                 return f"\nTool call: {json.dumps(data)}\n"
             case ChunkType.TOOL_RESULT.value:
@@ -203,6 +206,7 @@ def stream_end_event(
                     "truncated": truncated,
                     "input_tokens": calc_tokens(token_counter, "input_tokens"),
                     "output_tokens": calc_tokens(token_counter, "output_tokens"),
+                    "reasoning_tokens": calc_tokens(token_counter, "reasoning_tokens"),
                 },
                 "available_quotas": available_quotas,
             }
@@ -346,7 +350,7 @@ def store_data(
     timestamps["store transcripts"] = time.time()
 
 
-async def response_processing_wrapper(
+async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0915
     generator: AsyncGenerator[StreamedChunk, None],
     user_id: str,
     conversation_id: str,
@@ -382,6 +386,7 @@ async def response_processing_wrapper(
     tool_results: list[dict[str, object]] = []
     history_truncated: bool = False
     idx: int = 0
+    was_reasoning: bool = False
     token_counter: Optional[TokenCounter] = None
 
     try:
@@ -405,7 +410,18 @@ async def response_processing_wrapper(
                         event_type=ChunkType.TOOL_RESULT.value,
                         media_type=media_type,
                     )
+                case ChunkType.REASONING:
+                    was_reasoning = True
+                    yield stream_event(
+                        data={TOKEN_KEY_ID: idx, TOKEN_KEY_REASONING: item.text},
+                        event_type=TOKEN_KEY_REASONING,
+                        media_type=media_type,
+                    )
+                    idx += 1
                 case ChunkType.TEXT:
+                    if was_reasoning and media_type == MEDIA_TYPE_TEXT:
+                        yield "\n\n"
+                        was_reasoning = False
                     response += item.text
                     yield stream_event(
                         data={TOKEN_KEY_ID: idx, TOKEN_KEY_TOKEN: item.text},
