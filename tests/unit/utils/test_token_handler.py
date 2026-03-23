@@ -1,5 +1,6 @@
 """Unit test for the token handler."""
 
+import json
 from math import ceil
 from unittest import TestCase, mock
 
@@ -425,8 +426,6 @@ class TestTokenHandler(TestCase):
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     def test_measure_message_ai_message_with_tool_calls(self):
         """Test measure_message for AIMessage with tool_calls includes serialized calls."""
-        import json
-
         tool_calls = [
             {"name": "get_pods", "args": {"namespace": "default"}, "id": "call_1"}
         ]
