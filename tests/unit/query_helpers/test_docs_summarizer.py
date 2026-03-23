@@ -682,6 +682,31 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
     assert "Duplicate MCP tool names detected and disabled" in caplog.text
 
 
+def test_tool_result_chunk_for_message_count_uses_measure_message():
+    """Test that _tool_result_chunk_for_message returns a buffered token count."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    tool = mock_tools_map[0]
+    content = "result content"
+    tool_call_id = "call_123"
+    message = ToolMessage(
+        content=content,
+        status="success",
+        tool_call_id=tool_call_id,
+    )
+    token_handler = TokenHandler()
+
+    count, _ = summarizer._tool_result_chunk_for_message(
+        tool_call_message=message,
+        tool_name=tool.name,
+        tool=tool,
+        token_handler=token_handler,
+        round_index=1,
+    )
+
+    assert count == token_handler.measure_message(message)
+    assert count >= TokenHandler._get_token_count(token_handler.text_to_tokens(content))
+
+
 def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
     """Test tool result chunk contains metadata enrichment and has_meta logging."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))

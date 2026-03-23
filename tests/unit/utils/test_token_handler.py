@@ -1,10 +1,11 @@
 """Unit test for the token handler."""
 
+import json
 from math import ceil
 from unittest import TestCase, mock
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from ols.constants import TOKEN_BUFFER_WEIGHT
 from ols.utils.token_handler import PromptTooLongError, TokenHandler
@@ -204,68 +205,137 @@ class TestTokenHandler(TestCase):
             HumanMessage("third message from human"),
             AIMessage("third answer from AI"),
         ]
-        # for each of the above actual messages the tokens counts as below
-        # `role:` -> 2, Actual content -> 4, new-line -> 1, total -> 7
-        # As tokens are increased by 5% (ceil), final count becomes 8 per message.
+
+        # Compute per-message costs (buffered token count + 1 for newline) using
+        # the same measure_message path that limit_conversation_history now calls.
+        costs = [self._token_handler_obj.measure_message(m) + 1 for m in history]
 
         truncated_history, truncated = (
             self._token_handler_obj.limit_conversation_history(history, 1000)
         )
-        # history must remain the same and truncate flag should be False
         assert truncated_history == history
         assert not truncated
 
-        # try to truncate to 28 tokens
+        # Limit exactly equal to the sum of the last 4 messages → 4 messages kept.
+        limit_4 = sum(costs[-4:])
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 32)
+            self._token_handler_obj.limit_conversation_history(history, limit_4)
         )
-        # history should truncate to 4 newest messages only and flag should be True
         assert len(truncated_history) == 4
         assert truncated_history == history[2:]
         assert truncated
 
-        # try to truncate to 14 tokens
+        # Limit exactly equal to the sum of the last 2 messages → 2 messages kept.
+        limit_2 = sum(costs[-2:])
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 16)
+            self._token_handler_obj.limit_conversation_history(history, limit_2)
         )
-        # history should truncate to 2 messages only and flag should be True
         assert len(truncated_history) == 2
         assert truncated_history == history[4:]
         assert truncated
 
-        # try to truncate to 13 tokens
+        # Limit one below the cost of the last 2 messages → only 1 message kept.
+        limit_1_tight = sum(costs[-2:]) - 1
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 13)
+            self._token_handler_obj.limit_conversation_history(history, limit_1_tight)
         )
-        # history should truncate to 1 message
         assert len(truncated_history) == 1
         assert truncated_history == history[5:]
         assert truncated
 
-        # try to truncate to 7 tokens - this means just one message
+        # Limit exactly equal to the last message cost → 1 message kept.
+        limit_1 = costs[-1]
         truncated_history, truncated = (
-            self._token_handler_obj.limit_conversation_history(history, 8)
+            self._token_handler_obj.limit_conversation_history(history, limit_1)
         )
-        # history should truncate to one message only and flag should be True
         assert len(truncated_history) == 1
         assert truncated_history == history[5:]
         assert truncated
 
-        # try to truncate to zero tokens
+        # Limit zero → empty result.
         truncated_history, truncated = (
             self._token_handler_obj.limit_conversation_history(history, 0)
         )
-        # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated
 
-        # try to truncate to one token, but the 1st message is already longer than 1 token
+        # Limit of 1 is smaller than any single message → empty result.
         truncated_history, truncated = (
             self._token_handler_obj.limit_conversation_history(history, 1)
         )
-        # history should truncate to empty list and flag should be True
         assert truncated_history == []
         assert truncated
+
+    def test_measure_message_human_message(self):
+        """Test measure_message with a HumanMessage uses wire role 'user'."""
+        message = HumanMessage("hello world")
+        count = self._token_handler_obj.measure_message(message)
+        expected = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens("user: hello world")
+        )
+        assert count == expected
+        assert count > 0
+
+    def test_measure_message_ai_message_text_only(self):
+        """Test measure_message with a text-only AIMessage uses wire role 'assistant'."""
+        message = AIMessage("hello world")
+        count = self._token_handler_obj.measure_message(message)
+        expected = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens("assistant: hello world")
+        )
+        assert count == expected
+        assert count > 0
+
+    def test_measure_message_ai_message_with_tool_calls(self):
+        """Test measure_message with AIMessage tool_calls includes serialized tool data."""
+        message = AIMessage(
+            content="",
+            tool_calls=[{"name": "get_pod", "args": {"name": "foo"}, "id": "tc1"}],
+        )
+        wire_tool_calls = [
+            {
+                "type": "function",
+                "id": "tc1",
+                "function": {
+                    "name": "get_pod",
+                    "arguments": json.dumps({"name": "foo"}),
+                },
+            }
+        ]
+        expected_text = f"assistant: {json.dumps(wire_tool_calls)}"
+        expected = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens(expected_text)
+        )
+        count = self._token_handler_obj.measure_message(message)
+        assert count == expected
+
+        empty_ai_count = self._token_handler_obj.measure_message(AIMessage(content=""))
+        assert count > empty_ai_count
+
+    def test_measure_message_tool_message(self):
+        """Test measure_message with ToolMessage includes both content and tool_call_id."""
+        message = ToolMessage(content="pod YAML here...", tool_call_id="tc1")
+        count = self._token_handler_obj.measure_message(message)
+        expected = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens("tool: pod YAML here... tc1")
+        )
+        assert count == expected
+        assert count > 0
+
+        content_only = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens("pod YAML here...")
+        )
+        assert count > content_only
+
+    def test_measure_message_system_message(self):
+        """Test measure_message with SystemMessage uses wire role 'system'."""
+        message = SystemMessage("you are an assistant")
+        count = self._token_handler_obj.measure_message(message)
+        expected = TokenHandler._get_token_count(
+            self._token_handler_obj.text_to_tokens("system: you are an assistant")
+        )
+        assert count == expected
+        assert count > 0
 
     def test_available_tokens_with_tool_reservation(self):
         """Test token calculation with reserved tokens for tools."""

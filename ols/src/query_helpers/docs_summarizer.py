@@ -495,8 +495,7 @@ class DocsSummarizer(QueryHelper):
         Returns:
             A tuple of (token_count_for_tool_content, streamed_tool_result_chunk).
         """
-        content_tokens = token_handler.text_to_tokens(str(tool_call_message.content))
-        content_token_count = len(content_tokens)
+        content_token_count = token_handler.measure_message(tool_call_message)
 
         was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
         base_status = tool_call_message.status
@@ -580,9 +579,7 @@ class DocsSummarizer(QueryHelper):
 
         # Charge token budget for the assistant tool-call message itself, so
         # subsequent per-tool limits are computed from the remaining budget.
-        ai_message_tokens = TokenHandler._get_token_count(
-            token_handler.text_to_tokens(json.dumps(tool_calls))
-        )
+        ai_message_tokens = token_handler.measure_message(ai_tool_call_message)
         tool_tokens_used += ai_message_tokens
 
         # Build a mapping from tool_call_id -> tool_name for result enrichment.

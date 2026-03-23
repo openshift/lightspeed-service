@@ -1,9 +1,16 @@
 """Utility to handle tokens."""
 
+import json
 import logging
 from math import ceil
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -67,6 +74,44 @@ class TokenHandler:
         # buffer so that there is less chance of under-estimation.
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
+
+    def measure_message(self, message: BaseMessage) -> int:
+        """Measure token count for a message using wire-format approximation.
+
+        Serializes the message using OpenAI-style wire roles and structure, then
+        tokenizes and applies the buffer weight via _get_token_count.
+
+        Args:
+            message: The LangChain message to measure.
+
+        Returns:
+            Buffered token count for the message.
+        """
+        if isinstance(message, HumanMessage):
+            text = f"user: {message.content}"
+        elif isinstance(message, AIMessage):
+            if message.tool_calls:
+                wire_tool_calls = [
+                    {
+                        "type": "function",
+                        "id": tc.get("id", ""),
+                        "function": {
+                            "name": tc.get("name", ""),
+                            "arguments": json.dumps(tc.get("args", {})),
+                        },
+                    }
+                    for tc in message.tool_calls
+                ]
+                text = f"assistant: {message.content}{json.dumps(wire_tool_calls)}"
+            else:
+                text = f"assistant: {message.content}"
+        elif isinstance(message, ToolMessage):
+            text = f"tool: {message.content} {message.tool_call_id}"
+        elif isinstance(message, SystemMessage):
+            text = f"system: {message.content}"
+        else:
+            text = f"{message.type}: {message.content}"
+        return TokenHandler._get_token_count(self.text_to_tokens(text))
 
     def calculate_and_check_available_tokens(
         self,
@@ -216,9 +261,7 @@ class TokenHandler:
         index = 0
 
         for message in reversed(history):
-            message_length = TokenHandler._get_token_count(
-                self.text_to_tokens(f"{message.type}: {message.content}")
-            )
+            message_length = self.measure_message(message)
             total_length += message_length + 1  # 1 for new-line char
 
             # if total length of already checked messages is higher than limit
