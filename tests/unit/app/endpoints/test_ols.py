@@ -866,6 +866,20 @@ def test_calc_output_tokens_for_token_counter():
     assert tokens == 100
 
 
+def test_calc_reasoning_tokens_no_token_counter():
+    """Test the helper function calc_reasoning_tokens."""
+    token_counter = None
+    tokens = ols.calc_reasoning_tokens(token_counter)
+    assert tokens == 0
+
+
+def test_calc_reasoning_tokens_for_token_counter():
+    """Test the helper function calc_reasoning_tokens."""
+    token_counter = TokenCounter(reasoning_tokens=50)
+    tokens = ols.calc_reasoning_tokens(token_counter)
+    assert tokens == 50
+
+
 def test_consume_tokens_no_quota_limiters():
     """Test the function consume_tokens if no quota limiters are configured."""
     quota_limiters = None

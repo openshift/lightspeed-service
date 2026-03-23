@@ -32,7 +32,10 @@ async def test_on_llm_start():
     assert generic_token_counter.token_counter.input_tokens == 0
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 0 output_tokens: 0 LLM calls: 0"
+    expected = (
+        "GenericTokenCounter: input_tokens: 0 output_tokens: 0 "
+        "reasoning_tokens: 0 LLM calls: 0"
+    )
     assert str(generic_token_counter) == expected
 
     # token count for empty input
@@ -43,7 +46,10 @@ async def test_on_llm_start():
     assert generic_token_counter.token_counter.input_tokens == 0
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 0 output_tokens: 0 LLM calls: 1"
+    expected = (
+        "GenericTokenCounter: input_tokens: 0 output_tokens: 0 "
+        "reasoning_tokens: 0 LLM calls: 1"
+    )
     assert str(generic_token_counter) == expected
 
     # now the prompt will be tokenized into 5 tokens
@@ -52,7 +58,10 @@ async def test_on_llm_start():
     assert generic_token_counter.token_counter.input_tokens == 5
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 5 output_tokens: 0 LLM calls: 2"
+    expected = (
+        "GenericTokenCounter: input_tokens: 5 output_tokens: 0 "
+        "reasoning_tokens: 0 LLM calls: 2"
+    )
     assert str(generic_token_counter) == expected
 
 
@@ -67,7 +76,10 @@ async def test_on_llm_end():
     assert generic_token_counter.token_counter.output_tokens == 0
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 0 output_tokens: 0 LLM calls: 0"
+    expected = (
+        "GenericTokenCounter: input_tokens: 0 output_tokens: 0 "
+        "reasoning_tokens: 0 LLM calls: 0"
+    )
     assert str(generic_token_counter) == expected
 
     # empty token
@@ -79,7 +91,10 @@ async def test_on_llm_end():
     assert generic_token_counter.token_counter.output_tokens == 0
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 0 output_tokens: 0 LLM calls: 0"
+    expected = (
+        "GenericTokenCounter: input_tokens: 0 output_tokens: 0 "
+        "reasoning_tokens: 0 LLM calls: 0"
+    )
     assert str(generic_token_counter) == expected
 
     # non-empty response
@@ -91,5 +106,46 @@ async def test_on_llm_end():
     assert generic_token_counter.token_counter.output_tokens == 2
 
     # check the textual representation as well
-    expected = "GenericTokenCounter: input_tokens: 0 output_tokens: 2 LLM calls: 0"
+    expected = (
+        "GenericTokenCounter: input_tokens: 0 output_tokens: 2 "
+        "reasoning_tokens: 0 LLM calls: 0"
+    )
     assert str(generic_token_counter) == expected
+
+
+@pytest.mark.asyncio
+async def test_on_llm_new_token_list_content_with_text_and_reasoning():
+    """Test on_llm_new_token counts text and reasoning tokens from list content."""
+    llm = MockLLM()
+    counter = GenericTokenCounter(llm)
+
+    list_content = [
+        {"type": "text", "text": "hello world"},
+        {
+            "type": "reasoning",
+            "summary": [{"type": "summary_text", "text": "thinking step"}],
+        },
+        "not-a-dict-ignored",
+        {"type": "unknown_block"},
+    ]
+    await counter.on_llm_new_token(list_content)
+
+    assert counter.token_counter.output_tokens == 2
+    assert counter.token_counter.reasoning_tokens == 2
+
+
+@pytest.mark.asyncio
+async def test_on_llm_new_token_list_content_empty_blocks():
+    """Test on_llm_new_token handles empty text and reasoning gracefully."""
+    llm = MockLLM()
+    counter = GenericTokenCounter(llm)
+
+    list_content = [
+        {"type": "text", "text": ""},
+        {"type": "reasoning", "summary": [{"type": "summary_text", "text": ""}]},
+        {"type": "reasoning", "summary": []},
+    ]
+    await counter.on_llm_new_token(list_content)
+
+    assert counter.token_counter.output_tokens == 0
+    assert counter.token_counter.reasoning_tokens == 0

@@ -260,6 +260,13 @@ def calc_output_tokens(token_counter: Optional[TokenCounter]) -> int:
     return token_counter.output_tokens
 
 
+def calc_reasoning_tokens(token_counter: Optional[TokenCounter]) -> int:
+    """Calculate reasoning tokens."""
+    if token_counter is None:
+        return 0
+    return token_counter.reasoning_tokens
+
+
 def get_available_quotas(
     quota_limiters: Optional[list[QuotaLimiter]],
     user_id: str,
