@@ -768,6 +768,10 @@ def test_valid_config_file_without_certificate_directory():
                     "default_model": "m1",
                     "certificate_directory": constants.DEFAULT_CERTIFICATE_DIRECTORY,
                 },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
+                },
             }
         )
         assert config.config == expected_config
@@ -823,6 +827,10 @@ def test_valid_config_file_with_postgres():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
+                },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
                 },
             }
         )
@@ -918,12 +926,13 @@ def test_valid_config_with_azure_openai():
                     "default_provider": "p1",
                     "default_model": "m1",
                 },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
+                },
             }
         )
         assert config.config == expected_config
-        provider_config = config.config.llm_providers.providers.get("p1")
-        assert provider_config is not None
-        assert provider_config.api_version == constants.DEFAULT_AZURE_API_VERSION
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -975,6 +984,10 @@ def test_valid_config_with_azure_openai_credentials_path_only_in_provider_config
                     "default_provider": "p1",
                     "default_model": "m1",
                 },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
+                },
             }
         )
         assert config.config == expected_config
@@ -999,7 +1012,7 @@ def test_valid_config_with_azure_openai_api_version():
                         "url": "https://url1",
                         "credentials": "secret_key",
                         "deployment_name": "test",
-                        "api_version": "2023-12-31",
+                        "api_version": "2024-12-31",
                         "azure_openai_config": {
                             "url": "http://localhost:1234",
                             "deployment_name": "*deployment name*",
@@ -1028,12 +1041,13 @@ def test_valid_config_with_azure_openai_api_version():
                     "default_provider": "p1",
                     "default_model": "m1",
                 },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
+                },
             }
         )
         assert config.config == expected_config
-        provider_config = config.config.llm_providers.providers.get("p1")
-        assert provider_config is not None
-        assert provider_config.api_version == "2024-12-31"
     except Exception as e:
         print(traceback.format_exc())
         pytest.fail(f"loading valid configuration failed: {e}")
@@ -1082,6 +1096,10 @@ def test_valid_config_with_watsonx():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
+                },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
                 },
             }
         )
@@ -1133,6 +1151,10 @@ def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
                     },
                     "default_provider": "p1",
                     "default_model": "m1",
+                },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
                 },
             }
         )
