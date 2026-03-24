@@ -216,8 +216,8 @@ def conversation_request(
     processed_request.timestamps["add references"] = time.time()
     log_processing_durations(processed_request.timestamps)
 
-    input_tokens = calc_input_tokens(summarizer_response.token_counter)
-    output_tokens = calc_output_tokens(summarizer_response.token_counter)
+    input_tokens = calc_tokens(summarizer_response.token_counter, "input_tokens")
+    output_tokens = calc_tokens(summarizer_response.token_counter, "output_tokens")
 
     consume_tokens(
         config.quota_limiters,
@@ -246,18 +246,11 @@ def conversation_request(
     )
 
 
-def calc_input_tokens(token_counter: Optional[TokenCounter]) -> int:
-    """Calculate input tokens."""
+def calc_tokens(token_counter: Optional[TokenCounter], attr: str) -> int:
+    """Return the value of a token counter attribute, or 0 if counter is None."""
     if token_counter is None:
         return 0
-    return token_counter.input_tokens
-
-
-def calc_output_tokens(token_counter: Optional[TokenCounter]) -> int:
-    """Calculate output tokens."""
-    if token_counter is None:
-        return 0
-    return token_counter.output_tokens
+    return getattr(token_counter, attr)
 
 
 def get_available_quotas(

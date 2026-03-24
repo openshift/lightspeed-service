@@ -838,32 +838,21 @@ def test_store_transcript(transcripts_location):
     }
 
 
-def test_calc_input_tokens_no_token_counter():
-    """Test the helper function calc_input_tokens."""
-    token_counter = None
-    tokens = ols.calc_input_tokens(token_counter)
-    assert tokens == 0
+def test_calc_tokens_no_token_counter():
+    """Test calc_tokens returns 0 when token counter is None."""
+    assert ols.calc_tokens(None, "input_tokens") == 0
+    assert ols.calc_tokens(None, "output_tokens") == 0
+    assert ols.calc_tokens(None, "reasoning_tokens") == 0
 
 
-def test_calc_input_tokens_for_token_counter():
-    """Test the helper function calc_input_tokens."""
-    token_counter = TokenCounter(input_tokens=100)
-    tokens = ols.calc_input_tokens(token_counter)
-    assert tokens == 100
-
-
-def test_calc_output_tokens_no_token_counter():
-    """Test the helper function calc_output_tokens."""
-    token_counter = None
-    tokens = ols.calc_output_tokens(token_counter)
-    assert tokens == 0
-
-
-def test_calc_output_tokens_for_token_counter():
-    """Test the helper function calc_output_tokens."""
-    token_counter = TokenCounter(output_tokens=100)
-    tokens = ols.calc_output_tokens(token_counter)
-    assert tokens == 100
+def test_calc_tokens_for_token_counter():
+    """Test calc_tokens extracts the correct attribute from a token counter."""
+    token_counter = TokenCounter(
+        input_tokens=100, output_tokens=200, reasoning_tokens=50
+    )
+    assert ols.calc_tokens(token_counter, "input_tokens") == 100
+    assert ols.calc_tokens(token_counter, "output_tokens") == 200
+    assert ols.calc_tokens(token_counter, "reasoning_tokens") == 50
 
 
 def test_consume_tokens_no_quota_limiters():
