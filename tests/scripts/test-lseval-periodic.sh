@@ -1,15 +1,14 @@
 #!/bin/bash
-# Periodic CI job: run LSEval against OLS using WatsonX Granite + OpenAI GPT judge.
+# Periodic CI job: run LSEval against OLS using OpenAI GPT-4o-mini (OLS) + GPT-4.1-mini (judge).
 #
 # Input environment variables:
-#   WATSONX_PROVIDER_KEY_PATH - path to file containing the WatsonX API key (for OLS)
-#   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key (for judge LLM)
+#   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key
 #   OLS_IMAGE                 - pullspec for the OLS container image to deploy
 #
 # Script flow:
 #   1. Install OLS dependencies
 #   2. Install operator-sdk
-#   3. Deploy OLS on the cluster (watsonx_lseval config via run_suite)
+#   3. Deploy OLS on the cluster (openai_lseval config via run_suite)
 #   4. Run the LSEval periodic pytest test (make test-lseval-periodic)
 #   5. Collect artefacts and clean up
 
@@ -38,10 +37,10 @@ function run_suites() {
   local rc=0
 
   set +e
-  # Deploy OLS with WatsonX Granite and run LSEval evaluation.
-  # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image os_config_suffix
-  # OLS_CONFIG_SUFFIX="lseval" → ols_installer builds: olsconfig.crd.watsonx_lseval.yaml
-  run_suite "lseval_periodic" "lseval" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "lseval"
+  # Deploy OLS with OpenAI GPT-4o-mini and run LSEval evaluation.
+  # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
+  # OLS_CONFIG_SUFFIX="lseval" → ols_installer builds: olsconfig.crd.openai_lseval.yaml
+  run_suite "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "lseval"
   (( rc = rc || $? ))
   set -e
 

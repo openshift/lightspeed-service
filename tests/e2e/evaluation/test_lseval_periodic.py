@@ -1,4 +1,4 @@
-"""LSEval periodic evaluation test using WatsonX Granite and OpenAI judge."""
+"""LSEval periodic evaluation test using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
 
 import os
 import shutil
@@ -12,7 +12,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
 LSEVAL_BIN = PROJECT_ROOT / ".venv" / "bin" / "lightspeed-eval"
-SYSTEM_CONFIG = EVAL_DIR / "system_watsonx_granite.yaml"
+SYSTEM_CONFIG = EVAL_DIR / "system_openai_lseval.yaml"
 EVAL_DATA = EVAL_DIR / "eval_data_short.yaml"
 
 
@@ -46,7 +46,7 @@ def _resolve_ols_url() -> str:
 
 @pytest.mark.lseval
 def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
-    """Run LSEval using WatsonX Granite as the OLS backend and OpenAI GPT as judge.
+    """Run LSEval using OpenAI GPT-4o-mini as the OLS backend and GPT-4.1-mini as judge.
 
     Deploys a temporary system config patched with the live OLS URL, executes
     lightspeed-eval against eval_data_short.yaml, then asserts that the result
