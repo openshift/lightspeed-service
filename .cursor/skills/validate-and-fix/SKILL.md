@@ -15,6 +15,14 @@ Run the project validation pipeline, auto-fix trivial issues, and re-run until g
 - Stop after 3 auto-fix cycles to avoid loops.
 - Report real failures clearly; do not attempt speculative fixes.
 
+## Step 0: Ensure Dependencies Are Installed
+
+```bash
+make install-deps 2>&1 | tail -10
+```
+
+This ensures the virtualenv matches the lockfile. Skipping this step is the most common cause of spurious import errors (e.g. `llama-index-embeddings-huggingface` not found despite being in requirements.txt).
+
 ## Step 1: Run Unit Tests
 
 ```bash
