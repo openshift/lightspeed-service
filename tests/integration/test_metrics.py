@@ -25,6 +25,7 @@ expected_counters = (
     "ols_llm_calls_failures_total",
     "ols_llm_token_sent_total",
     "ols_llm_token_received_total",
+    "ols_llm_reasoning_token_total",
     "ols_provider_model_configuration",
 )
 

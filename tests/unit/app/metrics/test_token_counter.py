@@ -1,4 +1,4 @@
-"""Unit tests for GenericTokenCounter class."""
+"""Unit tests for GenericTokenCounter and TokenMetricUpdater classes."""
 
 import pytest
 
@@ -9,6 +9,7 @@ config.ols_config.authentication_config.module = "k8s"
 
 
 from ols.app.metrics import GenericTokenCounter  # noqa:E402
+from ols.app.metrics.token_counter import TokenMetricUpdater  # noqa:E402
 
 
 class MockLLM:
@@ -149,3 +150,16 @@ async def test_on_llm_new_token_list_content_empty_blocks():
 
     assert counter.token_counter.output_tokens == 0
     assert counter.token_counter.reasoning_tokens == 0
+
+
+def test_token_metric_updater_reports_reasoning_tokens():
+    """Test TokenMetricUpdater.__exit__ increments the reasoning token metric."""
+    llm = MockLLM()
+    updater = TokenMetricUpdater(llm=llm, provider="test_provider", model="test_model")
+
+    updater.token_counter.token_counter.input_tokens = 10
+    updater.token_counter.token_counter.output_tokens = 20
+    updater.token_counter.token_counter.reasoning_tokens = 5
+    updater.token_counter.token_counter.llm_calls = 1
+
+    updater.__exit__(None, None, None)

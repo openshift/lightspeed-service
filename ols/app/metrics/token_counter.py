@@ -55,23 +55,33 @@ class GenericTokenCounter(AsyncCallbackHandler):  # pylint: disable=R0901
             self._count_list_content_tokens(token)
 
     def _count_list_content_tokens(self, blocks: list[Any]) -> None:
-        """Count text and reasoning tokens from list-format content blocks."""
+        """Count text and reasoning tokens from list-format content blocks.
+
+        OpenAI reasoning models emit content as a list of typed blocks::
+
+            [
+                {"type": "text", "text": "..."},
+                {"type": "reasoning", "summary": [
+                    {"type": "summary_text", "text": "..."}
+                ]},
+            ]
+        """
         for block in blocks:
             if not isinstance(block, dict):
                 continue
-            block_type = block.get("type")
-            if block_type == "text":
-                text = block.get("text", "")
-                if text:
-                    self.token_counter.output_tokens += self.tokens_count(text)
-            elif block_type == "reasoning":
-                for part in block.get("summary", []):
-                    if isinstance(part, dict):
-                        text = part.get("text", "")
-                        if text:
-                            self.token_counter.reasoning_tokens += self.tokens_count(
-                                text
-                            )
+            match block.get("type"):
+                case "text":
+                    text = block.get("text", "")
+                    if text:
+                        self.token_counter.output_tokens += self.tokens_count(text)
+                case "reasoning":
+                    for part in block.get("summary", []):
+                        if isinstance(part, dict):
+                            text = part.get("text", "")
+                            if text:
+                                self.token_counter.reasoning_tokens += (
+                                    self.tokens_count(text)
+                                )
 
     async def on_llm_start(
         self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
