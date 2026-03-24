@@ -14,8 +14,7 @@ from fastapi.responses import StreamingResponse
 
 from ols import config, constants
 from ols.app.endpoints.ols import (
-    calc_input_tokens,
-    calc_output_tokens,
+    calc_tokens,
     consume_tokens,
     generate_response,
     get_available_quotas,
@@ -202,8 +201,8 @@ def stream_end_event(
                 "data": {
                     "referenced_documents": ref_docs,
                     "truncated": truncated,
-                    "input_tokens": calc_input_tokens(token_counter),
-                    "output_tokens": calc_output_tokens(token_counter),
+                    "input_tokens": calc_tokens(token_counter, "input_tokens"),
+                    "output_tokens": calc_tokens(token_counter, "output_tokens"),
                 },
                 "available_quotas": available_quotas,
             }
@@ -464,8 +463,8 @@ async def response_processing_wrapper(
         skip_user_id_check,
     )
 
-    input_tokens = calc_input_tokens(token_counter)
-    output_tokens = calc_output_tokens(token_counter)
+    input_tokens = calc_tokens(token_counter, "input_tokens")
+    output_tokens = calc_tokens(token_counter, "output_tokens")
 
     consume_tokens(
         config.quota_limiters,
