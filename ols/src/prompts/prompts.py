@@ -76,6 +76,7 @@ Refer tool response / output before providing your response.
 # doc summarizer prompt. Depending upon performance dedicated prompt will be used.
 AGENT_SYSTEM_INSTRUCTION = """
 * Do not call the same tool with the same arguments more than once.
+* Tool outputs are limited in size and may be truncated. Prefer specific, targeted tool calls over broad queries that return large amounts of data.
 
 Style guide:
 * Be extremely concise.
