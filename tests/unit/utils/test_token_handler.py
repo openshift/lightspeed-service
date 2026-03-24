@@ -4,10 +4,10 @@ from math import ceil
 from unittest import TestCase, mock
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from ols.constants import TOKEN_BUFFER_WEIGHT
-from ols.utils.token_handler import PromptTooLongError, TokenHandler
+from ols.utils.token_handler import PromptTooLongError, TokenBudget, TokenHandler
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
 
 
@@ -324,3 +324,112 @@ class TestTokenHandler(TestCase):
                 max_tokens_for_response,
                 max_tokens_for_tools,
             )
+
+
+class TestMeasureMessage:
+    """Test cases for TokenHandler.measure_message."""
+
+    def setup_method(self):
+        """Set up token handler instance."""
+        self._handler = TokenHandler()
+
+    def test_measure_human_message(self):
+        """Test that HumanMessage is measured as type: content."""
+        msg = HumanMessage("hello world")
+        count = self._handler.measure_message(msg)
+        expected = TokenHandler._get_token_count(
+            self._handler.text_to_tokens("human: hello world")
+        )
+        assert count == expected
+
+    def test_measure_ai_message_without_tool_calls(self):
+        """Test that AIMessage without tool_calls is measured as type: content."""
+        msg = AIMessage("some response")
+        count = self._handler.measure_message(msg)
+        expected = TokenHandler._get_token_count(
+            self._handler.text_to_tokens("ai: some response")
+        )
+        assert count == expected
+
+    def test_measure_ai_message_with_tool_calls(self):
+        """Test that AIMessage with tool_calls includes serialized tool_calls."""
+        tool_calls = [{"name": "get_pods", "args": {"ns": "default"}, "id": "c1"}]
+        msg = AIMessage(content="", tool_calls=tool_calls)
+        count = self._handler.measure_message(msg)
+        count_without = self._handler.measure_message(AIMessage(content=""))
+        assert count > count_without
+
+    def test_measure_tool_message(self):
+        """Test that ToolMessage includes tool_call_id in measurement."""
+        msg = ToolMessage(content="result data", tool_call_id="call_123")
+        count = self._handler.measure_message(msg)
+        plain_count = TokenHandler._get_token_count(
+            self._handler.text_to_tokens("tool: result data")
+        )
+        assert count > plain_count
+
+    @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
+    def test_measure_message_matches_legacy_for_plain_messages(self):
+        """Verify measure_message produces the same count as the legacy inline formula."""
+        handler = TokenHandler()
+        for msg in [HumanMessage("test"), AIMessage("test")]:
+            legacy = TokenHandler._get_token_count(
+                handler.text_to_tokens(f"{msg.type}: {msg.content}")
+            )
+            assert handler.measure_message(msg) == legacy
+
+
+class TestTokenBudget:
+    """Test cases for TokenBudget."""
+
+    def test_initial_available_for_augmentation(self):
+        """Test available_for_augmentation before prompt overhead is set."""
+        budget = TokenBudget(TokenHandler(), 1000, 200, 100)
+        assert budget.available_for_augmentation == 700
+
+    def test_set_prompt_overhead_returns_available(self):
+        """Test set_prompt_overhead returns available tokens for augmentation."""
+        budget = TokenBudget(TokenHandler(), 1000, 200, 100)
+        available = budget.set_prompt_overhead("")
+        assert available == 700
+
+    def test_set_prompt_overhead_reduces_available(self):
+        """Test that a non-empty prompt reduces available tokens."""
+        budget = TokenBudget(TokenHandler(), 1000, 200, 100)
+        available = budget.set_prompt_overhead("This is a test prompt")
+        assert available < 700
+        assert available > 0
+
+    def test_set_prompt_overhead_raises_on_overflow(self):
+        """Test PromptTooLongError when prompt exceeds context window."""
+        budget = TokenBudget(TokenHandler(), 100, 50, 30)
+        with pytest.raises(PromptTooLongError):
+            budget.set_prompt_overhead("word " * 100)
+
+    def test_remaining_tool_budget_initial(self):
+        """Test initial remaining tool budget equals tool reserve."""
+        budget = TokenBudget(TokenHandler(), 1000, 200, 500)
+        assert budget.remaining_tool_budget == 500
+
+    def test_consume_tool_tokens_reduces_remaining(self):
+        """Test that consuming tool tokens reduces remaining budget."""
+        budget = TokenBudget(TokenHandler(), 1000, 200, 500)
+        budget.consume_tool_tokens(100)
+        assert budget.remaining_tool_budget == 400
+        assert budget.tool_tokens_used == 100
+        budget.consume_tool_tokens(50)
+        assert budget.remaining_tool_budget == 350
+        assert budget.tool_tokens_used == 150
+
+    def test_zero_tool_reserve(self):
+        """Test budget with no tool reserve (no MCP servers)."""
+        budget = TokenBudget(TokenHandler(), 1000, 200)
+        assert budget.remaining_tool_budget == 0
+        assert budget.available_for_augmentation == 800
+
+    def test_set_prompt_overhead_overwrites_previous(self):
+        """Test that calling set_prompt_overhead twice replaces the recorded value."""
+        budget = TokenBudget(TokenHandler(), 1000, 200)
+        first = budget.set_prompt_overhead("short")
+        second = budget.set_prompt_overhead("a much longer prompt with many words")
+        assert second < first

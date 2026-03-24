@@ -1,9 +1,10 @@
 """Utility to handle tokens."""
 
+import json
 import logging
 from math import ceil
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from llama_index.core.schema import NodeWithScore
 from tiktoken import get_encoding
 
@@ -67,6 +68,26 @@ class TokenHandler:
         # buffer so that there is less chance of under-estimation.
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
+
+    def measure_message(self, message: BaseMessage) -> int:
+        """Measure the token cost of a LangChain message.
+
+        Handles all message types including AIMessage with tool_calls
+        and ToolMessage with tool_call_id.
+
+        Args:
+            message: A LangChain message to measure.
+
+        Returns:
+            Approximate token count with buffer weight applied.
+        """
+        parts = [f"{message.type}: {message.content}"]
+        if isinstance(message, AIMessage) and message.tool_calls:
+            parts.append(json.dumps(message.tool_calls))
+        if isinstance(message, ToolMessage):
+            parts.append(f"tool_call_id: {message.tool_call_id}")
+        text = "\n".join(parts)
+        return self._get_token_count(self.text_to_tokens(text))
 
     def calculate_and_check_available_tokens(
         self,
@@ -216,9 +237,7 @@ class TokenHandler:
         index = 0
 
         for message in reversed(history):
-            message_length = TokenHandler._get_token_count(
-                self.text_to_tokens(f"{message.type}: {message.content}")
-            )
+            message_length = self.measure_message(message)
             total_length += message_length + 1  # 1 for new-line char
 
             # if total length of already checked messages is higher than limit
@@ -231,3 +250,94 @@ class TokenHandler:
             index += 1
 
         return history, False
+
+
+class TokenBudget:
+    """Centralized token budget tracker for a single request.
+
+    Tracks how the context window is divided between competing consumers:
+    prompt overhead, RAG context, conversation history, response reserve,
+    and tool operations. Created once per request and threaded through
+    both prompt and tool phases.
+
+    Args:
+        token_handler: Tokenizer for measuring text.
+        context_window_size: Total context window of the model.
+        response_reserve: Tokens reserved for model response.
+        tool_reserve: Tokens reserved for tool operations.
+    """
+
+    def __init__(
+        self,
+        token_handler: TokenHandler,
+        context_window_size: int,
+        response_reserve: int,
+        tool_reserve: int = 0,
+    ) -> None:
+        """Initialize the token budget."""
+        self.token_handler = token_handler
+        self.context_window_size = context_window_size
+        self.response_reserve = response_reserve
+        self.tool_reserve = tool_reserve
+        self._prompt_tokens = 0
+        self._tool_tokens_used = 0
+
+    @property
+    def available_for_augmentation(self) -> int:
+        """Return tokens available for RAG context and conversation history."""
+        return (
+            self.context_window_size
+            - self.response_reserve
+            - self.tool_reserve
+            - self._prompt_tokens
+        )
+
+    @property
+    def remaining_tool_budget(self) -> int:
+        """Return tokens remaining for tool operations."""
+        return self.tool_reserve - self._tool_tokens_used
+
+    @property
+    def tool_tokens_used(self) -> int:
+        """Return total tool tokens consumed so far."""
+        return self._tool_tokens_used
+
+    def set_prompt_overhead(self, prompt: str) -> int:
+        """Measure and record prompt token overhead.
+
+        Args:
+            prompt: The formatted prompt string.
+
+        Returns:
+            Tokens available for augmentation (RAG + history).
+
+        Raises:
+            PromptTooLongError: If prompt exceeds the available context window.
+        """
+        logger.debug(
+            "Context window size: %d, Response reserve: %d, Tool reserve: %d",
+            self.context_window_size,
+            self.response_reserve,
+            self.tool_reserve,
+        )
+        self._prompt_tokens = TokenHandler._get_token_count(
+            self.token_handler.text_to_tokens(prompt)
+        )
+        logger.debug("Prompt tokens: %d", self._prompt_tokens)
+
+        available = self.available_for_augmentation
+        if available < 0:
+            limit = self.context_window_size - self.response_reserve - self.tool_reserve
+            raise PromptTooLongError(
+                f"Prompt length {self._prompt_tokens} exceeds LLM "
+                f"available context window limit {limit} tokens"
+            )
+        return available
+
+    def consume_tool_tokens(self, tokens: int) -> None:
+        """Record tool token consumption.
+
+        Args:
+            tokens: Number of tokens consumed by tool operations.
+        """
+        self._tool_tokens_used += tokens
