@@ -270,13 +270,35 @@ def get_single_existing_transcript(pod_name: str, transcripts_path: str) -> dict
         raise Exception("Error reading transcript") from e
 
 
-def get_single_existing_feedback(pod_name: str, feedbacks_path: str) -> dict:
-    """Return the content of the single feedback that is in the cluster."""
-    feedbacks = list_path(pod_name, feedbacks_path)
-    assert len(feedbacks) == 1
-    feedback = feedbacks[0]
+def get_single_existing_feedback(
+    pod_name: str, feedbacks_path: str, retries: int = 5, delay: float = 2.0
+) -> dict:
+    """Return the content of the single feedback that is in the cluster.
 
-    full_path = f"{feedbacks_path}/{feedback}"
+    Retries the filesystem read because `oc rsh ls` may not see the file
+    immediately after the API returns 200 (network/PVC propagation delay).
+    """
+    feedbacks: list = []
+
+    # oc rsh opens a new network connection to the pod; the file may not
+    # be visible immediately after the API returns 200 due to PVC or
+    # overlay filesystem propagation delay on slow CI clusters.
+    def _check() -> bool:
+        nonlocal feedbacks
+        feedbacks = list_path(pod_name, feedbacks_path) or []
+        return len(feedbacks) == 1
+
+    # Retry up to retries * delay seconds to allow for oc rsh latency.
+    success = retry_until_timeout_or_success(
+        retries, delay, _check, description="waiting for feedback file"
+    )
+    assert success, (
+        f"Expected exactly 1 feedback file in {feedbacks_path} after "
+        f"{retries} retries ({retries * delay}s), got {len(feedbacks)}: {feedbacks}"
+    )
+
+    # Read the single feedback file content from the pod.
+    full_path = f"{feedbacks_path}/{feedbacks[0]}"
 
     try:
         feedback_content = run_oc(["exec", pod_name, "--", "cat", full_path])

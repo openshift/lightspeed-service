@@ -23,6 +23,10 @@ path = "ols/version.py"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.coverage.run]
+source = ["ols", "runner"]
+omit = [".venv/*"]
+
 [tool.coverage.report]
 # unit tests fails if the total coverage measurement is under this threshold value
 fail_under = 90
