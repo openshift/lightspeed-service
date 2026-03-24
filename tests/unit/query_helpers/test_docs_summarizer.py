@@ -314,10 +314,6 @@ def test_tool_calling_tool_execution(caplog):
         ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
-            return_value=1000,
-        ),
-        patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
