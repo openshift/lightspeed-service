@@ -49,34 +49,47 @@ def pytest_sessionstart():
     if "localhost" not in ols_url:
         on_cluster = True
         try:
-            result = cluster.run_oc(
-                [
-                    "get",
-                    "clusterserviceversion",
-                    "-n",
-                    "openshift-lightspeed",
-                    "-o",
-                    "json",
-                ]
-            )
-            csv_data = json.loads(result.stdout)
-            print(csv_data)
-
-            if not csv_data["items"]:
-                print("OLS Operator is not installed yet.")
-                ols_url, token, metrics_token = ols_installer.install_ols()
+            if os.getenv("SKIP_CLUSTER_SETUP", "false").lower() == "true":
+                print(
+                    "SKIP_CLUSTER_SETUP enabled - skipping OLS installation/configuration."
+                )
+                print("Using existing cluster setup...")
+                cluster.run_oc(
+                    ["project", "openshift-lightspeed"], ignore_existing_resource=True
+                )
+                ols_url = cluster.get_ols_url("ols")
+                token = cluster.get_token_for("test-user")
+                metrics_token = cluster.get_token_for("metrics-test-user")
+                print(f"Using OLS URL: {ols_url}")
             else:
-                print("OLS Operator is already installed. Skipping install.")
-                provider = os.getenv("PROVIDER", "openai")
-                creds = os.getenv("PROVIDER_KEY_PATH", "empty")
-                # create the llm api key secret ols will mount
-                provider_list = provider.split()
-                creds_list = creds.split()
-                for i, prov in enumerate(provider_list):
-                    ols_installer.create_secrets(
-                        prov, creds_list[i], len(provider_list)
-                    )
-                ols_url, token, metrics_token = adapt_ols_config()
+                result = cluster.run_oc(
+                    [
+                        "get",
+                        "clusterserviceversion",
+                        "-n",
+                        "openshift-lightspeed",
+                        "-o",
+                        "json",
+                    ]
+                )
+                csv_data = json.loads(result.stdout)
+                print(csv_data)
+
+                if not csv_data["items"]:
+                    print("OLS Operator is not installed yet.")
+                    ols_url, token, metrics_token = ols_installer.install_ols()
+                else:
+                    print("OLS Operator is already installed. Skipping install.")
+                    provider = os.getenv("PROVIDER", "openai")
+                    creds = os.getenv("PROVIDER_KEY_PATH", "empty")
+                    # create the llm api key secret ols will mount
+                    provider_list = provider.split()
+                    creds_list = creds.split()
+                    for i, prov in enumerate(provider_list):
+                        ols_installer.create_secrets(
+                            prov, creds_list[i], len(provider_list)
+                        )
+                    ols_url, token, metrics_token = adapt_ols_config()
 
         except Exception as e:
             print(f"Error setting up OLS on cluster: {e}")
