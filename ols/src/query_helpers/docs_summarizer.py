@@ -496,7 +496,7 @@ class DocsSummarizer(QueryHelper):
             A tuple of (token_count_for_tool_content, streamed_tool_result_chunk).
         """
         content_tokens = token_handler.text_to_tokens(str(tool_call_message.content))
-        content_token_count = len(content_tokens)
+        content_token_count = TokenHandler._get_token_count(content_tokens)
 
         was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
         base_status = tool_call_message.status
