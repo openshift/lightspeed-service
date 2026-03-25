@@ -20,11 +20,10 @@ config.ols_config.authentication_config.module = "k8s"
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
-    ToolTokenUsage,
 )
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
-from ols.utils.token_handler import TokenHandler  # noqa: E402
+from ols.utils.token_handler import TokenBudget, TokenHandler  # noqa: E402
 from tests import constants  # noqa: E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
     mock_langchain_interface,
@@ -314,10 +313,6 @@ def test_tool_calling_tool_execution(caplog):
             return_value=2,
         ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
-        patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
-            return_value=1000,
-        ),
         patch(
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
@@ -693,7 +688,7 @@ def test_resolve_tool_call_definitions_none_args_normalized_to_empty_dict():
 async def test_process_tool_calls_for_round_skipped_only_without_execution():
     """Test skipped-only path emits tool_result without calling executor."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
+    budget = TokenBudget(TokenHandler(), 128000, 4096, 1000)
     messages: list = []
     tool = mock_tools_map[0]
     tool_call_chunks = [
@@ -716,9 +711,7 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
                 all_tools_dict={tool.name: tool},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
+                budget=budget,
                 max_tokens_per_tool=200,
             )
         ]
@@ -739,6 +732,7 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
     summarizer._tool_calling_enabled = False
     caplog.set_level(logging.ERROR)
     tools = [SampleTool("dup"), SampleTool("dup")]
+    budget = TokenBudget(TokenHandler(), 128000, 4096, 32000)
 
     with (
         patch.object(
@@ -755,6 +749,7 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
                 llm_input_values={},
                 token_counter=AsyncMock(),
                 all_mcp_tools=tools,
+                budget=budget,
             )
         ]
 
@@ -801,6 +796,7 @@ async def test_iterate_with_tools_handles_tool_execution_error():
             tool_calls=[{"name": tool.name, "args": {}, "id": "call_error"}],
         )
     ]
+    budget = TokenBudget(TokenHandler(), 128000, 4096, 32000)
 
     async def _failing_process(*args, **kwargs):
         if False:
@@ -825,6 +821,7 @@ async def test_iterate_with_tools_handles_tool_execution_error():
                 llm_input_values={},
                 token_counter=AsyncMock(),
                 all_mcp_tools=[tool],
+                budget=budget,
             )
         ]
 
