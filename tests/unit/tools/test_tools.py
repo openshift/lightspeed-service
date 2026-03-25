@@ -19,6 +19,8 @@ from ols.src.tools.tools import (
     get_tool_by_name,
 )
 
+_LARGE_TOKEN_BUDGET = 100_000
+
 
 class FakeSchema(BaseModel):
     """Fake schema for FakeTool."""
@@ -107,7 +109,10 @@ async def test_execute_tool_call():
         "ols.src.tools.tools.get_tool_by_name", return_value=FakeTool(fake_tool_name)
     ):
         output, was_truncated, structured = await execute_tool_call(
-            fake_tool_name, fake_tool_args, fake_tools
+            fake_tool_name,
+            fake_tool_args,
+            fake_tools,
+            tools_token_budget=_LARGE_TOKEN_BUDGET,
         )
         assert output == "fake_output_from_fake_tool"
         assert was_truncated is False
@@ -117,13 +122,20 @@ async def test_execute_tool_call():
         "ols.src.tools.tools.get_tool_by_name", side_effect=Exception("Tool error")
     ):
         with pytest.raises(Exception, match="Tool error"):
-            await execute_tool_call(fake_tool_name, fake_tool_args, fake_tools)
+            await execute_tool_call(
+                fake_tool_name,
+                fake_tool_args,
+                fake_tools,
+                tools_token_budget=_LARGE_TOKEN_BUDGET,
+            )
 
 
 @pytest.mark.asyncio
 async def test_execute_tool_calls_empty():
     """Test execute_tool_calls with empty tool calls list."""
-    tool_messages = await execute_tool_calls([], [])
+    tool_messages = await execute_tool_calls(
+        [], [], tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
     assert tool_messages == []
 
 
@@ -144,7 +156,9 @@ async def test_execute_tool_calls_parallel_execution():
     ]
 
     start_time = time.time()
-    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+    tool_messages = await execute_tool_calls(
+        tool_calls, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
     end_time = time.time()
 
     # If executed in parallel, total time should be close to 0.1s (the delay)
@@ -175,7 +189,9 @@ async def test_execute_tool_calls_with_missing_tool_name():
         "ols.src.tools.tools.execute_tool_call",
         return_value=("fake_output", False, None),
     ):
-        tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+        tool_messages = await execute_tool_calls(
+            tool_calls, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
+        )
         assert len(tool_messages) == 2
         assert (
             tool_messages[0].content
@@ -204,7 +220,9 @@ async def test_execute_tool_calls_mixed_success_and_failure():
         {"name": "nonexistent_tool", "args": {}, "id": "call_3"},
     ]
 
-    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+    tool_messages = await execute_tool_calls(
+        tool_calls, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
 
     assert len(tool_messages) == 3
 
@@ -248,6 +266,7 @@ async def test_execute_tool_calls_retries_transient_error_then_succeeds():
     tool_messages = await execute_tool_calls(
         [{"name": "flaky_tool", "args": {}, "id": "call_1"}],
         [tool],
+        tools_token_budget=_LARGE_TOKEN_BUDGET,
     )
 
     assert len(tool_messages) == 1
@@ -277,6 +296,7 @@ async def test_execute_tool_calls_retry_exhausted_returns_no_retry_reminder():
     tool_messages = await execute_tool_calls(
         [{"name": "timeout_tool", "args": {}, "id": "call_1"}],
         [tool],
+        tools_token_budget=_LARGE_TOKEN_BUDGET,
     )
 
     assert len(tool_messages) == 1
@@ -307,6 +327,7 @@ async def test_execute_tool_calls_non_retryable_error_does_not_retry():
     tool_messages = await execute_tool_calls(
         [{"name": "bad_tool", "args": {}, "id": "call_1"}],
         [tool],
+        tools_token_budget=_LARGE_TOKEN_BUDGET,
     )
 
     assert len(tool_messages) == 1
@@ -331,7 +352,9 @@ async def test_execute_tool_calls_preserves_tool_call_order():
         {"name": "tool_b", "args": {}, "id": "call_b"},
     ]
 
-    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+    tool_messages = await execute_tool_calls(
+        tool_calls, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
 
     assert len(tool_messages) == 3
     # Order should match input order, not alphabetical
@@ -368,7 +391,7 @@ async def test_execute_tool_call_with_truncation():
     fake_tools = [large_tool]
 
     output, was_truncated, structured = await execute_tool_call(
-        "large_tool", {}, fake_tools, max_tokens=100
+        "large_tool", {}, fake_tools, tools_token_budget=100
     )
 
     assert was_truncated is True
@@ -384,7 +407,7 @@ async def test_execute_tool_call_no_truncation_small_output():
     fake_tools = [small_tool]
 
     output, was_truncated, structured = await execute_tool_call(
-        "small_tool", {}, fake_tools, max_tokens=1000
+        "small_tool", {}, fake_tools, tools_token_budget=1000
     )
 
     assert was_truncated is False
@@ -405,7 +428,7 @@ async def test_execute_tool_calls_truncation_in_additional_kwargs():
     ]
 
     tool_messages = await execute_tool_calls(
-        tool_calls, fake_tools, max_tokens_per_output=100
+        tool_calls, fake_tools, tools_token_budget=100
     )
 
     assert len(tool_messages) == 2
@@ -420,8 +443,8 @@ async def test_execute_tool_calls_truncation_in_additional_kwargs():
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_calls_custom_max_tokens():
-    """Test that custom max_tokens_per_output is respected."""
+async def test_execute_tool_calls_custom_token_budget():
+    """Test that tools_token_budget is respected."""
     tool = LargeOutputTool(name="test_tool", output_size=500)
     fake_tools = [tool]
 
@@ -429,20 +452,22 @@ async def test_execute_tool_calls_custom_max_tokens():
 
     # With high limit - no truncation
     messages_high_limit = await execute_tool_calls(
-        tool_calls, fake_tools, max_tokens_per_output=10000
+        tool_calls, fake_tools, tools_token_budget=10000
     )
     assert messages_high_limit[0].additional_kwargs.get("truncated") is False
 
     # With low limit - truncation
     messages_low_limit = await execute_tool_calls(
-        tool_calls, fake_tools, max_tokens_per_output=50
+        tool_calls, fake_tools, tools_token_budget=50
     )
     assert messages_low_limit[0].additional_kwargs.get("truncated") is True
 
 
 def test_extract_text_from_tool_output_string():
     """Test _extract_text_from_tool_output with a plain string."""
-    assert _extract_text_from_tool_output("hello") == ("hello", False)
+    assert _extract_text_from_tool_output(
+        "hello", tools_token_budget=_LARGE_TOKEN_BUDGET
+    ) == ("hello", False)
 
 
 def test_extract_text_from_tool_output_content_blocks():
@@ -451,7 +476,9 @@ def test_extract_text_from_tool_output_content_blocks():
         {"type": "text", "text": "pod1 Running", "id": "lc_1"},
         {"type": "text", "text": "pod2 Running", "id": "lc_2"},
     ]
-    text, truncated = _extract_text_from_tool_output(blocks)
+    text, truncated = _extract_text_from_tool_output(
+        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
     assert text == "pod1 Running\npod2 Running"
     assert truncated is False
 
@@ -459,7 +486,9 @@ def test_extract_text_from_tool_output_content_blocks():
 def test_extract_text_from_tool_output_single_content_block():
     """Test _extract_text_from_tool_output with a single content block."""
     blocks = [{"type": "text", "text": "some output", "id": "lc_1"}]
-    assert _extract_text_from_tool_output(blocks) == ("some output", False)
+    assert _extract_text_from_tool_output(
+        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
+    ) == ("some output", False)
 
 
 def test_extract_text_from_tool_output_mixed_list():
@@ -468,26 +497,34 @@ def test_extract_text_from_tool_output_mixed_list():
         {"type": "text", "text": "text content"},
         "plain string",
     ]
-    text, truncated = _extract_text_from_tool_output(blocks)
+    text, truncated = _extract_text_from_tool_output(
+        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
     assert text == "text content\nplain string"
     assert truncated is False
 
 
 def test_extract_text_from_tool_output_non_string_non_list():
     """Test _extract_text_from_tool_output with unexpected types."""
-    assert _extract_text_from_tool_output(42) == ("42", False)
-    assert _extract_text_from_tool_output(None) == ("None", False)
+    assert _extract_text_from_tool_output(
+        42, tools_token_budget=_LARGE_TOKEN_BUDGET
+    ) == ("42", False)
+    assert _extract_text_from_tool_output(
+        None, tools_token_budget=_LARGE_TOKEN_BUDGET
+    ) == ("None", False)
 
 
 def test_extract_text_from_tool_output_empty_list():
     """Test _extract_text_from_tool_output with empty list."""
-    assert _extract_text_from_tool_output([]) == ("", False)
+    assert _extract_text_from_tool_output(
+        [], tools_token_budget=_LARGE_TOKEN_BUDGET
+    ) == ("", False)
 
 
 def test_extract_text_from_tool_output_string_truncation():
     """Test that a long string is truncated at the last newline boundary."""
     long_output = "line\n" * 5000
-    text, truncated = _extract_text_from_tool_output(long_output, max_tokens=10)
+    text, truncated = _extract_text_from_tool_output(long_output, tools_token_budget=10)
     assert truncated is True
     assert len(text) < len(long_output)
     assert not text.endswith("\n\n")
@@ -500,7 +537,7 @@ def test_extract_text_from_tool_output_list_block_truncation():
         {"type": "text", "text": "block " * 200},
         {"type": "text", "text": "block " * 200},
     ]
-    text, truncated = _extract_text_from_tool_output(blocks, max_tokens=10)
+    text, truncated = _extract_text_from_tool_output(blocks, tools_token_budget=10)
     assert truncated is True
     assert len(text) < sum(len(b["text"]) for b in blocks)
 
@@ -512,7 +549,7 @@ async def test_execute_tool_call_with_content_blocks():
     fake_tools = [content_block_tool]
 
     output, was_truncated, structured = await execute_tool_call(
-        "content_tool", {}, fake_tools
+        "content_tool", {}, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
     )
     assert output == "pod1 Running\npod2 Running"
     assert was_truncated is False
@@ -555,7 +592,7 @@ async def test_execute_tool_call_with_structured_content():
     fake_tools = [artifact_tool]
 
     output, was_truncated, structured = await execute_tool_call(
-        "artifact_tool", {}, fake_tools
+        "artifact_tool", {}, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
     )
     assert output == "Pod utilization summary"
     assert was_truncated is False
@@ -572,7 +609,9 @@ async def test_execute_tool_call_structured_content_propagated_to_tool_message()
     fake_tools = [artifact_tool]
 
     tool_calls = [{"name": "artifact_tool", "args": {}, "id": "call_art"}]
-    tool_messages = await execute_tool_calls(tool_calls, fake_tools)
+    tool_messages = await execute_tool_calls(
+        tool_calls, fake_tools, tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
 
     assert len(tool_messages) == 1
     msg = tool_messages[0]
@@ -600,7 +639,7 @@ async def test_execute_tool_call_artifact_without_structured_content():
     )
 
     output, _was_truncated, structured = await execute_tool_call(
-        "no_sc_tool", {}, [tool]
+        "no_sc_tool", {}, [tool], tools_token_budget=_LARGE_TOKEN_BUDGET
     )
     assert output == "plain result"
     assert structured is None

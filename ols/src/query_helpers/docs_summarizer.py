@@ -183,7 +183,7 @@ class DocsSummarizer(QueryHelper):
             self._tool_calling_enabled,
         ).generate_prompt(self.model)
         max_tokens_for_tools = (
-            self.model_config.parameters.max_tokens_for_tools if self.mcp_servers else 0
+            self.model_config.max_tokens_for_tools if self.mcp_servers else 0
         )
         available_tokens = token_handler.calculate_and_check_available_tokens(
             temp_prompt.format(**temp_prompt_input),
@@ -553,7 +553,6 @@ class DocsSummarizer(QueryHelper):
         token_handler: TokenHandler,
         tool_token_usage: ToolTokenUsage,
         max_tokens_for_tools: int,
-        max_tokens_per_tool: int,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Resolve, execute, and stream one round of tool calls."""
         tool_tokens_used = tool_token_usage.used
@@ -610,35 +609,25 @@ class DocsSummarizer(QueryHelper):
             )
             yield StreamedChunk(type=ChunkType.TOOL_CALL, data=enriched)
 
-        # Derive per-tool execution cap from remaining global tool budget so we
-        # do not exceed max_tokens_for_tools across this request.
         remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
-        effective_per_tool_limit = min(max_tokens_per_tool, remaining_tool_budget)
         logger.debug(
-            "Tool budget: used=%d, remaining=%d, per_tool_limit=%d",
+            "Tool budget: used=%d, remaining=%d",
             tool_tokens_used,
             remaining_tool_budget,
-            effective_per_tool_limit,
         )
 
         tool_calls_messages: list[ToolMessage] = []
         # Execute resolved tool calls and consume streamed execution events
         # (approval prompts + final tool results).
         if tool_call_definitions:
-            # Enforce strict global tool budget. If model config uses a lower
-            # max per-tool cap, lower the minimum accordingly so tools are not
-            # permanently skipped due to configuration mismatch.
-            minimum_required_tokens = min(
-                MIN_TOOL_EXECUTION_TOKENS, max_tokens_per_tool
-            )
-            if effective_per_tool_limit < minimum_required_tokens:
+            if remaining_tool_budget < MIN_TOOL_EXECUTION_TOKENS:
                 logger.warning(
                     "Skipping %d tool call(s) in round %s due to low remaining tool budget "
                     "(remaining=%d, minimum_required=%d)",
                     len(tool_call_definitions),
                     round_index,
                     remaining_tool_budget,
-                    minimum_required_tokens,
+                    MIN_TOOL_EXECUTION_TOKENS,
                 )
                 # Emit synthetic tool results for skipped executions so client/UI
                 # and conversation state remain consistent (one call -> one outcome).
@@ -648,7 +637,7 @@ class DocsSummarizer(QueryHelper):
                             content=(
                                 f"Tool '{tool.name}' call skipped: remaining tool token budget "
                                 f"({remaining_tool_budget}) is below minimum required "
-                                f"({minimum_required_tokens}). "
+                                f"({MIN_TOOL_EXECUTION_TOKENS}). "
                                 "Do not retry this exact tool call."
                             ),
                             status="error",
@@ -663,7 +652,7 @@ class DocsSummarizer(QueryHelper):
                 tool_calls_messages = await execute_tool_calls(
                     tool_calls_dicts,
                     list(all_tools_dict.values()),
-                    effective_per_tool_limit,
+                    remaining_tool_budget,
                 )
 
         # Merge synthetic skipped outcomes with real execution outcomes and
@@ -730,8 +719,7 @@ class DocsSummarizer(QueryHelper):
 
         # Track cumulative token usage for tool outputs
         tool_tokens_used = 0
-        max_tokens_for_tools = self.model_config.parameters.max_tokens_for_tools
-        max_tokens_per_tool = self.model_config.parameters.max_tokens_per_tool_output
+        max_tokens_for_tools = self.model_config.max_tokens_for_tools
         token_handler = TokenHandler()
 
         # Account for tool definitions tokens (schemas sent to LLM)
@@ -794,7 +782,6 @@ class DocsSummarizer(QueryHelper):
                         token_handler=token_handler,
                         tool_token_usage=tool_token_usage,
                         max_tokens_for_tools=max_tokens_for_tools,
-                        max_tokens_per_tool=max_tokens_per_tool,
                     ):
                         yield streamed_chunk
                 except Exception:

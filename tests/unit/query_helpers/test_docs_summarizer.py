@@ -348,7 +348,7 @@ def test_tool_calling_tool_execution(caplog):
         mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer.model_config.parameters.max_tokens_for_tools = 100
+        summarizer.model_config.max_tokens_for_tools = 100
         summarizer.create_response("How many namespaces are there in my cluster?")
 
         assert "get_namespaces_mock" in caplog.text
@@ -422,8 +422,7 @@ def test_tool_output_token_tracking_uses_buffer_weight(caplog):
         mock_mcp_client_cls.return_value = mock_mcp_client_instance
 
         summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-        summarizer.model_config.parameters.max_tokens_for_tools = 50000
-        summarizer.model_config.parameters.max_tokens_per_tool_output = 8000
+        summarizer.model_config.max_tokens_for_tools = 50000
         summarizer.create_response("How many namespaces?")
 
     # _get_token_count must be called for:
@@ -719,7 +718,6 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
                 token_handler=TokenHandler(),
                 tool_token_usage=token_usage,
                 max_tokens_for_tools=1000,
-                max_tokens_per_tool=200,
             )
         ]
 
