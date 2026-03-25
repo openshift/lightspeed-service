@@ -16,6 +16,11 @@ from ols.src.prompts.prompts import (
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_PROMPT_BY_MODE = {
+    QueryMode.ASK: QUERY_SYSTEM_INSTRUCTION,
+    QueryMode.TROUBLESHOOTING: TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+}
+
 
 class QueryHelper:
     """Base class for query helpers."""
@@ -38,13 +43,9 @@ class QueryHelper:
         self.generic_llm_params = generic_llm_params or {}
         self.llm_loader = llm_loader or load_llm
 
-        default_prompt_by_mode = {
-            QueryMode.ASK: QUERY_SYSTEM_INSTRUCTION,
-            QueryMode.TROUBLESHOOTING: TROUBLESHOOTING_SYSTEM_INSTRUCTION,
-        }
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)
             or config.ols_config.system_prompt
-            or default_prompt_by_mode[mode]
+            or _DEFAULT_PROMPT_BY_MODE[mode]
         )
         logger.debug("System prompt: %s", self._system_prompt)
