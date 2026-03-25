@@ -94,7 +94,7 @@ test-eval: ## Run evaluation tests - requires running OLS server
 	uv run --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_out_dir ${ARTIFACT_DIR} -m "not lseval"
 
-test-lseval-periodic: ## Run LSEval periodic evaluation - requires running OLS server with WatsonX and Azure OpenAI judge keys
+test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question dataset) - requires running OLS server with OpenAI keys
 	@echo "Running LSEval periodic evaluation..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	uv run --extra lseval pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
