@@ -267,12 +267,9 @@ class DocsSummarizer(QueryHelper):
         if not tools_map:
             llm = self.bare_llm
         elif is_final_round:
-            # strict=False: the Responses API (used when reasoning params are
-            # present) defaults strict to True, unlike Chat Completions which
-            # defaults to False.  With strict=True the model enters structured-
-            # outputs mode which only supports a subset of JSON Schema — MCP tool
-            # schemas contain unsupported keywords like ``pattern`` that cause the
-            # model to misinterpret regex constraints as literal argument values.
+            # Responses API dumps tool args as text when tools are unbound;
+            # tool_choice="none" prevents this while strict=False avoids
+            # langchain-ai/langchain#35837 (Responses API defaults strict=True).
             llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", strict=False)
         else:
             llm = self.bare_llm.bind_tools(tools_map, strict=False)
