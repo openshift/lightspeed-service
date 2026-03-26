@@ -8,7 +8,7 @@ from langchain_core.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from ols.constants import ModelFamily
+from ols.constants import ModelFamily, QueryMode
 from ols.src.prompts import prompts
 
 
@@ -27,6 +27,8 @@ class GeneratePrompt:
         history: list[BaseMessage] = [],
         system_instruction: str = prompts.QUERY_SYSTEM_INSTRUCTION,
         tool_call: bool = False,
+        mode: QueryMode = QueryMode.ASK,
+        cluster_version: str = "unknown",
     ) -> None:
         """Initialize prompt generator."""
         self._query = query
@@ -34,20 +36,34 @@ class GeneratePrompt:
         self._history = history
         self._sys_instruction = system_instruction
         self._tool_call = tool_call
+        self._mode = mode
+        self._cluster_version = cluster_version
+
+    def _get_agent_instructions(self, model: str) -> str:
+        """Return agent instructions based on mode and model family."""
+        if self._mode == QueryMode.TROUBLESHOOTING:
+            return (
+                prompts.TROUBLESHOOTING_AGENT_INSTRUCTION.strip()
+                + "\n"
+                + prompts.TROUBLESHOOTING_AGENT_SYSTEM_INSTRUCTION.strip()
+            )
+
+        agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()
+        if ModelFamily.GRANITE in model:
+            agent_instructions = prompts.AGENT_INSTRUCTION_GRANITE.strip()
+        return agent_instructions + "\n" + prompts.AGENT_SYSTEM_INSTRUCTION.strip()
 
     def generate_prompt(self, model: str) -> tuple[ChatPromptTemplate, dict]:
         """Generate prompt."""
         prompt_message = []
         sys_intruction = self._sys_instruction.strip()
-        llm_input_values: dict = {"query": self._query}
+        llm_input_values: dict = {
+            "query": self._query,
+            "cluster_version": self._cluster_version,
+        }
 
         if self._tool_call:
-            agent_instructions = prompts.AGENT_INSTRUCTION_GENERIC.strip()
-            if ModelFamily.GRANITE in model:
-                agent_instructions = prompts.AGENT_INSTRUCTION_GRANITE.strip()
-            agent_instructions = (
-                agent_instructions + "\n" + prompts.AGENT_SYSTEM_INSTRUCTION.strip()
-            )
+            agent_instructions = self._get_agent_instructions(model)
             sys_intruction = sys_intruction + "\n" + agent_instructions
 
         if len(self._rag_context) > 0:

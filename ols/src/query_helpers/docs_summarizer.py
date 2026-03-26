@@ -20,6 +20,7 @@ from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.models import ChunkType, RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import GenericLLMParameters
+from ols.src.auth.k8s import K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls
@@ -128,6 +129,7 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
+        self._cluster_version = K8sClientSingleton.get_cluster_version()
 
         # tools part
         self.client_headers = client_headers or {}
@@ -190,6 +192,8 @@ class DocsSummarizer(QueryHelper):
             [AIMessage("sample")],
             self._system_prompt,
             self._tool_calling_enabled,
+            self._mode,
+            self._cluster_version,
         ).generate_prompt(self.model)
         max_tokens_for_tools = (
             self.model_config.parameters.max_tokens_for_tools if self.mcp_servers else 0
@@ -238,6 +242,8 @@ class DocsSummarizer(QueryHelper):
             history,
             self._system_prompt,
             self._tool_calling_enabled,
+            self._mode,
+            self._cluster_version,
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count
