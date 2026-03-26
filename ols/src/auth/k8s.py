@@ -23,10 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 CLUSTER_ID_LOCAL = "local"
+CLUSTER_VERSION_UNAVAILABLE = "unknown"
 
 
 class ClusterIDUnavailableError(Exception):
     """Cluster ID is not available."""
+
+
+class ClusterVersionUnavailableError(Exception):
+    """Cluster version is not available."""
 
 
 class K8sClientSingleton:
@@ -138,12 +143,17 @@ class K8sClientSingleton:
         return cls._custom_objects_api
 
     @classmethod
+    def _fetch_cluster_version_object(cls) -> dict:
+        """Fetch the ClusterVersion custom resource from the OpenShift API."""
+        custom_objects_api = cls.get_custom_objects_api()
+        return custom_objects_api.get_cluster_custom_object(
+            "config.openshift.io", "v1", "clusterversions", "version"
+        )
+
+    @classmethod
     def _get_cluster_id(cls) -> str:
         try:
-            custom_objects_api = cls.get_custom_objects_api()
-            version_data = custom_objects_api.get_cluster_custom_object(
-                "config.openshift.io", "v1", "clusterversions", "version"
-            )
+            version_data = cls._fetch_cluster_version_object()
             cluster_id = version_data["spec"]["clusterID"]
             cls._cluster_id = cluster_id
             return cluster_id
@@ -176,6 +186,46 @@ class K8sClientSingleton:
                 logger.debug("Not running in cluster, setting cluster_id to 'local'")
                 cls._cluster_id = CLUSTER_ID_LOCAL
         return cls._cluster_id
+
+    @classmethod
+    def _get_cluster_version(cls) -> str:
+        try:
+            version_data = cls._fetch_cluster_version_object()
+            return version_data["status"]["desired"]["version"]
+        except KeyError as e:
+            logger.error(
+                "Failed to get cluster version, missing keys in version object"
+            )
+            raise ClusterVersionUnavailableError("Failed to get cluster version") from e
+        except TypeError as e:
+            logger.error(
+                "Failed to get cluster version, version object is: %s", version_data
+            )
+            raise ClusterVersionUnavailableError("Failed to get cluster version") from e
+        except ApiException as e:
+            logger.error("API exception during cluster version retrieval: %s", e)
+            raise ClusterVersionUnavailableError("Failed to get cluster version") from e
+        except Exception as e:
+            logger.error("Unexpected error getting cluster version: %s", e)
+            raise ClusterVersionUnavailableError("Failed to get cluster version") from e
+
+    @classmethod
+    def get_cluster_version(cls) -> str:
+        """Return the cluster version.
+
+        Fetched on every call (not cached) so it stays current after upgrades.
+        Falls back to "unknown" on error — version is non-critical (prompt
+        enrichment), unlike cluster_id which is required for auth.
+        """
+        if cls._instance is None:
+            cls()
+        if not RUNNING_IN_CLUSTER:
+            logger.debug("Not running in cluster, cluster version unavailable")
+            return CLUSTER_VERSION_UNAVAILABLE
+        try:
+            return cls._get_cluster_version()
+        except ClusterVersionUnavailableError:
+            return CLUSTER_VERSION_UNAVAILABLE
 
 
 def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
