@@ -32,6 +32,13 @@ class ModelFamily(StrEnum):
     GRANITE = "granite"
 
 
+class QueryMode(StrEnum):
+    """Query modes that control which system prompt is used."""
+
+    ASK = "ask"
+    TROUBLESHOOTING = "troubleshooting"
+
+
 class GenericLLMParameters:
     """Generic LLM parameters that can be mapped into LLM provider-specific parameters."""
 

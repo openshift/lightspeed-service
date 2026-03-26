@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ols import config, constants
+from ols.constants import QueryMode
 
 # needs to be setup there before is_user_authorized is imported
 config.ols_config.authentication_config.module = "k8s"
@@ -682,6 +683,34 @@ def test_generate_response_valid_subject():
 
 
 @pytest.mark.usefixtures("_load_config")
+def test_generate_response_passes_mode_to_summarizer():
+    """Test that generate_response passes mode from LLMRequest to DocsSummarizer."""
+    mock_response = "some response"
+    with (
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.__init__",
+            return_value=None,
+        ) as mock_init,
+        patch(
+            "ols.src.query_helpers.docs_summarizer.DocsSummarizer.create_response",
+            return_value=SummarizerResponse(
+                mock_response, [], False, token_counter=None
+            ),
+        ),
+    ):
+        conversation_id = suid.get_suid()
+        llm_request = LLMRequest(
+            query="My pod is crashlooping", mode=QueryMode.TROUBLESHOOTING
+        )
+        previous_input: list = []
+
+        ols.generate_response(conversation_id, llm_request, previous_input)
+
+        _, kwargs = mock_init.call_args
+        assert kwargs.get("mode") == QueryMode.TROUBLESHOOTING
+
+
+@pytest.mark.usefixtures("_load_config")
 def test_generate_response_on_summarizer_error():
     """Test how generate_response function checks validation results."""
     with patch(
@@ -808,6 +837,7 @@ def test_store_transcript(transcripts_location):
             "model": None,
             "user_id": user_id,
             "conversation_id": conversation_id,
+            "mode": "ask",
             "timestamp": "fake-timestamp",
         },
         "redacted_query": query,

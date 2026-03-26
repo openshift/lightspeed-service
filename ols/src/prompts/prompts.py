@@ -85,6 +85,8 @@ Style guide:
 * Terseness must not omit critical info.
 """
 
+TROUBLESHOOTING_SYSTEM_INSTRUCTION = "NOT IMPLEMENTED"
+
 USE_CONTEXT_INSTRUCTION = """
 Use the retrieved document to answer the question.
 """

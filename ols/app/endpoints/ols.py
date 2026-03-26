@@ -371,6 +371,7 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
         timestamps=timestamps,
         skip_user_id_check=skip_user_id_check,
         user_token=user_token,
+        mode=llm_request.mode,
     )
 
 
@@ -553,6 +554,7 @@ def generate_response(
             provider=llm_request.provider,
             model=llm_request.model,
             system_prompt=llm_request.system_prompt,
+            mode=llm_request.mode,
             user_token=user_token,
             client_headers=client_headers,
             streaming=streaming,
@@ -800,6 +802,7 @@ def store_transcript(
             "model": llm_request.model or config.ols_config.default_model,
             "user_id": user_id,
             "conversation_id": conversation_id,
+            "mode": llm_request.mode,
             "timestamp": datetime.now(pytz.UTC).isoformat(),
         },
         "redacted_query": redacted_query,

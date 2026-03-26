@@ -229,15 +229,9 @@ def test_post_question_improper_conversation_id(_setup, endpoint) -> None:
 def test_post_question_on_noyaml_response_type(_setup, endpoint) -> None:
     """Check the REST API query endpoints when call is success."""
     ml = mock_langchain_interface("test response")
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.src.query_helpers.query_helper.load_llm",
-            new=mock_llm_loader(ml()),
-        ),
+    with patch(
+        "ols.src.query_helpers.query_helper.load_llm",
+        new=mock_llm_loader(ml()),
     ):
         conversation_id = suid.get_suid()
         response = pytest.client.post(
@@ -265,41 +259,33 @@ def test_post_query_with_query_filters_response_type(_setup, endpoint) -> None:
     ]
     config.ols_config.query_filters = query_filters
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
+    ml = mock_langchain_interface("test response")
+    with patch(
+        "ols.src.query_helpers.query_helper.load_llm",
+        new=mock_llm_loader(ml()),
     ):
-        ml = mock_langchain_interface("test response")
-        with (
-            patch(
-                "ols.src.query_helpers.query_helper.load_llm",
-                new=mock_llm_loader(ml()),
-            ),
-        ):
-            conversation_id = suid.get_suid()
-            response = pytest.client.post(
-                endpoint,
-                json={
-                    "conversation_id": conversation_id,
-                    "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
-                },
-            )
+        conversation_id = suid.get_suid()
+        response = pytest.client.post(
+            endpoint,
+            json={
+                "conversation_id": conversation_id,
+                "query": "test query with 9.25.33.67 will be replaced with redacted_ip",
+            },
+        )
 
-            assert response.status_code == requests.codes.ok
+        assert response.status_code == requests.codes.ok
 
-            if response.headers["content-type"] == "application/json":
-                # non-streaming responses return JSON
-                actual_response = response.json()["response"]
-            else:
-                # streaming_query returns bytes
-                actual_response = response.text
+        if response.headers["content-type"] == "application/json":
+            # non-streaming responses return JSON
+            actual_response = response.json()["response"]
+        else:
+            # streaming_query returns bytes
+            actual_response = response.text
 
-            assert (
-                "test query with redacted_ip will be replaced with redacted_ip"
-                in actual_response
-            )
+        assert (
+            "test query with redacted_ip will be replaced with redacted_ip"
+            in actual_response
+        )
 
 
 @pytest.mark.parametrize("endpoint", ("/v1/query", "/v1/streaming_query"))
@@ -320,10 +306,6 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
 
     ml = mock_langchain_interface("test response")
     with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
         patch(
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
@@ -385,15 +367,9 @@ def test_post_question_without_attachments(_setup, endpoint) -> None:
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -428,15 +404,9 @@ def test_post_question_with_empty_list_of_attachments(_setup, endpoint) -> None:
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -472,15 +442,9 @@ def test_post_question_with_one_plaintext_attachment(_setup, endpoint) -> None:
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -529,15 +493,9 @@ def test_post_question_with_one_yaml_attachment(_setup, endpoint) -> None:
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -595,15 +553,9 @@ def test_post_question_with_two_yaml_attachments(_setup, endpoint) -> None:
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -681,15 +633,9 @@ def test_post_question_with_one_yaml_without_kind_attachment(_setup, endpoint) -
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -745,15 +691,9 @@ def test_post_question_with_one_yaml_without_name_attachment(_setup, endpoint) -
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -811,15 +751,9 @@ def test_post_question_with_one_invalid_yaml_attachment(_setup, endpoint) -> Non
         query_passed = result
         return result
 
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.append_attachments_to_query",
-            side_effect=capture_append,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.append_attachments_to_query",
+        side_effect=capture_append,
     ):
         ml = mock_langchain_interface("test response")
         with patch(
@@ -982,15 +916,9 @@ def test_post_with_system_prompt_override_disabled(_setup, caplog):
     """Check the POST /v1/query API with a system prompt when overriding is disabled."""
     query = "test query"
     system_prompt = "You are an expert in something marvelous."
-    with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
-        patch(
-            "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
-            False,
-        ),
+    with patch(
+        "ols.app.endpoints.ols.config.dev_config.enable_system_prompt_override",
+        False,
     ):
         _post_with_system_prompt_override(_setup, caplog, query, system_prompt)
 
@@ -1051,10 +979,6 @@ def test_tool_calling(_setup, caplog) -> None:
     mcp_servers = {"fake-server": {"transport": "http", "url": "http://fake-server"}}
 
     with (
-        patch(
-            "ols.src.query_helpers.query_helper.QUERY_SYSTEM_INSTRUCTION",
-            "System Instruction",
-        ),
         patch("ols.utils.mcp_utils.config") as mock_config,
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(

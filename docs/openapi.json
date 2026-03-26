@@ -1562,6 +1562,10 @@
                             }
                         ],
                         "title": "Mcp Headers"
+                    },
+                    "mode": {
+                        "$ref": "#/components/schemas/QueryMode",
+                        "default": "ask"
                     }
                 },
                 "additionalProperties": false,
@@ -1570,7 +1574,7 @@
                     "query"
                 ],
                 "title": "LLMRequest",
-                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n    mcp_headers: Optional JSON object mapping MCP server names to header lists.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model) send into OLS service.\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    attachments: The optional attachments.\n    media_type: The optional parameter for streaming response.\n    mcp_headers: Optional JSON object mapping MCP server names to header lists.\n    mode: The query mode controlling which system prompt is used.\n\nExample:\n    ```python\n    llm_request = LLMRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -1593,6 +1597,7 @@
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "mcp_headers": "{\"github-mcp\": {\"Authorization\": \"Bearer ghp_xxxxx\"}}",
                         "media_type": "text/plain",
+                        "mode": "ask",
                         "model": "model-name",
                         "provider": "openai",
                         "query": "write a deployment yaml for the mongodb image",
@@ -1989,6 +1994,15 @@
                         }
                     }
                 ]
+            },
+            "QueryMode": {
+                "type": "string",
+                "enum": [
+                    "ask",
+                    "troubleshooting"
+                ],
+                "title": "QueryMode",
+                "description": "Query modes that control which system prompt is used."
             },
             "ReadinessResponse": {
                 "properties": {

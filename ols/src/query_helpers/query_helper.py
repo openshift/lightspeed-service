@@ -7,10 +7,19 @@ from typing import Optional
 from langchain_core.language_models.llms import LLM
 
 from ols import config
+from ols.constants import QueryMode
 from ols.src.llms.llm_loader import load_llm
-from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
+from ols.src.prompts.prompts import (
+    QUERY_SYSTEM_INSTRUCTION,
+    TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+)
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_PROMPT_BY_MODE = {
+    QueryMode.ASK: QUERY_SYSTEM_INSTRUCTION,
+    QueryMode.TROUBLESHOOTING: TROUBLESHOOTING_SYSTEM_INSTRUCTION,
+}
 
 
 class QueryHelper:
@@ -23,6 +32,7 @@ class QueryHelper:
         generic_llm_params: Optional[dict] = None,
         llm_loader: Optional[Callable[[str, str, dict], LLM]] = None,
         system_prompt: Optional[str] = None,
+        mode: QueryMode = QueryMode.ASK,
     ) -> None:
         """Initialize query helper."""
         # NOTE: As signature of this method is evaluated before the config,
@@ -36,6 +46,6 @@ class QueryHelper:
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)
             or config.ols_config.system_prompt
-            or QUERY_SYSTEM_INSTRUCTION
+            or _DEFAULT_PROMPT_BY_MODE[mode]
         )
         logger.debug("System prompt: %s", self._system_prompt)
