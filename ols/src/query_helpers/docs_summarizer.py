@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Coroutine, Optional, TypeAlias
+from typing import Any, AsyncGenerator, Coroutine, NamedTuple, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
@@ -37,6 +37,15 @@ class ToolTokenUsage:
     """Mutable holder for cumulative tool-token usage across helper boundaries."""
 
     used: int
+
+
+class RoundLLMResult(NamedTuple):
+    """Result of one LLM collection round from ``_collect_round_llm_chunks``."""
+
+    tool_call_chunks: list[AIMessageChunk]
+    all_chunks: list[AIMessageChunk]
+    streamed_chunks: list[StreamedChunk]
+    should_stop: bool
 
 
 def skip_special_chunk(
@@ -264,12 +273,15 @@ class DocsSummarizer(QueryHelper):
             AIMessageChunk objects from the LLM response stream
         """
         logger.debug("provided %s tools", len(tools_map))
-        # determine whether to use tools based on round and availability
-        llm = (
-            self.bare_llm
-            if is_final_round or not tools_map
-            else self.bare_llm.bind_tools(tools_map)
-        )
+        if not tools_map:
+            llm = self.bare_llm
+        elif is_final_round:
+            # Responses API dumps tool args as text when tools are unbound;
+            # tool_choice="none" prevents this while strict=False avoids
+            # langchain-ai/langchain#35837 (Responses API defaults strict=True).
+            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", strict=False)
+        else:
+            llm = self.bare_llm.bind_tools(tools_map, strict=False)
 
         # create and execute the chain
         chain = messages | llm
@@ -387,6 +399,39 @@ class DocsSummarizer(QueryHelper):
 
         return tool_call_definitions, skipped_tool_messages
 
+    def _streamed_chunks_from_list_content(
+        self,
+        content: list[Any],
+        chunk_counter: int,
+        is_final_round: bool,
+    ) -> list[StreamedChunk]:
+        """Extract text and reasoning StreamedChunks from list-format content blocks.
+
+        See ``GenericTokenCounter._count_list_content_tokens`` for the block
+        schema documentation.
+        """
+        result: list[StreamedChunk] = []
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            match block.get("type"):
+                case "text":
+                    text = block.get("text", "")
+                    if text and not skip_special_chunk(
+                        text, chunk_counter, self.model, is_final_round
+                    ):
+                        result.append(StreamedChunk(type=ChunkType.TEXT, text=text))
+                case "reasoning":
+                    for part in block.get("summary", []):
+                        if not isinstance(part, dict):
+                            continue
+                        text = part.get("text", "")
+                        if text:
+                            result.append(
+                                StreamedChunk(type=ChunkType.REASONING, text=text)
+                            )
+        return result
+
     async def _collect_round_llm_chunks(
         self,
         messages: ChatPromptTemplate,
@@ -395,13 +440,10 @@ class DocsSummarizer(QueryHelper):
         is_final_round: bool,
         token_counter: GenericTokenCounter,
         round_index: int,
-    ) -> tuple[list[AIMessageChunk], list[StreamedChunk], bool]:
-        """Collect one round of LLM chunks and streamed text output.
-
-        Returns:
-            Tuple of (tool_call_chunks, streamed_chunks, should_stop_iteration).
-        """
+    ) -> RoundLLMResult:
+        """Collect one round of LLM chunks and streamed text output."""
         tool_call_chunks: list[AIMessageChunk] = []
+        all_chunks: list[AIMessageChunk] = []
         streamed_chunks: list[StreamedChunk] = []
         chunk_counter = 0
         try:
@@ -428,17 +470,30 @@ class DocsSummarizer(QueryHelper):
                         break
 
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                        return tool_call_chunks, streamed_chunks, True
+                        return RoundLLMResult(
+                            tool_call_chunks,
+                            all_chunks,
+                            streamed_chunks,
+                            should_stop=True,
+                        )
+
+                    all_chunks.append(chunk)
 
                     if getattr(chunk, "tool_call_chunks", None):
                         tool_call_chunks.append(chunk)
-                    else:
-                        if not skip_special_chunk(
+                    elif isinstance(chunk.content, str):
+                        if chunk.content and not skip_special_chunk(
                             chunk.content, chunk_counter, self.model, is_final_round
                         ):
                             streamed_chunks.append(
                                 StreamedChunk(type=ChunkType.TEXT, text=chunk.content)
                             )
+                    elif isinstance(chunk.content, list):
+                        streamed_chunks.extend(
+                            self._streamed_chunks_from_list_content(
+                                chunk.content, chunk_counter, is_final_round
+                            )
+                        )
 
                     chunk_counter += 1
         except TimeoutError:
@@ -456,9 +511,13 @@ class DocsSummarizer(QueryHelper):
                     ),
                 )
             )
-            return tool_call_chunks, streamed_chunks, True
+            return RoundLLMResult(
+                tool_call_chunks, all_chunks, streamed_chunks, should_stop=True
+            )
 
-        return tool_call_chunks, streamed_chunks, False
+        return RoundLLMResult(
+            tool_call_chunks, all_chunks, streamed_chunks, should_stop=False
+        )
 
     @staticmethod
     def _enrich_with_tool_metadata(
@@ -547,6 +606,7 @@ class DocsSummarizer(QueryHelper):
         *,
         round_index: int,
         tool_call_chunks: list[AIMessageChunk],
+        all_chunks: list[AIMessageChunk],
         all_tools_dict: dict[str, StructuredTool],
         duplicate_tool_names: set[str],
         messages: ChatPromptTemplate,
@@ -574,14 +634,33 @@ class DocsSummarizer(QueryHelper):
             tool_token_usage.used = tool_tokens_used
             return
 
-        # Persist the AI tool-call message for the next LLM turn.
-        ai_tool_call_message = AIMessage(content="", type="ai", tool_calls=tool_calls)
+        # Accumulate the full AI message (reasoning + tool calls) so reasoning
+        # context is preserved between rounds per OpenAI's "Keeping reasoning
+        # items in context" guidance.
+        if all_chunks:
+            accumulated = all_chunks[0]
+            for c in all_chunks[1:]:
+                accumulated += c  # type: ignore [assignment]
+            ai_tool_call_message = AIMessage(
+                content=accumulated.content,
+                tool_calls=tool_calls,
+                additional_kwargs=accumulated.additional_kwargs,
+            )
+        else:
+            ai_tool_call_message = AIMessage(
+                content="", type="ai", tool_calls=tool_calls
+            )
         messages.append(ai_tool_call_message)
 
         # Charge token budget for the assistant tool-call message itself, so
         # subsequent per-tool limits are computed from the remaining budget.
+        ai_content_text = (
+            json.dumps(ai_tool_call_message.content)
+            if isinstance(ai_tool_call_message.content, list)
+            else str(ai_tool_call_message.content)
+        )
         ai_message_tokens = TokenHandler._get_token_count(
-            token_handler.text_to_tokens(json.dumps(tool_calls))
+            token_handler.text_to_tokens(ai_content_text + json.dumps(tool_calls))
         )
         tool_tokens_used += ai_message_tokens
 
@@ -756,22 +835,17 @@ class DocsSummarizer(QueryHelper):
             logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
             # Phase 1: collect one LLM round (text chunks + potential tool-call chunks).
-            tool_call_chunks, round_streamed_chunks, should_stop_iteration = (
-                await self._collect_round_llm_chunks(
-                    messages=messages,
-                    llm_input_values=llm_input_values,
-                    all_mcp_tools=all_mcp_tools,
-                    is_final_round=is_final_round,
-                    token_counter=token_counter,
-                    round_index=i,
-                )
+            round_result = await self._collect_round_llm_chunks(
+                messages=messages,
+                llm_input_values=llm_input_values,
+                all_mcp_tools=all_mcp_tools,
+                is_final_round=is_final_round,
+                token_counter=token_counter,
+                round_index=i,
             )
-            # Emit all text chunks produced during this LLM round.
-            for streamed_chunk in round_streamed_chunks:
+            for streamed_chunk in round_result.streamed_chunks:
                 yield streamed_chunk
-            # Stop immediately when helper indicates terminal condition
-            # (final answer reached or timeout fallback emitted).
-            if should_stop_iteration:
+            if round_result.should_stop:
                 return
 
             # exit if this was the final round
@@ -779,7 +853,7 @@ class DocsSummarizer(QueryHelper):
                 break
 
             # tool calling part
-            if tool_call_chunks:
+            if round_result.tool_call_chunks:
                 # Phase 2: resolve and execute tool calls for this round.
                 tool_token_usage = ToolTokenUsage(used=tool_tokens_used)
                 # No outer timeout here — each MCP server enforces its own
@@ -787,7 +861,8 @@ class DocsSummarizer(QueryHelper):
                 try:
                     async for streamed_chunk in self._process_tool_calls_for_round(
                         round_index=i,
-                        tool_call_chunks=tool_call_chunks,
+                        tool_call_chunks=round_result.tool_call_chunks,
+                        all_chunks=round_result.all_chunks,
                         all_tools_dict=all_tools_dict,
                         duplicate_tool_names=duplicate_tool_names,
                         messages=messages,
@@ -883,6 +958,8 @@ class DocsSummarizer(QueryHelper):
                         tool_calls.append(chunk.data)
                     case ChunkType.TOOL_RESULT:
                         tool_results.append(chunk.data)
+                    case ChunkType.REASONING:
+                        pass
                     case ChunkType.TEXT:
                         chunks.append(chunk.text)
                     case _:
