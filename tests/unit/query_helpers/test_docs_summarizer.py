@@ -20,6 +20,7 @@ config.ols_config.authentication_config.module = "k8s"
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
+    RoundLLMResult,
     ToolTokenUsage,
 )
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
@@ -525,23 +526,22 @@ async def test_collect_round_llm_chunks_targeted_paths():
         )
 
     with patch.object(summarizer, "_invoke_llm", side_effect=_fake_invoke):
-        tool_call_chunks, all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=mock_tools_map,
-                is_final_round=False,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=mock_tools_map,
+            is_final_round=False,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is False
-    assert len(streamed_chunks) == 1
-    assert streamed_chunks[0].type == "text"
-    assert streamed_chunks[0].text == "hello"
-    assert len(tool_call_chunks) == 1
-    assert len(all_chunks) == 2
+    assert isinstance(result, RoundLLMResult)
+    assert result.should_stop is False
+    assert len(result.streamed_chunks) == 1
+    assert result.streamed_chunks[0].type == "text"
+    assert result.streamed_chunks[0].text == "hello"
+    assert len(result.tool_call_chunks) == 1
+    assert len(result.all_chunks) == 2
 
 
 @pytest.mark.asyncio
@@ -561,22 +561,22 @@ async def test_collect_round_llm_chunks_timeout_without_any_chunks():
         ),
         patch.object(summarizer, "_invoke_llm", side_effect=_slow_invoke),
     ):
-        tool_call_chunks, _all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=mock_tools_map,
-                is_final_round=False,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=mock_tools_map,
+            is_final_round=False,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is True
-    assert tool_call_chunks == []
-    assert len(streamed_chunks) == 1
-    assert streamed_chunks[0].type == ChunkType.TEXT
-    assert "I could not complete this request in time." in streamed_chunks[0].text
+    assert result.should_stop is True
+    assert result.tool_call_chunks == []
+    assert len(result.streamed_chunks) == 1
+    assert result.streamed_chunks[0].type == ChunkType.TEXT
+    assert (
+        "I could not complete this request in time." in result.streamed_chunks[0].text
+    )
 
 
 @pytest.mark.asyncio
@@ -597,22 +597,22 @@ async def test_collect_round_llm_chunks_timeout_after_partial_text():
         ),
         patch.object(summarizer, "_invoke_llm", side_effect=_partial_then_slow),
     ):
-        tool_call_chunks, _all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=mock_tools_map,
-                is_final_round=False,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=mock_tools_map,
+            is_final_round=False,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is True
-    assert tool_call_chunks == []
-    assert [chunk.type for chunk in streamed_chunks] == [ChunkType.TEXT, ChunkType.TEXT]
-    assert streamed_chunks[0].text == "partial"
-    assert "I could not complete this request in time." in streamed_chunks[1].text
+    assert result.should_stop is True
+    assert result.tool_call_chunks == []
+    assert [c.type for c in result.streamed_chunks] == [ChunkType.TEXT, ChunkType.TEXT]
+    assert result.streamed_chunks[0].text == "partial"
+    assert (
+        "I could not complete this request in time." in result.streamed_chunks[1].text
+    )
 
 
 @pytest.mark.asyncio
@@ -630,20 +630,18 @@ async def test_collect_round_llm_chunks_stop_short_circuits_before_timeout():
         ),
         patch.object(summarizer, "_invoke_llm", side_effect=_stop_immediately),
     ):
-        tool_call_chunks, _all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=mock_tools_map,
-                is_final_round=False,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=mock_tools_map,
+            is_final_round=False,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is True
-    assert tool_call_chunks == []
-    assert streamed_chunks == []
+    assert result.should_stop is True
+    assert result.tool_call_chunks == []
+    assert result.streamed_chunks == []
 
 
 @pytest.mark.asyncio
@@ -655,22 +653,20 @@ async def test_collect_round_llm_chunks_handles_string_chunk():
         yield "plain-string-chunk"
 
     with patch.object(summarizer, "_invoke_llm", side_effect=_string_invoke):
-        tool_call_chunks, _all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=[],
-                is_final_round=False,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=[],
+            is_final_round=False,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is False
-    assert tool_call_chunks == []
-    assert len(streamed_chunks) == 1
-    assert streamed_chunks[0].type == "text"
-    assert streamed_chunks[0].text == "plain-string-chunk"
+    assert result.should_stop is False
+    assert result.tool_call_chunks == []
+    assert len(result.streamed_chunks) == 1
+    assert result.streamed_chunks[0].type == "text"
+    assert result.streamed_chunks[0].text == "plain-string-chunk"
 
 
 def test_resolve_tool_call_definitions_none_args_normalized_to_empty_dict():
@@ -746,7 +742,7 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
         patch.object(
             summarizer,
             "_collect_round_llm_chunks",
-            new=AsyncMock(return_value=([], [], [], True)),
+            new=AsyncMock(return_value=RoundLLMResult([], [], [], should_stop=True)),
         ),
     ):
         chunks = [
@@ -813,7 +809,9 @@ async def test_iterate_with_tools_handles_tool_execution_error():
         patch.object(
             summarizer,
             "_collect_round_llm_chunks",
-            new=AsyncMock(return_value=(tool_call_chunks, [], [], False)),
+            new=AsyncMock(
+                return_value=RoundLLMResult(tool_call_chunks, [], [], should_stop=False)
+            ),
         ),
         patch.object(
             summarizer, "_process_tool_calls_for_round", side_effect=_failing_process
@@ -910,25 +908,23 @@ async def test_collect_round_llm_chunks_with_reasoning_list_content():
         )
 
     with patch.object(summarizer, "_invoke_llm", side_effect=_reasoning_invoke):
-        tool_call_chunks, all_chunks, streamed_chunks, should_stop = (
-            await summarizer._collect_round_llm_chunks(
-                messages=[],
-                llm_input_values={},
-                all_mcp_tools=[],
-                is_final_round=True,
-                token_counter=AsyncMock(),
-                round_index=1,
-            )
+        result = await summarizer._collect_round_llm_chunks(
+            messages=[],
+            llm_input_values={},
+            all_mcp_tools=[],
+            is_final_round=True,
+            token_counter=AsyncMock(),
+            round_index=1,
         )
 
-    assert should_stop is True
-    assert tool_call_chunks == []
-    assert len(all_chunks) == 2
-    assert len(streamed_chunks) == 2
-    assert streamed_chunks[0].type == ChunkType.REASONING
-    assert streamed_chunks[0].text == "thinking hard"
-    assert streamed_chunks[1].type == ChunkType.TEXT
-    assert streamed_chunks[1].text == "the answer"
+    assert result.should_stop is True
+    assert result.tool_call_chunks == []
+    assert len(result.all_chunks) == 2
+    assert len(result.streamed_chunks) == 2
+    assert result.streamed_chunks[0].type == ChunkType.REASONING
+    assert result.streamed_chunks[0].text == "thinking hard"
+    assert result.streamed_chunks[1].type == ChunkType.TEXT
+    assert result.streamed_chunks[1].text == "the answer"
 
 
 def test_create_response_ignores_reasoning_chunks():

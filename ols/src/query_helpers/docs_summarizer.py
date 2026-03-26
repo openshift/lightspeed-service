@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Coroutine, Optional, TypeAlias
+from typing import Any, AsyncGenerator, Coroutine, NamedTuple, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
@@ -37,6 +37,15 @@ class ToolTokenUsage:
     """Mutable holder for cumulative tool-token usage across helper boundaries."""
 
     used: int
+
+
+class RoundLLMResult(NamedTuple):
+    """Result of one LLM collection round from ``_collect_round_llm_chunks``."""
+
+    tool_call_chunks: list[AIMessageChunk]
+    all_chunks: list[AIMessageChunk]
+    streamed_chunks: list[StreamedChunk]
+    should_stop: bool
 
 
 def skip_special_chunk(
@@ -431,13 +440,8 @@ class DocsSummarizer(QueryHelper):
         is_final_round: bool,
         token_counter: GenericTokenCounter,
         round_index: int,
-    ) -> tuple[list[AIMessageChunk], list[AIMessageChunk], list[StreamedChunk], bool]:
-        """Collect one round of LLM chunks and streamed text output.
-
-        Returns:
-            Tuple of (tool_call_chunks, all_chunks, streamed_chunks,
-            should_stop_iteration).
-        """
+    ) -> RoundLLMResult:
+        """Collect one round of LLM chunks and streamed text output."""
         tool_call_chunks: list[AIMessageChunk] = []
         all_chunks: list[AIMessageChunk] = []
         streamed_chunks: list[StreamedChunk] = []
@@ -466,7 +470,12 @@ class DocsSummarizer(QueryHelper):
                         break
 
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                        return tool_call_chunks, all_chunks, streamed_chunks, True
+                        return RoundLLMResult(
+                            tool_call_chunks,
+                            all_chunks,
+                            streamed_chunks,
+                            should_stop=True,
+                        )
 
                     all_chunks.append(chunk)
 
@@ -502,9 +511,13 @@ class DocsSummarizer(QueryHelper):
                     ),
                 )
             )
-            return tool_call_chunks, all_chunks, streamed_chunks, True
+            return RoundLLMResult(
+                tool_call_chunks, all_chunks, streamed_chunks, should_stop=True
+            )
 
-        return tool_call_chunks, all_chunks, streamed_chunks, False
+        return RoundLLMResult(
+            tool_call_chunks, all_chunks, streamed_chunks, should_stop=False
+        )
 
     @staticmethod
     def _enrich_with_tool_metadata(
@@ -822,12 +835,7 @@ class DocsSummarizer(QueryHelper):
             logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
             # Phase 1: collect one LLM round (text chunks + potential tool-call chunks).
-            (
-                tool_call_chunks,
-                all_chunks,
-                round_streamed_chunks,
-                should_stop_iteration,
-            ) = await self._collect_round_llm_chunks(
+            round_result = await self._collect_round_llm_chunks(
                 messages=messages,
                 llm_input_values=llm_input_values,
                 all_mcp_tools=all_mcp_tools,
@@ -835,12 +843,9 @@ class DocsSummarizer(QueryHelper):
                 token_counter=token_counter,
                 round_index=i,
             )
-            # Emit all text chunks produced during this LLM round.
-            for streamed_chunk in round_streamed_chunks:
+            for streamed_chunk in round_result.streamed_chunks:
                 yield streamed_chunk
-            # Stop immediately when helper indicates terminal condition
-            # (final answer reached or timeout fallback emitted).
-            if should_stop_iteration:
+            if round_result.should_stop:
                 return
 
             # exit if this was the final round
@@ -848,7 +853,7 @@ class DocsSummarizer(QueryHelper):
                 break
 
             # tool calling part
-            if tool_call_chunks:
+            if round_result.tool_call_chunks:
                 # Phase 2: resolve and execute tool calls for this round.
                 tool_token_usage = ToolTokenUsage(used=tool_tokens_used)
                 # No outer timeout here — each MCP server enforces its own
@@ -856,8 +861,8 @@ class DocsSummarizer(QueryHelper):
                 try:
                     async for streamed_chunk in self._process_tool_calls_for_round(
                         round_index=i,
-                        tool_call_chunks=tool_call_chunks,
-                        all_chunks=all_chunks,
+                        tool_call_chunks=round_result.tool_call_chunks,
+                        all_chunks=round_result.all_chunks,
                         all_tools_dict=all_tools_dict,
                         duplicate_tool_names=duplicate_tool_names,
                         messages=messages,
