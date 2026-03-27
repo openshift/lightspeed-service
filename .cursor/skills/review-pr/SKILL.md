@@ -37,7 +37,10 @@ Read diffs per area (endpoints, models, utils, tests) rather than one massive di
 Only raise issues if you have a concrete concern — not as a checklist to fill:
 
 - **Architecture**: Is logic clearly in the wrong layer? (e.g. business logic leaking into an endpoint)
-- **Error handling**: Are errors silently swallowed, or is an exception missing where failure is plausible?
+- **Error handling**:
+  - Are errors silently swallowed, or is an exception missing where failure is plausible?
+  - **Pattern consistency**: If a function has N-1 error paths that degrade gracefully (return None, log warning, fallback), verify the Nth path does too. A single unguarded call among guarded ones is the most common miss.
+  - **Cross-boundary exceptions**: For every new method call added in the diff, check what the **caller** does if that method throws. Read the callee's exception paths, then verify the caller handles them. Don't treat methods as self-contained.
 - **Duplication**: Run the [find-duplication](../find-duplication/SKILL.md) skill in branch mode, scoped to the PR's changed files.
 - **Complexity**: Run the [find-complexity](../find-complexity/SKILL.md) skill in branch mode, scoped to the PR's changed files. Flag any function the PR adds or worsens to grade C or higher.
 - **Dead code / docs**: Is there obviously unused code or a doc update that's clearly missing?
