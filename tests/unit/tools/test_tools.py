@@ -11,7 +11,6 @@ from langchain_core.tools.structured import StructuredTool
 from pydantic import BaseModel
 
 from ols.src.tools.tools import (
-    DO_NOT_RETRY_REMINDER,
     _extract_text_from_tool_output,
     enforce_tool_token_budget,
     execute_tool_call,
@@ -232,15 +231,13 @@ async def test_execute_tool_calls_mixed_success_and_failure():
 
     # Second call should fail due to tool raising exception
     assert tool_messages[1].status == "error"
-    assert "execution failed after 1 attempt(s)" in tool_messages[1].content
+    assert "Tool 'fail_tool' failed:" in tool_messages[1].content
     assert "Tool execution failed" in tool_messages[1].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[1].content
 
     # Third call should fail due to nonexistent tool
     assert tool_messages[2].status == "error"
-    assert "Tool 'nonexistent_tool' not found" in tool_messages[2].content
-    assert "execution failed after 1 attempt(s)" in tool_messages[2].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[2].content
+    assert "Tool 'nonexistent_tool' failed:" in tool_messages[2].content
+    assert "not found" in tool_messages[2].content
 
 
 @pytest.mark.asyncio
@@ -302,8 +299,8 @@ async def test_execute_tool_calls_retry_exhausted_returns_no_retry_reminder():
     assert len(tool_messages) == 1
     assert call_count == 3
     assert tool_messages[0].status == "error"
-    assert "execution failed after 3 attempt(s)" in tool_messages[0].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
+    assert "Tool 'timeout_tool' failed:" in tool_messages[0].content
+    assert "timeout" in tool_messages[0].content
 
 
 @pytest.mark.asyncio
@@ -333,8 +330,8 @@ async def test_execute_tool_calls_non_retryable_error_does_not_retry():
     assert len(tool_messages) == 1
     assert call_count == 1
     assert tool_messages[0].status == "error"
-    assert "execution failed after 1 attempt(s)" in tool_messages[0].content
-    assert DO_NOT_RETRY_REMINDER in tool_messages[0].content
+    assert "Tool 'bad_tool' failed:" in tool_messages[0].content
+    assert "invalid tool arguments" in tool_messages[0].content
 
 
 @pytest.mark.asyncio
