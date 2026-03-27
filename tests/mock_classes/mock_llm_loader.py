@@ -18,7 +18,12 @@ class MockLLMLoader(Runnable):
 
     def invoke(self, *args, **kwargs):
         """Mock model invoke."""
-        return args[0].messages[1]
+        if hasattr(args[0], "messages"):
+            return args[0].messages[1]
+        # If llm is a class (mock_langchain_interface), instantiate and invoke
+        if isinstance(self.llm, type):
+            return self.llm().invoke(args[0])
+        return self.llm
 
     @classmethod
     def bind_tools(cls, *args, **kwargs):

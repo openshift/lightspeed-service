@@ -9,7 +9,6 @@ from pydantic import ValidationError
 from ols.app.models.models import (
     Attachment,
     CacheEntry,
-    ChunkType,
     FeedbackRequest,
     FeedbackResponse,
     LivenessResponse,
@@ -21,6 +20,7 @@ from ols.app.models.models import (
     ReadinessResponse,
     ReferencedDocument,
     StatusResponse,
+    StreamChunkType,
     SummarizerResponse,
     TokenCounter,
     ToolCall,
@@ -828,5 +828,5 @@ class TestReasoningModelFields:
 
     @staticmethod
     def test_chunk_type_reasoning_value():
-        """Test ChunkType includes reasoning stream chunks."""
-        assert ChunkType.REASONING.value == "reasoning"
+        """Test StreamChunkType includes reasoning stream chunks."""
+        assert StreamChunkType.REASONING.value == "reasoning"

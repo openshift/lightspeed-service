@@ -1093,6 +1093,7 @@ class OLSConfig(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     max_iterations: PositiveInt = constants.DEFAULT_MAX_ITERATIONS
+    history_compression_enabled: bool = True
     expire_llm_is_ready_persistent_state: Optional[int] = -1
     max_workers: Optional[int] = None
     query_filters: Optional[list[QueryFilter]] = None
@@ -1132,6 +1133,7 @@ class OLSConfig(BaseModel):
         self.max_iterations = data.get(
             "max_iterations", constants.DEFAULT_MAX_ITERATIONS
         )
+        self.history_compression_enabled = data.get("history_compression_enabled", True)
         self.max_workers = data.get("max_workers", 1)
         self.expire_llm_is_ready_persistent_state = data.get(
             "expire_llm_is_ready_persistent_state", -1
