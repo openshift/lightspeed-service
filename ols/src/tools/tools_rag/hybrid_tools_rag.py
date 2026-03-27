@@ -180,37 +180,40 @@ class ToolsRAG(HybridRAGBase):
     def _retrieve_sparse_scores(
         self, query: str, allowed_servers: set[str] | None = None
     ) -> tuple[dict[str, float], dict[str, dict]]:
-        """Retrieve BM25 scores (normalized to 0-1 range) and tool metadata.
+        """Retrieve BM25 scores and tool metadata, with optional server filtering.
+
+        Delegates tokenization, clamping, and normalization to the base class,
+        then applies server filtering and attaches parsed tool metadata.
 
         Args:
-            query: The query string
-            allowed_servers: Optional set of server names to filter by
+            query: The query string.
+            allowed_servers: Optional set of server names to filter by.
 
         Returns:
             Tuple of (scores dict, metadata dict) where scores maps tool names
             to normalized BM25 scores and metadata maps tool names to parsed
             tool dictionaries.
         """
-        if self.bm25 is None:
+        base_scores = self._sparse_scores(query)
+        if not base_scores:
             return {}, {}
 
         all_data = self.store.get_all()
-        tool_names = all_data["ids"]
-        metadatas = all_data["metadatas"]
-
-        sparse_scores_raw = self.bm25.get_scores(query.split())
-        max_score = max(sparse_scores_raw) if max(sparse_scores_raw) > 0 else 1
+        meta_by_id = {
+            tid: json.loads(m["tool_json"])
+            for tid, m in zip(all_data["ids"], all_data["metadatas"])
+        }
 
         scores: dict[str, float] = {}
         metadata: dict[str, dict] = {}
-        for i, (name, score) in enumerate(zip(tool_names, sparse_scores_raw)):
-            tool_dict = json.loads(metadatas[i]["tool_json"])
-            if allowed_servers is not None and allowed_servers:
-                server = tool_dict.get("server", "")
-                if server not in allowed_servers:
+        for name, score in base_scores.items():
+            tool_dict = meta_by_id.get(name)
+            if tool_dict is None:
+                continue
+            if allowed_servers:
+                if tool_dict.get("server", "") not in allowed_servers:
                     continue
-
-            scores[name] = score / max_score
+            scores[name] = score
             metadata[name] = tool_dict
 
         return scores, metadata

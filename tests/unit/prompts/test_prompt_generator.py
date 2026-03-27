@@ -12,6 +12,7 @@ from langchain_core.prompts import (
 )
 
 from ols.constants import ModelFamily
+from ols.src.prompts import prompts
 from ols.src.prompts.prompt_generator import GeneratePrompt, format_retrieved_chunk
 
 model = ["some-granite-model", "some-gpt-model"]
@@ -225,4 +226,50 @@ def test_generate_prompt_with_tool_call(model):
         "Human: First human message\n"
         "AI: First AI message\n"
         f"Human: {query}"
+    )
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_with_skill_content(model):
+    """Test prompt includes skill instruction and content when skill_content is provided."""
+    skill_body = "Step 1: Check pod status\nStep 2: Review logs"
+
+    prompt, llm_input_values = GeneratePrompt(
+        query,
+        [],
+        [],
+        system_instruction,
+        skill_content=skill_body,
+    ).generate_prompt(model)
+
+    assert set(prompt.input_variables) == {"query", "skill_content"}
+    assert llm_input_values["skill_content"] == skill_body
+
+    expected_template = (
+        "Answer user queries in the context of openshift.\n"
+        + prompts.USE_SKILL_INSTRUCTION.strip()
+        + "\n{skill_content}"
+    )
+    assert prompt.messages[0].prompt.template == expected_template
+
+    formatted = prompt.format(**llm_input_values)
+    assert skill_body in formatted
+    assert prompts.USE_SKILL_INSTRUCTION.strip() in formatted
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_skill_content_none_has_no_effect(model):
+    """Test that skill_content=None does not alter the prompt."""
+    prompt_with_none, vals_with_none = GeneratePrompt(
+        query, [], [], system_instruction, skill_content=None
+    ).generate_prompt(model)
+    prompt_without, _vals_without = GeneratePrompt(
+        query, [], [], system_instruction
+    ).generate_prompt(model)
+
+    assert prompt_with_none.input_variables == prompt_without.input_variables
+    assert "skill_content" not in vals_with_none
+    assert (
+        prompt_with_none.messages[0].prompt.template
+        == prompt_without.messages[0].prompt.template
     )
