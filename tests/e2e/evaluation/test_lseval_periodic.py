@@ -1,4 +1,4 @@
-"""LSEval periodic evaluation test using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
+"""LSEval evaluation tests using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
 
 import os
 import shutil
@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
 LSEVAL_BIN = PROJECT_ROOT / ".venv" / "bin" / "lightspeed-eval"
 SYSTEM_CONFIG = EVAL_DIR / "system_openai_lseval.yaml"
-EVAL_DATA = EVAL_DIR / "eval_data_short.yaml"
+EVAL_DATA_FULL = EVAL_DIR / "eval_data.yaml"
 
 
 def _ensure_lseval_installed() -> None:
@@ -44,20 +44,18 @@ def _resolve_ols_url() -> str:
     return os.getenv("OLS_URL", "http://localhost:8080").rstrip("/")
 
 
-@pytest.mark.lseval
-def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
-    """Run LSEval using OpenAI GPT-4o-mini as the OLS backend and GPT-4.1-mini as judge.
+def _get_ols_token() -> str:
+    """Extract the bearer token from the pytest HTTP client if available."""
+    client = getattr(pytest, "client", None)
+    if client is None:
+        return ""
+    auth_header: str = client.headers.get("Authorization", "")
+    return auth_header.removeprefix("Bearer ").strip()
 
-    Deploys a temporary system config patched with the live OLS URL, executes
-    lightspeed-eval against eval_data_short.yaml, then asserts that the result
-    artefacts (CSV and JSON summary) were produced.
-    """
+
+def _run_lseval(eval_data: Path, out_dir: Path) -> None:
+    """Run lightspeed-eval with the given data file and assert artefacts are produced."""
     _ensure_lseval_installed()
-
-    out_dir_base = request.config.option.eval_out_dir or str(
-        EVAL_DIR / "results-lseval-periodic"
-    )
-    out_dir = Path(out_dir_base) / "lseval"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     ols_url = _resolve_ols_url()
@@ -86,7 +84,7 @@ def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
                 "--system-config",
                 tmp_config_path,
                 "--eval-data",
-                str(EVAL_DATA),
+                str(eval_data),
                 "--output-dir",
                 str(out_dir),
             ],
@@ -116,10 +114,10 @@ def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
     assert json_files, f"No summary JSON artefacts found in {out_dir}"
 
 
-def _get_ols_token() -> str:
-    """Extract the bearer token from the pytest HTTP client if available."""
-    client = getattr(pytest, "client", None)
-    if client is None:
-        return ""
-    auth_header: str = client.headers.get("Authorization", "")
-    return auth_header.removeprefix("Bearer ").strip()
+@pytest.mark.lseval
+def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
+    """Run LSEval full dataset (797 questions) with GPT-4o-mini and GPT-4.1-mini judge."""
+    out_dir_base = request.config.option.eval_out_dir or str(
+        EVAL_DIR / "results-lseval-periodic"
+    )
+    _run_lseval(EVAL_DATA_FULL, Path(out_dir_base) / "lseval")

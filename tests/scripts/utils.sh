@@ -55,7 +55,7 @@ function run_suite() {
   # Run old-style model evaluation tests
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-eval
   elif [ "$1" = "lseval_periodic" ]; then
-  # Run LSEval periodic tests (WatsonX Granite + OpenAI GPT judge)
+  # Run LSEval periodic tests (full 797-question dataset)
     SUITE_ID=$1 TEST_TAGS=$2 PROVIDER=$3 PROVIDER_KEY_PATH=$4 MODEL=$5 OLS_IMAGE=$6 OLS_CONFIG_SUFFIX=$7 ARTIFACT_DIR=$ARTIFACT_DIR make test-lseval-periodic
   else
   # Run e2e tests
