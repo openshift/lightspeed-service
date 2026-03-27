@@ -1315,6 +1315,10 @@ python-dotenv==1.2.2 \
     # via
     #   llama-cloud-services
     #   pydantic-settings
+python-frontmatter==1.1.0 \
+    --hash=sha256:335465556358d9d0e6c98bbeb69b1c969f2a4a21360587b9873bfc3b213407c1 \
+    --hash=sha256:7118d2bd56af9149625745c58c9b51fb67e8d1294a0c76796dafdc72c36e5f6d
+    # via ols
 python-multipart==0.0.22 \
     --hash=sha256:2b2cd894c83d21bf49d702499531c7bafd057d730c201782048f7945d82de155 \
     --hash=sha256:7340bef99a7e0032613f56dc36027b959fd3b30a787ed62d310e951f7c3a3a58
@@ -1361,6 +1365,7 @@ pyyaml==6.0.3 \
     #   langchain-community
     #   langchain-core
     #   llama-index-core
+    #   python-frontmatter
     #   transformers
 qdrant-client==1.17.0 \
     --hash=sha256:47eb033edb9be33a4babb4d87b0d8d5eaf03d52112dca0218db7f2030bf41ba9 \
