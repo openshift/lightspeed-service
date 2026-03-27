@@ -994,6 +994,11 @@ def test_tool_calling(_setup, caplog) -> None:
         mock_config.tools_rag = None
         mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
 
+        # Set tool budget on model config (normally computed by AppConfig when MCP is configured)
+        config.config.llm_providers.providers["p1"].models[
+            "m1"
+        ].max_tokens_for_tools = 2000
+
         # Mock _gather_and_populate_tools to return tools
         with patch(
             "ols.utils.mcp_utils._gather_and_populate_tools",

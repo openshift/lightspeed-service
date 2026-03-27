@@ -41,14 +41,21 @@ class ModelParameters(BaseModel):
     """Model parameters."""
 
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
-    max_tokens_per_tool_output: PositiveInt = (
-        constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
-    )
-    max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
+    tool_budget_ratio: float = constants.DEFAULT_TOOL_BUDGET_RATIO
 
     reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
     reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
     verbosity: ReasoningLevel = ReasoningLevel.LOW
+
+    @field_validator("tool_budget_ratio")
+    @classmethod
+    def validate_tool_budget_ratio(cls, v: float) -> float:
+        """Validate tool budget ratio is within bounds."""
+        if not 0.0 <= v <= 0.5:
+            raise checks.InvalidConfigurationError(
+                f"tool_budget_ratio must be between 0.0 and 0.5, got {v}"
+            )
+        return v
 
 
 class ModelConfig(BaseModel):
@@ -62,6 +69,7 @@ class ModelConfig(BaseModel):
 
     context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
     parameters: ModelParameters = ModelParameters()
+    max_tokens_for_tools: int = 0
 
     options: Optional[dict[str, Any]] = None
 
@@ -98,12 +106,11 @@ class ModelConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_context_window_and_max_tokens(self) -> Self:
-        """Validate context window size and max tokens for response."""
+        """Validate context window size against response token budget."""
         if self.context_window_size <= self.parameters.max_tokens_for_response:  # type: ignore [operator]
             raise checks.InvalidConfigurationError(
-                f"Context window size {self.context_window_size}, "
-                "should be greater than max_tokens_for_response "
-                f"{self.parameters.max_tokens_for_response}"
+                f"Context window size {self.context_window_size} must be greater than "
+                f"max_tokens_for_response ({self.parameters.max_tokens_for_response})"
             )
         return self
 
@@ -1237,6 +1244,9 @@ class Config(BaseModel):
         # Validate MCP servers now that auth config is available
         self._validate_mcp_servers()
 
+        if self.mcp_servers.servers:
+            self._compute_tool_budgets()
+
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
 
@@ -1278,6 +1288,25 @@ class Config(BaseModel):
             self.mcp_servers.servers,
             auth_module,
         )
+
+    def _compute_tool_budgets(self) -> None:
+        """Compute tool token budgets for all models when MCP servers are configured."""
+        for provider in self.llm_providers.providers.values():
+            for model in provider.models.values():
+                model.max_tokens_for_tools = int(
+                    model.context_window_size * model.parameters.tool_budget_ratio
+                )
+                reserved = (
+                    model.parameters.max_tokens_for_response
+                    + model.max_tokens_for_tools
+                )
+                if model.context_window_size <= reserved:
+                    raise checks.InvalidConfigurationError(
+                        f"Model '{model.name}': context window size {model.context_window_size} "
+                        f"must be greater than max_tokens_for_response "
+                        f"({model.parameters.max_tokens_for_response}) + "
+                        f"tool budget ({model.max_tokens_for_tools})"
+                    )
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""

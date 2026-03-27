@@ -379,7 +379,7 @@ def test_model_config_higher_response_token():
     """Test the model config with response token >= context window."""
     with pytest.raises(
         InvalidConfigurationError,
-        match="Context window size 2, should be greater than max_tokens_for_response 2",
+        match=r"Context window size 2 must be greater than max_tokens_for_response \(2\)",
     ):
         ModelConfig(
             name="test_model_name",
@@ -1191,8 +1191,7 @@ def test_provider_model_default_tokens_limit(provider_name):
 
 def test_provider_config_explicit_tokens():
     """Test the ProviderConfig model when explicit tokens are specified."""
-    # Note: context window should be >= 4096 (default) response token limit
-    context_window_size = 4097
+    context_window_size = 8192
 
     provider_config = ProviderConfig(
         {
