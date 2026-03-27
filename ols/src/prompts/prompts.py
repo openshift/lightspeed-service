@@ -152,3 +152,7 @@ Use the retrieved document to answer the question.
 USE_HISTORY_INSTRUCTION = """
 Use the previous chat history to interact and help the user.
 """
+
+USE_SKILL_INSTRUCTION = """
+Follow the procedure below to address the user's request:
+"""

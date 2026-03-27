@@ -194,7 +194,7 @@ class SkillsRAG(HybridRAGBase):
 
         q_vec = self._encode(query)
         dense, _, _ = self._dense_scores(q_vec, self.top_k)
-        sparse = self._sparse_scores(query)
+        sparse, _ = self._sparse_scores(query)
         fused = self._fuse_scores(dense, sparse, self.alpha, self.top_k)
 
         if not fused:

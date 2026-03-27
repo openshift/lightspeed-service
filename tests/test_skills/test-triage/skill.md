@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Diagnose and triage incident reports involving data loss, corruption, slow performance, timeouts, or cosmetic issues. Use when the user reports a production incident or outage.
+description: Triage production incidents involving data corruption, data loss, slow performance, or outages. Classify severity and recommend immediate actions.
 ---
 
 # Incident Report Triage

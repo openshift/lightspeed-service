@@ -345,17 +345,17 @@ class HybridRAGBase:
         scores = dict(zip(ids, sim_scores))
         return scores, ids, metas
 
-    def _sparse_scores(self, query: str) -> dict[str, float]:
+    def _sparse_scores(self, query: str) -> tuple[dict[str, float], dict[str, dict]]:
         """Compute BM25 scores normalized to 0-1 range.
 
         Args:
             query: The query string.
 
         Returns:
-            Dict mapping document IDs to normalized BM25 scores.
+            Tuple of (id-to-score dict, id-to-metadata dict).
         """
         if self.bm25 is None:
-            return {}
+            return {}, {}
 
         all_data = self.store.get_all()
         ids = all_data["ids"]
@@ -364,8 +364,9 @@ class HybridRAGBase:
         # when df >= n), which would penalize the fused score. Clamp to zero.
         clamped = [max(0.0, s) for s in raw]
         mx = max(clamped) if max(clamped) > 0 else 1.0
-        # Normalize to [0, 1] so sparse scores are comparable to dense cosine similarity.
-        return {sid: score / mx for sid, score in zip(ids, clamped)}
+        scores = {sid: score / mx for sid, score in zip(ids, clamped)}
+        meta_by_id = dict(zip(ids, all_data["metadatas"]))
+        return scores, meta_by_id
 
     @staticmethod
     def _fuse_scores(
