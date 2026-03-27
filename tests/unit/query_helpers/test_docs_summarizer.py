@@ -14,6 +14,11 @@ from pydantic import BaseModel
 from ols import config
 from ols.app.models.config import LoggingConfig, MCPServerConfig
 from ols.app.models.models import ChunkType
+from ols.constants import (
+    DEFAULT_MAX_ITERATIONS,
+    DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    QueryMode,
+)
 
 # needs to be setup before importing docs_summarizer
 config.ols_config.authentication_config.module = "k8s"
@@ -831,6 +836,33 @@ async def test_iterate_with_tools_handles_tool_execution_error():
     assert len(chunks) == 1
     assert chunks[0].type == ChunkType.TEXT
     assert "I could not complete this request." in chunks[0].text
+
+
+def test_get_max_iterations_ask_mode_no_override():
+    """Test _get_max_iterations returns ASK default when config has no override."""
+    config.ols_config.max_iterations = None
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=QueryMode.ASK)
+    assert summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS
+
+
+def test_get_max_iterations_troubleshooting_mode_no_override():
+    """Test _get_max_iterations returns TROUBLESHOOTING default when config has no override."""
+    config.ols_config.max_iterations = None
+    summarizer = DocsSummarizer(
+        llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+    )
+    assert summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
+
+
+def test_get_max_iterations_config_override():
+    """Test _get_max_iterations returns explicit config value regardless of mode."""
+    config.ols_config.max_iterations = 10
+    try:
+        for mode in (QueryMode.ASK, QueryMode.TROUBLESHOOTING):
+            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=mode)
+            assert summarizer._get_max_iterations() == 10
+    finally:
+        config.ols_config.max_iterations = None
 
 
 def test_create_response_raises_on_unknown_chunk_type():

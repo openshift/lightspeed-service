@@ -43,6 +43,8 @@ class QueryHelper:
         self.generic_llm_params = generic_llm_params or {}
         self.llm_loader = llm_loader or load_llm
 
+        self._mode = mode
+
         self._system_prompt = (
             (config.dev_config.enable_system_prompt_override and system_prompt)
             or config.ols_config.system_prompt

@@ -1085,7 +1085,7 @@ class OLSConfig(BaseModel):
 
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
-    max_iterations: PositiveInt = constants.DEFAULT_MAX_ITERATIONS
+    max_iterations: Optional[PositiveInt] = None
     expire_llm_is_ready_persistent_state: Optional[int] = -1
     max_workers: Optional[int] = None
     query_filters: Optional[list[QueryFilter]] = None
@@ -1122,9 +1122,7 @@ class OLSConfig(BaseModel):
             self.reference_content = ReferenceContent(data.get("reference_content"))
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
-        self.max_iterations = data.get(
-            "max_iterations", constants.DEFAULT_MAX_ITERATIONS
-        )
+        self.max_iterations = data.get("max_iterations")
         self.max_workers = data.get("max_workers", 1)
         self.expire_llm_is_ready_persistent_state = data.get(
             "expire_llm_is_ready_persistent_state", -1

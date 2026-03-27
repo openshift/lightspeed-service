@@ -928,8 +928,18 @@ class DocsSummarizer(QueryHelper):
         )
 
     def _get_max_iterations(self) -> int:
-        """Return configured max rounds for tool-calling loop."""
-        return config.ols_config.max_iterations
+        """Return configured max rounds for tool-calling loop.
+
+        An explicit ``max_iterations`` value in the OLS config overrides the
+        mode-specific default for all modes.  When the config value is None
+        (not set in YAML), the default is chosen based on the active query mode.
+        """
+        explicit = config.ols_config.max_iterations
+        if explicit is not None:
+            return explicit
+        return constants.MAX_ITERATIONS_BY_MODE.get(
+            self._mode, constants.DEFAULT_MAX_ITERATIONS
+        )
 
     def create_response(
         self,
