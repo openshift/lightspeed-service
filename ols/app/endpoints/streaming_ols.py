@@ -148,7 +148,9 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_event(data: dict[str, object], event_type: str, media_type: str) -> str:
+def stream_event(  # pylint: disable=R0911
+    data: dict[str, object], event_type: str, media_type: str
+) -> str:
     """Build an item to yield based on media type.
 
     Args:
@@ -168,6 +170,8 @@ def stream_event(data: dict[str, object], event_type: str, media_type: str) -> s
                 text_output = str(data["reasoning"])
             case "tool_call":
                 text_output = f"\nTool call: {json.dumps(data)}\n"
+            case "approval_required":
+                text_output = f"\nApproval request: {json.dumps(data)}\n"
             case "tool_result":
                 text_output = f"\nTool result: {json.dumps(data)}\n"
             case "history_compression_start":
@@ -400,6 +404,12 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                     yield stream_event(
                         data=item.data,
                         event_type=LLM_TOOL_CALL_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.APPROVAL_REQUIRED:
+                    yield stream_event(
+                        data=item.data,
+                        event_type=StreamChunkType.APPROVAL_REQUIRED.value,
                         media_type=media_type,
                     )
                 case StreamChunkType.TOOL_RESULT:

@@ -25,6 +25,7 @@ from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     RoundLLMResult,
     ToolTokenUsage,
 )
+from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
 from ols.utils.token_handler import TokenHandler  # noqa: E402
@@ -190,7 +191,7 @@ def test_summarize_no_reference_content():
 
 
 def test_summarize_retrieval_logging(caplog):
-    """Basic test to ensure retrieval path is visible in logs."""
+    """Basic test to ensure retrieval details are visible in logs."""
     logging_config = LoggingConfig(app_log_level="debug")
     configure_logging(logging_config)
     logger = logging.getLogger("ols")
@@ -610,13 +611,77 @@ async def test_collect_round_llm_chunks_targeted_paths():
 
 
 @pytest.mark.asyncio
+async def test_process_tool_calls_for_round_streams_approval_and_result():
+    """Test _process_tool_calls_for_round streams approval + tool_result and updates state."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    token_usage = ToolTokenUsage(used=0)
+    messages: list = []
+
+    async def _fake_execute(*args, **kwargs):
+        yield ApprovalRequiredEvent(
+            data={
+                "approval_id": "aid-1",
+                "tool_name": "get_namespaces_mock",
+                "tool_description": "desc",
+                "tool_args": {},
+                "tool_annotation": {},
+            }
+        )
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content="ok",
+                status="success",
+                tool_call_id="call_1",
+                additional_kwargs={"truncated": False},
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in summarizer._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+                token_handler=TokenHandler(),
+                tool_token_usage=token_usage,
+                max_tokens_for_tools=1000,
+            )
+        ]
+
+    assert [chunk.type for chunk in streamed] == [
+        StreamChunkType.TOOL_CALL,
+        StreamChunkType.APPROVAL_REQUIRED,
+        StreamChunkType.TOOL_RESULT,
+    ]
+    assert streamed[1].data["approval_id"] == "aid-1"
+    assert streamed[2].data["type"] == "tool_result"
+    assert token_usage.used > 0
+    assert len(messages) == 2
+
+
+@pytest.mark.asyncio
 async def test_collect_round_llm_chunks_timeout_without_any_chunks():
     """Test round timeout path when LLM yields nothing before timeout."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
 
     async def _slow_invoke(*args, **kwargs):
         await asyncio.sleep(0.05)
-        if kwargs.get("_never_yield", False):
+        if False:
             yield AIMessageChunk(content="", response_metadata={})
 
     with (
@@ -652,7 +717,7 @@ async def test_collect_round_llm_chunks_timeout_after_partial_text():
     async def _partial_then_slow(*args, **kwargs):
         yield AIMessageChunk(content="partial", response_metadata={})
         await asyncio.sleep(0.05)
-        if kwargs.get("_never_yield", False):
+        if False:
             yield AIMessageChunk(content="", response_metadata={})
 
     with (
@@ -770,7 +835,7 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
     ]
 
     with patch(
-        "ols.src.query_helpers.docs_summarizer.execute_tool_calls",
+        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
         new=AsyncMock(side_effect=AssertionError("executor should not be called")),
     ):
         streamed = [
@@ -795,6 +860,90 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
     assert streamed[1].data["type"] == "tool_result"
     assert "tool is unavailable" in streamed[1].data["content"]
     assert len(messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(caplog):
+    """Test unexpected tool execution events are ignored with warning."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    token_usage = ToolTokenUsage(used=0)
+    messages: list = []
+    caplog.set_level(logging.WARNING)
+
+    async def _fake_execute(*args, **kwargs):
+        class _UnexpectedEvent:
+            event = "unexpected"
+            data = "payload"
+
+        yield _UnexpectedEvent()
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content="ok",
+                status="success",
+                tool_call_id="call_warn",
+                additional_kwargs={"truncated": False},
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_warn"}],
+        )
+    ]
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        streamed = [
+            chunk
+            async for chunk in summarizer._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
+                duplicate_tool_names=set(),
+                messages=messages,
+                token_handler=TokenHandler(),
+                tool_token_usage=token_usage,
+                max_tokens_for_tools=1000,
+            )
+        ]
+
+    assert any(
+        "Ignoring unexpected tool execution event" in rec.message
+        for rec in caplog.records
+    )
+    assert streamed[-1].type == "tool_result"
+
+
+def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
+    """Test tool result chunk contains metadata enrichment and has_meta logging."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    caplog.set_level(logging.INFO)
+    tool = mock_tools_map[0]
+    tool.metadata = {"mcp_server": "server-a", "_meta": {"app": "ui"}}
+    message = ToolMessage(
+        content="ok",
+        status="success",
+        tool_call_id="call_meta",
+        additional_kwargs={"truncated": False},
+    )
+
+    _, chunk = summarizer._tool_result_chunk_for_message(
+        tool_call_message=message,
+        tool_name=tool.name,
+        tool=tool,
+        token_handler=TokenHandler(),
+        round_index=1,
+    )
+
+    assert chunk.type == StreamChunkType.TOOL_RESULT
+    assert chunk.data["server_name"] == "server-a"
+    assert chunk.data["tool_meta"] == {"app": "ui"}
+    assert '"has_meta": true' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -825,33 +974,6 @@ async def test_iterate_with_tools_deduplicates_tool_names(caplog):
 
     assert chunks == []
     assert "Duplicate MCP tool names detected and disabled" in caplog.text
-
-
-def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
-    """Test tool result chunk contains metadata enrichment and has_meta logging."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    caplog.set_level(logging.INFO)
-    tool = mock_tools_map[0]
-    tool.metadata = {"mcp_server": "server-a", "_meta": {"app": "ui"}}
-    message = ToolMessage(
-        content="ok",
-        status="success",
-        tool_call_id="call_meta",
-        additional_kwargs={"truncated": False},
-    )
-
-    _, chunk = summarizer._tool_result_chunk_for_message(
-        tool_call_message=message,
-        tool_name=tool.name,
-        tool=tool,
-        token_handler=TokenHandler(),
-        round_index=1,
-    )
-
-    assert chunk.type == StreamChunkType.TOOL_RESULT
-    assert chunk.data["server_name"] == "server-a"
-    assert chunk.data["tool_meta"] == {"app": "ui"}
-    assert '"has_meta": true' in caplog.text
 
 
 @pytest.mark.asyncio

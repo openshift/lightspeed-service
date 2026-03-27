@@ -44,7 +44,7 @@ class TestLLM:
         assert llm_request.provider is None
         assert llm_request.model is None
         assert llm_request.attachments is None
-        assert llm_request.media_type == "text/plain"
+        assert llm_request.media_type == MEDIA_TYPE_TEXT
 
     @staticmethod
     def test_llm_request_optional_inputs():
