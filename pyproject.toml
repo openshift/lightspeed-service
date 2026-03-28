@@ -69,6 +69,7 @@ dev = [
     "twine>=5.1.1",
     "pylint>=3.3.2",
     "matplotlib>=3.10.0",
+    "pybuild-deps>=0.5.0",
 ]
 
 # The following section is needed only for torch[cpu] variant on Linux,
@@ -90,7 +91,7 @@ authors = []
 # NOTE: langchain bumps causes mypy issues
 dependencies = [
     "aiohttp>=3.13.3",
-    "httpx>=0.27.2",
+    "httpx>=0.28.0",
     "fastapi>=0.115.6",
     "langchain>=0.3.12",
     "langchain-ibm>=0.3.2",
@@ -128,7 +129,7 @@ dependencies = [
     "rank-bm25>=0.2.2",  # For ToolsRAG sparse retrieval
     "python-frontmatter>=1.1.0",  # For parsing skill YAML frontmatter
 ]
-requires-python = ">=3.11.1,<=3.12.10"
+requires-python = ">=3.11.1,<3.13"
 readme = "README.md"
 license = {file = "LICENSE"}
 
