@@ -1,5 +1,7 @@
 """Prompt generator based on model / context."""
 
+from typing import Optional
+
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -27,6 +29,7 @@ class GeneratePrompt:
         history: list[BaseMessage] = [],
         system_instruction: str = prompts.QUERY_SYSTEM_INSTRUCTION,
         tool_call: bool = False,
+        skill_content: Optional[str] = None,
     ) -> None:
         """Initialize prompt generator."""
         self._query = query
@@ -34,6 +37,7 @@ class GeneratePrompt:
         self._history = history
         self._sys_instruction = system_instruction
         self._tool_call = tool_call
+        self._skill_content = skill_content
 
     def generate_prompt(self, model: str) -> tuple[ChatPromptTemplate, dict]:
         """Generate prompt."""
@@ -61,6 +65,15 @@ class GeneratePrompt:
 
             sys_intruction = (
                 sys_intruction + "\n" + prompts.USE_HISTORY_INSTRUCTION.strip()
+            )
+
+        if self._skill_content is not None:
+            llm_input_values["skill_content"] = self._skill_content
+            sys_intruction = (
+                sys_intruction
+                + "\n"
+                + prompts.USE_SKILL_INSTRUCTION.strip()
+                + "\n{skill_content}"
             )
 
         if "context" in llm_input_values:

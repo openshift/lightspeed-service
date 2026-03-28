@@ -188,16 +188,7 @@ class AppConfig:
             "downloading '%s' from HuggingFace Hub",
             fallback_model,
         )
-        try:
-            return HuggingFaceEmbedding(model_name=fallback_model)
-        except Exception:
-            logger.exception(
-                "Failed to load fallback embedding model '%s'. "
-                "On disconnected clusters, configure embed_model_path "
-                "or ensure the RAG index provides an embedding model.",
-                fallback_model,
-            )
-            raise
+        return HuggingFaceEmbedding(model_name=fallback_model)
 
     @cached_property
     def tools_rag(self) -> Optional[ToolsRAG]:
@@ -212,7 +203,14 @@ class AppConfig:
             and len(self.config.mcp_servers.servers) > 0
         ):
             tool_config = self.config.ols_config.tool_filtering
-            embed_model = self._resolve_embed_model(tool_config.embed_model_path)
+            try:
+                embed_model = self._resolve_embed_model(tool_config.embed_model_path)
+            except Exception:
+                logger.exception(
+                    "Failed to load embedding model for tool filtering; "
+                    "tool filtering disabled"
+                )
+                return None
             return ToolsRAG(
                 encode_fn=embed_model.get_text_embedding,
                 alpha=tool_config.alpha,
@@ -242,7 +240,14 @@ class AppConfig:
             logger.warning("No skills found in %s", skills_dir)
             return None
 
-        embed_model = self._resolve_embed_model(skills_config.embed_model_path)
+        try:
+            embed_model = self._resolve_embed_model(skills_config.embed_model_path)
+        except Exception:
+            logger.exception(
+                "Failed to load embedding model for skills; skills disabled"
+            )
+            return None
+
         rag = SkillsRAG(
             encode_fn=embed_model.get_text_embedding,
             alpha=skills_config.alpha,

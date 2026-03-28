@@ -24,7 +24,7 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
     stream_event,
     stream_start_event,
 )
-from ols.app.models.models import RagChunk, TokenCounter  # noqa:E402
+from ols.app.models.models import RagChunk, StreamChunkType, TokenCounter  # noqa:E402
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
 
@@ -48,6 +48,7 @@ def test_event_type_are_not_changed():
     assert LLM_REASONING_EVENT == "reasoning"
     assert LLM_TOOL_CALL_EVENT == "tool_call"
     assert LLM_TOOL_RESULT_EVENT == "tool_result"
+    assert StreamChunkType.SKILL_SELECTED.value == "skill_selected"
     assert LLM_HISTORY_COMPRESSION_START_EVENT == "history_compression_start"
     assert LLM_HISTORY_COMPRESSION_END_EVENT == "history_compression_end"
 
@@ -83,6 +84,23 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_HISTORY_COMPRESSION_END_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nHistory compression end: {"token": "hi", "idx": 1}\n'
+    )
+
+    # skill_selected - text shows name, json wraps as SSE
+    skill_data = {"name": "pod-diagnostics", "confidence": 0.85}
+    assert "pod-diagnostics" in stream_event(
+        skill_data, StreamChunkType.SKILL_SELECTED.value, constants.MEDIA_TYPE_TEXT
+    )
+    assert stream_event(
+        skill_data, StreamChunkType.SKILL_SELECTED.value, constants.MEDIA_TYPE_JSON
+    ) == (
+        'data: {"event": "skill_selected", '
+        '"data": {"name": "pod-diagnostics", "confidence": 0.85}}\n\n'
+    )
+
+    # skill_selected with missing name falls back to 'unknown'
+    assert "unknown" in stream_event(
+        {}, StreamChunkType.SKILL_SELECTED.value, constants.MEDIA_TYPE_TEXT
     )
 
     # json output
