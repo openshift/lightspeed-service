@@ -374,8 +374,8 @@ class LLMProvider(AbstractLLMProvider):
                 "No security profiles. creating httpx.Client with verify %s", verify
             )
             if use_async:
-                return httpx.AsyncClient(verify=verify, proxies=proxy, mounts=mounts)
-            return httpx.Client(verify=verify, proxies=proxy, mounts=mounts)
+                return httpx.AsyncClient(verify=verify, proxy=proxy, mounts=mounts)
+            return httpx.Client(verify=verify, proxy=proxy, mounts=mounts)
 
         # security profile is set -> we need to retrieve SSL version and list of allowed ciphers
         ciphers = tls.ciphers_as_string(sec_profile.ciphers, sec_profile.profile_type)
@@ -403,5 +403,5 @@ class LLMProvider(AbstractLLMProvider):
             "With security profile, creating httpx.Client with verify %s", context
         )
         if use_async:
-            return httpx.AsyncClient(verify=context, proxies=proxy)
-        return httpx.Client(verify=context, proxies=proxy)
+            return httpx.AsyncClient(verify=context, proxy=proxy)
+        return httpx.Client(verify=context, proxy=proxy)
