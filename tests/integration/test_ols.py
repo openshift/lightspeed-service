@@ -215,7 +215,7 @@ def test_post_question_improper_conversation_id(_setup, endpoint) -> None:
         },
     )
     # error should be returned
-    assert response.status_code == requests.codes.internal_server_error
+    assert response.status_code == requests.codes.bad_request
     expected_details = {
         "detail": {
             "cause": "Invalid conversation ID not-correct-uuid",
@@ -294,15 +294,19 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
     # we need to import it here because these modules triggers config
     # load too -> causes exception in auth module because of missing config
     # values
-    from ols.app.endpoints.ols import retrieve_previous_input  # pylint: disable=C0415
     from ols.app.models.models import CacheEntry  # pylint: disable=C0415
 
+    # Store original method
+    original_get = config.conversation_cache.get
     actual_returned_history = []
 
-    def capture_return_value(*args, **kwargs):
+    def capture_cache_get(*args, **kwargs):
+        """Capture what the cache returns."""
         nonlocal actual_returned_history
-        actual_returned_history = retrieve_previous_input(*args, **kwargs)
-        return actual_returned_history
+        # Call the original cache.get() and capture its return
+        result = original_get(*args, **kwargs)
+        actual_returned_history = result or []
+        return result
 
     ml = mock_langchain_interface("test response")
     with (
@@ -310,9 +314,10 @@ def test_post_query_for_conversation_history(_setup, endpoint) -> None:
             "ols.src.query_helpers.query_helper.load_llm",
             new=mock_llm_loader(ml()),
         ),
-        patch(
-            "ols.app.endpoints.ols.retrieve_previous_input",
-            side_effect=capture_return_value,
+        patch.object(
+            config.conversation_cache,
+            "get",
+            side_effect=capture_cache_get,
         ),
     ):
         conversation_id = suid.get_suid()
@@ -993,6 +998,11 @@ def test_tool_calling(_setup, caplog) -> None:
         # Mock config for get_mcp_tools
         mock_config.tools_rag = None
         mock_config.mcp_servers.servers = [MagicMock()]  # Non-empty list
+
+        # Set tool budget on model config (normally computed by AppConfig when MCP is configured)
+        config.config.llm_providers.providers["p1"].models[
+            "m1"
+        ].max_tokens_for_tools = 2000
 
         # Mock _gather_and_populate_tools to return tools
         with patch(

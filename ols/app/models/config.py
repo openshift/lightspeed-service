@@ -41,14 +41,21 @@ class ModelParameters(BaseModel):
     """Model parameters."""
 
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
-    max_tokens_per_tool_output: PositiveInt = (
-        constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
-    )
-    max_tokens_for_tools: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_TOOLS
+    tool_budget_ratio: float = constants.DEFAULT_TOOL_BUDGET_RATIO
 
     reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
     reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE
     verbosity: ReasoningLevel = ReasoningLevel.LOW
+
+    @field_validator("tool_budget_ratio")
+    @classmethod
+    def validate_tool_budget_ratio(cls, v: float) -> float:
+        """Validate tool budget ratio is within bounds."""
+        if not 0.0 <= v <= 0.5:
+            raise checks.InvalidConfigurationError(
+                f"tool_budget_ratio must be between 0.0 and 0.5, got {v}"
+            )
+        return v
 
 
 class ModelConfig(BaseModel):
@@ -62,6 +69,7 @@ class ModelConfig(BaseModel):
 
     context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
     parameters: ModelParameters = ModelParameters()
+    max_tokens_for_tools: int = 0
 
     options: Optional[dict[str, Any]] = None
 
@@ -98,12 +106,11 @@ class ModelConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_context_window_and_max_tokens(self) -> Self:
-        """Validate context window size and max tokens for response."""
+        """Validate context window size against response token budget."""
         if self.context_window_size <= self.parameters.max_tokens_for_response:  # type: ignore [operator]
             raise checks.InvalidConfigurationError(
-                f"Context window size {self.context_window_size}, "
-                "should be greater than max_tokens_for_response "
-                f"{self.parameters.max_tokens_for_response}"
+                f"Context window size {self.context_window_size} must be greater than "
+                f"max_tokens_for_response ({self.parameters.max_tokens_for_response})"
             )
         return self
 
@@ -659,6 +666,37 @@ class ToolFilteringConfig(BaseModel):
     )
 
 
+class SkillsConfig(BaseModel):
+    """Configuration for skill selection using hybrid RAG retrieval.
+
+    If this config is present, skill selection is enabled. If absent, no skills are used.
+    """
+
+    skills_dir: str = Field(
+        default="skills",
+        description="Path to directory containing skill subdirectories",
+    )
+
+    embed_model_path: Optional[str] = Field(
+        default=None,
+        description="Path to sentence transformer model for embeddings",
+    )
+
+    alpha: float = Field(
+        default=0.8,
+        ge=0.0,
+        le=1.0,
+        description="Weight for dense vs sparse retrieval (1.0 = full dense, 0.0 = full sparse)",
+    )
+
+    threshold: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score to accept a skill match",
+    )
+
+
 class ApprovalType(StrEnum):
     """Approval strategy for tool execution."""
 
@@ -1055,6 +1093,7 @@ class OLSConfig(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     max_iterations: Optional[PositiveInt] = None
+    history_compression_enabled: bool = True
     expire_llm_is_ready_persistent_state: Optional[int] = -1
     max_workers: Optional[int] = None
     query_filters: Optional[list[QueryFilter]] = None
@@ -1073,6 +1112,8 @@ class OLSConfig(BaseModel):
 
     tools_approval: Optional[ToolsApprovalConfig] = None
 
+    skills: Optional[SkillsConfig] = None
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1090,6 +1131,7 @@ class OLSConfig(BaseModel):
         self.default_provider = data.get("default_provider", None)
         self.default_model = data.get("default_model", None)
         self.max_iterations = data.get("max_iterations")
+        self.history_compression_enabled = data.get("history_compression_enabled", True)
         self.max_workers = data.get("max_workers", 1)
         self.expire_llm_is_ready_persistent_state = data.get(
             "expire_llm_is_ready_persistent_state", -1
@@ -1127,6 +1169,8 @@ class OLSConfig(BaseModel):
             self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
         if data.get("tools_approval", None) is not None:
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
+        if data.get("skills", None) is not None:
+            self.skills = SkillsConfig(**data.get("skills"))
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
@@ -1200,6 +1244,9 @@ class Config(BaseModel):
         # Validate MCP servers now that auth config is available
         self._validate_mcp_servers()
 
+        if self.mcp_servers.servers:
+            self._compute_tool_budgets()
+
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
 
@@ -1241,6 +1288,25 @@ class Config(BaseModel):
             self.mcp_servers.servers,
             auth_module,
         )
+
+    def _compute_tool_budgets(self) -> None:
+        """Compute tool token budgets for all models when MCP servers are configured."""
+        for provider in self.llm_providers.providers.values():
+            for model in provider.models.values():
+                model.max_tokens_for_tools = int(
+                    model.context_window_size * model.parameters.tool_budget_ratio
+                )
+                reserved = (
+                    model.parameters.max_tokens_for_response
+                    + model.max_tokens_for_tools
+                )
+                if model.context_window_size <= reserved:
+                    raise checks.InvalidConfigurationError(
+                        f"Model '{model.name}': context window size {model.context_window_size} "
+                        f"must be greater than max_tokens_for_response "
+                        f"({model.parameters.max_tokens_for_response}) + "
+                        f"tool budget ({model.max_tokens_for_tools})"
+                    )
 
     def validate_yaml(self) -> None:
         """Validate all configurations."""

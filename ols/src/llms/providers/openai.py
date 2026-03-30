@@ -7,6 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
 from ols import constants
+from ols.app.models.config import ModelParameters
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 
@@ -44,8 +45,17 @@ class OpenAI(LLMProvider):
             "http_async_client": self._construct_httpx_client(True, True),
         }
 
-        # gpt-5 and o-series models don't support certain parameters
-        if not ("gpt-5" in self.model or self.model.startswith("o")):
+        # gpt-5 and o-series models use the Responses API for reasoning support
+        model_config = self.provider_config.models.get(self.model)
+        params = getattr(model_config, "parameters", None) or ModelParameters()
+
+        if "gpt-5" in self.model or self.model.startswith("o"):
+            default_parameters["reasoning"] = {
+                "effort": params.reasoning_effort,
+                "summary": params.reasoning_summary,
+            }
+            default_parameters["verbosity"] = params.verbosity
+        else:
             default_parameters["temperature"] = 0.01
             default_parameters["top_p"] = 0.95
             default_parameters["frequency_penalty"] = 1.03

@@ -3,7 +3,7 @@
 import json
 from collections import OrderedDict
 from dataclasses import field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal, Optional, Self, Union
 
 from langchain_core.language_models.llms import LLM
@@ -971,7 +971,6 @@ class ProcessedRequest(BaseModel):
         user_id: The ID of the logged in user.
         conversation_id: Conversation ID.
         query_without_attachments: Query to LLM without attachments.
-        previous_input: Previous query to LLM.
         attachments: List of all attachments.
         timestamps: Timestamps for all operations.
         skip_user_id_check: Flag to skip user ID checking in handler.
@@ -982,7 +981,6 @@ class ProcessedRequest(BaseModel):
     user_id: str
     conversation_id: str
     query_without_attachments: str
-    previous_input: list[CacheEntry]
     attachments: list[Attachment]
     timestamps: dict[str, float]
     skip_user_id_check: bool
@@ -990,12 +988,14 @@ class ProcessedRequest(BaseModel):
     mode: QueryMode
 
 
-class ChunkType(str, Enum):
-    """Supported streamed chunk types."""
+class StreamChunkType(StrEnum):
+    """Supported streamed chunk types for query responses."""
 
     TEXT = "text"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    HISTORY_COMPRESSION_START = "history_compression_start"
+    HISTORY_COMPRESSION_END = "history_compression_end"
     END = "end"
     REASONING = "reasoning"
 
@@ -1005,12 +1005,12 @@ class StreamedChunk:
     """Represents a chunk of streamed data from the LLM.
 
     Attributes:
-        type: The type of chunk (text, tool_call, tool_result, or end)
+        type: The type of chunk (text, tool_call, tool_result, history events, or end)
         text: The text content of the chunk (for text chunks)
         data: Additional data associated with the chunk (for non-text chunks)
     """
 
-    type: ChunkType
+    type: StreamChunkType
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 

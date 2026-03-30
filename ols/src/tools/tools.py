@@ -7,7 +7,6 @@ from typing import Any
 from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 
-from ols.constants import DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
 from ols.utils.token_handler import TokenHandler
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,7 @@ _CHARS_PER_TOKEN_ESTIMATE = 4
 
 
 def _extract_text_from_tool_output(
-    output: Any, max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
+    output: Any, tools_token_budget: int
 ) -> tuple[str, bool]:
     """Extract plain text from tool output with a character-level size guard.
 
@@ -57,20 +56,21 @@ def _extract_text_from_tool_output(
 
     Neither LangChain nor the MCP SDK provide a mechanism to limit tool
     response size at the transport layer, so a cheap character-level limit
-    (max_tokens * 4) is applied here before any tokenization to avoid the
-    CPU cost of tokenizing arbitrarily large tool responses. Strings are
-    cut at the last newline boundary; lists are truncated by dropping
-    trailing blocks that would exceed the limit.
+    (tools_token_budget * 4) is applied here before any tokenization to
+    avoid the CPU cost of tokenizing arbitrarily large tool responses.
+    Strings are cut at the last newline boundary; lists are truncated by
+    dropping trailing blocks that would exceed the limit.
 
     Args:
         output: Tool output, either a string or list of content blocks.
-        max_tokens: Token budget for the output; used to derive a cheap
-            character limit so we never tokenize an arbitrarily large string.
+        tools_token_budget: Remaining token budget for tool outputs; used
+            to derive a cheap character limit so we never tokenize an
+            arbitrarily large string.
 
     Returns:
         Tuple of (extracted text, was_truncated).
     """
-    max_chars = max_tokens * _CHARS_PER_TOKEN_ESTIMATE
+    max_chars = tools_token_budget * _CHARS_PER_TOKEN_ESTIMATE
 
     if not isinstance(output, list):
         output = str(output)
@@ -123,7 +123,7 @@ async def execute_tool_call(
     tool_name: str,
     tool_args: dict,
     all_mcp_tools: list[StructuredTool],
-    max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
+    tools_token_budget: int,
 ) -> tuple[str, bool, dict | None]:
     """Execute a tool call and return output, truncation flag, and structured content.
 
@@ -131,7 +131,7 @@ async def execute_tool_call(
         tool_name: Name of the tool to execute
         tool_args: Arguments to pass to the tool
         all_mcp_tools: List of available MCP tools
-        max_tokens: Maximum tokens allowed for tool output
+        tools_token_budget: Remaining token budget for tool outputs
 
     Returns:
         Tuple of (tool_output, was_truncated, structured_content).
@@ -140,7 +140,7 @@ async def execute_tool_call(
     tool = get_tool_by_name(tool_name, all_mcp_tools)
     tool_output_raw, artifact = await tool.coroutine(**tool_args)  # type: ignore[misc]
     tool_output, was_truncated = _extract_text_from_tool_output(
-        tool_output_raw, max_tokens
+        tool_output_raw, tools_token_budget
     )
     if isinstance(artifact, dict):
         structured_content = artifact.get("structured_content")
@@ -160,14 +160,14 @@ async def execute_tool_call(
 async def _execute_single_tool_call(
     tool_call: dict,
     all_mcp_tools: list[StructuredTool],
-    max_tokens: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
+    tools_token_budget: int,
 ) -> ToolMessage:
     """Execute a single tool call and return a ToolMessage.
 
     Args:
         tool_call: Tool call dict with name, args, and id.
         all_mcp_tools: List of available MCP tools.
-        max_tokens: Maximum tokens allowed for tool output.
+        tools_token_budget: Remaining token budget for tool outputs.
 
     Returns:
         ToolMessage with result. The additional_kwargs contains:
@@ -193,7 +193,7 @@ async def _execute_single_tool_call(
             try:
                 tool_output, was_truncated, structured_content = (
                     await execute_tool_call(
-                        tool_name, tool_args, all_mcp_tools, max_tokens
+                        tool_name, tool_args, all_mcp_tools, tools_token_budget
                     )
                 )
                 status = "success"
@@ -233,14 +233,14 @@ async def _execute_single_tool_call(
 async def execute_tool_calls(
     tool_calls: list[dict],
     all_mcp_tools: list[StructuredTool],
-    max_tokens_per_output: int = DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT,
+    tools_token_budget: int,
 ) -> list[ToolMessage]:
     """Execute tool calls in parallel and return ToolMessages.
 
     Args:
         tool_calls: List of tool call dicts
         all_mcp_tools: List of available MCP tools
-        max_tokens_per_output: Maximum tokens allowed per tool output
+        tools_token_budget: Remaining token budget for tool outputs
 
     Returns:
         List of ToolMessages. Each message's additional_kwargs["truncated"]
@@ -250,7 +250,7 @@ async def execute_tool_calls(
         return []
 
     tasks = [
-        _execute_single_tool_call(tool_call, all_mcp_tools, max_tokens_per_output)
+        _execute_single_tool_call(tool_call, all_mcp_tools, tools_token_budget)
         for tool_call in tool_calls
     ]
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Periodic CI job: run LSEval against OLS using OpenAI GPT-4o-mini (OLS) + GPT-4.1-mini (judge).
+# CI job: run LSEval full dataset (797 questions) against OLS using OpenAI GPT-4o-mini + GPT-4.1-mini judge.
 #
 # Input environment variables:
 #   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key
@@ -9,7 +9,7 @@
 #   1. Install OLS dependencies
 #   2. Install operator-sdk
 #   3. Deploy OLS on the cluster (openai_lseval config via run_suite)
-#   4. Run the LSEval periodic pytest test (make test-lseval-periodic)
+#   4. Run the LSEval full-dataset pytest test (make test-lseval-periodic)
 #   5. Collect artefacts and clean up
 
 set -eou pipefail
@@ -37,7 +37,7 @@ function run_suites() {
   local rc=0
 
   set +e
-  # Deploy OLS with OpenAI GPT-4o-mini and run LSEval evaluation.
+  # Deploy OLS with OpenAI GPT-4o-mini and run LSEval full-dataset evaluation (797 questions).
   # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
   # OLS_CONFIG_SUFFIX="lseval" → ols_installer builds: olsconfig.crd.openai_lseval.yaml
   run_suite "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "lseval"
