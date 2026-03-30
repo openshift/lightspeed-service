@@ -153,6 +153,7 @@ class K8sClientSingleton:
 
     @classmethod
     def _get_cluster_id(cls) -> str:
+        version_data = None
         try:
             version_data = cls._fetch_cluster_version_object()
             cluster_id = version_data["spec"]["clusterID"]
@@ -190,6 +191,7 @@ class K8sClientSingleton:
 
     @classmethod
     def _get_cluster_version(cls) -> str:
+        version_data = None
         try:
             version_data = cls._fetch_cluster_version_object()
             return version_data["status"]["desired"]["version"]
