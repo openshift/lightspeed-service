@@ -313,7 +313,16 @@ async def fake_invoke_llm(*args, **kwargs):
 
     if fake_invoke_llm.call_count == 1:
         yield AIMessageChunk(
-            content="", response_metadata={"finish_reason": "tool_calls"}
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_call_chunks=[
+                {
+                    "name": "get_namespaces_mock",
+                    "args": "{}",
+                    "id": "call_1",
+                    "index": 0,
+                }
+            ],
         )
     elif fake_invoke_llm.call_count == 2:
         yield AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})
@@ -355,7 +364,16 @@ def test_tool_calling_force_stop():
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
             [
                 AIMessageChunk(
-                    content="XYZ", response_metadata={"finish_reason": "tool_calls"}
+                    content="",
+                    response_metadata={"finish_reason": "tool_calls"},
+                    tool_call_chunks=[
+                        {
+                            "name": "get_namespaces_mock",
+                            "args": "{}",
+                            "id": "call_1",
+                            "index": 0,
+                        }
+                    ],
                 )
             ]
         )
@@ -992,6 +1010,47 @@ async def test_collect_round_llm_chunks_with_reasoning_list_content():
     assert result.streamed_chunks[0].text == "thinking hard"
     assert result.streamed_chunks[1].type == StreamChunkType.TEXT
     assert result.streamed_chunks[1].text == "the answer"
+
+
+@pytest.mark.asyncio
+async def test_iterate_with_tools_breaks_when_no_tool_calls():
+    """Test iterate_with_tools exits when model emits no tool calls on a non-final round."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    tool = mock_tools_map[0]
+    call_count = 0
+
+    async def _mock_collect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return RoundLLMResult(
+            tool_call_chunks=[],
+            all_chunks=[],
+            streamed_chunks=[StreamedChunk(type=StreamChunkType.TEXT, text="answer")],
+            should_stop=False,
+        )
+
+    with patch.object(
+        summarizer,
+        "_collect_round_llm_chunks",
+        new=AsyncMock(side_effect=_mock_collect),
+    ):
+        chunks = [
+            chunk
+            async for chunk in summarizer.iterate_with_tools(
+                messages=[],
+                max_rounds=10,
+                llm_input_values={},
+                token_counter=AsyncMock(),
+                all_mcp_tools=[tool],
+            )
+        ]
+
+    assert call_count == 1, (
+        "Loop must exit after first round when model emits no tool calls, "
+        f"but ran {call_count} rounds"
+    )
+    assert len(chunks) == 1
+    assert chunks[0].text == "answer"
 
 
 def test_create_response_ignores_reasoning_chunks():
