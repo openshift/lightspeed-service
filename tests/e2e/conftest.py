@@ -213,6 +213,23 @@ def pytest_addoption(parser):
     )
 
 
+def pytest_collection_modifyitems(items: list) -> None:
+    """Ensure test_user_data_collection runs last in the data_export suite.
+
+    That test shortens the exporter collection interval to 5 s; any
+    filesystem-based test that runs afterwards races with the exporter
+    which deletes feedback/transcript files before they can be asserted.
+    """
+    deferred = []
+    rest = []
+    for item in items:
+        if item.name == "test_user_data_collection":
+            deferred.append(item)
+        else:
+            rest.append(item)
+    items[:] = rest + deferred
+
+
 def pytest_sessionfinish():
     """Gather OLS artifacts after test session finishes."""
     # Gather OLS artifacts for all test suites when running on cluster
