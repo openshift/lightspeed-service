@@ -25,6 +25,7 @@ from ols.app.models.models import (
     SummarizerResponse,
 )
 from ols.constants import GenericLLMParameters
+from ols.src.auth.k8s import CLUSTER_VERSION_UNAVAILABLE, K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
@@ -134,6 +135,11 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
+        self._cluster_version = (
+            K8sClientSingleton.get_cluster_version()
+            if self._mode == constants.QueryMode.TROUBLESHOOTING
+            else CLUSTER_VERSION_UNAVAILABLE
+        )
 
         # tools part
         self.client_headers = client_headers or {}
@@ -190,6 +196,8 @@ class DocsSummarizer(QueryHelper):
             [AIMessage("sample")],
             self._system_prompt,
             self._tool_calling_enabled,
+            self._mode,
+            self._cluster_version,
         ).generate_prompt(self.model)
         max_tokens_for_tools = (
             self.model_config.max_tokens_for_tools if self.mcp_servers else 0
@@ -257,6 +265,8 @@ class DocsSummarizer(QueryHelper):
             history,
             self._system_prompt,
             self._tool_calling_enabled,
+            self._mode,
+            self._cluster_version,
         ).generate_prompt(self.model)
 
         # Tokens-check: We trigger the computation of the token count

@@ -12,8 +12,10 @@ from kubernetes.client.rest import ApiException
 from ols import config
 from ols.src.auth.k8s import (
     CLUSTER_ID_LOCAL,
+    CLUSTER_VERSION_UNAVAILABLE,
     AuthDependency,
     ClusterIDUnavailableError,
+    ClusterVersionUnavailableError,
     K8sClientSingleton,
 )
 from tests.mock_classes.mock_k8s_api import (
@@ -222,3 +224,74 @@ def test_get_cluster_id_outside_of_cluster():
         # ensure cluster_id is None to trigger the condition
         K8sClientSingleton._cluster_id = None
         assert K8sClientSingleton.get_cluster_id() == CLUSTER_ID_LOCAL
+
+
+def test_get_cluster_version():
+    """Test _get_cluster_version function."""
+    with patch(
+        "ols.src.auth.k8s.K8sClientSingleton._fetch_cluster_version_object"
+    ) as mock_fetch:
+        mock_fetch.return_value = {"status": {"desired": {"version": "4.17.3"}}}
+        assert K8sClientSingleton._get_cluster_version() == "4.17.3"
+
+        # keyerror
+        mock_fetch.return_value = {"status": {}}
+        with pytest.raises(
+            ClusterVersionUnavailableError, match="Failed to get cluster version"
+        ):
+            K8sClientSingleton._get_cluster_version()
+
+        # typeerror
+        mock_fetch.return_value = None
+        with pytest.raises(
+            ClusterVersionUnavailableError, match="Failed to get cluster version"
+        ):
+            K8sClientSingleton._get_cluster_version()
+
+        # api exception
+        mock_fetch.side_effect = ApiException()
+        with pytest.raises(
+            ClusterVersionUnavailableError, match="Failed to get cluster version"
+        ):
+            K8sClientSingleton._get_cluster_version()
+
+        # generic exception
+        mock_fetch.side_effect = Exception()
+        with pytest.raises(
+            ClusterVersionUnavailableError, match="Failed to get cluster version"
+        ):
+            K8sClientSingleton._get_cluster_version()
+
+
+def test_get_cluster_version_in_cluster():
+    """Test get_cluster_version when running inside of cluster."""
+    with (
+        patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", True),
+        patch("ols.src.auth.k8s.K8sClientSingleton.__new__"),
+        patch(
+            "ols.src.auth.k8s.K8sClientSingleton._get_cluster_version"
+        ) as mock_get_version,
+    ):
+        K8sClientSingleton._cluster_version = None
+        mock_get_version.return_value = "4.17.3"
+        assert K8sClientSingleton.get_cluster_version() == "4.17.3"
+
+
+def test_get_cluster_version_outside_of_cluster():
+    """Test get_cluster_version when running outside of cluster."""
+    with (patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", False),):
+        assert K8sClientSingleton.get_cluster_version() == CLUSTER_VERSION_UNAVAILABLE
+
+
+def test_get_cluster_version_in_cluster_unavailable():
+    """Test get_cluster_version falls back when API call fails."""
+    with (
+        patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", True),
+        patch("ols.src.auth.k8s.K8sClientSingleton.__new__"),
+        patch(
+            "ols.src.auth.k8s.K8sClientSingleton._get_cluster_version"
+        ) as mock_get_version,
+    ):
+        K8sClientSingleton._cluster_version = None
+        mock_get_version.side_effect = ClusterVersionUnavailableError()
+        assert K8sClientSingleton.get_cluster_version() == CLUSTER_VERSION_UNAVAILABLE

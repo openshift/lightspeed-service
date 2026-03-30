@@ -11,7 +11,7 @@ from langchain_core.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from ols.constants import ModelFamily
+from ols.constants import ModelFamily, QueryMode
 from ols.src.prompts.prompt_generator import GeneratePrompt, format_retrieved_chunk
 
 model = ["some-granite-model", "some-gpt-model"]
@@ -49,7 +49,7 @@ def test_generate_prompt_default_prompt(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -88,7 +88,7 @@ def test_generate_prompt_without_rag_context(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -123,7 +123,7 @@ def test_generate_prompt_without_history(model):
     ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 2
@@ -155,7 +155,7 @@ def test_generate_prompt_without_rag_without_history(model):
     ).generate_prompt(model)
 
     assert prompt.input_variables == ["query"]
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 2
@@ -193,7 +193,7 @@ def test_generate_prompt_with_tool_call(model):
         ).generate_prompt(model)
 
     assert set(prompt.input_variables) == {"chat_history", "context", "query"}
-    assert set(llm_input_values.keys()) == set(prompt.input_variables)
+    assert set(prompt.input_variables) <= set(llm_input_values.keys())
 
     assert type(prompt) is ChatPromptTemplate
     assert len(prompt.messages) == 3
@@ -226,3 +226,119 @@ def test_generate_prompt_with_tool_call(model):
         "AI: First AI message\n"
         f"Human: {query}"
     )
+
+
+troubleshooting_system_instruction = """
+Troubleshooting system instruction.
+"""
+troubleshooting_agent_instruction = """
+Troubleshooting agent instruction.
+"""
+troubleshooting_agent_system_instruction = """
+Troubleshooting agent system instruction.
+"""
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_troubleshooting_mode_with_tool_call(model):
+    """Test that troubleshooting mode selects troubleshooting agent instructions."""
+    rag_formatted = [format_retrieved_chunk(text) for text in rag_context]
+
+    with (
+        patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_GRANITE",
+            agent_instruction_granite,
+        ),
+        patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_GENERIC",
+            agent_instruction_generic,
+        ),
+        patch(
+            "ols.src.prompts.prompts.AGENT_SYSTEM_INSTRUCTION",
+            agent_system_instruction,
+        ),
+        patch(
+            "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_INSTRUCTION",
+            troubleshooting_agent_instruction,
+        ),
+        patch(
+            "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_SYSTEM_INSTRUCTION",
+            troubleshooting_agent_system_instruction,
+        ),
+    ):
+        prompt, _llm_input_values = GeneratePrompt(
+            query,
+            rag_formatted,
+            conversation_history,
+            troubleshooting_system_instruction,
+            True,
+            QueryMode.TROUBLESHOOTING,
+        ).generate_prompt(model)
+
+    assert set(prompt.input_variables) == {"chat_history", "context", "query"}
+
+    # In troubleshooting mode, agent instructions should come from
+    # troubleshooting constants, not the generic/granite ones.
+    expected_agent = (
+        troubleshooting_agent_instruction.strip()
+        + "\n"
+        + troubleshooting_agent_system_instruction.strip()
+    )
+
+    assert prompt.messages[0].prompt.template == (
+        "Troubleshooting system instruction.\n"
+        f"{expected_agent}\n"
+        "Use the retrieved document to answer the question.\n"
+        "Use the previous chat history to interact and help the user.\n"
+        "{context}"
+    )
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_ask_mode_ignores_troubleshooting_agent_instructions(model):
+    """Test that ask mode uses generic/granite agent instructions, not troubleshooting."""
+    with (
+        patch(
+            "ols.src.prompts.prompts.AGENT_INSTRUCTION_GENERIC",
+            agent_instruction_generic,
+        ),
+        patch(
+            "ols.src.prompts.prompts.AGENT_SYSTEM_INSTRUCTION",
+            agent_system_instruction,
+        ),
+        patch(
+            "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_INSTRUCTION",
+            troubleshooting_agent_instruction,
+        ),
+        patch(
+            "ols.src.prompts.prompts.TROUBLESHOOTING_AGENT_SYSTEM_INSTRUCTION",
+            troubleshooting_agent_system_instruction,
+        ),
+    ):
+        prompt, _ = GeneratePrompt(
+            query, [], [], system_instruction, True, QueryMode.ASK
+        ).generate_prompt(model)
+
+    template = prompt.messages[0].prompt.template
+    assert "Troubleshooting agent instruction" not in template
+    assert "Agent Instruction" in template
+
+
+@pytest.mark.parametrize("model", model)
+def test_generate_prompt_resolves_version_variable(model):
+    """Test that {cluster_version} in system instruction is resolved."""
+    instruction_with_version = "OpenShift version: {cluster_version}."
+
+    prompt, llm_input_values = GeneratePrompt(
+        query,
+        [],
+        [],
+        instruction_with_version,
+        cluster_version="4.17.3",
+    ).generate_prompt(model)
+
+    assert llm_input_values["cluster_version"] == "4.17.3"
+
+    formatted = prompt.format(**llm_input_values)
+    assert "{cluster_version}" not in formatted
+    assert "4.17.3" in formatted
