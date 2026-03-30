@@ -20,7 +20,7 @@ from ols.app.metrics import TokenMetricUpdater
 from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.models import ChunkType, RagChunk, StreamedChunk, SummarizerResponse
 from ols.constants import GenericLLMParameters
-from ols.src.auth.k8s import K8sClientSingleton
+from ols.src.auth.k8s import CLUSTER_VERSION_UNAVAILABLE, K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls
@@ -129,7 +129,11 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
-        self._cluster_version = K8sClientSingleton.get_cluster_version()
+        self._cluster_version = (
+            K8sClientSingleton.get_cluster_version()
+            if self._mode == constants.QueryMode.TROUBLESHOOTING
+            else CLUSTER_VERSION_UNAVAILABLE
+        )
 
         # tools part
         self.client_headers = client_headers or {}

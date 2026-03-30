@@ -46,6 +46,7 @@ class K8sClientSingleton:
     _authn_api: kubernetes.client.AuthenticationV1Api
     _authz_api: kubernetes.client.AuthorizationV1Api
     _cluster_id = None
+    _cluster_version = None
 
     def __new__(cls: type[Self]) -> Self:
         """Create a new instance of the singleton, or returns the existing instance.
@@ -213,19 +214,21 @@ class K8sClientSingleton:
     def get_cluster_version(cls) -> str:
         """Return the cluster version.
 
-        Fetched on every call (not cached) so it stays current after upgrades.
-        Falls back to "unknown" on error — version is non-critical (prompt
-        enrichment), unlike cluster_id which is required for auth.
+        Cached per process lifetime. OLS pods restart during cluster upgrades,
+        so staleness is bounded. Falls back to "unknown" on error — version is
+        non-critical (prompt enrichment), unlike cluster_id which is required
+        for auth.
         """
+        if not RUNNING_IN_CLUSTER:
+            return CLUSTER_VERSION_UNAVAILABLE
         if cls._instance is None:
             cls()
-        if not RUNNING_IN_CLUSTER:
-            logger.debug("Not running in cluster, cluster version unavailable")
-            return CLUSTER_VERSION_UNAVAILABLE
-        try:
-            return cls._get_cluster_version()
-        except ClusterVersionUnavailableError:
-            return CLUSTER_VERSION_UNAVAILABLE
+        if cls._cluster_version is None:
+            try:
+                cls._cluster_version = cls._get_cluster_version()
+            except ClusterVersionUnavailableError:
+                cls._cluster_version = CLUSTER_VERSION_UNAVAILABLE
+        return cls._cluster_version
 
 
 def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:

@@ -272,16 +272,14 @@ def test_get_cluster_version_in_cluster():
             "ols.src.auth.k8s.K8sClientSingleton._get_cluster_version"
         ) as mock_get_version,
     ):
+        K8sClientSingleton._cluster_version = None
         mock_get_version.return_value = "4.17.3"
         assert K8sClientSingleton.get_cluster_version() == "4.17.3"
 
 
 def test_get_cluster_version_outside_of_cluster():
     """Test get_cluster_version when running outside of cluster."""
-    with (
-        patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", False),
-        patch("ols.src.auth.k8s.K8sClientSingleton.__new__"),
-    ):
+    with (patch("ols.src.auth.k8s.RUNNING_IN_CLUSTER", False),):
         assert K8sClientSingleton.get_cluster_version() == CLUSTER_VERSION_UNAVAILABLE
 
 
@@ -294,5 +292,6 @@ def test_get_cluster_version_in_cluster_unavailable():
             "ols.src.auth.k8s.K8sClientSingleton._get_cluster_version"
         ) as mock_get_version,
     ):
+        K8sClientSingleton._cluster_version = None
         mock_get_version.side_effect = ClusterVersionUnavailableError()
         assert K8sClientSingleton.get_cluster_version() == CLUSTER_VERSION_UNAVAILABLE
