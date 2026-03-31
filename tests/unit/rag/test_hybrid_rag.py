@@ -194,7 +194,9 @@ class TestHybridRAGBaseSparseScores:
     def test_returns_empty_when_no_bm25(self) -> None:
         """Verify empty result when BM25 index not built."""
         rag = _make_base()
-        assert rag._sparse_scores("query") == {}
+        scores, meta = rag._sparse_scores("query")
+        assert scores == {}
+        assert meta == {}
 
     def test_returns_normalized_scores(self) -> None:
         """Verify BM25 scores are normalized between 0 and 1."""
@@ -204,9 +206,10 @@ class TestHybridRAGBaseSparseScores:
             docs=["kubernetes pods", "file system"],
             vectors=[_fake_encode("kubernetes pods"), _fake_encode("file system")],
         )
-        scores = rag._sparse_scores("kubernetes")
+        scores, meta = rag._sparse_scores("kubernetes")
         for score in scores.values():
             assert 0.0 <= score <= 1.0
+        assert set(meta.keys()) == {"a", "b"}
 
     def test_scores_contain_all_documents(self) -> None:
         """Verify all indexed documents have a score."""
@@ -216,7 +219,7 @@ class TestHybridRAGBaseSparseScores:
             docs=["one", "two", "three"],
             vectors=[_fake_encode(d) for d in ["one", "two", "three"]],
         )
-        scores = rag._sparse_scores("one two three")
+        scores, _ = rag._sparse_scores("one two three")
         assert len(scores) == 3
 
 

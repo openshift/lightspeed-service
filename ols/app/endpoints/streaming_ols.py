@@ -170,6 +170,8 @@ def stream_event(data: dict[str, object], event_type: str, media_type: str) -> s
                 text_output = f"\nTool call: {json.dumps(data)}\n"
             case "tool_result":
                 text_output = f"\nTool result: {json.dumps(data)}\n"
+            case "skill_selected":
+                text_output = f"\nSkill selected: {data.get('name', 'unknown')}\n"
             case "history_compression_start":
                 text_output = f"\nHistory compression start: {json.dumps(data)}\n"
             case "history_compression_end":
@@ -407,6 +409,12 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                     yield stream_event(
                         data=item.data,
                         event_type=LLM_TOOL_RESULT_EVENT,
+                        media_type=media_type,
+                    )
+                case StreamChunkType.SKILL_SELECTED:
+                    yield stream_event(
+                        data=item.data,
+                        event_type=StreamChunkType.SKILL_SELECTED.value,
                         media_type=media_type,
                     )
                 case StreamChunkType.HISTORY_COMPRESSION_START:

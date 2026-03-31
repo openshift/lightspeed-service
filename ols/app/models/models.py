@@ -994,6 +994,7 @@ class StreamChunkType(StrEnum):
     TEXT = "text"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    SKILL_SELECTED = "skill_selected"
     HISTORY_COMPRESSION_START = "history_compression_start"
     HISTORY_COMPRESSION_END = "history_compression_end"
     END = "end"
