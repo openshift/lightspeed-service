@@ -129,6 +129,7 @@ dependencies = [
     "qdrant-client>=1.13.3",  # For ToolsRAG vector storage (pure Python, no Rust/Cargo)
     "rank-bm25>=0.2.2",  # For ToolsRAG sparse retrieval
     "python-frontmatter>=1.1.0",  # For parsing skill YAML frontmatter
+    "a2a-sdk[http-server]>=0.3.25",  # For A2A (Agent-to-Agent) protocol server support
 ]
 requires-python = ">=3.12,<3.13"
 readme = "README.md"
