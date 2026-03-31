@@ -19,6 +19,7 @@ from ols.app.models.models import (
     SummarizerResponse,
 )
 from ols.constants import GenericLLMParameters
+from ols.src.a2a.client import get_a2a_tools
 from ols.src.auth.k8s import CLUSTER_VERSION_UNAVAILABLE, K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.history_support import prepare_history
@@ -363,9 +364,11 @@ class DocsSummarizer(QueryHelper):
 
         messages = final_prompt.model_copy()
         mcp_tools_query = f"{skill_content}\n\n{query}" if skill_content else query
-        all_mcp_tools = await get_mcp_tools(
-            mcp_tools_query, self.user_token, self.client_headers
+        mcp_tools, a2a_tools = await asyncio.gather(
+            get_mcp_tools(mcp_tools_query, self.user_token, self.client_headers),
+            get_a2a_tools(mcp_tools_query, self.user_token, self.client_headers),
         )
+        all_mcp_tools = mcp_tools + a2a_tools
         tool_definitions_text = self._serialized_tool_definitions_text(all_mcp_tools)
         tool_definitions_tokens = (
             self._tracker.count_tokens(tool_definitions_text)
