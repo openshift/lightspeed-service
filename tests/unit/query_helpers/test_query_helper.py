@@ -73,3 +73,17 @@ def test_default_mode_is_ask():
     qh_ask = QueryHelper(mode=QueryMode.ASK)
 
     assert qh_default._system_prompt == qh_ask._system_prompt
+
+
+def test_mode_stored_as_instance_attribute():
+    """Test that mode is stored as self._mode on QueryHelper."""
+    config.reload_from_yaml_file("tests/config/valid_config.yaml")
+
+    qh_ask = QueryHelper(mode=QueryMode.ASK)
+    assert qh_ask._mode == QueryMode.ASK
+
+    qh_ts = QueryHelper(mode=QueryMode.TROUBLESHOOTING)
+    assert qh_ts._mode == QueryMode.TROUBLESHOOTING
+
+    qh_default = QueryHelper()
+    assert qh_default._mode == QueryMode.ASK

@@ -64,6 +64,12 @@ DEFAULT_CONTEXT_WINDOW_SIZE = 128000
 # truncation will happen. If not set, default value will be used.
 DEFAULT_MAX_TOKENS_FOR_RESPONSE = 4096
 DEFAULT_MAX_ITERATIONS = 5
+DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING = 15
+
+MAX_ITERATIONS_BY_MODE: dict["QueryMode", int] = {
+    QueryMode.ASK: DEFAULT_MAX_ITERATIONS,
+    QueryMode.TROUBLESHOOTING: DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+}
 
 
 # Tokenizer model to generate tokens (for an approximated token calculation)

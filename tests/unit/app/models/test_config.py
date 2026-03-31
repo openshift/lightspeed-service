@@ -2147,7 +2147,7 @@ def test_ols_config(tmpdir):
     )
     assert ols_config.default_provider == "test_default_provider"
     assert ols_config.default_model == "test_default_model"
-    assert ols_config.max_iterations == constants.DEFAULT_MAX_ITERATIONS
+    assert ols_config.max_iterations is None
     assert ols_config.conversation_cache.type == "memory"
     assert ols_config.conversation_cache.memory.max_entries == 100
     assert ols_config.logging_config.app_log_level == logging.INFO
