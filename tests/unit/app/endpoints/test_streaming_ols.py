@@ -51,6 +51,7 @@ def test_event_type_are_not_changed():
     assert StreamChunkType.SKILL_SELECTED.value == "skill_selected"
     assert LLM_HISTORY_COMPRESSION_START_EVENT == "history_compression_start"
     assert LLM_HISTORY_COMPRESSION_END_EVENT == "history_compression_end"
+    assert StreamChunkType.APPROVAL_REQUIRED.value == "approval_required"
 
 
 def test_format_stream_data():
@@ -70,6 +71,12 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_TEXT)
         == '\nTool call: {"token": "hi", "idx": 1}\n'
+    )
+    assert (
+        stream_event(
+            data, StreamChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_TEXT
+        )
+        == '\nApproval request: {"token": "hi", "idx": 1}\n'
     )
     assert (
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_TEXT)
@@ -111,6 +118,12 @@ def test_stream_event():
     assert (
         stream_event(data, LLM_TOOL_CALL_EVENT, constants.MEDIA_TYPE_JSON)
         == 'data: {"event": "tool_call", "data": {"token": "hi", "idx": 1}}\n\n'
+    )
+    assert (
+        stream_event(
+            data, StreamChunkType.APPROVAL_REQUIRED.value, constants.MEDIA_TYPE_JSON
+        )
+        == 'data: {"event": "approval_required", "data": {"token": "hi", "idx": 1}}\n\n'
     )
     assert (
         stream_event(data, LLM_TOOL_RESULT_EVENT, constants.MEDIA_TYPE_JSON)
