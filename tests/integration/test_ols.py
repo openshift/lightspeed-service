@@ -942,9 +942,8 @@ def create_tool_calling_side_effect():
     """Create a side_effect function for tool calling test.
 
     Returns different responses based on call count:
-    - 1st call: yields tool_calls message
-    - 2nd call: yields final response message
-    - 3rd call: yields stop message
+    - 1st call: yields tool_calls message (with tool_call_chunks for streaming detection)
+    - 2nd call: yields final response message (no tool calls → loop exits)
     """
     call_count = 0
 
@@ -958,20 +957,22 @@ def create_tool_calling_side_effect():
                     AIMessageChunk(
                         content="",
                         response_metadata={"finish_reason": "tool_calls"},
-                        tool_calls=[
+                        tool_call_chunks=[
                             {
                                 "name": "get_namespaces_mock",
-                                "args": {},
+                                "args": "{}",
                                 "id": "call_id1",
+                                "index": 0,
                             },
                         ],
                     )
                 ]
             )
-        if call_count == 2:
-            return async_mock_invoke([AIMessageChunk(content="You have 1 namespace.")])
         return async_mock_invoke(
-            [AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})]
+            [
+                AIMessageChunk(content="You have 1 namespace.", response_metadata={}),
+                AIMessageChunk(content="", response_metadata={"finish_reason": "stop"}),
+            ]
         )
 
     return side_effect
@@ -1031,7 +1032,7 @@ def test_tool_calling(_setup, caplog) -> None:
                         "query": "How many namespaces are there in my cluster?",
                     },
                 )
-                assert mock_invoke.call_count == 3
+                assert mock_invoke.call_count == 2
 
                 assert "Tool: get_namespaces_mock" in caplog.text
                 assert f"Output: {NAMESPACES_OUTPUT}" in caplog.text

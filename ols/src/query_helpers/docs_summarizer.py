@@ -792,7 +792,7 @@ class DocsSummarizer(QueryHelper):
 
         tool_token_usage.used = tool_tokens_used
 
-    async def iterate_with_tools(  # noqa: C901
+    async def iterate_with_tools(  # noqa: C901  # pylint: disable=R0912
         self,
         messages: ChatPromptTemplate,
         max_rounds: int,
@@ -871,6 +871,9 @@ class DocsSummarizer(QueryHelper):
 
             # exit if this was the final round
             if is_final_round:
+                break
+
+            if not round_result.tool_call_chunks:
                 break
 
             # tool calling part
