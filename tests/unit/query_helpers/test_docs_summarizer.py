@@ -1224,3 +1224,129 @@ def test_create_response_ignores_reasoning_chunks():
         result = summarizer.create_response("q")
 
     assert result.response == "answer"
+
+
+@pytest.mark.asyncio
+async def test_process_tool_calls_round_budget_leaves_room_for_next_round():
+    """Verify round budget cap so one heavy round does not exhaust the global budget."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    tool = mock_tools_map[0]
+    all_tools_dict = {tool.name: tool}
+
+    max_tokens_for_tools = 2000
+    large_output = "word " * 3000
+
+    async def _fake_execute(*args, **kwargs):
+        yield ToolResultEvent(
+            data=ToolMessage(
+                content=large_output,
+                status="success",
+                tool_call_id="call_1",
+                additional_kwargs={"truncated": False},
+            )
+        )
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": tool.name, "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    token_usage = ToolTokenUsage(used=0)
+    messages: list = []
+
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
+        side_effect=_fake_execute,
+    ):
+        _ = [
+            chunk
+            async for chunk in summarizer._process_tool_calls_for_round(
+                round_index=1,
+                tool_call_chunks=tool_call_chunks,
+                all_chunks=[],
+                all_tools_dict=all_tools_dict,
+                duplicate_tool_names=set(),
+                messages=messages,
+                token_handler=TokenHandler(),
+                tool_token_usage=token_usage,
+                max_tokens_for_tools=max_tokens_for_tools,
+            )
+        ]
+
+    used_after_round_1 = token_usage.used
+    remaining_after_round_1 = max_tokens_for_tools - used_after_round_1
+    assert remaining_after_round_1 > 0, (
+        f"Round 1 consumed the entire budget ({used_after_round_1}/{max_tokens_for_tools}), "
+        "leaving nothing for subsequent rounds"
+    )
+
+
+@pytest.mark.asyncio
+async def test_round_budget_decreases_progressively_with_round_index():
+    """Verify later rounds get a smaller share of the remaining budget."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    tool = mock_tools_map[0]
+    all_tools_dict = {tool.name: tool}
+
+    max_tokens_for_tools = 10000
+    large_output = "word " * 5000
+
+    tool_call_chunks = [
+        AIMessageChunk(
+            content="",
+            response_metadata={"finish_reason": "tool_calls"},
+            tool_calls=[{"name": tool.name, "args": {}, "id": "call_1"}],
+        )
+    ]
+
+    budgets_passed_to_execute: list[int] = []
+
+    def _make_capture_generator(large_output_text: str):
+        async def _capture_budget(tool_calls, tools_token_budget, **kwargs):
+            budgets_passed_to_execute.append(tools_token_budget)
+            yield ToolResultEvent(
+                data=ToolMessage(
+                    content=large_output_text,
+                    status="success",
+                    tool_call_id="call_1",
+                    additional_kwargs={"truncated": False},
+                )
+            )
+
+        return _capture_budget
+
+    token_usage = ToolTokenUsage(used=0)
+
+    for round_idx in (1, 2, 3):
+        messages: list = []
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
+            side_effect=_make_capture_generator(large_output),
+        ):
+            _ = [
+                chunk
+                async for chunk in summarizer._process_tool_calls_for_round(
+                    round_index=round_idx,
+                    tool_call_chunks=tool_call_chunks,
+                    all_chunks=[],
+                    all_tools_dict=all_tools_dict,
+                    duplicate_tool_names=set(),
+                    messages=messages,
+                    token_handler=TokenHandler(),
+                    tool_token_usage=token_usage,
+                    max_tokens_for_tools=max_tokens_for_tools,
+                )
+            ]
+
+    assert len(budgets_passed_to_execute) == 3
+    assert budgets_passed_to_execute[0] > budgets_passed_to_execute[1], (
+        f"Round 2 budget ({budgets_passed_to_execute[1]}) should be smaller "
+        f"than round 1 ({budgets_passed_to_execute[0]})"
+    )
+    assert budgets_passed_to_execute[1] > budgets_passed_to_execute[2], (
+        f"Round 3 budget ({budgets_passed_to_execute[2]}) should be smaller "
+        f"than round 2 ({budgets_passed_to_execute[1]})"
+    )
