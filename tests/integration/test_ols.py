@@ -1003,7 +1003,7 @@ def test_tool_calling(_setup, caplog) -> None:
         patch("ols.utils.mcp_utils.config") as mock_config,
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
         ) as mock_invoke,
         patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler"
