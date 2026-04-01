@@ -18,96 +18,107 @@ configure model, and connect to it.
 <!-- the following line is used by tool to autogenerate Table of Content when the document is changed -->
 <!-- vim-markdown-toc GFM -->
 
-* [Prerequisites](#prerequisites)
-* [Installation](#installation)
-    * [1. Clone the repo](#1-clone-the-repo)
-    * [2. Install python packages](#2-install-python-packages)
-    * [3. Get API keys](#3-get-api-keys)
-        * [OpenAI](#openai)
-        * [Azure OpenAI](#azure-openai)
-        * [WatsonX](#watsonx)
-        * [OpenShift AI](#openshift-ai)
-        * [RHEL AI](#rhel-ai)
-        * [Locally running InstructLab](#locally-running-instructlab)
-    * [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
-* [Configuration](#configuration)
-    * [1. Configure OpenShift LightSpeed (OLS)](#1-configure-openshift-lightspeed-ols)
-    * [2. Configure LLM providers](#2-configure-llm-providers)
-        * [OpenAI provider](#openai-provider)
-        * [Azure OpenAI](#azure-openai-1)
-        * [WatsonX](#watsonx-1)
-        * [RHEL AI provider](#rhel-ai-provider)
-        * [Red Hat OpenShift AI](#red-hat-openshift-ai)
-        * [Local *ollama* server](#local-ollama-server)
-    * [3. Configure OLS Authentication](#3-configure-ols-authentication)
-        * [3.1. K8S-based auth mechanism](#31-k8s-based-auth-mechanism)
-        * [3.2. no-op auth mechanism](#32-no-op-auth-mechanism)
-    * [4. Configure OLS TLS communication](#4-configure-ols-tls-communication)
-    * [5. (Optional) Configure the local document store](#5-optional-configure-the-local-document-store)
-    * [6. (Optional) Configure conversation cache](#6-optional-configure-conversation-cache)
-    * [7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#7-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
-    * [8. (Optional) Configure the number of workers](#8-optional-configure-the-number-of-workers)
-    * [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
-    * [10. TLS security profiles](#10-tls-security-profiles)
-    * [11. System prompt](#11-system-prompt)
-    * [12. Quota limits](#12-quota-limits)
-        * [Configuration format](#configuration-format)
-        * [Tokens and token quota limits](#tokens-and-token-quota-limits)
-    * [13. Configuration dump](#12-configuration-dump)
-    * [14. Cluster introspection](#13-cluster-introspection)
-* [Usage](#usage)
-    * [Deployments](#deployments)
-        * [Local Deployment](#local-deployment)
-            * [Run the server](#run-the-server)
-        * [Optionally run with podman](#optionally-run-with-podman)
-        * [Optionally run inside an OpenShift environment](#optionally-run-inside-an-openshift-environment)
-    * [Communication with the service](#communication-with-the-service)
-        * [Query the server](#query-the-server)
-        * [Validation if the logged-in user is authorized to access service](#validation-if-the-logged-in-user-is-authorized-to-access-service)
-        * [Swagger UI](#swagger-ui)
-        * [OpenAPI](#openapi)
-        * [Metrics](#metrics)
-        * [Gradio UI](#gradio-ui)
-        * [Swagger UI](#swagger-ui-1)
-        * [CPU profiling](#cpu-profiling)
-        * [Memory profiling](#memory-profiling)
-    * [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
-* [Project structure](#project-structure)
-    * [Overall architecture](#overall-architecture)
-        * [FastAPI server](#fastapi-server)
-        * [Authorization checker](#authorization-checker)
-        * [Query handler](#query-handler)
-        * [Redactor](#redactor)
-        * [Question validator](#question-validator)
-        * [Document summarizer](#document-summarizer)
-        * [Conversation history cache interface](#conversation-history-cache-interface)
-        * [Conversation history cache implementations](#conversation-history-cache-implementations)
-            * [In-memory cache](#in-memory-cache)
-            * [Postgres cache](#postgres-cache)
-        * [LLM providers registry](#llm-providers-registry)
-        * [LLM providers interface implementations](#llm-providers-interface-implementations)
-    * [Sequence diagram](#sequence-diagram)
-    * [Token truncation algorithm](#token-truncation-algorithm)
-* [Development workflow](#development-workflow)
-* [Additional tools](#additional-tools)
-    * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
-        * [Path](#path)
-        * [Usage](#usage-1)
-    * [Generating requirements.txt file](#generating-requirementstxt-file)
-    * [Uploading artifact containing the pytest results and configuration to an s3 bucket.](#uploading-artifact-containing-the-pytest-results-and-configuration-to-an-s3-bucket)
-        * [Path](#path-1)
-        * [Usage](#usage-2)
-* [Contributing](#contributing)
-* [License](#license)
+- [About The Project](#about-the-project)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+  - [1. Clone the repo](#1-clone-the-repo)
+  - [2. Install python packages](#2-install-python-packages)
+  - [3. Get API keys](#3-get-api-keys)
+    - [OpenAI](#openai)
+    - [Azure OpenAI](#azure-openai)
+    - [WatsonX](#watsonx)
+    - [OpenShift AI](#openshift-ai)
+    - [RHEL AI](#rhel-ai)
+    - [Locally running InstructLab](#locally-running-instructlab)
+  - [4. Store local copies of API keys securely](#4-store-local-copies-of-api-keys-securely)
+- [Configuration](#configuration)
+  - [1. Configure OpenShift LightSpeed (OLS)](#1-configure-openshift-lightspeed-ols)
+  - [2. Configure LLM providers](#2-configure-llm-providers)
+    - [OpenAI provider](#openai-provider)
+    - [Azure OpenAI](#azure-openai-1)
+    - [WatsonX](#watsonx-1)
+    - [RHEL AI provider](#rhel-ai-provider)
+    - [Red Hat OpenShift AI](#red-hat-openshift-ai)
+    - [Local *ollama* server](#local-ollama-server)
+  - [3. Configure OLS Authentication](#3-configure-ols-authentication)
+    - [3.1. K8S-based auth mechanism](#31-k8s-based-auth-mechanism)
+    - [3.2. no-op auth mechanism](#32-no-op-auth-mechanism)
+  - [4. Configure OLS TLS communication](#4-configure-ols-tls-communication)
+  - [5. (Optional) Configure RAG](#5-optional-configure-rag)
+    - [5.1 OCP documentation](#51-ocp-documentation)
+    - [5.2 BYOK](#52-byok)
+    - [5.3 Confirming the OLS is loading the configured vector databases.](#53-confirming-the-ols-is-loading-the-configured-vector-databases)
+  - [6. (Optional) Configure conversation cache](#6-optional-configure-conversation-cache)
+  - [7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.](#7-optional-incorporating-additional-cas-you-have-the-option-to-include-an-extra-tls-certificate-into-the-ols-trust-store-as-follows)
+  - [8. (Optional) Configure the number of workers](#8-optional-configure-the-number-of-workers)
+  - [9. Registering a new LLM provider](#9-registering-a-new-llm-provider)
+  - [10. TLS security profiles](#10-tls-security-profiles)
+  - [11. System prompt](#11-system-prompt)
+  - [12. Quota limits](#12-quota-limits)
+    - [Tokens and token quota limits](#tokens-and-token-quota-limits)
+    - [Quota limiter features](#quota-limiter-features)
+    - [Configuration format](#configuration-format)
+  - [13. Configuration dump](#13-configuration-dump)
+  - [14. Cluster introspection](#14-cluster-introspection)
+  - [MCP Server Configuration](#mcp-server-configuration)
+    - [Basic Configuration](#basic-configuration)
+    - [MCP Server Authentication](#mcp-server-authentication)
+      - [1. Static Tokens from Files (Recommended for Service Credentials)](#1-static-tokens-from-files-recommended-for-service-credentials)
+      - [2. Kubernetes Token (User Context)](#2-kubernetes-token-user-context)
+      - [3. Client-Provided Tokens (Per-Request)](#3-client-provided-tokens-per-request)
+    - [OpenShift MCP Server Example](#openshift-mcp-server-example)
+- [Usage](#usage)
+  - [Deployments](#deployments)
+    - [Local Deployment](#local-deployment)
+      - [Run the server](#run-the-server)
+    - [Optionally run with podman](#optionally-run-with-podman)
+    - [Validation if the logged-in user is authorized to access service](#validation-if-the-logged-in-user-is-authorized-to-access-service)
+    - [Swagger UI](#swagger-ui)
+    - [OpenAPI](#openapi)
+    - [Metrics](#metrics)
+    - [Gradio UI](#gradio-ui)
+    - [Swagger UI](#swagger-ui-1)
+    - [CPU profiling](#cpu-profiling)
+    - [Memory profiling](#memory-profiling)
+  - [Deploying OLS on OpenShift](#deploying-ols-on-openshift)
+- [Project structure](#project-structure)
+  - [Overall architecture](#overall-architecture)
+    - [FastAPI server](#fastapi-server)
+    - [Authorization checker](#authorization-checker)
+    - [Query handler](#query-handler)
+    - [Redactor](#redactor)
+    - [Question validator](#question-validator)
+    - [Document summarizer](#document-summarizer)
+    - [Conversation history cache interface](#conversation-history-cache-interface)
+    - [Conversation history cache implementations](#conversation-history-cache-implementations)
+      - [In-memory cache](#in-memory-cache)
+      - [Postgres cache](#postgres-cache)
+    - [LLM providers registry](#llm-providers-registry)
+    - [LLM providers interface implementations](#llm-providers-interface-implementations)
+  - [Sequence diagram](#sequence-diagram)
+  - [Token truncation algorithm](#token-truncation-algorithm)
+- [Development workflow](#development-workflow)
+- [Additional tools](#additional-tools)
+  - [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
+    - [Path](#path)
+    - [Usage](#usage-1)
+- [Konflux](#konflux)
+  - [Updating Dependencies for Hermetic Builds](#updating-dependencies-for-hermetic-builds)
+    - [When to Update Dependency Files](#when-to-update-dependency-files)
+    - [Updating Python Dependencies](#updating-python-dependencies)
+    - [Updating RPM Dependencies](#updating-rpm-dependencies)
+- [Question and Answer Quality Evaluation](#question-and-answer-quality-evaluation)
+- [Contributing](#contributing)
+- [License](#license)
 
 <!-- vim-markdown-toc -->
 
 
 # Prerequisites
 
-* Python 3.11 and Python 3.12
+* Python 3.12
     - please note that currently Python 3.13 and Python 3.14 are not officially supported, because OLS LightSpeed depends on some packages that can not be used in this Python version
-    - all sources are made (backward) compatible with Python 3.11; it is checked on CI
+    - all sources are made (backward) compatible with Python 3.12; it is checked on CI
 * Git, pip and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 * An LLM API key or API secret (in case of Azure OpenAI)
 * (Optional) extra certificates to access LLM API
@@ -188,10 +199,10 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    [!NOTE]
    There are two supported methods to provide credentials for Azure OpenAI:
-   
+
    **Method 1 - API Key Authentication:**
    Use `credentials_path` pointing to a file containing your Azure OpenAI API key.
-   
+
    **Method 2 - Azure AD Authentication:**
    Use the `azure_openai_config` section with a `credentials_path` pointing to a directory containing three files named `tenant_id`, `client_id`, and `client_secret`. Do NOT include a main `credentials_path` when using this method. Please look at following articles describing how to retrieve this information from Azure: [Get subscription and tenant IDs in the Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/get-subscription-tenant-id) and [How to get client id and client secret in Azure Portal](https://azurelessons.com/how-to-get-client-id-and-client-secret-in-azure-portal/).
 
@@ -226,7 +237,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
    **Method 2 - Azure AD Authentication (tenant_id, client_id, client_secret):**
    ```yaml
-   
+
    - name: my_azure_openai
      type: azure_openai
      models:
@@ -236,10 +247,10 @@ Depends on configuration, but usually it is not needed to generate or use API ke
        deployment_name: my_azure_openai_deployment_name
        credentials_path: path/to/azure/credentials/directory
    ```
-   
+
    For Method 2, the credentials directory must contain three files:
    - `tenant_id` - containing your Azure tenant ID
-   - `client_id` - containing your Azure application client ID  
+   - `client_id` - containing your Azure application client ID
    - `client_secret` - containing your Azure application client secret
 
 ### WatsonX
@@ -302,7 +313,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
        - `api_key`: path to secret (token) used to call LLM via REST API
        - `models`: list of models configuration (model name + model-specific parameters)
 
-            Notes: 
+            Notes:
             - `Context window size` varies based on provider/model.
             - `Max response tokens` depends on user need and should be in reasonable proportion to context window size. If value is too less then there is a risk of response truncation. If we set it too high then we will reserve too much for response & truncate history/rag context unnecessarily.
             - These are optional setting, if not set; then default will be used (which may be incorrect and may cause truncation & potentially error by exceeding context window).
@@ -337,7 +348,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
    This section provides guidance on how to configure authentication based on K8S within OLS. It includes instructions on enabling or disabling authentication, configuring authentication through OCP RBAC, overriding authentication configurations, and specifying a static authentication token in development environments.
 
    1. Enabling and Disabling Authentication
-   
+
       Authentication is enabled by default in OLS. To disable authentication, modify the `dev_config` in your configuration file as shown below:
 
       ```yaml
@@ -377,7 +388,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
       ```
       **Note:** using static token will require you to set the `k8s_cluster_api` mentioned in section 6.4, as this will disable the loading of OCP config from in-cluster/kubeconfig.
 
-   
+
 ### 3.2. no-op auth mechanism
 
       This auth mechanism can be selected by the following configuration parameter:
@@ -396,7 +407,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
 
 
    1. Enabling and Disabling TLS
-   
+
       By default, TLS is enabled in OLS. To disable TLS, adjust the `dev_config` in your configuration file as shown below:
 
       ```yaml
@@ -409,7 +420,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
       1. Generate Self-Signed Certificates: To generate self-signed certificates, run the following command from the project's root directory:
          ```bash
             ./scripts/generate-certs.sh
-         ``` 
+         ```
       2. Update OLS Configuration: Modify your config.yaml to include paths to your certificate and its private key:
          ```yaml
             ols_config:
@@ -418,7 +429,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
                   tls_key_path: /full/path/to/certs/key.pem
          ```
       3. Launch OLS with HTTPS: After applying the above configurations, OLS will run over HTTPS.
-   
+
    3. Configuring OLS in OpenShift:
 
       For deploying in OpenShift, Service-Served Certificates can be utilized. Update your ols-config.yaml as shown below, based on the example provided in the examples directory:
@@ -547,7 +558,7 @@ Depends on configuration, but usually it is not needed to generate or use API ke
                ca_cert_path: postgres_cert.crt
                ssl_mode: "require"
          ```
-         In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible. 
+         In this case, file `postgres_password.txt` contains password required to connect to PostgreSQL. Also CA certificate can be specified using `postgres_ca_cert.crt` to verify trusted TLS connection with the server. All these files needs to be accessible.
 
 ## 7. (Optional) Incorporating additional CA(s). You have the option to include an extra TLS certificate into the OLS trust store as follows.
 ```yaml
@@ -658,7 +669,7 @@ Activate token quota limits for the service by adding a new configuration struct
 
 
 ```
-  quota_handlers: 
+  quota_handlers:
     storage:
       host: <IP_address> <1>
       port: "5432" <2>
@@ -851,7 +862,7 @@ uv run python runner.py
 ### Optionally run with podman
 There is an all-in-one image that has the document store included already.
 
-1. Follow steps above to create your config yaml and your API key file(s). 
+1. Follow steps above to create your config yaml and your API key file(s).
 1. Place your config yaml and your API key file(s) in a known location (eg:
 `/path/to/config`)
 1. Make sure your config yaml references the config folder for the path to your
@@ -1163,20 +1174,80 @@ This script re-generated OpenAPI schema for the Lightspeed Service REST API.
 make schema
 ```
 
-## Generating requirements.txt file
+# Konflux
 
-For Konflux hermetic builds, Cachi2 uses the `requirements.txt` format to generate a list of packages to prefetch.  
+The official image of Lightspeed Service is built on [Konflux](https://konflux-ui.apps.stone-prd-rh01.pg1f.p1.openshiftapps.com/ns/crt-nshift-lightspeed-tenant/applications/ols).
+We have both amd64 and aarch64 images.
 
-To generate the `requirements.txt` file, follow these steps:  
+## Updating Dependencies for Hermetic Builds
 
-1. Run `uv lock --upgrade` – updates dependencies to their latest versions allowed by our `pyproject.toml` pins, this also creates/updates `uv.lock`.
-2. Run `make requirements.txt` – generates the `requirements.txt` (contains wheel for all platforms/archs).
+Konflux builds run in **hermetic mode** (air-gapped from the internet), so all dependencies must be prefetched and locked. When you add or update dependencies, you need to regenerate the lock files.
+
+### When to Update Dependency Files
+
+Update these files when you:
+- Add/remove/update Python packages in the project
+- Add/remove/update RPM packages in the Containerfile
+- Change the base image version
+
+### Updating Python Dependencies
+
+**Quick command:**
+```shell
+make konflux-requirements
+```
+
+This compiles Python dependencies from `pyproject.toml` using `uv`, splits packages by their source index (PyPI vs Red Hat's internal registry), and generates hermetic requirements files with pinned versions and hashes for Konflux builds.
+
+**Files produced:**
+- `requirements.hashes.source.txt` – PyPI packages with hashes
+- `requirements.hashes.wheel.txt` – Red Hat registry packages with hashes
+- `requirements-build.txt` – Build-time dependencies for source packages
+
+The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-stack-*.yaml`) with the list of pre-built wheel packages.
+
+### Updating RPM Dependencies
+
+**Prerequisites:**
+- Install [rpm-lockfile-prototype](https://github.com/konflux-ci/rpm-lockfile-prototype?tab=readme-ov-file#installation)
+- Have an active RHEL Subscription, get activation keys from [RH console](https://console.redhat.com/insights/connector/activation-keys)
+- Have an account to access registry.redhat.io
+
+**Steps:**
+
+1. **List your RPM packages** in `rpms.in.yaml` under the `packages` field
+
+2. **If you changed the base image**, extract its repo file:
+```shell
+# RHEL images
+podman run -it $BASE_IMAGE cat /etc/yum.repos.d/redhat.repo > redhat.repo
+```
+The base image is configured: 1. directly in the [ContainerFile](Containerfile) for Prow CI builds. 2. in [build.args](build.args) for Konflux builds.
+
+If the repo file contains too many entries, we can filter them and keep only required repositories.
+Here is the command to check active repositories:
+```shell
+dnf repolist
+```
+Replace the architecture tag (`uname -m`) to `$basearch` so that rpm-lockfile-prototype can replace it with requested architecture names.
+```shell
+sed -i "s/$(uname -m)/\$basearch/g" redhat.repo
+```
+
+1. **Generate the lock file**:
+```shell
+REGISTRY_USERNAME=username REGISTRY_PASSWORD=password ACTIVATION_KEY=activation_key ORG_ID=org_id make konflux-rpm-lock
+```
+REGISTRY_USERNAME and REGISTRY_PASSWORD are registry.redhat.io credentials.
+ACTIVATION_KEY and ORG_ID are for RHEL subscription manager. 
+
+This creates `rpms.lock.yaml` with pinned RPM versions.
 
 
-## Question and Answer Quality Evaluation
-There is an extensive suite of evaluation tools and scripts available in this 
-repository if you are interested in exploring different LLMs and their 
-performance. Please look at 
+# Question and Answer Quality Evaluation
+There is an extensive suite of evaluation tools and scripts available in this
+repository if you are interested in exploring different LLMs and their
+performance. Please look at
 [scripts/evaluation/README](scripts/evaluation/README.md) to learn more.
 
 

@@ -1,0 +1,28 @@
+# override these package to the version available on RHOAI wheels index:
+# https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple
+aiohttp==3.13.3
+aiosqlite==0.22.1
+anyio==4.12.1
+attrs==25.4.0
+certifi==2026.1.4
+cryptography==46.0.5
+datasets==4.5.0
+faiss-cpu==1.12.0
+google-genai==1.59.0
+grpcio==1.76.0
+grpcio-status==1.76.0
+hf-xet==1.2.0
+jiter==0.12
+numpy==2.3.5
+orjson==3.11.5
+pandas==2.3.3
+pillow==12.1.1
+pyarrow==23.0.0
+scipy==1.17.0
+setuptools==80.9
+sqlalchemy==2.0.45
+tokenizers==0.22.2
+torch==2.9.1
+transformers==4.57.6
+uuid_utils==0.13.0
+yarl==1.22.0
