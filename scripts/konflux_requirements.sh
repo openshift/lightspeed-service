@@ -25,7 +25,7 @@ SKIP_PYBUILD_PACKAGES="banks"
 
 # Generate requirements list from pyproject.toml from both indexes
 uv pip compile pyproject.toml -o "$RAW_REQ_FILE" \
-		--python-platform x86_64-unknown-linux-gnu \
+		--universal \
 		--python-version 3.12 \
 		--refresh \
 		--index ${RHOAI_INDEX_URL} \
@@ -110,6 +110,10 @@ rm -f "$SOURCE_FILE_FOR_BUILD"
 
 # pin maturin to the version available in the Red Hat registry
 sed -i 's/maturin==[0-9.]*/maturin==1.10.2/' "$BUILD_FILE"
+
+# pybuild-deps embeds the temp input path in the header; keep a stable line for git diffs
+sed -i '\|^#    pybuild-deps compile|s|.*|#    pybuild-deps compile --output-file=requirements-build.txt (Konflux filtered package list)|' \
+	"$BUILD_FILE"
 
 # remove intermediate files
 rm "$RAW_REQ_FILE" "$WHEEL_FILE" "$SOURCE_FILE"
