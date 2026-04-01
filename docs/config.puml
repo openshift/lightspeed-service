@@ -89,7 +89,6 @@ class "ModelConfig" as ols.app.models.config.ModelConfig {
   options : Optional[dict[str, Any]]
   parameters
   url : Optional[AnyHttpUrl]
-  validate_context_window_and_max_tokens() -> Self
   validate_inputs(data: Any) -> None
   validate_options(options: dict) -> dict[str, Any]
 }
@@ -113,6 +112,7 @@ class "OLSConfig" as ols.app.models.config.OLSConfig {
   system_prompt_path : Optional[str]
   tls_config
   tls_security_profile : Optional[TLSSecurityProfile]
+  tool_round_cap_fraction : float
   user_data_collection
   validate_yaml(disable_tls: bool) -> None
 }

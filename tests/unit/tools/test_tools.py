@@ -1,6 +1,7 @@
 """Unit tests for tools module."""
 
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -19,6 +20,7 @@ from ols.src.tools.tools import (
     execute_tool_calls_stream,
     get_tool_by_name,
 )
+from ols.utils.token_handler import TokenHandler
 
 _LARGE_TOKEN_BUDGET = 100_000
 
@@ -137,6 +139,24 @@ class TupleOutputTool(StructuredTool):
             description=f"Tuple output tool {name}",
             func=lambda **kwargs: "unused",
             coroutine=_tuple_coro,
+            args_schema=FakeSchema,
+        )
+
+
+class NonDictStructuredContentTool(StructuredTool):
+    """Tool whose artifact reports structured_content that is not a dict."""
+
+    def __init__(self, name: str):
+        """Initialize mock tool."""
+
+        async def _coro(**kwargs: Any) -> tuple[Any, Any]:
+            return ("ok", {"structured_content": ["x"]})
+
+        super().__init__(
+            name=name,
+            description=f"Non-dict structured_content tool {name}",
+            func=lambda **kwargs: "unused",
+            coroutine=_coro,
             args_schema=FakeSchema,
         )
 
@@ -325,6 +345,31 @@ def test_extract_text_from_tool_output_empty_list() -> None:
     ) == ("", False)
 
 
+def test_extract_text_first_block_exceeds_budget_keeps_prefix(caplog):
+    """First list block alone exceeds char cap: prefix is kept, then truncation notice."""
+    caplog.set_level(logging.DEBUG)
+    huge = "x" * 10_000
+    text, truncated = _extract_text_from_tool_output(
+        [{"type": "text", "text": huge}], tools_token_budget=10
+    )
+    assert truncated is True
+    assert "first block exceeds char budget" in caplog.text
+    assert "pre-truncating first block" in caplog.text
+    max_chars = 10 * 4
+    assert text.endswith(tools_module._TRUNCATION_WARNING)
+    assert text.startswith("x" * max_chars)
+
+
+def test_extract_text_all_empty_text_blocks() -> None:
+    """All text blocks empty: no truncation, joined text is whitespace-only."""
+    text, truncated = _extract_text_from_tool_output(
+        [{"type": "text", "text": ""}, {"type": "text", "text": ""}],
+        tools_token_budget=100,
+    )
+    assert truncated is False
+    assert not text.strip()
+
+
 def test_extract_text_from_tool_output_string_truncation():
     """Test that a long string is truncated at the last newline boundary."""
     long_output = "line\n" * 5000
@@ -379,6 +424,20 @@ async def test_execute_tool_call_with_content_and_artifact_tuple() -> None:
     )
     assert status == "success"
     assert output == "tuple content"
+    assert was_truncated is False
+    assert structured_content is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_non_dict_structured_content_becomes_none() -> None:
+    """Non-dict structured_content in artifact is ignored."""
+    status, output, was_truncated, structured_content = await execute_tool_call(
+        NonDictStructuredContentTool(name="bad_struct"),
+        {},
+        _LARGE_TOKEN_BUDGET,
+    )
+    assert status == "success"
+    assert output == "ok"
     assert was_truncated is False
     assert structured_content is None
 
@@ -624,13 +683,13 @@ def _make_tool_message(content: str, tool_call_id: str = "id") -> ToolMessage:
 
 def test_enforce_tool_token_budget_empty_list():
     """Test that an empty list is returned unchanged."""
-    assert enforce_tool_token_budget([], 100) == []
+    assert enforce_tool_token_budget([], 100, TokenHandler()) == []
 
 
 def test_enforce_tool_token_budget_under_budget():
     """Test that small messages pass through without truncation."""
     msgs = [_make_tool_message("short reply", "c1")]
-    result = enforce_tool_token_budget(msgs, 10000)
+    result = enforce_tool_token_budget(msgs, 10000, TokenHandler())
     assert len(result) == 1
     assert result[0].content == "short reply"
     assert result[0].additional_kwargs["truncated"] is False
@@ -644,7 +703,7 @@ def test_enforce_tool_token_budget_truncates_longest():
         _make_tool_message(long_content, "c_long"),
         _make_tool_message(short_content, "c_short"),
     ]
-    result = enforce_tool_token_budget(msgs, 2500)
+    result = enforce_tool_token_budget(msgs, 2500, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert "[OUTPUT TRUNCATED" in result[0].content
@@ -662,7 +721,7 @@ def test_enforce_tool_token_budget_proportional_truncation():
         _make_tool_message(content_a, "c_a"),
         _make_tool_message(content_b, "c_b"),
     ]
-    result = enforce_tool_token_budget(msgs, 20)
+    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert result[1].additional_kwargs["truncated"] is True
@@ -674,7 +733,7 @@ def test_enforce_tool_token_budget_preserves_metadata():
     """Test that tool_call_id and status are preserved after truncation."""
     msgs = [_make_tool_message("word " * 1000, "my_call_id")]
     msgs[0].status = "success"
-    result = enforce_tool_token_budget(msgs, 20)
+    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
 
     assert result[0].tool_call_id == "my_call_id"
     assert result[0].status == "success"
