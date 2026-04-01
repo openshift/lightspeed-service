@@ -7,7 +7,12 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ols.constants import TOKEN_BUFFER_WEIGHT
-from ols.utils.token_handler import PromptTooLongError, TokenHandler
+from ols.utils.token_handler import (
+    PromptTooLongError,
+    TokenBudgetTracker,
+    TokenCategory,
+    TokenHandler,
+)
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
 
 
@@ -115,13 +120,10 @@ class TestTokenHandler(TestCase):
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context(retrieved_nodes)
 
         assert len(rag_chunks) == 3
         for i in range(3):
-            # New-line character is considered during calculation.
             assert (
                 rag_chunks[i].text
                 == "Document:\n" + self._mock_retrieved_obj[i].get_text()
@@ -130,7 +132,6 @@ class TestTokenHandler(TestCase):
                 rag_chunks[i].doc_url
                 == self._mock_retrieved_obj[i].metadata["docs_url"]
             )
-        assert available_tokens == 473
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
@@ -138,14 +139,11 @@ class TestTokenHandler(TestCase):
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context(retrieved_nodes)
         assert len(rag_chunks) == 1
         assert (
             rag_chunks[0].text == "Document:\n" + self._mock_retrieved_obj[0].get_text()
         )
-        assert available_tokens == 491
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 4)
@@ -155,7 +153,7 @@ class TestTokenHandler(TestCase):
         # Calculation for each chunk:
         # `Document:\n` -> 3 tokens for format, Actual text -> 5, new-line -> 1, total -> 9
 
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 13
         )
         assert len(rag_chunks) == 2
@@ -163,26 +161,21 @@ class TestTokenHandler(TestCase):
             rag_chunks[1].text
             == "Document:\n" + self._mock_retrieved_obj[1].get_text()[:6]
         )
-        assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 10
         )
         assert len(rag_chunks) == 1
-        assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            [], 5
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context([], 5)
         assert rag_chunks == []
-        assert available_tokens == 5
 
     def test_limit_conversation_history_when_no_history_exists(self):
         """Check the behaviour of limiting conversation history if it does not exists."""
@@ -324,3 +317,31 @@ class TestTokenHandler(TestCase):
                 max_tokens_for_response,
                 max_tokens_for_tools,
             )
+
+
+class TestTokenBudgetTracker(TestCase):
+    """Tests for TokenBudgetTracker budget properties."""
+
+    def test_prompt_budget_matches_window_minus_reservations(self):
+        """prompt_budget is context minus response and tool reservations."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+        )
+        assert tracker.prompt_budget == 700
+
+    def test_prompt_budget_remaining_reflects_charges(self):
+        """prompt_budget_remaining decreases when categories accrue usage."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+        )
+        assert tracker.prompt_budget_remaining == 700
+        tracker.charge(TokenCategory.PROMPT, 150)
+        assert tracker.prompt_budget_remaining == 550
+        tracker.charge(TokenCategory.HISTORY, 50)
+        assert tracker.prompt_budget_remaining == 500
