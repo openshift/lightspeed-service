@@ -24,7 +24,7 @@ api:
   timeout: 300
   provider: "openai"
   model: "gpt-4o-mini"
-  no_tools: false
+  no_tools: null
   system_prompt: null
 
 # Metrics evaluated per conversation turn

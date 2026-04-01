@@ -1,5 +1,6 @@
 """LSEval evaluation tests using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
 
+import json
 import os
 import shutil
 import subprocess
@@ -112,6 +113,13 @@ def _run_lseval(eval_data: Path, out_dir: Path) -> None:
 
     json_files = list(out_dir.glob("*_summary.json"))
     assert json_files, f"No summary JSON artefacts found in {out_dir}"
+
+    with open(json_files[0], encoding="utf-8") as fh:
+        overall = json.load(fh)["summary_stats"]["overall"]
+    assert overall["ERROR"] == 0, (
+        f"{overall['ERROR']}/{overall['TOTAL']} evaluations errored "
+        f"(error_rate={overall['error_rate']:.1f}%)."
+    )
 
 
 @pytest.mark.lseval
