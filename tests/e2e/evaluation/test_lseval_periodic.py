@@ -65,10 +65,6 @@ def _run_lseval(eval_data: Path, out_dir: Path) -> None:
 
     config["api"]["api_base"] = ols_url
 
-    token = _get_ols_token()
-    if token:
-        config["api"]["api_key"] = token
-
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".yaml", delete=False, dir=str(EVAL_DIR)
     ) as tmp:
@@ -76,6 +72,10 @@ def _run_lseval(eval_data: Path, out_dir: Path) -> None:
         tmp_config_path = tmp.name
 
     env = os.environ.copy()
+
+    token = _get_ols_token()
+    if token:
+        env["API_KEY"] = token
 
     try:
         result = subprocess.run(  # noqa: S603
