@@ -483,6 +483,7 @@ async def execute_tool_calls_stream(
 def enforce_tool_token_budget(
     tool_messages: list[ToolMessage],
     remaining_budget: int,
+    token_handler: TokenHandler,
 ) -> list[ToolMessage]:
     """Ensure combined tool outputs fit within the remaining token budget.
 
@@ -495,6 +496,7 @@ def enforce_tool_token_budget(
     Args:
         tool_messages: Tool result messages to enforce budget on.
         remaining_budget: Remaining token budget for tool outputs.
+        token_handler: Tokenizer to use for token counting and truncation.
 
     Returns:
         The same list of ToolMessages, with oversized ones truncated in place.
@@ -513,7 +515,6 @@ def enforce_tool_token_budget(
 
     # Tier 2: precise tokenization. The char estimate was ambiguous,
     # so tokenize each message to get exact counts.
-    token_handler = TokenHandler()
     token_lists = [
         token_handler.text_to_tokens(str(msg.content)) for msg in tool_messages
     ]
@@ -537,10 +538,24 @@ def enforce_tool_token_budget(
     if token_counts[longest_idx] // 2 >= excess:
         targets = [longest_idx]
         limits = [token_counts[longest_idx] - excess]
+        logger.warning(
+            "Truncating longest message [%d] from %d to %d tokens (excess %d)",
+            longest_idx,
+            token_counts[longest_idx],
+            limits[0],
+            excess,
+        )
     else:
         ratio = remaining_budget / total
         targets = list(range(len(token_counts)))
         limits = [max(1, int(token_counts[i] * ratio)) for i in targets]
+        logger.warning(
+            "Scaling all %d messages by %.2f (budget %d, total %d)",
+            len(targets),
+            ratio,
+            remaining_budget,
+            total,
+        )
 
     # Truncate targeted messages using pre-computed token lists (no
     # re-tokenization). Cut at the last newline to avoid mid-line splits.
@@ -554,12 +569,19 @@ def enforce_tool_token_budget(
         truncated_text = (
             raw[:cut].rstrip("\r") if cut > 0 else raw
         ) + _TRUNCATION_WARNING
+        token_counts[idx] = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(truncated_text)
+        )
         msg = tool_messages[idx]
         tool_messages[idx] = ToolMessage(
             content=truncated_text,
             status=msg.status,
             tool_call_id=msg.tool_call_id,
-            additional_kwargs={**msg.additional_kwargs, "truncated": True},
+            additional_kwargs={
+                **msg.additional_kwargs,
+                "truncated": True,
+                "token_count": token_counts[idx],
+            },
         )
 
     return tool_messages

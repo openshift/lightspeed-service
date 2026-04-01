@@ -37,6 +37,21 @@ class ReasoningSummary(StrEnum):
     DETAILED = "detailed"
 
 
+def validate_tool_round_cap_fraction_config(v: float) -> float:
+    """Validate ``tool_round_cap_fraction`` for ``OLSConfig``."""
+    if not (
+        constants.TOOL_ROUND_CAP_FRACTION_MIN
+        <= v
+        <= constants.TOOL_ROUND_CAP_FRACTION_MAX
+    ):
+        raise checks.InvalidConfigurationError(
+            f"tool_round_cap_fraction must be between "
+            f"{constants.TOOL_ROUND_CAP_FRACTION_MIN} and "
+            f"{constants.TOOL_ROUND_CAP_FRACTION_MAX}, got {v}"
+        )
+    return v
+
+
 class ModelParameters(BaseModel):
     """Model parameters."""
 
@@ -51,9 +66,13 @@ class ModelParameters(BaseModel):
     @classmethod
     def validate_tool_budget_ratio(cls, v: float) -> float:
         """Validate tool budget ratio is within bounds."""
-        if not 0.0 <= v <= 0.5:
+        if not (
+            constants.TOOL_BUDGET_RATIO_MIN <= v <= constants.TOOL_BUDGET_RATIO_MAX
+        ):
             raise checks.InvalidConfigurationError(
-                f"tool_budget_ratio must be between 0.0 and 0.5, got {v}"
+                f"tool_budget_ratio must be between "
+                f"{constants.TOOL_BUDGET_RATIO_MIN} and "
+                f"{constants.TOOL_BUDGET_RATIO_MAX}, got {v}"
             )
         return v
 
@@ -69,6 +88,8 @@ class ModelConfig(BaseModel):
 
     context_window_size: PositiveInt = constants.DEFAULT_CONTEXT_WINDOW_SIZE
     parameters: ModelParameters = ModelParameters()
+    # Set and validated against context_window_size in Config._compute_tool_budgets
+    # (max_tokens_for_response + max_tokens_for_tools must fit in the window).
     max_tokens_for_tools: int = 0
 
     options: Optional[dict[str, Any]] = None
@@ -103,16 +124,6 @@ class ModelConfig(BaseModel):
                     "key for model option must be string"
                 )
         return options
-
-    @model_validator(mode="after")
-    def validate_context_window_and_max_tokens(self) -> Self:
-        """Validate context window size against response token budget."""
-        if self.context_window_size <= self.parameters.max_tokens_for_response:  # type: ignore [operator]
-            raise checks.InvalidConfigurationError(
-                f"Context window size {self.context_window_size} must be greater than "
-                f"max_tokens_for_response ({self.parameters.max_tokens_for_response})"
-            )
-        return self
 
 
 class TLSConfig(BaseModel):
@@ -1114,6 +1125,8 @@ class OLSConfig(BaseModel):
 
     skills: Optional[SkillsConfig] = None
 
+    tool_round_cap_fraction: float = constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1171,6 +1184,17 @@ class OLSConfig(BaseModel):
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
             self.skills = SkillsConfig(**data.get("skills"))
+
+        raw_cap = data.get(
+            "tool_round_cap_fraction", constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
+        )
+        try:
+            cap = float(raw_cap)
+        except (TypeError, ValueError) as e:
+            raise checks.InvalidConfigurationError(
+                f"tool_round_cap_fraction must be a number, got {raw_cap!r}"
+            ) from e
+        self.tool_round_cap_fraction = validate_tool_round_cap_fraction_config(cap)
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
@@ -1243,9 +1267,7 @@ class Config(BaseModel):
 
         # Validate MCP servers now that auth config is available
         self._validate_mcp_servers()
-
-        if self.mcp_servers.servers:
-            self._compute_tool_budgets()
+        self._compute_tool_budgets()
 
         # Always initialize dev config, even if there's no config for it.
         self.dev_config = DevConfig(**data.get("dev_config", {}))
@@ -1290,12 +1312,16 @@ class Config(BaseModel):
         )
 
     def _compute_tool_budgets(self) -> None:
-        """Compute tool token budgets for all models when MCP servers are configured."""
+        """Set tool token budget per model and ensure the context window fits reserved tokens."""
+        has_mcp = bool(self.mcp_servers.servers)
         for provider in self.llm_providers.providers.values():
             for model in provider.models.values():
-                model.max_tokens_for_tools = int(
-                    model.context_window_size * model.parameters.tool_budget_ratio
-                )
+                if has_mcp:
+                    model.max_tokens_for_tools = int(
+                        model.context_window_size * model.parameters.tool_budget_ratio
+                    )
+                else:
+                    model.max_tokens_for_tools = 0
                 reserved = (
                     model.parameters.max_tokens_for_response
                     + model.max_tokens_for_tools

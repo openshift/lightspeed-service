@@ -19,6 +19,7 @@ from ols.src.tools.tools import (
     execute_tool_calls_stream,
     get_tool_by_name,
 )
+from ols.utils.token_handler import TokenHandler
 
 _LARGE_TOKEN_BUDGET = 100_000
 
@@ -624,13 +625,13 @@ def _make_tool_message(content: str, tool_call_id: str = "id") -> ToolMessage:
 
 def test_enforce_tool_token_budget_empty_list():
     """Test that an empty list is returned unchanged."""
-    assert enforce_tool_token_budget([], 100) == []
+    assert enforce_tool_token_budget([], 100, TokenHandler()) == []
 
 
 def test_enforce_tool_token_budget_under_budget():
     """Test that small messages pass through without truncation."""
     msgs = [_make_tool_message("short reply", "c1")]
-    result = enforce_tool_token_budget(msgs, 10000)
+    result = enforce_tool_token_budget(msgs, 10000, TokenHandler())
     assert len(result) == 1
     assert result[0].content == "short reply"
     assert result[0].additional_kwargs["truncated"] is False
@@ -644,7 +645,7 @@ def test_enforce_tool_token_budget_truncates_longest():
         _make_tool_message(long_content, "c_long"),
         _make_tool_message(short_content, "c_short"),
     ]
-    result = enforce_tool_token_budget(msgs, 2500)
+    result = enforce_tool_token_budget(msgs, 2500, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert "[OUTPUT TRUNCATED" in result[0].content
@@ -662,7 +663,7 @@ def test_enforce_tool_token_budget_proportional_truncation():
         _make_tool_message(content_a, "c_a"),
         _make_tool_message(content_b, "c_b"),
     ]
-    result = enforce_tool_token_budget(msgs, 20)
+    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
 
     assert result[0].additional_kwargs["truncated"] is True
     assert result[1].additional_kwargs["truncated"] is True
@@ -674,7 +675,7 @@ def test_enforce_tool_token_budget_preserves_metadata():
     """Test that tool_call_id and status are preserved after truncation."""
     msgs = [_make_tool_message("word " * 1000, "my_call_id")]
     msgs[0].status = "success"
-    result = enforce_tool_token_budget(msgs, 20)
+    result = enforce_tool_token_budget(msgs, 20, TokenHandler())
 
     assert result[0].tool_call_id == "my_call_id"
     assert result[0].status == "success"

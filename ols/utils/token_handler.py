@@ -1,6 +1,7 @@
 """Utility to handle tokens."""
 
 import logging
+from enum import Enum
 from math import ceil
 
 from langchain_core.messages import BaseMessage
@@ -14,9 +15,25 @@ from ols.constants import (
     RAG_SIMILARITY_CUTOFF,
     TOKEN_BUFFER_WEIGHT,
 )
-from ols.src.prompts.prompt_generator import format_retrieved_chunk
 
 logger = logging.getLogger(__name__)
+
+
+def format_retrieved_chunk(rag_content: str) -> str:
+    """Format a RAG document chunk with the standard prefix."""
+    return f"Document:\n{rag_content}"
+
+
+class TokenCategory(Enum):
+    """Named categories for token budget accounting."""
+
+    PROMPT = "prompt"
+    HISTORY = "history"
+    RAG = "rag"
+    SKILL = "skill"
+    TOOL_DEFINITIONS = "tool_definitions"
+    AI_ROUND = "ai_round"
+    TOOL_RESULT = "tool_result"
 
 
 class PromptTooLongError(Exception):
@@ -68,59 +85,9 @@ class TokenHandler:
         # We increase by certain percentage to nearest integer (ceil).
         return ceil(len(tokens) * TOKEN_BUFFER_WEIGHT)
 
-    def calculate_and_check_available_tokens(
-        self,
-        prompt: str,
-        context_window_size: int,
-        max_tokens_for_response: int,
-        max_tokens_for_tools: int = 0,
-    ) -> int:
-        """Get available tokens that can be used for prompt augmentation.
-
-        Args:
-            prompt: format prompt template to string before passing as arg
-            context_window_size: context window size of LLM
-            max_tokens_for_response: max tokens allowed for response (estimation)
-            max_tokens_for_tools: tokens reserved for tool outputs (only when MCP
-                servers are configured, default 0 means no reservation)
-
-        Returns:
-            available_tokens: int, tokens that can be used for augmentation.
-        """
-        logger.debug(
-            "Context window size: %d, Max generated tokens: %d, Reserved for tools: %d",
-            context_window_size,
-            max_tokens_for_response,
-            max_tokens_for_tools,
-        )
-
-        prompt_token_count = TokenHandler._get_token_count(self.text_to_tokens(prompt))
-        logger.debug("Prompt tokens: %d", prompt_token_count)
-
-        # The context_window_size is the maximum number of tokens that
-        # can be used for a "conversation" in the LLM model. This
-        # includes prompt AND response. Hence we need to subtract the
-        # prompt tokens, max tokens for response, and reserved tool tokens
-        # from the context window size.
-        available_tokens = (
-            context_window_size
-            - max_tokens_for_response
-            - max_tokens_for_tools
-            - prompt_token_count
-        )
-
-        if available_tokens < 0:
-            limit = context_window_size - max_tokens_for_response - max_tokens_for_tools
-            raise PromptTooLongError(
-                f"Prompt length {prompt_token_count} exceeds LLM "
-                f"available context window limit {limit} tokens"
-            )
-
-        return available_tokens
-
     def truncate_rag_context(
         self, retrieved_nodes: list[NodeWithScore], max_tokens: int = 500
-    ) -> tuple[list[RagChunk], int]:
+    ) -> list[RagChunk]:
         """Process retrieved node text and truncate if required.
 
         Args:
@@ -128,7 +95,7 @@ class TokenHandler:
             max_tokens: maximum tokens allowed for rag context
 
         Returns:
-            list of `RagChunk` objects, available tokens after context usage
+            List of `RagChunk` objects that fit within the token budget.
         """
         rag_chunks = []
         logger.info(
@@ -154,8 +121,7 @@ class TokenHandler:
                 )
                 break
 
-            node_text = node.get_text()
-            node_text = format_retrieved_chunk(node_text)
+            node_text = format_retrieved_chunk(node.get_text())
             tokens = self.text_to_tokens(node_text)
             tokens_count = TokenHandler._get_token_count(tokens)
             tokens_count += 1  # for new-line char
@@ -206,7 +172,7 @@ class TokenHandler:
         logger.info(
             "Final selection: %d documents chosen for RAG context", len(rag_chunks)
         )
-        return rag_chunks, max_tokens
+        return rag_chunks
 
     def limit_conversation_history(
         self, history: list[BaseMessage], limit: int = 0
@@ -231,3 +197,153 @@ class TokenHandler:
             index += 1
 
         return history, False
+
+    def calculate_and_check_available_tokens(
+        self,
+        prompt: str,
+        context_window_size: int,
+        max_tokens_for_response: int,
+        max_tokens_for_tools: int = 0,
+    ) -> int:
+        """Return tokens still available for context after the formatted prompt.
+
+        Raises:
+            PromptTooLongError: If the prompt alone exceeds the allowed budget.
+        """
+        prompt_tokens = TokenHandler._get_token_count(self.text_to_tokens(prompt))
+        context_limit = (
+            context_window_size - max_tokens_for_response - max_tokens_for_tools
+        )
+        if prompt_tokens > context_limit:
+            raise PromptTooLongError(
+                f"Prompt length {prompt_tokens} exceeds "
+                f"LLM available context window limit {context_limit} tokens"
+            )
+        return context_limit - prompt_tokens
+
+
+class TokenBudgetTracker:
+    """Per-request token budget accounting across the full context window.
+
+    Tracks every token allocation by category so that prompt construction,
+    tool-calling rounds, and AI responses all draw from one unified budget.
+    """
+
+    def __init__(
+        self,
+        token_handler: TokenHandler,
+        context_window_size: int,
+        max_response_tokens: int,
+        max_tool_tokens: int,
+        round_cap_fraction: float,
+    ) -> None:
+        """Initialize the tracker with the full context window parameters.
+
+        Args:
+            token_handler: Tokenizer used for all token counting.
+            context_window_size: Total context window of the LLM.
+            max_response_tokens: Tokens reserved for the LLM response.
+            max_tool_tokens: Tokens reserved for tool-related usage.
+            round_cap_fraction: Fraction of remaining tool budget available
+                per round (default DEFAULT_TOOL_ROUND_CAP_FRACTION).
+        """
+        self._token_handler = token_handler
+        self.context_window_size = context_window_size
+        self.max_response_tokens = max_response_tokens
+        self.max_tool_tokens = max_tool_tokens
+        self.round_cap_fraction = round_cap_fraction
+
+        self._usage: dict[TokenCategory, int] = dict.fromkeys(TokenCategory, 0)
+
+    @property
+    def token_handler(self) -> TokenHandler:
+        """The underlying tokenizer."""
+        return self._token_handler
+
+    def count_tokens(self, text: str) -> int:
+        """Count tokens in text using the underlying tokenizer."""
+        return TokenHandler._get_token_count(self._token_handler.text_to_tokens(text))
+
+    @property
+    def history_budget(self) -> int:
+        """Tokens available for history after prompt, RAG, and skill overhead."""
+        return (
+            self.prompt_budget
+            - self._usage[TokenCategory.PROMPT]
+            - self._usage[TokenCategory.RAG]
+            - self._usage[TokenCategory.SKILL]
+        )
+
+    def charge(self, category: TokenCategory, tokens: int) -> None:
+        """Add a token charge to the specified category.
+
+        Args:
+            category: Which budget category to charge.
+            tokens: Number of tokens to add.
+        """
+        self._usage[category] += tokens
+
+    def usage(self, category: TokenCategory) -> int:
+        """Return the current token usage for a category."""
+        return self._usage[category]
+
+    @property
+    def total_used(self) -> int:
+        """Total tokens used across all categories."""
+        return sum(self._usage.values())
+
+    @property
+    def prompt_budget(self) -> int:
+        """Tokens available for prompt content (system, history, RAG, skill)."""
+        return (
+            self.context_window_size - self.max_response_tokens - self.max_tool_tokens
+        )
+
+    @property
+    def remaining(self) -> int:
+        """Tokens remaining in the full context window."""
+        return self.context_window_size - self.max_response_tokens - self.total_used
+
+    @property
+    def prompt_budget_remaining(self) -> int:
+        """Tokens still available within the prompt budget."""
+        return self.prompt_budget - self.total_used
+
+    @property
+    def tool_budget_used(self) -> int:
+        """Tokens consumed within the tool budget."""
+        return (
+            self._usage[TokenCategory.TOOL_DEFINITIONS]
+            + self._usage[TokenCategory.AI_ROUND]
+            + self._usage[TokenCategory.TOOL_RESULT]
+        )
+
+    @property
+    def tool_budget_remaining(self) -> int:
+        """Tokens still available within the tool budget."""
+        return max(0, self.max_tool_tokens - self.tool_budget_used)
+
+    @property
+    def tools_round_budget(self) -> int:
+        """Budget available for the current tool-calling round.
+
+        Caps at ``round_cap_fraction`` of the remaining tool budget so that
+        no single round can exhaust the entire tool allocation.
+        """
+        return int(self.tool_budget_remaining * self.round_cap_fraction)
+
+    def summary(self, round_index: int) -> str:
+        """Return a per-round breakdown of token usage."""
+        return (
+            f"Token budget after round {round_index}: "
+            f"prompt={self._usage[TokenCategory.PROMPT]} "
+            f"history={self._usage[TokenCategory.HISTORY]} "
+            f"rag={self._usage[TokenCategory.RAG]} "
+            f"skill={self._usage[TokenCategory.SKILL]} "
+            f"tool_defs={self._usage[TokenCategory.TOOL_DEFINITIONS]} "
+            f"ai_rounds={self._usage[TokenCategory.AI_ROUND]} "
+            f"tool_results={self._usage[TokenCategory.TOOL_RESULT]} | "
+            f"total_used={self.total_used}/{self.context_window_size} "
+            f"remaining={self.remaining} "
+            f"tool_remaining={self.tool_budget_remaining}/{self.max_tool_tokens}"
+        )

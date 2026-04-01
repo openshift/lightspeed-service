@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from typing import ClassVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -17,6 +17,7 @@ from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    DEFAULT_TOOL_ROUND_CAP_FRACTION,
     QueryMode,
 )
 
@@ -28,12 +29,15 @@ from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
     RoundLLMResult,
-    ToolTokenUsage,
 )
 from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
-from ols.utils.token_handler import TokenHandler  # noqa: E402
+from ols.utils.token_handler import (  # noqa: E402
+    TokenBudgetTracker,
+    TokenCategory,
+    TokenHandler,
+)
 from tests import constants  # noqa: E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
     mock_langchain_interface,
@@ -406,7 +410,8 @@ def test_tool_calling_tool_execution(caplog):
         ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
         patch(
@@ -637,7 +642,13 @@ async def test_collect_round_llm_chunks_targeted_paths():
 async def test_process_tool_calls_for_round_streams_approval_and_result():
     """Test _process_tool_calls_for_round streams approval + tool_result and updates state."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
+    summarizer._tracker = TokenBudgetTracker(
+        token_handler=TokenHandler(),
+        context_window_size=summarizer.model_config.context_window_size,
+        max_response_tokens=summarizer.model_config.parameters.max_tokens_for_response,
+        max_tool_tokens=1000,
+        round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+    )
     messages: list = []
 
     async def _fake_execute(*args, **kwargs):
@@ -680,9 +691,6 @@ async def test_process_tool_calls_for_round_streams_approval_and_result():
                 all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -693,7 +701,7 @@ async def test_process_tool_calls_for_round_streams_approval_and_result():
     ]
     assert streamed[1].data["approval_id"] == "aid-1"
     assert streamed[2].data["type"] == "tool_result"
-    assert token_usage.used > 0
+    assert summarizer._tracker.usage(TokenCategory.TOOL_RESULT) > 0
     assert len(messages) == 2
 
 
@@ -846,7 +854,6 @@ def test_resolve_tool_call_definitions_none_args_normalized_to_empty_dict():
 async def test_process_tool_calls_for_round_skipped_only_without_execution():
     """Test skipped-only path emits tool_result without calling executor."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
     messages: list = []
     tool = mock_tools_map[0]
     tool_call_chunks = [
@@ -870,9 +877,6 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
                 all_tools_dict={tool.name: tool},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -889,7 +893,13 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
 async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(caplog):
     """Test unexpected tool execution events are ignored with warning."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
+    summarizer._tracker = TokenBudgetTracker(
+        token_handler=TokenHandler(),
+        context_window_size=summarizer.model_config.context_window_size,
+        max_response_tokens=summarizer.model_config.parameters.max_tokens_for_response,
+        max_tool_tokens=1000,
+        round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+    )
     messages: list = []
     caplog.set_level(logging.WARNING)
 
@@ -929,9 +939,6 @@ async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(c
                 all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -959,7 +966,6 @@ def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(capl
         tool_call_message=message,
         tool_name=tool.name,
         tool=tool,
-        token_handler=TokenHandler(),
         round_index=1,
     )
 

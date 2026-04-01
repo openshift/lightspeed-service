@@ -5,7 +5,6 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass
 from typing import Any, AsyncGenerator, Coroutine, NamedTuple, Optional, TypeAlias
 
 from langchain_core.globals import set_debug
@@ -31,19 +30,17 @@ from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
-from ols.utils.token_handler import TokenHandler
+from ols.utils.token_handler import (
+    PromptTooLongError,
+    TokenBudgetTracker,
+    TokenCategory,
+    TokenHandler,
+)
 
 logger = logging.getLogger(__name__)
 
 MIN_TOOL_EXECUTION_TOKENS = 100
 ToolCallDefinition: TypeAlias = tuple[str, dict[str, object], StructuredTool]
-
-
-@dataclass(slots=True)
-class ToolTokenUsage:
-    """Mutable holder for cumulative tool-token usage across helper boundaries."""
-
-    used: int
 
 
 class RoundLLMResult(NamedTuple):
@@ -154,6 +151,14 @@ class DocsSummarizer(QueryHelper):
             logger.debug("No MCP servers provided, tool calling is disabled")
             self._tool_calling_enabled = False
 
+        self._tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=self.model_config.context_window_size,
+            max_response_tokens=self.model_config.parameters.max_tokens_for_response,
+            max_tool_tokens=self.model_config.max_tokens_for_tools,
+            round_cap_fraction=config.ols_config.tool_round_cap_fraction,
+        )
+
         set_debug(self.verbose)
 
     def _prepare_llm(self) -> None:
@@ -173,19 +178,16 @@ class DocsSummarizer(QueryHelper):
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
-    ) -> tuple[TokenHandler, list[RagChunk], int, int]:
-        """Prepare token budget and RAG context for prompt construction.
+    ) -> list[RagChunk]:
+        """Prepare RAG context for prompt construction.
 
         Args:
             query: The query to be answered.
             rag_retriever: The retriever to get RAG data/context.
 
         Returns:
-            A tuple containing token handler, RAG chunks, available token budget,
-            and max tokens reserved for tools.
+            RAG chunks truncated to fit the prompt budget.
         """
-        token_handler = TokenHandler()
-
         temp_prompt, temp_prompt_input = GeneratePrompt(
             query,
             ["sample"],
@@ -195,15 +197,16 @@ class DocsSummarizer(QueryHelper):
             self._mode,
             self._cluster_version,
         ).generate_prompt(self.model)
-        max_tokens_for_tools = (
-            self.model_config.max_tokens_for_tools if self.mcp_servers else 0
+        prompt_tokens = self._tracker.count_tokens(
+            temp_prompt.format(**temp_prompt_input)
         )
-        available_tokens = token_handler.calculate_and_check_available_tokens(
-            temp_prompt.format(**temp_prompt_input),
-            self.model_config.context_window_size,
-            self.model_config.parameters.max_tokens_for_response,
-            max_tokens_for_tools,
-        )
+        if prompt_tokens > self._tracker.prompt_budget:
+            raise PromptTooLongError(
+                f"Prompt length {prompt_tokens} exceeds "
+                f"LLM available context window limit "
+                f"{self._tracker.prompt_budget} tokens"
+            )
+        self._tracker.charge(TokenCategory.PROMPT, prompt_tokens)
 
         if rag_retriever:
             retrieved_nodes = rag_retriever.retrieve(query)
@@ -219,32 +222,32 @@ class DocsSummarizer(QueryHelper):
                     node.get_score(raise_error=False),
                 )
 
-            rag_chunks, available_tokens = token_handler.truncate_rag_context(
-                retrieved_nodes, available_tokens
+            rag_chunks = self._tracker.token_handler.truncate_rag_context(
+                retrieved_nodes, self._tracker.history_budget
             )
+            rag_tokens = sum(
+                self._tracker.count_tokens(chunk.text) for chunk in rag_chunks
+            )
+            self._tracker.charge(TokenCategory.RAG, rag_tokens)
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
             rag_chunks = []
 
-        return token_handler, rag_chunks, available_tokens, max_tokens_for_tools
+        return rag_chunks
 
     def _build_final_prompt(
         self,
         query: str,
         history: list[BaseMessage],
         rag_chunks: list[RagChunk],
-        token_handler: TokenHandler,
-        max_tokens_for_tools: int,
         skill_content: Optional[str] = None,
     ) -> tuple[ChatPromptTemplate, dict[str, str]]:
-        """Build the final LLM prompt from collected context.
+        """Build the final LLM prompt and charge the token budget.
 
         Args:
             query: The user query.
             history: Truncated conversation history.
             rag_chunks: Retrieved RAG chunks.
-            token_handler: Token handler for budget checking.
-            max_tokens_for_tools: Token budget reserved for tools.
             skill_content: Optional skill body to inject into the prompt.
 
         Returns:
@@ -265,12 +268,12 @@ class DocsSummarizer(QueryHelper):
             skill_content=skill_content,
         ).generate_prompt(self.model)
 
-        token_handler.calculate_and_check_available_tokens(
-            final_prompt.format(**llm_input_values),
-            self.model_config.context_window_size,
-            self.model_config.parameters.max_tokens_for_response,
-            max_tokens_for_tools,
-        )
+        self._log_tool_loop_iteration(0, self._get_max_iterations(), "prompt_built")
+        if self._tracker.prompt_budget_remaining < 0:
+            raise PromptTooLongError(
+                f"Prompt ({self._tracker.total_used} tokens) exceeds "
+                f"budget ({self._tracker.prompt_budget} tokens)"
+            )
 
         return final_prompt, llm_input_values
 
@@ -470,6 +473,7 @@ class DocsSummarizer(QueryHelper):
         all_chunks: list[AIMessageChunk] = []
         streamed_chunks: list[StreamedChunk] = []
         chunk_counter = 0
+        early_stop_result: Optional[RoundLLMResult] = None
         try:
             async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT):
                 async for chunk in self._invoke_llm(
@@ -493,13 +497,17 @@ class DocsSummarizer(QueryHelper):
                         )
                         break
 
+                    if early_stop_result is not None:
+                        continue
+
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                        return RoundLLMResult(
+                        early_stop_result = RoundLLMResult(
                             tool_call_chunks,
                             all_chunks,
                             streamed_chunks,
                             should_stop=True,
                         )
+                        continue
 
                     all_chunks.append(chunk)
 
@@ -541,6 +549,9 @@ class DocsSummarizer(QueryHelper):
                 tool_call_chunks, all_chunks, streamed_chunks, should_stop=True
             )
 
+        if early_stop_result is not None:
+            return early_stop_result
+
         return RoundLLMResult(
             tool_call_chunks, all_chunks, streamed_chunks, should_stop=False
         )
@@ -572,7 +583,6 @@ class DocsSummarizer(QueryHelper):
         tool_call_message: ToolMessage,
         tool_name: str,
         tool: Optional[StructuredTool],
-        token_handler: TokenHandler,
         round_index: int,
     ) -> tuple[int, StreamedChunk]:
         """Convert a ToolMessage into a streamed tool_result chunk.
@@ -580,8 +590,9 @@ class DocsSummarizer(QueryHelper):
         Returns:
             A tuple of (token_count_for_tool_content, streamed_tool_result_chunk).
         """
-        content_tokens = token_handler.text_to_tokens(str(tool_call_message.content))
-        content_token_count = TokenHandler._get_token_count(content_tokens)
+        content_token_count = tool_call_message.additional_kwargs.get(
+            "token_count"
+        ) or self._tracker.count_tokens(str(tool_call_message.content))
 
         was_truncated = tool_call_message.additional_kwargs.get("truncated", False)
         base_status = tool_call_message.status
@@ -636,13 +647,8 @@ class DocsSummarizer(QueryHelper):
         all_tools_dict: dict[str, StructuredTool],
         duplicate_tool_names: set[str],
         messages: ChatPromptTemplate,
-        token_handler: TokenHandler,
-        tool_token_usage: ToolTokenUsage,
-        max_tokens_for_tools: int,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Resolve, execute, and stream one round of tool calls."""
-        tool_tokens_used = tool_token_usage.used
-
         # Finalize streamed chunks into complete tool calls.
         tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
         tool_call_definitions, skipped_tool_messages = (
@@ -656,7 +662,6 @@ class DocsSummarizer(QueryHelper):
             logger.warning(
                 "No executable tools resolved from tool calls in round %s", round_index
             )
-            tool_token_usage.used = tool_tokens_used
             return
 
         # Accumulate the full AI message (reasoning + tool calls) so reasoning
@@ -677,17 +682,18 @@ class DocsSummarizer(QueryHelper):
             )
         messages.append(ai_tool_call_message)
 
-        # Charge token budget for the assistant tool-call message itself, so
-        # subsequent per-tool limits are computed from the remaining budget.
+        # Charge the AI message tokens (reasoning + tool-call JSON) before
+        # computing the round budget so the 20% reserve is measured against
+        # the true remaining tool budget.
         ai_content_text = (
             json.dumps(ai_tool_call_message.content)
             if isinstance(ai_tool_call_message.content, list)
             else str(ai_tool_call_message.content)
         )
-        ai_message_tokens = TokenHandler._get_token_count(
-            token_handler.text_to_tokens(ai_content_text + json.dumps(tool_calls))
+        ai_message_tokens = self._tracker.count_tokens(
+            ai_content_text + json.dumps(tool_calls)
         )
-        tool_tokens_used += ai_message_tokens
+        self._tracker.charge(TokenCategory.AI_ROUND, ai_message_tokens)
 
         # Build a mapping from tool_call_id -> tool_name for result enrichment.
         tool_id_to_name: dict[str, str] = {
@@ -714,34 +720,26 @@ class DocsSummarizer(QueryHelper):
             )
             yield StreamedChunk(type=StreamChunkType.TOOL_CALL, data=enriched)
 
-        remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
-        logger.debug(
-            "Tool budget: used=%d, remaining=%d",
-            tool_tokens_used,
-            remaining_tool_budget,
-        )
-
         tool_calls_messages: list[ToolMessage] = []
+        remaining = self._tracker.tools_round_budget
         # Execute resolved tool calls and consume streamed execution events
         # (approval prompts + final tool results).
         if tool_call_definitions:
-            if remaining_tool_budget < MIN_TOOL_EXECUTION_TOKENS:
+            if remaining < MIN_TOOL_EXECUTION_TOKENS:
                 logger.warning(
                     "Skipping %d tool call(s) in round %s due to low remaining tool budget "
                     "(remaining=%d, minimum_required=%d)",
                     len(tool_call_definitions),
                     round_index,
-                    remaining_tool_budget,
+                    remaining,
                     MIN_TOOL_EXECUTION_TOKENS,
                 )
-                # Emit synthetic tool results for skipped executions so client/UI
-                # and conversation state remain consistent (one call -> one outcome).
                 for tool_id, _tool_args, tool in tool_call_definitions:
                     tool_calls_messages.append(
                         ToolMessage(
                             content=(
                                 f"Tool '{tool.name}' call skipped: remaining tool token budget "
-                                f"({remaining_tool_budget}) is below minimum required "
+                                f"({remaining}) is below minimum required "
                                 f"({MIN_TOOL_EXECUTION_TOKENS}). "
                                 "Do not retry this exact tool call."
                             ),
@@ -752,7 +750,7 @@ class DocsSummarizer(QueryHelper):
             else:
                 async for execution_event in execute_tool_calls_stream(
                     tool_call_definitions,
-                    remaining_tool_budget,
+                    remaining,
                     streaming=self.streaming,
                 ):
                     match execution_event.event:
@@ -769,12 +767,10 @@ class DocsSummarizer(QueryHelper):
                                 execution_event,
                             )
 
-        # Merge synthetic skipped outcomes with real execution outcomes and
-        # append all of them to conversation state for the next LLM turn.
         all_tool_messages = skipped_tool_messages + tool_calls_messages
-        if remaining_tool_budget > 0:
+        if remaining > 0:
             all_tool_messages = enforce_tool_token_budget(
-                all_tool_messages, remaining_tool_budget
+                all_tool_messages, remaining, self._tracker.token_handler
             )
         messages.extend(all_tool_messages)
 
@@ -785,14 +781,23 @@ class DocsSummarizer(QueryHelper):
                     tool_call_message=tool_call_message,
                     tool_name=tool_name,
                     tool=all_tools_dict.get(tool_name),
-                    token_handler=token_handler,
                     round_index=round_index,
                 )
             )
-            tool_tokens_used += content_token_count
+            self._tracker.charge(TokenCategory.TOOL_RESULT, content_token_count)
             yield tool_result_chunk
 
-        tool_token_usage.used = tool_tokens_used
+    def _log_tool_loop_iteration(
+        self, round_index: int, max_rounds: int, outcome: str
+    ) -> None:
+        """Log token budget after one tool-loop LLM iteration (and optional tools)."""
+        logger.info(
+            "Tool loop iteration %s/%s outcome=%s. %s",
+            round_index,
+            max_rounds,
+            outcome,
+            self._tracker.summary(round_index),
+        )
 
     async def iterate_with_tools(  # noqa: C901  # pylint: disable=R0912
         self,
@@ -831,12 +836,6 @@ class DocsSummarizer(QueryHelper):
                 sorted(duplicate_tool_names),
             )
 
-        # Track cumulative token usage for tool outputs
-        tool_tokens_used = 0
-        max_tokens_for_tools = self.model_config.max_tokens_for_tools
-        token_handler = TokenHandler()
-
-        # Account for tool definitions tokens (schemas sent to LLM)
         if all_mcp_tools:
             tool_definitions_text = json.dumps(
                 [
@@ -844,10 +843,10 @@ class DocsSummarizer(QueryHelper):
                     for t in all_mcp_tools
                 ]
             )
-            tool_definitions_tokens = TokenHandler._get_token_count(
-                token_handler.text_to_tokens(tool_definitions_text)
+            tool_definitions_tokens = self._tracker.count_tokens(tool_definitions_text)
+            self._tracker.charge(
+                TokenCategory.TOOL_DEFINITIONS, tool_definitions_tokens
             )
-            tool_tokens_used += tool_definitions_tokens
             logger.debug("Tool definitions consume %d tokens", tool_definitions_tokens)
 
         # Tool calling in a loop
@@ -869,46 +868,41 @@ class DocsSummarizer(QueryHelper):
             for streamed_chunk in round_result.streamed_chunks:
                 yield streamed_chunk
             if round_result.should_stop:
+                self._log_tool_loop_iteration(i, max_rounds, "llm_stream_stop")
                 return
 
             # exit if this was the final round
             if is_final_round:
+                self._log_tool_loop_iteration(i, max_rounds, "final_round")
                 break
 
             if not round_result.tool_call_chunks:
+                self._log_tool_loop_iteration(
+                    i, max_rounds, "model_finished_without_tools"
+                )
                 break
 
-            # tool calling part
-            if round_result.tool_call_chunks:
-                # Phase 2: resolve and execute tool calls for this round.
-                tool_token_usage = ToolTokenUsage(used=tool_tokens_used)
-                # No outer timeout here — each MCP server enforces its own
-                # configured timeout at the transport layer.
-                try:
-                    async for streamed_chunk in self._process_tool_calls_for_round(
-                        round_index=i,
-                        tool_call_chunks=round_result.tool_call_chunks,
-                        all_chunks=round_result.all_chunks,
-                        all_tools_dict=all_tools_dict,
-                        duplicate_tool_names=duplicate_tool_names,
-                        messages=messages,
-                        token_handler=token_handler,
-                        tool_token_usage=tool_token_usage,
-                        max_tokens_for_tools=max_tokens_for_tools,
-                    ):
-                        yield streamed_chunk
-                except Exception:
-                    logger.exception("Error executing tool calls in round %s", i)
-                    yield StreamedChunk(
-                        type=StreamChunkType.TEXT,
-                        text=(
-                            "I could not complete this request. " "Please try again."
-                        ),
-                    )
-                    return
-                tool_tokens_used = tool_token_usage.used
+            try:
+                async for streamed_chunk in self._process_tool_calls_for_round(
+                    round_index=i,
+                    tool_call_chunks=round_result.tool_call_chunks,
+                    all_chunks=round_result.all_chunks,
+                    all_tools_dict=all_tools_dict,
+                    duplicate_tool_names=duplicate_tool_names,
+                    messages=messages,
+                ):
+                    yield streamed_chunk
+            except Exception:
+                self._log_tool_loop_iteration(i, max_rounds, "tool_execution_failed")
+                logger.exception("Error executing tool calls in round %s", i)
+                yield StreamedChunk(
+                    type=StreamChunkType.TEXT,
+                    text="I could not complete this request. Please try again.",
+                )
+                return
+            self._log_tool_loop_iteration(i, max_rounds, "after_tool_execution")
 
-    async def generate_response(
+    async def generate_response(  # noqa: C901
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
@@ -928,25 +922,7 @@ class DocsSummarizer(QueryHelper):
         Yields:
             StreamedChunk objects representing parts of the response
         """
-        token_handler, rag_chunks, available_tokens, max_tokens_for_tools = (
-            await self._prepare_prompt_context(query, rag_retriever)
-        )
-        history: list[BaseMessage] = []
-        truncated = False
-        async for item in prepare_history(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            skip_user_id_check=skip_user_id_check,
-            available_tokens=available_tokens,
-            provider=self.provider,
-            model=self.model,
-            bare_llm=self.bare_llm,
-            token_handler=token_handler,
-        ):
-            if isinstance(item, StreamedChunk):
-                yield item
-            else:
-                history, truncated = item
+        rag_chunks = await self._prepare_prompt_context(query, rag_retriever)
 
         skill_content: Optional[str] = None
         skills_rag = config.skills_rag
@@ -962,15 +938,14 @@ class DocsSummarizer(QueryHelper):
                     )
                     skill = None
             if skill is not None:
-                skill_tokens = TokenHandler._get_token_count(
-                    token_handler.text_to_tokens(skill_content)
-                )
-                if skill_tokens > available_tokens * 0.8:
+                skill_tokens = self._tracker.count_tokens(skill_content)
+                available_for_skill = self._tracker.history_budget
+                if skill_tokens > available_for_skill * 0.8:
                     logger.warning(
                         "Skill '%s' requires %d tokens but only %d available; skipping",
                         skill.name,
                         skill_tokens,
-                        available_tokens,
+                        available_for_skill,
                     )
                     skill_content = None
                     yield StreamedChunk(
@@ -983,12 +958,13 @@ class DocsSummarizer(QueryHelper):
                         },
                     )
                 else:
-                    if skill_tokens > available_tokens * 0.5:
+                    self._tracker.charge(TokenCategory.SKILL, skill_tokens)
+                    if skill_tokens > available_for_skill * 0.5:
                         logger.warning(
                             "Skill '%s' uses %d tokens (%.0f%% of available budget)",
                             skill.name,
                             skill_tokens,
-                            skill_tokens / available_tokens * 100,
+                            skill_tokens / available_for_skill * 100,
                         )
                     yield StreamedChunk(
                         type=StreamChunkType.SKILL_SELECTED,
@@ -998,12 +974,35 @@ class DocsSummarizer(QueryHelper):
                         },
                     )
 
+        history: list[BaseMessage] = []
+        truncated = False
+        available_tokens = self._tracker.history_budget
+        async for item in prepare_history(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            skip_user_id_check=skip_user_id_check,
+            available_tokens=available_tokens,
+            provider=self.provider,
+            model=self.model,
+            bare_llm=self.bare_llm,
+            token_handler=self._tracker.token_handler,
+        ):
+            if isinstance(item, StreamedChunk):
+                yield item
+            else:
+                history, truncated = item
+
+        for msg in history:
+            if isinstance(msg.content, str):
+                self._tracker.charge(
+                    TokenCategory.HISTORY,
+                    self._tracker.count_tokens(msg.content),
+                )
+
         final_prompt, llm_input_values = self._build_final_prompt(
             query=query,
             history=history,
             rag_chunks=rag_chunks,
-            token_handler=token_handler,
-            max_tokens_for_tools=max_tokens_for_tools,
             skill_content=skill_content,
         )
 
