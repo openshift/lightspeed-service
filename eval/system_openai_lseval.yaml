@@ -60,7 +60,9 @@ visualization:
   figsize: [12, 8]
   dpi: 300
   enabled_graphs:
+    - "pass_rates"
     - "score_distribution"
+    - "conversation_heatmap"
     - "status_breakdown"
 
 # Environment Variables
