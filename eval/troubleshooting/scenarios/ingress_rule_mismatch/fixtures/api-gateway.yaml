@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-core
+  labels:
+    purpose: eval-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: platform-core
+  labels:
+    app: api-gateway
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        tier: backend
+    spec:
+      containers:
+      - name: http-backend
+        image: nginxinc/nginx-unprivileged:alpine
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "15m"
+            memory: "48Mi"
+          limits:
+            cpu: "100m"
+            memory: "96Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-svc
+  namespace: platform-core
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-api-gateway-ingress
+  namespace: platform-core
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: backend
+    ports:
+    - protocol: TCP
+      port: 8080

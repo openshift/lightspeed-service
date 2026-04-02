@@ -1,0 +1,223 @@
+# --- envvar_missing: Crashloop detection ---
+- conversation_group_id: envvar_missing
+  tag: envvar_missing
+  description: "Crashloop detection - DEPLOY_ENV environment variable undefined"
+
+  turns:
+    - turn_id: envvar_missing
+      query: "What is the issue with order-fulfillment-daemon?"
+      expected_response: "The DEPLOY_ENV environment variable is undefined or missing"
+      verify_script: scenarios/envvar_missing/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/envvar_missing/setup.sh
+  cleanup_script: scenarios/envvar_missing/cleanup.sh
+
+# --- batch_failure: Job crash detection ---
+- conversation_group_id: batch_failure
+  tag: batch_failure
+  description: "Job crash detection - inventory-sync-validator cannot connect to database"
+
+  turns:
+    - turn_id: batch_failure
+      query: "What is the issue with job inventory-sync-validator in namespace catalog-mgmt"
+      expected_response: "The inventory-sync-validator job repeatedly fails to connect to the database at prod-db:3333"
+      verify_script: scenarios/batch_failure/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/batch_failure/setup.sh
+  cleanup_script: scenarios/batch_failure/cleanup.sh
+
+# --- storage_binding: PVC misconfiguration detection ---
+- conversation_group_id: storage_binding
+  tag: storage_binding
+  description: "PVC misconfiguration detection - memcached PersistentVolumeClaim provisioning failure"
+
+  turns:
+    - turn_id: storage_binding
+      query: "What is the issue with memcached?"
+      expected_response: "The PersistentVolumeClaim (PVC) is misconfigured"
+      verify_script: scenarios/storage_binding/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/storage_binding/setup.sh
+  cleanup_script: scenarios/storage_binding/cleanup.sh
+
+# --- namespace_pod_count: Exact namespace matching ---
+- conversation_group_id: namespace_pod_count
+  tag: namespace_pod_count
+  description: "Exact namespace matching - count pods in fleet-alpha without including fleet-alpha1"
+
+  turns:
+    - turn_id: namespace_pod_count
+      query: "How many pods are running in the fleet-alpha namespace?"
+      expected_response: "There are 6 pods running in the fleet-alpha namespace (not including pods from fleet-alpha1)"
+      verify_script: scenarios/namespace_pod_count/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/namespace_pod_count/setup.sh
+  cleanup_script: scenarios/namespace_pod_count/cleanup.sh
+
+# --- scheduled_outage_detection: Time window anomaly ---
+- conversation_group_id: scheduled_outage_detection
+  tag: scheduled_outage_detection
+  description: "Time window anomaly detection - report-generator API connection failures"
+
+  turns:
+    - turn_id: scheduled_outage
+      query: "Were there issues with the report-generator pod in analytics-platform?"
+      expected_response: "Report generator pod experienced temporary issues between when it could not connect to an external API possibly due to a maintenance window"
+      verify_script: scenarios/scheduled_outage_detection/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/scheduled_outage_detection/setup.sh
+  cleanup_script: scenarios/scheduled_outage_detection/cleanup.sh
+
+# --- periodic_failure_window: Time window anomaly with time requirement ---
+- conversation_group_id: periodic_failure_window
+  tag: periodic_failure_window
+  description: "Time window anomaly detection - batch-processor with specific time window required"
+
+  turns:
+    - turn_id: periodic_failure
+      query: "Were there issues with the batch-processor pod in data-pipeline?"
+      expected_response: "Batch processor pod experienced issues between 03:00-03:05 when it could not connect to an external API possibly due to a maintenance window. Answer MUST include the time window of the issue (03:00-03:05)."
+      verify_script: scenarios/periodic_failure_window/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/periodic_failure_window/setup.sh
+  cleanup_script: scenarios/periodic_failure_window/cleanup.sh
+
+# --- config_drift_analysis: Log context analysis ---
+- conversation_group_id: config_drift_analysis
+  tag: config_drift_analysis
+  description: "Log context analysis - connection refused errors caused by config change"
+
+  turns:
+    - turn_id: config_drift
+      query: "What is causing connection refused errors in gateway-proxy in namespace ingress-layer?"
+      expected_response: "The first Connection refused errors started after a config reload that loaded staging database settings in production"
+      verify_script: scenarios/config_drift_analysis/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/config_drift_analysis/setup.sh
+  cleanup_script: scenarios/config_drift_analysis/cleanup.sh
+
+# --- readiness_probe_diagnosis: Pod naming ambiguity ---
+- conversation_group_id: readiness_probe_diagnosis
+  tag: readiness_probe_diagnosis
+  description: "Pod naming ambiguity - pod named catalog-index-service should not be confused with a Kubernetes Service"
+
+  turns:
+    - turn_id: readiness_probe
+      query: "What is the issue with catalog-index-service"
+      expected_response: "The catalog-index-service pod is not ready due to a failing readiness probe"
+      verify_script: scenarios/readiness_probe_diagnosis/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/readiness_probe_diagnosis/setup.sh
+  cleanup_script: scenarios/readiness_probe_diagnosis/cleanup.sh
+
+# --- ingress_rule_mismatch: Network policy diagnosis ---
+- conversation_group_id: ingress_rule_mismatch
+  tag: ingress_rule_mismatch
+  description: "Network policy diagnosis - web-portal timeouts due to misconfigured NetworkPolicy ingress rules"
+
+  turns:
+    - turn_id: ingress_rule
+      query: "Why is the web-portal getting timeouts connecting to api-gateway in namespace platform-core?"
+      expected_response: "Web-portal getting timeouts because NetworkPolicy on api-gateway only allows ingress from pods with tier backend label not frontend"
+      verify_script: scenarios/ingress_rule_mismatch/verify.sh
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: scenarios/ingress_rule_mismatch/setup.sh
+  cleanup_script: scenarios/ingress_rule_mismatch/cleanup.sh
+
+# --- oom: OOMKilled diagnosis ---
+- conversation_group_id: OOM
+  tag: oom
+
+  turns:
+    - turn_id: Investigate OOM
+      query: Why awesome-application is in CrashLoopBackOff?
+      contexts:
+        - "The awesome-application is in CrashLoopBackOff due to OOM kill"
+        - "The awesome-application is in out of memory due a memory leakage in the deployment command"
+        - "The responses should not include hints or suggestions to the user on what command to run and how. \
+          The preferred response, the ones that should get a better score, are the ones which points out an issue, and
+          possibly also a solution to address that"
+      expected_response: |
+        Root cause: the app container is being OOMKilled due to a deliberate memory leak in the pod command, while the container has a 60Mi memory limit.
+        Deployment awesome-application runs Python that appends ~1MB/sec forever.
+
+      turn_metrics:
+        - "custom:answer_correctness"
+        - "geval:generic_troubleshooting_experience"
+        - "geval:k8s_oom_root_cause_analysis"
+  setup_script: scenarios/oom/setup.sh
+  cleanup_script: scenarios/oom/cleanup.sh
+
+  # --- networkpolicy: Network policy blocking frontend-backend traffic ---
+- conversation_group_id: Network Policy Issue
+  tag: wrong_networkpolicy
+
+  conversation_metrics:
+    - "geval:troubleshooting_continuity"
+    - "deepeval:conversation_completeness"
+    - "deepeval:conversation_relevancy"
+    - "deepeval:knowledge_retention"
+
+  turns:
+    - turn_id: Investigate the status of frontend application
+      query: What is the status of the frontend application
+      contexts:
+        - "Frontend pod logs show repeated 'ERROR: Connection timeout to backend-service!' and wget timeouts."
+        - "TCP checks to backend pod IP and backend service IP both time out"
+      expected_response: |
+        Frontend application is up and running, logs show errors about reaching the backend-service.
+      turn_metrics:
+        - "custom:answer_correctness"
+        - "geval:generic_troubleshooting_experience"
+
+    - turn_id: Why frontend is failing
+      query: Can you spot the root cause?
+      contexts:
+        - "backend-service Endpoints and EndpointSlice are correct and point to the backend pod."
+        - "backend pod is running and healthy, no errors in logs."
+        - "NetworkPolicy backend-network-policy only allows ingress to backend pods from other pods with label tier=backend, but frontend has tier=frontend."
+      expected_response: |
+        The backend-network-policy block ingress from pods with tier=frontend or app=frontend
+      turn_metrics:
+        - "custom:answer_correctness"
+        - "geval:generic_troubleshooting_experience"
+
+    - turn_id: Propose a fix for NetworkPolicy
+      query: "How can I modify the network policy to allow the frontend to communicate with the backend?"
+      contexts:
+        - "The current NetworkPolicy 'backend-network-policy' uses a podSelector with matchLabels: tier: backend."
+        - "The ingress rule currently only allows 'from' pods with label 'tier: backend'."
+        - "The frontend pods are confirmed to have the label 'tier: frontend'."
+      expected_response: |
+        You need to update the 'backend-network-policy' ingress rules.
+        Add a new item to the 'from' selector to include pods with the label 'tier: frontend'.
+        Example:
+        ingress:
+        - from:
+          - podSelector:
+              matchLabels:
+                tier: frontend
+      turn_metrics:
+        - "custom:answer_correctness"
+        - "geval:generic_troubleshooting_experience"
+
+  setup_script: scenarios/wrong_networkpolicy/setup.sh
+  cleanup_script: scenarios/wrong_networkpolicy/cleanup.sh
