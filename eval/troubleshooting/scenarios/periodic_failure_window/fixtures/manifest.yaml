@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch-processor
+  namespace: data-pipeline
+  labels:
+    app: batch-processor
+    pipeline-stage: transform
+  annotations:
+    eval/scenario: periodic-failure-window
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: batch-processor
+  template:
+    metadata:
+      labels:
+        app: batch-processor
+        pipeline-stage: transform
+    spec:
+      containers:
+      - name: processor
+        image: python:3.11-alpine
+        command: ["python3", "-u"]
+        args: ["/opt/scripts/generate_logs.py"]
+        volumeMounts:
+        - name: log-scripts
+          mountPath: /opt/scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "48Mi"
+          limits:
+            cpu: "50m"
+            memory: "128Mi"
+      volumes:
+      - name: log-scripts
+        secret:
+          secretName: batch-processor-logs-script
+          defaultMode: 0555
+      restartPolicy: Always

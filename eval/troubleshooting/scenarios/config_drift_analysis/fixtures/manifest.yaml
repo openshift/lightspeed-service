@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-proxy
+  namespace: ingress-layer
+  labels:
+    app: gateway-proxy
+    component: ingress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-proxy
+  template:
+    metadata:
+      labels:
+        app: gateway-proxy
+        component: ingress
+    spec:
+      containers:
+      - name: log-emitter
+        image: python:3.11-alpine
+        command: ["python3", "-u", "/opt/scripts/generate_logs.py"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /opt/scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "48Mi"
+          limits:
+            memory: "96Mi"
+      volumes:
+      - name: scripts
+        secret:
+          secretName: gateway-proxy-log-script
+          defaultMode: 0555

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: report-generator
+  namespace: analytics-platform
+  labels:
+    app: report-generator
+    tier: analytics
+spec:
+  serviceName: report-generator
+  replicas: 1
+  selector:
+    matchLabels:
+      app: report-generator
+  template:
+    metadata:
+      labels:
+        app: report-generator
+        tier: analytics
+    spec:
+      containers:
+      - name: generator
+        image: python:3.11-alpine
+        command: ["python3", "-u", "/opt/scripts/generate_logs.py"]
+        volumeMounts:
+        - name: log-scripts
+          mountPath: /opt/scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "48Mi"
+          limits:
+            memory: "128Mi"
+      volumes:
+      - name: log-scripts
+        secret:
+          secretName: report-generator-logs-script
+          defaultMode: 0555
