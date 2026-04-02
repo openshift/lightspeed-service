@@ -22,6 +22,9 @@ from ols.src.skills.skills_rag import SkillsRAG, load_skills_from_directory
 from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
 from ols.utils.redactor import Redactor
 
+if TYPE_CHECKING:
+    from ols.src.a2a.client import AgentsRAG
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -32,7 +35,7 @@ if TYPE_CHECKING:
     from ols.src.tools.approval import PendingApprovalStoreBase
 
 
-class AppConfig:
+class AppConfig:  # pylint: disable=too-many-public-methods
     """Singleton class to load and store the configuration."""
 
     _instance = None
@@ -52,6 +55,7 @@ class AppConfig:
         self._quota_limiters: Optional[list[QuotaLimiter]] = None
         self._token_usage_history: Optional[TokenUsageHistory] = None
         self.k8s_tools_resolved = False
+        self.k8s_a2a_agents_resolved = False
         self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
         self._pending_approval_store: Optional["PendingApprovalStoreBase"] = None
 
@@ -74,6 +78,16 @@ class AppConfig:
     def mcp_servers_dict(self) -> dict[str, config_model.MCPServerConfig]:
         """Return dictionary mapping MCP server names to their configuration."""
         return {server.name: server for server in self.config.mcp_servers.servers}
+
+    @property
+    def a2a_agents(self) -> config_model.A2AAgents:
+        """Return the A2A agents configuration."""
+        return self.config.a2a_agents
+
+    @cached_property
+    def a2a_agents_dict(self) -> dict[str, config_model.A2AAgentConfig]:
+        """Return dictionary mapping A2A agent names to their configuration."""
+        return {agent.name: agent for agent in self.config.a2a_agents.agents}
 
     @property
     def dev_config(self) -> config_model.DevConfig:
@@ -220,6 +234,39 @@ class AppConfig:
         return None
 
     @cached_property
+    def agents_rag(self) -> Optional["AgentsRAG"]:
+        """Return the AgentsRAG instance for A2A agent filtering.
+
+        Only creates the instance if agent_filtering configuration exists
+        and there are A2A agents configured.
+        """
+        if (
+            self.config.ols_config.tool_filtering is not None
+            and self.config.a2a_agents
+            and len(self.config.a2a_agents.agents) > 0
+        ):
+            from ols.src.a2a.client import (  # pylint: disable=import-outside-toplevel
+                AgentsRAG,
+            )
+
+            agent_config = self.config.ols_config.tool_filtering
+            try:
+                embed_model = self._resolve_embed_model(agent_config.embed_model_path)
+            except Exception:
+                logger.exception(
+                    "Failed to load embedding model for A2A agent filtering; "
+                    "agent filtering disabled"
+                )
+                return None
+            return AgentsRAG(
+                encode_fn=embed_model.get_text_embedding,
+                alpha=agent_config.alpha,
+                top_k=agent_config.top_k,
+                threshold=agent_config.threshold,
+            )
+        return None
+
+    @cached_property
     def skills_rag(self) -> Optional[SkillsRAG]:
         """Return the SkillsRAG instance for skill selection.
 
@@ -299,8 +346,12 @@ class AppConfig:
             # Clear cached_property if it exists
             if "mcp_servers_dict" in self.__dict__:
                 del self.__dict__["mcp_servers_dict"]
+            if "a2a_agents_dict" in self.__dict__:
+                del self.__dict__["a2a_agents_dict"]
             if "tools_rag" in self.__dict__:
                 del self.__dict__["tools_rag"]
+            if "agents_rag" in self.__dict__:
+                del self.__dict__["agents_rag"]
             if "skills_rag" in self.__dict__:
                 del self.__dict__["skills_rag"]
         except Exception as e:
