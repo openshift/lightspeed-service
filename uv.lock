@@ -116,6 +116,25 @@ wheels = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "0.88.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/68/565f13059c0a6a6fd5f96f306f2a0fb478a0e1174ec18a4df16b5fac9379/anthropic-0.88.0.tar.gz", hash = "sha256:f4c7f6863d08c869913516f08d658fe53caaf8bcc4fbea3218df343d2a876c58", size = 596654, upload-time = "2026-04-01T19:59:05.287Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/ac/68f646998160c9f2e6f9353a31dd87292ef02b915b455aaf70a52a059a75/anthropic-0.88.0-py3-none-any.whl", hash = "sha256:71898b32332bc75d9739bc10095288d40a29605da6d00da2fe832b1aa036552f", size = 478338, upload-time = "2026-04-01T19:59:03.832Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.13.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2761,6 +2780,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "aiostream" },
+    { name = "anthropic" },
     { name = "azure-identity" },
     { name = "certifi" },
     { name = "cryptography" },
@@ -2844,6 +2864,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.3" },
     { name = "aiostream", specifier = ">=0.7.0" },
+    { name = "anthropic", specifier = ">=0.40.0" },
     { name = "azure-identity", specifier = ">=1.18.0" },
     { name = "certifi", specifier = ">=2024.8.30" },
     { name = "cryptography", specifier = ">=44.0.1" },

@@ -21,6 +21,7 @@ EXTRA_WHEELS="uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25"
 NO_WHEEL_PACKAGES="markupsafe"
 # packages to exclude from pybuild-deps (causes RecursionError due to circular build dep chain)
 SKIP_PYBUILD_PACKAGES="banks"
+
 # filtered source file for pybuild-deps to avoid RecursionError
 SOURCE_FILE_FOR_BUILD=$(mktemp)
 
@@ -83,10 +84,6 @@ done <"$RAW_REQ_FILE"
 # replace the list of binary packages in konflux pipeline configuration
 # only the package names, not the versions, delimited by commas
 wheel_packages=$(grep -v "^[#-]" "$WHEEL_FILE" | sed 's/==.*//' | tr '\n' ',' | sed 's/,$//')
-# append extra wheels to the list
-wheel_packages="$wheel_packages,$EXTRA_WHEELS"
-sed -i 's/"packages": "[^"]*"/"packages": "'"$wheel_packages"'"/' .tekton/lightspeed-service-pull-request.yaml
-sed -i 's/"packages": "[^"]*"/"packages": "'"$wheel_packages"'"/' .tekton/lightspeed-service-push.yaml
 
 echo "Packages from pypi.org written to: $SOURCE_FILE ($(wc -l <"$SOURCE_FILE") packages)"
 echo "Packages from console.redhat.com written to: $WHEEL_FILE ($(wc -l <"$WHEEL_FILE") packages)"
@@ -119,8 +116,16 @@ done
 } >>"$SOURCE_FILE_FOR_BUILD"
 uv run pybuild-deps compile --output-file="$BUILD_FILE" "$SOURCE_FILE_FOR_BUILD"
 
-# pin maturin to the version available in the Red Hat registry
-sed -i 's/maturin==[0-9.]*/maturin==1.10.2/' "$BUILD_FILE"
+# Exclude packages that are already included in the wheel list, to avoid hash conflicts
+for pkg in ${wheel_packages//,/ }; do
+	pkg=$(echo "$pkg" | tr -d '[:space:]')
+	[[ -n "$pkg" ]] && sed -i "/^${pkg}[=<>!~]/d" "$BUILD_FILE"
+done
+
+# append extra wheels to the list
+wheel_packages="$wheel_packages,$EXTRA_WHEELS"
+sed -i 's/"packages": "[^"]*"/"packages": "'"$wheel_packages"'"/' .tekton/lightspeed-service-pull-request.yaml
+sed -i 's/"packages": "[^"]*"/"packages": "'"$wheel_packages"'"/' .tekton/lightspeed-service-push.yaml
 
 echo "Done!"
 echo "Packages from pypi.org written to: $SOURCE_HASH_FILE ($(wc -l <"$SOURCE_HASH_FILE") packages)"
