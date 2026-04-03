@@ -1,4 +1,32 @@
-"""LSEval evaluation tests using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
+r"""LSEval evaluation tests across all supported OLS providers.
+
+Each provider uses OpenAI GPT-4.1-mini as the judge LLM.  The model
+under evaluation is whatever is configured in the per-provider system
+config (eval/system_<provider>_lseval.yaml).
+
+Supported providers: openai, watsonx, azure_openai, rhoai_vllm, rhelai_vllm.
+
+Local usage
+-----------
+1. Start OLS locally with the provider you want to evaluate::
+
+       OLS_CONFIG_FILE=olsconfig-openai.yaml make run   # example: openai
+
+2. Export the judge LLM key and, for vLLM-based providers, the model name::
+
+       export OPENAI_API_KEY=<your-key>
+       export LSEVAL_OLS_MODEL=ibm/granite-3.1-8b-instruct  # rhoai_vllm / rhelai_vllm only
+
+3. Run the eval for a single provider::
+
+       pytest tests/e2e/evaluation/test_lseval_periodic.py \\
+           -m lseval --lseval_provider openai \\
+           --eval_out_dir /tmp/my-eval-results
+
+   Or run all providers (OLS must be configured with all of them)::
+
+       pytest tests/e2e/evaluation/test_lseval_periodic.py -m lseval
+"""
 
 import json
 import os
@@ -13,8 +41,15 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
 LSEVAL_BIN = PROJECT_ROOT / ".venv" / "bin" / "lightspeed-eval"
-SYSTEM_CONFIG = EVAL_DIR / "system_openai_lseval.yaml"
 EVAL_DATA_FULL = EVAL_DIR / "eval_data.yaml"
+
+_PROVIDER_CONFIGS: dict[str, Path] = {
+    "openai": EVAL_DIR / "system_openai_lseval.yaml",
+    "watsonx": EVAL_DIR / "system_watsonx_lseval.yaml",
+    "azure_openai": EVAL_DIR / "system_azure_openai_lseval.yaml",
+    "rhoai_vllm": EVAL_DIR / "system_rhoai_vllm_lseval.yaml",
+    "rhelai_vllm": EVAL_DIR / "system_rhelai_vllm_lseval.yaml",
+}
 
 
 def _ensure_lseval_installed() -> None:
@@ -54,17 +89,26 @@ def _get_ols_token() -> str:
     return auth_header.removeprefix("Bearer ").strip()
 
 
-def _run_lseval(eval_data: Path, out_dir: Path) -> None:
-    """Run lightspeed-eval with the given data file and assert artefacts are produced."""
+def _run_lseval(eval_data: Path, out_dir: Path, system_config: Path) -> None:
+    """Run lightspeed-eval with the given data file and assert artefacts are produced.
+
+    Args:
+        eval_data: Path to the evaluation dataset YAML.
+        out_dir: Directory where evaluation artefacts are written.
+        system_config: Provider-specific lseval system config YAML.
+    """
     _ensure_lseval_installed()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     ols_url = _resolve_ols_url()
 
-    with open(SYSTEM_CONFIG, encoding="utf-8") as fh:
+    with open(system_config, encoding="utf-8") as fh:
         config = yaml.safe_load(fh)
 
     config["api"]["api_base"] = ols_url
+
+    if model_override := os.getenv("LSEVAL_OLS_MODEL"):
+        config["api"]["model"] = model_override
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".yaml", delete=False, dir=str(EVAL_DIR)
@@ -123,9 +167,23 @@ def _run_lseval(eval_data: Path, out_dir: Path) -> None:
 
 
 @pytest.mark.lseval
-def test_lseval_periodic(request: pytest.FixtureRequest) -> None:
-    """Run LSEval full dataset (797 questions) with GPT-4o-mini and GPT-4.1-mini judge."""
+@pytest.mark.parametrize("provider", list(_PROVIDER_CONFIGS.keys()))
+def test_lseval_periodic(request: pytest.FixtureRequest, provider: str) -> None:
+    """Run LSEval full dataset with GPT-4.1-mini as judge for the given OLS provider.
+
+    Args:
+        request: Pytest fixture request object.
+        provider: OLS provider under evaluation (parametrized).
+    """
+    selected = request.config.option.lseval_provider
+    if selected and selected != provider:
+        pytest.skip(f"--lseval_provider={selected!r}: skipping provider {provider!r}")
+
     out_dir_base = request.config.option.eval_out_dir or str(
         EVAL_DIR / "results-lseval-periodic"
     )
-    _run_lseval(EVAL_DATA_FULL, Path(out_dir_base) / "lseval")
+    _run_lseval(
+        EVAL_DATA_FULL,
+        Path(out_dir_base) / "lseval" / provider,
+        _PROVIDER_CONFIGS[provider],
+    )
