@@ -227,6 +227,17 @@ def pytest_addoption(parser):
         default=["ols"],
         help="Evaluation modes ex: with just prompt/rag etc.",
     )
+    parser.addoption(
+        "--lseval_provider",
+        default=None,
+        type=str,
+        choices=["openai", "watsonx", "azure_openai", "rhoai_vllm", "rhelai_vllm"],
+        help=(
+            "Run lseval periodic tests for a single provider only. "
+            "Runs all providers when omitted. "
+            "Choices: openai, watsonx, azure_openai, rhoai_vllm, rhelai_vllm."
+        ),
+    )
 
 
 def pytest_collection_modifyitems(items: list) -> None:

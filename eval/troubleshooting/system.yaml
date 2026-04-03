@@ -111,11 +111,56 @@ output:
     - json # Summary statistics
 
   # CSV columns to include
+# LightSpeed Evaluation Framework Configuration — Troubleshooting Evals
+# Default provider: OpenAI gpt-4o-mini (OLS backend) + OpenAI gpt-4.1-mini (judge)
+#
+# To evaluate a different provider, copy the matching system_<provider>.yaml over this file:
+#   cp system_watsonx.yaml system.yaml
+#   cp system_azure_openai.yaml system.yaml
+#   cp system_rhelai_vllm.yaml system.yaml
+#   cp system_rhoai_vllm.yaml system.yaml
+#
+# api_base is overridden at runtime with the actual OLS cluster URL.
+# Requires OPENAI_API_KEY for the judge LLM.
+
+# Judge LLM — scores OLS responses against expected answers
+llm:
+  provider: "openai"
+  model: "gpt-4.1-mini"
+  temperature: 0.0
+  max_tokens: 512
+  timeout: 300
+  num_retries: 3
+
+# OLS API — the system under test
+api:
+  enabled: true
+  api_base: http://localhost:8080
+  endpoint_type: query
+  timeout: 300
+  provider: "openai"
+  model: "gpt-4o-mini"
+  no_tools: null
+  system_prompt: null
+
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true
+
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:
+    - csv
+    - json
   csv_columns:
     - "conversation_group_id"
     - "turn_id"
     - "metric_identifier"
     - "score"
+    - "threshold"
     - "result"
     - "reason"
     - "query"
@@ -154,6 +199,23 @@ logging:
   show_timestamps: true
 
   # Specific package log levels (override package_level for specific libraries)
+visualization:
+  figsize: [12, 8]
+  dpi: 300
+  enabled_graphs:
+    - "score_distribution"
+    - "status_breakdown"
+
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+logging:
+  source_level: INFO
+  package_level: ERROR
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
   package_overrides:
     httpx: ERROR
     urllib3: ERROR
