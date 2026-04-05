@@ -19,11 +19,15 @@ def test_providers_are_registered():
     assert constants.PROVIDER_FAKE in LLMProvidersRegistry.llm_providers
     assert constants.PROVIDER_RHOAI_VLLM in LLMProvidersRegistry.llm_providers
     assert constants.PROVIDER_RHELAI_VLLM in LLMProvidersRegistry.llm_providers
+    assert (
+        constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC in LLMProvidersRegistry.llm_providers
+    )
     assert constants.PROVIDER_GOOGLE_VERTEX in LLMProvidersRegistry.llm_providers
 
     # import after previous test to not influence the auto-registration
     from ols.src.llms.providers.fake_provider import FakeProvider
     from ols.src.llms.providers.google_vertex import GoogleVertex
+    from ols.src.llms.providers.google_vertex_anthropic import GoogleVertexAnthropic
     from ols.src.llms.providers.openai import OpenAI
     from ols.src.llms.providers.rhelai_vllm import RHELAIVLLM
     from ols.src.llms.providers.rhoai_vllm import RHOAIVLLM
@@ -38,6 +42,10 @@ def test_providers_are_registered():
         LLMProvidersRegistry.llm_providers[constants.PROVIDER_RHOAI_VLLM] == RHOAIVLLM
     )
     assert LLMProvidersRegistry.llm_providers[constants.PROVIDER_FAKE] == FakeProvider
+    assert (
+        LLMProvidersRegistry.llm_providers[constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC]
+        == GoogleVertexAnthropic
+    )
     assert (
         LLMProvidersRegistry.llm_providers[constants.PROVIDER_GOOGLE_VERTEX]
         == GoogleVertex

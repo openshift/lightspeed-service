@@ -41,11 +41,11 @@ llm_providers:
     models:
       - name: model-name
   - name: my_google_vertex
-    type: google_vertex
+    type: google_vertex_anthropic
     url: "https://us-east5-aiplatform.googleapis.com"
     credentials_path: gcp_credentials.txt
     project_id: my-gcp-project
-    google_vertex_config:
+    google_vertex_anthropic_config:
       project: my-gcp-project
       location: us-east5
     models:

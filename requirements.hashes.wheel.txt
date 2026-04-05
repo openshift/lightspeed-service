@@ -193,8 +193,6 @@ pytest==9.0.2 \
     --hash=sha256:728ebfc99b7c9884efb756368646274a632653b9bc724b3c3066ad63729b835e
 python-dateutil==2.9.0.post0 \
     --hash=sha256:c112f3de33b4ef01360132ef116d72df91cdf628f136b70f1fc9a9eb19137cb9
-python-multipart==0.0.22 \
-    --hash=sha256:b5fc2a9738209bd168ef0c746ca0ee5eb66f2c69aeeb689e0dbc15b36c779aac
 pyyaml==6.0.3 \
     --hash=sha256:84a2acfe1e8dfcf8be95fa61611ea7637f8bfcff49761a6a8c396aaa0b6d94a9 \
     --hash=sha256:bcaf1b152ce8cd6ec4ff56f8ca929f176eb01e6aa472fe10b3ea31f19e15fb39 \
