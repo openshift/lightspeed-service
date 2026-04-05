@@ -11,6 +11,7 @@ PROVIDER_WATSONX = "watsonx"
 PROVIDER_RHOAI_VLLM = "rhoai_vllm"
 PROVIDER_RHELAI_VLLM = "rhelai_vllm"
 PROVIDER_FAKE = "fake_provider"
+PROVIDER_GOOGLE_VERTEX_ANTHROPIC = "google_vertex_anthropic"
 PROVIDER_GOOGLE_VERTEX = "google_vertex"
 SUPPORTED_PROVIDER_TYPES = frozenset(
     {
@@ -20,6 +21,7 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
         PROVIDER_RHOAI_VLLM,
         PROVIDER_RHELAI_VLLM,
         PROVIDER_FAKE,
+        PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
         PROVIDER_GOOGLE_VERTEX,
     }
 )

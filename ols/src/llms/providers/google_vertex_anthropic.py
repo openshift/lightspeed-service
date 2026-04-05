@@ -1,22 +1,22 @@
-"""Google Vertex AI provider via ChatGoogleGenerativeAI (publisher models on Vertex)."""
+"""Google Vertex AI provider for Anthropic Claude (Model Garden, not Gemini GenAI)."""
 
 from typing import Any, Optional
 
 from google.oauth2 import service_account
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai.model_garden import ChatAnthropicVertex
 
 from ols import constants
 from ols.src.llms.providers.provider import LLMProvider
 from ols.src.llms.providers.registry import register_llm_provider_as
 from ols.src.llms.providers.utils import credentials_str_to_dict
 
-DEFAULT_VERTEX_LOCATION = "global"
+DEFAULT_VERTEX_LOCATION = "us-east5"
 
 
-@register_llm_provider_as(constants.PROVIDER_GOOGLE_VERTEX)
-class GoogleVertex(LLMProvider):
-    """Vertex AI provider for Gemini and other models hosted by Google."""
+@register_llm_provider_as(constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC)
+class GoogleVertexAnthropic(LLMProvider):
+    """Vertex AI provider for Anthropic Claude models (hosted by Anthropic)."""
 
     project: Optional[str] = None
     location: str = DEFAULT_VERTEX_LOCATION
@@ -34,16 +34,15 @@ class GoogleVertex(LLMProvider):
         self.credentials = service_account.Credentials.from_service_account_info(
             account_info
         )  # type: ignore[no-untyped-call]
-        if self.provider_config.google_vertex_config is not None:
-            vertex_config = self.provider_config.google_vertex_config
+        if self.provider_config.google_vertex_anthropic_config is not None:
+            vertex_config = self.provider_config.google_vertex_anthropic_config
             self.project = vertex_config.project
             self.location = vertex_config.location
 
         return {
-            "model": self.model,
+            "model_name": self.model,
             "project": self.project,
             "location": self.location,
-            "vertexai": True,
             "max_output_tokens": 512,
             "temperature": 0.01,
             "credentials": self.credentials,
@@ -51,4 +50,4 @@ class GoogleVertex(LLMProvider):
 
     def load(self) -> BaseChatModel:
         """Load LLM."""
-        return ChatGoogleGenerativeAI(**self.params)
+        return ChatAnthropicVertex(**self.params)

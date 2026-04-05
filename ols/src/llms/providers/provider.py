@@ -17,6 +17,7 @@ from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_FAKE,
     PROVIDER_GOOGLE_VERTEX,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
     PROVIDER_OPENAI,
     PROVIDER_RHELAI_VLLM,
     PROVIDER_RHOAI_VLLM,
@@ -125,10 +126,21 @@ FakeProviderParameters = {
     ProviderParameter("sleep", float),
 }
 
-GoogleVertexParameters = {
+GoogleVertexAnthropicParameters = {
     ProviderParameter("model_name", str),
     ProviderParameter("project", str),
     ProviderParameter("location", str),
+    ProviderParameter("max_output_tokens", int),
+    ProviderParameter("temperature", float),
+    ProviderParameter("top_p", float),
+    ProviderParameter("top_k", int),
+}
+
+GoogleVertexParameters = {
+    ProviderParameter("model", str),
+    ProviderParameter("project", str),
+    ProviderParameter("location", str),
+    ProviderParameter("vertexai", bool),
     ProviderParameter("max_output_tokens", int),
     ProviderParameter("temperature", float),
     ProviderParameter("top_p", float),
@@ -143,6 +155,7 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
     PROVIDER_FAKE: FakeProviderParameters,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParameters,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParameters,
 }
 
@@ -178,7 +191,11 @@ WatsonxParametersMapping: dict[str, str] = {
 # Generic to fake parameter mapping
 FakeProviderParametersMapping: dict[str, str] = {}
 
-# Generic to Google Vertex parameters mapping
+# Generic to Google Vertex Anthropic parameters mapping
+GoogleVertexAnthropicParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
+}
+
 GoogleVertexParametersMapping: dict[str, str] = {
     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
 }
@@ -191,6 +208,7 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
     PROVIDER_FAKE: FakeProviderParametersMapping,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParametersMapping,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParametersMapping,
 }
 
