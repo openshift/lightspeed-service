@@ -45,6 +45,7 @@ class K8sClientSingleton:
     _api_client = None
     _authn_api: kubernetes.client.AuthenticationV1Api
     _authz_api: kubernetes.client.AuthorizationV1Api
+    _custom_objects_api: kubernetes.client.CustomObjectsApi
     _cluster_id = None
     _cluster_version = None
 
