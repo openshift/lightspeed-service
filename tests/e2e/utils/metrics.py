@@ -181,6 +181,9 @@ class RestAPICallCounterChecker:
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         """Retrieve new counter value after calling REST API, and check if it increased."""
+        if exc_type is not None:
+            return
+
         # test if REST API endpoint counter has been updated
         new_counter = get_rest_api_counter_value(
             self.client, self.endpoint, status_code=self.status_code
@@ -252,7 +255,7 @@ class TokenCounterChecker:
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         """Retrieve new counter value after calling REST API, and check if it increased."""
-        if self.skip_check:
+        if self.skip_check or exc_type is not None:
             return
         # check if counter for sent tokens has been updated
         new_counter_token_sent_total = get_model_provider_counter_value(
