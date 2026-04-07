@@ -1,15 +1,12 @@
 """Unit tests for DocsSummarizer PR2 class."""
 
-import asyncio
 import logging
 from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
-from langchain_core.tools.structured import StructuredTool
-from pydantic import BaseModel
 
 from ols import config
 from ols.app.models.config import LoggingConfig, MCPServerConfig
@@ -27,10 +24,7 @@ from ols.app.models.models import CacheEntry  # noqa: E402
 from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
-    RoundLLMResult,
-    ToolTokenUsage,
 )
-from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
 from ols.utils.token_handler import TokenHandler  # noqa: E402
@@ -41,27 +35,6 @@ from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
 from tests.mock_classes.mock_llm_loader import mock_llm_loader  # noqa: E402
 from tests.mock_classes.mock_retrievers import MockRetriever  # noqa: E402
 from tests.mock_classes.mock_tools import mock_tools_map  # noqa: E402
-
-
-class SampleTool(StructuredTool):
-    """Simple structured tool used for targeted docs_summarizer tests."""
-
-    def __init__(self, name: str, description: str = "sample tool") -> None:
-        """Initialize simple fake structured tool."""
-
-        class _Schema(BaseModel):
-            pass
-
-        async def _coro(**kwargs):
-            return "ok"
-
-        super().__init__(
-            name=name,
-            description=description,
-            func=lambda **kwargs: "ok",
-            coroutine=_coro,
-            args_schema=_Schema,
-        )
 
 
 def check_summary_result(summary, question: str) -> None:
@@ -277,7 +250,7 @@ async def async_mock_invoke(yield_values):
 def test_tool_calling_one_iteration():
     """Test tool calling - stops after one iteration."""
     with patch(
-        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
     ) as mock_invoke:
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
             [AIMessageChunk(content="XYZ", response_metadata={"finish_reason": "stop"})]
@@ -293,7 +266,7 @@ def test_tool_calling_drains_chunks_after_stop():
     question = "How many namespaces are there in my cluster?"
 
     with patch(
-        "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+        "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
     ) as mock_invoke:
         mock_invoke.side_effect = lambda *args, **kwargs: async_mock_invoke(
             [
@@ -338,7 +311,7 @@ def test_tool_calling_two_iteration():
     """Test tool calling - stops after two iterations."""
     with (
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm",
             new=fake_invoke_llm,
         ) as mock_invoke,
         patch(
@@ -360,7 +333,7 @@ def test_tool_calling_force_stop():
             return_value=3,
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
         ) as mock_invoke,
         patch(
             "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
@@ -410,7 +383,7 @@ def test_tool_calling_tool_execution(caplog):
             return_value=1000,
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
         ) as mock_invoke,
         patch(
             "ols.src.query_helpers.docs_summarizer.build_mcp_config",
@@ -478,7 +451,7 @@ def test_tool_output_token_tracking_uses_buffer_weight(caplog):
         ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
         ) as mock_invoke,
         patch("ols.utils.mcp_utils.config") as mock_config,
         patch.object(
@@ -571,480 +544,6 @@ def test_build_mcp_config_transport_is_streamable_http():
     assert mcp_config["server2"]["transport"] == "streamable_http"
 
 
-def test_resolve_tool_call_definitions_targeted_paths():
-    """Test targeted paths in _resolve_tool_call_definitions helper."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    all_tools_dict = {"get_namespaces_mock": mock_tools_map[0]}
-    duplicate_tool_names = {"dup_tool"}
-    tool_calls = [
-        {"name": None, "args": {}, "id": "missing_name"},
-        {"name": "dup_tool", "args": {}, "id": "duplicate"},
-        {"name": "not_found", "args": {}, "id": "unavailable"},
-        {"name": "get_namespaces_mock", "args": "bad", "id": "bad_args"},
-        {"name": "get_namespaces_mock", "args": {"ok": True}, "id": "valid"},
-    ]
-
-    definitions, skipped = summarizer._resolve_tool_call_definitions(
-        tool_calls, all_tools_dict, duplicate_tool_names
-    )
-
-    assert len(definitions) == 1
-    assert definitions[0][0] == "valid"
-    assert definitions[0][1] == {"ok": True}
-    assert definitions[0][2] is mock_tools_map[0]
-
-    assert len(skipped) == 4
-    skipped_ids = {msg.tool_call_id for msg in skipped}
-    assert skipped_ids == {"missing_name", "duplicate", "unavailable", "bad_args"}
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_targeted_paths():
-    """Test _collect_round_llm_chunks returns chunks/text/stop as expected."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _fake_invoke(*args, **kwargs):
-        yield AIMessageChunk(content="hello", response_metadata={})
-        yield AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_call_chunks=[
-                {"name": "get_namespaces_mock", "args": "{}", "id": "call_1"}
-            ],
-            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
-        )
-
-    with patch.object(summarizer, "_invoke_llm", side_effect=_fake_invoke):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=mock_tools_map,
-            is_final_round=False,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert isinstance(result, RoundLLMResult)
-    assert result.should_stop is False
-    assert len(result.streamed_chunks) == 1
-    assert result.streamed_chunks[0].type == "text"
-    assert result.streamed_chunks[0].text == "hello"
-    assert len(result.tool_call_chunks) == 1
-    assert len(result.all_chunks) == 2
-
-
-@pytest.mark.asyncio
-async def test_process_tool_calls_for_round_streams_approval_and_result():
-    """Test _process_tool_calls_for_round streams approval + tool_result and updates state."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
-    messages: list = []
-
-    async def _fake_execute(*args, **kwargs):
-        yield ApprovalRequiredEvent(
-            data={
-                "approval_id": "aid-1",
-                "tool_name": "get_namespaces_mock",
-                "tool_description": "desc",
-                "tool_args": {},
-                "tool_annotation": {},
-            }
-        )
-        yield ToolResultEvent(
-            data=ToolMessage(
-                content="ok",
-                status="success",
-                tool_call_id="call_1",
-                additional_kwargs={"truncated": False},
-            )
-        )
-
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_1"}],
-        )
-    ]
-
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
-        side_effect=_fake_execute,
-    ):
-        streamed = [
-            chunk
-            async for chunk in summarizer._process_tool_calls_for_round(
-                round_index=1,
-                tool_call_chunks=tool_call_chunks,
-                all_chunks=[],
-                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
-                duplicate_tool_names=set(),
-                messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
-            )
-        ]
-
-    assert [chunk.type for chunk in streamed] == [
-        StreamChunkType.TOOL_CALL,
-        StreamChunkType.APPROVAL_REQUIRED,
-        StreamChunkType.TOOL_RESULT,
-    ]
-    assert streamed[1].data["approval_id"] == "aid-1"
-    assert streamed[2].data["type"] == "tool_result"
-    assert token_usage.used > 0
-    assert len(messages) == 2
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_timeout_without_any_chunks():
-    """Test round timeout path when LLM yields nothing before timeout."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _slow_invoke(*args, **kwargs):
-        await asyncio.sleep(0.05)
-        if False:
-            yield AIMessageChunk(content="", response_metadata={})
-
-    with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.constants.TOOL_CALL_ROUND_TIMEOUT",
-            0.001,
-        ),
-        patch.object(summarizer, "_invoke_llm", side_effect=_slow_invoke),
-    ):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=mock_tools_map,
-            is_final_round=False,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert result.should_stop is True
-    assert result.tool_call_chunks == []
-    assert len(result.streamed_chunks) == 1
-    assert result.streamed_chunks[0].type == StreamChunkType.TEXT
-    assert (
-        "I could not complete this request in time." in result.streamed_chunks[0].text
-    )
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_timeout_after_partial_text():
-    """Test timeout still preserves already-streamed text before fallback."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _partial_then_slow(*args, **kwargs):
-        yield AIMessageChunk(content="partial", response_metadata={})
-        await asyncio.sleep(0.05)
-        if False:
-            yield AIMessageChunk(content="", response_metadata={})
-
-    with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.constants.TOOL_CALL_ROUND_TIMEOUT",
-            0.001,
-        ),
-        patch.object(summarizer, "_invoke_llm", side_effect=_partial_then_slow),
-    ):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=mock_tools_map,
-            is_final_round=False,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert result.should_stop is True
-    assert result.tool_call_chunks == []
-    assert [c.type for c in result.streamed_chunks] == [
-        StreamChunkType.TEXT,
-        StreamChunkType.TEXT,
-    ]
-    assert result.streamed_chunks[0].text == "partial"
-    assert (
-        "I could not complete this request in time." in result.streamed_chunks[1].text
-    )
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_stop_short_circuits_before_timeout():
-    """Test finish_reason=stop returns immediately and does not emit timeout fallback."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _stop_immediately(*args, **kwargs):
-        yield AIMessageChunk(content="", response_metadata={"finish_reason": "stop"})
-
-    with (
-        patch(
-            "ols.src.query_helpers.docs_summarizer.constants.TOOL_CALL_ROUND_TIMEOUT",
-            0.001,
-        ),
-        patch.object(summarizer, "_invoke_llm", side_effect=_stop_immediately),
-    ):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=mock_tools_map,
-            is_final_round=False,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert result.should_stop is True
-    assert result.tool_call_chunks == []
-    assert result.streamed_chunks == []
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_handles_string_chunk():
-    """Test fake-LLM compatibility path where chunk is plain string."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _string_invoke(*args, **kwargs):
-        yield "plain-string-chunk"
-
-    with patch.object(summarizer, "_invoke_llm", side_effect=_string_invoke):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=[],
-            is_final_round=False,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert result.should_stop is False
-    assert result.tool_call_chunks == []
-    assert len(result.streamed_chunks) == 1
-    assert result.streamed_chunks[0].type == "text"
-    assert result.streamed_chunks[0].text == "plain-string-chunk"
-
-
-def test_resolve_tool_call_definitions_none_args_normalized_to_empty_dict():
-    """Test that None tool args are normalized to {}."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    tool = mock_tools_map[0]
-    definitions, skipped = summarizer._resolve_tool_call_definitions(
-        [{"name": tool.name, "args": None, "id": "call_none"}],
-        {tool.name: tool},
-        set(),
-    )
-
-    assert skipped == []
-    assert len(definitions) == 1
-    assert definitions[0][0] == "call_none"
-    assert definitions[0][1] == {}
-    assert definitions[0][2] is tool
-
-
-@pytest.mark.asyncio
-async def test_process_tool_calls_for_round_skipped_only_without_execution():
-    """Test skipped-only path emits tool_result without calling executor."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
-    messages: list = []
-    tool = mock_tools_map[0]
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": "missing_tool", "args": {}, "id": "skip_1"}],
-        )
-    ]
-
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
-        new=AsyncMock(side_effect=AssertionError("executor should not be called")),
-    ):
-        streamed = [
-            chunk
-            async for chunk in summarizer._process_tool_calls_for_round(
-                round_index=1,
-                tool_call_chunks=tool_call_chunks,
-                all_chunks=[],
-                all_tools_dict={tool.name: tool},
-                duplicate_tool_names=set(),
-                messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
-            )
-        ]
-
-    assert [chunk.type for chunk in streamed] == [
-        StreamChunkType.TOOL_CALL,
-        StreamChunkType.TOOL_RESULT,
-    ]
-    assert streamed[1].data["type"] == "tool_result"
-    assert "tool is unavailable" in streamed[1].data["content"]
-    assert len(messages) == 2
-
-
-@pytest.mark.asyncio
-async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(caplog):
-    """Test unexpected tool execution events are ignored with warning."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
-    messages: list = []
-    caplog.set_level(logging.WARNING)
-
-    async def _fake_execute(*args, **kwargs):
-        class _UnexpectedEvent:
-            event = "unexpected"
-            data = "payload"
-
-        yield _UnexpectedEvent()
-        yield ToolResultEvent(
-            data=ToolMessage(
-                content="ok",
-                status="success",
-                tool_call_id="call_warn",
-                additional_kwargs={"truncated": False},
-            )
-        )
-
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": "get_namespaces_mock", "args": {}, "id": "call_warn"}],
-        )
-    ]
-
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
-        side_effect=_fake_execute,
-    ):
-        streamed = [
-            chunk
-            async for chunk in summarizer._process_tool_calls_for_round(
-                round_index=1,
-                tool_call_chunks=tool_call_chunks,
-                all_chunks=[],
-                all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
-                duplicate_tool_names=set(),
-                messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
-            )
-        ]
-
-    assert any(
-        "Ignoring unexpected tool execution event" in rec.message
-        for rec in caplog.records
-    )
-    assert streamed[-1].type == "tool_result"
-
-
-def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
-    """Test tool result chunk contains metadata enrichment and has_meta logging."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    caplog.set_level(logging.INFO)
-    tool = mock_tools_map[0]
-    tool.metadata = {"mcp_server": "server-a", "_meta": {"app": "ui"}}
-    message = ToolMessage(
-        content="ok",
-        status="success",
-        tool_call_id="call_meta",
-        additional_kwargs={"truncated": False},
-    )
-
-    _, chunk = summarizer._tool_result_chunk_for_message(
-        tool_call_message=message,
-        tool_name=tool.name,
-        tool=tool,
-        token_handler=TokenHandler(),
-        round_index=1,
-    )
-
-    assert chunk.type == StreamChunkType.TOOL_RESULT
-    assert chunk.data["server_name"] == "server-a"
-    assert chunk.data["tool_meta"] == {"app": "ui"}
-    assert '"has_meta": true' in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_iterate_with_tools_deduplicates_tool_names(caplog):
-    """Test duplicate MCP tool names are disabled and logged."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    summarizer._tool_calling_enabled = False
-    caplog.set_level(logging.ERROR)
-    tools = [SampleTool("dup"), SampleTool("dup")]
-
-    with (
-        patch.object(
-            summarizer,
-            "_collect_round_llm_chunks",
-            new=AsyncMock(return_value=RoundLLMResult([], [], [], should_stop=True)),
-        ),
-    ):
-        chunks = [
-            chunk
-            async for chunk in summarizer.iterate_with_tools(
-                messages=[],
-                max_rounds=1,
-                llm_input_values={},
-                token_counter=AsyncMock(),
-                all_mcp_tools=tools,
-            )
-        ]
-
-    assert chunks == []
-    assert "Duplicate MCP tool names detected and disabled" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_iterate_with_tools_handles_tool_execution_error():
-    """Test iterate_with_tools emits fallback when tool execution raises."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    tool = mock_tools_map[0]
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": tool.name, "args": {}, "id": "call_error"}],
-        )
-    ]
-
-    async def _failing_process(*args, **kwargs):
-        if False:
-            yield
-        raise RuntimeError("MCP server unreachable")
-
-    with (
-        patch.object(
-            summarizer,
-            "_collect_round_llm_chunks",
-            new=AsyncMock(
-                return_value=RoundLLMResult(tool_call_chunks, [], [], should_stop=False)
-            ),
-        ),
-        patch.object(
-            summarizer, "_process_tool_calls_for_round", side_effect=_failing_process
-        ),
-    ):
-        chunks = [
-            chunk
-            async for chunk in summarizer.iterate_with_tools(
-                messages=[],
-                max_rounds=2,
-                llm_input_values={},
-                token_counter=AsyncMock(),
-                all_mcp_tools=[tool],
-            )
-        ]
-
-    assert len(chunks) == 1
-    assert chunks[0].type == StreamChunkType.TEXT
-    assert "I could not complete this request." in chunks[0].text
-
-
 def test_get_max_iterations_ask_mode_no_override():
     """Test _get_max_iterations returns ASK default when config has no override."""
     config.ols_config.max_iterations = None
@@ -1087,124 +586,6 @@ def test_create_response_raises_on_unknown_chunk_type():
     with patch.object(DocsSummarizer, "generate_response", _fake_generate):
         with pytest.raises(ValueError, match="Unknown chunk type"):
             summarizer.create_response("q")
-
-
-def test_streamed_chunks_from_list_content_text_and_reasoning():
-    """Test _streamed_chunks_from_list_content extracts text and reasoning chunks."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    content = [
-        {"type": "text", "text": "hello"},
-        {"type": "reasoning", "summary": [{"text": "thinking"}]},
-        "not-a-dict",
-        {"type": "unknown"},
-        {"type": "text", "text": ""},
-        {"type": "reasoning", "summary": [{"text": ""}, "not-a-dict-part"]},
-    ]
-    chunks = summarizer._streamed_chunks_from_list_content(
-        content, chunk_counter=10, is_final_round=False
-    )
-    assert len(chunks) == 2
-    assert chunks[0].type == StreamChunkType.TEXT
-    assert chunks[0].text == "hello"
-    assert chunks[1].type == StreamChunkType.REASONING
-    assert chunks[1].text == "thinking"
-
-
-def test_streamed_chunks_from_list_content_multiple_reasoning_parts():
-    """Test _streamed_chunks_from_list_content handles multiple reasoning summary parts."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    content = [
-        {"type": "reasoning", "summary": [{"text": "step 1"}, {"text": "step 2"}]},
-    ]
-    chunks = summarizer._streamed_chunks_from_list_content(
-        content, chunk_counter=0, is_final_round=False
-    )
-    assert len(chunks) == 2
-    assert all(c.type == StreamChunkType.REASONING for c in chunks)
-    assert chunks[0].text == "step 1"
-    assert chunks[1].text == "step 2"
-
-
-@pytest.mark.asyncio
-async def test_collect_round_llm_chunks_with_reasoning_list_content():
-    """Test _collect_round_llm_chunks processes list content with reasoning blocks."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-
-    async def _reasoning_invoke(*args, **kwargs):
-        yield AIMessageChunk(
-            content=[
-                {"type": "reasoning", "summary": [{"text": "thinking hard"}]},
-            ],
-            response_metadata={},
-        )
-        yield AIMessageChunk(
-            content=[{"type": "text", "text": "the answer"}],
-            response_metadata={},
-        )
-        yield AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "stop"},
-        )
-
-    with patch.object(summarizer, "_invoke_llm", side_effect=_reasoning_invoke):
-        result = await summarizer._collect_round_llm_chunks(
-            messages=[],
-            llm_input_values={},
-            all_mcp_tools=[],
-            is_final_round=True,
-            token_counter=AsyncMock(),
-            round_index=1,
-        )
-
-    assert result.should_stop is True
-    assert result.tool_call_chunks == []
-    assert len(result.all_chunks) == 2
-    assert len(result.streamed_chunks) == 2
-    assert result.streamed_chunks[0].type == StreamChunkType.REASONING
-    assert result.streamed_chunks[0].text == "thinking hard"
-    assert result.streamed_chunks[1].type == StreamChunkType.TEXT
-    assert result.streamed_chunks[1].text == "the answer"
-
-
-@pytest.mark.asyncio
-async def test_iterate_with_tools_breaks_when_no_tool_calls():
-    """Test iterate_with_tools exits when model emits no tool calls on a non-final round."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    tool = mock_tools_map[0]
-    call_count = 0
-
-    async def _mock_collect(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        return RoundLLMResult(
-            tool_call_chunks=[],
-            all_chunks=[],
-            streamed_chunks=[StreamedChunk(type=StreamChunkType.TEXT, text="answer")],
-            should_stop=False,
-        )
-
-    with patch.object(
-        summarizer,
-        "_collect_round_llm_chunks",
-        new=AsyncMock(side_effect=_mock_collect),
-    ):
-        chunks = [
-            chunk
-            async for chunk in summarizer.iterate_with_tools(
-                messages=[],
-                max_rounds=10,
-                llm_input_values={},
-                token_counter=AsyncMock(),
-                all_mcp_tools=[tool],
-            )
-        ]
-
-    assert call_count == 1, (
-        "Loop must exit after first round when model emits no tool calls, "
-        f"but ran {call_count} rounds"
-    )
-    assert len(chunks) == 1
-    assert chunks[0].text == "answer"
 
 
 def test_create_response_ignores_reasoning_chunks():

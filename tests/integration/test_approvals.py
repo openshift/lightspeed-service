@@ -146,7 +146,7 @@ def test_streaming_approval_always_emits_approval_and_rejection(_setup) -> None:
             new=mock_llm_loader(None),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm",
             side_effect=_single_tool_side_effect_factory(),
         ),
         patch(
@@ -185,7 +185,7 @@ def test_streaming_approval_never_skips_approval_and_executes(_setup) -> None:
             new=mock_llm_loader(None),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm",
             side_effect=_single_tool_side_effect_factory(),
         ),
         patch(
@@ -235,7 +235,7 @@ def test_streaming_approval_tool_annotations_mixed_tools(_setup) -> None:
             new=mock_llm_loader(None),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm",
+            "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm",
             side_effect=_three_tools_side_effect_factory(),
         ),
         patch(
