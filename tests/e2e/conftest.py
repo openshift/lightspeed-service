@@ -14,6 +14,7 @@ from pytest import TestReport
 from tests.e2e.utils import client as client_utils
 from tests.e2e.utils import cluster, ols_installer
 from tests.e2e.utils.adapt_ols_config import adapt_ols_config
+from tests.e2e.utils.mcp_setup import setup_mcp_on_cluster, teardown_mcp_on_cluster
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 from tests.scripts.must_gather import must_gather
 
@@ -30,6 +31,19 @@ OLS_READY = False
 on_cluster: bool = False  # pylint: disable=C0103
 
 
+def _maybe_setup_mcp() -> None:
+    """Deploy mock MCP server and secret if running MCP test suite.
+
+    Must run before adapt_ols_config/install_ols so the mock server
+    is reachable and the secret exists when the operator reconciles the CR.
+    """
+    ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+    if "mcp" not in ols_config_suffix:
+        return
+    print("MCP test suite detected - deploying mock server and secret...")
+    setup_mcp_on_cluster()
+
+
 def pytest_sessionstart():
     """Set up common artifacts used by all e2e tests."""
     global OLS_READY  # pylint: disable=W0603
@@ -41,6 +55,8 @@ def pytest_sessionstart():
     if "localhost" not in ols_url:
         on_cluster = True
         try:
+            _maybe_setup_mcp()
+
             if os.getenv("SKIP_CLUSTER_SETUP", "false").lower() == "true":
                 print(
                     "SKIP_CLUSTER_SETUP enabled - skipping OLS installation/configuration."
@@ -214,12 +230,27 @@ def pytest_addoption(parser):
 
 
 def pytest_collection_modifyitems(items: list) -> None:
-    """Ensure test_user_data_collection runs last in the data_export suite.
+    """Filter and reorder collected tests.
 
-    That test shortens the exporter collection interval to 5 s; any
-    filesystem-based test that runs afterwards races with the exporter
-    which deletes feedback/transcript files before they can be asserted.
+    - Deselect mcp-marked tests when the MCP suite is not active.
+    - Ensure test_user_data_collection runs last in the data_export suite.
     """
+    ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+    mcp_enabled = "mcp" in ols_config_suffix
+
+    selected = []
+    deselected = []
+    for item in items:
+        if not mcp_enabled and item.get_closest_marker("mcp"):
+            deselected.append(item)
+        else:
+            selected.append(item)
+
+    if deselected:
+        config = items[0].config
+        items[:] = selected
+        config.hook.pytest_deselected(items=deselected)
+
     deferred = []
     rest = []
     for item in items:
@@ -231,7 +262,9 @@ def pytest_collection_modifyitems(items: list) -> None:
 
 
 def pytest_sessionfinish():
-    """Gather OLS artifacts after test session finishes."""
-    # Gather OLS artifacts for all test suites when running on cluster
+    """Gather OLS artifacts and clean up test resources after session finishes."""
     if on_cluster:
+        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
+        if "mcp" in ols_config_suffix:
+            teardown_mcp_on_cluster()
         must_gather()
