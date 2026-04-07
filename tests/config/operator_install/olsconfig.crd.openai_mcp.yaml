@@ -1,0 +1,62 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: gpt-4.1-mini
+        name: openai
+        type: openai
+  ols:
+    defaultModel: gpt-4.1-mini
+    defaultProvider: openai
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
+    toolsApprovalConfig:
+      approvalType: tool_annotations
+      approvalTimeout: 5
+    toolFilteringConfig:
+      alpha: 0.5
+      topK: 5
+      threshold: 0.01
+  mcpServers:
+    - name: mock-file-auth
+      url: http://mcp-mock-server.openshift-lightspeed.svc.cluster.local:3000
+      headers:
+        - name: Authorization
+          valueFrom:
+            type: secret
+            secretRef:
+              name: mcp-test-token
+    - name: mock-k8s-auth
+      url: http://mcp-mock-server.openshift-lightspeed.svc.cluster.local:3000
+      headers:
+        - name: Authorization
+          valueFrom:
+            type: kubernetes
+    - name: mock-client-auth
+      url: http://mcp-mock-server.openshift-lightspeed.svc.cluster.local:3000
+      headers:
+        - name: Authorization
+          valueFrom:
+            type: client
+    - name: mock-bad-url
+      url: http://localhost:19999
+  featureGates:
+    - MCPServer
+    - ToolFiltering
