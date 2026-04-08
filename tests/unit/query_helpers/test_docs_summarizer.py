@@ -1061,13 +1061,32 @@ def test_get_max_iterations_troubleshooting_mode_no_override():
     assert summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
 
 
-def test_get_max_iterations_config_override():
-    """Test _get_max_iterations returns explicit config value regardless of mode."""
-    config.ols_config.max_iterations = 10
+def test_get_max_iterations_config_override_above_default():
+    """Test _get_max_iterations uses config value when it exceeds the mode default."""
+    config.ols_config.max_iterations = 20
     try:
         for mode in (QueryMode.ASK, QueryMode.TROUBLESHOOTING):
             summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=mode)
-            assert summarizer._get_max_iterations() == 10
+            assert summarizer._get_max_iterations() == 20
+    finally:
+        config.ols_config.max_iterations = None
+
+
+def test_get_max_iterations_config_override_below_default():
+    """Test _get_max_iterations uses mode default when it exceeds the config value."""
+    config.ols_config.max_iterations = 10
+    try:
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(None), mode=QueryMode.ASK
+        )
+        assert summarizer._get_max_iterations() == 10
+
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+        )
+        assert (
+            summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
+        )
     finally:
         config.ols_config.max_iterations = None
 
