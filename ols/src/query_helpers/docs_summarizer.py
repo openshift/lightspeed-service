@@ -715,10 +715,14 @@ class DocsSummarizer(QueryHelper):
             yield StreamedChunk(type=StreamChunkType.TOOL_CALL, data=enriched)
 
         remaining_tool_budget = max_tokens_for_tools - tool_tokens_used
+        round_budget = max(
+            MIN_TOOL_EXECUTION_TOKENS, remaining_tool_budget // (round_index + 1)
+        )
         logger.debug(
-            "Tool budget: used=%d, remaining=%d",
+            "Tool budget: used=%d, remaining=%d, round=%d",
             tool_tokens_used,
             remaining_tool_budget,
+            round_budget,
         )
 
         tool_calls_messages: list[ToolMessage] = []
@@ -752,7 +756,7 @@ class DocsSummarizer(QueryHelper):
             else:
                 async for execution_event in execute_tool_calls_stream(
                     tool_call_definitions,
-                    remaining_tool_budget,
+                    round_budget,
                     streaming=self.streaming,
                 ):
                     match execution_event.event:
@@ -774,7 +778,7 @@ class DocsSummarizer(QueryHelper):
         all_tool_messages = skipped_tool_messages + tool_calls_messages
         if remaining_tool_budget > 0:
             all_tool_messages = enforce_tool_token_budget(
-                all_tool_messages, remaining_tool_budget
+                all_tool_messages, round_budget
             )
         messages.extend(all_tool_messages)
 

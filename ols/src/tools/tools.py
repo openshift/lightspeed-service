@@ -467,10 +467,12 @@ async def execute_tool_calls_stream(
     if not tool_calls:
         return
 
+    per_tool_budget = max(1, tools_token_budget // len(tool_calls))
+
     # Merge runs all per-tool generators concurrently on the event loop.
     merged = stream.merge(
         *(
-            _execute_single_tool_call_stream(tc, tools_token_budget, streaming)
+            _execute_single_tool_call_stream(tc, per_tool_budget, streaming)
             for tc in tool_calls
         )
     )

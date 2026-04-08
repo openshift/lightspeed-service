@@ -678,3 +678,46 @@ def test_enforce_tool_token_budget_preserves_metadata():
 
     assert result[0].tool_call_id == "my_call_id"
     assert result[0].status == "success"
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_calls_stream_divides_budget_per_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify each tool receives budget/N, not the full budget."""
+    budgets_seen: list[int] = []
+
+    original_execute_with_retries = tools_module._execute_with_retries
+
+    async def _spy_execute(
+        *, tool, tool_args, tools_token_budget
+    ) -> tuple[str, str, bool, dict | None]:
+        budgets_seen.append(tools_token_budget)
+        return await original_execute_with_retries(
+            tool=tool, tool_args=tool_args, tools_token_budget=tools_token_budget
+        )
+
+    monkeypatch.setattr(tools_module, "_execute_with_retries", _spy_execute)
+    monkeypatch.setattr(tools_module, "need_validation", lambda **kwargs: False)
+
+    total_budget = 9000
+    tool_calls = [
+        ("call_1", {}, FakeTool("tool1")),
+        ("call_2", {}, FakeTool("tool2")),
+        ("call_3", {}, FakeTool("tool3")),
+    ]
+
+    _ = [
+        event
+        async for event in execute_tool_calls_stream(
+            tool_calls, tools_token_budget=total_budget, streaming=False
+        )
+    ]
+
+    assert len(budgets_seen) == 3
+    expected_per_tool = total_budget // 3
+    for budget in budgets_seen:
+        assert budget == expected_per_tool, (
+            f"Tool received budget {budget}, expected {expected_per_tool} "
+            f"(total {total_budget} / 3 tools)"
+        )
