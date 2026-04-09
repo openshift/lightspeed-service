@@ -42,9 +42,6 @@ class ModelParameters(BaseModel):
 
     max_tokens_for_response: PositiveInt = constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     tool_budget_ratio: float = constants.DEFAULT_TOOL_BUDGET_RATIO
-    max_tokens_per_tool_output: PositiveInt = (
-        constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
-    )
 
     reasoning_effort: ReasoningLevel = ReasoningLevel.LOW
     reasoning_summary: ReasoningSummary = ReasoningSummary.CONCISE

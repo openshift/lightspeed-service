@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 from unittest.mock import patch
 
 import pytest
@@ -23,29 +24,33 @@ def storage_path(tmp_path):
 
 @pytest.fixture
 def manager(storage_path):
-    """Return an OffloadManager with default threshold."""
-    return OffloadManager(storage_path=storage_path, max_tokens_per_tool_output=100)
+    """Return an OffloadManager."""
+    return OffloadManager(storage_path=storage_path)
+
+
+_SMALL_BUDGET = 100
+_LARGE_BUDGET = 100_000
 
 
 def _large_text(lines: int = 500) -> str:
-    """Generate multi-line text exceeding the default 100-token threshold."""
+    """Generate multi-line text exceeding a small token budget."""
     return "\n".join(f"line {i}: content here" for i in range(1, lines + 1))
 
 
 class TestTryOffload:
     """Tests for OffloadManager.try_offload."""
 
-    def test_under_threshold_returns_original(self, manager):
+    def test_under_budget_returns_original(self, manager):
         """Test that small outputs pass through unchanged."""
         small = "hello world"
-        result = manager.try_offload(small, "my_tool")
+        result = manager.try_offload(small, "my_tool", _LARGE_BUDGET)
         assert result is small
         assert not manager.has_offloaded_content
 
-    def test_over_threshold_writes_file_and_returns_placeholder(self, manager):
+    def test_over_budget_writes_file_and_returns_placeholder(self, manager):
         """Test that large outputs are written to disk with a placeholder returned."""
         text = _large_text(500)
-        result = manager.try_offload(text, "big_tool")
+        result = manager.try_offload(text, "big_tool", _SMALL_BUDGET)
 
         assert result is not text
         assert "ref_id:" in result
@@ -63,16 +68,16 @@ class TestTryOffload:
     def test_retrieval_tool_output_never_offloaded(self, manager):
         """Test that retrieval tool outputs are never offloaded."""
         text = _large_text(500)
-        result = manager.try_offload(text, "search_offloaded_content")
+        result = manager.try_offload(text, "search_offloaded_content", _SMALL_BUDGET)
         assert result is text
 
-        result = manager.try_offload(text, "read_offloaded_content")
+        result = manager.try_offload(text, "read_offloaded_content", _SMALL_BUDGET)
         assert result is text
 
     def test_over_50mb_falls_back_to_original(self, manager):
         """Test that content exceeding 50 MB returns original text."""
         text = "x" * (50 * 1024 * 1024 + 1)
-        result = manager.try_offload(text, "huge_tool")
+        result = manager.try_offload(text, "huge_tool", _SMALL_BUDGET)
         assert result is text
         assert not manager.has_offloaded_content
 
@@ -80,7 +85,7 @@ class TestTryOffload:
         """Test that disk write failure returns original text."""
         text = _large_text(500)
         with patch("os.open", side_effect=OSError("disk full")):
-            result = manager.try_offload(text, "fail_tool")
+            result = manager.try_offload(text, "fail_tool", _SMALL_BUDGET)
         assert result is text
         assert not manager.has_offloaded_content
 
@@ -88,40 +93,48 @@ class TestTryOffload:
         """Test that multiple offloads produce separate ref_ids and files."""
         text1 = _large_text(500)
         text2 = _large_text(600)
-        r1 = manager.try_offload(text1, "tool_a")
-        r2 = manager.try_offload(text2, "tool_b")
+        r1 = manager.try_offload(text1, "tool_a", _SMALL_BUDGET)
+        r2 = manager.try_offload(text2, "tool_b", _SMALL_BUDGET)
 
         assert r1 != r2
         assert len(manager._allowlist) == 2
+
+    def test_session_dir_created_on_first_offload(self, manager):
+        """Test that the session directory is created only on first offload."""
+        assert manager._session_dir is None
+        text = _large_text(500)
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
+        assert manager._session_dir is not None
+        assert os.path.isdir(manager._session_dir)
 
 
 class TestCleanup:
     """Tests for OffloadManager.cleanup."""
 
-    def test_cleanup_removes_files(self, manager):
-        """Test that cleanup deletes all offloaded files."""
+    def test_cleanup_removes_session_dir(self, manager):
+        """Test that cleanup removes the entire session directory."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
-        file_paths = list(manager._allowlist.values())
-        assert all(os.path.isfile(p) for p in file_paths)
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
+        session_dir = manager._session_dir
+        assert session_dir is not None
+        assert os.path.isdir(session_dir)
 
         manager.cleanup()
-        assert not any(os.path.isfile(p) for p in file_paths)
+        assert not os.path.isdir(session_dir)
         assert not manager.has_offloaded_content
 
     def test_cleanup_idempotent(self, manager):
-        """Test that cleanup tolerates already-deleted files."""
+        """Test that cleanup tolerates already-deleted session dir."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         manager.cleanup()
         manager.cleanup()
 
-    def test_cleanup_tolerates_missing_files(self, manager):
-        """Test that cleanup handles files deleted externally."""
+    def test_cleanup_tolerates_missing_dir(self, manager):
+        """Test that cleanup handles session dir deleted externally."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
-        for p in manager._allowlist.values():
-            os.unlink(p)
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
+        shutil.rmtree(manager._session_dir)
         manager.cleanup()
 
 
@@ -151,7 +164,7 @@ class TestSearchOffloaded:
     def test_search_finds_matches_with_context(self, manager):
         """Test search returns matching lines with context."""
         text = _large_text(100)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _search_offloaded(
@@ -164,7 +177,7 @@ class TestSearchOffloaded:
     def test_search_multiple_matches(self, manager):
         """Test search with a pattern matching multiple lines."""
         text = _large_text(100)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _search_offloaded(
@@ -175,7 +188,7 @@ class TestSearchOffloaded:
     def test_search_no_matches(self, manager):
         """Test search with no matches returns informative message."""
         text = _large_text(100)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _search_offloaded(
@@ -193,7 +206,7 @@ class TestSearchOffloaded:
     def test_search_invalid_regex(self, manager):
         """Test search with invalid regex returns error."""
         text = _large_text(100)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _search_offloaded(
@@ -204,7 +217,7 @@ class TestSearchOffloaded:
     def test_search_capped_at_max_matches(self, manager):
         """Test search caps results at OFFLOAD_MAX_SEARCH_MATCHES."""
         lines = "\n".join(f"match line {i}" for i in range(200))
-        manager.try_offload(lines, "tool")
+        manager.try_offload(lines, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _search_offloaded(
@@ -214,15 +227,13 @@ class TestSearchOffloaded:
 
     def test_search_context_windows_merged(self, storage_path):
         """Test that overlapping context windows are merged (no duplicate lines)."""
-        low_threshold_manager = OffloadManager(
-            storage_path=storage_path, max_tokens_per_tool_output=5
-        )
+        mgr = OffloadManager(storage_path=storage_path)
         text = "\n".join(f"line {i}" for i in range(20))
-        low_threshold_manager.try_offload(text, "tool")
-        ref_id = next(iter(low_threshold_manager._allowlist.keys()))
+        mgr.try_offload(text, "tool", 1)
+        ref_id = next(iter(mgr._allowlist.keys()))
 
         result = _search_offloaded(
-            low_threshold_manager, ref_id=ref_id, pattern="line [89]", context_lines=3
+            mgr, ref_id=ref_id, pattern="line [89]", context_lines=3
         )
         line_numbers = re.findall(r"^(\d+)[:-]", result, re.MULTILINE)
         assert len(line_numbers) == len(set(line_numbers))
@@ -230,7 +241,7 @@ class TestSearchOffloaded:
     def test_search_regex_timeout(self, manager):
         """Test search returns timeout error when regex execution exceeds time limit."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         with patch(
@@ -253,7 +264,7 @@ class TestReadOffloaded:
     def test_read_returns_line_range(self, manager):
         """Test read returns the correct line range with line numbers."""
         text = _large_text(100)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _read_offloaded(manager, ref_id=ref_id, start_line=10, end_line=15)
@@ -264,15 +275,13 @@ class TestReadOffloaded:
 
     def test_read_clamps_out_of_bounds(self, storage_path):
         """Test read clamps line range to file boundaries."""
-        low_threshold_manager = OffloadManager(
-            storage_path=storage_path, max_tokens_per_tool_output=5
-        )
+        mgr = OffloadManager(storage_path=storage_path)
         text = _large_text(10)
-        low_threshold_manager.try_offload(text, "tool")
-        ref_id = next(iter(low_threshold_manager._allowlist.keys()))
+        mgr.try_offload(text, "tool", 1)
+        ref_id = next(iter(mgr._allowlist.keys()))
 
         result = _read_offloaded(
-            low_threshold_manager, ref_id=ref_id, start_line=1, end_line=999
+            mgr, ref_id=ref_id, start_line=1, end_line=999
         )
         lines = result.strip().split("\n")
         assert len(lines) == 10
@@ -280,7 +289,7 @@ class TestReadOffloaded:
     def test_read_caps_at_max_lines(self, manager):
         """Test read caps at OFFLOAD_MAX_READ_LINES."""
         text = _large_text(1000)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         result = _read_offloaded(manager, ref_id=ref_id, start_line=1, end_line=1000)
@@ -313,7 +322,7 @@ class TestBuildRetrievalTools:
     async def test_search_tool_executes(self, manager):
         """Test search tool can be called via coroutine."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         tools = manager.build_retrieval_tools()
@@ -327,7 +336,7 @@ class TestBuildRetrievalTools:
     async def test_read_tool_executes(self, manager):
         """Test read tool can be called via coroutine."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
 
         tools = manager.build_retrieval_tools()
@@ -344,7 +353,7 @@ class TestSearchThenRead:
     async def test_search_then_read_same_ref(self, manager):
         """Test search then read on the same ref_id both return correct results."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
         tools = manager.build_retrieval_tools()
         search_tool = next(t for t in tools if t.name == "search_offloaded_content")
@@ -365,7 +374,7 @@ class TestSearchThenRead:
     async def test_multiple_searches_different_patterns(self, manager):
         """Test multiple search calls with different patterns on same ref."""
         text = _large_text(500)
-        manager.try_offload(text, "tool")
+        manager.try_offload(text, "tool", _SMALL_BUDGET)
         ref_id = next(iter(manager._allowlist.keys()))
         tools = manager.build_retrieval_tools()
         search_tool = next(t for t in tools if t.name == "search_offloaded_content")

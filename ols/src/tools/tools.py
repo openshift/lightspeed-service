@@ -101,82 +101,57 @@ def _is_rate_limited_tool_error(error: Exception) -> bool:
 _CHARS_PER_TOKEN_ESTIMATE = 4
 
 
-def _extract_text_from_tool_output(
-    output: Any,
-    tools_token_budget: int,
-    skip_truncation: bool = False,
-) -> tuple[str, bool]:
-    """Extract plain text from tool output with a character-level size guard.
+def _convert_tool_output_to_text(output: Any) -> str:
+    """Convert tool output to plain text without applying size limits.
 
     Handle both old-style string output and new-style content block
     list output from langchain-mcp-adapters>=0.2.0 which returns
     LC standard content blocks like [{'type': 'text', 'text': '...'}].
 
-    Neither LangChain nor the MCP SDK provide a mechanism to limit tool
-    response size at the transport layer, so a cheap character-level limit
-    (tools_token_budget * 4) is applied here before any tokenization to
-    avoid the CPU cost of tokenizing arbitrarily large tool responses.
-    Strings are cut at the last newline boundary; lists are truncated by
-    dropping trailing blocks that would exceed the limit.
-
     Args:
         output: Tool output, either a string or list of content blocks.
-        tools_token_budget: Remaining token budget for tool outputs; used
-            to derive a cheap character limit so we never tokenize an
-            arbitrarily large string.
-        skip_truncation: When True, extract text without applying size
-            limits. Used when an OffloadManager will handle size enforcement.
 
     Returns:
-        Tuple of (extracted text, was_truncated).
+        Extracted text as a single string.
     """
-    if skip_truncation:
-        if not isinstance(output, list):
-            return str(output), False
-        raw_parts: list[str] = []
-        for block in output:
-            chunk = (
-                block["text"]
-                if isinstance(block, dict) and "text" in block
-                else str(block)
-            )
-            raw_parts.append(chunk)
-        return "\n".join(raw_parts), False
-
-    max_chars = tools_token_budget * _CHARS_PER_TOKEN_ESTIMATE
-
     if not isinstance(output, list):
-        output = str(output)
-        if len(output) <= max_chars:
-            return output, False
-        cut = output[:max_chars].rfind("\n")
-        text = output[:cut].rstrip("\r") if cut > 0 else output[:max_chars]
-        logger.warning(
-            "Tool output pre-truncated from %d to %d chars (limit %d)",
-            len(output),
-            len(text),
-            max_chars,
-        )
-        return text + _TRUNCATION_WARNING, True
-
+        return str(output)
     parts: list[str] = []
-    total = 0
     for block in output:
         chunk = (
             block["text"] if isinstance(block, dict) and "text" in block else str(block)
         )
-        if total + len(chunk) > max_chars:
-            logger.warning(
-                "Tool output pre-truncated at block %d of %d (limit %d chars)",
-                len(parts),
-                len(output),
-                max_chars,
-            )
-            return "\n".join(parts) + _TRUNCATION_WARNING, True
         parts.append(chunk)
-        total += len(chunk)
+    return "\n".join(parts)
 
-    return "\n".join(parts), False
+
+def _truncate_tool_text(text: str, tools_token_budget: int) -> tuple[str, bool]:
+    """Apply character-level truncation to tool output text.
+
+    A cheap character-level limit (tools_token_budget * 4) is applied
+    to avoid the CPU cost of tokenizing arbitrarily large strings.
+    The string is cut at the last newline boundary to avoid mid-line splits.
+
+    Args:
+        text: Tool output text to truncate.
+        tools_token_budget: Remaining token budget; used to derive a
+            character limit (~4 chars/token).
+
+    Returns:
+        Tuple of (text, was_truncated).
+    """
+    max_chars = tools_token_budget * _CHARS_PER_TOKEN_ESTIMATE
+    if len(text) <= max_chars:
+        return text, False
+    cut = text[:max_chars].rfind("\n")
+    truncated = text[:cut].rstrip("\r") if cut > 0 else text[:max_chars]
+    logger.warning(
+        "Tool output pre-truncated from %d to %d chars (limit %d)",
+        len(text),
+        len(truncated),
+        max_chars,
+    )
+    return truncated + _TRUNCATION_WARNING, True
 
 
 def get_tool_by_name(
@@ -219,21 +194,22 @@ async def execute_tool_call(
     if isinstance(result, tuple) and len(result) == 2 and isinstance(result[1], dict):
         structured_content = result[1].get("structured_content")
 
+    raw_text = _convert_tool_output_to_text(raw_output)
+
     if offload_manager is not None:
-        raw_text, _ = _extract_text_from_tool_output(
-            raw_output, tools_token_budget, skip_truncation=True
+        offloaded = offload_manager.try_offload(
+            raw_text, tool_name, tools_token_budget
         )
-        offloaded = offload_manager.try_offload(raw_text, tool_name)
         if offloaded is not raw_text:
             tool_output = offloaded
             was_truncated = False
         else:
-            tool_output, was_truncated = _extract_text_from_tool_output(
+            tool_output, was_truncated = _truncate_tool_text(
                 raw_text, tools_token_budget
             )
     else:
-        tool_output, was_truncated = _extract_text_from_tool_output(
-            raw_output, tools_token_budget
+        tool_output, was_truncated = _truncate_tool_text(
+            raw_text, tools_token_budget
         )
 
     status = "success"

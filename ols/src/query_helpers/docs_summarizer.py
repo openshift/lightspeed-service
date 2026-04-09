@@ -1010,12 +1010,7 @@ class DocsSummarizer(QueryHelper):
         """Create an OffloadManager if tool calling is enabled, else None."""
         if not self._tool_calling_enabled:
             return None
-        return OffloadManager(
-            storage_path=config.ols_config.offload_storage_path,
-            max_tokens_per_tool_output=(
-                self.model_config.parameters.max_tokens_per_tool_output
-            ),
-        )
+        return OffloadManager(storage_path=config.ols_config.offload_storage_path)
 
     async def generate_response(
         self,

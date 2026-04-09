@@ -12,8 +12,9 @@ from pydantic import BaseModel
 from ols.src.tools import tools as tools_module
 from ols.src.tools.tools import (
     ToolResultEvent,
-    _extract_text_from_tool_output,
+    _convert_tool_output_to_text,
     _is_transient_tool_error,
+    _truncate_tool_text,
     enforce_tool_token_budget,
     execute_tool_call,
     execute_tool_calls_stream,
@@ -267,93 +268,66 @@ async def test_execute_tool_calls_truncation_in_additional_kwargs() -> None:
     assert "[OUTPUT TRUNCATED" not in by_id["call_small"].content
 
 
-def test_extract_text_from_tool_output_string():
-    """Test _extract_text_from_tool_output with a plain string."""
-    assert _extract_text_from_tool_output(
-        "hello", tools_token_budget=_LARGE_TOKEN_BUDGET
-    ) == ("hello", False)
+def test_convert_tool_output_to_text_string():
+    """Test _convert_tool_output_to_text with a plain string."""
+    assert _convert_tool_output_to_text("hello") == "hello"
 
 
-def test_extract_text_from_tool_output_content_blocks() -> None:
-    """Test _extract_text_from_tool_output with content blocks."""
+def test_convert_tool_output_to_text_content_blocks() -> None:
+    """Test _convert_tool_output_to_text with content blocks."""
     blocks = [
         {"type": "text", "text": "pod1 Running", "id": "lc_1"},
         {"type": "text", "text": "pod2 Running", "id": "lc_2"},
     ]
-    text, truncated = _extract_text_from_tool_output(
-        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
-    )
-    assert text == "pod1 Running\npod2 Running"
-    assert truncated is False
+    assert _convert_tool_output_to_text(blocks) == "pod1 Running\npod2 Running"
 
 
-def test_extract_text_from_tool_output_single_content_block() -> None:
-    """Test _extract_text_from_tool_output with one content block."""
+def test_convert_tool_output_to_text_single_content_block() -> None:
+    """Test _convert_tool_output_to_text with one content block."""
     blocks = [{"type": "text", "text": "some output", "id": "lc_1"}]
-    assert _extract_text_from_tool_output(
-        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
-    ) == ("some output", False)
+    assert _convert_tool_output_to_text(blocks) == "some output"
 
 
-def test_extract_text_from_tool_output_mixed_list() -> None:
-    """Test _extract_text_from_tool_output with mixed list elements."""
+def test_convert_tool_output_to_text_mixed_list() -> None:
+    """Test _convert_tool_output_to_text with mixed list elements."""
     blocks = [
         {"type": "text", "text": "text content"},
         "plain string",
     ]
-    text, truncated = _extract_text_from_tool_output(
-        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
-    )
-    assert text == "text content\nplain string"
+    assert _convert_tool_output_to_text(blocks) == "text content\nplain string"
+
+
+def test_convert_tool_output_to_text_non_string_non_list() -> None:
+    """Test _convert_tool_output_to_text with unexpected types."""
+    assert _convert_tool_output_to_text(42) == "42"
+    assert _convert_tool_output_to_text(None) == "None"
+
+
+def test_convert_tool_output_to_text_empty_list() -> None:
+    """Test _convert_tool_output_to_text with empty list."""
+    assert _convert_tool_output_to_text([]) == ""
+
+
+def test_convert_tool_output_to_text_list_with_unknown_item() -> None:
+    """Test _convert_tool_output_to_text stringifies unknown list entries."""
+    blocks = [{"type": "text", "text": "text content"}, 123]
+    assert _convert_tool_output_to_text(blocks) == "text content\n123"
+
+
+def test_truncate_tool_text_under_budget():
+    """Test that text under budget passes through unchanged."""
+    text, truncated = _truncate_tool_text("short", tools_token_budget=_LARGE_TOKEN_BUDGET)
+    assert text == "short"
     assert truncated is False
 
 
-def test_extract_text_from_tool_output_non_string_non_list() -> None:
-    """Test _extract_text_from_tool_output with unexpected types."""
-    assert _extract_text_from_tool_output(
-        42, tools_token_budget=_LARGE_TOKEN_BUDGET
-    ) == ("42", False)
-    assert _extract_text_from_tool_output(
-        None, tools_token_budget=_LARGE_TOKEN_BUDGET
-    ) == ("None", False)
-
-
-def test_extract_text_from_tool_output_empty_list() -> None:
-    """Test _extract_text_from_tool_output with empty list."""
-    assert _extract_text_from_tool_output(
-        [], tools_token_budget=_LARGE_TOKEN_BUDGET
-    ) == ("", False)
-
-
-def test_extract_text_from_tool_output_string_truncation():
+def test_truncate_tool_text_over_budget():
     """Test that a long string is truncated at the last newline boundary."""
     long_output = "line\n" * 5000
-    text, truncated = _extract_text_from_tool_output(long_output, tools_token_budget=10)
+    text, truncated = _truncate_tool_text(long_output, tools_token_budget=10)
     assert truncated is True
     assert len(text) < len(long_output)
     assert not text.endswith("\n\n")
-
-
-def test_extract_text_from_tool_output_list_block_truncation():
-    """Test that list blocks are dropped when they exceed the char limit."""
-    blocks = [
-        {"type": "text", "text": "block " * 200},
-        {"type": "text", "text": "block " * 200},
-        {"type": "text", "text": "block " * 200},
-    ]
-    text, truncated = _extract_text_from_tool_output(blocks, tools_token_budget=10)
-    assert truncated is True
-    assert len(text) < sum(len(b["text"]) for b in blocks)
-
-
-def test_extract_text_from_tool_output_list_with_unknown_item() -> None:
-    """Test _extract_text_from_tool_output stringifies unknown list entries."""
-    blocks = [{"type": "text", "text": "text content"}, 123]
-    text, truncated = _extract_text_from_tool_output(
-        blocks, tools_token_budget=_LARGE_TOKEN_BUDGET
-    )
-    assert text == "text content\n123"
-    assert truncated is False
 
 
 @pytest.mark.asyncio

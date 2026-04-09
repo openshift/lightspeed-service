@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import signal
+import tempfile
 from typing import Optional
 from uuid import uuid4
 
@@ -49,24 +50,25 @@ _RETRIEVAL_TOOL_NAMES = frozenset(
 class OffloadManager:
     """Manage offloading of large tool outputs to temporary files on disk.
 
-    Each instance is scoped to a single HTTP request. Files are cleaned
-    up via ``cleanup()`` in a try/finally block.
+    Each instance is scoped to a single HTTP request and creates its own
+    isolated session directory via ``tempfile.mkdtemp``. This ensures
+    concurrent requests never interfere with each other's files. The
+    session directory is removed entirely on ``cleanup()``.
+
+    Security properties:
+    - Files are created with ``O_CREAT | O_EXCL`` to prevent symlink attacks.
+    - A ref_id allowlist prevents the LLM from accessing arbitrary paths.
     """
 
-    def __init__(
-        self,
-        storage_path: str,
-        max_tokens_per_tool_output: int,
-    ) -> None:
+    def __init__(self, storage_path: str) -> None:
         """Initialize the offload manager.
 
         Args:
-            storage_path: Directory to store offloaded files.
-            max_tokens_per_tool_output: Token threshold above which
-                tool outputs are offloaded to disk.
+            storage_path: Parent directory under which the per-session
+                temp directory will be created.
         """
-        self._storage_path = storage_path
-        self._max_tokens = max_tokens_per_tool_output
+        self._base_path = storage_path
+        self._session_dir: Optional[str] = None
         self._allowlist: dict[str, str] = {}
         self._retrieval_tools_built = False
 
@@ -84,22 +86,35 @@ class OffloadManager:
         """Mark that retrieval tools have been added to the tool loop."""
         self._retrieval_tools_built = True
 
-    def try_offload(self, text: str, tool_name: str) -> str:
-        """Offload text to disk if it exceeds the token threshold.
+    def _ensure_session_dir(self) -> None:
+        """Create the per-session temp directory on first use."""
+        if self._session_dir is None:
+            os.makedirs(self._base_path, exist_ok=True)
+            self._session_dir = tempfile.mkdtemp(
+                prefix="session-", dir=self._base_path
+            )
+
+    def try_offload(self, text: str, tool_name: str, tools_token_budget: int) -> str:
+        """Offload text to disk if it exceeds the per-tool token budget.
+
+        The offload decision is driven by the per-tool share of the round's
+        token budget — the same budget that would truncate the output if
+        offloading is not available.
 
         Args:
             text: The full tool output text.
             tool_name: Name of the tool that produced the output.
+            tools_token_budget: Per-tool token budget for this round.
 
         Returns:
-            Either the original text (when under threshold, fallback, or
+            Either the original text (when under budget, fallback, or
             skipped) or a placeholder string with retrieval instructions.
         """
         if tool_name in _RETRIEVAL_TOOL_NAMES:
             return text
 
         estimated_tokens = len(text) // _CHARS_PER_TOKEN_ESTIMATE
-        if estimated_tokens <= self._max_tokens:
+        if estimated_tokens <= tools_token_budget:
             return text
 
         byte_size = len(text.encode("utf-8"))
@@ -113,10 +128,9 @@ class OffloadManager:
             return text
 
         ref_id = str(uuid4())
-        file_path = os.path.join(self._storage_path, f"{ref_id}.txt")
-
         try:
-            os.makedirs(self._storage_path, exist_ok=True)
+            self._ensure_session_dir()
+            file_path = os.path.join(self._session_dir, f"{ref_id}.txt")  # type: ignore[arg-type]
             fd = os.open(
                 file_path,
                 os.O_WRONLY | os.O_CREAT | os.O_EXCL,
@@ -141,17 +155,22 @@ class OffloadManager:
         return _build_placeholder(ref_id, tool_name, line_count, byte_size)
 
     def cleanup(self) -> None:
-        """Delete all offloaded files. Safe to call multiple times."""
-        for ref_id, file_path in self._allowlist.items():
+        """Delete the session directory and all offloaded files.
+
+        Safe to call multiple times. Uses ``shutil.rmtree`` on the
+        per-session directory for atomic cleanup that cannot leak files
+        from concurrent requests.
+        """
+        if self._session_dir is not None and os.path.isdir(self._session_dir):
             try:
-                os.unlink(file_path)
+                shutil.rmtree(self._session_dir)
             except OSError:
                 logger.warning(
-                    "Failed to delete offloaded file for ref_id '%s': %s",
-                    ref_id,
-                    file_path,
+                    "Failed to remove offload session directory: %s",
+                    self._session_dir,
                     exc_info=True,
                 )
+        self._session_dir = None
         self._allowlist.clear()
 
     def build_retrieval_tools(self) -> list[StructuredTool]:
