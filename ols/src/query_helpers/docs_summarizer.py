@@ -29,6 +29,7 @@ from ols.src.auth.k8s import CLUSTER_VERSION_UNAVAILABLE, K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.history_support import prepare_history
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.src.tools.offloaded_content import OffloadManager
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import TokenHandler
@@ -639,6 +640,7 @@ class DocsSummarizer(QueryHelper):
         token_handler: TokenHandler,
         tool_token_usage: ToolTokenUsage,
         max_tokens_for_tools: int,
+        offload_manager: Optional[OffloadManager] = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Resolve, execute, and stream one round of tool calls."""
         tool_tokens_used = tool_token_usage.used
@@ -758,6 +760,7 @@ class DocsSummarizer(QueryHelper):
                     tool_call_definitions,
                     round_budget,
                     streaming=self.streaming,
+                    offload_manager=offload_manager,
                 ):
                     match execution_event.event:
                         case StreamChunkType.APPROVAL_REQUIRED:
@@ -805,6 +808,7 @@ class DocsSummarizer(QueryHelper):
         llm_input_values: dict[str, str],
         token_counter: GenericTokenCounter,
         all_mcp_tools: list[StructuredTool],
+        offload_manager: Optional[OffloadManager] = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Iterate through multiple rounds of LLM invocation with tool calling.
 
@@ -814,6 +818,7 @@ class DocsSummarizer(QueryHelper):
             llm_input_values: Input values for the LLM
             token_counter: Counter for tracking token usage
             all_mcp_tools: All resolved MCP tools available for the request.
+            offload_manager: Optional manager for offloading large tool outputs.
 
         Yields:
             StreamedChunk objects representing parts of the response
@@ -899,8 +904,24 @@ class DocsSummarizer(QueryHelper):
                         token_handler=token_handler,
                         tool_token_usage=tool_token_usage,
                         max_tokens_for_tools=max_tokens_for_tools,
+                        offload_manager=offload_manager,
                     ):
                         yield streamed_chunk
+
+                    if (
+                        offload_manager is not None
+                        and offload_manager.has_offloaded_content
+                        and not offload_manager.retrieval_tools_registered
+                    ):
+                        retrieval_tools = offload_manager.build_retrieval_tools()
+                        for rt in retrieval_tools:
+                            all_mcp_tools.append(rt)
+                            all_tools_dict[rt.name] = rt
+                        offload_manager.mark_retrieval_tools_registered()
+                        logger.info(
+                            "Registered offload retrieval tools: %s",
+                            [rt.name for rt in retrieval_tools],
+                        )
                 except Exception:
                     logger.exception("Error executing tool calls in round %s", i)
                     yield StreamedChunk(
@@ -911,6 +932,90 @@ class DocsSummarizer(QueryHelper):
                     )
                     return
                 tool_tokens_used = tool_token_usage.used
+
+    def _resolve_skill(
+        self,
+        query: str,
+        token_handler: TokenHandler,
+        available_tokens: int,
+    ) -> tuple[Optional[str], list[StreamedChunk]]:
+        """Resolve skill content and emit skill-selection chunks.
+
+        Args:
+            query: The user query for skill retrieval.
+            token_handler: Token handler for budget checking.
+            available_tokens: Remaining token budget.
+
+        Returns:
+            Tuple of (skill_content_or_None, list_of_streamed_chunks_to_yield).
+        """
+        skills_rag = config.skills_rag
+        if skills_rag is None:
+            return None, []
+
+        skill, confidence = skills_rag.retrieve_skill(query)
+        if skill is None:
+            return None, []
+
+        skill_content: Optional[str] = None
+        try:
+            skill_content = skill.load_content()
+        except OSError:
+            logger.exception(
+                "Failed to load skill '%s'; falling back to no skill",
+                skill.name,
+            )
+            return None, []
+
+        skill_tokens = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(skill_content)
+        )
+        if skill_tokens > available_tokens * 0.8:
+            logger.warning(
+                "Skill '%s' requires %d tokens but only %d available; skipping",
+                skill.name,
+                skill_tokens,
+                available_tokens,
+            )
+            return None, [
+                StreamedChunk(
+                    type=StreamChunkType.SKILL_SELECTED,
+                    data={
+                        "name": skill.name,
+                        "confidence": confidence,
+                        "skipped": True,
+                        "reason": "exceeds token budget",
+                    },
+                )
+            ]
+
+        if skill_tokens > available_tokens * 0.5:
+            logger.warning(
+                "Skill '%s' uses %d tokens (%.0f%% of available budget)",
+                skill.name,
+                skill_tokens,
+                skill_tokens / available_tokens * 100,
+            )
+        return skill_content, [
+            StreamedChunk(
+                type=StreamChunkType.SKILL_SELECTED,
+                data={
+                    "name": skill.name,
+                    "confidence": confidence,
+                },
+            )
+        ]
+
+    def _create_offload_manager(self) -> Optional[OffloadManager]:
+        """Create an OffloadManager if tool calling is enabled, else None."""
+        if not self._tool_calling_enabled:
+            return None
+        return OffloadManager(
+            storage_path=config.ols_config.offload_storage_path,
+            max_tokens_per_tool_output=(
+                self.model_config.parameters.max_tokens_per_tool_output
+            ),
+        )
 
     async def generate_response(
         self,
@@ -952,55 +1057,11 @@ class DocsSummarizer(QueryHelper):
             else:
                 history, truncated = item
 
-        skill_content: Optional[str] = None
-        skills_rag = config.skills_rag
-        if skills_rag is not None:
-            skill, confidence = skills_rag.retrieve_skill(query)
-            if skill is not None:
-                try:
-                    skill_content = skill.load_content()
-                except OSError:
-                    logger.exception(
-                        "Failed to load skill '%s'; falling back to no skill",
-                        skill.name,
-                    )
-                    skill = None
-            if skill is not None:
-                skill_tokens = TokenHandler._get_token_count(
-                    token_handler.text_to_tokens(skill_content)
-                )
-                if skill_tokens > available_tokens * 0.8:
-                    logger.warning(
-                        "Skill '%s' requires %d tokens but only %d available; skipping",
-                        skill.name,
-                        skill_tokens,
-                        available_tokens,
-                    )
-                    skill_content = None
-                    yield StreamedChunk(
-                        type=StreamChunkType.SKILL_SELECTED,
-                        data={
-                            "name": skill.name,
-                            "confidence": confidence,
-                            "skipped": True,
-                            "reason": "exceeds token budget",
-                        },
-                    )
-                else:
-                    if skill_tokens > available_tokens * 0.5:
-                        logger.warning(
-                            "Skill '%s' uses %d tokens (%.0f%% of available budget)",
-                            skill.name,
-                            skill_tokens,
-                            skill_tokens / available_tokens * 100,
-                        )
-                    yield StreamedChunk(
-                        type=StreamChunkType.SKILL_SELECTED,
-                        data={
-                            "name": skill.name,
-                            "confidence": confidence,
-                        },
-                    )
+        skill_content, skill_chunks = self._resolve_skill(
+            query, token_handler, available_tokens
+        )
+        for skill_chunk in skill_chunks:
+            yield skill_chunk
 
         final_prompt, llm_input_values = self._build_final_prompt(
             query=query,
@@ -1013,19 +1074,26 @@ class DocsSummarizer(QueryHelper):
 
         messages = final_prompt.model_copy()
         all_mcp_tools = await get_mcp_tools(query, self.user_token, self.client_headers)
-        with TokenMetricUpdater(
-            llm=self.bare_llm,
-            provider=self.provider_config.type,
-            model=self.model,
-        ) as token_counter:
-            async for response in self.iterate_with_tools(
-                messages=messages,
-                max_rounds=self._get_max_iterations(),
-                token_counter=token_counter,
-                llm_input_values=llm_input_values,
-                all_mcp_tools=all_mcp_tools,
-            ):
-                yield response
+
+        offload_manager = self._create_offload_manager()
+        try:
+            with TokenMetricUpdater(
+                llm=self.bare_llm,
+                provider=self.provider_config.type,
+                model=self.model,
+            ) as token_counter:
+                async for response in self.iterate_with_tools(
+                    messages=messages,
+                    max_rounds=self._get_max_iterations(),
+                    token_counter=token_counter,
+                    llm_input_values=llm_input_values,
+                    all_mcp_tools=all_mcp_tools,
+                    offload_manager=offload_manager,
+                ):
+                    yield response
+        finally:
+            if offload_manager is not None:
+                offload_manager.cleanup()
 
         yield StreamedChunk(
             type=StreamChunkType.END,

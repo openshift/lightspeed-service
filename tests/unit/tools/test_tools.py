@@ -539,6 +539,7 @@ async def test_execute_tool_calls_stream_retries_retryable_then_succeeds(
         tool: StructuredTool,
         tool_args: dict[str, Any],
         tools_token_budget: int,
+        offload_manager: Any = None,
     ) -> tuple[str, str, bool, dict | None]:
         count = getattr(_execute_with_one_retry, "count", 0) + 1
         _execute_with_one_retry.count = count
@@ -690,7 +691,7 @@ async def test_execute_tool_calls_stream_divides_budget_per_tool(
     original_execute_with_retries = tools_module._execute_with_retries
 
     async def _spy_execute(
-        *, tool, tool_args, tools_token_budget
+        *, tool, tool_args, tools_token_budget, offload_manager=None
     ) -> tuple[str, str, bool, dict | None]:
         budgets_seen.append(tools_token_budget)
         return await original_execute_with_retries(

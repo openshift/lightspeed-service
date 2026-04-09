@@ -225,6 +225,10 @@ def test_model_parameters():
         default_params.max_tokens_for_response
         == constants.DEFAULT_MAX_TOKENS_FOR_RESPONSE
     )
+    assert (
+        default_params.max_tokens_per_tool_output
+        == constants.DEFAULT_MAX_TOKENS_PER_TOOL_OUTPUT
+    )
     assert default_params.reasoning_effort == ReasoningLevel.LOW
     assert default_params.reasoning_summary == ReasoningSummary.CONCISE
     assert default_params.verbosity == ReasoningLevel.LOW
@@ -233,6 +237,12 @@ def test_model_parameters():
 
     assert parameters.max_tokens_for_response == 10
     assert not hasattr(parameters, "unknown_param")
+
+    custom_offload = ModelParameters(max_tokens_per_tool_output=2000)
+    assert custom_offload.max_tokens_per_tool_output == 2000
+
+    with pytest.raises(ValidationError, match="Input should be greater than 0"):
+        ModelParameters(max_tokens_per_tool_output=-1)
 
     reasoning_params = ModelParameters(
         reasoning_effort="high",
@@ -2161,6 +2171,20 @@ def test_ols_config(tmpdir):
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile == TLSSecurityProfile()
+    assert ols_config.offload_storage_path == constants.DEFAULT_OFFLOAD_STORAGE_PATH
+
+
+def test_ols_config_with_custom_offload_storage_path():
+    """Test OLSConfig offload_storage_path override."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 100}},
+            "offload_storage_path": "/custom/offload/path",
+        }
+    )
+    assert ols_config.offload_storage_path == "/custom/offload/path"
 
 
 def test_ols_config_with_custom_max_iterations():
