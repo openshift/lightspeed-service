@@ -335,6 +335,20 @@ class WatsonxConfig(ProviderSpecificConfig, extra="forbid"):
     project_id: Optional[str] = None
 
 
+class GoogleVertexAnthropicConfig(BaseModel, extra="forbid"):
+    """Configuration specific to Google Vertex AI Anthropic (Claude) provider."""
+
+    project: str  # required attribute
+    location: str  # required attribute
+
+
+class GoogleVertexConfig(BaseModel, extra="forbid"):
+    """Configuration specific to Google Vertex AI (ChatGoogleGenerativeAI) provider."""
+
+    project: str  # required attribute
+    location: str  # required attribute
+
+
 class FakeConfig(ProviderSpecificConfig, extra="forbid"):
     """Configuration specific to fake provider."""
 
@@ -361,6 +375,8 @@ class ProviderConfig(BaseModel):
     watsonx_config: Optional[WatsonxConfig] = None
     rhoai_vllm_config: Optional[RHOAIVLLMConfig] = None
     rhelai_vllm_config: Optional[RHELAIVLLMConfig] = None
+    google_vertex_anthropic_config: Optional[GoogleVertexAnthropicConfig] = None
+    google_vertex_config: Optional[GoogleVertexConfig] = None
     fake_provider_config: Optional[FakeConfig] = None
     certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
@@ -519,6 +535,20 @@ class ProviderConfig(BaseModel):
                     self.check_provider_config(watsonx_config)
                     self.read_api_key(watsonx_config)
                     self.watsonx_config = WatsonxConfig(**watsonx_config)
+                case constants.PROVIDER_GOOGLE_VERTEX_ANTHROPIC:
+                    google_vertex_anthropic_config = data.get(
+                        "google_vertex_anthropic_config"
+                    )
+                    self.check_provider_config(google_vertex_anthropic_config)
+                    self.google_vertex_anthropic_config = GoogleVertexAnthropicConfig(
+                        **google_vertex_anthropic_config
+                    )
+                case constants.PROVIDER_GOOGLE_VERTEX:
+                    google_vertex_config = data.get("google_vertex_config")
+                    self.check_provider_config(google_vertex_config)
+                    self.google_vertex_config = GoogleVertexConfig(
+                        **google_vertex_config
+                    )
                 case constants.PROVIDER_FAKE:
                     fake_provider_config = data.get("fake_provider_config")
                     self.fake_provider_config = FakeConfig(**fake_provider_config)

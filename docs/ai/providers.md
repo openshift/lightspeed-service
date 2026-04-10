@@ -121,4 +121,8 @@ Unknown parameters (not in the provider's `ProviderParameter` set) are silently 
 | `PROVIDER_RHOAI_VLLM` | `rhoai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_RHELAI_VLLM` | `rhelai_vllm.py` | `ChatOpenAI` (OpenAI-compatible) |
 | `PROVIDER_WATSONX` | `watsonx.py` | `WatsonxLLM` |
+| `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` | `google_vertex_anthropic.py` | `ChatAnthropicVertex` (Claude on Vertex) |
+| `PROVIDER_GOOGLE_VERTEX` | `google_vertex.py` | `ChatGoogleGenerativeAI` |
 | `PROVIDER_FAKE` | `fake_provider.py` | `FakeListLLM` / `FakeStreamingListLLM` |
+
+Vertex AI in `olsconfig.yaml`: use `type: google_vertex_anthropic` with a `google_vertex_anthropic_config` block (`project`, `location`), or `type: google_vertex` with `google_vertex_config` (same shape).
