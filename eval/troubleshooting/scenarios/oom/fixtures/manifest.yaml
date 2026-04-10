@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oom-scenario
+  labels:
+    purpose: eval-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: awesome-application
+  namespace: oom-scenario
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: awesome-application
+  template:
+    metadata:
+      labels:
+        app: awesome-application
+    spec:
+      containers:
+      - name: app
+        image: python:3.9-slim
+        resources:
+          limits:
+            memory: "60Mi"
+            cpu: "100m"
+          requests:
+            memory: "60Mi"
+            cpu: "100m"
+        command:
+        - python3
+        - -c
+        - |
+          import time
+          print("Starting application...")
+          # Create a memory leak
+          data = []
+          while True:
+              # Continuously append data to cause memory growth
+              data.append("x" * 1000000)  # 1MB of data each iteration
+              print(f"Allocated {len(data)} MB")
+              time.sleep(1)
