@@ -1049,6 +1049,68 @@
                     }
                 }
             }
+        },
+        "/a2a": {
+            "post": {
+                "summary": " Handle Requests",
+                "description": "Handles incoming POST requests to the main A2A endpoint.\n\nParses the request body as JSON, validates it against A2A request types,\ndispatches it to the appropriate handler method, and returns the response.\nHandles JSON parsing errors, validation errors, and other exceptions,\nreturning appropriate JSON-RPC error responses.\n\nArgs:\n    request: The incoming Starlette Request object.\n\nReturns:\n    A Starlette Response object (JSONResponse or EventSourceResponse).\n\nRaises:\n    (Implicitly handled): Various exceptions are caught and converted\n    into JSON-RPC error responses by this method.",
+                "operationId": "_handle_requests_a2a_post",
+                "requestBody": {
+                    "description": "A2ARequest",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/A2ARequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.well-known/agent-card.json": {
+            "get": {
+                "summary": " Handle Get Agent Card",
+                "description": "Handles GET requests for the agent card endpoint.\n\nArgs:\n    request: The incoming Starlette Request object.\n\nReturns:\n    A JSONResponse containing the agent card data.",
+                "operationId": "_handle_get_agent_card__well_known_agent_card_json_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.well-known/agent.json": {
+            "get": {
+                "summary": " Handle Get Agent Card",
+                "description": "Handles GET requests for the agent card endpoint.\n\nArgs:\n    request: The incoming Starlette Request object.\n\nReturns:\n    A JSONResponse containing the agent card data.",
+                "operationId": "_handle_get_agent_card__well_known_agent_json_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
