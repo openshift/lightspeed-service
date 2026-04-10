@@ -1369,3 +1369,58 @@ async def test_round_budget_decreases_progressively_with_round_index():
         f"Round 3 budget ({budgets_passed_to_execute[2]}) should be smaller "
         f"than round 2 ({budgets_passed_to_execute[1]})"
     )
+
+
+@pytest.mark.asyncio
+async def test_generate_response_creates_and_cleans_offload_manager():
+    """Test OffloadManager lifecycle in generate_response for both streaming modes."""
+    for streaming in (False, True):
+        created_managers = []
+        cleanup_calls = []
+
+        original_init = __import__(
+            "ols.src.tools.offloaded_content", fromlist=["OffloadManager"]
+        ).OffloadManager.__init__
+
+        def _tracking_init(self, *args, **kwargs):
+            original_init(self, *args, **kwargs)
+            created_managers.append(self)
+            original_cleanup = self.cleanup
+
+            def _tracked_cleanup():
+                cleanup_calls.append(self)
+                original_cleanup()
+
+            self.cleanup = _tracked_cleanup
+
+        summarizer = DocsSummarizer(
+            llm_loader=mock_llm_loader(mock_langchain_interface("test response")()),
+            streaming=streaming,
+        )
+        summarizer._tool_calling_enabled = True
+
+        with (
+            patch(
+                "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+                new=AsyncMock(return_value=[]),
+            ),
+            patch(
+                "ols.src.tools.offloaded_content.OffloadManager.__init__",
+                _tracking_init,
+            ),
+        ):
+            chunks = [
+                chunk async for chunk in summarizer.generate_response("test query")
+            ]
+
+        assert len(created_managers) == 1, (
+            f"Expected 1 OffloadManager created (streaming={streaming}), "
+            f"got {len(created_managers)}"
+        )
+        assert len(cleanup_calls) == 1, (
+            f"Expected cleanup called once (streaming={streaming}), "
+            f"got {len(cleanup_calls)}"
+        )
+        assert any(
+            c.type == StreamChunkType.END for c in chunks
+        ), f"Expected END chunk (streaming={streaming})"
