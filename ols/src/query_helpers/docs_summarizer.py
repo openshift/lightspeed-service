@@ -1015,7 +1015,7 @@ class DocsSummarizer(QueryHelper):
         all_mcp_tools = await get_mcp_tools(query, self.user_token, self.client_headers)
         with TokenMetricUpdater(
             llm=self.bare_llm,
-            provider=self.provider_config.type,
+            provider=self.provider,
             model=self.model,
         ) as token_counter:
             async for response in self.iterate_with_tools(

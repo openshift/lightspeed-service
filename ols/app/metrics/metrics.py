@@ -81,7 +81,7 @@ def setup_model_metrics(config: AppConfig) -> None:
 
     for provider in config.llm_config.providers.values():
         for model_name in provider.models:
-            label_key = (provider.type, model_name)
+            label_key = (provider.name, model_name)
             if (
                 provider.name == config.ols_config.default_provider
                 and model_name == config.ols_config.default_model
