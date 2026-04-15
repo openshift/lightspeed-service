@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
+from google.oauth2 import service_account
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.language_models.llms import LLM
@@ -16,6 +17,8 @@ from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
     PROVIDER_FAKE,
+    PROVIDER_GOOGLE_VERTEX,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
     PROVIDER_OPENAI,
     PROVIDER_RHELAI_VLLM,
     PROVIDER_RHOAI_VLLM,
@@ -124,6 +127,29 @@ FakeProviderParameters = {
     ProviderParameter("sleep", float),
 }
 
+GoogleVertexAnthropicParameters = {
+    ProviderParameter("model_name", str),
+    ProviderParameter("project", str),
+    ProviderParameter("location", str),
+    ProviderParameter("credentials", service_account.Credentials),
+    ProviderParameter("max_output_tokens", int),
+    ProviderParameter("temperature", float),
+    ProviderParameter("top_p", float),
+    ProviderParameter("top_k", int),
+}
+
+GoogleVertexParameters = {
+    ProviderParameter("model", str),
+    ProviderParameter("project", str),
+    ProviderParameter("location", str),
+    ProviderParameter("vertexai", bool),
+    ProviderParameter("credentials", service_account.Credentials),
+    ProviderParameter("max_output_tokens", int),
+    ProviderParameter("temperature", float),
+    ProviderParameter("top_p", float),
+    ProviderParameter("top_k", int),
+}
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
@@ -132,6 +158,8 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParameters,
     PROVIDER_WATSONX: WatsonxParameters,
     PROVIDER_FAKE: FakeProviderParameters,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParameters,
+    PROVIDER_GOOGLE_VERTEX: GoogleVertexParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
@@ -166,6 +194,15 @@ WatsonxParametersMapping: dict[str, str] = {
 # Generic to fake parameter mapping
 FakeProviderParametersMapping: dict[str, str] = {}
 
+# Generic to Google Vertex Anthropic parameters mapping
+GoogleVertexAnthropicParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
+}
+
+GoogleVertexParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
+}
+
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
@@ -174,6 +211,8 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_RHOAI_VLLM: RHOAIVLLMParametersMapping,
     PROVIDER_WATSONX: WatsonxParametersMapping,
     PROVIDER_FAKE: FakeProviderParametersMapping,
+    PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParametersMapping,
+    PROVIDER_GOOGLE_VERTEX: GoogleVertexParametersMapping,
 }
 
 
