@@ -1,9 +1,12 @@
 # LightSpeed Evaluation Framework Configuration
-# OLS Provider: OpenAI GPT-4o-mini (older mini model, being evaluated)
-# Judge LLM: OpenAI GPT-4.1-mini (newer mini model, scoring responses)
+# OLS Provider: RHEL AI vLLM (model being evaluated)
+# Judge LLM: OpenAI GPT-4.1-mini (scoring responses)
+#
+# The default model "gpt-3.5-turbo" is the alias registered in the vLLM deployment.
+# Override it for your deployment via the LSEVAL_OLS_MODEL environment variable, e.g.:
+#   export LSEVAL_OLS_MODEL=ibm/granite-3.1-8b-instruct
 
 # Judge LLM Configuration
-# Uses OpenAI GPT-4.1-mini for evaluation scoring.
 # Requires OPENAI_API_KEY environment variable.
 llm:
   provider: "openai"
@@ -14,16 +17,17 @@ llm:
   num_retries: 3
 
 # OLS API Configuration
-# Targets the OLS /query endpoint using OpenAI GPT-4o-mini as the backend LLM.
+# Targets the OLS /query endpoint using RHEL AI vLLM as the backend LLM.
 # api_base is overridden at runtime with the actual OLS service URL.
-# Requires OPENAI_API_KEY environment variable (used by OLS via K8s secret).
+# Requires OLS to be configured with an rhelai_vllm provider (vLLM endpoint + token in olsconfig).
+# Set LSEVAL_OLS_MODEL to the model alias deployed in your vLLM instance.
 api:
   enabled: true
   api_base: http://localhost:8080
   endpoint_type: query
   timeout: 300
-  provider: "openai"
-  model: "gpt-4o-mini"
+  provider: "rhelai_vllm"
+  model: "gpt-3.5-turbo"
   no_tools: null
   system_prompt: null
 
@@ -62,9 +66,7 @@ visualization:
   figsize: [12, 8]
   dpi: 300
   enabled_graphs:
-    - "pass_rates"
     - "score_distribution"
-    - "conversation_heatmap"
     - "status_breakdown"
 
 # Environment Variables
