@@ -63,6 +63,10 @@ function run_suites() {
   # run_suite "watsonx_tool_calling" "tool_calling" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "tool_calling"
   # (( rc = rc || $? ))
 
+  # MCP e2e tests
+  run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp"
+  (( rc = rc || $? ))
+
   # BYOK Test cases
   run_suite "watsonx_byok1" "byok1" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "byok1"
   (( rc = rc || $? ))
