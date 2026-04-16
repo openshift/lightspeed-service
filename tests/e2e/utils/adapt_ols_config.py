@@ -14,6 +14,8 @@ from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_te
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
+disconnected = os.getenv("DISCONNECTED", "")
+
 
 def apply_olsconfig(provider_list: list[str]) -> None:
     """Apply the correct OLSConfig CR based on provider configuration.
@@ -320,10 +322,13 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     )
     print("App server scaled down")
 
-    # Update configmap with e2e-specific settings - FAIL FAST if this breaks
-    print("Updating configmap with e2e test settings...")
-    update_ols_configmap()
-    print(" Configmap updated successfully")
+    if not disconnected:
+        # Update configmap with e2e-specific settings - FAIL FAST if this breaks
+        print("Updating configmap with e2e test settings...")
+        update_ols_configmap()
+        print(" Configmap updated successfully")
+    else:
+        print("Disconnected mode: skipping configmap update, using existing configuration")
     # Apply test image
     if ols_image:
         print(f"Applying test image: {ols_image}")
@@ -371,19 +376,20 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     except Exception as e:
         print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
-    # Configure exporter for e2e tests with proper settings
-    try:
-        print("Configuring exporter for e2e tests...")
-        configure_exporter_for_e2e_tests(
-            interval_seconds=3600,  # 1 hour to prevent interference
-            ingress_env="stage",
-            log_level="DEBUG",
-            data_dir="/app-root/ols-user-data",
-        )
-        print("Exporter configured successfully")
-    except Exception as e:
-        print(f"Warning: Could not configure exporter: {e}")
-        print("Tests may experience interference from data collector")
+    if not disconnected:
+        # Configure exporter for e2e tests with proper settings
+        try:
+            print("Configuring exporter for e2e tests...")
+            configure_exporter_for_e2e_tests(
+                interval_seconds=3600,  # 1 hour to prevent interference
+                ingress_env="stage",
+                log_level="DEBUG",
+                data_dir="/app-root/ols-user-data",
+            )
+            print("Exporter configured successfully")
+        except Exception as e:
+            print(f"Warning: Could not configure exporter: {e}")
+            print("Tests may experience interference from data collector")
 
     # Fetch tokens for service accounts
     print("Fetching tokens for service accounts...")
