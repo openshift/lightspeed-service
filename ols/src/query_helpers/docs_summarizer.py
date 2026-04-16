@@ -25,6 +25,7 @@ from ols.app.models.models import (
     SummarizerResponse,
 )
 from ols.constants import GenericLLMParameters
+from ols.src.a2a.client import get_a2a_tools
 from ols.src.auth.k8s import CLUSTER_VERSION_UNAVAILABLE, K8sClientSingleton
 from ols.src.prompts.prompt_generator import GeneratePrompt
 from ols.src.query_helpers.history_support import prepare_history
@@ -470,6 +471,7 @@ class DocsSummarizer(QueryHelper):
         all_chunks: list[AIMessageChunk] = []
         streamed_chunks: list[StreamedChunk] = []
         chunk_counter = 0
+        should_stop = False
         try:
             async with asyncio.timeout(constants.TOOL_CALL_ROUND_TIMEOUT):
                 async for chunk in self._invoke_llm(
@@ -479,6 +481,9 @@ class DocsSummarizer(QueryHelper):
                     is_final_round=is_final_round,
                     token_counter=token_counter,
                 ):
+                    if should_stop:
+                        continue
+
                     # TODO: Temporary fix for fake-llm (load test) which gives
                     # output as string. Currently every method that we use gives us
                     # proper output, except fake-llm. We need to move to a different
@@ -494,12 +499,8 @@ class DocsSummarizer(QueryHelper):
                         break
 
                     if chunk.response_metadata.get("finish_reason") == "stop":  # type: ignore [attr-defined]
-                        return RoundLLMResult(
-                            tool_call_chunks,
-                            all_chunks,
-                            streamed_chunks,
-                            should_stop=True,
-                        )
+                        should_stop = True
+                        continue
 
                     all_chunks.append(chunk)
 
@@ -542,7 +543,7 @@ class DocsSummarizer(QueryHelper):
             )
 
         return RoundLLMResult(
-            tool_call_chunks, all_chunks, streamed_chunks, should_stop=False
+            tool_call_chunks, all_chunks, streamed_chunks, should_stop=should_stop
         )
 
     @staticmethod
@@ -1012,7 +1013,11 @@ class DocsSummarizer(QueryHelper):
         )
 
         messages = final_prompt.model_copy()
-        all_mcp_tools = await get_mcp_tools(query, self.user_token, self.client_headers)
+        mcp_tools, a2a_tools = await asyncio.gather(
+            get_mcp_tools(query, self.user_token, self.client_headers),
+            get_a2a_tools(query, self.user_token, self.client_headers),
+        )
+        all_mcp_tools = mcp_tools + a2a_tools
         with TokenMetricUpdater(
             llm=self.bare_llm,
             provider=self.provider_config.type,

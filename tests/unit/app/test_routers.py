@@ -1,5 +1,7 @@
 """Unit tests for routers.py."""
 
+from unittest.mock import patch
+
 from ols import config
 
 # needs to be setup there before is_user_authorized is imported
@@ -32,7 +34,8 @@ class MockFastAPI:
         self.routers.append(router)
 
 
-def test_include_routers():
+@patch("ols.app.routers._mount_a2a_routes")
+def test_include_routers(mock_mount_a2a):
     """Test the function include_routers."""
     app = MockFastAPI()
     include_routers(app)
@@ -49,3 +52,4 @@ def test_include_routers():
     assert metrics.router in app.routers
     assert ols.router in app.routers
     assert streaming_ols.router in app.routers
+    mock_mount_a2a.assert_called_once_with(app)
