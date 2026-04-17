@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from typing import ClassVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -17,6 +17,7 @@ from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    DEFAULT_TOOL_ROUND_CAP_FRACTION,
     QueryMode,
 )
 
@@ -28,12 +29,16 @@ from ols.src.query_helpers.docs_summarizer import (  # noqa: E402
     DocsSummarizer,
     QueryHelper,
     RoundLLMResult,
-    ToolTokenUsage,
 )
 from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
 from ols.utils.logging_configurator import configure_logging  # noqa: E402
 from ols.utils.mcp_utils import build_mcp_config, gather_mcp_tools  # noqa: E402
-from ols.utils.token_handler import TokenHandler  # noqa: E402
+from ols.utils.token_handler import (  # noqa: E402
+    PromptTooLongError,
+    TokenBudgetTracker,
+    TokenCategory,
+    TokenHandler,
+)
 from tests import constants  # noqa: E402
 from tests.mock_classes.mock_langchain_interface import (  # noqa: E402
     mock_langchain_interface,
@@ -406,7 +411,8 @@ def test_tool_calling_tool_execution(caplog):
         ),
         patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_mcp_client_cls,
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
         patch(
@@ -445,6 +451,28 @@ def test_tool_calling_tool_execution(caplog):
         assert "get_namespaces_mock" in caplog.text
         assert "invalid_function_name" in caplog.text
         assert mock_invoke.call_count == 2
+
+
+def test_build_final_prompt_raises_when_tool_definitions_exceed_prompt_budget() -> None:
+    """Tool definitions token estimate is validated with the final prompt budget."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    summarizer._tracker = TokenBudgetTracker(
+        token_handler=TokenHandler(),
+        context_window_size=1000,
+        max_response_tokens=100,
+        max_tool_tokens=200,
+        round_cap_fraction=0.6,
+    )
+    summarizer._tracker.set_tool_loop_max_rounds(5)
+    summarizer._tracker.charge(TokenCategory.PROMPT, 650)
+    with pytest.raises(PromptTooLongError, match="Tool definitions"):
+        summarizer._build_final_prompt(
+            query="q",
+            history=[],
+            rag_chunks=[],
+            skill_content=None,
+            tool_definitions_tokens=100,
+        )
 
 
 def test_tool_output_token_tracking_uses_buffer_weight(caplog):
@@ -637,7 +665,13 @@ async def test_collect_round_llm_chunks_targeted_paths():
 async def test_process_tool_calls_for_round_streams_approval_and_result():
     """Test _process_tool_calls_for_round streams approval + tool_result and updates state."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
+    summarizer._tracker = TokenBudgetTracker(
+        token_handler=TokenHandler(),
+        context_window_size=summarizer.model_config.context_window_size,
+        max_response_tokens=summarizer.model_config.parameters.max_tokens_for_response,
+        max_tool_tokens=1000,
+        round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+    )
     messages: list = []
 
     async def _fake_execute(*args, **kwargs):
@@ -680,9 +714,6 @@ async def test_process_tool_calls_for_round_streams_approval_and_result():
                 all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -693,7 +724,7 @@ async def test_process_tool_calls_for_round_streams_approval_and_result():
     ]
     assert streamed[1].data["approval_id"] == "aid-1"
     assert streamed[2].data["type"] == "tool_result"
-    assert token_usage.used > 0
+    assert summarizer._tracker.usage(TokenCategory.TOOL_RESULT) > 0
     assert len(messages) == 2
 
 
@@ -846,7 +877,6 @@ def test_resolve_tool_call_definitions_none_args_normalized_to_empty_dict():
 async def test_process_tool_calls_for_round_skipped_only_without_execution():
     """Test skipped-only path emits tool_result without calling executor."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
     messages: list = []
     tool = mock_tools_map[0]
     tool_call_chunks = [
@@ -870,9 +900,6 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
                 all_tools_dict={tool.name: tool},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -889,7 +916,13 @@ async def test_process_tool_calls_for_round_skipped_only_without_execution():
 async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(caplog):
     """Test unexpected tool execution events are ignored with warning."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    token_usage = ToolTokenUsage(used=0)
+    summarizer._tracker = TokenBudgetTracker(
+        token_handler=TokenHandler(),
+        context_window_size=summarizer.model_config.context_window_size,
+        max_response_tokens=summarizer.model_config.parameters.max_tokens_for_response,
+        max_tool_tokens=1000,
+        round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+    )
     messages: list = []
     caplog.set_level(logging.WARNING)
 
@@ -929,9 +962,6 @@ async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(c
                 all_tools_dict={"get_namespaces_mock": mock_tools_map[0]},
                 duplicate_tool_names=set(),
                 messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=1000,
             )
         ]
 
@@ -945,7 +975,7 @@ async def test_process_tool_calls_for_round_ignores_unexpected_execution_event(c
 def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(caplog):
     """Test tool result chunk contains metadata enrichment and has_meta logging."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.DEBUG)
     tool = mock_tools_map[0]
     tool.metadata = {"mcp_server": "server-a", "_meta": {"app": "ui"}}
     message = ToolMessage(
@@ -959,7 +989,6 @@ def test_tool_result_chunk_for_message_preserves_metadata_and_logs_has_meta(capl
         tool_call_message=message,
         tool_name=tool.name,
         tool=tool,
-        token_handler=TokenHandler(),
         round_index=1,
     )
 
@@ -1243,129 +1272,3 @@ def test_create_response_ignores_reasoning_chunks():
         result = summarizer.create_response("q")
 
     assert result.response == "answer"
-
-
-@pytest.mark.asyncio
-async def test_process_tool_calls_round_budget_leaves_room_for_next_round():
-    """Verify round budget cap so one heavy round does not exhaust the global budget."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    tool = mock_tools_map[0]
-    all_tools_dict = {tool.name: tool}
-
-    max_tokens_for_tools = 2000
-    large_output = "word " * 3000
-
-    async def _fake_execute(*args, **kwargs):
-        yield ToolResultEvent(
-            data=ToolMessage(
-                content=large_output,
-                status="success",
-                tool_call_id="call_1",
-                additional_kwargs={"truncated": False},
-            )
-        )
-
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": tool.name, "args": {}, "id": "call_1"}],
-        )
-    ]
-
-    token_usage = ToolTokenUsage(used=0)
-    messages: list = []
-
-    with patch(
-        "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
-        side_effect=_fake_execute,
-    ):
-        _ = [
-            chunk
-            async for chunk in summarizer._process_tool_calls_for_round(
-                round_index=1,
-                tool_call_chunks=tool_call_chunks,
-                all_chunks=[],
-                all_tools_dict=all_tools_dict,
-                duplicate_tool_names=set(),
-                messages=messages,
-                token_handler=TokenHandler(),
-                tool_token_usage=token_usage,
-                max_tokens_for_tools=max_tokens_for_tools,
-            )
-        ]
-
-    used_after_round_1 = token_usage.used
-    remaining_after_round_1 = max_tokens_for_tools - used_after_round_1
-    assert remaining_after_round_1 > 0, (
-        f"Round 1 consumed the entire budget ({used_after_round_1}/{max_tokens_for_tools}), "
-        "leaving nothing for subsequent rounds"
-    )
-
-
-@pytest.mark.asyncio
-async def test_round_budget_decreases_progressively_with_round_index():
-    """Verify later rounds get a smaller share of the remaining budget."""
-    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
-    tool = mock_tools_map[0]
-    all_tools_dict = {tool.name: tool}
-
-    max_tokens_for_tools = 10000
-    large_output = "word " * 5000
-
-    tool_call_chunks = [
-        AIMessageChunk(
-            content="",
-            response_metadata={"finish_reason": "tool_calls"},
-            tool_calls=[{"name": tool.name, "args": {}, "id": "call_1"}],
-        )
-    ]
-
-    budgets_passed_to_execute: list[int] = []
-
-    def _make_capture_generator(large_output_text: str):
-        async def _capture_budget(tool_calls, tools_token_budget, **kwargs):
-            budgets_passed_to_execute.append(tools_token_budget)
-            yield ToolResultEvent(
-                data=ToolMessage(
-                    content=large_output_text,
-                    status="success",
-                    tool_call_id="call_1",
-                    additional_kwargs={"truncated": False},
-                )
-            )
-
-        return _capture_budget
-
-    token_usage = ToolTokenUsage(used=0)
-
-    for round_idx in (1, 2, 3):
-        messages: list = []
-        with patch(
-            "ols.src.query_helpers.docs_summarizer.execute_tool_calls_stream",
-            side_effect=_make_capture_generator(large_output),
-        ):
-            _ = [
-                chunk
-                async for chunk in summarizer._process_tool_calls_for_round(
-                    round_index=round_idx,
-                    tool_call_chunks=tool_call_chunks,
-                    all_chunks=[],
-                    all_tools_dict=all_tools_dict,
-                    duplicate_tool_names=set(),
-                    messages=messages,
-                    token_handler=TokenHandler(),
-                    tool_token_usage=token_usage,
-                    max_tokens_for_tools=max_tokens_for_tools,
-                )
-            ]
-
-    assert len(budgets_passed_to_execute) == 3
-    assert budgets_passed_to_execute[0] > budgets_passed_to_execute[1], (
-        f"Round 2 budget ({budgets_passed_to_execute[1]}) should be smaller "
-        f"than round 1 ({budgets_passed_to_execute[0]})"
-    )
-    assert budgets_passed_to_execute[1] > budgets_passed_to_execute[2], (
-        f"Round 3 budget ({budgets_passed_to_execute[2]}) should be smaller "
-        f"than round 2 ({budgets_passed_to_execute[1]})"
-    )

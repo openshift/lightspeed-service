@@ -21,7 +21,7 @@ def retrieve_rag_chunks(query, model, model_config):
     )
 
     retriever = config.rag_index.as_retriever(similarity_top_k=RAG_CONTENT_LIMIT)
-    rag_chunks, _ = token_handler.truncate_rag_context(
+    rag_chunks = token_handler.truncate_rag_context(
         retriever.retrieve(query), available_tokens
     )
     return [rag_chunk.text for rag_chunk in rag_chunks]

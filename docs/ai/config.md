@@ -115,3 +115,4 @@ Config-related constants live in `ols/constants.py`:
 | `DEFAULT_MAX_TOKENS_FOR_RESPONSE` | (int) | Default token limit |
 | `SUPPORTED_PROVIDER_TYPES` | frozenset | Validated against in `ProviderConfig.set_provider_type()` |
 | `SUPPORTED_AUTHENTICATION_MODULES` | frozenset | Validated in `AuthenticationConfig` |
+| `tool_round_cap_fraction` | (YAML: `ols_config.tool_round_cap_fraction`) | Global per-round MCP tool budget cap; bounds `TOOL_ROUND_CAP_FRACTION_MIN` / `MAX` in `ols/constants.py` |

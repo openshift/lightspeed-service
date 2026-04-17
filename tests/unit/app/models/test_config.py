@@ -256,6 +256,56 @@ def test_model_parameters():
     with pytest.raises(ValidationError):
         ModelParameters(verbosity="invalid")  # type: ignore[arg-type]
 
+    assert (
+        ModelParameters(
+            tool_budget_ratio=constants.TOOL_BUDGET_RATIO_MIN
+        ).tool_budget_ratio
+        == constants.TOOL_BUDGET_RATIO_MIN
+    )
+    assert ModelParameters(tool_budget_ratio=0.6).tool_budget_ratio == 0.6
+    with pytest.raises(InvalidConfigurationError, match="tool_budget_ratio"):
+        ModelParameters(tool_budget_ratio=0.0)
+    with pytest.raises(InvalidConfigurationError, match="tool_budget_ratio"):
+        ModelParameters(tool_budget_ratio=0.05)
+    with pytest.raises(InvalidConfigurationError, match="tool_budget_ratio"):
+        ModelParameters(tool_budget_ratio=0.61)
+
+
+def test_config_accepts_mcp_with_minimum_tool_budget_ratio():
+    """Full config load with MCP requires tool_budget_ratio within configured bounds."""
+    Config(
+        {
+            "llm_providers": [
+                {
+                    "name": "p1",
+                    "type": "openai",
+                    "url": "http://url1",
+                    "credentials_path": "tests/config/secret/apitoken",
+                    "models": [
+                        {
+                            "name": "m1",
+                            "url": "http://murl1/",
+                            "credentials_path": "tests/config/secret/apitoken",
+                            "parameters": {
+                                "tool_budget_ratio": constants.TOOL_BUDGET_RATIO_MIN,
+                                "max_tokens_for_response": 100,
+                            },
+                        }
+                    ],
+                }
+            ],
+            "ols_config": {
+                "default_provider": "p1",
+                "default_model": "m1",
+                "conversation_cache": {
+                    "type": "memory",
+                    "memory": {"max_entries": 100},
+                },
+            },
+            "mcp_servers": [{"name": "foo", "url": "http://localhost:8080/mcp"}],
+        }
+    )
+
 
 def test_model_config():
     """Test the ModelConfig model."""
@@ -376,15 +426,42 @@ def test_model_config_validation_improper_url():
 
 
 def test_model_config_higher_response_token():
-    """Test the model config with response token >= context window."""
+    """Context window must exceed max_tokens_for_response plus tool budget (zero without MCP)."""
     with pytest.raises(
         InvalidConfigurationError,
-        match=r"Context window size 2 must be greater than max_tokens_for_response \(2\)",
+        match=(
+            r"Model 'm1': context window size 2 must be greater than "
+            r"max_tokens_for_response \(2\) \+ tool budget \(0\)"
+        ),
     ):
-        ModelConfig(
-            name="test_model_name",
-            context_window_size=2,
-            parameters=ModelParameters(max_tokens_for_response=2),
+        Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "p1",
+                        "type": "openai",
+                        "url": "http://url1",
+                        "credentials_path": "tests/config/secret/apitoken",
+                        "models": [
+                            {
+                                "name": "m1",
+                                "url": "http://murl1/",
+                                "credentials_path": "tests/config/secret/apitoken",
+                                "context_window_size": 2,
+                                "parameters": {"max_tokens_for_response": 2},
+                            }
+                        ],
+                    }
+                ],
+                "ols_config": {
+                    "default_provider": "p1",
+                    "default_model": "m1",
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {"max_entries": 100},
+                    },
+                },
+            }
         )
 
 
@@ -2161,6 +2238,35 @@ def test_ols_config(tmpdir):
     assert ols_config.system_prompt_path is None
     assert ols_config.system_prompt is None
     assert ols_config.tls_security_profile == TLSSecurityProfile()
+    assert (
+        ols_config.tool_round_cap_fraction == constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
+    )
+
+
+def test_ols_config_tool_round_cap_fraction():
+    """tool_round_cap_fraction is on OLSConfig and uses TOOL_ROUND_CAP_FRACTION bounds."""
+    base = {
+        "default_provider": "test_default_provider",
+        "default_model": "test_default_model",
+        "conversation_cache": {
+            "type": "memory",
+            "memory": {"max_entries": 100},
+        },
+    }
+    ols_min = OLSConfig(
+        {**base, "tool_round_cap_fraction": constants.TOOL_ROUND_CAP_FRACTION_MIN}
+    )
+    assert ols_min.tool_round_cap_fraction == constants.TOOL_ROUND_CAP_FRACTION_MIN
+    ols_max = OLSConfig(
+        {**base, "tool_round_cap_fraction": constants.TOOL_ROUND_CAP_FRACTION_MAX}
+    )
+    assert ols_max.tool_round_cap_fraction == constants.TOOL_ROUND_CAP_FRACTION_MAX
+
+    with pytest.raises(InvalidConfigurationError, match="tool_round_cap_fraction"):
+        OLSConfig({**base, "tool_round_cap_fraction": 0.29})
+
+    with pytest.raises(InvalidConfigurationError, match="tool_round_cap_fraction"):
+        OLSConfig({**base, "tool_round_cap_fraction": 0.81})
 
 
 def test_ols_config_with_custom_max_iterations():
@@ -2517,6 +2623,10 @@ def test_config():
     assert config.ols_config.authentication_config.module is not None
     assert config.ols_config.authentication_config.module == "foo"
     assert config.ols_config.expire_llm_is_ready_persistent_state == 2
+
+    for provider in config.llm_providers.providers.values():
+        for model in provider.models.values():
+            assert model.max_tokens_for_tools == 0
 
 
 def test_config_equality():
@@ -3966,7 +4076,8 @@ def test_proxy_config_default_values():
         os_proxy = os.getenv("HTTPS_PROXY")
     assert proxy_config.proxy_url == os_proxy
     assert proxy_config.proxy_ca_cert_path is None
-    assert proxy_config.no_proxy_hosts == []
+    expected_no_proxy = [h for h in os.getenv("no_proxy", "").split(",") if h]
+    assert proxy_config.no_proxy_hosts == expected_no_proxy
 
 
 def test_proxy_config_correct_values():

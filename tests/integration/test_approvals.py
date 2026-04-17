@@ -4,7 +4,7 @@
 # properly by linters
 # pyright: reportAttributeAccessIssue=false
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -150,7 +150,8 @@ def test_streaming_approval_always_emits_approval_and_rejection(_setup) -> None:
             side_effect=_single_tool_side_effect_factory(),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
         patch(
@@ -189,7 +190,8 @@ def test_streaming_approval_never_skips_approval_and_executes(_setup) -> None:
             side_effect=_single_tool_side_effect_factory(),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
         patch(
@@ -239,7 +241,8 @@ def test_streaming_approval_tool_annotations_mixed_tools(_setup) -> None:
             side_effect=_three_tools_side_effect_factory(),
         ),
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler.calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
         patch(

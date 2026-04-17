@@ -30,7 +30,7 @@ RATE_LIMIT_RETRY_BACKOFF_SECONDS = 1.0
 DO_NOT_RETRY_REMINDER = "Do not retry this exact tool call."
 
 _TRUNCATION_WARNING = (
-    "\n\n[OUTPUT TRUNCATED - The tool returned more data than can be "
+    "\n[OUTPUT TRUNCATED - The tool returned more data than can be "
     "processed. Please ask a more specific question to get complete results.]"
 )
 _TRUNCATION_WARNING_TOKENS = TokenHandler._get_token_count(
@@ -98,6 +98,18 @@ def _is_rate_limited_tool_error(error: Exception) -> bool:
 _CHARS_PER_TOKEN_ESTIMATE = 4
 
 
+def _truncate_text_to_char_limit(text: str, max_chars: int) -> str:
+    """Return up to ``max_chars`` characters, cutting at the last newline when possible."""
+    if max_chars <= 0:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    prefix = text[:max_chars]
+    cut = prefix.rfind("\n")
+    chunk = prefix[:cut].rstrip("\r") if cut > 0 else prefix
+    return chunk.strip()
+
+
 def _extract_text_from_tool_output(
     output: Any, tools_token_budget: int
 ) -> tuple[str, bool]:
@@ -111,8 +123,10 @@ def _extract_text_from_tool_output(
     response size at the transport layer, so a cheap character-level limit
     (tools_token_budget * 4) is applied here before any tokenization to
     avoid the CPU cost of tokenizing arbitrarily large tool responses.
-    Strings are cut at the last newline boundary; lists are truncated by
-    dropping trailing blocks that would exceed the limit.
+    Strings are cut at the last newline boundary. For lists, blocks are
+    concatenated until the limit; the first block alone may be shortened
+    to the limit before appending the truncation notice; later blocks are
+    dropped if they would exceed the limit.
 
     Args:
         output: Tool output, either a string or list of content blocks.
@@ -129,34 +143,51 @@ def _extract_text_from_tool_output(
         output = str(output)
         if len(output) <= max_chars:
             return output, False
-        cut = output[:max_chars].rfind("\n")
-        text = output[:cut].rstrip("\r") if cut > 0 else output[:max_chars]
-        logger.warning(
+        body = _truncate_text_to_char_limit(output, max_chars)
+        logger.debug(
             "Tool output pre-truncated from %d to %d chars (limit %d)",
             len(output),
-            len(text),
+            len(body),
             max_chars,
         )
-        return text + _TRUNCATION_WARNING, True
+        return body + _TRUNCATION_WARNING, True
 
-    parts: list[str] = []
+    joined = ""
     total = 0
+    blocks_kept = 0
     for block in output:
         chunk = (
             block["text"] if isinstance(block, dict) and "text" in block else str(block)
         )
         if total + len(chunk) > max_chars:
-            logger.warning(
+            if blocks_kept == 0:
+                room = max_chars - total
+                body = _truncate_text_to_char_limit(chunk, room)
+                logger.debug(
+                    "Tool output list: first block exceeds char budget "
+                    "(block_len=%d, limit=%d, total_blocks=%d); "
+                    "pre-truncating first block to %d chars",
+                    len(chunk),
+                    max_chars,
+                    len(output),
+                    len(body),
+                )
+                return body + _TRUNCATION_WARNING, True
+            logger.debug(
                 "Tool output pre-truncated at block %d of %d (limit %d chars)",
-                len(parts),
+                blocks_kept,
                 len(output),
                 max_chars,
             )
-            return "\n".join(parts) + _TRUNCATION_WARNING, True
-        parts.append(chunk)
+            return joined.strip() + _TRUNCATION_WARNING, True
+        if blocks_kept > 0:
+            joined += "\n" + chunk
+        else:
+            joined = chunk
+        blocks_kept += 1
         total += len(chunk)
 
-    return "\n".join(parts), False
+    return joined.strip(), False
 
 
 def get_tool_by_name(
@@ -198,7 +229,8 @@ async def execute_tool_call(
             result[0], tools_token_budget
         )
         if isinstance(result[1], dict):
-            structured_content = result[1].get("structured_content")
+            raw = result[1].get("structured_content")
+            structured_content = raw if isinstance(raw, dict) else None
     else:
         tool_output, was_truncated = _extract_text_from_tool_output(
             result, tools_token_budget
@@ -485,6 +517,7 @@ async def execute_tool_calls_stream(
 def enforce_tool_token_budget(
     tool_messages: list[ToolMessage],
     remaining_budget: int,
+    token_handler: TokenHandler,
 ) -> list[ToolMessage]:
     """Ensure combined tool outputs fit within the remaining token budget.
 
@@ -497,6 +530,7 @@ def enforce_tool_token_budget(
     Args:
         tool_messages: Tool result messages to enforce budget on.
         remaining_budget: Remaining token budget for tool outputs.
+        token_handler: Tokenizer to use for token counting and truncation.
 
     Returns:
         The same list of ToolMessages, with oversized ones truncated in place.
@@ -515,7 +549,6 @@ def enforce_tool_token_budget(
 
     # Tier 2: precise tokenization. The char estimate was ambiguous,
     # so tokenize each message to get exact counts.
-    token_handler = TokenHandler()
     token_lists = [
         token_handler.text_to_tokens(str(msg.content)) for msg in tool_messages
     ]
@@ -539,10 +572,24 @@ def enforce_tool_token_budget(
     if token_counts[longest_idx] // 2 >= excess:
         targets = [longest_idx]
         limits = [token_counts[longest_idx] - excess]
+        logger.debug(
+            "Truncating longest message [%d] from %d to %d tokens (excess %d)",
+            longest_idx,
+            token_counts[longest_idx],
+            limits[0],
+            excess,
+        )
     else:
         ratio = remaining_budget / total
         targets = list(range(len(token_counts)))
         limits = [max(1, int(token_counts[i] * ratio)) for i in targets]
+        logger.debug(
+            "Scaling all %d messages by %.2f (budget %d, total %d)",
+            len(targets),
+            ratio,
+            remaining_budget,
+            total,
+        )
 
     # Truncate targeted messages using pre-computed token lists (no
     # re-tokenization). Cut at the last newline to avoid mid-line splits.
@@ -553,15 +600,22 @@ def enforce_tool_token_budget(
             token_lists[idx][: max(0, limit - _TRUNCATION_WARNING_TOKENS)]
         )
         cut = raw.rfind("\n")
-        truncated_text = (
-            raw[:cut].rstrip("\r") if cut > 0 else raw
-        ) + _TRUNCATION_WARNING
+        body = raw[:cut].rstrip("\r") if cut > 0 else raw
+        truncated_text = body.strip() + _TRUNCATION_WARNING
+
+        token_counts[idx] = TokenHandler._get_token_count(
+            token_handler.text_to_tokens(truncated_text)
+        )
         msg = tool_messages[idx]
         tool_messages[idx] = ToolMessage(
             content=truncated_text,
             status=msg.status,
             tool_call_id=msg.tool_call_id,
-            additional_kwargs={**msg.additional_kwargs, "truncated": True},
+            additional_kwargs={
+                **msg.additional_kwargs,
+                "truncated": True,
+                "token_count": token_counts[idx],
+            },
         )
 
     return tool_messages

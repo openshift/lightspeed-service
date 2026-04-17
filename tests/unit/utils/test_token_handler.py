@@ -6,8 +6,13 @@ from unittest import TestCase, mock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
-from ols.constants import TOKEN_BUFFER_WEIGHT
-from ols.utils.token_handler import PromptTooLongError, TokenHandler
+from ols.constants import DEFAULT_TOOL_ROUND_CAP_FRACTION, TOKEN_BUFFER_WEIGHT
+from ols.utils.token_handler import (
+    PromptTooLongError,
+    TokenBudgetTracker,
+    TokenCategory,
+    TokenHandler,
+)
 from tests.mock_classes.mock_retrieved_node import MockRetrievedNode
 
 
@@ -115,13 +120,10 @@ class TestTokenHandler(TestCase):
     def test_token_handler(self):
         """Test token handler for context."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context(retrieved_nodes)
 
         assert len(rag_chunks) == 3
         for i in range(3):
-            # New-line character is considered during calculation.
             assert (
                 rag_chunks[i].text
                 == "Document:\n" + self._mock_retrieved_obj[i].get_text()
@@ -130,7 +132,6 @@ class TestTokenHandler(TestCase):
                 rag_chunks[i].doc_url
                 == self._mock_retrieved_obj[i].metadata["docs_url"]
             )
-        assert available_tokens == 473
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
@@ -138,14 +139,11 @@ class TestTokenHandler(TestCase):
     def test_token_handler_score(self):
         """Test token handler for context when score is higher than threshold."""
         retrieved_nodes = self._mock_retrieved_obj[:3]
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            retrieved_nodes
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context(retrieved_nodes)
         assert len(rag_chunks) == 1
         assert (
             rag_chunks[0].text == "Document:\n" + self._mock_retrieved_obj[0].get_text()
         )
-        assert available_tokens == 491
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 4)
@@ -155,7 +153,7 @@ class TestTokenHandler(TestCase):
         # Calculation for each chunk:
         # `Document:\n` -> 3 tokens for format, Actual text -> 5, new-line -> 1, total -> 9
 
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 13
         )
         assert len(rag_chunks) == 2
@@ -163,26 +161,21 @@ class TestTokenHandler(TestCase):
             rag_chunks[1].text
             == "Document:\n" + self._mock_retrieved_obj[1].get_text()[:6]
         )
-        assert available_tokens == 0
 
     @mock.patch("ols.utils.token_handler.TOKEN_BUFFER_WEIGHT", 1.05)
     @mock.patch("ols.utils.token_handler.RAG_SIMILARITY_CUTOFF", 0.4)
     @mock.patch("ols.utils.token_handler.MINIMUM_CONTEXT_TOKEN_LIMIT", 3)
     def test_token_handler_token_minimum(self):
         """Test token handler when token count reached minimum threshold."""
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
+        rag_chunks = self._token_handler_obj.truncate_rag_context(
             self._mock_retrieved_obj, 10
         )
         assert len(rag_chunks) == 1
-        assert available_tokens == 1
 
     def test_token_handler_empty(self):
         """Test token handler when node is empty."""
-        rag_chunks, available_tokens = self._token_handler_obj.truncate_rag_context(
-            [], 5
-        )
+        rag_chunks = self._token_handler_obj.truncate_rag_context([], 5)
         assert rag_chunks == []
-        assert available_tokens == 5
 
     def test_limit_conversation_history_when_no_history_exists(self):
         """Check the behaviour of limiting conversation history if it does not exists."""
@@ -324,3 +317,209 @@ class TestTokenHandler(TestCase):
                 max_tokens_for_response,
                 max_tokens_for_tools,
             )
+
+
+class TestTokenBudgetTracker(TestCase):
+    """Tests for TokenBudgetTracker budget properties."""
+
+    def test_prompt_budget_matches_window_minus_reservations(self):
+        """prompt_budget is context minus response and tool reservations."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        assert tracker.prompt_budget == 700
+
+    def test_prompt_budget_remaining_reflects_charges(self):
+        """prompt_budget_remaining decreases when categories accrue usage."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        assert tracker.prompt_budget_remaining == 700
+        tracker.charge(TokenCategory.PROMPT, 150)
+        assert tracker.prompt_budget_remaining == 550
+        tracker.charge(TokenCategory.HISTORY, 50)
+        assert tracker.prompt_budget_remaining == 500
+
+    def test_remaining_initial_and_relation_to_prompt_budget(self):
+        """Remaining is window minus response reservation minus all category usage."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        assert tracker.remaining == 900
+        assert tracker.prompt_budget_remaining == 700
+        assert (
+            tracker.remaining
+            == tracker.prompt_budget_remaining + tracker.max_tool_tokens
+        )
+
+    def test_remaining_decreases_with_prompt_and_tool_charges(self):
+        """Any category charge lowers remaining by the same amount."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        assert tracker.remaining == 900
+        tracker.charge(TokenCategory.PROMPT, 120)
+        assert tracker.remaining == 780
+        assert tracker.total_used == 120
+        tracker.charge(TokenCategory.TOOL_RESULT, 40)
+        assert tracker.remaining == 740
+        assert tracker.total_used == 160
+
+    def test_tool_budget_used_sums_only_tool_pool_categories(self):
+        """tool_budget_used includes AI round and tool results, not definitions."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        tracker.charge(TokenCategory.TOOL_DEFINITIONS, 11)
+        tracker.charge(TokenCategory.AI_ROUND, 22)
+        tracker.charge(TokenCategory.TOOL_RESULT, 33)
+        assert tracker.tool_budget_used == 55
+        tracker.charge(TokenCategory.PROMPT, 400)
+        tracker.charge(TokenCategory.HISTORY, 50)
+        assert tracker.tool_budget_used == 55
+
+    def test_tool_budget_remaining_clamps_at_zero(self):
+        """tool_budget_remaining does not go negative when over the tool cap."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=80,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        tracker.charge(TokenCategory.TOOL_RESULT, 150)
+        assert tracker.tool_budget_used == 150
+        assert tracker.tool_budget_remaining == 0
+
+    def test_tools_round_budget_scales_with_remaining_and_fraction(self):
+        """tools_round_budget is int(fraction * tool_budget_remaining)."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=100,
+            round_cap_fraction=0.5,
+        )
+        assert tracker.tool_budget_remaining == 100
+        assert tracker.tools_round_budget == 50
+        tracker.charge(TokenCategory.TOOL_RESULT, 60)
+        assert tracker.tool_budget_remaining == 40
+        assert tracker.tools_round_budget == 20
+
+    def test_tools_round_budget_truncates_with_int(self):
+        """Fractional product uses int truncation toward zero."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=100,
+            round_cap_fraction=0.6,
+        )
+        tracker.charge(TokenCategory.TOOL_RESULT, 33)
+        assert tracker.tool_budget_remaining == 67
+        assert tracker.tools_round_budget == int(67 * 0.6)
+
+    def test_tools_round_execution_budget_zero_when_tool_pool_exhausted(self):
+        """tools_round_execution_budget is 0 when nothing remains in the tool slice."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=50,
+            round_cap_fraction=0.6,
+        )
+        tracker.charge(TokenCategory.TOOL_RESULT, 50)
+        assert tracker.tools_round_execution_budget(5) == 0
+
+    def test_tools_round_execution_budget_equal_share_tightens_long_horizon(self):
+        """Long horizon makes equal-share smaller than fraction cap."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=10_000,
+            max_response_tokens=100,
+            max_tool_tokens=10_000,
+            round_cap_fraction=0.6,
+        )
+        assert tracker.tool_budget_remaining == 10_000
+        assert tracker.tools_round_execution_budget(19) == min(
+            int(10_000 * 0.6),
+            10_000 // 19,
+        )
+
+    def test_tools_round_execution_budget_fraction_cap_when_horizon_is_one(self):
+        """Single-round horizon leaves fraction cap as the tighter bound."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=500,
+            round_cap_fraction=0.6,
+        )
+        assert tracker.tools_round_execution_budget(1) == int(500 * 0.6)
+
+    def test_tools_round_execution_budget_non_positive_horizon_treated_as_one(self):
+        """tool_rounds_left below 1 uses horizon 1 (same as fraction-only for full R)."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=0.5,
+        )
+        assert tracker.tools_round_execution_budget(
+            0
+        ) == tracker.tools_round_execution_budget(1)
+        assert tracker.tools_round_execution_budget(-3) == 100
+
+    def test_summary_includes_tools_exec_budget_after_set_tool_loop_max_rounds(self):
+        """Summary appends tools_exec_budget when set_tool_loop_max_rounds was called."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=10_000,
+            max_response_tokens=100,
+            max_tool_tokens=10_000,
+            round_cap_fraction=0.6,
+        )
+        tracker.charge(TokenCategory.TOOL_DEFINITIONS, 500)
+        tracker.set_tool_loop_max_rounds(20)
+        round_index = 3
+        horizon = 20 - round_index
+        expected = tracker.tools_round_execution_budget(horizon)
+        text = tracker.summary(round_index)
+        assert f"tools_exec_budget={expected}" in text
+        assert f"tool_rounds_left={horizon}" in text
+        assert tracker.last_tools_exec_budget == expected
+        assert tracker.last_tool_rounds_left == horizon
+
+    def test_summary_omits_exec_budget_without_set_tool_loop_max_rounds(self):
+        """Summary does not mention tools_exec_budget until max rounds is registered."""
+        tracker = TokenBudgetTracker(
+            token_handler=TokenHandler(),
+            context_window_size=1000,
+            max_response_tokens=100,
+            max_tool_tokens=200,
+            round_cap_fraction=DEFAULT_TOOL_ROUND_CAP_FRACTION,
+        )
+        assert "tools_exec_budget" not in tracker.summary(1)
+        assert tracker.last_tools_exec_budget is None
+        assert tracker.last_tool_rounds_left is None

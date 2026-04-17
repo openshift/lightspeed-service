@@ -5,7 +5,7 @@
 # pyright: reportAttributeAccessIssue=false
 
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 import requests
@@ -1006,8 +1006,8 @@ def test_tool_calling(_setup, caplog) -> None:
             "ols.src.query_helpers.docs_summarizer.DocsSummarizer._invoke_llm"
         ) as mock_invoke,
         patch(
-            "ols.src.query_helpers.docs_summarizer.TokenHandler"
-            ".calculate_and_check_available_tokens",
+            "ols.src.query_helpers.docs_summarizer.TokenBudgetTracker.tools_round_budget",
+            new_callable=PropertyMock,
             return_value=1000,
         ),
     ):
