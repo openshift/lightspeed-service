@@ -193,12 +193,12 @@ def test_provider_model_configuration_metrics():
     """Check if provider_model_configuration metrics shows the expected information."""
     response_text = retrieve_metrics(pytest.client)
     expected_metrics = (
-        'ols_provider_model_configuration{model="m1",provider="p1"} 1.0',
-        'ols_provider_model_configuration{model="m2",provider="p1"} 0.0',
-        'ols_provider_model_configuration{model="model-name",provider="my_watsonx"} 0.0',
-        'ols_provider_model_configuration{model="model-name",provider="my_azure_openai"} 0.0',
-        'ols_provider_model_configuration{model="model-name",provider="my_rhoai"} 0.0',
-        'ols_provider_model_configuration{model="model-name",provider="my_rhelai"} 0.0',
+        'ols_provider_model_configuration{model="m1",provider="openai"} 1.0',
+        'ols_provider_model_configuration{model="m2",provider="openai"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="watsonx"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="azure_openai"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="rhoai_vllm"} 0.0',
+        'ols_provider_model_configuration{model="model-name",provider="rhelai_vllm"} 0.0',
     )
     for expected in expected_metrics:
         assert expected in response_text
