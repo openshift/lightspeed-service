@@ -280,9 +280,7 @@ class TestReadOffloaded:
         mgr.try_offload(text, "tool", 1)
         ref_id = next(iter(mgr._allowlist.keys()))
 
-        result = _read_offloaded(
-            mgr, ref_id=ref_id, start_line=1, end_line=999
-        )
+        result = _read_offloaded(mgr, ref_id=ref_id, start_line=1, end_line=999)
         lines = result.strip().split("\n")
         assert len(lines) == 10
 

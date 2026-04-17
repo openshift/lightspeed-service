@@ -316,7 +316,9 @@ def test_convert_tool_output_to_text_list_with_unknown_item() -> None:
 
 def test_truncate_tool_text_under_budget():
     """Test that text under budget passes through unchanged."""
-    text, truncated = _truncate_tool_text("short", tools_token_budget=_LARGE_TOKEN_BUDGET)
+    text, truncated = _truncate_tool_text(
+        "short", tools_token_budget=_LARGE_TOKEN_BUDGET
+    )
     assert text == "short"
     assert truncated is False
 

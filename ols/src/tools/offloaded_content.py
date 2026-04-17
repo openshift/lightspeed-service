@@ -90,9 +90,7 @@ class OffloadManager:
         """Create the per-session temp directory on first use."""
         if self._session_dir is None:
             os.makedirs(self._base_path, exist_ok=True)
-            self._session_dir = tempfile.mkdtemp(
-                prefix="session-", dir=self._base_path
-            )
+            self._session_dir = tempfile.mkdtemp(prefix="session-", dir=self._base_path)
 
     def try_offload(self, text: str, tool_name: str, tools_token_budget: int) -> str:
         """Offload text to disk if it exceeds the per-tool token budget.

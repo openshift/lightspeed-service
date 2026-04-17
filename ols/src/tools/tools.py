@@ -197,9 +197,7 @@ async def execute_tool_call(
     raw_text = _convert_tool_output_to_text(raw_output)
 
     if offload_manager is not None:
-        offloaded = offload_manager.try_offload(
-            raw_text, tool_name, tools_token_budget
-        )
+        offloaded = offload_manager.try_offload(raw_text, tool_name, tools_token_budget)
         if offloaded is not raw_text:
             tool_output = offloaded
             was_truncated = False
@@ -208,9 +206,7 @@ async def execute_tool_call(
                 raw_text, tools_token_budget
             )
     else:
-        tool_output, was_truncated = _truncate_tool_text(
-            raw_text, tools_token_budget
-        )
+        tool_output, was_truncated = _truncate_tool_text(raw_text, tools_token_budget)
 
     status = "success"
     logger.debug(
