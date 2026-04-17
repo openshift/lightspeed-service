@@ -1144,6 +1144,8 @@ class OLSConfig(BaseModel):
 
     skills: Optional[SkillsConfig] = None
 
+    offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1201,6 +1203,10 @@ class OLSConfig(BaseModel):
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
             self.skills = SkillsConfig(**data.get("skills"))
+
+        self.offload_storage_path = data.get(
+            "offload_storage_path", constants.DEFAULT_OFFLOAD_STORAGE_PATH
+        )
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""

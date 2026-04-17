@@ -12,6 +12,7 @@ from ols import config, constants, version
 from ols.app import metrics, routers
 from ols.constants import SERVICE_NAME
 from ols.src.config_status import extract_config_status, store_config_status
+from ols.src.tools.offloaded_content import cleanup_offload_storage
 
 app = FastAPI(
     title=f"Swagger {SERVICE_NAME} service - OpenAPI",
@@ -195,6 +196,8 @@ app_routes_paths = [
     for route in app.routes
     if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
+
+cleanup_offload_storage(config.ols_config.offload_storage_path)
 
 if config.ols_config.user_data_collection.config_status_enabled:
     try:

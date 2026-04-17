@@ -244,6 +244,13 @@ CLUSTER_QUOTA_LIMITER = "cluster_limiter"
 # MCP transport default timeout
 MCP_HTTP_TRANSPORT_DEFAULT_TIMEOUT = 5  # in seconds
 
+# Offloading defaults
+DEFAULT_OFFLOAD_STORAGE_PATH = "/tmp/ols-offloaded"  # noqa: S108
+OFFLOAD_MAX_SEARCH_MATCHES = 50
+OFFLOAD_MAX_READ_LINES = 500
+OFFLOAD_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+OFFLOAD_REGEX_TIMEOUT_SECONDS = 5
+
 # MCP authorization header placeholders
 MCP_KUBERNETES_PLACEHOLDER = "kubernetes"
 MCP_CLIENT_PLACEHOLDER = "client"
