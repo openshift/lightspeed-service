@@ -14,6 +14,8 @@ from tests.e2e.utils.data_collector_control import configure_exporter_for_e2e_te
 from tests.e2e.utils.retry import retry_until_timeout_or_success
 from tests.e2e.utils.wait_for_ols import wait_for_ols
 
+disconnected = os.getenv("DISCONNECTED", "")
+
 
 def apply_olsconfig(provider_list: list[str]) -> None:
     """Apply the correct OLSConfig CR based on provider configuration.
@@ -201,21 +203,8 @@ def setup_route() -> str:
     return f"https://{url}"
 
 
-def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
-    """Adapt OLS configuration for different providers dynamically.
-
-    Ensures RBAC, service accounts, and OLS route exist for test execution.
-    This function assumes the operator has already been scaled down during initial setup.
-
-    Returns:
-        tuple: (ols_url, token, metrics_token)
-    """
-    print("Adapting OLS configuration for provider switching")
-    provider_env = os.getenv("PROVIDER", "openai")
-    provider_list = provider_env.split() or ["openai"]
-    ols_image = os.getenv("OLS_IMAGE", "")
-    namespace = "openshift-lightspeed"
-
+def _scale_down_existing_app_server() -> None:
+    """Scale down existing app server deployment if present."""
     print("Checking for existing app server deployment...")
     try:
         cluster_utils.run_oc(
@@ -230,6 +219,10 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
         print("Old app server scaled down")
     except Exception as e:
         print(f"No existing app server to scale down (this is OK): {e}")
+
+
+def _reconcile_olsconfig_with_operator(provider_list: list[str]) -> None:
+    """Scale up operator, apply OLSConfig CR, wait for reconciliation, then scale down."""
     # Scaling operator to 1 replica to allow finalizer to run for olsconfig
     cluster_utils.run_oc(
         [
@@ -306,6 +299,9 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     )
     print("Operator scaled down")
 
+
+def _apply_e2e_specific_config(ols_image: str) -> None:
+    """Scale down app server, update configmap and image, then scale back up."""
     # Scale down app server to apply e2e configurations
     print("Scaling down app server to apply e2e configurations...")
     cluster_utils.run_oc(
@@ -320,10 +316,15 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     )
     print("App server scaled down")
 
-    # Update configmap with e2e-specific settings - FAIL FAST if this breaks
-    print("Updating configmap with e2e test settings...")
-    update_ols_configmap()
-    print(" Configmap updated successfully")
+    if not disconnected:
+        # Update configmap with e2e-specific settings - FAIL FAST if this breaks
+        print("Updating configmap with e2e test settings...")
+        update_ols_configmap()
+        print(" Configmap updated successfully")
+    else:
+        print(
+            "Disconnected mode: skipping configmap update, using existing configuration"
+        )
     # Apply test image
     if ols_image:
         print(f"Applying test image: {ols_image}")
@@ -357,6 +358,16 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     # Wait for deployment to be ready
     wait_for_deployment()
 
+
+def _setup_access_and_tokens(namespace: str) -> tuple[str, str]:
+    """Set up service accounts, RBAC, and return tokens.
+
+    Args:
+        namespace: The Kubernetes namespace for access configuration.
+
+    Returns:
+        tuple: (token, metrics_token)
+    """
     # Ensure service accounts exist
     try:
         setup_service_accounts(namespace)
@@ -371,24 +382,48 @@ def adapt_ols_config() -> tuple[str, str, str]:  # pylint: disable=R0915
     except Exception as e:
         print(f"Warning: Could not ensure pod-reader role/binding: {e}")
 
-    # Configure exporter for e2e tests with proper settings
-    try:
-        print("Configuring exporter for e2e tests...")
-        configure_exporter_for_e2e_tests(
-            interval_seconds=3600,  # 1 hour to prevent interference
-            ingress_env="stage",
-            log_level="DEBUG",
-            data_dir="/app-root/ols-user-data",
-        )
-        print("Exporter configured successfully")
-    except Exception as e:
-        print(f"Warning: Could not configure exporter: {e}")
-        print("Tests may experience interference from data collector")
+    if not disconnected:
+        # Configure exporter for e2e tests with proper settings
+        try:
+            print("Configuring exporter for e2e tests...")
+            configure_exporter_for_e2e_tests(
+                interval_seconds=3600,  # 1 hour to prevent interference
+                ingress_env="stage",
+                log_level="DEBUG",
+                data_dir="/app-root/ols-user-data",
+            )
+            print("Exporter configured successfully")
+        except Exception as e:
+            print(f"Warning: Could not configure exporter: {e}")
+            print("Tests may experience interference from data collector")
 
     # Fetch tokens for service accounts
     print("Fetching tokens for service accounts...")
     token = cluster_utils.get_token_for("test-user")
     metrics_token = cluster_utils.get_token_for("metrics-test-user")
+
+    return token, metrics_token
+
+
+def adapt_ols_config() -> tuple[str, str, str]:
+    """Adapt OLS configuration for different providers dynamically.
+
+    Ensures RBAC, service accounts, and OLS route exist for test execution.
+    This function assumes the operator has already been scaled down during initial setup.
+
+    Returns:
+        tuple: (ols_url, token, metrics_token)
+    """
+    print("Adapting OLS configuration for provider switching")
+    provider_env = os.getenv("PROVIDER", "openai")
+    provider_list = provider_env.split() or ["openai"]
+    ols_image = os.getenv("OLS_IMAGE", "")
+    namespace = "openshift-lightspeed"
+
+    _scale_down_existing_app_server()
+    _reconcile_olsconfig_with_operator(provider_list)
+    _apply_e2e_specific_config(ols_image)
+    token, metrics_token = _setup_access_and_tokens(namespace)
 
     # Set up route and get URL
     ols_url = setup_route()
