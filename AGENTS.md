@@ -1,5 +1,56 @@
 # OpenShift LightSpeed Service - Development Guide for AI
 
+## General coding behavior
+
+### Think before you implement
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### Simplicity first
+**Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### Surgical Changes
+**Touch only what you must. Clean up only your own mess.**
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### Goal-driven execution
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
 ## Project Overview
 OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift built with FastAPI, LangChain, and LlamaIndex. It provides AI responses to OpenShift/Kubernetes questions using various LLM backends.
 
@@ -98,6 +149,8 @@ You MUST read the relevant file before working in a specific area — don't skip
 
 ## Common Patterns
 
+These subsection titles are **repository themes** for reviewers and contributors. The detailed habits sit under **General coding behavior** at the top of this file; each theme points there instead of repeating the same rules.
+
 ### Error Handling
 Custom exceptions are defined in their respective domain modules:
 
@@ -110,22 +163,22 @@ from ols.utils.checks import InvalidConfigurationError
 ```
 
 ### KISS and YAGNI
-Implement the simplest solution for current requirements. No abstractions or flexibility for hypothetical future needs.
+See **General coding behavior → Simplicity first**.
 
 ### Readability over cleverness
-Write for a human reviewer verifying correctness. Avoid dense, clever constructs.
+See **General coding behavior → Simplicity first**.
 
 ### Interface contracts first
-Define function signatures and data shapes before implementing. Prefer explicit contracts over implicit ones.
+See **General coding behavior → Think before you implement** and **Goal-driven execution**.
 
 ### Test quality over test quantity
-Assert specific values and behaviors, not just that code runs without error.
+See **General coding behavior → Goal-driven execution**.
 
 ### Respect architectural boundaries
-Do not cross module or layer boundaries, even when it is the shorter path.
+See **General coding behavior → Surgical changes**.
 
 ### Keep changes scoped
-Do not refactor, rename, or reformat outside the direct path of the task. Unrelated improvements belong in a separate PR.
+See **General coding behavior → Surgical changes**.
 
 ## Maintaining This Guide
 
