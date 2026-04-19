@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-portal
+  namespace: platform-core
+  labels:
+    app: web-portal
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-portal
+  template:
+    metadata:
+      labels:
+        app: web-portal
+        tier: frontend
+    spec:
+      containers:
+      - name: portal
+        image: alpine:3.19
+        command: ["sh"]
+        args:
+        - -c
+        - |
+          apk add --no-cache curl >/dev/null 2>&1
+          while true; do
+            echo "[portal] probing api-gateway-svc on port 8080…"
+            if curl -sf --connect-timeout 5 http://api-gateway-svc:8080/ >/dev/null 2>&1; then
+              echo "[portal] api-gateway-svc responded OK"
+            else
+              echo "ERROR: Connection timeout to api-gateway-svc!"
+            fi
+            sleep 10
+          done
+        resources:
+          requests:
+            cpu: "5m"
+            memory: "32Mi"
+          limits:
+            memory: "48Mi"

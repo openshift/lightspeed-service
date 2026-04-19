@@ -1,0 +1,164 @@
+# LightSpeed Evaluation Framework Configuration
+
+# LLM Configuration
+llm:
+  provider: "openai" # Judge LLM Provider (openai, gemini etc..)
+  model: "gpt-5-mini" # Model name for the provider
+  temperature: 0.0 # Generation temperature
+  max_tokens: 5000 # Maximum tokens in response
+  timeout: 300 # Request timeout in seconds
+  num_retries: 3 # Retry attempts
+  cache_enabled: false
+
+# API Configuration
+# Only query endpoint is supported
+api:
+  enabled: true # Enable API calls instead of using pre-filled data
+  api_base: http://localhost:8080 # Base API URL
+  endpoint_type: query # Use "streaming" or "query" endpoint
+  timeout: 300 # API request timeout in seconds
+
+  # API input configuration
+  provider: "openai" # LLM provider for queries
+  model: "gpt-4.1-mini" # Model to use for queries
+  no_tools: null # Whether to bypass tools and MCP servers (optional)
+  system_prompt: null # System prompt (default None)
+  cache_enabled: false
+  extra_request_params:
+    mode: troubleshooting
+
+embedding:
+  cache_enabled: false
+
+  # Authentication via API_KEY environment variable only for MCP server
+
+# Default metrics metadata
+metrics_metadata:
+  # Turn-level metrics metadata
+  turn_level:
+    "ragas:response_relevancy":
+      description: "How relevant the response is to the question"
+      default: false # This metric is applied by default when no turn_metrics specified
+
+    "ragas:faithfulness":
+      description: "How faithful the response is to the provided context"
+      default: false # By default the value is false
+
+    # Custom metrics
+    "custom:answer_correctness":
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: false
+
+    "geval:generic_troubleshooting_experience":
+      criteria: |
+        The response must be evaluated based on the following points:
+          - The agent which is answering is a Troubleshooting Agent, and its ability to be helpful in the troubleshooting must be evaluated
+          - The response must include real data evidence retrieved by tool and should not rely on generic or suggestions to address a generic problem
+          - The output of the response is the result of one or more tool calls that allow the agent to retrieve the real cluster information
+          - Evidences pointing to real cluster resources must be provided otherwise the response is only supposition or suggestions. This is the worst case that must be penalized a lot
+      evaluation_params:
+        - query
+        - response
+        - contexts
+      evaluation_steps:
+        - "Step 1: Check if the response is based on real cluster evidence or is just providing generic suggestions to a problem. In the latter the test MUST fail, otherwise go to next step."
+        - "Step 2: Check if the response contains an analysis related to the query content"
+        - "Step 3: Check if the response was able to detect an issue related to the user query and the context"
+        - "Step 4: Check if the response was able to provide fix for the problem"
+      description: "Verify if the agent is performing the troubleshooting of the scenario"
+
+
+  # Conversation-level metrics metadata
+  conversation_level:
+    "deepeval:conversation_completeness":
+      default: false
+
+    "deepeval:conversation_relevancy":
+      default: false
+
+    "deepeval:knowledge_retention":
+      default: false
+
+    "geval:troubleshooting_continuity":
+      description: "Evaluates stateful debugging across turns using context as history"
+      evaluation_params:
+        - query
+        - response
+      criteria: |
+        The agent must demonstrate 'Stateful Troubleshooting'.
+        1. It must reference specific facts found in earlier turns.
+        2. It must not repeat tool calls already present in the conversation history.
+        3. It must use the current tool output to progress the investigation.
+      evaluation_steps:
+        - "Step 1: Verify the agent references findings from earlier conversation turns."
+        - "Step 2: Check the agent doesn't repeat diagnostic steps already completed."
+        - "Step 3: Verify the agent isn't asking for information already provided in the history."
+        - "Step 4: Confirm the agent uses real cluster data from the tools to answer the current 'query'."
+      rubrics:
+        - score_range: [0, 3]
+          expected_outcome: "Agent ignores history entirely, restarts the investigation, or provides generic help."
+        - score_range: [4, 7]
+          expected_outcome: "Agent maintains basic context but repeats questions or diagnostic steps unnecessarily."
+        - score_range: [8, 10]
+          expected_outcome: "Perfect continuity. References specific historical data to provide a conclusive fix."
+
+# Output Configuration
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs: # Enable specific output types
+    - csv # Detailed results CSV
+    - json # Summary statistics
+
+  # CSV columns to include
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8] # Graph size (width, height)
+  dpi: 300 # Image resolution
+
+  # Graph types to generate
+  enabled_graphs:
+    # - "pass_rates"            # Pass rate bar chart
+    - "score_distribution" # Score distribution box plot
+    # - "conversation_heatmap"  # Heatmap of conversation performance
+    - "status_breakdown" # Pie chart for pass/fail/error breakdown
+
+# Environment Variables - Automatically get set before any imports
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES" # Disable DeepEval telemetry
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES" # Disable DeepEval progress bars
+
+  LITELLM_LOG: ERROR # Suppress LiteLLM verbose logging
+
+# Logging Configuration
+logging:
+  # Source code logging level
+  source_level: INFO # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+  # Package logging level (imported libraries)
+  package_level: ERROR
+
+  # Log format and display options
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+
+  # Specific package log levels (override package_level for specific libraries)
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING

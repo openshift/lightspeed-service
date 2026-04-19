@@ -1,0 +1,268 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fleet-alpha
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fleet-alpha1
+---
+# --- fleet-alpha: 6 workloads (mix of Pods and Deployments) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatcher-north
+  namespace: fleet-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: dispatcher-north
+  template:
+    metadata:
+      labels:
+        unit: dispatcher-north
+    spec:
+      containers:
+        - name: runner
+          image: nginxinc/nginx-unprivileged:alpine
+          resources:
+            requests:
+              cpu: "5m"
+              memory: "16Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispatcher-south
+  namespace: fleet-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: dispatcher-south
+  template:
+    metadata:
+      labels:
+        unit: dispatcher-south
+    spec:
+      containers:
+        - name: runner
+          image: nginxinc/nginx-unprivileged:alpine
+          resources:
+            requests:
+              cpu: "5m"
+              memory: "16Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tracker-primary
+  namespace: fleet-alpha
+spec:
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tracker-secondary
+  namespace: fleet-alpha
+spec:
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: scheduler-main
+  namespace: fleet-alpha
+spec:
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: logger-central
+  namespace: fleet-alpha
+spec:
+  containers:
+    - name: nginx
+      image: nginxinc/nginx-unprivileged:alpine
+---
+# --- fleet-alpha1: 9 workloads (Deployments only) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-node
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: ingestion-node
+  template:
+    metadata:
+      labels:
+        unit: ingestion-node
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transform-node
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: transform-node
+  template:
+    metadata:
+      labels:
+        unit: transform-node
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: output-node
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: output-node
+  template:
+    metadata:
+      labels:
+        unit: output-node
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validator-east
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: validator-east
+  template:
+    metadata:
+      labels:
+        unit: validator-east
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validator-west
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: validator-west
+  template:
+    metadata:
+      labels:
+        unit: validator-west
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-primary
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: store-primary
+  template:
+    metadata:
+      labels:
+        unit: store-primary
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-replica
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: store-replica
+  template:
+    metadata:
+      labels:
+        unit: store-replica
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-handler
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: cache-handler
+  template:
+    metadata:
+      labels:
+        unit: cache-handler
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-router
+  namespace: fleet-alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      unit: proxy-router
+  template:
+    metadata:
+      labels:
+        unit: proxy-router
+    spec:
+      containers:
+        - name: worker
+          image: nginxinc/nginx-unprivileged:alpine

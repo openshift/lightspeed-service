@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cache-tier
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: memcached-data-pvc
+  namespace: cache-tier
+  labels:
+    app: memcached
+spec:
+  storageClassName: standard-v2
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memcached
+  namespace: cache-tier
+spec:
+  type: ClusterIP
+  selector:
+    app: memcached
+  ports:
+  - name: mc
+    port: 11211
+    targetPort: mc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memcached
+  namespace: cache-tier
+  labels:
+    app: memcached
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memcached
+  template:
+    metadata:
+      labels:
+        app: memcached
+    spec:
+      initContainers:
+      - name: init-perms
+        image: busybox:1.36
+        command: ["sh", "-c", "chmod 777 /cache"]
+        volumeMounts:
+        - name: cache-vol
+          mountPath: /cache
+      containers:
+      - name: mc
+        image: memcached:1.6-alpine
+        args: ["-m", "128", "-p", "11211", "-u", "memcache", "-v"]
+        ports:
+        - containerPort: 11211
+          name: mc
+        volumeMounts:
+        - name: cache-vol
+          mountPath: /cache
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "192Mi"
+          limits:
+            cpu: "200m"
+            memory: "384Mi"
+      volumes:
+      - name: cache-vol
+        persistentVolumeClaim:
+          claimName: memcached-data-pvc

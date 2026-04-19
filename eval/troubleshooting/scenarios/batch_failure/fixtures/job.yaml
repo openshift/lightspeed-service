@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inventory-sync-validator
+  namespace: catalog-mgmt
+  labels:
+    app: inventory-sync-validator
+    component: batch
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        job-name: inventory-sync-validator
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: scripts
+        secret:
+          secretName: inventory-sync-logs-script
+          defaultMode: 0555
+      containers:
+      - name: sync-worker
+        image: python:3.11-alpine
+        command: ["python3", "/opt/scripts/generate_logs.py"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /opt/scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "48Mi"
+          limits:
+            memory: "96Mi"
