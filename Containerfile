@@ -50,10 +50,16 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
 
+# Pre-warm tiktoken encoding cache to a stable, version-agnostic location.
+RUN src=$(find .venv/lib -path "*/llama_index/core/_static/tiktoken_cache" -type d) && \
+    mkdir -p /app-root/.tiktoken_cache && \
+    cp "$src"/[0-9a-f]* /app-root/.tiktoken_cache/
+
 # Verify all dependencies are installed correctly
 RUN echo "Verifying dependencies installation..." && \
     pip check && \
     python -c "import yaml, fastapi, langchain, llama_index, uvicorn, pydantic" && \
+    TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" && \
     echo "All dependencies installed and verified successfully!"
 
 FROM ${RUNTIME_BASE_IMAGE}
@@ -70,9 +76,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUTF8=1 \
     PYTHONIOENCODING=UTF-8 \
     LANG=en_US.UTF-8 \
-    LLAMA_INDEX_CACHE_DIR=/tmp/llama_index
+    LLAMA_INDEX_CACHE_DIR=/tmp/llama_index \
+    TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache
 
 COPY --from=builder /app-root/.venv .venv
+COPY --from=builder /app-root/.tiktoken_cache .tiktoken_cache
 COPY ols ./ols
 COPY runner.py /app-root/runner.py
 COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
