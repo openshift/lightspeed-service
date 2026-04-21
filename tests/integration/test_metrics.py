@@ -45,7 +45,9 @@ def _setup():
     ):
         # app.main need to be imported after the configuration is read
         from ols.app.main import app  # pylint: disable=C0415
+        from ols.app.metrics import setup_model_metrics  # pylint: disable=C0415
 
+        setup_model_metrics(config)
         pytest.client = TestClient(app)
 
 

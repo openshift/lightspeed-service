@@ -635,7 +635,9 @@ class MCPServerConfig(BaseModel):
 
     name: str = Field(
         title="MCP name",
-        description="MCP server name that must be unique",
+        description=(
+            "MCP server name. Must be unique across both MCP servers and A2A agents."
+        ),
     )
 
     url: str = Field(
@@ -782,6 +784,66 @@ class MCPServers(BaseModel):
             if server.name in server_names:
                 raise ValueError(f"Duplicate server name: '{server.name}'")
             server_names.add(server.name)
+        return self
+
+
+class A2AAgentConfig(BaseModel):
+    """A2A agent configuration.
+
+    Remote A2A agents that OLS can delegate work to. Each agent is discovered
+    via its Agent Card at startup and its skills are exposed as LangChain tools.
+    """
+
+    name: str = Field(
+        title="Agent name",
+        description=(
+            "A2A agent name. Must be unique across both A2A agents and MCP servers."
+        ),
+    )
+
+    url: str = Field(
+        title="Agent URL",
+        description="Base URL of the remote A2A agent (e.g. https://agent.example.com)",
+    )
+
+    timeout: Optional[int] = Field(
+        default=30,
+        title="Request timeout",
+        description="Timeout in seconds for requests to the A2A agent.",
+    )
+
+    headers: dict[str, str] = Field(
+        default_factory=dict,
+        title="Authorization headers",
+        description=(
+            "Headers to send to the A2A agent. Same format as MCP server headers: "
+            f"use '{constants.MCP_KUBERNETES_PLACEHOLDER}' for the kubernetes token, "
+            f"'{constants.MCP_CLIENT_PLACEHOLDER}' for client-provided token, "
+            "or a file path containing the secret value."
+        ),
+    )
+
+    _resolved_headers: dict[str, str] = PrivateAttr(default_factory=dict)
+
+    @property
+    def resolved_headers(self) -> dict[str, str]:
+        """Resolved headers (computed from headers)."""
+        return self._resolved_headers
+
+
+class A2AAgents(BaseModel):
+    """A2A agents configuration."""
+
+    agents: list[A2AAgentConfig] = []
+
+    @model_validator(mode="after")
+    def check_duplicate_agents(self) -> Self:
+        """Check if there are duplicate agents."""
+        agent_names = set()
+        for agent in self.agents:
+            if agent.name in agent_names:
+                raise ValueError(f"Duplicate A2A agent name: '{agent.name}'")
+            agent_names.add(agent.name)
         return self
 
 
@@ -1266,6 +1328,7 @@ class Config(BaseModel):
     ols_config: OLSConfig = OLSConfig()
     dev_config: DevConfig = DevConfig()
     mcp_servers: MCPServers = MCPServers()
+    a2a_agents: A2AAgents = A2AAgents()
 
     def __init__(
         self,
@@ -1297,6 +1360,14 @@ class Config(BaseModel):
 
         # Validate MCP servers now that auth config is available
         self._validate_mcp_servers()
+
+        # initialize A2A agents
+        self.a2a_agents = A2AAgents(agents=data.get("a2a_agents", []))
+        self._validate_a2a_agents()
+
+        # cross-validate names are unique across MCP servers and A2A agents
+        self._validate_unique_source_names()
+
         self._compute_tool_budgets()
 
         # Always initialize dev config, even if there's no config for it.
@@ -1341,12 +1412,36 @@ class Config(BaseModel):
             auth_module,
         )
 
+    def _validate_a2a_agents(self) -> None:
+        """Validate A2A agents with auth module context.
+
+        Filters out agents where authorization headers cannot be resolved.
+        """
+        auth_module = getattr(
+            getattr(self.ols_config, "authentication_config", None),
+            "module",
+            None,
+        )
+        self.a2a_agents.agents = checks.validate_mcp_servers(
+            self.a2a_agents.agents,
+            auth_module,
+        )
+
+    def _validate_unique_source_names(self) -> None:
+        """Ensure names are unique across MCP servers and A2A agents."""
+        mcp_names = {s.name for s in self.mcp_servers.servers}
+        for agent in self.a2a_agents.agents:
+            if agent.name in mcp_names:
+                raise checks.InvalidConfigurationError(
+                    f"A2A agent name '{agent.name}' conflicts with an MCP server name"
+                )
+
     def _compute_tool_budgets(self) -> None:
         """Set tool token budget per model and ensure the context window fits reserved tokens."""
-        has_mcp = bool(self.mcp_servers.servers)
+        has_tools = bool(self.mcp_servers.servers) or bool(self.a2a_agents.agents)
         for provider in self.llm_providers.providers.values():
             for model in provider.models.values():
-                if has_mcp:
+                if has_tools:
                     model.max_tokens_for_tools = int(
                         model.context_window_size * model.parameters.tool_budget_ratio
                     )
