@@ -110,16 +110,12 @@ def test_summarize_history_provided():
         question = "What's the ultimate question with answer 42?"
         rag_retriever = MockRetriever()
 
-        mock_cache_get.return_value = [
-            CacheEntry(query=HumanMessage("What is Kubernetes?"))
-        ]
+        mock_cache_get.return_value = [CacheEntry(query=HumanMessage("What is Kubernetes?"))]
         with patch(
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary1 = summarizer.create_response(
-                question, rag_retriever, "user-id", "conv-id"
-            )
+            summary1 = summarizer.create_response(question, rag_retriever, "user-id", "conv-id")
             # Non-overflow path returns early from prepare_history (no second limit pass).
             token_handler.assert_not_called()
             check_summary_result(summary1, "What is Kubernetes?")
@@ -129,9 +125,7 @@ def test_summarize_history_provided():
             "ols.src.query_helpers.docs_summarizer.TokenHandler.limit_conversation_history",
             return_value=([], False),
         ) as token_handler:
-            summary2 = summarizer.create_response(
-                question, rag_retriever, "user-id", "conv-id2"
-            )
+            summary2 = summarizer.create_response(question, rag_retriever, "user-id", "conv-id2")
             token_handler.assert_not_called()
             check_summary_result(summary2, question)
 
@@ -149,16 +143,12 @@ def test_summarize_truncation():
         history = [
             CacheEntry(
                 query=HumanMessage("What is Kubernetes?" * 100),
-                response=AIMessage(
-                    "Kubernetes is a container orchestration system." * 100
-                ),
+                response=AIMessage("Kubernetes is a container orchestration system." * 100),
             )
         ] * 100
         mock_cache_get.return_value = history
 
-        summary = summarizer.create_response(
-            question, rag_retriever, "user-id", "conv-id"
-        )
+        summary = summarizer.create_response(question, rag_retriever, "user-id", "conv-id")
 
         assert not summary.history_truncated
 
@@ -233,19 +223,17 @@ async def test_response_generator_emits_history_events_before_tokens():
         "ols.src.query_helpers.docs_summarizer.prepare_history",
         side_effect=mock_prepare_history,
     ):
-        chunk_types.extend(
-            [item.type async for item in summarizer.generate_response(question)]
-        )
+        chunk_types.extend([item.type async for item in summarizer.generate_response(question)])
 
     assert StreamChunkType.HISTORY_COMPRESSION_START in chunk_types
     assert StreamChunkType.HISTORY_COMPRESSION_END in chunk_types
     assert StreamChunkType.TEXT in chunk_types
-    assert chunk_types.index(
-        StreamChunkType.HISTORY_COMPRESSION_START
-    ) < chunk_types.index(StreamChunkType.HISTORY_COMPRESSION_END)
-    assert chunk_types.index(
+    assert chunk_types.index(StreamChunkType.HISTORY_COMPRESSION_START) < chunk_types.index(
         StreamChunkType.HISTORY_COMPRESSION_END
-    ) < chunk_types.index(StreamChunkType.TEXT)
+    )
+    assert chunk_types.index(StreamChunkType.HISTORY_COMPRESSION_END) < chunk_types.index(
+        StreamChunkType.TEXT
+    )
 
 
 async def async_mock_invoke(yield_values):
@@ -484,9 +472,7 @@ def test_tool_output_token_tracking_uses_buffer_weight(caplog):
             "ols.src.query_helpers.llm_execution_agent.LLMExecutionAgent._invoke_llm"
         ) as mock_invoke,
         patch("ols.utils.mcp_utils.config") as mock_config,
-        patch.object(
-            TokenHandler, "_get_token_count", staticmethod(counting_get_token_count)
-        ),
+        patch.object(TokenHandler, "_get_token_count", staticmethod(counting_get_token_count)),
     ):
         mock_config.tools_rag = None
         mock_config.mcp_servers.servers = [MagicMock()]
@@ -584,9 +570,7 @@ def test_get_max_iterations_ask_mode_no_override():
 def test_get_max_iterations_troubleshooting_mode_no_override():
     """Test _get_max_iterations returns TROUBLESHOOTING default when config has no override."""
     config.ols_config.max_iterations = None
-    summarizer = DocsSummarizer(
-        llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
-    )
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING)
     assert summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
 
 
@@ -605,17 +589,13 @@ def test_get_max_iterations_config_override_below_default():
     """Test _get_max_iterations uses mode default when it exceeds the config value."""
     config.ols_config.max_iterations = 10
     try:
-        summarizer = DocsSummarizer(
-            llm_loader=mock_llm_loader(None), mode=QueryMode.ASK
-        )
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=QueryMode.ASK)
         assert summarizer._get_max_iterations() == 10
 
         summarizer = DocsSummarizer(
             llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
         )
-        assert (
-            summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
-        )
+        assert summarizer._get_max_iterations() == DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING
     finally:
         config.ols_config.max_iterations = None
 
