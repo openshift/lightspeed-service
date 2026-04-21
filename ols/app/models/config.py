@@ -1344,6 +1344,7 @@ class Config(BaseModel):
     def _compute_tool_budgets(self) -> None:
         """Set tool token budget per model and ensure the context window fits reserved tokens."""
         has_mcp = bool(self.mcp_servers.servers)
+        worst_case_mode_ratio = max(constants.TOOL_BUDGET_RATIO_BY_MODE.values())
         for provider in self.llm_providers.providers.values():
             for model in provider.models.values():
                 if has_mcp:
@@ -1352,16 +1353,22 @@ class Config(BaseModel):
                     )
                 else:
                     model.max_tokens_for_tools = 0
+                if "tool_budget_ratio" in model.parameters.model_fields_set:
+                    validation_ratio = model.parameters.tool_budget_ratio
+                else:
+                    validation_ratio = worst_case_mode_ratio
+                tool_tokens_validated = (
+                    int(model.context_window_size * validation_ratio) if has_mcp else 0
+                )
                 reserved = (
-                    model.parameters.max_tokens_for_response
-                    + model.max_tokens_for_tools
+                    model.parameters.max_tokens_for_response + tool_tokens_validated
                 )
                 if model.context_window_size <= reserved:
                     raise checks.InvalidConfigurationError(
                         f"Model '{model.name}': context window size {model.context_window_size} "
                         f"must be greater than max_tokens_for_response "
                         f"({model.parameters.max_tokens_for_response}) + "
-                        f"tool budget ({model.max_tokens_for_tools})"
+                        f"tool budget ({tool_tokens_validated})"
                     )
 
     def validate_yaml(self) -> None:

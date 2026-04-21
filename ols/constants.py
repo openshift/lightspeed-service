@@ -85,8 +85,14 @@ TOKEN_BUFFER_WEIGHT = 1.1
 # Fraction of context window reserved for tool outputs (only when MCP servers configured).
 # Computed as int(context_window_size * ratio) at startup.
 DEFAULT_TOOL_BUDGET_RATIO = 0.25
+DEFAULT_TOOL_BUDGET_RATIO_TROUBLESHOOTING = 0.5
 TOOL_BUDGET_RATIO_MIN = 0.1
 TOOL_BUDGET_RATIO_MAX = 0.6
+
+TOOL_BUDGET_RATIO_BY_MODE: dict[QueryMode, float] = {
+    QueryMode.ASK: DEFAULT_TOOL_BUDGET_RATIO,
+    QueryMode.TROUBLESHOOTING: DEFAULT_TOOL_BUDGET_RATIO_TROUBLESHOOTING,
+}
 
 # Max fraction of remaining tool token budget usable in one tool-calling round.
 DEFAULT_TOOL_ROUND_CAP_FRACTION = 0.6

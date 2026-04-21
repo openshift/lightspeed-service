@@ -9,11 +9,13 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.config import LoggingConfig, MCPServerConfig
+from ols.app.models.config import LoggingConfig, MCPServerConfig, ModelParameters
 from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
+    DEFAULT_TOOL_BUDGET_RATIO,
+    DEFAULT_TOOL_BUDGET_RATIO_TROUBLESHOOTING,
     QueryMode,
 )
 
@@ -616,6 +618,113 @@ def test_get_max_iterations_config_override_below_default():
         )
     finally:
         config.ols_config.max_iterations = None
+
+
+def _default_m1_model():
+    """Return the default model config used by DocsSummarizer tests."""
+    return config.llm_config.providers["p1"].models["m1"]
+
+
+def test_tracker_max_tool_tokens_troubleshooting_uses_mode_floor():
+    """Troubleshooting mode raises tool budget to the mode floor over default ratio."""
+    m1 = _default_m1_model()
+    saved = m1.parameters
+    m1.parameters = ModelParameters(max_tokens_for_response=100)
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+    try:
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value=mcp_servers_config,
+        ):
+            summarizer = DocsSummarizer(
+                llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+            )
+        cw = summarizer.model_config.context_window_size
+        assert summarizer._tracker.max_tool_tokens == int(
+            cw * DEFAULT_TOOL_BUDGET_RATIO_TROUBLESHOOTING
+        )
+    finally:
+        m1.parameters = saved
+
+
+def test_tracker_max_tool_tokens_ask_mode_uses_default_ratio():
+    """Ask mode keeps the default tool budget ratio."""
+    m1 = _default_m1_model()
+    saved = m1.parameters
+    m1.parameters = ModelParameters(max_tokens_for_response=100)
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+    try:
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value=mcp_servers_config,
+        ):
+            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None), mode=QueryMode.ASK)
+        cw = summarizer.model_config.context_window_size
+        assert summarizer._tracker.max_tool_tokens == int(cw * DEFAULT_TOOL_BUDGET_RATIO)
+    finally:
+        m1.parameters = saved
+
+
+def test_tracker_max_tool_tokens_troubleshooting_explicit_ratio_above_floor():
+    """Configured tool_budget_ratio above the mode floor is retained."""
+    m1 = _default_m1_model()
+    saved = m1.parameters
+    m1.parameters = ModelParameters(max_tokens_for_response=100, tool_budget_ratio=0.55)
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+    try:
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value=mcp_servers_config,
+        ):
+            summarizer = DocsSummarizer(
+                llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+            )
+        cw = summarizer.model_config.context_window_size
+        assert summarizer._tracker.max_tool_tokens == int(cw * 0.55)
+    finally:
+        m1.parameters = saved
+
+
+def test_tracker_max_tool_tokens_troubleshooting_explicit_ratio_below_floor():
+    """Configured tool_budget_ratio below the troubleshooting floor is raised."""
+    m1 = _default_m1_model()
+    saved = m1.parameters
+    m1.parameters = ModelParameters(max_tokens_for_response=100, tool_budget_ratio=0.3)
+    mcp_servers_config = {
+        "test_server": {
+            "transport": "streamable_http",
+            "url": "http://test-server:8080/mcp",
+        },
+    }
+    try:
+        with patch(
+            "ols.src.query_helpers.docs_summarizer.build_mcp_config",
+            return_value=mcp_servers_config,
+        ):
+            summarizer = DocsSummarizer(
+                llm_loader=mock_llm_loader(None), mode=QueryMode.TROUBLESHOOTING
+            )
+        cw = summarizer.model_config.context_window_size
+        assert summarizer._tracker.max_tool_tokens == int(
+            cw * DEFAULT_TOOL_BUDGET_RATIO_TROUBLESHOOTING
+        )
+    finally:
+        m1.parameters = saved
 
 
 def test_create_response_raises_on_unknown_chunk_type():

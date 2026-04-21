@@ -95,7 +95,7 @@ class DocsSummarizer(QueryHelper):
             token_handler=TokenHandler(),
             context_window_size=self.model_config.context_window_size,
             max_response_tokens=self.model_config.parameters.max_tokens_for_response,
-            max_tool_tokens=self.model_config.max_tokens_for_tools,
+            max_tool_tokens=self._get_effective_max_tool_tokens(),
             round_cap_fraction=config.ols_config.tool_round_cap_fraction,
         )
         self._tracker.set_tool_loop_max_rounds(self._get_max_iterations())
@@ -397,6 +397,25 @@ class DocsSummarizer(QueryHelper):
             tool_definitions_tokens=tool_definitions_tokens,
         ):
             yield response
+
+    def _get_effective_tool_budget_ratio(self) -> float:
+        """Return the tool budget ratio used for this request's mode.
+
+        The configured ``tool_budget_ratio`` can raise the cap but not lower it
+        below the mode default (same floor semantics as ``_get_max_iterations``).
+        """
+        mode_floor = constants.TOOL_BUDGET_RATIO_BY_MODE.get(
+            self._mode, constants.DEFAULT_TOOL_BUDGET_RATIO
+        )
+        configured = self.model_config.parameters.tool_budget_ratio
+        return max(configured, mode_floor)
+
+    def _get_effective_max_tool_tokens(self) -> int:
+        """Return max tool tokens for the token budget tracker."""
+        if not self._tool_calling_enabled:
+            return 0
+        ratio = self._get_effective_tool_budget_ratio()
+        return int(self.model_config.context_window_size * ratio)
 
     def _get_max_iterations(self) -> int:
         """Return configured max rounds for tool-calling loop.
