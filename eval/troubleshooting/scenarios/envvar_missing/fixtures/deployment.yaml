@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: warehouse-ops
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-fulfillment-daemon
+  namespace: warehouse-ops
+  labels:
+    app: order-fulfillment-daemon
+    component: fulfillment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-fulfillment-daemon
+  template:
+    metadata:
+      labels:
+        app: order-fulfillment-daemon
+    spec:
+      containers:
+      - name: fulfillment-container
+        image: busybox:1.36
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          if [ -z "${DEPLOY_ENV}" ]; then
+            echo "Environment variable DEPLOY_ENV is undefined"
+            exit 1
+          fi
+          while true; do echo hello; sleep 10; done
+        resources:
+          requests:
+            cpu: "5m"
+            memory: "32Mi"
