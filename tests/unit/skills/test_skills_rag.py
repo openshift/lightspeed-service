@@ -4,9 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from ols.src.skills.skills_rag import Skill, SkillsRAG, load_skills_from_directory
+from ols.src.skills.skills_rag import (
+    Skill,
+    SkillsRAG,
+    create_skill_support_tool,
+    load_skills_from_directory,
+)
+from ols.src.tools.tools import execute_tool_call
 
 DIMENSION = 8
+_LARGE_TOKEN_BUDGET = 100_000
 
 
 def _fake_encode(text: str) -> list[float]:
@@ -83,6 +90,138 @@ class TestSkillDataclass:
         assert skill.name == "test-skill"
         assert skill.description == "A test skill"
         assert skill.source_path == "skills/test-skill"
+        assert skill.support_files == []
+
+    def test_load_skill_body_only_when_no_support_files(self, tmp_path: Path) -> None:
+        """Verify load_skill returns body without manifest when there are no support files."""
+        skill_dir = tmp_path / "solo"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: solo\ndescription: D\n---\n\n# Solo\n\nOnly body.",
+            encoding="utf-8",
+        )
+        skills = load_skills_from_directory(tmp_path)
+        assert len(skills) == 1
+        loaded = skills[0].load_skill()
+        assert loaded.ok is True
+        assert loaded.has_support_files is False
+        assert loaded.content == "# Solo\n\nOnly body."
+        assert "Available support files" not in (loaded.content or "")
+
+    def test_load_skill_appends_manifest_when_support_files(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify load_skill appends support-file manifest for progressive disclosure."""
+        skill_dir = tmp_path / "with-extra"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: with-extra\ndescription: D\n---\n\n# Main",
+            encoding="utf-8",
+        )
+        (skill_dir / "extra.md").write_text("Extra content.", encoding="utf-8")
+        skills = load_skills_from_directory(tmp_path)
+        assert len(skills) == 1
+        assert skills[0].support_files == [("extra.md", "extra.md")]
+        loaded = skills[0].load_skill()
+        assert loaded.ok is True
+        assert loaded.has_support_files is True
+        assert (loaded.content or "").startswith("# Main")
+        assert "Available support files" in (loaded.content or "")
+        assert "extra.md" in (loaded.content or "")
+
+    def test_load_skill_returns_not_ok_when_skill_md_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify load_skill reports failure without raising when skill.md is absent."""
+        skill = Skill(
+            name="ghost",
+            description="d",
+            source_path=str(tmp_path / "nonexistent"),
+        )
+        loaded = skill.load_skill()
+        assert loaded.ok is False
+        assert loaded.content is None
+        assert loaded.has_support_files is False
+
+    def test_load_support_files_reads_requested_paths(self, tmp_path: Path) -> None:
+        """Verify load_support_files returns concatenated file contents."""
+        skill_dir = tmp_path / "multi"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: multi\ndescription: D\n---\n\n# M",
+            encoding="utf-8",
+        )
+        (skill_dir / "a.md").write_text("A text", encoding="utf-8")
+        sub = skill_dir / "sub"
+        sub.mkdir()
+        (sub / "b.md").write_text("B text", encoding="utf-8")
+        skills = load_skills_from_directory(tmp_path)
+        out = skills[0].load_support_files(["a.md", "sub/b.md"])
+        assert "## a.md" in out
+        assert "A text" in out
+        assert "## sub/b.md" in out
+        assert "B text" in out
+
+    def test_load_support_files_reports_missing_file(self, tmp_path: Path) -> None:
+        """Verify load_support_files notes missing paths."""
+        skill_dir = tmp_path / "miss"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: miss\ndescription: D\n---\n\n# M",
+            encoding="utf-8",
+        )
+        skills = load_skills_from_directory(tmp_path)
+        out = skills[0].load_support_files(["nope.md"])
+        assert "ERROR: file not found in skill" in out
+
+    def test_load_support_files_rejects_path_outside_skill_dir(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify load_support_files does not follow .. outside the skill directory."""
+        skill_dir = tmp_path / "boxed"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: boxed\ndescription: D\n---\n\n# M",
+            encoding="utf-8",
+        )
+        (skill_dir / "allowed.md").write_text("inside", encoding="utf-8")
+        (tmp_path / "secret.md").write_text("secret-content", encoding="utf-8")
+        skills = load_skills_from_directory(tmp_path)
+        out = skills[0].load_support_files(["../secret.md"])
+        assert "secret-content" not in out
+        assert "ERROR: path outside skill directory" in out
+
+
+class TestCreateSkillSupportTool:
+    """Tests for create_skill_support_tool LangChain binding."""
+
+    @pytest.mark.asyncio
+    async def test_tool_invokes_load_support_files(self, tmp_path: Path) -> None:
+        """Verify the structured tool delegates to Skill.load_support_files."""
+        skill_dir = tmp_path / "s"
+        skill_dir.mkdir()
+        (skill_dir / "skill.md").write_text(
+            "---\nname: s\ndescription: d\n---\n\nbody",
+            encoding="utf-8",
+        )
+        (skill_dir / "ref.md").write_text("ref body", encoding="utf-8")
+        skill = Skill(
+            name="s",
+            description="d",
+            source_path=str(skill_dir),
+            support_files=[("ref.md", "ref.md")],
+        )
+        tool = create_skill_support_tool(skill)
+        assert tool.name == "load_skill_support_files"
+        status, output, truncated, structured = await execute_tool_call(
+            tool,
+            {"files": ["ref.md"]},
+            _LARGE_TOKEN_BUDGET,
+        )
+        assert status == "success"
+        assert truncated is False
+        assert structured is None
+        assert "ref body" in output
 
 
 class TestLoadSkillsFromDirectory:
@@ -102,6 +241,7 @@ class TestLoadSkillsFromDirectory:
         assert skills[0].name == "pod-diagnosis"
         assert skills[0].description == "Diagnose pods"
         assert skills[0].source_path == str(skill_dir)
+        assert skills[0].support_files == []
 
     def test_loads_skill_with_uppercase_filename(self, tmp_path: Path) -> None:
         """Verify SKILL.md (uppercase) is recognised as a valid skill file."""
@@ -220,6 +360,10 @@ class TestLoadSkillsFromDirectory:
             encoding="utf-8",
         )
         skills = load_skills_from_directory(tmp_path)
+        assert {t[1] for t in skills[0].support_files} == {
+            "checklist.md",
+            "examples.yaml",
+        }
         content = skills[0].load_content()
         assert "# Main Skill Body" in content
         assert "## checklist.md" in content

@@ -2,10 +2,11 @@
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import frontmatter
+from langchain_core.tools.structured import StructuredTool
 
 from ols.src.rag.hybrid_rag import HybridRAGBase
 
@@ -15,12 +16,85 @@ _SKILL_MD = "skill.md"
 
 
 @dataclass(frozen=True, slots=True)
+class SkillLoadResult:
+    """Outcome of reading the primary skill document for progressive disclosure."""
+
+    content: str | None
+    has_support_files: bool
+    ok: bool
+
+
+@dataclass(frozen=True, slots=True)
 class Skill:
     """A loaded skill artifact with parsed metadata and directory path."""
 
     name: str
     description: str
     source_path: str
+    support_files: list[tuple[str, str]] = field(default_factory=list)
+
+    def load_skill(self) -> SkillLoadResult:
+        """Read the skill body and optionally append a support-file manifest.
+
+        On read or parse failure, returns ``SkillLoadResult`` with ``ok`` false
+        and ``content`` set to ``None`` instead of raising.
+
+        Returns:
+            ``SkillLoadResult`` with prompt text (or ``None``), manifest flag,
+            and success flag.
+        """
+        skill_dir = Path(self.source_path)
+        try:
+            raw = (skill_dir / _SKILL_MD).read_text(encoding="utf-8").strip()
+            body = frontmatter.loads(raw).content.strip()
+        except (OSError, UnicodeDecodeError, ValueError):
+            logger.exception(
+                "Failed to read or parse skill.md for skill '%s'",
+                self.name,
+            )
+            return SkillLoadResult(content=None, has_support_files=False, ok=False)
+
+        if not self.support_files:
+            return SkillLoadResult(content=body, has_support_files=False, ok=True)
+
+        manifest_lines = [
+            "",
+            "---",
+            "Available support files (use load_skill_support_files to retrieve):",
+        ]
+        manifest_lines.extend(f"- {name} ({path})" for name, path in self.support_files)
+        text = body + "\n".join(manifest_lines)
+        return SkillLoadResult(content=text, has_support_files=True, ok=True)
+
+    def load_support_files(self, files: list[str]) -> str:
+        """Retrieve content of requested support files by relative path.
+
+        Args:
+            files: List of relative paths within the skill directory.
+
+        Returns:
+            Combined content of requested files, each with a header.
+        """
+        skill_dir = Path(self.source_path)
+        parts: list[str] = []
+        skill_root = skill_dir.resolve()
+
+        for rel_path in files:
+            target = skill_dir / rel_path
+            resolved = target.resolve()
+            if not resolved.is_relative_to(skill_root):
+                parts.append(f"## {rel_path}\n\nERROR: path outside skill directory")
+                continue
+            if not resolved.is_file():
+                parts.append(f"## {rel_path}\n\nERROR: file not found in skill")
+                continue
+            try:
+                raw = resolved.read_text(encoding="utf-8").strip()
+                parts.append(f"## {rel_path}\n\n{raw}")
+            except (OSError, UnicodeDecodeError, ValueError):
+                parts.append(f"## {rel_path}\n\nERROR: could not read file")
+
+        return "\n\n".join(parts)
 
     def load_content(self) -> str:
         """Read all files in the skill directory tree and concatenate on demand.
@@ -53,6 +127,61 @@ class Skill:
                 parts.append(f"## {rel}\n\n{raw}")
 
         return "\n\n".join(parts)
+
+
+def create_skill_support_tool(skill: Skill) -> StructuredTool:
+    """Create a tool that retrieves additional support files for a skill.
+
+    Args:
+        skill: Loaded skill bound to one skill directory.
+
+    Returns:
+        A StructuredTool the LLM can invoke to fetch support-file contents.
+    """
+
+    async def _load_skill_support_files(files: list[str]) -> str:
+        """Load additional support files for the current skill.
+
+        Args:
+            files: List of relative paths within the skill directory.
+
+        Returns:
+            Combined content of the requested support files.
+        """
+        return skill.load_support_files(files)
+
+    return StructuredTool.from_function(
+        coroutine=_load_skill_support_files,
+        name="load_skill_support_files",
+        description=(
+            "Retrieve additional support files for the matched skill. "
+            "Pass a list of relative file paths from the manifest."
+        ),
+    )
+
+
+def _discover_support_files(skill_dir: Path) -> list[tuple[str, str]]:
+    """Scan a skill directory for text files other than skill.md.
+
+    Args:
+        skill_dir: Root directory of the skill.
+
+    Returns:
+        Sorted list of (filename, relative_path) tuples for each support file.
+    """
+    support: list[tuple[str, str]] = []
+    for entry in sorted(skill_dir.rglob("*")):
+        if not entry.is_file():
+            continue
+        if entry.name.lower() == _SKILL_MD:
+            continue
+        try:
+            entry.read_text(encoding="utf-8", errors="strict")
+        except (UnicodeDecodeError, ValueError):
+            continue
+        rel = str(entry.relative_to(skill_dir))
+        support.append((entry.name, rel))
+    return support
 
 
 def _find_skill_file(directory: Path) -> Path | None:
@@ -122,10 +251,13 @@ def _parse_skill_directory(skill_dir: Path, skill_file: Path) -> Skill | None:
         logger.warning("Skill file missing 'name' in frontmatter: %s", skill_file)
         return None
 
+    support_files = _discover_support_files(skill_dir)
+
     return Skill(
         name=name,
         description=description,
         source_path=str(skill_dir),
+        support_files=support_files,
     )
 
 

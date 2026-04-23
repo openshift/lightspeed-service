@@ -27,6 +27,7 @@ from ols.src.query_helpers.llm_execution_agent import (
     log_tool_loop_iteration,
 )
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import (
     PromptTooLongError,
@@ -256,7 +257,7 @@ class DocsSummarizer(QueryHelper):
 
         return final_prompt, llm_input_values
 
-    async def generate_response(  # noqa: C901  # pylint: disable=too-many-branches
+    async def generate_response(  # noqa: C901  # pylint: disable=too-many-branches,too-many-statements
         self,
         query: str,
         rag_retriever: Optional[BaseRetriever] = None,
@@ -279,54 +280,55 @@ class DocsSummarizer(QueryHelper):
         rag_chunks = await self._prepare_prompt_context(query, rag_retriever)
 
         skill_content: Optional[str] = None
+        has_support_files = False
+        skill = None
         skills_rag = config.skills_rag
         if skills_rag is not None:
             skill, confidence = skills_rag.retrieve_skill(query)
             if skill is not None:
-                try:
-                    skill_content = skill.load_content()
-                except OSError:
-                    logger.exception(
-                        "Failed to load skill '%s'; falling back to no skill",
-                        skill.name,
-                    )
+                loaded = skill.load_skill()
+                if not loaded.ok:
                     skill = None
-            if skill is not None:
-                skill_tokens = self._tracker.count_tokens(skill_content)
-                available_for_skill = self._tracker.history_budget
-                if skill_tokens > available_for_skill * 0.8:
-                    logger.warning(
-                        "Skill '%s' requires %d tokens but only %d available; skipping",
-                        skill.name,
-                        skill_tokens,
-                        available_for_skill,
-                    )
-                    skill_content = None
-                    yield StreamedChunk(
-                        type=StreamChunkType.SKILL_SELECTED,
-                        data={
-                            "name": skill.name,
-                            "confidence": confidence,
-                            "skipped": True,
-                            "reason": "exceeds token budget",
-                        },
-                    )
                 else:
-                    self._tracker.charge(TokenCategory.SKILL, skill_tokens)
-                    if skill_tokens > available_for_skill * 0.5:
+                    skill_content = loaded.content
+                    has_support_files = loaded.has_support_files
+                    skill_tokens = self._tracker.count_tokens(skill_content)
+                    shared_tail_budget = self._tracker.prompt_budget_remaining
+                    if skill_tokens > shared_tail_budget * 0.8:
                         logger.warning(
-                            "Skill '%s' uses %d tokens (%.0f%% of available budget)",
+                            "Skill '%s' requires %d tokens but only %d available "
+                            "in prompt tail (skill + history); skipping",
                             skill.name,
                             skill_tokens,
-                            skill_tokens / available_for_skill * 100,
+                            shared_tail_budget,
                         )
-                    yield StreamedChunk(
-                        type=StreamChunkType.SKILL_SELECTED,
-                        data={
-                            "name": skill.name,
-                            "confidence": confidence,
-                        },
-                    )
+                        skill_content = None
+                        has_support_files = False
+                        yield StreamedChunk(
+                            type=StreamChunkType.SKILL_SELECTED,
+                            data={
+                                "name": skill.name,
+                                "confidence": confidence,
+                                "skipped": True,
+                                "reason": "exceeds token budget",
+                            },
+                        )
+                    else:
+                        self._tracker.charge(TokenCategory.SKILL, skill_tokens)
+                        if skill_tokens > shared_tail_budget * 0.5:
+                            logger.warning(
+                                "Skill '%s' uses %d tokens (%.0f%% of prompt tail budget)",
+                                skill.name,
+                                skill_tokens,
+                                skill_tokens / shared_tail_budget * 100,
+                            )
+                        yield StreamedChunk(
+                            type=StreamChunkType.SKILL_SELECTED,
+                            data={
+                                "name": skill.name,
+                                "confidence": confidence,
+                            },
+                        )
 
         history: list[BaseMessage] = []
         truncated = False
@@ -366,6 +368,8 @@ class DocsSummarizer(QueryHelper):
         all_mcp_tools = await get_mcp_tools(
             mcp_tools_query, self.user_token, self.client_headers
         )
+        if skill is not None and skill_content is not None and has_support_files:
+            all_mcp_tools.append(create_skill_support_tool(skill))
         tool_definitions_text = self._serialized_tool_definitions_text(all_mcp_tools)
         tool_definitions_tokens = (
             self._tracker.count_tokens(tool_definitions_text)
