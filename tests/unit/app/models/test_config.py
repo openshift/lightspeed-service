@@ -2241,6 +2241,20 @@ def test_ols_config(tmpdir):
     assert (
         ols_config.tool_round_cap_fraction == constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
     )
+    assert ols_config.offload_storage_path == constants.DEFAULT_OFFLOAD_STORAGE_PATH
+
+
+def test_ols_config_with_custom_offload_storage_path():
+    """Test OLSConfig offload_storage_path override."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 100}},
+            "offload_storage_path": "/custom/offload/path",
+        }
+    )
+    assert ols_config.offload_storage_path == "/custom/offload/path"
 
 
 def test_ols_config_tool_round_cap_fraction():
