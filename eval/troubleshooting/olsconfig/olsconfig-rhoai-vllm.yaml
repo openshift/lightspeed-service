@@ -1,0 +1,54 @@
+---
+# OLS configuration for troubleshooting evals — RHOAI vLLM provider
+#
+# Prerequisites:
+#   1. Store your RHOAI bearer token in a file:
+#        oc whoami --show-token > rhoai_api_key.txt
+#   2. Set your RHOAI model serving endpoint URL and model name below
+#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   4. Run OLS:
+#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-rhoai-vllm.yaml uv run make run
+#
+# Eval system config: eval/troubleshooting/system_rhoai_vllm.yaml
+# The model name must match the alias registered in your RHOAI serving runtime.
+
+llm_providers:
+  - name: rhoai_vllm
+    type: rhoai_vllm
+    url: "https://<your-rhoai-serving-endpoint>/v1"  # replace with your RHOAI model serving URL
+    credentials_path: rhoai_api_key.txt
+    models:
+      - name: granite-3.1-8b-instruct  # replace with your deployed model name
+
+mcp_servers:
+  - name: obs-mcp
+    url: "http://127.0.0.1:9100/mcp"
+    headers:
+      kubernetes-authorization: kubernetes
+    timeout: 5
+  - name: openshift-mcp-server
+    url: "http://127.0.0.1:8089/mcp"
+    timeout: 5
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: rhoai_vllm
+  default_model: granite-3.1-8b-instruct  # must match model name above
+  authentication_config:
+    module: "noop-with-token"
+  user_data_collection:
+    feedback_disabled: true
+    transcripts_disabled: true
+
+dev_config:
+  enable_dev_ui: true
+  disable_tls: true
+  enable_system_prompt_override: true
+  uvicorn_port_number: 8080

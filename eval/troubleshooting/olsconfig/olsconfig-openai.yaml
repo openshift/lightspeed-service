@@ -1,0 +1,53 @@
+---
+# OLS configuration for troubleshooting evals — OpenAI provider
+#
+# Prerequisites:
+#   1. Store your OpenAI API key in a file:
+#        echo "$OPENAI_API_KEY" > openai_api_key.txt
+#   2. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   3. Run OLS:
+#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-openai.yaml uv run make run
+#
+# Eval system config: eval/troubleshooting/system_openai.yaml
+
+llm_providers:
+  - name: openai
+    type: openai
+    url: "https://api.openai.com/v1"
+    credentials_path: openai_api_key.txt
+    models:
+      - name: gpt-4o-mini
+      - name: gpt-4.1-mini
+
+mcp_servers:
+  - name: obs-mcp
+    url: "http://127.0.0.1:9100/mcp"
+    headers:
+      kubernetes-authorization: kubernetes
+    timeout: 5
+  - name: openshift-mcp-server
+    url: "http://127.0.0.1:8089/mcp"
+    timeout: 5
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: openai
+  default_model: gpt-4o-mini
+  authentication_config:
+    module: "noop-with-token"
+  user_data_collection:
+    feedback_disabled: true
+    transcripts_disabled: true
+
+dev_config:
+  enable_dev_ui: true
+  disable_tls: true
+  enable_system_prompt_override: true
+  uvicorn_port_number: 8080

@@ -1,0 +1,54 @@
+---
+# OLS configuration for troubleshooting evals — WatsonX provider
+#
+# Prerequisites:
+#   1. Store your WatsonX API key in a file:
+#        echo "$WATSONX_APIKEY" > watsonx_api_key.txt
+#   2. Set your WatsonX project ID below (project_id field)
+#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   4. Run OLS:
+#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-watsonx.yaml uv run make run
+#
+# Eval system config: eval/troubleshooting/system_watsonx.yaml
+
+llm_providers:
+  - name: watsonx
+    type: watsonx
+    url: "https://us-south.ml.cloud.ibm.com"
+    credentials_path: watsonx_api_key.txt
+    project_id: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX  # replace with your project ID
+    models:
+      - name: ibm/granite-4-h-small
+
+mcp_servers:
+  - name: obs-mcp
+    url: "http://127.0.0.1:9100/mcp"
+    headers:
+      kubernetes-authorization: kubernetes
+    timeout: 5
+  - name: openshift-mcp-server
+    url: "http://127.0.0.1:8089/mcp"
+    timeout: 5
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: watsonx
+  default_model: ibm/granite-4-h-small
+  authentication_config:
+    module: "noop-with-token"
+  user_data_collection:
+    feedback_disabled: true
+    transcripts_disabled: true
+
+dev_config:
+  enable_dev_ui: true
+  disable_tls: true
+  enable_system_prompt_override: true
+  uvicorn_port_number: 8080

@@ -212,3 +212,118 @@
 
   setup_script: scenarios/wrong_networkpolicy/setup.sh
   cleanup_script: scenarios/wrong_networkpolicy/cleanup.sh
+# Troubleshooting evaluation scenarios for OLS in-cluster testing.
+# These scenarios test OLS's ability to diagnose and resolve cluster issues
+# using MCP tools (obs-mcp for metrics/alerts, openshift-mcp-server for k8s resources).
+# Deploy the cluster scenario before running: cd troubleshooting-demos/demo6 && make deploy && make break
+
+- conversation_group_id: triage_001
+  turns:
+    - turn_id: turn_001
+      query: >
+        Something seems wrong in my cluster. Can you investigate what's happening
+        and tell me if there are any problems I should be aware of?
+      expected_response: >
+        A thorough triage response that uses available tools to check the cluster
+        state. Should check for firing alerts, unhealthy pods or deployments, recent
+        error events, and resource pressure. Should clearly summarize any issues found,
+        explain their potential impact, and suggest next steps for investigation or
+        remediation.
+
+- conversation_group_id: alerts_001
+  turns:
+    - turn_id: turn_001
+      query: Are there any alerts currently firing in my cluster?
+      expected_response: >
+        A response that queries the alertmanager or prometheus to list currently
+        firing alerts. Should include alert names, severity levels, and descriptions.
+        For each alert should explain what it means and what impact it may have on
+        the cluster or applications.
+    - turn_id: turn_002
+      query: What is causing the most critical alert you found?
+      expected_response: >
+        A response that investigates the root cause of the most critical firing alert
+        by querying relevant metrics, checking affected resources (pods, nodes,
+        deployments), and examining recent events. Should identify the likely root
+        cause and explain the chain of events that led to the alert firing.
+
+- conversation_group_id: pod_001
+  turns:
+    - turn_id: turn_001
+      query: >
+        I have pods that are not running properly. Can you check the status of all
+        pods in the cluster and identify any that are failing or unhealthy?
+      expected_response: >
+        A response that checks pod status across namespaces using kubernetes tools.
+        Should identify pods in CrashLoopBackOff, Error, Pending, or OOMKilled states.
+        For failing pods should retrieve logs or events to explain why they are failing.
+        Should prioritize application namespaces over system namespaces.
+    - turn_id: turn_002
+      query: What are the recent events related to those failing pods?
+      expected_response: >
+        A response that fetches kubernetes events for the failing pods or their
+        namespace. Should highlight warning and error events, include timestamps,
+        reasons, and messages. Should connect the events to the pod failures identified
+        in the previous turn and suggest remediation actions.
+
+- conversation_group_id: metrics_001
+  turns:
+    - turn_id: turn_001
+      query: >
+        Can you check the resource utilization in my cluster? I want to know if any
+        nodes or pods are under memory or CPU pressure.
+      expected_response: >
+        A response that queries prometheus metrics for CPU and memory utilization
+        across nodes and pods. Should identify any nodes or pods approaching resource
+        limits, highlight those with high utilization percentages, and flag any that
+        are throttled or have been OOM killed recently. Should provide concrete numbers
+        and thresholds.
+    - turn_id: turn_002
+      query: Which namespace is consuming the most resources?
+      expected_response: >
+        A response that aggregates CPU and memory consumption by namespace using
+        prometheus queries. Should rank namespaces by resource consumption, identify
+        the top consumers, and flag any that appear to be using more resources than
+        expected or that have grown significantly recently.
+
+- conversation_group_id: deployment_001
+  turns:
+    - turn_id: turn_001
+      query: >
+        Are all my deployments healthy? Check if any deployments have unavailable
+        replicas or are not progressing correctly.
+      expected_response: >
+        A response that checks deployment status across namespaces. Should identify
+        deployments where available replicas do not match desired replicas, deployments
+        with stalled rollouts, and deployments with failing readiness probes. Should
+        include deployment names, namespaces, and the number of available vs desired
+        replicas for any unhealthy ones.
+    - turn_id: turn_002
+      query: How do I fix the unhealthy deployment you found?
+      expected_response: >
+        A response that provides actionable remediation steps specific to the failure
+        mode identified. Should include concrete oc/kubectl commands to inspect the
+        issue further, describe what to look for in logs or events, explain possible
+        root causes, and give step-by-step instructions to restore the deployment
+        to a healthy state.
+
+- conversation_group_id: error_rate_001
+  turns:
+    - turn_id: turn_001
+      query: >
+        My application seems to be experiencing errors. Can you check the error rates
+        and HTTP status codes for services running in the cluster?
+      expected_response: >
+        A response that queries prometheus for HTTP error rates (4xx and 5xx status
+        codes) across services. Should identify services with elevated error rates,
+        provide the error percentages over a recent time window, compare against
+        normal baselines if available, and flag any services with error rates above
+        acceptable thresholds.
+    - turn_id: turn_002
+      query: What changed recently that might have caused this error spike?
+      expected_response: >
+        A response that investigates recent changes in the cluster that correlate
+        with the error spike. Should check for recent deployments or rollouts,
+        configuration changes, resource constraint changes, or infrastructure events
+        (node restarts, network issues). Should correlate the timing of changes with
+        the onset of errors.
