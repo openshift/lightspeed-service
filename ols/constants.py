@@ -84,7 +84,7 @@ TOKEN_BUFFER_WEIGHT = 1.1
 
 # Fraction of context window reserved for tool outputs (only when MCP servers configured).
 # Computed as int(context_window_size * ratio) at startup.
-DEFAULT_TOOL_BUDGET_RATIO = 0.25
+DEFAULT_TOOL_BUDGET_RATIO = 0.5
 TOOL_BUDGET_RATIO_MIN = 0.1
 TOOL_BUDGET_RATIO_MAX = 0.6
 
