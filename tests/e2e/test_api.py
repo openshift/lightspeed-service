@@ -37,6 +37,8 @@ from tests.e2e.utils.postgres import (
     read_conversation_history_count,
     retrieve_connection,
 )
+from tests.e2e.utils.retry import retry_until_timeout_or_success
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 
 @pytest.fixture(name="postgres_connection", scope="module")
@@ -462,38 +464,51 @@ def test_generated_service_certs_rotation():
     assert response.status_code == requests.codes.ok
 
 
-@pytest.mark.skip(reason="Unblocking until OLS-1775")
 @pytest.mark.certificates
 def test_ca_service_certs_rotation():
     """Verify OLS responds after ca certificate rotation."""
+    original_pods = cluster_utils.get_pod_by_prefix()
     cluster_utils.delete_resource(
         resource="secret", name="signing-key", namespace="openshift-service-ca"
     )
-    response = pytest.client.post(
-        "/v1/query",
-        json={"query": "what is kubernetes?"},
-        timeout=LLM_REST_API_TIMEOUT,
-    )
-    assert response.status_code == requests.codes.ok
-    cluster_utils.restart_deployment(
-        name="lightspeed-operator-controller-manager", namespace="openshift-lightspeed"
-    )
-    cluster_utils.restart_deployment(
-        name="lightspeed-app-server", namespace="openshift-lightspeed"
-    )
-    cluster_utils.restart_deployment(
-        name="lightspeed-console-plugin", namespace="openshift-lightspeed"
-    )
-    # Wait for service to become available again
-    time.sleep(120)
-    cluster_utils.wait_for_running_pod()
 
-    response = pytest.client.post(
-        "/v1/query",
-        json={"query": "what is kubernetes?"},
-        timeout=LLM_REST_API_TIMEOUT,
+    def _new_pod_is_running():
+        current_pods = cluster_utils.get_pod_by_prefix(fail_not_found=False)
+        return len(current_pods) == 1 and current_pods != original_pods
+
+    assert retry_until_timeout_or_success(
+        30,
+        10,
+        _new_pod_is_running,
+        "Waiting for operator to roll pods after CA cert rotation",
+    ), "Timed out waiting for pod rollout after CA certificate rotation"
+
+    cluster_utils.wait_for_running_pod()
+    assert wait_for_ols(
+        pytest.ols_url, timeout=300, interval=10
+    ), "OLS did not become ready after CA certificate rotation"
+
+    response: requests.Response | None = None
+
+    def _query_succeeds() -> bool:
+        nonlocal response
+        response = pytest.client.post(
+            "/v1/query",
+            json={"query": "what is kubernetes?"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        return response.status_code == requests.codes.ok
+
+    assert retry_until_timeout_or_success(
+        6,
+        30,
+        _query_succeeds,
+        "Retrying query while route stabilizes after CA cert rotation",
+    ), (
+        f"OLS returned "
+        f"{response.status_code if response is not None else 'no response (all attempts raised)'}"
+        f" after CA certificate rotation"
     )
-    assert response.status_code == requests.codes.ok
 
 
 def update_olsconfig(limiters: list[dict]):
