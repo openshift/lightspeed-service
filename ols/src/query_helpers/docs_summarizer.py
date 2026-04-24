@@ -28,6 +28,7 @@ from ols.src.query_helpers.llm_execution_agent import (
 )
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.skills.skills_rag import create_skill_support_tool
+from ols.src.tools.offloaded_content import OffloadManager
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import (
     PromptTooLongError,
@@ -257,6 +258,14 @@ class DocsSummarizer(QueryHelper):
 
         return final_prompt, llm_input_values
 
+    def _create_offload_manager(self) -> Optional[OffloadManager]:
+        """Create an OffloadManager if tool calling is enabled, else None."""
+        if not self._tool_calling_enabled:
+            return None
+        return OffloadManager(
+            storage_path=config.ols_config.offload_storage_path,
+        )
+
     async def generate_response(  # noqa: C901  # pylint: disable=too-many-branches,too-many-statements
         self,
         query: str,
@@ -391,16 +400,22 @@ class DocsSummarizer(QueryHelper):
                 f"budget ({self._tracker.prompt_budget} tokens)"
             )
 
-        async for response in self._llm_agent.execute(
-            messages=messages,
-            llm_input_values=llm_input_values,
-            max_rounds=self._get_max_iterations(),
-            all_mcp_tools=all_mcp_tools,
-            rag_chunks=rag_chunks,
-            truncated=truncated,
-            tool_definitions_tokens=tool_definitions_tokens,
-        ):
-            yield response
+        offload_manager = self._create_offload_manager()
+        try:
+            async for response in self._llm_agent.execute(
+                messages=messages,
+                llm_input_values=llm_input_values,
+                max_rounds=self._get_max_iterations(),
+                all_mcp_tools=all_mcp_tools,
+                rag_chunks=rag_chunks,
+                truncated=truncated,
+                tool_definitions_tokens=tool_definitions_tokens,
+                offload_manager=offload_manager,
+            ):
+                yield response
+        finally:
+            if offload_manager is not None:
+                offload_manager.cleanup()
 
     def _get_max_iterations(self) -> int:
         """Return configured max rounds for tool-calling loop.

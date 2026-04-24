@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import Any, Literal, TypeAlias, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict
 from uuid import uuid4
 
 from aiostream import stream
@@ -20,6 +20,9 @@ from ols.src.tools.approval import (
     register_pending_approval,
 )
 from ols.utils.token_handler import TokenHandler
+
+if TYPE_CHECKING:
+    from ols.src.tools.offloaded_content import OffloadManager
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +99,19 @@ def _is_rate_limited_tool_error(error: Exception) -> bool:
 
 
 _CHARS_PER_TOKEN_ESTIMATE = 4
+
+
+def _convert_tool_output_to_text(output: Any) -> str:
+    """Convert tool output to plain text without size enforcement."""
+    if not isinstance(output, list):
+        return str(output)
+    parts: list[str] = []
+    for block in output:
+        chunk = (
+            block["text"] if isinstance(block, dict) and "text" in block else str(block)
+        )
+        parts.append(chunk)
+    return "\n".join(parts)
 
 
 def _truncate_text_to_char_limit(text: str, max_chars: int) -> str:
@@ -207,33 +223,41 @@ async def execute_tool_call(
     tool: StructuredTool,
     tool_args: dict[str, object],
     tools_token_budget: int,
+    offload_manager: "OffloadManager | None" = None,
 ) -> tuple[str, str, bool, dict | None]:
     """Execute a tool call and return output, status, truncation flag, and structured content.
 
     Args:
-        tool: Tool instance to execute
-        tool_args: Arguments to pass to the tool
-        tools_token_budget: Remaining token budget for tool outputs
+        tool: Tool instance to execute.
+        tool_args: Arguments to pass to the tool.
+        tools_token_budget: Remaining token budget for tool outputs.
+        offload_manager: Optional manager for offloading large outputs to disk.
 
     Returns:
-        Tuple of (status, tool_output, was_truncated, structured_content)
+        Tuple of (status, tool_output, was_truncated, structured_content).
     """
     structured_content: dict | None = None
     tool_name = tool.name
     result = await tool.coroutine(**tool_args)  # type: ignore[misc]
 
-    # coroutine may return (content, artifact) tuple for tools with
-    # response_format="content_and_artifact", or content directly.
-    if isinstance(result, tuple) and len(result) == 2:
-        tool_output, was_truncated = _extract_text_from_tool_output(
-            result[0], tools_token_budget
-        )
-        if isinstance(result[1], dict):
-            raw = result[1].get("structured_content")
-            structured_content = raw if isinstance(raw, dict) else None
+    raw_output = result[0] if isinstance(result, tuple) and len(result) == 2 else result
+    if isinstance(result, tuple) and len(result) == 2 and isinstance(result[1], dict):
+        raw = result[1].get("structured_content")
+        structured_content = raw if isinstance(raw, dict) else None
+
+    if offload_manager is not None:
+        raw_text = _convert_tool_output_to_text(raw_output)
+        offloaded = offload_manager.try_offload(raw_text, tool_name, tools_token_budget)
+        if offloaded is not raw_text:
+            tool_output = offloaded
+            was_truncated = False
+        else:
+            tool_output, was_truncated = _extract_text_from_tool_output(
+                raw_text, tools_token_budget
+            )
     else:
         tool_output, was_truncated = _extract_text_from_tool_output(
-            result, tools_token_budget
+            raw_output, tools_token_budget
         )
 
     status = "success"
@@ -396,6 +420,7 @@ async def _execute_with_retries(
     tool: StructuredTool,
     tool_args: dict[str, object],
     tools_token_budget: int,
+    offload_manager: "OffloadManager | None" = None,
 ) -> tuple[str, str, bool, dict | None]:
     """Execute one tool call with retry policy.
 
@@ -403,6 +428,7 @@ async def _execute_with_retries(
         tool: Tool instance to execute.
         tool_args: Arguments passed to the tool.
         tools_token_budget: Maximum tokens allowed for tool output truncation.
+        offload_manager: Optional manager for offloading large outputs to disk.
 
     Returns:
         Tuple of (status, tool_output, was_truncated, structured_content).
@@ -414,7 +440,9 @@ async def _execute_with_retries(
     for attempt in range(attempts):
         try:
             _status, tool_output, was_truncated, structured_content = (
-                await execute_tool_call(tool, tool_args, tools_token_budget)
+                await execute_tool_call(
+                    tool, tool_args, tools_token_budget, offload_manager
+                )
             )
             return "success", tool_output, was_truncated, structured_content
         except Exception as error:
@@ -450,13 +478,15 @@ async def _execute_single_tool_call_stream(
     tool_call: ToolCallDefinition,
     tools_token_budget: int,
     streaming: bool = False,
+    offload_manager: "OffloadManager | None" = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute a single tool call and emit execution events.
 
     Args:
-        tool_call: Tuple of (tool_id, tool_args, tool)
-        tools_token_budget: Remaining token budget for tool output truncation
-        streaming: Whether this call originated from the streaming endpoint
+        tool_call: Tuple of (tool_id, tool_args, tool).
+        tools_token_budget: Remaining token budget for tool output truncation.
+        streaming: Whether this call originated from the streaming endpoint.
+        offload_manager: Optional manager for offloading large outputs to disk.
 
     Yields:
         Approval-required or tool-result events.
@@ -479,6 +509,7 @@ async def _execute_single_tool_call_stream(
             tool=tool,
             tool_args=tool_args,
             tools_token_budget=tools_token_budget,
+            offload_manager=offload_manager,
         )
     )
     yield _tool_result_event(
@@ -494,6 +525,7 @@ async def execute_tool_calls_stream(
     tool_calls: list[ToolCallDefinition],
     tools_token_budget: int,
     streaming: bool = False,
+    offload_manager: "OffloadManager | None" = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute tool calls in parallel and stream execution events."""
     if not tool_calls:
@@ -504,7 +536,9 @@ async def execute_tool_calls_stream(
     # Merge runs all per-tool generators concurrently on the event loop.
     merged = stream.merge(
         *(
-            _execute_single_tool_call_stream(tc, per_tool_budget, streaming)
+            _execute_single_tool_call_stream(
+                tc, per_tool_budget, streaming, offload_manager
+            )
             for tc in tool_calls
         )
     )

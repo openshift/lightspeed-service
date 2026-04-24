@@ -1157,6 +1157,8 @@ class OLSConfig(BaseModel):
 
     tool_round_cap_fraction: float = constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
 
+    offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1225,6 +1227,10 @@ class OLSConfig(BaseModel):
                 f"tool_round_cap_fraction must be a number, got {raw_cap!r}"
             ) from e
         self.tool_round_cap_fraction = validate_tool_round_cap_fraction_config(cap)
+
+        self.offload_storage_path = data.get(
+            "offload_storage_path", constants.DEFAULT_OFFLOAD_STORAGE_PATH
+        )
 
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""

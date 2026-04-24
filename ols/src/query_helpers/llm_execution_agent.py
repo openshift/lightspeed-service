@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator, Optional, TypeAlias
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeAlias
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolMessage
@@ -20,6 +20,9 @@ from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk, StreamChunkType, StreamedChunk
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
 from ols.utils.token_handler import TokenBudgetTracker, TokenCategory
+
+if TYPE_CHECKING:
+    from ols.src.tools.offloaded_content import OffloadManager
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +152,7 @@ class LLMExecutionAgent:
         truncated: bool,
         *,
         tool_definitions_tokens: int | None = None,
+        offload_manager: "OffloadManager | None" = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Run the LLM + tool-calling loop with metrics tracking.
 
@@ -161,6 +165,7 @@ class LLMExecutionAgent:
             truncated: Whether conversation history was truncated.
             tool_definitions_tokens: When set, charge this value for tool definitions
                 without re-tokenizing; must match a prior count of the same payload.
+            offload_manager: Optional manager for offloading large tool outputs.
 
         Yields:
             StreamedChunk objects representing parts of the response,
@@ -178,6 +183,7 @@ class LLMExecutionAgent:
                 llm_input_values=llm_input_values,
                 all_mcp_tools=all_mcp_tools,
                 tool_definitions_tokens=tool_definitions_tokens,
+                offload_manager=offload_manager,
             ):
                 yield chunk
         yield StreamedChunk(
@@ -240,6 +246,7 @@ class LLMExecutionAgent:
         all_mcp_tools: list[StructuredTool],
         *,
         tool_definitions_tokens: int | None = None,
+        offload_manager: "OffloadManager | None" = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Iterate through multiple rounds of LLM invocation with tool calling.
 
@@ -251,6 +258,7 @@ class LLMExecutionAgent:
             all_mcp_tools: All resolved MCP tools available for the request.
             tool_definitions_tokens: When set, charge this value for tool definitions
                 without re-tokenizing; must match a prior count of the same payload.
+            offload_manager: Optional manager for offloading large tool outputs.
 
         Yields:
             StreamedChunk objects representing parts of the response
@@ -295,8 +303,24 @@ class LLMExecutionAgent:
                     all_tools_dict=all_tools_dict,
                     duplicate_tool_names=duplicate_tool_names,
                     messages=messages,
+                    offload_manager=offload_manager,
                 ):
                     yield streamed_chunk
+
+                if (
+                    offload_manager is not None
+                    and offload_manager.has_offloaded_content
+                    and not offload_manager.retrieval_tools_registered
+                ):
+                    retrieval_tools = offload_manager.build_retrieval_tools()
+                    for rt in retrieval_tools:
+                        all_mcp_tools.append(rt)
+                        all_tools_dict[rt.name] = rt
+                    offload_manager.mark_retrieval_tools_registered()
+                    logger.info(
+                        "Registered offload retrieval tools: %s",
+                        [rt.name for rt in retrieval_tools],
+                    )
             except Exception:
                 log_tool_loop_iteration(
                     self._tracker, i, max_rounds, "tool_execution_failed"
@@ -682,6 +706,7 @@ class LLMExecutionAgent:
         all_tools_dict: dict[str, StructuredTool],
         duplicate_tool_names: set[str],
         messages: ChatPromptTemplate,
+        offload_manager: "OffloadManager | None" = None,
     ) -> AsyncGenerator[StreamedChunk, None]:
         """Resolve, execute, and stream one round of tool calls."""
         tool_calls = tool_calls_from_tool_calls_chunks(tool_call_chunks)
@@ -775,6 +800,7 @@ class LLMExecutionAgent:
                     tool_call_definitions,
                     remaining,
                     streaming=self.streaming,
+                    offload_manager=offload_manager,
                 ):
                     match execution_event.event:
                         case StreamChunkType.APPROVAL_REQUIRED:
