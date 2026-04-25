@@ -10,6 +10,10 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 - **Async/Await** - Throughout the codebase
 - **Pydantic Models** - Configuration and data validation
 
+### Entry Point
+`runner.py` → `ols/runners/uvicorn.py:start_uvicorn` → FastAPI app at `ols.app.main:app`.
+The default `max_workers` is 1 so the in-process `AppConfig` singleton is shared across requests (see comment at `ols/runners/uvicorn.py:17`).
+
 ## Code Standards
 
 ### Python Version & Dependencies
@@ -20,7 +24,7 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 ### Code Quality Tools
 - **Ruff** - Linting (Google docstring convention)
 - **Black** - Code formatting
-- **MyPy** - Type checking (strict mode)
+- **MyPy** - Type checking with selective disables (see `[tool.mypy]` in `pyproject.toml`; not full strict mode)
 - **Bandit** - Security scanning
 - **Coverage** - 90%+ unit test coverage required
 
@@ -77,6 +81,11 @@ make coverage-report    # Generate HTML coverage report
 - **Examples** - See `examples/olsconfig.yaml` and `scripts/olsconfig.yaml`
 - **Pydantic models** - All config classes in `ols/app/models/config.py`
 
+### Accessing config at runtime
+`AppConfig` (`ols/utils/config.py`) is a module-level singleton. Import via `from ols import config`.
+Expensive resources (`config.rag_index`, `config.conversation_cache`, `config.quota_limiters`, `config.tools_rag`, `config.skills_rag`) are lazily built on first access.
+Unit tests reset it to an empty `Config()` between tests via `config.reload_empty()` in the autouse fixture at `tests/unit/conftest.py:8` — config-dependent tests must load config explicitly.
+
 ## Development Workflow
 
 ```bash
@@ -95,6 +104,7 @@ You MUST read the relevant file before working in a specific area — don't skip
 - Adding or modifying an LLM provider → `docs/ai/providers.md`
 - Adding or modifying config models → `docs/ai/config.md`
 - Writing or debugging tests → `docs/ai/testing.md`
+- Working with MCP (Model Context Protocol) servers → `README.md` (MCP section)
 
 ## Common Patterns
 
@@ -156,3 +166,18 @@ When finishing a development branch:
 ## Maintaining This Guide
 
 Update this file and the relevant `docs/ai/` reference when patterns, tooling, or conventions change, or after repeated mistakes. Only document what you would get wrong without being told — remove anything inferable from reading the code.
+
+## Code generation workflow
+
+For non-trivial code changes (new features, refactors, multi-file changes, tricky logic), use a generator + critic subagent pair:
+
+1. **Generator**: spawn a subagent with the spec and relevant file paths. It produces the code or concrete design.
+2. **Critic**: spawn a *separate* subagent (prefer a `code-reviewer` type if available, otherwise `general-purpose`) with ONLY the generator's output and the original spec — not the generator's reasoning. Ask it for bugs, missed requirements, edge cases, and convention violations.
+3. **Show the critic's output verbatim** before editing any files.
+4. Synthesize: apply what holds up; state which critiques are being rejected and why.
+
+**Skip for**: typos, single-line changes, pure renames, config value tweaks.
+
+**When unsure**: ask me first — "this looks non-trivial, run generator + critic?"
+
+**On explicit request**: if I say "use generator + critic", do it regardless of task size.
