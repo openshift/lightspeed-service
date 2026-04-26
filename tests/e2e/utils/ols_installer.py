@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import time
 
 import yaml
 
@@ -15,6 +16,60 @@ OC_COMMAND_RETRY_COUNT = 120
 OC_COMMAND_RETRY_DELAY = 5
 
 disconnected = os.getenv("DISCONNECTED", "")
+
+
+def _app_server_deployment_exists() -> bool:
+    """Return True if the OLS API Deployment exists (``oc -o name`` shape varies by version)."""
+    name_line = cluster_utils.run_oc(
+        [
+            "get",
+            "deployment",
+            "lightspeed-app-server",
+            "--ignore-not-found",
+            "-o",
+            "name",
+        ]
+    ).stdout.strip()
+    return name_line in (
+        "deployment.apps/lightspeed-app-server",
+        "deployment/lightspeed-app-server",
+    )
+
+
+def _wait_for_operator_controller_ready() -> None:
+    """Wait until the operator manager pod exists and all containers are ready."""
+    r = retry_until_timeout_or_success(
+        60,
+        5,
+        lambda: (
+            pods := cluster_utils.get_pod_by_prefix(
+                prefix="lightspeed-operator-controller-manager", fail_not_found=False
+            )
+        )
+        and all(
+            status == "true"
+            for status in cluster_utils.get_container_ready_status(pods[0])
+        ),
+        "Waiting for operator controller to be ready",
+    )
+    if not r:
+        raise Exception(
+            "Timed out waiting for operator controller manager to become ready"
+        )
+
+
+def _dump_ols_install_debug() -> None:
+    """Print cluster state to logs when install waits fail (Konflux / Azure debugging)."""
+    for label, args in (
+        ("OLSConfig", ["get", "olsconfig", "cluster", "-o", "yaml"]),
+        ("deployments", ["get", "deployments", "-n", "openshift-lightspeed"]),
+        ("CSV", ["get", "csv", "-n", "openshift-lightspeed", "-o", "wide"]),
+    ):
+        try:
+            print(f"--- {label} (debug) ---")
+            print(cluster_utils.run_oc(args).stdout)
+        except Exception as e:
+            print(f"Could not get {label}: {e}")
 
 
 def create_and_config_sas() -> tuple[str, str]:
@@ -374,27 +429,24 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             "1",
         ]
     )
+    _wait_for_operator_controller_ready()
+
+    print(
+        "Waiting for operator to reconcile OLSConfig before checking API deployment..."
+    )
+    time.sleep(30)
 
     # wait for the ols api server deployment to be created
     r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
         OC_COMMAND_RETRY_DELAY,
-        lambda: cluster_utils.run_oc(
-            [
-                "get",
-                "deployment",
-                "lightspeed-app-server",
-                "--ignore-not-found",
-                "-o",
-                "name",
-            ]
-        ).stdout
-        == "deployment.apps/lightspeed-app-server\n",
+        _app_server_deployment_exists,
         "Waiting for OLS API server deployment to be created",
     )
     if not r:
         msg = "Timed out waiting for OLS deployment to be created"
         print(msg)
+        _dump_ols_install_debug()
         raise Exception(msg)
     print("OLS deployment created")
 
@@ -445,7 +497,7 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
     )
     print("Deployment updated, waiting for new pod to be ready")
     # Wait for the pod to start being created and then wait for it to start running.
-    cluster_utils.wait_for_running_pod()
+    cluster_utils.wait_for_running_pod(wait_http_ready=False)
 
     print("-" * 50)
     print("OLS pod seems to be ready")

@@ -4,7 +4,10 @@ import json
 import os
 import subprocess
 
+import pytest
+
 from tests.e2e.utils.retry import retry_until_timeout_or_success
+from tests.e2e.utils.wait_for_ols import wait_for_ols
 
 OC_COMMAND_RETRY_COUNT = 120
 
@@ -355,9 +358,16 @@ def get_container_ready_status(pod: str, namespace: str = "openshift-lightspeed"
 
 
 def wait_for_running_pod(
-    name: str = "lightspeed-app-server-", namespace: str = "openshift-lightspeed"
+    name: str = "lightspeed-app-server-",
+    namespace: str = "openshift-lightspeed",
+    wait_http_ready: bool = True,
 ):
-    """Wait for the selected pod to be in running state."""
+    """Wait for the selected pod to be in running state.
+
+    After the pod's containers are ready, optionally poll ``/readiness`` on the
+    OLS route so callers do not hit ingress/HTML error pages before JSON is served
+    again (e.g. after scale + config changes).
+    """
     r = retry_until_timeout_or_success(
         3,
         2,
@@ -420,6 +430,23 @@ def wait_for_running_pod(
     )
     if not r:
         raise Exception("Timed out waiting for containers to become ready")
+
+    if not wait_http_ready:
+        return
+
+    # Standalone / local runs use OLS_URL with localhost; skip cluster route checks.
+    ols_url_env = os.getenv("OLS_URL", "")
+    if "localhost" in ols_url_env:
+        return
+
+    http_url = getattr(pytest, "ols_url", None) or ""
+    if not http_url.strip():
+        http_url = get_ols_url("ols")
+
+    if not wait_for_ols(http_url, timeout=300, interval=5):
+        raise Exception(
+            "Timed out waiting for OLS HTTP readiness after pod became ready"
+        )
 
 
 def get_certificate_secret_name(
