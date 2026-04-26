@@ -176,7 +176,7 @@ def wait_for_deployment() -> None:
     )
 
     print("Waiting for pods to be ready...")
-    cluster_utils.wait_for_running_pod()
+    cluster_utils.wait_for_running_pod(wait_http_ready=False)
 
 
 def setup_route() -> str:
