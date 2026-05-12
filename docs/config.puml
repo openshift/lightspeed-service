@@ -180,13 +180,14 @@ class "RHOAIVLLMConfig" as ols.app.models.config.RHOAIVLLMConfig {
   credentials_path : str
 }
 class "ReferenceContent" as ols.app.models.config.ReferenceContent {
-  embeddings_model_path : Optional[FilePath]
   indexes : Optional[list[ReferenceContentIndex]]
   validate_yaml() -> None
 }
 class "ReferenceContentIndex" as ols.app.models.config.ReferenceContentIndex {
   product_docs_index_id : Optional[str]
   product_docs_index_path : Optional[FilePath]
+  product_docs_origin : Optional[str]
+  byok_index : bool
   validate_yaml() -> None
 }
 class "SchedulerConfig" as ols.app.models.config.SchedulerConfig {

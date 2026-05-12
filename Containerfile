@@ -83,9 +83,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUTF8=1 \
     PYTHONIOENCODING=UTF-8 \
     LANG=en_US.UTF-8 \
-    LLAMA_INDEX_CACHE_DIR=/tmp/llama_index \
+    LLAMA_INDEX_CACHE_DIR=/app-root/.cache/llama_index \
     TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache \
-    HF_HOME=/app-root/.cache/huggingface
+    HF_HOME=/app-root/.cache/huggingface \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
 
 COPY --from=builder /app-root/.venv .venv
 COPY --from=builder /app-root/.tiktoken_cache .tiktoken_cache
@@ -95,9 +97,11 @@ COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/o
 COPY --chmod=775 embeddings_model ./embeddings_model
 RUN if [ -d /cachi2/output/deps/generic ]; then \
     cp /cachi2/output/deps/generic/all-mpnet-base-v2-model.safetensors embeddings_model/all-mpnet-base-v2/model.safetensors ; \
+    cp /cachi2/output/deps/generic/granite-embedding-30m-english-model.safetensors embeddings_model/granite-embedding-30m-english/model.safetensors ; \
     fi && \
     for f in \
       "embeddings_model/all-mpnet-base-v2/model.safetensors|https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors" \
+      "embeddings_model/granite-embedding-30m-english/model.safetensors|https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors" \
     ; do \
       path="${f%%|*}" && url="${f##*|}" && \
       if [ ! -f "$path" ]; then \
@@ -107,16 +111,22 @@ RUN if [ -d /cachi2/output/deps/generic ]; then \
       { echo "ERROR: corrupt safetensors file: $path" ; exit 1 ; } ; \
     done
 
-# Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1
+# Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1.
+# Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and
+# transformers when no cache_dir override is given) and the llama_index cache (passed as
+# cache_folder to SentenceTransformer by llama_index's HuggingFaceEmbedding wrapper).
 USER root
 RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     case "$model_dir" in \
       all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
+      granite-embedding-30m-english) hf_id="ibm-granite--granite-embedding-30m-english" ;; \
     esac && \
-    repo_dir="/app-root/.cache/huggingface/hub/models--${hf_id}" && \
-    mkdir -p "$repo_dir/snapshots/local" "$repo_dir/refs" && \
-    echo "local" > "$repo_dir/refs/main" && \
-    ln -sf "/app-root/embeddings_model/${model_dir}"/* "$repo_dir/snapshots/local/" ; \
+    for cache_root in /app-root/.cache/huggingface/hub /app-root/.cache/llama_index; do \
+      repo_dir="${cache_root}/models--${hf_id}" && \
+      mkdir -p "$repo_dir/snapshots/local" "$repo_dir/refs" && \
+      printf '%s' "local" > "$repo_dir/refs/main" && \
+      ln -sf "/app-root/embeddings_model/${model_dir}"/* "$repo_dir/snapshots/local/" ; \
+    done ; \
     done && \
     chown -R 1001:0 /app-root/.cache
 

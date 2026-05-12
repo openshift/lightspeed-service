@@ -193,6 +193,8 @@ class LLMExecutionAgent:
                 tool_definitions_tokens=tool_definitions_tokens,
                 offload_manager=offload_manager,
             ):
+                if chunk.type == StreamChunkType.TOOL_RESULT:
+                    rag_chunks.extend(chunk.data.pop("referenced_documents", []))
                 yield chunk
         yield StreamedChunk(
             type=StreamChunkType.END,
@@ -767,6 +769,9 @@ class LLMExecutionAgent:
         )
         if structured_content:
             tool_result_data["structured_content"] = structured_content
+        ref_docs = tool_call_message.additional_kwargs.get("referenced_documents")
+        if ref_docs:
+            tool_result_data["referenced_documents"] = ref_docs
         self._enrich_with_tool_metadata(tool_result_data, tool)
 
         return content_token_count, StreamedChunk(

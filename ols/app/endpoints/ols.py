@@ -541,17 +541,22 @@ def generate_response(
             streaming=streaming,
             audit_ctx=audit_ctx,
         )
+        rag_retriever = (
+            config.rag_index_loader.get_retriever()
+            if config.ols_config.reference_content is not None
+            else None
+        )
         if streaming:
             return docs_summarizer.generate_response(
                 llm_request.query,
-                config.rag_index_loader.get_retriever(),
+                rag_retriever,
                 user_id=user_id,
                 conversation_id=conversation_id,
                 skip_user_id_check=skip_user_id_check,
             )
         response = docs_summarizer.create_response(
             llm_request.query,
-            config.rag_index_loader.get_retriever(),
+            rag_retriever,
             user_id=user_id,
             conversation_id=conversation_id,
             skip_user_id_check=skip_user_id_check,

@@ -102,9 +102,6 @@ class TestExtractConfigStatus:
         index = ReferenceContentIndex()
         index.product_docs_index_id = "ocp-product-docs-4_17"
         config.ols_config.reference_content.indexes = [index]
-        config.ols_config.reference_content.embeddings_model_path = Path(
-            "/models/embeddings"
-        )
 
         status = extract_config_status(config)
 

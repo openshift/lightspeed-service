@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import yaml
 
 import ols.app.models.config as config_model
+from ols import constants
 from ols.src.cache.cache_factory import CacheFactory
 from ols.src.quota.quota_limiter_factory import QuotaLimiterFactory
 from ols.src.quota.token_usage_history import TokenUsageHistory
@@ -18,6 +19,7 @@ from ols.src.quota.token_usage_history import TokenUsageHistory
 # as the index_loader.py is excluded from type checks, it confuses
 # mypy a bit, hence the [attr-defined] bellow
 from ols.src.rag_index.index_loader import IndexLoader  # type: ignore [attr-defined]
+from ols.src.rag_index.solr_support import SolrHybridSearch
 from ols.src.skills.skills_rag import SkillsRAG, load_skills_from_directory
 from ols.src.tools.tools_rag.hybrid_tools_rag import ToolsRAG
 from ols.utils.redactor import Redactor
@@ -54,6 +56,8 @@ class AppConfig:
         self.k8s_tools_resolved = False
         self._tools_approval: Optional[config_model.ToolsApprovalConfig] = None
         self._pending_approval_store: Optional["PendingApprovalStoreBase"] = None
+        self._cached_solr_embed_model: Any = None
+        self._cached_byok_embed_model: Any = None
 
     @property
     def llm_config(self) -> config_model.LLMProviders:
@@ -147,48 +151,35 @@ class AppConfig:
         Returns a list of LlamaIndex BaseIndex objects, but we use Any because
         the index_loader module is excluded from type checking.
         """
-        # TODO: OLS-380 Config object mirrors configuration
-        return self.rag_index_loader.vector_indexes
+        loader = self.rag_index_loader
+        if loader is None:
+            return None
+        return loader.vector_indexes
 
     @property
-    def rag_index_loader(self) -> IndexLoader:
-        """Return the RAG index loader."""
+    def rag_index_loader(self) -> Optional[IndexLoader]:
+        """Return the RAG index loader, or ``None`` when no reference content is configured."""
+        if self.config.ols_config.reference_content is None:  # type: ignore[attr-defined]
+            return None
         if self._rag_index_loader is None:
             self._rag_index_loader = IndexLoader(self.ols_config.reference_content)
         return self._rag_index_loader
 
-    def _resolve_embed_model(self, embed_model_path: Optional[str] = None) -> Any:
-        """Resolve the embedding model for hybrid RAG (tools and skills).
+    def _byok_embed_model(self) -> Any:
+        """Load and cache the BYOK HuggingFace embedding model.
 
-        Uses the RAG index loader's model when available (production/operator path).
-        Falls back to creating a HuggingFaceEmbedding from embed_model_path or the
-        default sentence-transformers model (local testing only).
+        Shared by tools_rag and skills_rag so the model weights are loaded once.
         """
+        if self._cached_byok_embed_model is not None:
+            return self._cached_byok_embed_model
         from llama_index.embeddings.huggingface import (  # pylint: disable=import-outside-toplevel
             HuggingFaceEmbedding,
         )
 
-        # Suppress noisy progress bars and model load reports from HuggingFace.
-        for name in ("sentence_transformers", "transformers"):
-            logging.getLogger(name).setLevel(logging.ERROR)
-
-        # Local testing override -- not exposed by the operator.
-        if embed_model_path:
-            return HuggingFaceEmbedding(model_name=embed_model_path)
-
-        # Production path -- reuse the model from the RAG index loader.
-        embed_model = self.rag_index_loader.embed_model
-        if embed_model is not None and not isinstance(embed_model, str):
-            return embed_model
-
-        # Fallback when no RAG index is configured.
-        fallback_model = "sentence-transformers/all-mpnet-base-v2"
-        logger.warning(
-            "No embedding model from RAG index or config; "
-            "downloading '%s' from HuggingFace Hub",
-            fallback_model,
+        self._cached_byok_embed_model = HuggingFaceEmbedding(
+            model_name=constants.EMBEDDINGS_MODEL_BYOK_SUBDIR
         )
-        return HuggingFaceEmbedding(model_name=fallback_model)
+        return self._cached_byok_embed_model
 
     @cached_property
     def tools_rag(self) -> Optional[ToolsRAG]:
@@ -204,7 +195,7 @@ class AppConfig:
         ):
             tool_config = self.config.ols_config.tool_filtering
             try:
-                embed_model = self._resolve_embed_model(tool_config.embed_model_path)
+                embed_model = self._byok_embed_model()
             except Exception:
                 logger.exception(
                     "Failed to load embedding model for tool filtering; "
@@ -241,7 +232,7 @@ class AppConfig:
             return None
 
         try:
-            embed_model = self._resolve_embed_model(skills_config.embed_model_path)
+            embed_model = self._byok_embed_model()
         except Exception:
             logger.exception(
                 "Failed to load embedding model for skills; skills disabled"
@@ -256,6 +247,35 @@ class AppConfig:
         rag.populate_skills(skills)
 
         return rag
+
+    def _solr_hybrid_embed_model(self) -> Any:
+        """Load and cache the HuggingFace embedding model for OKP ``portal-rag`` hybrid search."""
+        if self._cached_solr_embed_model is not None:
+            return self._cached_solr_embed_model
+        from llama_index.embeddings.huggingface import (  # pylint: disable=import-outside-toplevel
+            HuggingFaceEmbedding,
+        )
+
+        for name in ("sentence_transformers", "transformers"):
+            logging.getLogger(name).setLevel(logging.ERROR)
+        self._cached_solr_embed_model = HuggingFaceEmbedding(
+            model_name=constants.SOLR_HYBRID_EMBEDDING_MODEL_ID
+        )
+        return self._cached_solr_embed_model
+
+    @cached_property
+    def solr_hybrid_search(self) -> SolrHybridSearch | None:
+        """Return Solr hybrid RAG client when ``ols_config.solr_hybrid`` is present."""
+        settings = self.config.ols_config.solr_hybrid  # type: ignore[attr-defined]
+        if settings is None:
+            return None
+        try:
+            embed_model = self._solr_hybrid_embed_model()
+            encode_fn = embed_model.get_text_embedding
+        except Exception:
+            logger.exception("Failed to resolve embedding model for Solr hybrid RAG")
+            return None
+        return SolrHybridSearch(settings, encode_fn)
 
     @property
     def proxy_config(self) -> Optional[config_model.ProxyConfig]:
@@ -303,6 +323,11 @@ class AppConfig:
                 del self.__dict__["tools_rag"]
             if "skills_rag" in self.__dict__:
                 del self.__dict__["skills_rag"]
+            if "solr_hybrid_search" in self.__dict__:
+                old = self.__dict__["solr_hybrid_search"]
+                del self.__dict__["solr_hybrid_search"]
+                if old is not None:
+                    old.close_http_client_sync()
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

@@ -213,7 +213,7 @@ class TestCreateSkillSupportTool:
         )
         tool = create_skill_support_tool(skill)
         assert tool.name == "load_skill_support_files"
-        status, output, truncated, structured = await execute_tool_call(
+        status, output, truncated, structured, _ = await execute_tool_call(
             tool,
             {"files": ["ref.md"]},
             _LARGE_TOKEN_BUDGET,
