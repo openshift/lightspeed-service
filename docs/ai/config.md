@@ -103,6 +103,26 @@ Config classes have two validation phases:
 
 If you add a new config class that needs file existence checks or cross-section validation, add a `validate_yaml()` method and call it from the appropriate parent config's `validate_yaml()`.
 
+### Optional Solr hybrid RAG (`ols_config.solr_hybrid`)
+
+Omit the key to leave Solr hybrid RAG off (no client, no tool). When present, values map to `SolrHybridSettings` and the feature is active. `solr_http_base` must be a valid `http` or `https` URL with a host (checked in `validate_yaml()`).
+
+When ``solr_hybrid`` is defined, every entry under ``reference_content.indexes``
+must include ``byok_index: true`` if any local indexes are configured. That rejects
+Solr together with an unmarked local vector index (duplicate product RAG); omit
+``indexes`` for Solr-only, or mark BYOK indexes explicitly.
+
+```yaml
+ols_config:
+  solr_hybrid:
+    solr_http_base: "https://solr.example.com:8983"
+    # max_results, chunk_filter_query, hybrid_*, solr_direct_rag: optional overrides
+```
+
+Do not duplicate the same product documentation in Solr and a local product index.
+You may use ``solr_hybrid`` for product docs and ``reference_content`` for separate
+BYOK indexes; each BYOK row must set ``byok_index: true`` when ``solr_hybrid`` is present.
+
 ## Important Constants
 
 Config-related constants live in `ols/constants.py`:

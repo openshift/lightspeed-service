@@ -58,13 +58,17 @@ llm_providers:
       - name: model-name
 ols_config:
   # max_workers: 1
-  reference_content:
-    indexes:
-      - product_docs_index_path: "./vector_db/ocp_product_docs/4.17"
-        product_docs_index_id: ocp-product-docs-4_17
-      - product_docs_index_path: "./vector_db/user_application_docs/version_1"
-        product_docs_index_id: user-application-docs-version_1
-    embeddings_model_path: "./embeddings_model"
+  # Product docs: use Solr hybrid OR local FAISS (e.g. BYOK), not both in one deployment.
+  solr_hybrid:
+    solr_http_base: "https://solr.example.com:8983"
+  # BYOK / local FAISS only (omit solr_hybrid section to disable Solr).
+  # With solr_hybrid present, each index must set byok_index: true.
+  # reference_content:
+  #   embeddings_model_path: "./embeddings_model"
+  #   indexes:
+  #     - product_docs_index_path: "./vector_db/user_application_docs/version_1"
+  #       product_docs_index_id: user-application-docs-version_1
+  #       byok_index: true
   conversation_cache:
     type: memory
     memory:

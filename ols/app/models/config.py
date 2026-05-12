@@ -9,6 +9,7 @@ from typing import Any, Optional, Self
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
+    ConfigDict,
     Field,
     FilePath,
     PositiveInt,
@@ -954,11 +955,19 @@ class LoggingConfig(BaseModel):
 
 
 class ReferenceContentIndex(BaseModel):
-    """Reference content index configuration."""
+    """One on-disk FAISS / vector index (e.g. BYOK or other local RAG stores).
+
+    Field names are historical: ``product_docs_*`` is used for any persisted
+    LlamaIndex vector store path, not only shipped product documentation. Managed
+    OpenShift product docs are typically retrieved via ``ols_config.solr_hybrid``
+    instead of a second index here. When ``solr_hybrid`` is enabled, any local index
+    listed alongside it must set ``byok_index: true`` (see ``OLSConfig.validate_yaml``).
+    """
 
     product_docs_index_path: Optional[FilePath] = None
     product_docs_index_id: Optional[str] = None
     product_docs_origin: Optional[str] = None
+    byok_index: bool = False
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -968,6 +977,7 @@ class ReferenceContentIndex(BaseModel):
         self.product_docs_index_path = data.get("product_docs_index_path", None)
         self.product_docs_index_id = data.get("product_docs_index_id", None)
         self.product_docs_origin = data.get("product_docs_origin", None)
+        self.byok_index = bool(data.get("byok_index", False))
 
     def validate_yaml(self) -> None:
         """Validate reference content index config."""
@@ -998,7 +1008,14 @@ class ReferenceContentIndex(BaseModel):
 
 
 class ReferenceContent(BaseModel):
-    """Reference content configuration."""
+    """Local vector indexes (FAISS on disk) and shared embedding model path.
+
+    Omit or leave ``indexes`` empty when no on-disk indexes are needed. BYOK and
+    similar flows still require at least one index entry and a valid
+    ``embeddings_model_path`` (or defaults) so ``IndexLoader`` can load FAISS.
+    Product documentation may be served by Solr (see ``solr_hybrid``) rather than
+    an entry under ``indexes``.
+    """
 
     embeddings_model_path: Optional[FilePath] = None
     indexes: Optional[list[ReferenceContentIndex]] = None
@@ -1022,6 +1039,89 @@ class ReferenceContent(BaseModel):
         if self.indexes is not None:
             for index in self.indexes:
                 index.validate_yaml()
+
+
+class SolrHybridSettings(BaseModel):
+    """Pydantic container for Solr hybrid RAG (portal-rag ``/hybrid-search``).
+
+    Holds the Solr HTTP base URL, ranked hit count, optional ``fq`` filter, hybrid
+    rerank pool and vector weight, optional post-score cutoff, HTTP client timeout,
+    and whether passages are merged as direct RAG or only via tool.
+
+    Presence of the ``solr_hybrid`` section in the config enables the feature;
+    omit the section entirely to disable it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    solr_http_base: str = Field(
+        default="http://localhost:8080",
+        description="Solr base URL without trailing /solr.",
+    )
+    max_results: int = Field(
+        default=constants.RAG_CONTENT_LIMIT,
+        ge=1,
+        le=50,
+        description=(
+            "Target number of passages to return after parent dedupe; matches the "
+            "default index retriever chunk cap (``ols.constants.RAG_CONTENT_LIMIT`` / "
+            "``similarity_top_k``). Also scales how many rows Solr fetches for the hybrid "
+            "request pool before reranking."
+        ),
+    )
+    chunk_filter_query: str | None = Field(
+        default=None,
+        description=(
+            "Optional Solr filter query (``fq``) to restrict hybrid-search hits, "
+            "for example by product or content type."
+        ),
+    )
+    hybrid_vector_boost: float = Field(
+        default=8.0,
+        ge=0.0,
+        description=(
+            "Solr rerank vector weight (``reRankWeight``): relative emphasis of dense "
+            "vector score versus lexical relevance in the hybrid reranker."
+        ),
+    )
+    hybrid_pool_docs: int = Field(
+        default=100,
+        ge=1,
+        le=500,
+        description=(
+            "Candidate document pool size (``reRankDocs``) passed to Solr's "
+            "``{!rerank}`` query for hybrid reranking."
+        ),
+    )
+    hybrid_score_threshold: float = Field(
+        default=0.0,
+        ge=0.0,
+        description=(
+            "Drop hits whose hybrid ``score`` is below this value after retrieval; "
+            "use ``0`` to keep all Solr-ranked docs."
+        ),
+    )
+    hybrid_solr_timeout_s: float = Field(
+        default=60.0,
+        ge=5.0,
+        description="Total HTTP timeout in seconds for each hybrid-search request.",
+    )
+    solr_direct_rag: bool = Field(
+        default=True,
+        description=(
+            "When True, merge Solr hybrid hits into the prompt as direct RAG context. "
+            "When False, skip that merge and register ``search_openshift_documentation`` "
+            "only (including when no MCP servers are configured)."
+        ),
+    )
+
+    def validate_yaml(self) -> None:
+        """Validate Solr hybrid settings."""
+        if not checks.is_valid_http_url(self.solr_http_base):
+            raise checks.InvalidConfigurationError(
+                "solr_hybrid.solr_http_base must be a valid http or https URL with a "
+                f"host; got {self.solr_http_base!r}"
+            )
 
 
 class UserDataCollection(BaseModel):
@@ -1156,11 +1256,13 @@ class OLSConfig(BaseModel):
 
     skills: Optional[SkillsConfig] = None
 
+    solr_hybrid: Optional[SolrHybridSettings] = None
+
     tool_round_cap_fraction: float = constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
 
     offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
 
-    def __init__(
+    def __init__(  # noqa: C901
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
         """Initialize configuration and perform basic validation."""
@@ -1218,6 +1320,8 @@ class OLSConfig(BaseModel):
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
             self.skills = SkillsConfig(**data.get("skills"))
+        if data.get("solr_hybrid", None) is not None:
+            self.solr_hybrid = SolrHybridSettings(**data.get("solr_hybrid"))
 
         raw_cap = data.get(
             "tool_round_cap_fraction", constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
@@ -1265,6 +1369,26 @@ class OLSConfig(BaseModel):
             self.authentication_config.validate_yaml()
         if self.proxy_config is not None:
             self.proxy_config.validate_yaml()
+        if self.solr_hybrid is not None:
+            self.solr_hybrid.validate_yaml()
+        self._validate_solr_hybrid_vs_reference_indexes()
+
+    def _validate_solr_hybrid_vs_reference_indexes(self) -> None:
+        """Reject Solr hybrid together with local indexes that are not BYOK-only."""
+        solr = self.solr_hybrid
+        if solr is None:
+            return
+        rc = self.reference_content
+        if rc is None or not rc.indexes:
+            return
+        if any(not idx.byok_index for idx in rc.indexes):
+            raise checks.InvalidConfigurationError(
+                "ols_config.solr_hybrid is enabled together with "
+                "ols_config.reference_content.indexes entries that are not marked "
+                "BYOK-only. Remove local product vector indexes when using Solr, or set "
+                "byok_index: true on each index that is intentionally kept with Solr "
+                "(e.g. BYOK)."
+            )
 
 
 class DevConfig(BaseModel):
@@ -1363,12 +1487,22 @@ class Config(BaseModel):
             auth_module,
         )
 
+    def _solr_builtin_docs_tool_reserves_tool_budget(self) -> bool:
+        """Return True when built-in Solr product-doc search may run (tool-only path)."""
+        sh = self.ols_config.solr_hybrid
+        if sh is None:
+            return False
+        return not sh.solr_direct_rag
+
     def _compute_tool_budgets(self) -> None:
         """Set tool token budget per model and ensure the context window fits reserved tokens."""
         has_mcp = bool(self.mcp_servers.servers)
+        reserve_tool_budget = (
+            has_mcp or self._solr_builtin_docs_tool_reserves_tool_budget()
+        )
         for provider in self.llm_providers.providers.values():
             for model in provider.models.values():
-                if has_mcp:
+                if reserve_tool_budget:
                     model.max_tokens_for_tools = int(
                         model.context_window_size * model.parameters.tool_budget_ratio
                     )

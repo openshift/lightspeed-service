@@ -34,6 +34,7 @@ from ols.app.models.config import (
     ReferenceContent,
     ReferenceContentIndex,
     SkillsConfig,
+    SolrHybridSettings,
     TLSConfig,
     TLSSecurityProfile,
     UserDataCollection,
@@ -2242,6 +2243,7 @@ def test_ols_config(tmpdir):
         ols_config.tool_round_cap_fraction == constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
     )
     assert ols_config.offload_storage_path == constants.DEFAULT_OFFLOAD_STORAGE_PATH
+    assert ols_config.solr_hybrid is None
 
 
 def test_ols_config_with_custom_offload_storage_path():
@@ -2255,6 +2257,152 @@ def test_ols_config_with_custom_offload_storage_path():
         }
     )
     assert ols_config.offload_storage_path == "/custom/offload/path"
+
+
+def test_ols_config_solr_hybrid_parses_from_yaml_dict():
+    """Parse optional ``solr_hybrid`` under ``ols_config`` into ``SolrHybridSettings``."""
+    base = {
+        "default_provider": "p",
+        "default_model": "m",
+        "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
+    }
+    ols_config = OLSConfig(
+        {
+            **base,
+            "solr_hybrid": {
+                "solr_http_base": "https://solr.example.com:8983",
+                "max_results": 7,
+                "solr_direct_rag": False,
+            },
+        }
+    )
+    assert ols_config.solr_hybrid is not None
+    assert ols_config.solr_hybrid.solr_http_base == "https://solr.example.com:8983"
+    assert ols_config.solr_hybrid.max_results == 7
+    assert ols_config.solr_hybrid.solr_direct_rag is False
+
+
+def test_config_reserves_tool_budget_for_solr_tool_only_without_mcp():
+    """Tool budget is non-zero for Solr tool-only even when no MCP servers are listed."""
+    data = {
+        "llm_providers": [
+            {
+                "name": "openai",
+                "type": "openai",
+                "url": "http://localhost",
+                "credentials_path": "tests/config/secret/apitoken",
+                "models": [
+                    {
+                        "name": "m1",
+                        "context_window_size": 10000,
+                        "parameters": {"tool_budget_ratio": 0.5},
+                    }
+                ],
+            }
+        ],
+        "ols_config": {
+            "default_provider": "openai",
+            "default_model": "m1",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
+            "authentication_config": {"module": "foo"},
+            "solr_hybrid": {
+                "solr_http_base": "https://solr.example.com:8983",
+                "solr_direct_rag": False,
+            },
+        },
+        "dev_config": {"disable_tls": True},
+    }
+    config = Config(data)
+    model = config.llm_providers.providers["openai"].models["m1"]
+    assert model.max_tokens_for_tools == 5000
+
+    data_direct = copy.deepcopy(data)
+    data_direct["ols_config"]["solr_hybrid"]["solr_direct_rag"] = True
+    config_direct = Config(data_direct)
+    model_direct = config_direct.llm_providers.providers["openai"].models["m1"]
+    assert model_direct.max_tokens_for_tools == 0
+
+
+def test_ols_config_solr_hybrid_validate_yaml_rejects_bad_url():
+    """``validate_yaml`` rejects non-http(s) Solr base URLs."""
+    settings = SolrHybridSettings(solr_http_base="not-a-url")
+    with pytest.raises(InvalidConfigurationError, match=r"solr_hybrid\.solr_http_base"):
+        settings.validate_yaml()
+
+
+def test_ols_config_validate_yaml_solr_hybrid_rejects_invalid_base_url():
+    """``OLSConfig.validate_yaml`` validates ``solr_hybrid`` when present."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "p",
+            "default_model": "m",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
+            "logging_config": {"logging_level": "INFO"},
+            "solr_hybrid": {"solr_http_base": "ftp://example.com"},
+        }
+    )
+    with pytest.raises(InvalidConfigurationError, match=r"solr_hybrid\.solr_http_base"):
+        ols_config.validate_yaml(disable_tls=True)
+
+
+def test_ols_config_validate_yaml_rejects_solr_with_non_byok_indexes(tmp_path):
+    """Solr enabled with local indexes requires byok_index on each index row."""
+    idx_dir = tmp_path / "idx"
+    idx_dir.mkdir()
+    embed_dir = tmp_path / "embed"
+    embed_dir.mkdir()
+    ols_config = OLSConfig(
+        {
+            "default_provider": "p",
+            "default_model": "m",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
+            "logging_config": {"logging_level": "INFO"},
+            "solr_hybrid": {
+                "solr_http_base": "https://solr.example.com",
+            },
+            "reference_content": {
+                "embeddings_model_path": str(embed_dir),
+                "indexes": [
+                    {
+                        "product_docs_index_path": str(idx_dir),
+                        "product_docs_index_id": "idx1",
+                    }
+                ],
+            },
+        }
+    )
+    with pytest.raises(InvalidConfigurationError, match="byok_index"):
+        ols_config.validate_yaml(disable_tls=True)
+
+
+def test_ols_config_validate_yaml_allows_solr_with_byok_indexes(tmp_path):
+    """Solr plus BYOK-marked local indexes passes validation."""
+    idx_dir = tmp_path / "idx"
+    idx_dir.mkdir()
+    embed_dir = tmp_path / "embed"
+    embed_dir.mkdir()
+    ols_config = OLSConfig(
+        {
+            "default_provider": "p",
+            "default_model": "m",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
+            "logging_config": {"logging_level": "INFO"},
+            "solr_hybrid": {
+                "solr_http_base": "https://solr.example.com",
+            },
+            "reference_content": {
+                "embeddings_model_path": str(embed_dir),
+                "indexes": [
+                    {
+                        "product_docs_index_path": str(idx_dir),
+                        "product_docs_index_id": "idx1",
+                        "byok_index": True,
+                    }
+                ],
+            },
+        }
+    )
+    ols_config.validate_yaml(disable_tls=True)
 
 
 def test_ols_config_tool_round_cap_fraction():
@@ -3075,6 +3223,16 @@ def test_reference_content_index_constructor():
     )
     assert reference_content_index.product_docs_index_id == "id"
     assert reference_content_index.product_docs_index_path == "/path/"
+    assert reference_content_index.byok_index is False
+
+    byok = ReferenceContentIndex(
+        {
+            "product_docs_index_id": "id2",
+            "product_docs_index_path": "/path2/",
+            "byok_index": True,
+        }
+    )
+    assert byok.byok_index is True
 
 
 def test_reference_content_index_equality():
