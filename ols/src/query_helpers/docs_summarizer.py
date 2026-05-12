@@ -28,6 +28,7 @@ from ols.src.query_helpers.llm_execution_agent import (
     log_tool_loop_iteration,
 )
 from ols.src.query_helpers.query_helper import QueryHelper
+from ols.src.rag_index.solr_support import get_openshift_docs_tool
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
 from ols.utils.audit_logger import AuditContext
@@ -91,12 +92,21 @@ class DocsSummarizer(QueryHelper):
         self.mcp_servers = build_mcp_config(
             config.mcp_servers.servers, self.user_token, self.client_headers
         )
+        self._solr_hybrid = config.ols_config.solr_hybrid
+        self._solr_client = config.solr_hybrid_search
+        solr_docs_tool_active = (
+            self._solr_hybrid is not None and self._solr_client is not None
+        )
+        self._solr_docs_tool_prompt_guidance = solr_docs_tool_active
+        self._tool_calling_enabled = bool(self.mcp_servers) or solr_docs_tool_active
         if self.mcp_servers:
             logger.info("MCP servers provided: %s", list(self.mcp_servers.keys()))
-            self._tool_calling_enabled = True
+        elif self._tool_calling_enabled:
+            logger.info(
+                "Tool calling enabled for Solr hybrid OpenShift documentation search"
+            )
         else:
             logger.debug("No MCP servers provided, tool calling is disabled")
-            self._tool_calling_enabled = False
 
         self._tracker = TokenBudgetTracker(
             token_handler=TokenHandler(),
@@ -119,6 +129,17 @@ class DocsSummarizer(QueryHelper):
             token_budget_tracker=self._tracker,
             audit_ctx=self._audit_ctx,
         )
+
+    async def _resolve_tools_for_request(
+        self, mcp_tools_query: str
+    ) -> list[StructuredTool]:
+        """Load MCP tools and append built-in Solr docs search when configured for tool-only."""
+        tools = await get_mcp_tools(
+            mcp_tools_query, self.user_token, self.client_headers
+        )
+        if self._solr_hybrid is not None and self._solr_client is not None:
+            tools.append(get_openshift_docs_tool(self._solr_client))
+        return tools
 
     def _prepare_llm(self) -> None:
         """Prepare the LLM configuration."""
@@ -155,6 +176,7 @@ class DocsSummarizer(QueryHelper):
             self._tool_calling_enabled,
             self._mode,
             self._cluster_version,
+            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
         ).generate_prompt(self.model)
         prompt_tokens = self._tracker.count_tokens(
             temp_prompt.format(**temp_prompt_input)
@@ -175,7 +197,10 @@ class DocsSummarizer(QueryHelper):
             )
             with rag_span as span:
                 retrieved_nodes = rag_retriever.retrieve(query)
-                logger.info("Retrieved %d documents from indexes", len(retrieved_nodes))
+                logger.info(
+                    "Retrieved %d document nodes for RAG context",
+                    len(retrieved_nodes),
+                )
 
                 for i, node in enumerate(retrieved_nodes[:5]):
                     logger.info(
@@ -263,6 +288,7 @@ class DocsSummarizer(QueryHelper):
             self._mode,
             self._cluster_version,
             skill_content=skill_content,
+            solr_docs_tool_guidance=self._solr_docs_tool_prompt_guidance,
         ).generate_prompt(self.model)
 
         log_tool_loop_iteration(
@@ -420,9 +446,7 @@ class DocsSummarizer(QueryHelper):
 
         messages = final_prompt.model_copy()
         mcp_tools_query = f"{skill_content}\n\n{query}" if skill_content else query
-        all_mcp_tools = await get_mcp_tools(
-            mcp_tools_query, self.user_token, self.client_headers
-        )
+        all_mcp_tools = await self._resolve_tools_for_request(mcp_tools_query)
         if skill is not None and skill_content is not None and has_support_files:
             all_mcp_tools.append(create_skill_support_tool(skill))
         tool_definitions_text = self._serialized_tool_definitions_text(all_mcp_tools)

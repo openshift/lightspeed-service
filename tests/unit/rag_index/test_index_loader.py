@@ -1,7 +1,6 @@
 """Unit test for the index loader module."""
 
-import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import ols.src.rag_index.index_loader as il
 from ols import config
@@ -29,17 +28,20 @@ def test_index_loader_no_id():
         )
     ]
 
+    mock_embed = MagicMock()
+    mock_embed.model_name = "all-mpnet-base-v2"
+
     with (
-        patch("llama_index.core.StorageContext.from_defaults"),
-        patch.dict(os.environ, {"TRANSFORMERS_CACHE": "", "TRANSFORMERS_OFFLINE": ""}),
+        patch(
+            "ols.src.rag_index.index_loader.HuggingFaceEmbedding",
+            return_value=mock_embed,
+        ),
+        patch.object(il.IndexLoader, "_load_index"),
     ):
         index_loader_obj = il.IndexLoader(config.ols_config.reference_content)
         indexes = index_loader_obj.vector_indexes
 
-        assert (
-            index_loader_obj._embed_model
-            == "local:sentence-transformers/all-mpnet-base-v2"
-        )
+        assert index_loader_obj._embed_model is mock_embed
         assert indexes is None
 
 
@@ -53,7 +55,11 @@ def test_index_loader():
             "llama_index.vector_stores.faiss.FaissVectorStore.from_persist_dir"
         ) as from_persist_dir,
         patch("llama_index.core.load_index_from_storage", new=MockLlamaIndex),
-        patch.dict(os.environ, {"TRANSFORMERS_CACHE": "", "TRANSFORMERS_OFFLINE": ""}),
+        patch("ols.src.rag_index.index_loader.HuggingFaceEmbedding"),
+        patch(
+            "llama_index.core.settings.resolve_embed_model",
+            side_effect=lambda m, **kw: m,
+        ),
     ):
         config.ols_config.reference_content.indexes = [
             ReferenceContentIndex(

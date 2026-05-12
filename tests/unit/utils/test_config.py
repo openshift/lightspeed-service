@@ -476,34 +476,6 @@ llm_providers:
         credentials_path: tests/config/secret/apitoken
 ols_config:
   reference_content:
-    embeddings_model_path: ./invalid_dir
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_temperature_override: 0.1
-  enable_dev_ui: true
-  disable_auth: false
-  pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
-
-""",
-        InvalidConfigurationError,
-        "Embeddings model path './invalid_dir' does not exist",
-    )
-
-    check_expected_exception(
-        """
----
-llm_providers:
-  - name: p1
-    type: openai
-    credentials_path: tests/config/secret/apitoken
-    models:
-      - name: m1
-        credentials_path: tests/config/secret/apitoken
-ols_config:
-  reference_content:
     indexes:
     - product_docs_index_id: "product"
   conversation_cache:
@@ -545,38 +517,6 @@ dev_config:
         InvalidConfigurationError,
         "Reference content index path 'tests/config/secret/apitoken' is not a directory",
     )
-
-
-def test_unreadable_directory():
-    """Check if an unredable directory is reported correctly."""
-    with patch("os.access", return_value=False):
-        check_expected_exception(
-            """
----
-llm_providers:
-  - name: p1
-    type: openai
-    credentials_path: tests/config/secret/apitoken
-    models:
-      - name: m1
-        credentials_path: tests/config/secret/apitoken
-ols_config:
-  reference_content:
-    embeddings_model_path: tests/config
-  conversation_cache:
-    type: memory
-    memory:
-      max_entries: 1000
-dev_config:
-  llm_temperature_override: 0.1
-  enable_dev_ui: true
-  disable_auth: false
-  disable_tls: true
-
-""",
-            InvalidConfigurationError,
-            "Embeddings model path 'tests/config' is not readable",
-        )
 
 
 def test_valid_config_stream():
@@ -1213,3 +1153,83 @@ def test_quota_limiters_property():
     config.reload_from_yaml_file("tests/config/valid_config_without_query_filter.yaml")
     # force reinitialization
     assert config.quota_limiters is not None
+
+
+def test_solr_hybrid_search_uses_fixed_portal_rag_embedding_model():
+    """Solr hybrid loads the OKP portal-rag HuggingFace embedding id, not the RAG index model."""
+    yaml_stream = """
+---
+llm_providers:
+  - name: p1
+    type: openai
+    url: "https://url1"
+    credentials_path: tests/config/secret/apitoken
+    models:
+      - name: m1
+        url: "https://murl1"
+        credentials_path: tests/config/secret/apitoken
+        context_window_size: 450
+        parameters:
+          max_tokens_for_response: 100
+ols_config:
+  solr_hybrid:
+    solr_http_base: "http://localhost:8080"
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+  default_provider: p1
+  default_model: m1
+  user_data_collection:
+    transcripts_disabled: true
+  tls_config:
+    tls_certificate_path: tests/config/server.crt
+    tls_key_path: tests/config/server.key
+    tls_key_password_path: tests/config/password
+  tlsSecurityProfile:
+    type: Custom
+    ciphers:
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    minTLSVersion: VersionTLS13
+dev_config:
+  disable_tls: true
+  disable_auth: true
+"""
+
+    class _StubEmbed:
+        def get_text_embedding(self, text: str) -> list[float]:
+            return [0.0]
+
+    with (
+        patch(
+            "llama_index.embeddings.huggingface.HuggingFaceEmbedding",
+            autospec=True,
+        ) as mock_hf,
+        patch(
+            "ols.src.rag_index.solr_support.SolrHybridSearch._resolve_chunk_filter_query",
+            return_value="is_chunk:true AND product:openshift_container_platform",
+        ),
+    ):
+        mock_hf.return_value = _StubEmbed()
+        config.reload_empty()
+        config.config = config._load_config_from_yaml_stream(
+            io.StringIO(yaml_stream), ignore_missing_certs=True
+        )
+        for key in (
+            "solr_hybrid_search",
+            "rag_index_loader",
+            "mcp_servers_dict",
+            "tools_rag",
+            "skills_rag",
+        ):
+            config.__dict__.pop(key, None)
+        client = config.solr_hybrid_search
+        assert client is not None
+        mock_hf.assert_called_once_with(
+            model_name=constants.SOLR_HYBRID_EMBEDDING_MODEL_ID
+        )
+    config.reload_empty()

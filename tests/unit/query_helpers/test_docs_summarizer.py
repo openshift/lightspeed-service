@@ -9,13 +9,14 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.messages.ai import AIMessageChunk
 
 from ols import config
-from ols.app.models.config import LoggingConfig, MCPServerConfig
+from ols.app.models.config import LoggingConfig, MCPServerConfig, SolrHybridSettings
 from ols.app.models.models import StreamChunkType, StreamedChunk
 from ols.constants import (
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS_TROUBLESHOOTING,
     QueryMode,
 )
+from ols.utils.config import AppConfig
 
 # needs to be setup before importing docs_summarizer
 config.ols_config.authentication_config.module = "k8s"
@@ -71,6 +72,28 @@ def test_if_system_prompt_was_updated():
     """Test if system prompt was overridden from the configuration."""
     summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
     assert summarizer._system_prompt == config.ols_config.system_prompt
+
+
+def test_tool_calling_enabled_when_solr_docs_tool_active_without_mcp():
+    """Enable tool loop when Solr hybrid docs tool is active, without MCP servers."""
+    hybrid = SolrHybridSettings()
+    mock_client = MagicMock()
+    with (
+        patch.object(config.ols_config, "solr_hybrid", hybrid),
+        patch.object(
+            AppConfig,
+            "solr_hybrid_search",
+            PropertyMock(return_value=mock_client),
+        ),
+    ):
+        summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer._tool_calling_enabled is True
+
+
+def test_tool_calling_disabled_without_mcp_and_without_solr_docs_tool():
+    """Tool calling stays off when neither MCP nor Solr docs tool is active."""
+    summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+    assert summarizer._tool_calling_enabled is False
 
 
 def test_summarize_empty_history():
@@ -188,7 +211,28 @@ def test_summarize_retrieval_logging(caplog):
         question = "What's the ultimate question with answer 42?"
         summary = summarizer.create_response(question, MockRetriever())
         check_summary_result(summary, question)
-        assert "Retrieved 1 documents from indexes" in caplog.text
+        assert "Retrieved 1 document nodes for RAG context" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_resolve_tools_appends_openshift_docs_tool_when_solr_configured_no_mcp():
+    """Append docs tool for Solr hybrid when MCP returns no tools."""
+    with patch(
+        "ols.src.query_helpers.docs_summarizer.get_mcp_tools",
+        new_callable=AsyncMock,
+    ) as m_get:
+        m_get.return_value = []
+        prev = config.ols_config.solr_hybrid
+        config.ols_config.solr_hybrid = SolrHybridSettings()
+        config.__dict__["solr_hybrid_search"] = MagicMock()
+        try:
+            summarizer = DocsSummarizer(llm_loader=mock_llm_loader(None))
+            tools = await summarizer._resolve_tools_for_request("query")
+        finally:
+            config.ols_config.solr_hybrid = prev
+            config.__dict__.pop("solr_hybrid_search", None)
+    assert [t.name for t in tools] == ["search_openshift_documentation"]
+    m_get.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -700,10 +744,9 @@ async def test_generate_response_creates_and_cleans_offload_manager():
             f"Expected 1 OffloadManager created (streaming={streaming}), "
             f"got {len(created_managers)}"
         )
-        assert len(cleanup_calls) == 1, (
-            f"Expected cleanup called once (streaming={streaming}), "
-            f"got {len(cleanup_calls)}"
-        )
+        assert (
+            len(cleanup_calls) == 1
+        ), f"Expected cleanup called once (streaming={streaming}), got {len(cleanup_calls)}"
         assert any(
             c.type == StreamChunkType.END for c in chunks
         ), f"Expected END chunk (streaming={streaming})"

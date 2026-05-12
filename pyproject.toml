@@ -140,7 +140,7 @@ dependencies = [
     "qdrant-client>=1.13.3",  # For ToolsRAG vector storage (pure Python, no Rust/Cargo)
     "rank-bm25>=0.2.2",  # For ToolsRAG sparse retrieval
     "python-frontmatter>=1.1.0",  # For parsing skill YAML frontmatter
-    "opentelemetry-api>=1.20.0",  # For audit tracing
+    "opentelemetry-api>=1.30.0",
     "opentelemetry-sdk>=1.20.0",  # For audit tracing
     "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",  # For OTLP span export
 ]
