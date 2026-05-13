@@ -356,15 +356,22 @@ class LLMExecutionAgent:
             AIMessageChunk objects from the LLM response stream
         """
         logger.debug("provided %s tools", len(tools_map))
+        # strict=False is an OpenAI-specific workaround for
+        # langchain-ai/langchain#35837 (Responses API defaults strict=True).
+        # Passing it to non-OpenAI providers (e.g. ChatAnthropicVertex) causes
+        # the kwarg to leak into the underlying SDK call which rejects it.
+        openai_types = {constants.PROVIDER_OPENAI, constants.PROVIDER_AZURE_OPENAI}
+        strict_kwargs: dict[str, Any] = (
+            {"strict": False} if self.provider_type in openai_types else {}
+        )
         if not tools_map:
             llm = self.bare_llm
         elif is_final_round:
             # Responses API dumps tool args as text when tools are unbound;
-            # tool_choice="none" prevents this while strict=False avoids
-            # langchain-ai/langchain#35837 (Responses API defaults strict=True).
-            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", strict=False)  # type: ignore [assignment]
+            # tool_choice="none" prevents this.
+            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", **strict_kwargs)  # type: ignore [assignment]
         else:
-            llm = self.bare_llm.bind_tools(tools_map, strict=False)  # type: ignore [assignment]
+            llm = self.bare_llm.bind_tools(tools_map, **strict_kwargs)  # type: ignore [assignment]
 
         # create and execute the chain
         chain = messages | llm

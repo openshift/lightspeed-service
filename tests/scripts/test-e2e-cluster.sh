@@ -47,6 +47,12 @@ function run_suites() {
   run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp"
   (( rc = rc || $? ))
 
+  run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-2.5-flash-lite" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
+  run_suite "google_vertex_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex_anthropic" "$VERTEX_PROVIDER_KEY_PATH" "claude-opus-4-6" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
   run_suite "watsonx" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "watsonx" "$WATSONX_PROVIDER_KEY_PATH" "ibm/granite-4-h-small" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
