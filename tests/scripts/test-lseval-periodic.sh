@@ -1,11 +1,9 @@
 #!/bin/bash
-# CI job: run LSEval evaluations against OLS using OpenAI GPT-4o-mini + GPT-4.1-mini judge.
+# CI job: run the LSEval periodic suite only — full 797-question QnA dataset (eval/eval_data.yaml).
+# OpenAI GPT-4o-mini in-cluster; judge model is gpt-5-mini (from eval YAML).
+# Troubleshooting evals are not run from this entrypoint (run them separately if needed).
 #
-# Runs two suites in sequence against the same OLS deployment:
-#   1. lseval_periodic          — full 797-question QnA dataset
-#   2. lseval_troubleshooting   — scenario-based and MCP troubleshooting evals
-#
-# After both suites complete, scores are appended to eval/score_history.csv and
+# After the suite completes, scores are appended to eval/score_history.csv and
 # weekly trend plots are written to ARTIFACT_DIR.
 #
 # Input environment variables:
@@ -41,14 +39,8 @@ function run_suites() {
   # Deploy OLS with OpenAI GPT-4o-mini.
   # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
   # OLS_CONFIG_SUFFIX="lseval" → ols_installer builds: olsconfig.crd.openai_lseval.yaml
-
-  # Suite 1: full 797-question QnA dataset
   SUITE_ID="lseval_periodic" run_suite \
     "lseval_periodic" "lseval" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "lseval"
-  (( rc = rc || $? ))
-
-  # Suite 2: scenario-based and MCP troubleshooting evals (same OLS deployment)
-  SUITE_ID="lseval_troubleshooting" make test-lseval-troubleshooting
   (( rc = rc || $? ))
 
   set -e
@@ -74,32 +66,19 @@ _newest_eval_summary() {
 }
 
 function record_trends() {
-  # Collect run summaries and regenerate trend plots.
-  # Missing JSONs are silently skipped (suite may have errored before producing output).
+  # Append periodic LSEval summary to score history and refresh trend plots.
   mkdir -p eval
-  local periodic scenarios mcp
+  local periodic
   periodic="$(_newest_eval_summary "${ARTIFACT_DIR}/lseval/openai")"
-  scenarios="$(_newest_eval_summary "${ARTIFACT_DIR}/troubleshooting/scenarios")"
-  mcp="$(_newest_eval_summary "${ARTIFACT_DIR}/troubleshooting/mcp")"
-  if [[ -z "$periodic" && -z "$scenarios" && -z "$mcp" ]]; then
-    echo "WARNING: no evaluation_*_summary.json under ${ARTIFACT_DIR}, skipping trend update"
+  if [[ -z "$periodic" ]]; then
+    echo "WARNING: no periodic evaluation_*_summary.json under ${ARTIFACT_DIR}/lseval/openai, skipping trend update"
     return 0
   fi
-  local -a trend_cmd=(
-    uv run --extra evaluation python eval/scripts/update_eval_trends.py
-    --history-csv eval/score_history.csv
-    --output-dir "${ARTIFACT_DIR}"
-  )
-  if [[ -n "$periodic" ]]; then
-    trend_cmd+=(--suite lseval_periodic --summary-json "$periodic")
-  fi
-  if [[ -n "$scenarios" ]]; then
-    trend_cmd+=(--suite lseval_troubleshooting_scenarios --summary-json "$scenarios")
-  fi
-  if [[ -n "$mcp" ]]; then
-    trend_cmd+=(--suite lseval_troubleshooting_mcp --summary-json "$mcp")
-  fi
-  "${trend_cmd[@]}" || true
+  uv run --extra evaluation python eval/scripts/update_eval_trends.py \
+    --history-csv eval/score_history.csv \
+    --output-dir "${ARTIFACT_DIR}" \
+    --suite lseval_periodic \
+    --summary-json "$periodic" || true
   return 0
 }
 

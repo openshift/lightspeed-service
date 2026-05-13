@@ -1,5 +1,5 @@
 # LightSpeed Evaluation Framework Configuration
-# OLS Provider: OpenAI GPT-4o-mini (older mini model, being evaluated)
+# OLS Provider: OpenAI GPT-4o-mini (model being evaluated)
 # Judge LLM: OpenAI GPT-5-mini (scoring responses)
 
 # Core Evaluation Configuration

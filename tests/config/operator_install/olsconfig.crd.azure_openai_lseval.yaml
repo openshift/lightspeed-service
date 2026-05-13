@@ -1,0 +1,31 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - name: azure_openai
+        type: azure_openai
+        credentialsSecretRef:
+          name: llmcreds
+        deploymentName: gpt-4.1-mini
+        models:
+          - name: gpt-4.1-mini
+        url: 'https://ols-test.openai.azure.com/'
+  ols:
+    defaultModel: gpt-4.1-mini
+    defaultProvider: azure_openai
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: INFO
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
