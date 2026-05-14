@@ -10,6 +10,7 @@ core:
   max_threads: 5
 
 # Judge LLM Configuration
+# Uses OpenAI GPT-5-mini for evaluation scoring.
 # Requires OPENAI_API_KEY environment variable.
 llm:
   provider: "openai"

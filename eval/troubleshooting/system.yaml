@@ -1,5 +1,5 @@
 # LightSpeed Evaluation Framework Configuration — Troubleshooting Evals
-# OLS backend (api): model sent to OLS /query — align with cluster OLSConfig.
+# OLS backend (api): model sent to OLS /query — must match cluster OLSConfig (e.g. gpt-4o-mini for lseval CR).
 # Judge (llm): OpenAI GPT-5-mini for scoring (GPT-5 family; avoid deprecated GPT-4 judge).
 #
 # api_base is overridden at runtime with the actual OLS cluster URL.
@@ -20,14 +20,14 @@ llm:
   num_retries: 3
   cache_enabled: false
 
-# OLS API — the system under test
+# OLS API — the system under test (model must match OLSConfig, e.g. openai_lseval uses gpt-4o-mini)
 api:
   enabled: true
   api_base: http://localhost:8080
   endpoint_type: query
   timeout: 300
   provider: "openai"
-  model: "gpt-4.1-mini"
+  model: "gpt-4o-mini"
   no_tools: null
   system_prompt: null
   cache_enabled: false

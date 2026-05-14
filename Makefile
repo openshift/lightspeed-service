@@ -100,11 +100,15 @@ test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question datas
 	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation/test_lseval_periodic.py -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_out_dir ${ARTIFACT_DIR} -m lseval --lseval_provider ${PROVIDER}
 
-test-lseval-troubleshooting: ## Run LSEval troubleshooting evaluation (scenario + MCP suites) - requires running OLS server with OpenAI keys
-	@echo "Running LSEval troubleshooting evaluation..."
-	@echo "Reports will be written to ${ARTIFACT_DIR}"
-	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation/test_lseval_troubleshooting.py -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_out_dir ${ARTIFACT_DIR} -m lseval
+# DISABLED: re-enable by uncommenting the recipe body below.
+# test-lseval-troubleshooting: ## Run LSEval troubleshooting evaluation (scenario + MCP suites) - requires running OLS server with OpenAI keys
+# 	@echo "Running LSEval troubleshooting evaluation..."
+# 	@echo "Reports will be written to ${ARTIFACT_DIR}"
+# 	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation/test_lseval_troubleshooting.py -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+# 	--eval_out_dir ${ARTIFACT_DIR} -m lseval
+
+test-lseval-troubleshooting: ## DISABLED: LSEval troubleshooting (uncomment Makefile to re-enable)
+	@echo "test-lseval-troubleshooting is disabled for now (troubleshooting LSEval commented out)." >&2
 
 coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
 
