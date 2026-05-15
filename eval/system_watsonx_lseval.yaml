@@ -15,7 +15,6 @@ core:
 llm:
   provider: "openai"
   model: "gpt-5-mini"
-  temperature: 0.0
   max_tokens: 512
   timeout: 300
   num_retries: 3
