@@ -30,6 +30,7 @@ Local usage
        pytest tests/e2e/evaluation/test_lseval_periodic.py -m lseval
 """
 
+import csv
 import json
 import os
 import shutil
@@ -185,7 +186,30 @@ def _run_lseval(eval_data: Path, out_dir: Path, system_config: Path) -> None:
     assert json_files, f"No summary JSON artefacts found in {out_dir}"
 
     with open(json_files[0], encoding="utf-8") as fh:
-        overall = json.load(fh)["summary_stats"]["overall"]
+        summary_json = json.load(fh)
+    overall = summary_json["summary_stats"]["overall"]
+
+    if overall["error_rate"] > MAX_EVAL_ERROR_RATE_PCT:
+        judge_tokens = overall.get("total_judge_llm_tokens", -1)
+        judge_detail = (
+            "0 → OLS calls failed before judge was reached"
+            if judge_tokens == 0
+            else "judge was called"
+        )
+        print(
+            f"\n--- ERROR DIAGNOSTICS ---\n"
+            f"Judge LLM tokens used: {judge_tokens} ({judge_detail})\n"
+        )
+        with open(csv_files[0], encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            error_rows = [r for r in reader if r.get("result") == "ERROR"]
+        if error_rows:
+            print("First 3 error reasons from detailed CSV:")
+            for row in error_rows[:3]:
+                print(
+                    f"  turn={row.get('turn_id','?')} reason={row.get('reason','?')[:200]}"
+                )
+
     assert overall["error_rate"] <= MAX_EVAL_ERROR_RATE_PCT, (
         f"{overall['ERROR']}/{overall['TOTAL']} evaluations errored "
         f"(error_rate={overall['error_rate']:.1f}% > threshold {MAX_EVAL_ERROR_RATE_PCT}%)."
