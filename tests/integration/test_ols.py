@@ -20,7 +20,11 @@ from ols.app.models.config import (
     QueryFilter,
 )
 from ols.utils import suid
-from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE, DEFAULT_STATUS_CODE
+from ols.utils.errors_parsing import (
+    _LLM_BACKEND_PREFIX,
+    DEFAULT_ERROR_MESSAGE,
+    DEFAULT_STATUS_CODE,
+)
 from ols.utils.logging_configurator import configure_logging
 from ols.utils.token_handler import PromptTooLongError
 from tests.mock_classes.mock_langchain_interface import mock_langchain_interface
@@ -104,7 +108,7 @@ def test_post_question_on_generic_response_type_summarize_error(_setup, endpoint
         assert response.status_code == DEFAULT_STATUS_CODE
         expected_json = {
             "detail": {
-                "response": DEFAULT_ERROR_MESSAGE,
+                "response": f"{_LLM_BACKEND_PREFIX} {DEFAULT_ERROR_MESSAGE}",
                 "cause": "summarizer error",
             }
         }
