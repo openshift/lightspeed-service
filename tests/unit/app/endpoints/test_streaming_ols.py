@@ -26,7 +26,10 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
 )
 from ols.app.models.models import RagChunk, StreamChunkType, TokenCounter  # noqa:E402
 from ols.utils import suid  # noqa:E402
-from ols.utils.errors_parsing import DEFAULT_ERROR_MESSAGE  # noqa:E402
+from ols.utils.errors_parsing import (  # noqa:E402
+    _LLM_BACKEND_PREFIX,
+    DEFAULT_ERROR_MESSAGE,
+)
 
 conversation_id = suid.get_suid()
 
@@ -177,16 +180,17 @@ def test_prompt_too_long_error():
 
 def test_generic_llm_error():
     """Test generic_llm_error."""
+    prefixed_msg = f"{_LLM_BACKEND_PREFIX} {DEFAULT_ERROR_MESSAGE}"
     assert (
         generic_llm_error("error", constants.MEDIA_TYPE_TEXT)
-        == f"{DEFAULT_ERROR_MESSAGE}: error"
+        == f"{prefixed_msg}: error"
     )
 
     assert generic_llm_error("error", constants.MEDIA_TYPE_JSON) == format_stream_data(
         {
             "event": "error",
             "data": {
-                "response": DEFAULT_ERROR_MESSAGE,
+                "response": prefixed_msg,
                 "cause": "error",
             },
         }
