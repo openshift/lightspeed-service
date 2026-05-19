@@ -1,0 +1,25 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vllm-model
+  namespace: e2e-rhoai-dsc
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-gpu
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          cpu: "4"
+          memory: 20Gi
+        requests:
+          nvidia.com/gpu: 1
+          cpu: "2"
+          memory: 16Gi

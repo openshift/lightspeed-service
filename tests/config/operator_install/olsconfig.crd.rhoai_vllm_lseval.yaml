@@ -1,0 +1,24 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: meta-llama/Llama-3.1-8B-Instruct
+        name: rhoai_vllm
+        type: rhoai_vllm
+        url: "${KSVC_URL}/v1"
+  ols:
+    defaultModel: meta-llama/Llama-3.1-8B-Instruct
+    defaultProvider: rhoai_vllm
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true

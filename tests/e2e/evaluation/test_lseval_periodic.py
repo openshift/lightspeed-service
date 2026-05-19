@@ -1,10 +1,9 @@
-r"""LSEval evaluation tests for the periodic provider matrix (OpenAI, Watsonx, Azure OpenAI).
+r"""LSEval evaluation tests for the periodic provider matrix.
 
 Each provider uses the judge LLM defined in ``eval/system_<provider>_lseval.yaml`` (OpenAI
 ``gpt-5-mini`` for scoring). The model sent to OLS is defined in the same file under ``api``.
 
-Periodic LSEval runs these providers only: openai, watsonx, azure_openai.
-(RHOAI/RHELAI vLLM configs exist under ``eval/`` but are not part of this test matrix yet.)
+Periodic LSEval runs these providers: openai, watsonx, azure_openai, rhoai_vllm.
 
 When ``PROVIDER`` is set to a single provider (typical CI), other parametrized providers
 are skipped so the suite does not call OLS with the wrong backend.
@@ -44,7 +43,7 @@ import yaml
 MAX_EVAL_ERROR_RATE_PCT = 10.0
 
 # LSEval periodic provider matrix (operator-backed backends under test)
-_LSEVAL_PERIODIC_PROVIDERS = ("openai", "watsonx", "azure_openai")
+_LSEVAL_PERIODIC_PROVIDERS = ("openai", "watsonx", "azure_openai", "rhoai_vllm")
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
@@ -55,6 +54,7 @@ _PROVIDER_CONFIGS: dict[str, Path] = {
     "openai": EVAL_DIR / "system_openai_lseval.yaml",
     "watsonx": EVAL_DIR / "system_watsonx_lseval.yaml",
     "azure_openai": EVAL_DIR / "system_azure_openai_lseval.yaml",
+    "rhoai_vllm": EVAL_DIR / "system_rhoai_vllm_lseval.yaml",
 }
 
 
