@@ -2380,6 +2380,160 @@ def test_ols_config_with_tls_security_profile(tmpdir):
     )
 
 
+def test_tls_profile_propagated_to_postgres_cache():
+    """Test that TLS profile propagates to conversation_cache.postgres."""
+    ols_config = OLSConfig(
+        {
+            "conversation_cache": {
+                "type": "postgres",
+                "postgres": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "ssl_mode": "require",
+                },
+            },
+            "tlsSecurityProfile": {
+                "type": "IntermediateType",
+                "minTLSVersion": "VersionTLS12",
+            },
+        }
+    )
+    assert ols_config.conversation_cache.postgres.tls_security_profile is not None
+    assert (
+        ols_config.conversation_cache.postgres.tls_security_profile
+        is ols_config.tls_security_profile
+    )
+
+
+def test_tls_profile_propagated_to_quota_storage():
+    """Test that TLS profile propagates to quota_handlers.storage."""
+    ols_config = OLSConfig(
+        {
+            "conversation_cache": {
+                "type": "memory",
+                "memory": {"max_entries": 100},
+            },
+            "quota_handlers": {
+                "storage": {
+                    "host": "",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "password_path": "tests/config/postgres_password.txt",
+                    "ssl_mode": "disable",
+                },
+                "limiters": [
+                    {
+                        "name": "u",
+                        "type": "user_limiter",
+                        "initial_quota": 1000,
+                        "quota_increase": 10,
+                        "period": "5 minutes",
+                    },
+                ],
+                "scheduler": {"period": 100},
+            },
+            "tlsSecurityProfile": {
+                "type": "ModernType",
+                "minTLSVersion": "VersionTLS13",
+            },
+        }
+    )
+    assert ols_config.quota_handlers.storage.tls_security_profile is not None
+    assert (
+        ols_config.quota_handlers.storage.tls_security_profile
+        is ols_config.tls_security_profile
+    )
+
+
+def test_tls_profile_propagated_to_both_postgres_targets():
+    """Test that TLS profile propagates to both postgres and quota storage."""
+    ols_config = OLSConfig(
+        {
+            "conversation_cache": {
+                "type": "postgres",
+                "postgres": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "dbname": "cache_db",
+                    "user": "cache_user",
+                    "ssl_mode": "require",
+                },
+            },
+            "quota_handlers": {
+                "storage": {
+                    "host": "",
+                    "port": 5432,
+                    "dbname": "quota_db",
+                    "user": "quota_user",
+                    "password_path": "tests/config/postgres_password.txt",
+                    "ssl_mode": "disable",
+                },
+                "limiters": [
+                    {
+                        "name": "u",
+                        "type": "user_limiter",
+                        "initial_quota": 1000,
+                        "quota_increase": 10,
+                        "period": "5 minutes",
+                    },
+                ],
+                "scheduler": {"period": 100},
+            },
+            "tlsSecurityProfile": {
+                "type": "Custom",
+                "minTLSVersion": "VersionTLS13",
+                "ciphers": ["TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"],
+            },
+        }
+    )
+    profile = ols_config.tls_security_profile
+    assert ols_config.conversation_cache.postgres.tls_security_profile is profile
+    assert ols_config.quota_handlers.storage.tls_security_profile is profile
+
+
+def test_tls_profile_not_propagated_when_profile_type_is_none():
+    """Test that propagation is skipped when profile_type is None."""
+    ols_config = OLSConfig(
+        {
+            "conversation_cache": {
+                "type": "postgres",
+                "postgres": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "ssl_mode": "require",
+                },
+            },
+            "tlsSecurityProfile": {},
+        }
+    )
+    assert ols_config.tls_security_profile.profile_type is None
+    assert ols_config.conversation_cache.postgres.tls_security_profile is None
+
+
+def test_tls_profile_not_propagated_without_profile():
+    """Test that propagation is skipped when no TLS profile is configured."""
+    ols_config = OLSConfig(
+        {
+            "conversation_cache": {
+                "type": "postgres",
+                "postgres": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "dbname": "test",
+                    "user": "tester",
+                    "ssl_mode": "require",
+                },
+            },
+        }
+    )
+    assert ols_config.conversation_cache.postgres.tls_security_profile is None
+
+
 def get_ols_configs():
     """Construct two instances of OLSConfig class."""
     ols_config_1 = OLSConfig()
