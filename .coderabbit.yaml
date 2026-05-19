@@ -1,0 +1,38 @@
+# CodeRabbit configuration — openshift/lightspeed-service
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+reviews:
+  profile: chill
+
+  auto_review:
+    enabled: true
+    base_branches:
+      - 'main'
+    drafts: false
+    ignore_title_keywords:
+      - 'WIP'
+      - 'DO NOT MERGE'
+
+  # File/path filters — skip generated, lockfiles, and mechanical artifacts
+  path_filters:
+    # Python dependency locks (regenerate via `make requirements`)
+    - '!uv.lock'
+    - '!requirements.txt'
+    - '!requirements-build.txt'
+    - '!requirements.hermetic.txt'
+    - '!requirements.overrides.txt'
+    - '!requirements.hashes.source.txt'
+    - '!requirements.hashes.wheel.txt'
+    # RPM lockfile for Konflux hermetic builds
+    - '!rpms.lock.yaml'
+    # Local IDE metadata
+    - '!.idea/**'
+
+  collapse_walkthrough: true
+  poem: false
+  high_level_summary: true
+  review_status: true
+  commit_status: true
+  sequence_diagrams: true
+
+chat:
+  auto_reply: false
