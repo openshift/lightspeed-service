@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
+from langchain_openai import ChatOpenAI
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
@@ -356,15 +357,21 @@ class LLMExecutionAgent:
             AIMessageChunk objects from the LLM response stream
         """
         logger.debug("provided %s tools", len(tools_map))
+        # strict=False is a ChatOpenAI-specific workaround for
+        # langchain-ai/langchain#35837 (Responses API defaults strict=True).
+        # Passing it to non-OpenAI providers (e.g. ChatAnthropicVertex) causes
+        # the kwarg to leak into the underlying SDK call which rejects it.
+        strict_kwargs: dict[str, Any] = (
+            {"strict": False} if isinstance(self.bare_llm, ChatOpenAI) else {}
+        )
         if not tools_map:
             llm = self.bare_llm
         elif is_final_round:
             # Responses API dumps tool args as text when tools are unbound;
-            # tool_choice="none" prevents this while strict=False avoids
-            # langchain-ai/langchain#35837 (Responses API defaults strict=True).
-            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", strict=False)  # type: ignore [assignment]
+            # tool_choice="none" prevents this.
+            llm = self.bare_llm.bind_tools(tools_map, tool_choice="none", **strict_kwargs)  # type: ignore [assignment]
         else:
-            llm = self.bare_llm.bind_tools(tools_map, strict=False)  # type: ignore [assignment]
+            llm = self.bare_llm.bind_tools(tools_map, **strict_kwargs)  # type: ignore [assignment]
 
         # create and execute the chain
         chain = messages | llm
