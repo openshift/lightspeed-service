@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
+from langchain_openai import ChatOpenAI
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
@@ -356,13 +357,12 @@ class LLMExecutionAgent:
             AIMessageChunk objects from the LLM response stream
         """
         logger.debug("provided %s tools", len(tools_map))
-        # strict=False is an OpenAI-specific workaround for
+        # strict=False is a ChatOpenAI-specific workaround for
         # langchain-ai/langchain#35837 (Responses API defaults strict=True).
         # Passing it to non-OpenAI providers (e.g. ChatAnthropicVertex) causes
         # the kwarg to leak into the underlying SDK call which rejects it.
-        openai_types = {constants.PROVIDER_OPENAI, constants.PROVIDER_AZURE_OPENAI}
         strict_kwargs: dict[str, Any] = (
-            {"strict": False} if self.provider_type in openai_types else {}
+            {"strict": False} if isinstance(self.bare_llm, ChatOpenAI) else {}
         )
         if not tools_map:
             llm = self.bare_llm
