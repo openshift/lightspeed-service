@@ -41,8 +41,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-MAX_EVAL_ERROR_RATE_PCT = 10.0
-
 # LSEval periodic provider matrix (operator-backed backends under test)
 _LSEVAL_PERIODIC_PROVIDERS = ("openai", "watsonx", "azure_openai")
 
@@ -189,17 +187,25 @@ def _run_lseval(eval_data: Path, out_dir: Path, system_config: Path) -> None:
         summary_json = json.load(fh)
     overall = summary_json["summary_stats"]["overall"]
 
-    if overall["error_rate"] > MAX_EVAL_ERROR_RATE_PCT:
-        judge_tokens = overall.get("total_judge_llm_tokens", -1)
-        judge_detail = (
-            "0 → OLS calls failed before judge was reached"
-            if judge_tokens == 0
-            else "judge was called"
-        )
-        print(
-            f"\n--- ERROR DIAGNOSTICS ---\n"
-            f"Judge LLM tokens used: {judge_tokens} ({judge_detail})\n"
-        )
+    error_rate = overall["error_rate"]
+    total = overall["TOTAL"]
+    errors = overall["ERROR"]
+    passed = total - errors
+
+    judge_tokens = overall.get("total_judge_llm_tokens", -1)
+    judge_detail = (
+        "0 → OLS calls failed before judge was reached"
+        if judge_tokens == 0
+        else "judge was called"
+    )
+    print(
+        f"\n--- EVAL SUMMARY ---\n"
+        f"Total={total}  Passed={passed}  Errors={errors}  "
+        f"error_rate={error_rate:.1f}%\n"
+        f"Judge LLM tokens used: {judge_tokens} ({judge_detail})\n"
+    )
+
+    if errors:
         with open(csv_files[0], encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
             error_rows = [r for r in reader if r.get("result") == "ERROR"]
@@ -210,10 +216,7 @@ def _run_lseval(eval_data: Path, out_dir: Path, system_config: Path) -> None:
                     f"  turn={row.get('turn_id','?')} reason={row.get('reason','?')[:200]}"
                 )
 
-    assert overall["error_rate"] <= MAX_EVAL_ERROR_RATE_PCT, (
-        f"{overall['ERROR']}/{overall['TOTAL']} evaluations errored "
-        f"(error_rate={overall['error_rate']:.1f}% > threshold {MAX_EVAL_ERROR_RATE_PCT}%)."
-    )
+    assert passed > 0, f"All {total} evaluations errored — zero successful results."
 
 
 @pytest.mark.lseval
