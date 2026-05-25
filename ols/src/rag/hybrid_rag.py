@@ -17,111 +17,15 @@ from qdrant_client.models import (
 )
 from rank_bm25 import BM25Okapi
 
-_NON_ALPHA = re.compile(r"[^a-z0-9\s]")
+from ols.src.rag.stop_words import ENGLISH_STOP_WORDS
 
-# Subset of NLTK's English stop-word list, inlined to avoid the dependency.
-_STOP_WORDS = frozenset(
-    {
-        "a",
-        "an",
-        "the",
-        "and",
-        "or",
-        "but",
-        "in",
-        "on",
-        "at",
-        "to",
-        "for",
-        "of",
-        "with",
-        "by",
-        "from",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "been",
-        "being",
-        "have",
-        "has",
-        "had",
-        "do",
-        "does",
-        "did",
-        "will",
-        "would",
-        "could",
-        "should",
-        "may",
-        "might",
-        "shall",
-        "can",
-        "need",
-        "dare",
-        "it",
-        "its",
-        "this",
-        "that",
-        "these",
-        "those",
-        "i",
-        "we",
-        "you",
-        "he",
-        "she",
-        "they",
-        "me",
-        "him",
-        "her",
-        "us",
-        "them",
-        "my",
-        "our",
-        "your",
-        "his",
-        "their",
-        "what",
-        "which",
-        "who",
-        "whom",
-        "how",
-        "when",
-        "where",
-        "why",
-        "not",
-        "no",
-        "nor",
-        "so",
-        "if",
-        "then",
-        "than",
-        "too",
-        "very",
-        "just",
-        "about",
-        "above",
-        "after",
-        "before",
-        "between",
-        "into",
-        "out",
-        "up",
-        "down",
-        "over",
-        "under",
-        "again",
-        "further",
-        "once",
-    }
-)
+_NON_ALPHA = re.compile(r"[^a-z0-9\s]")
 
 
 def _tokenize(text: str) -> list[str]:
     """Lowercase, strip punctuation, remove stop words, and split."""
     tokens = _NON_ALPHA.sub("", text.lower()).split()
-    return [t for t in tokens if t not in _STOP_WORDS]
+    return [t for t in tokens if t not in ENGLISH_STOP_WORDS]
 
 
 class QdrantStore:

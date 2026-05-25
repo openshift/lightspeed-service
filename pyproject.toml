@@ -133,6 +133,7 @@ dependencies = [
     "virtualenv>=20.28.0",
     "requests>=2.32.2",
     "transformers>=4.50.3",
+    "opentelemetry-api>=1.30.0",
     "langchain-mcp-adapters>=0.2.1",
     "mcp>=1.23.0",
     "qdrant-client>=1.13.3",  # For ToolsRAG vector storage (pure Python, no Rust/Cargo)
