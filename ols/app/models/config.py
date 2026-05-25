@@ -631,6 +631,10 @@ class MCPServerConfig(BaseModel):
     MCP (Model Context Protocol) servers provide tools and capabilities to the
     AI agents. These are configured by this structure. Only MCP servers
     defined in the olsconfig.yaml configuration are available to the agents.
+
+    Servers with ``type: knowledge`` are queried on every request (forced
+    retrieval) and their results are injected as additional RAG context.
+    Servers with ``type: tool`` (the default) expose tools the LLM may call.
     """
 
     name: str = Field(
@@ -641,6 +645,68 @@ class MCPServerConfig(BaseModel):
     url: str = Field(
         title="MCP server URL",
         description="URL of the MCP server",
+    )
+
+    type: str = Field(
+        default="tool",
+        title="MCP server type",
+        description=(
+            "Type of MCP server. "
+            "'tool' (default) — tools are passed to the LLM which decides when to call them. "
+            "'knowledge' — a knowledge source queried according to retrieval_mode."
+        ),
+    )
+
+    retrieval_mode: str = Field(
+        default="always",
+        title="Retrieval mode",
+        description=(
+            "How the knowledge source is queried. Only used when type is 'knowledge'. "
+            "'always' — search_tool is called on every query and results are injected "
+            "as RAG context (forced retrieval). "
+            "'on_demand' — the search_tool is exposed as an LLM tool, the model decides "
+            "when to call it. Requires 'description' to tell the LLM what the source contains."
+        ),
+    )
+
+    knowledge_description: Optional[str] = Field(
+        default=None,
+        title="Knowledge source description",
+        description=(
+            "Human-readable description of what this knowledge source contains. "
+            "Used when retrieval_mode is 'on_demand' to help the LLM decide when to "
+            "query this source. Example: 'Internal incident response runbooks and "
+            "security playbooks. Search when the user asks about incident response, "
+            "ransomware, phishing, or security procedures.'"
+        ),
+    )
+
+    search_tool: Optional[str] = Field(
+        default=None,
+        title="Search tool name",
+        description=(
+            "Name of the MCP tool to call for knowledge retrieval. "
+            "Required when type is 'knowledge'. "
+            "The tool must accept a 'query' parameter."
+        ),
+    )
+
+    max_chunks: int = Field(
+        default=10,
+        title="Max chunks",
+        description=(
+            "Maximum number of chunks to retrieve from this knowledge source. "
+            "Only used when type is 'knowledge'."
+        ),
+    )
+
+    priority: int = Field(
+        default=1,
+        title="Priority",
+        description=(
+            "Priority for ordering results when multiple knowledge sources return results. "
+            "Lower numbers = higher priority. Only used when type is 'knowledge'."
+        ),
     )
 
     timeout: Optional[int] = Field(
@@ -675,6 +741,36 @@ class MCPServerConfig(BaseModel):
     def resolved_headers(self) -> dict[str, str]:
         """Resolved headers (computed from headers)."""
         return self._resolved_headers
+
+    @model_validator(mode="after")
+    def validate_knowledge_config(self) -> "MCPServerConfig":
+        """Validate that knowledge-type servers have search_tool configured."""
+        if self.type not in ("tool", "knowledge"):
+            raise ValueError(
+                f"Invalid MCP server type '{self.type}' for server '{self.name}'. "
+                "Must be 'tool' or 'knowledge'."
+            )
+        if self.type == "knowledge" and not self.search_tool:
+            raise ValueError(
+                f"MCP server '{self.name}' has type 'knowledge' but no search_tool configured. "
+                "Set search_tool to the name of the MCP tool to call for retrieval."
+            )
+        if self.retrieval_mode not in ("always", "on_demand"):
+            raise ValueError(
+                f"Invalid retrieval_mode '{self.retrieval_mode}' for server '{self.name}'. "
+                "Must be 'always' or 'on_demand'."
+            )
+        if (
+            self.type == "knowledge"
+            and self.retrieval_mode == "on_demand"
+            and not self.knowledge_description
+        ):
+            raise ValueError(
+                f"MCP server '{self.name}' has retrieval_mode 'on_demand' but no "
+                "knowledge_description. The LLM needs a description to decide when "
+                "to query this source."
+            )
+        return self
 
 
 class ToolFilteringConfig(BaseModel):

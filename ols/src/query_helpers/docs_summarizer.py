@@ -29,7 +29,12 @@ from ols.src.query_helpers.llm_execution_agent import (
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
-from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
+from ols.utils.mcp_utils import (
+    ClientHeaders,
+    build_mcp_config,
+    get_mcp_tools,
+    retrieve_from_knowledge_mcps,
+)
 from ols.utils.token_handler import (
     PromptTooLongError,
     TokenBudgetTracker,
@@ -287,6 +292,28 @@ class DocsSummarizer(QueryHelper):
             StreamedChunk objects representing parts of the response
         """
         rag_chunks = await self._prepare_prompt_context(query, rag_retriever)
+
+        knowledge_results = await retrieve_from_knowledge_mcps(
+            query, self.user_token, self.client_headers
+        )
+        if knowledge_results:
+            for kr in knowledge_results:
+                byok_chunk = RagChunk(
+                    text=kr["text"],
+                    doc_url=kr.get("source", ""),
+                    doc_title=kr.get("title", "BYOK"),
+                )
+                rag_chunks.insert(0, byok_chunk)
+            byok_tokens = sum(
+                self._tracker.count_tokens(kr["text"]) for kr in knowledge_results
+            )
+            self._tracker.charge(TokenCategory.RAG, byok_tokens)
+            logger.info(
+                "Injected %d BYOK knowledge chunks (%d tokens) from %d MCP sources",
+                len(knowledge_results),
+                byok_tokens,
+                len(knowledge_results),
+            )
 
         skill_content: Optional[str] = None
         has_support_files = False

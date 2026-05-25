@@ -206,12 +206,30 @@ async def gather_mcp_tools(
                     tool for tool in server_tools if tool.name in allowed_tool_names
                 ]
 
-            # Add MCP server name to each tool's metadata
+            server_cfg = config.mcp_servers_dict.get(server_name)
+            knowledge_desc = (
+                server_cfg.knowledge_description
+                if server_cfg and server_cfg.type == "knowledge"
+                and server_cfg.knowledge_description
+                else None
+            )
+
             for tool in server_tools:
                 _normalize_tool_schema(tool)
                 if not hasattr(tool, "metadata") or tool.metadata is None:
                     tool.metadata = {}
                 tool.metadata["mcp_server"] = server_name
+
+                if knowledge_desc and server_cfg and tool.name == server_cfg.search_tool:
+                    tool.description = (
+                        f"{knowledge_desc}\n\n"
+                        f"Original tool description: {tool.description}"
+                    )
+                    logger.info(
+                        "Augmented tool '%s' with knowledge_description from '%s'",
+                        tool.name,
+                        server_name,
+                    )
 
             all_tools.extend(server_tools)
             logger.info(
@@ -347,10 +365,15 @@ async def get_mcp_tools(
     Returns:
         List of all tools from MCP servers (filtered if tools_rag configured).
     """
+    tool_servers = [
+        s for s in config.mcp_servers.servers
+        if not (s.type == "knowledge" and s.retrieval_mode == "always")
+    ]
+
     # If tools_rag is not configured, return all tools
     if not config.tools_rag:
         mcp_servers_config, all_tools = await _gather_and_populate_tools(
-            config.mcp_servers.servers, user_token, client_headers, deduplicate=True
+            tool_servers, user_token, client_headers, deduplicate=True
         )
 
         if not mcp_servers_config:
@@ -430,6 +453,94 @@ async def get_mcp_tools(
     # Fallback: return empty list if filtering failed
     logger.warning("No tools matched the query filter")
     return []
+
+
+async def retrieve_from_knowledge_mcps(
+    query: str,
+    user_token: Optional[str] = None,
+    client_headers: ClientHeaders | None = None,
+) -> list[dict[str, str]]:
+    """Retrieve context from all knowledge-type MCP servers (forced retrieval).
+
+    Connects to each MCP server with type='knowledge', calls its configured
+    search_tool with the query, and returns the results as a list of dicts
+    with 'text', 'title', and 'source' keys.
+
+    Args:
+        query: The user query to search for.
+        user_token: Optional user authentication token.
+        client_headers: Optional client-provided MCP headers.
+
+    Returns:
+        List of dicts with 'text', 'title', and 'source' keys,
+        sorted by server priority (lower = higher priority).
+    """
+    knowledge_servers = [
+        s for s in config.mcp_servers.servers
+        if s.type == "knowledge" and s.retrieval_mode == "always"
+    ]
+    if not knowledge_servers:
+        return []
+
+    servers_config = build_mcp_config(knowledge_servers, user_token, client_headers)
+    if not servers_config:
+        return []
+
+    all_results: list[tuple[int, dict[str, str]]] = []
+
+    mcp_client = MultiServerMCPClient(servers_config)
+
+    for server_cfg in knowledge_servers:
+        if server_cfg.name not in servers_config:
+            continue
+        try:
+            tools = await mcp_client.get_tools(server_name=server_cfg.name)
+            search_tool = next(
+                (t for t in tools if t.name == server_cfg.search_tool), None
+            )
+            if search_tool is None:
+                logger.error(
+                    "Knowledge MCP '%s': search_tool '%s' not found. Available: %s",
+                    server_cfg.name,
+                    server_cfg.search_tool,
+                    [t.name for t in tools],
+                )
+                continue
+
+            result = await search_tool.ainvoke({"query": query})
+            result_text = str(result) if result else ""
+
+            if not result_text.strip():
+                logger.info(
+                    "Knowledge MCP '%s': no results for query", server_cfg.name
+                )
+                continue
+
+            all_results.append((
+                server_cfg.priority,
+                {
+                    "text": result_text[: 5000],
+                    "title": f"BYOK: {server_cfg.name}",
+                    "source": server_cfg.name,
+                },
+            ))
+
+            logger.info(
+                "Knowledge MCP '%s': retrieved %d chars via '%s'",
+                server_cfg.name,
+                len(result_text),
+                server_cfg.search_tool,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to retrieve from knowledge MCP '%s': %s: %s",
+                server_cfg.name,
+                type(e).__name__,
+                e,
+            )
+
+    all_results.sort(key=lambda x: x[0])
+    return [r[1] for r in all_results]
 
 
 def build_mcp_config(
