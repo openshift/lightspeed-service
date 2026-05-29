@@ -35,11 +35,13 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | Spec | Description |
 |------|-------------|
 | [project-structure.md](how/project-structure.md) | Directory layout, module responsibilities, startup sequence, layer integration |
-| [query-pipeline.md](how/query-pipeline.md) | DocsSummarizer orchestration, stage-by-stage data flow, token budget algorithm, streaming interleaving |
+| [query-pipeline.md](how/query-pipeline.md) | DocsSummarizer + LLMExecutionAgent orchestration, stage-by-stage data flow, token budget algorithm, streaming interleaving |
 | [llm-providers.md](how/llm-providers.md) | Provider registry, decorator discovery, class hierarchy, parameter mapping, HTTP client setup |
 | [tools.md](how/tools.md) | MCP client lifecycle, tool gathering pipeline, approval state machine, retry/backoff, parallel execution |
 | [config.md](how/config.md) | AppConfig singleton, Pydantic class hierarchy, two-phase validation, dynamic reload mechanism |
 | [cache.md](how/cache.md) | Abstract cache interface, PostgreSQL schema, advisory locks, JSON serialization, in-memory LRU |
+| [auth.md](how/auth.md) | Strategy pattern, K8sClientSingleton, TokenReview/SubjectAccessReview, noop variants, endpoint wiring |
+| [quota.md](how/quota.md) | Limiter abstraction, PostgreSQL schema, factory, scheduler daemon thread, token usage history |
 
 ## Scope
 
@@ -74,8 +76,8 @@ When what/ and how/ file names don't match 1:1, this table maps behavioral specs
 | `tools.md` | `tools.md` |
 | `api.md` | _(no dedicated how/ -- see `project-structure.md` for router/endpoint layout)_ |
 | `agent-modes.md` | _(behavioral only -- mode selection in `how/query-pipeline.md`)_ |
-| `auth.md` | _(see `how/project-structure.md` auth section)_ |
-| `quota.md` | _(see `how/project-structure.md` quota section)_ |
+| `auth.md` | `auth.md` |
+| `quota.md` | `quota.md` |
 | `rag.md` | _(see `how/project-structure.md` RAG section)_ |
 | `skills.md` | _(see `how/project-structure.md` skills section)_ |
 | `security.md` | _(cross-cutting -- spans multiple how/ files)_ |
