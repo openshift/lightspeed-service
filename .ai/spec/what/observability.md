@@ -100,7 +100,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 ## Constraints
 
 1. All metric names use the `ols_` prefix. No other prefix is permitted.
-2. The six redacted header names (`authorization`, `proxy-authorization`, `cookie`, `www-authenticate`, `proxy-authenticate`, `set-cookie`) are defined as frozen sets in `constants.py` and must not be logged in plaintext under any log level.
+2. The six redacted header names (`authorization`, `proxy-authorization`, `cookie`, `www-authenticate`, `proxy-authenticate`, `set-cookie`) are defined as frozen sets and must not be logged in plaintext under any log level.
 3. Enabling feedback or transcripts without providing the corresponding `*_storage` path is a validation error at startup.
 4. Sentiment values are restricted to exactly `-1` or `1`; any other integer is rejected with a validation error.
 5. The feedback `POST` endpoint requires authentication (via `/ols-access`); the feedback `GET /status` endpoint does not.

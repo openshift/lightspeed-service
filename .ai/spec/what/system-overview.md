@@ -71,13 +71,11 @@ The service is being rebranded to "Red Hat OpenShift Intelligent Assistant."
 
 11. The service supports the following LLM provider types: OpenAI, Azure
     OpenAI (including Entra ID / service-principal authentication),
-    WatsonX, RHOAI vLLM, RHEL AI vLLM, Google Vertex (Anthropic), and
-    Google Vertex. The administrator configures providers and models via
-    `llm_providers` in the configuration file. [PLANNED: OLS-2521] Google
-    Gemini model support is being added. [PLANNED: OLS-2776] Anthropic as a
-    direct LLM provider is planned. [PLANNED: OLS-1680] AWS Bedrock as an
-    LLM provider is planned. [PLANNED: OLS-1660] Llama Stack integration
-    is in progress.
+    WatsonX, RHOAI vLLM, RHEL AI vLLM, Google Vertex (Gemini), and
+    Google Vertex (Anthropic/Claude). The administrator configures
+    providers and models via `llm_providers` in the configuration file.
+    [PLANNED: OLS-1680] AWS Bedrock as an LLM provider is planned.
+    [PLANNED: OLS-1660] Llama Stack integration is in progress.
 
 12. A default provider and model are configured at the service level via
     `ols_config.default_provider` and `ols_config.default_model`. The
@@ -333,8 +331,6 @@ All configuration is read from `olsconfig.yaml` (path overridden via the
 | OLS-2743 | Rebranding to "Red Hat OpenShift Intelligent Assistant" |
 | OLS-2894 | Autonomous, policy-driven AI agents for OpenShift (TP: OCP 5.0) |
 | OLS-1660 | Use of Llama Stack in OLS |
-| OLS-2521 | Support Google Gemini model in OLS |
-| OLS-2776 | Support Anthropic as a direct LLM provider |
 | OLS-1680 | Support AWS Bedrock as LLM provider |
 | OLS-2823 | Per-user LLM provider API keys |
 | OLS-1881 | Bring your own LLM for OLS |
