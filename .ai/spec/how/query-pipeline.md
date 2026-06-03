@@ -65,7 +65,7 @@ The query pipeline is the core request-processing path that transforms a user qu
 
 ### 1. Request intake (endpoint layer)
 
-```
+```text
 HTTP POST /query or /streaming_query
   -> process_request()
        auth -> user_id, user_token
@@ -81,7 +81,7 @@ HTTP POST /query or /streaming_query
 
 ### 2. DocsSummarizer.__init__
 
-```
+```text
 QueryHelper.__init__() -> resolve provider/model defaults, load system prompt
 _prepare_llm()         -> load LLM via llm_loader, store provider_config/model_config
 build_mcp_config()     -> resolve MCP server configs with user token/headers
@@ -92,7 +92,7 @@ set_tool_loop_max_rounds() -> store max iterations for adaptive budget
 
 ### 3. generate_response() stages (DocsSummarizer)
 
-```
+```text
 Stage 1: RAG context
   _prepare_prompt_context(query, rag_retriever)
     -> build template prompt, count base prompt tokens, charge PROMPT
@@ -126,7 +126,7 @@ Stage 5: Tool resolution
 
 ### 4. LLM execution (LLMExecutionAgent.execute())
 
-```
+```text
 DocsSummarizer delegates to self._llm_agent.execute():
 
   Stage 6: Tool-calling loop (_iterate_with_tools)
@@ -150,9 +150,9 @@ DocsSummarizer delegates to self._llm_agent.execute():
     yield END chunk with rag_chunks, truncated flag, token_counter
 ```
 
-### 4. Post-generation (endpoint layer)
+### 5. Post-generation (endpoint layer)
 
-```
+```text
 Non-streaming:
   store_conversation_history() -> cache
   store_transcript() -> filesystem
@@ -179,7 +179,7 @@ Streaming:
 
 The context window is divided into three non-overlapping slices:
 
-```
+```text
 context_window_size = prompt_budget + max_response_tokens + max_tool_tokens
 
 prompt_budget = context_window_size - max_response_tokens - max_tool_tokens
@@ -187,7 +187,7 @@ prompt_budget = context_window_size - max_response_tokens - max_tool_tokens
 
 Within `prompt_budget`, categories are charged in order: PROMPT (base template) -> RAG -> SKILL -> HISTORY. The `history_budget` property returns the remaining space after prompt, RAG, and skill tokens are deducted:
 
-```
+```text
 history_budget = prompt_budget - usage[PROMPT] - usage[RAG] - usage[SKILL]
 ```
 
@@ -195,13 +195,13 @@ Token counts use tiktoken's `cl100k_base` encoding with a 10% safety buffer (`TO
 
 The tool execution budget is separate from the prompt budget. Within it, each round is capped at `round_cap_fraction` (default 0.6, configurable 0.3-0.8) of the remaining tool budget:
 
-```
+```text
 tools_round_budget = int(tool_budget_remaining * round_cap_fraction)
 ```
 
 The adaptive `tools_round_execution_budget()` additionally considers horizon (rounds remaining) to distribute budget more evenly:
 
-```
+```text
 exec_budget = min(
     int(remaining_tool * round_cap_fraction),
     remaining_tool // max(1, tool_rounds_left)
@@ -228,7 +228,7 @@ All pipeline output flows through `StreamedChunk(type, text, data)`. The `Stream
 
 During a multi-round tool call, the interleaving pattern is:
 
-```
+```text
 [round 1]
   TEXT/REASONING chunks (partial answer or reasoning)
   TOOL_CALL chunk (intent to call tool X)

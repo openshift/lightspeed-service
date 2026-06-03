@@ -16,7 +16,7 @@ The auth system uses a strategy pattern to inject authentication/authorization l
 
 ### Factory resolution (startup)
 
-```
+```text
 olsconfig.yaml: authentication_config.module = "k8s" | "noop" | "noop-with-token"
   -> get_auth_dependency(ols_config, virtual_path="/ols-access")
        match module:
@@ -29,7 +29,7 @@ The result is stored at module level in endpoint files (e.g., `app/endpoints/ols
 
 ### K8s authentication flow (per request)
 
-```
+```text
 HTTP request with Authorization: Bearer <token>
   -> _extract_bearer_token(header) -> token string
   -> get_user_info(token)

@@ -32,7 +32,7 @@ None. The cross-reference table added in the alignment pass maps all what/ to ho
 
 ## No issues
 
-- All 8 provider files in code match the spec (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, fake_provider)
+- All 7 provider files in code register 8 provider types that match the spec (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, fake_provider)
 - All 16 API endpoints in code match what/api.md
 - Skills system (`ols/src/skills/`) matches what/skills.md
 - RAG system (`ols/src/rag/`, `ols/src/rag_index/`) matches what/rag.md

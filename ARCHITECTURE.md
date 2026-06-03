@@ -59,6 +59,7 @@ sequenceDiagram
     participant Middleware
     participant Endpoint as ols.py endpoint
     participant DocsSummarizer
+    participant LLMExecutionAgent
     participant RAG
     participant LLM
     participant MCP as MCP Servers
@@ -72,16 +73,19 @@ sequenceDiagram
     DocsSummarizer->>RAG: Retrieve relevant chunks
     DocsSummarizer->>Cache: Load conversation history
     DocsSummarizer->>DocsSummarizer: Build prompt (system + RAG + history + attachments)
-    DocsSummarizer->>LLM: invoke / stream
+    DocsSummarizer->>LLMExecutionAgent: execute()
+
+    LLMExecutionAgent->>LLM: invoke / stream
 
     loop Tool-calling rounds (up to max_iterations)
-        LLM-->>DocsSummarizer: Tool call request
-        DocsSummarizer->>MCP: Execute tool
-        MCP-->>DocsSummarizer: Tool result
-        DocsSummarizer->>LLM: Feed result, re-invoke
+        LLM-->>LLMExecutionAgent: Tool call request
+        LLMExecutionAgent->>MCP: Execute tool
+        MCP-->>LLMExecutionAgent: Tool result
+        LLMExecutionAgent->>LLM: Feed result, re-invoke
     end
 
-    LLM-->>DocsSummarizer: Final text response
+    LLM-->>LLMExecutionAgent: Final text response
+    LLMExecutionAgent-->>DocsSummarizer: StreamedChunk stream
     DocsSummarizer-->>Endpoint: SummarizerResponse
     Endpoint->>Cache: Store conversation history
     Endpoint->>Endpoint: Record transcript, consume quota

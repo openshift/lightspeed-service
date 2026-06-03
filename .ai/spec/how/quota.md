@@ -19,7 +19,7 @@ The quota system enforces per-user and per-cluster token limits via PostgreSQL-b
 
 ### Request-time quota enforcement
 
-```
+```text
 process_request()
   -> check_tokens_available(config.quota_limiters, user_id)
        for each limiter:
@@ -40,7 +40,7 @@ process_request()
 
 ### Background quota replenishment (scheduler)
 
-```
+```text
 start_quota_scheduler(config)  [called from runner.py at startup]
   -> Thread(target=quota_scheduler, daemon=True).start()
        while True:
