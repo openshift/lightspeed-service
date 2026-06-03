@@ -157,6 +157,10 @@ When finishing a development branch:
 3. Push to the contributor's fork remote (not `origin`)
 4. Create the PR against `origin/main` using `--head <user>:<branch>`
 
+## Risk Levels
+
+Risk levels are enforced via a PreToolUse hook before every Jira create/edit call. The rubric and classification examples live in [lightspeed-team-harness/hooks/risk-rubric.md](https://github.com/openshift/lightspeed-team-harness/blob/main/hooks/risk-rubric.md).
+
 ## Maintaining This Guide
 
 Update this file and the relevant `docs/ai/` reference when patterns, tooling, or conventions change, or after repeated mistakes. Only document what you would get wrong without being told — remove anything inferable from reading the code.
