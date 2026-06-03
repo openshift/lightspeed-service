@@ -51,7 +51,8 @@ OpenShift LightSpeed (OLS) is a FastAPI service organized into four layers: `app
 | `src/prompts/prompts.py` | System prompt templates (`QUERY_SYSTEM_INSTRUCTION`, `TROUBLESHOOTING_SYSTEM_INSTRUCTION`). |
 | `src/prompts/prompt_generator.py` | `GeneratePrompt` class that assembles `ChatPromptTemplate` from query, RAG context, history, system prompt, tool-calling flag, mode, cluster version, and optional skill content. |
 | `src/query_helpers/query_helper.py` | `QueryHelper` base class for all query processing. Resolves provider/model defaults, selects system prompt by mode (`ask` or `troubleshooting`), and stores the LLM loader callable. |
-| `src/query_helpers/docs_summarizer.py` | `DocsSummarizer(QueryHelper)` -- the central orchestrator. Prepares LLM, builds prompts with RAG context, manages the multi-round tool-calling loop via `iterate_with_tools()`, handles streaming and synchronous response modes. Contains `TokenBudgetTracker` integration for token accounting across prompt, RAG, history, tool definitions, tool results, and AI rounds. |
+| `src/query_helpers/docs_summarizer.py` | `DocsSummarizer(QueryHelper)` -- pipeline orchestrator. Prepares LLM, builds prompts with RAG context, handles streaming and synchronous response modes. Delegates LLM invocation and tool-calling loop to `LLMExecutionAgent`. Contains `TokenBudgetTracker` integration for token accounting across prompt, RAG, history, tool definitions, tool results, and AI rounds. |
+| `src/query_helpers/llm_execution_agent.py` | `LLMExecutionAgent` -- owns the multi-round LLM invocation and tool-calling loop. Instantiated per request by `DocsSummarizer` with the loaded LLM and shared `TokenBudgetTracker`. `execute()` async generator yields `StreamedChunk` objects. Handles tool deduplication across MCP servers, per-round budget enforcement, and provider-specific quirks (ChatOpenAI strict mode, Granite chunk suppression). |
 | `src/query_helpers/history_support.py` | `prepare_history()` -- retrieves and truncates conversation history from cache. |
 | `src/query_helpers/attachment_appender.py` | `append_attachments_to_query()` -- serializes attachments into the query text. |
 | `src/quota/quota_limiter.py` | Abstract `QuotaLimiter(ABC)` -- interface for `available_quota`, `ensure_available_quota`, `consume_tokens`, `revoke_quota`, `increase_quota`. |
@@ -179,6 +180,7 @@ ols.py: conversation_request()
   |     |     |-- _prepare_llm() -> loads LLM via llm_loader.load_llm()
   |     |     |-- build_mcp_config() -> resolves MCP server configs
   |     |     |-- TokenBudgetTracker() -> initializes per-request token accounting
+  |     |     |-- LLMExecutionAgent() -> instantiated with LLM + tracker
   |     |
   |     |-- .create_response(query, rag_retriever, user_id, conversation_id)
   |           |-- _prepare_prompt_context() -> RAG retrieval + truncation
@@ -186,7 +188,8 @@ ols.py: conversation_request()
   |           |-- prepare_history() -> cache.get() + truncation
   |           |-- _build_final_prompt() -> GeneratePrompt().generate_prompt()
   |           |-- get_mcp_tools() -> tool filtering via ToolsRAG, tool fetching from MCP servers
-  |           |-- iterate_with_tools() -> multi-round LLM + tool execution loop
+  |           |-- self._llm_agent.execute() -> delegates to LLMExecutionAgent
+  |                 |-- _iterate_with_tools() -> multi-round tool-calling loop
   |                 |-- _invoke_llm() -> chain.astream() with optional bind_tools()
   |                 |-- _process_tool_calls_for_round() -> execute_tool_calls_stream()
   |

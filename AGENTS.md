@@ -88,6 +88,10 @@ make check-types    # MyPy type checking only
 make security-check # Bandit security scan
 ```
 
+## Specs
+
+All specifications live in `.ai/spec/`. Start with `.ai/spec/README.md` for project overview, reading order, and structure guide.
+
 ## Detailed References
 
 You MUST read the relevant file before working in a specific area — don't skip these:
