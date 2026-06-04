@@ -18,6 +18,7 @@ spec:
     deployment:
       replicas: 1
     disableAuth: false
+    introspectionEnabled: false
     logLevel: DEBUG
     userDataCollection:
       feedbackDisabled: true

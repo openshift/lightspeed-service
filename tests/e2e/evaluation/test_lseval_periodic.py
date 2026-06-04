@@ -126,6 +126,8 @@ def _run_lseval(eval_data: Path, out_dir: Path, system_config: Path) -> None:
     """
     _ensure_lseval_installed()
     out_dir.mkdir(parents=True, exist_ok=True)
+    for stale in out_dir.glob("evaluation_*"):
+        stale.unlink()
 
     ols_url = _resolve_ols_url()
 
