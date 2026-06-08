@@ -3,7 +3,7 @@ kind: OperatorGroup
 metadata:
   name: global-operators
   namespace: openshift-operators
-spec: 
+spec: {}
 ---
 # NVIDIA GPU Operator OperatorGroup
 apiVersion: operators.coreos.com/v1

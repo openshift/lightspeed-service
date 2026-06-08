@@ -71,11 +71,11 @@ if [[ "${RHOAI_PROVISION:-false}" == "true" ]]; then
 
   oc create secret generic hf-token-secret \
     --from-literal=token="$HUGGING_FACE_HUB_TOKEN" \
-    -n "$RHOAI_NAMESPACE" 2>/dev/null || echo "hf-token-secret already exists"
+    -n "$RHOAI_NAMESPACE" --dry-run=client -o yaml | oc apply -f -
 
   oc create secret generic vllm-api-key-secret \
     --from-literal=key="$VLLM_API_KEY" \
-    -n "$RHOAI_NAMESPACE" 2>/dev/null || echo "vllm-api-key-secret already exists"
+    -n "$RHOAI_NAMESPACE" --dry-run=client -o yaml | oc apply -f -
 
   # 5. Create vLLM chat template ConfigMap
   echo "--> Creating vLLM chat template ConfigMap..."
@@ -104,6 +104,8 @@ if [[ "${RHOAI_PROVISION:-false}" == "true" ]]; then
 
   # 9. Write VLLM_API_KEY to temp file for PROVIDER_KEY_PATH
   RHOAI_KEY_FILE=$(mktemp)
+  cleanup() { rm -f "$RHOAI_KEY_FILE"; }
+  trap cleanup EXIT INT TERM
   echo -n "$VLLM_API_KEY" > "$RHOAI_KEY_FILE"
   export RHOAI_PROVIDER_KEY_PATH="$RHOAI_KEY_FILE"
 
