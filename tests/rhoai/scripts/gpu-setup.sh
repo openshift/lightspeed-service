@@ -20,9 +20,9 @@ if [ -n "$gpu_nodes" ]; then
   echo "    Found GPU instance types:"
   for node in $gpu_nodes; do
     echo "    Node: $node"
-    echo "    Instance Type: $(oc get node $node -o jsonpath='{.metadata.labels.node\.kubernetes\.io/instance-type}')"
+    echo "    Instance Type: $(oc get node "$node" -o jsonpath='{.metadata.labels.node\.kubernetes\.io/instance-type}')"
     echo "    Taints:"
-    oc get node $node -o jsonpath='{.spec.taints}' || echo "      No taints"
+    oc get node "$node" -o jsonpath='{.spec.taints}' || echo "      No taints"
     echo ""
   done
 else
@@ -85,7 +85,7 @@ echo "--> Waiting for GPU operator pods to be healthy..."
 echo "    This may take up to 10 minutes while images are pulled and pods start..."
 timeout=1200
 elapsed=0
-until oc get pods -n nvidia-gpu-operator --no-headers 2>/dev/null | awk '{if ($3 != "Running" && $3 != "Completed") exit 1}' && [ $(oc get pods -n nvidia-gpu-operator --no-headers 2>/dev/null | wc -l) -gt 5 ]; do
+until oc get pods -n nvidia-gpu-operator --no-headers 2>/dev/null | awk '{if ($3 != "Running" && $3 != "Completed") exit 1}' && [ "$(oc get pods -n nvidia-gpu-operator --no-headers 2>/dev/null | wc -l)" -gt 5 ]; do
   if [ $elapsed -ge $timeout ]; then
     echo "❌ Timeout waiting for GPU operator pods to be healthy"
     echo "Current pod status:"
@@ -161,7 +161,9 @@ echo "--> Waiting for GPU capacity and allocatable to be available on nodes..."
 timeout=120
 elapsed=0
 until [ "$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null)" != "" ] && \
-      [ "$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null)" != "0" ]; do
+      [ "$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}' 2>/dev/null)" != "0" ] && \
+      [ "$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}' 2>/dev/null)" != "" ] && \
+      [ "$(oc get nodes -l nvidia.com/gpu.present=true -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}' 2>/dev/null)" != "0" ]; do
   if [ $elapsed -ge $timeout ]; then
     echo "❌ Timeout waiting for GPU capacity/allocatable"
     echo ""

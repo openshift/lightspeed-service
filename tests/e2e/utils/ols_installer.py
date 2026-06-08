@@ -441,8 +441,13 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
 
         print(f"CRD path: {crd_yml_file}.")
 
-        if "rhoai_vllm" in crd_yml_file:
-            print("Running envsubst on CR YAML (rhoai_vllm template)...")
+        if "rhoai_vllm_lseval" in crd_yml_file:
+            print("Running envsubst on CR YAML (rhoai_vllm_lseval template)...")
+            if not os.environ.get("KSVC_URL"):
+                raise RuntimeError(
+                    "KSVC_URL environment variable is not set; "
+                    "required for rhoai_vllm_lseval CR template"
+                )
             with open(crd_yml_file, encoding="utf-8") as fh:
                 raw = fh.read()
             substituted = os.path.expandvars(raw)
