@@ -269,8 +269,8 @@ typing-inspect==0.9.0 \
     --hash=sha256:369f80dd867ce208d61bc645e236c5049273c6e0f46c090fb9c7a9655fc8320b
 typing-inspection==0.4.2 \
     --hash=sha256:4baec0c9a4ad5cc8a85c71c387e98ff9ecc7b85b6e538e204343940090be3b63
-urllib3==2.6.3 \
-    --hash=sha256:a5bd1dd5b4c7b1da77f93abcd09f8619209b2f11fe699382f6cb79b34dc89437
+urllib3==2.7.0 \
+    --hash=sha256:2c89459e59ada9c2656df2bfa310adb4e68f96a08a95a65f4276d15ca20cb71d
 uuid-utils==0.13.0 \
     --hash=sha256:35d4b08c3b5fa01dfa8878d59d195a0c4efb4fd087cff7aa1082bd43d91c3fdc \
     --hash=sha256:8d943a0f2b5eada3edfbd80991c23cc13e32f8b02c120e4e80305a773d9e6d1b \

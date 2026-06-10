@@ -18,7 +18,7 @@ RHOAI_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-u
 # often come from build-time dependencies, or source are not available on pypi.org
 EXTRA_WHEELS="uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25"
 # packages to exclude from the wheel list
-NO_WHEEL_PACKAGES="markupsafe"
+NO_WHEEL_PACKAGES="markupsafe,python-dotenv"
 # packages to exclude from pybuild-deps (causes RecursionError due to circular build dep chain)
 SKIP_PYBUILD_PACKAGES="banks"
 
@@ -65,8 +65,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 		if [[ -n "$current_package" ]]; then
 			force_no_wheel=0
 			for no_wheel_pkg in ${NO_WHEEL_PACKAGES//,/ }; do
-				[[ "$package_name" == "$no_wheel_pkg" ]] && force_no_wheel=1
-				break
+				no_wheel_pkg=$(echo "$no_wheel_pkg" | tr -d '[:space:]')
+				if [[ "$package_name" == "$no_wheel_pkg" ]]; then
+					force_no_wheel=1
+					break
+				fi
 			done
 
 			if [[ "$index_url" == "https://pypi.org/simple/" ]]; then
