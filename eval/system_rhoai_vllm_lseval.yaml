@@ -2,7 +2,7 @@
 # OLS Provider: RHOAI vLLM (model being evaluated)
 # Judge LLM: OpenAI GPT-5-mini (scoring responses)
 #
-# The default model "gpt-3.5-turbo" is the alias registered in the vLLM deployment.
+# The default model matches the Llama 3.1 8B served by the self-provisioned vLLM.
 # Override it for your deployment via the LSEVAL_OLS_MODEL environment variable, e.g.:
 #   export LSEVAL_OLS_MODEL=ibm/granite-3.1-8b-instruct
 
@@ -18,7 +18,7 @@ core:
 llm:
   provider: "openai"
   model: "gpt-5-mini"
-  temperature: 0.0
+  temperature: 1
   max_tokens: 512
   timeout: 300
   num_retries: 3
@@ -34,7 +34,7 @@ api:
   endpoint_type: query
   timeout: 300
   provider: "rhoai_vllm"
-  model: "gpt-3.5-turbo"
+  model: "meta-llama/Llama-3.1-8B-Instruct"
   no_tools: null
   system_prompt: null
 
