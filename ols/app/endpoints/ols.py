@@ -529,6 +529,7 @@ def generate_response(
             user_token=user_token,
             client_headers=client_headers,
             streaming=streaming,
+            available_tool_ui_ids=llm_request.available_tool_ui_ids,
         )
         if streaming:
             return docs_summarizer.generate_response(
