@@ -1,15 +1,15 @@
 ---
-# OLS configuration for troubleshooting evals — RHEL AI vLLM provider
+# OLS configuration for NetObserv evals — RHEL AI vLLM provider
 #
 # Prerequisites:
 #   1. Store your vLLM API token in a file:
 #        echo "$RHELAI_API_TOKEN" > rhelai_api_key.txt
 #   2. Set your vLLM inference endpoint URL and model name below
-#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   3. Start obs-mcp (see eval/netobserv/README.md)
 #   4. Run OLS:
-#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-rhelai-vllm.yaml uv run make run
+#        OLS_CONFIG_FILE=eval/netobserv/olsconfig/olsconfig-rhelai-vllm.yaml uv run make run
 #
-# Eval system config: eval/troubleshooting/system_rhelai_vllm.yaml
+# Eval system config: eval/netobserv/system.yaml
 # The model name must match the alias registered in your vLLM deployment.
 
 llm_providers:
@@ -46,6 +46,10 @@ ols_config:
   user_data_collection:
     feedback_disabled: true
     transcripts_disabled: true
+  skills:
+    skills_dir: skills
+    embed_model_path: sentence-transformers/all-MiniLM-L6-v2
+    threshold: 0.30
 
 dev_config:
   enable_dev_ui: true

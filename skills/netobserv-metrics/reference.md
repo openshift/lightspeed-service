@@ -7,6 +7,19 @@ Source: [NetObserv operator Metrics documentation](https://github.com/netobserv/
 - Configure in `FlowCollector` `spec.processor.metrics.includeList` using the **short name** (no prefix).
 - Prometheus exposes `netobserv_<short_name>` (for example `namespace_egress_packets_total` → `netobserv_namespace_egress_packets_total`).
 
+## Prometheus labels (not `namespace`)
+
+Namespace-scoped metrics use **Src/Dst flow labels**, matching Loki flow logs:
+
+| Label | Typical use |
+|-------|-------------|
+| `SrcK8S_Namespace`, `DstK8S_Namespace` | Scope to a Kubernetes namespace (use both sides with `or` when unsure) |
+| `K8S_FlowLayer` | `infra` for DNS/node traffic; `app` for pod/service traffic |
+| `DnsFlagsResponseCode` | On `*_dns_latency_seconds_*` — `NoError`, `NXDomain`, etc. **Response RCODE** (NXDOMAIN) labels the client on **`DstK8S_Namespace`**. |
+| `SrcK8S_OwnerName`, `DstK8S_OwnerName` | Workload / controller name (workload metrics) |
+
+Alert descriptions may show `namespace={{ $labels.namespace }}` after recording-rule `label_replace`; ad-hoc PromQL must still filter on `SrcK8S_Namespace` / `DstK8S_Namespace`.
+
 ## Predefined metrics
 
 `*` = enabled by default. `**` = also enabled by default when Loki is disabled (workload metrics may replace namespace counterparts).
@@ -79,19 +92,37 @@ Source: [NetObserv operator Metrics documentation](https://github.com/netobserv/
 **Counter rate (bandwidth or QPS):**
 
 ```promql
-sum(rate(netobserv_namespace_ingress_bytes_total{namespace="TARGET"}[2m]))
+sum(rate(netobserv_namespace_ingress_bytes_total{SrcK8S_Namespace="TARGET"}[2m]))
 ```
 
-**Top-N by namespace:**
+**Network policy drop rate (namespace TARGET):**
 
 ```promql
-topk(10, sum(rate(netobserv_namespace_egress_packets_total[5m])) by (namespace))
+sum(rate(netobserv_namespace_network_policy_events_total{action="drop",SrcK8S_Namespace="TARGET"}[2m])) by (type,direction,SrcK8S_Namespace,DstK8S_Namespace)
 ```
 
-**Histogram p99 (custom or RTT metrics with `_bucket`):**
+**Packet drops per namespace pair (app-layer pod traffic):**
 
 ```promql
-histogram_quantile(0.99, sum(rate(netobserv_namespace_rtt_seconds_bucket[2m])) by (le))
+sum(rate(netobserv_namespace_drop_packets_total{K8S_FlowLayer="app",SrcK8S_Namespace="TARGET"}[2m])) by (SrcK8S_Namespace,DstK8S_Namespace)
+```
+
+**DNS NXDOMAIN rate (namespace TARGET — RCODE on return traffic, use DstK8S_Namespace first):**
+
+```promql
+sum(rate(netobserv_namespace_dns_latency_seconds_count{DnsFlagsResponseCode="NXDomain",K8S_FlowLayer="infra",DstK8S_Namespace="TARGET"}[2m])) by (SrcK8S_Namespace,DstK8S_Namespace)
+```
+
+**Top-N by source namespace:**
+
+```promql
+topk(10, sum(rate(netobserv_namespace_egress_packets_total{SrcK8S_Namespace!=""}[5m])) by (SrcK8S_Namespace))
+```
+
+**Histogram p99 (RTT or DNS):**
+
+```promql
+histogram_quantile(0.99, sum(rate(netobserv_namespace_rtt_seconds_bucket{SrcK8S_Namespace="TARGET"}[2m])) by (le))
 ```
 
 **Histogram average:**
@@ -133,3 +164,19 @@ Prometheus name: `netobserv_cluster_external_ingress_bytes_total`
 
 - More metrics in `includeList` increase Prometheus load.
 - Prefer namespace metrics for cluster-wide questions; enable `workload_*` only when needed.
+
+## NetObserv health rules (alerts)
+
+Recording/alert rules shipped with NetObserv (names may appear as `alertname` in Prometheus). Pair with domain metrics — do not rely on alerts alone.
+
+| Rule | Feature / metric basis | Typical use |
+|------|------------------------|-------------|
+| `PacketDropsByKernel` | PacketDrop | Kernel buffer / NIC drops |
+| `NetpolDenied` | NetworkEvents | NetworkPolicy deny events |
+| `DNSErrors` | DNSTracking | Elevated DNS error rate |
+| `DNSNxDomain` | DNSTracking | NXDOMAIN responses |
+| `LatencyHighTrend` | FlowRTT | Rising TCP RTT |
+| `Ingress5xxErrors` | Ingress metrics | HTTP 5xx on ingress paths |
+| `IPsecErrors` | IPSec | IPsec flow errors |
+
+Policy denials: query `netobserv_namespace_network_policy_events_total{action="drop",SrcK8S_Namespace="…"}`, not only `drop_packets_total`. OpenShift policy blocks often show **`OVS_DROP_EXPLICIT`** in flow `PktDropLatestDropCause`.

@@ -46,6 +46,10 @@ ols_config:
   user_data_collection:
     feedback_disabled: true
     transcripts_disabled: true
+  skills:
+    skills_dir: skills
+    embed_model_path: sentence-transformers/all-MiniLM-L6-v2
+    threshold: 0.30
 
 dev_config:
   enable_dev_ui: true

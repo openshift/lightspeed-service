@@ -85,6 +85,38 @@ From the flows format **Cardinality** column:
 
 Mixing `SrcK8S_Name` and `DstK8S_Name` in the same metric label set can multiply cardinality severely.
 
+## DNS and error fields (DNSTracking)
+
+| Field | Meaning |
+|-------|---------|
+| `DnsName` | Queried name |
+| `DnsLatencyMs` | DNS lookup latency |
+| `DnsErrno` | Resolver errno when lookup fails |
+| `DnsFlagsResponseCode` | DNS RCODE — **3 = NXDOMAIN**; Prometheus metric label value is **`NXDomain`** |
+
+Console / MCP filter examples for namespace `NS`:
+
+- NXDOMAIN: `DstK8S_Namespace=NS&DnsFlagsResponseCode=3` (response path; client is destination)
+- Any DNS in NS: `SrcK8S_Namespace=NS|DstK8S_Namespace=NS` with DNS fields in results
+
+## Packet drop vs policy fields
+
+| Field / metric | Feature | Notes |
+|----------------|---------|-------|
+| `PktDropPackets`, `PktDropLatestDropCause` | PacketDrop | Kernel drops; on OpenShift **`OVS_DROP_EXPLICIT`** = NetworkPolicy/OVS deny |
+| `NetworkEvents` (action drop, feature acl) | NetworkEvents | Policy correlation in flow JSON |
+| `netobserv_namespace_network_policy_events_total{action="drop"}` | NetworkEvents | Primary policy **metric** — not the same as `drop_packets_total` |
+
+When the user suspects NetworkPolicy: query **`network_policy_events_total` with `action="drop"`** and flow logs with **`packetLoss=dropped`**. Do not conclude “policy is not blocking” from zero unscoped `drop_packets_total` alone.
+
+## RTT fields (FlowRTT)
+
+| Field | Notes |
+|-------|-------|
+| `TimeFlowRttNs` | Per-flow RTT in nanoseconds — cite in answers; convert to ms for readability |
+
+Prometheus counterpart: `netobserv_namespace_rtt_seconds` histogram — prefer both when investigating latency.
+
 ## Further reading
 
 - [Metrics.md](https://github.com/netobserv/network-observability-operator/blob/main/docs/Metrics.md) — Prometheus `netobserv_*` metrics from the same flow data

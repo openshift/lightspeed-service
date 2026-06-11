@@ -5,11 +5,12 @@ Evaluation scenarios for network observability troubleshooting with NetObserv. E
 ## Prerequisites
 
 - OLS dev environment per [main README](../../README.md#installation) (`make install-deps`; Python 3.12 via `uv`)
-- Eval CLI: `make setup-lseval` in this directory (isolated `.lseval-venv`; repo `lseval` extra is v0.4.0 and cannot pass `mode: troubleshooting`)
+- Eval CLI: `make setup-lseval` in this directory (isolated `.lseval-venv`; installs `lightspeed-evaluation` from the Makefile-pinned git commit `32c80e1`, not the repo `lseval` extra v0.4.0)
 - OpenShift cluster with **NetObserv** installed (`FlowCollector` named `cluster`, Ready)
 - Relevant eBPF features enabled per scenario (DNSTracking, PacketDrop, NetworkEvents, FlowRTT, etc.)
 - OLS running with **obs-mcp** (and optionally kubernetes-mcp-server `netobserv` tools)
 - `oc login` to the cluster
+- OLS started from **repo root** with an olsconfig that enables **`ols_config.skills`** (all files under `eval/netobserv/olsconfig/` include this). Without skills, the agent will not load the NetObserv investigation workflow.
 
 ## Scenarios
 
@@ -22,9 +23,9 @@ Evaluation scenarios for network observability troubleshooting with NetObserv. E
 | `tls_issues` | Ingress/TLS | HTTPS/TLS errors — `Ingress5xxErrors`, `IPsecErrors` |
 | `tcp_rtt` | Latency | Slow TCP RTT — `LatencyHighTrend`, `netobserv_namespace_rtt_seconds` |
 
-Each scenario has `scenarios/<tag>/setup.sh` (deploy workloads), `cleanup.sh` (teardown), and `fixtures/manifest.yaml`. Allow a few minutes after setup for NetObserv to export metrics and flows.
+Each scenario has `scenarios/<tag>/setup.sh` (deploy workloads), `cleanup.sh` (teardown), and `fixtures/manifest.yaml`. Setup waits for workload traffic, then **`wait_for_netobserv_warmup`** (default **120s**) so flows/metrics reach Prometheus/Loki before OLS is queried. Override with `NETOBSERV_WARMUP_SECS=180` if your cluster is slow.
 
-Skills for the agent live at repo root: `skills/netobserv-metrics/` and `skills/netobserv-flow-logs/`.
+Skills for the agent live at repo root: `skills/netobserv-metrics/` and `skills/netobserv-flow-logs/`. They are injected via skills RAG only when `ols_config.skills` is present in the active olsconfig — **restart OLS** after skill or olsconfig changes.
 
 ## Running
 
@@ -66,21 +67,37 @@ Debug a failing setup script (prints rollout/log wait errors):
 ./scenarios/dns_nxdomain/setup.sh
 oc logs -n netobserv-eval-dns-nxdomain -l app=dns-nxdomain-prober --tail=30
 
-# DNS latency — delete stale namespace if the prober image changed (ubi → busybox)
-oc delete namespace netobserv-eval-dns-latency --ignore-not-found --wait=false
-./scenarios/dns_latency/setup.sh
+# Stale namespace after manifest changes — setup recreates by default; or delete manually:
+oc delete namespace netobserv-eval-dns-nxdomain --ignore-not-found --wait=false
+./scenarios/dns_nxdomain/setup.sh
 
-# TLS — requires openssl on the host; setup.sh generates a self-signed cert (not in git)
-oc delete namespace netobserv-eval-tls --ignore-not-found --wait=false
-./scenarios/tls_issues/setup.sh
+# OpenShift restricted SCC: busybox/iperf/python UIDs are patched from the namespace
+# openshift.io/sa.scc.uid-range after apply. Set NETOBSERV_EVAL_RECREATE_NS=false to skip
+# namespace delete on re-run.
 ```
 
 ## Metrics
 
 Each turn is scored with:
 
-- `custom:answer_correctness` — alignment with the expected investigation outcome
+- `custom:answer_correctness` — alignment with `expected_response` in `scenario_evals.yaml` (stricter than GEval)
 - `geval:generic_troubleshooting_experience` — evidence-based NetObserv investigation (see `system.yaml`)
+
+`contexts` in `scenario_evals.yaml` are **judge-only** rubrics for GEval; they are not sent to OLS. Investigation recipes and PromQL belong in `skills/`; ground truth for answer correctness stays in `expected_response`.
+
+### Improving `answer_correctness`
+
+GEval often scores higher because it rewards any real NetObserv data. **Answer correctness** compares against `expected_response` in `scenario_evals.yaml` and penalizes incomplete investigations.
+
+| Common gap | Fix |
+|------------|-----|
+| Stops after alerts or one generic metric | Run the 3-layer workflow in `skills/netobserv-metrics` §7: alerts → domain metrics → flow logs |
+| Wrong namespace in PromQL | Always use the namespace from the user query (e.g. `netobserv-eval-drops-kernel`, not `netobserv`) |
+| Policy scenario uses `drop_packets_total` only | Use `network_policy_events_total{action="drop"}` + flows with `packetLoss=dropped`; cite **`OVS_DROP_EXPLICIT`** on OpenShift |
+| DNS NXDOMAIN with “no metrics” | Enable `ols_config.skills` and restart OLS; NXDOMAIN is **return traffic** — use `DstK8S_Namespace="…"` (not `SrcK8S_Namespace` first); not `{namespace="…"}`; then Loki flows with `DnsName~netobserv-eval.invalid` |
+| TCP RTT without metric names | Cite `netobserv_namespace_rtt_seconds` + `histogram_quantile`; use `TimeFlowRttNs` in flows |
+
+After updating skills, restart OLS so the skills RAG index reloads, then re-run `make all`.
 
 ## OLS configs
 

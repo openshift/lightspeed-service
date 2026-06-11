@@ -42,7 +42,11 @@ EVAL_CMD = @set -e; \
 	if [ -z "$$OPENAI_API_KEY" ]; then \
 		echo "Set OPENAI_API_KEY or create $(OPENAI_KEY_FILE)" >&2; exit 1; \
 	fi; \
-	API_KEY=$$(oc whoami -t) "$(LSEVAL)" \
+	TOKEN=$$(oc whoami -t 2>/dev/null || true); \
+	if [ -z "$$TOKEN" ]; then \
+		echo "Not logged in to OpenShift; run 'oc login'" >&2; exit 1; \
+	fi; \
+	API_KEY="$$TOKEN" "$(LSEVAL)" \
 		--system-config system.yaml \
 		--eval-data scenario_evals.yaml \
 		--output-dir results

@@ -14,5 +14,6 @@ deploy_netobserv_fixture "${SCRIPT_DIR}/fixtures" "${TARGET_NS}"
 
 wait_for_rollout "${TARGET_NS}" "iperf-server" "180s"
 wait_for_rollout "${TARGET_NS}" "iperf-udp-flood" "180s"
-wait_for_log_pattern "${TARGET_NS}" "app=iperf-udp-flood" "iperf|UDP|lost" 40 5
+wait_for_log_pattern "${TARGET_NS}" "app=iperf-udp-flood" 'Connecting to host|Mbits/sec|Lost/Total Datagrams|[0-9]+/[0-9]+ \([0-9.]+%\)' 40 5
+wait_for_netobserv_warmup
 echo "Scenario packet_drops_kernel ready (TARGET_NS=${TARGET_NS})"

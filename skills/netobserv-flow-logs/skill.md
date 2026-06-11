@@ -100,6 +100,36 @@ Report which case applies using evidence (label list, error message, FlowCollect
 
 Use both: metrics for "how much" and "trend", flow logs for "which flows" and "exact endpoints".
 
+## 8. Symptom Playbooks (Required After Metrics)
+
+After checking alerts and Prometheus metrics, query flow logs scoped to the **user's target namespace** (`SrcK8S_Namespace` or `DstK8S_Namespace`). Cite filter/LogQL used and sample field values from results.
+
+| Symptom | Flow investigation | Key fields to cite |
+|---------|-------------------|-------------------|
+| DNS failures / NXDOMAIN | Flows where client NS is **destination** (DNS response path) | `DnsName`, `DnsErrno`, `DnsFlagsResponseCode` — filter **`DstK8S_Namespace=TARGET_NS`** first |
+| Slow DNS | Same namespace, sort/filter by latency | `DnsLatencyMs`, `DnsName`, workload names from `SrcK8S_OwnerName` |
+| Kernel packet drops | `{_RecordType="flowLog"}` + namespace scope | `PktDropPackets`, `PktDropLatestDropCause`, `PktDropLatestState` |
+| NetworkPolicy blocks | `packetLoss=dropped` + namespace scope; check `NetworkEvents` and OVS causes | **`PktDropLatestDropCause=OVS_DROP_EXPLICIT`** (OpenShift); `NetworkEvents` action=drop, feature=acl |
+| TLS / HTTPS issues | TCP flows to port 443 in target NS | `Proto=6`, `DstPort=443`; pair with ingress error metrics |
+| High TCP RTT | Flows in target NS with RTT feature enabled | `TimeFlowRttNs` (nanoseconds) — do not confuse with unrelated pod metrics |
+
+**LogQL starting point** (tenant `network` on OpenShift):
+
+```logql
+{SrcK8S_Namespace="TARGET_NS", _RecordType="flowLog"} or {DstK8S_Namespace="TARGET_NS", _RecordType="flowLog"}
+```
+
+For non-indexed filters (`DnsName`, `DstPort`, `DnsErrno`), use NetObserv console filter syntax or `netobserv_list_flows` when available, for example:
+
+- DNS NXDOMAIN in **Prometheus**: `netobserv_namespace_dns_latency_seconds_count{DnsFlagsResponseCode="NXDomain",DstK8S_Namespace=TARGET_NS}` — return traffic; try `SrcK8S_Namespace` only if empty (see `netobserv-metrics` skill)
+- DNS NXDOMAIN in **flows**: `DstK8S_Namespace=TARGET_NS&DnsFlagsResponseCode=3` or `DstK8S_Namespace=TARGET_NS&DnsName~netobserv-eval.invalid`
+- **NetworkPolicy / OVS drops** in **flows**: `SrcK8S_Namespace=TARGET_NS&packetLoss=dropped` — cite `PktDropLatestDropCause=OVS_DROP_EXPLICIT` when present; also check `NetworkEvents` (action drop) in flow JSON
+- **NetworkPolicy** in **Prometheus**: `netobserv_namespace_network_policy_events_total{action="drop",SrcK8S_Namespace=TARGET_NS}` (see `netobserv-metrics` skill)
+- HTTPS: `SrcK8S_Namespace=TARGET_NS&Proto=6&DstPort=443`
+- Kernel drops: `SrcK8S_Namespace=TARGET_NS&packetLoss=dropped` with causes other than OVS (e.g. `SKB_DROP`)
+
+If alerts and metrics are empty but the user reports an active problem, **still run flow queries** — DNS errors and policy denials often appear in logs before alert thresholds fire.
+
 ## Quality Standards
 
 - Prefer `SrcK8S_Namespace` / `DstK8S_Namespace` over generic Kubernetes logging labels.

@@ -1,15 +1,15 @@
 ---
-# OLS configuration for troubleshooting evals — Azure OpenAI provider
+# OLS configuration for NetObserv evals — Azure OpenAI provider
 #
 # Prerequisites:
 #   1. Store your Azure OpenAI API key in a file:
 #        echo "$AZURE_OPENAI_API_KEY" > azure_openai_api_key.txt
 #   2. Fill in your Azure deployment URL and deployment name below
-#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   3. Start obs-mcp (see eval/netobserv/README.md)
 #   4. Run OLS:
-#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-azure-openai.yaml uv run make run
+#        OLS_CONFIG_FILE=eval/netobserv/olsconfig/olsconfig-azure-openai.yaml uv run make run
 #
-# Eval system config: eval/troubleshooting/system_azure_openai.yaml
+# Eval system config: eval/netobserv/system.yaml — set api.provider: azure_openai, api.model: gpt-4o-mini
 
 llm_providers:
   - name: azure_openai
@@ -17,16 +17,16 @@ llm_providers:
     url: "https://<your-deployment>.openai.azure.com/"  # replace with your Azure endpoint
     credentials_path: azure_openai_api_key.txt
     api_version: "2024-02-15-preview"
-    deployment_name: <your-deployment-name>  # replace with your deployment name
+    deployment_name: <your-deployment-name>  # replace with your Azure deployment name (must match models[].name)
     models:
-      - name: gpt-4.1-mini
+      - name: gpt-4o-mini
 
 mcp_servers:
   - name: obs-mcp
     url: "http://127.0.0.1:9100/mcp"
     headers:
       kubernetes-authorization: kubernetes
-    timeout: 5
+    timeout: 120
   - name: openshift-mcp-server
     url: "http://127.0.0.1:8089/mcp"
     timeout: 5
@@ -41,12 +41,16 @@ ols_config:
     lib_log_level: warning
     uvicorn_log_level: info
   default_provider: azure_openai
-  default_model: gpt-4.1-mini
+  default_model: gpt-4o-mini
   authentication_config:
     module: "noop-with-token"
   user_data_collection:
     feedback_disabled: true
     transcripts_disabled: true
+  skills:
+    skills_dir: skills
+    embed_model_path: sentence-transformers/all-MiniLM-L6-v2
+    threshold: 0.30
 
 dev_config:
   enable_dev_ui: true

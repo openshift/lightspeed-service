@@ -45,10 +45,9 @@ check_netobserv_prereqs() {
   fi
 
   FC_NAME="$(echo "${FC_JSON}" | jq -r '.items[0].metadata.name')"
-  FC_NS="$(echo "${FC_JSON}" | jq -r '.items[0].metadata.namespace')"
   FC_READY="$(echo "${FC_JSON}" | jq -r '.items[0].status.conditions[]? | select(.type=="Ready") | .status' | head -n1)"
 
-  echo "FlowCollector: ${FC_NS}/${FC_NAME} (Ready=${FC_READY:-unknown})"
+  echo "FlowCollector: ${FC_NAME} (Ready=${FC_READY:-unknown})"
 
   if [[ "${FC_READY}" != "True" ]]; then
     echo "WARN: FlowCollector is not Ready — NetObserv metrics/logs may be incomplete"
@@ -68,10 +67,89 @@ check_netobserv_prereqs() {
   echo "OLS must have MCP access to Prometheus/Thanos (obs-mcp) and optionally NetObserv console or Loki tools."
 }
 
+# OpenShift restricted SCC requires runAsUser inside the namespace UID allocation.
+openshift_namespace_uid_min() {
+  local ns="$1"
+  local uid_range
+  uid_range="$(oc get namespace "${ns}" -o jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' 2>/dev/null || true)"
+  if [[ -z "${uid_range}" || "${uid_range}" != */* ]]; then
+    return 1
+  fi
+  echo "${uid_range%%/*}"
+}
+
+# Patch busybox/python/iperf containers to the namespace min UID; skip images with a fixed non-root USER.
+patch_openshift_deployments() {
+  local ns="$1"
+  local uid_min
+  if ! uid_min="$(openshift_namespace_uid_min "${ns}")"; then
+    echo "No OpenShift UID range on ${ns} — using manifest runAsUser values"
+    return 0
+  fi
+
+  echo "OpenShift: patching deployments in ${ns} to runAsUser=${uid_min}"
+  local deploy
+  for deploy in $(oc get deploy -n "${ns}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+    [[ -z "${deploy}" ]] && continue
+    local json container_count i
+    json="$(oc get deploy "${deploy}" -n "${ns}" -o json)"
+    container_count="$(echo "${json}" | jq '.spec.template.spec.containers | length')"
+    i=0
+    while [[ "${i}" -lt "${container_count}" ]]; do
+      local image
+      image="$(echo "${json}" | jq -r ".spec.template.spec.containers[${i}].image")"
+      case "${image}" in
+        *nginx-unprivileged* | *curlimages/curl*)
+          i=$((i + 1))
+          continue
+          ;;
+      esac
+      oc patch deploy "${deploy}" -n "${ns}" --type=json \
+        -p="[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/${i}/securityContext/runAsUser\",\"value\":${uid_min}}]" \
+        2>/dev/null \
+        || oc patch deploy "${deploy}" -n "${ns}" --type=json \
+          -p="[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/${i}/securityContext/runAsUser\",\"value\":${uid_min}}]"
+      i=$((i + 1))
+    done
+  done
+}
+
+wait_for_namespace_gone() {
+  local ns="$1"
+  local max_attempts="${2:-90}"
+  local attempt
+  for attempt in $(seq 1 "${max_attempts}"); do
+    if ! oc get namespace "${ns}" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "WARN: namespace ${ns} still terminating after $((max_attempts * 2))s"
+  return 1
+}
+
 deploy_netobserv_fixture() {
   local fixture_dir="$1"
   local ns="$2"
+  local recreate="${NETOBSERV_EVAL_RECREATE_NS:-true}"
+
+  if [[ "${recreate}" == "true" ]] && oc get namespace "${ns}" >/dev/null 2>&1; then
+    echo "Recreating eval namespace ${ns} for a clean fixture deploy…"
+    oc delete namespace "${ns}" --ignore-not-found --wait=false
+    wait_for_namespace_gone "${ns}" || true
+  fi
+
   oc apply -f "${fixture_dir}/manifest.yaml"
+
+  local attempt
+  for attempt in $(seq 1 15); do
+    if openshift_namespace_uid_min "${ns}" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+  patch_openshift_deployments "${ns}"
+
   echo "Deployed fixture in namespace ${ns}"
 }
 
