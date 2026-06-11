@@ -31,7 +31,12 @@ from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
 from ols.utils.audit_logger import AuditContext
-from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
+from ols.utils.mcp_utils import (
+    ClientHeaders,
+    build_mcp_config,
+    filter_tools_by_available_ui,
+    get_mcp_tools,
+)
 from ols.utils.token_handler import (
     PromptTooLongError,
     TokenBudgetTracker,
@@ -63,6 +68,7 @@ class DocsSummarizer(QueryHelper):
         client_headers: ClientHeaders | None = None,
         streaming: bool = False,
         audit_ctx: Optional[AuditContext] = None,
+        available_tool_ui_ids: Optional[list[str]] = None,
         **kwargs: object,
     ) -> None:
         """Initialize the DocsSummarizer.
@@ -72,6 +78,7 @@ class DocsSummarizer(QueryHelper):
             client_headers: Optional client-provided MCP headers for authentication
             streaming: Whether this summarizer is used for the streaming endpoint
             audit_ctx: Audit context for structured event logging
+            available_tool_ui_ids: Tool UI extension IDs available on the client
             *args: Additional positional arguments passed to the parent class
             **kwargs: Additional keyword arguments passed to the parent class
         """
@@ -80,6 +87,7 @@ class DocsSummarizer(QueryHelper):
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
+        self.available_tool_ui_ids = available_tool_ui_ids
         self._cluster_version = (
             K8sClientSingleton.get_cluster_version()
             if self._mode == constants.QueryMode.TROUBLESHOOTING
@@ -422,6 +430,9 @@ class DocsSummarizer(QueryHelper):
         mcp_tools_query = f"{skill_content}\n\n{query}" if skill_content else query
         all_mcp_tools = await get_mcp_tools(
             mcp_tools_query, self.user_token, self.client_headers
+        )
+        all_mcp_tools = filter_tools_by_available_ui(
+            all_mcp_tools, self.available_tool_ui_ids
         )
         if skill is not None and skill_content is not None and has_support_files:
             all_mcp_tools.append(create_skill_support_tool(skill))

@@ -540,6 +540,7 @@ def generate_response(
             client_headers=client_headers,
             streaming=streaming,
             audit_ctx=audit_ctx,
+            available_tool_ui_ids=llm_request.available_tool_ui_ids,
         )
         if streaming:
             return docs_summarizer.generate_response(

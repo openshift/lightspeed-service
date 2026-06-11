@@ -176,6 +176,49 @@ def _normalize_tool_schema(tool: StructuredTool) -> None:
     schema.setdefault("required", [])
 
 
+def filter_tools_by_available_ui(
+    tools: list[StructuredTool],
+    available_ui_ids: list[str] | None,
+) -> list[StructuredTool]:
+    """Filter out tools whose UI extension is not available on the client.
+
+    Tools that declare an ``olsUi.id`` in their ``_meta`` metadata are only
+    useful when the corresponding console extension is installed. When the
+    client provides the list of available extension IDs, tools whose
+    ``olsUi.id`` is not in that list are excluded so the LLM never calls them.
+
+    Args:
+        tools: All resolved MCP tools.
+        available_ui_ids: Extension IDs the client can render, or ``None``
+            to skip filtering entirely (backward compatibility).
+
+    Returns:
+        Filtered list of tools.
+    """
+    if available_ui_ids is None:
+        return tools
+
+    available_set = set(available_ui_ids)
+    filtered: list[StructuredTool] = []
+    for tool in tools:
+        meta = (
+            (tool.metadata or {}).get("_meta")
+            if isinstance(tool.metadata, dict)
+            else None
+        )
+        ols_ui = meta.get("olsUi") if isinstance(meta, dict) else None
+        ols_ui_id = ols_ui.get("id") if isinstance(ols_ui, dict) else None
+        if ols_ui_id is not None and ols_ui_id not in available_set:
+            logger.info(
+                "Excluding tool '%s': olsUi.id '%s' not in available_tool_ui_ids",
+                tool.name,
+                ols_ui_id,
+            )
+            continue
+        filtered.append(tool)
+    return filtered
+
+
 async def gather_mcp_tools(
     mcp_servers: MCPServersDict, allowed_tool_names: Optional[set[str]] = None
 ) -> list[StructuredTool]:

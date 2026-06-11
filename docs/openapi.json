@@ -1566,6 +1566,21 @@
                     "mode": {
                         "$ref": "#/components/schemas/QueryMode",
                         "default": "ask"
+                    },
+                    "available_tool_ui_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array",
+                                "maxItems": 256
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Available Tool Ui Ids"
                     }
                 },
                 "additionalProperties": false,
