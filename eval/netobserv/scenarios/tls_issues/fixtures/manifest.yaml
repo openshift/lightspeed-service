@@ -1,0 +1,122 @@
+# TLS server with self-signed cert; client performs HTTPS handshakes (TLS/connection errors on mismatch).
+# tls-server-cert Secret is created by setup.sh (openssl) — not stored in git.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-tls
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: tls
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tls-nginx-config
+  namespace: netobserv-eval-tls
+data:
+  nginx.conf: |
+    # Required for nginx-unprivileged on OpenShift (non-root cannot write /run/nginx.pid).
+    pid /tmp/nginx.pid;
+    worker_processes 1;
+    error_log /dev/stderr warn;
+    events { worker_connections 1024; }
+    http {
+      access_log /dev/stdout;
+      server {
+        listen 8443 ssl;
+        ssl_certificate     /etc/tls/tls.crt;
+        ssl_certificate_key /etc/tls/tls.key;
+        location / { return 200 "ok\n"; }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tls-server
+  namespace: netobserv-eval-tls
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tls-server
+  template:
+    metadata:
+      labels:
+        app: tls-server
+        netobserv.openshift.io/eval-scenario: tls
+    spec:
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: tls
+          secret:
+            secretName: tls-server-cert
+        - name: config
+          configMap:
+            name: tls-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tls-server
+  namespace: netobserv-eval-tls
+spec:
+  selector:
+    app: tls-server
+  ports:
+    - name: https
+      port: 8443
+      targetPort: 8443
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tls-client
+  namespace: netobserv-eval-tls
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tls-client
+  template:
+    metadata:
+      labels:
+        app: tls-client
+        netobserv.openshift.io/eval-scenario: tls
+    spec:
+      containers:
+        - name: client
+          image: curlimages/curl:8.11.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                echo "HTTPS with verify (may fail on self-signed)…"
+                curl -fsS --max-time 5 "https://tls-server:8443/" 2>&1 || true
+                echo "Plain HTTP to TLS port (protocol mismatch)…"
+                curl -v --max-time 5 "http://tls-server:8443/" 2>&1 || true
+                sleep 8
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

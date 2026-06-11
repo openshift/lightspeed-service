@@ -1,0 +1,57 @@
+# Generates DNS traffic to cluster DNS and external resolvers (DNSTracking).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-dns-latency
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: dns-latency
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-latency-prober
+  namespace: netobserv-eval-dns-latency
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dns-latency-prober
+  template:
+    metadata:
+      labels:
+        app: dns-latency-prober
+        netobserv.openshift.io/eval-scenario: dns-latency
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prober
+          # busybox includes nslookup — ubi-minimal needs a runtime microdnf install that often
+          # fails or exceeds the eval setup timeout before DNS lines appear in pod logs.
+          image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "DNS latency prober: querying cluster DNS and external resolvers"
+              i=0
+              while true; do
+                nslookup kubernetes.default.svc.cluster.local 2>&1 || true
+                nslookup "slow-probe-${i}.netobserv-eval.example.com" 2>&1 || true
+                nslookup google.com 8.8.8.8 2>&1 || true
+                i=$((i + 1))
+                sleep 2
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

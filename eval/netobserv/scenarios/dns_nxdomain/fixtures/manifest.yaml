@@ -1,0 +1,56 @@
+# Generates NXDOMAIN and DNS error responses (DNSTracking).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-dns-nxdomain
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: dns-nxdomain
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-nxdomain-prober
+  namespace: netobserv-eval-dns-nxdomain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dns-nxdomain-prober
+  template:
+    metadata:
+      labels:
+        app: dns-nxdomain-prober
+        netobserv.openshift.io/eval-scenario: dns-nxdomain
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prober
+          # busybox includes nslookup — ubi-minimal needs a runtime microdnf install that often
+          # fails or exceeds the eval setup timeout before NXDOMAIN lines appear in pod logs.
+          image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "NXDOMAIN prober: resolving non-existent names"
+              i=0
+              while true; do
+                nslookup "does-not-exist-${i}.netobserv-eval.invalid" 2>&1 || true
+                nslookup "nxdomain-${i}.netobserv-eval.invalid" 2>&1 || true
+                i=$((i + 1))
+                sleep 1
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

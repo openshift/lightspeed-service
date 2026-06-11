@@ -1,0 +1,121 @@
+# Frontend cannot reach backend due to restrictive NetworkPolicy (NetworkEvents / NetpolDenied).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-drops-policy
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: drops-policy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-backend
+  namespace: netobserv-eval-drops-policy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy-backend
+  template:
+    metadata:
+      labels:
+        app: policy-backend
+        tier: backend
+        netobserv.openshift.io/eval-scenario: drops-policy
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          # Image USER 101 — do not set runAsUser (OpenShift SCC rejects UID 101 outside project range).
+          image: nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-backend
+  namespace: netobserv-eval-drops-policy
+spec:
+  selector:
+    app: policy-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-frontend
+  namespace: netobserv-eval-drops-policy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy-frontend
+  template:
+    metadata:
+      labels:
+        app: policy-frontend
+        tier: frontend
+        netobserv.openshift.io/eval-scenario: drops-policy
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                echo "Probing policy-backend:8080 …"
+                if wget -q -O- -T 3 http://policy-backend:8080/; then
+                  echo "unexpected success"
+                else
+                  echo "ERROR: connection blocked or timed out (expected — NetworkPolicy)"
+                fi
+                sleep 5
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-frontend-to-backend
+  namespace: netobserv-eval-drops-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: policy-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 8080

@@ -1,0 +1,117 @@
+# High-rate UDP between pods to encourage kernel-level packet loss (PacketDrop feature).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-drops-kernel
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: drops-kernel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf-server
+  namespace: netobserv-eval-drops-kernel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf-server
+  template:
+    metadata:
+      labels:
+        app: iperf-server
+        netobserv.openshift.io/eval-scenario: drops-kernel
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: iperf
+          image: networkstatic/iperf3:latest@sha256:07dcca91c0e47d82d83d91de8c3d46b840eef4180499456b4fa8d6dadb46b6c8
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          args: ["-s"]
+          ports:
+            - containerPort: 5201
+              protocol: UDP
+            - containerPort: 5201
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf-server
+  namespace: netobserv-eval-drops-kernel
+spec:
+  selector:
+    app: iperf-server
+  ports:
+    # iperf3 uses TCP 5201 for session setup even during UDP tests.
+    - name: tcp
+      port: 5201
+      protocol: TCP
+      targetPort: 5201
+    - name: udp
+      port: 5201
+      protocol: UDP
+      targetPort: 5201
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf-udp-flood
+  namespace: netobserv-eval-drops-kernel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf-udp-flood
+  template:
+    metadata:
+      labels:
+        app: iperf-udp-flood
+        netobserv.openshift.io/eval-scenario: drops-kernel
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: flood
+          image: networkstatic/iperf3:latest@sha256:07dcca91c0e47d82d83d91de8c3d46b840eef4180499456b4fa8d6dadb46b6c8
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Starting sustained UDP load to iperf-server (may cause kernel drops)"
+              # Brief TCP probe — UDP tests still require the TCP control channel on 5201.
+              for i in $(seq 1 60); do
+                if iperf3 -c iperf-server -p 5201 -t 1 2>&1 | grep -qE 'Connecting to host|connected'; then
+                  echo "iperf-server reachable (attempt ${i})"
+                  break
+                fi
+                echo "waiting for iperf-server TCP control channel (attempt ${i}/60)…"
+                sleep 2
+              done
+              exec iperf3 -c iperf-server -p 5201 -u -b 80M -l 1400 -i 1 -t 86400 --get-server-output
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

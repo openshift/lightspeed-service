@@ -71,5 +71,12 @@ Results are saved in output directories:
 - `graphs/` - Visualization charts
 
 
+## Live-cluster eval packages
+
+- **`troubleshooting/`** — Kubernetes troubleshooting scenarios (CrashLoop, NetworkPolicy, OOM, etc.)
+- **`netobserv/`** — NetObserv network observability scenarios (DNS, packet drops, TLS, RTT)
+
+Each package has its own `Makefile`, `system.yaml`, `scenario_evals.yaml`, and `scenarios/`.
+
 ## Data & Eval system setup
 Refer [Lightspeed Evaluation tool](https://github.com/lightspeed-core/lightspeed-evaluation#readme)

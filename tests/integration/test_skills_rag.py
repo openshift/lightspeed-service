@@ -66,6 +66,26 @@ def _sample_skills() -> list[Skill]:
             ),
             source_path="skills/namespace-troubleshooting",
         ),
+        Skill(
+            name="netobserv-metrics",
+            description=(
+                "Query and interpret NetObserv network flow metrics in Prometheus "
+                "(netobserv_*). Use for namespace or workload traffic, packet drops, "
+                "RTT latency, DNS latency, network policy events, or missing NetObserv "
+                "metrics on OpenShift."
+            ),
+            source_path="skills/netobserv-metrics",
+        ),
+        Skill(
+            name="netobserv-flow-logs",
+            description=(
+                "Query NetObserv network flow logs in Loki using LogQL and flow field "
+                "labels (SrcK8S_Namespace, DstK8S_Namespace, K8S_FlowLayer). Use for "
+                "per-flow investigation, conversation records, packet drops in logs, "
+                "DNS flows, or when Prometheus netobserv_* metrics are not enough."
+            ),
+            source_path="skills/netobserv-flow-logs",
+        ),
     ]
 
 
@@ -116,6 +136,30 @@ class TestSkillSelection:
             (
                 "permission denied forbidden error in namespace",
                 "namespace-troubleshooting",
+            ),
+            (
+                "which namespace has the most network egress traffic",
+                "netobserv-metrics",
+            ),
+            (
+                "show netobserv packet drops in prometheus",
+                "netobserv-metrics",
+            ),
+            (
+                "netobserv namespace ingress bytes metric",
+                "netobserv-metrics",
+            ),
+            (
+                "query netobserv flow logs in loki for namespace netobserv",
+                "netobserv-flow-logs",
+            ),
+            (
+                "logql SrcK8S_Namespace network flows",
+                "netobserv-flow-logs",
+            ),
+            (
+                "investigate per-flow packet drops in loki not prometheus",
+                "netobserv-flow-logs",
             ),
         ],
     )
