@@ -96,6 +96,9 @@ visualization:
 environment:
   DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
   DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  # DeepEval tries to upload GEval scores to Confident AI unless disabled (needs CONFIDENT_API_KEY).
+  CONFIDENT_METRIC_LOGGING_ENABLED: "0"
+  CONFIDENT_METRIC_LOGGING_VERBOSE: "0"
   LITELLM_LOG: ERROR
 
 logging:

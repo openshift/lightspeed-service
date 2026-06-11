@@ -47,22 +47,24 @@ EVAL_CMD = @set -e; \
 		--eval-data scenario_evals.yaml \
 		--output-dir results
 
-all: dns_latency dns_nxdomain packet_drops_kernel packet_drops_policy tls_issues tcp_rtt
+# One lightspeed-eval run → single evaluation_*_detailed.csv / *_summary.json
+all:
+	$(EVAL_CMD)
 
 dns_latency:
-	$(EVAL_CMD) --tag dns_latency
+	$(EVAL_CMD) --tags dns_latency
 
 dns_nxdomain:
-	$(EVAL_CMD) --tag dns_nxdomain
+	$(EVAL_CMD) --tags dns_nxdomain
 
 packet_drops_kernel:
-	$(EVAL_CMD) --tag packet_drops_kernel
+	$(EVAL_CMD) --tags packet_drops_kernel
 
 packet_drops_policy:
-	$(EVAL_CMD) --tag packet_drops_policy
+	$(EVAL_CMD) --tags packet_drops_policy
 
 tls_issues:
-	$(EVAL_CMD) --tag tls_issues
+	$(EVAL_CMD) --tags tls_issues
 
 tcp_rtt:
-	$(EVAL_CMD) --tag tcp_rtt
+	$(EVAL_CMD) --tags tcp_rtt

@@ -56,7 +56,7 @@ cd eval/netobserv
 # Single scenario
 make dns_nxdomain
 
-# All NetObserv scenarios
+# All scenarios (one run → single evaluation_*_detailed.csv in results/)
 make all
 ```
 
@@ -104,3 +104,7 @@ Some OpenAI-compatible gateways drop long streaming responses during MCP tool-ca
 ### `422` / provider not valid
 
 `api.provider` in `system.yaml` must match `llm_providers[].name` in the active olsconfig (e.g. `openai`, `watsonx`).
+
+### `[Confident AI Metric Data Log] Invalid API key`
+
+Harmless noise from DeepEval’s optional Confident AI telemetry upload — not the OpenAI judge key. GEval still runs if you see progress like `GEval Turn Metric` and `5/6`. `system.yaml` sets `CONFIDENT_METRIC_LOGGING_ENABLED=0` to silence it. If the judge itself fails, you get LiteLLM/OpenAI auth errors instead; ensure `OPENAI_API_KEY` or `openai_api_key.txt` is set and `unset OPENAI_API_BASE` when using the public OpenAI API.
