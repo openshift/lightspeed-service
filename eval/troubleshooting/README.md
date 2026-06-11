@@ -20,9 +20,13 @@ Scenarios require `oc` access to a running OpenShift cluster. Each one has a `se
 | `oom` | OOMKill | Pod in CrashLoopBackOff due to a deliberate memory leak exceeding its 60Mi limit |
 | `wrong_networkpolicy` | NetworkPolicy (multi-turn) | Three-turn conversation: diagnose frontend-backend connectivity, identify the blocking NetworkPolicy, and propose a fix |
 
+NetObserv network observability scenarios live in [`eval/netobserv/`](../netobserv/README.md).
+
 ## Running
 
 ```bash
+cd eval/troubleshooting
+
 # Single scenario
 make oom
 

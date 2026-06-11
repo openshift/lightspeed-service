@@ -1,0 +1,55 @@
+---
+# OLS configuration for troubleshooting evals — Azure OpenAI provider
+#
+# Prerequisites:
+#   1. Store your Azure OpenAI API key in a file:
+#        echo "$AZURE_OPENAI_API_KEY" > azure_openai_api_key.txt
+#   2. Fill in your Azure deployment URL and deployment name below
+#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   4. Run OLS:
+#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-azure-openai.yaml uv run make run
+#
+# Eval system config: eval/troubleshooting/system_azure_openai.yaml
+
+llm_providers:
+  - name: azure_openai
+    type: azure_openai
+    url: "https://<your-deployment>.openai.azure.com/"  # replace with your Azure endpoint
+    credentials_path: azure_openai_api_key.txt
+    api_version: "2024-02-15-preview"
+    deployment_name: <your-deployment-name>  # replace with your deployment name
+    models:
+      - name: gpt-4.1-mini
+
+mcp_servers:
+  - name: obs-mcp
+    url: "http://127.0.0.1:9100/mcp"
+    headers:
+      kubernetes-authorization: kubernetes
+    timeout: 5
+  - name: openshift-mcp-server
+    url: "http://127.0.0.1:8089/mcp"
+    timeout: 5
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: azure_openai
+  default_model: gpt-4.1-mini
+  authentication_config:
+    module: "noop-with-token"
+  user_data_collection:
+    feedback_disabled: true
+    transcripts_disabled: true
+
+dev_config:
+  enable_dev_ui: true
+  disable_tls: true
+  enable_system_prompt_override: true
+  uvicorn_port_number: 8080

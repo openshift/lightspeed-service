@@ -1,0 +1,85 @@
+# High-rate UDP between pods to encourage kernel-level packet loss (PacketDrop feature).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv-eval-drops-kernel
+  labels:
+    purpose: netobserv-eval
+    netobserv.openshift.io/eval-scenario: drops-kernel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf-server
+  namespace: netobserv-eval-drops-kernel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf-server
+  template:
+    metadata:
+      labels:
+        app: iperf-server
+        netobserv.openshift.io/eval-scenario: drops-kernel
+    spec:
+      containers:
+        - name: iperf
+          image: networkstatic/iperf3:latest
+          args: ["-s"]
+          ports:
+            - containerPort: 5201
+              protocol: UDP
+            - containerPort: 5201
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf-server
+  namespace: netobserv-eval-drops-kernel
+spec:
+  selector:
+    app: iperf-server
+  ports:
+    - name: udp
+      port: 5201
+      protocol: UDP
+      targetPort: 5201
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf-udp-flood
+  namespace: netobserv-eval-drops-kernel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf-udp-flood
+  template:
+    metadata:
+      labels:
+        app: iperf-udp-flood
+        netobserv.openshift.io/eval-scenario: drops-kernel
+    spec:
+      containers:
+        - name: flood
+          image: networkstatic/iperf3:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Starting sustained UDP load to iperf-server (may cause kernel drops)"
+              exec iperf3 -c iperf-server -p 5201 -u -b 80M -l 1400 -t 86400 --get-server-output
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

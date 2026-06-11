@@ -37,6 +37,8 @@ logs/*
 # Evaluation artifacts
 eval/venv/
 eval/results*/
+eval/netobserv/results*/
+eval/netobserv/.lseval-venv/
 eval/.deepeval/
 */*/eval_result*/*
 

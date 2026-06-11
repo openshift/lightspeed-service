@@ -16,6 +16,8 @@ Usage::
         --summary-json /logs/artifacts/troubleshooting/scenarios/evaluation_YYYYMMDD_summary.json \
         --suite lseval_troubleshooting_mcp \
         --summary-json /logs/artifacts/troubleshooting/mcp/evaluation_YYYYMMDD_summary.json \
+        --suite lseval_netobserv \
+        --summary-json /logs/artifacts/netobserv/evaluation_YYYYMMDD_summary.json \
         --history-csv eval/score_history.csv \
         --output-dir /logs/artifacts \
         [--date 2026-04-30]
@@ -50,6 +52,7 @@ _SUITE_LABELS: dict[str, str] = {
     "lseval_periodic": "Periodic QnA (797 questions)",
     "lseval_troubleshooting_scenarios": "Troubleshooting Scenarios",
     "lseval_troubleshooting_mcp": "Troubleshooting MCP",
+    "lseval_netobserv": "NetObserv Scenarios",
 }
 
 _METRIC_LABELS: dict[str, str] = {

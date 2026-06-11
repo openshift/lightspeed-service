@@ -1,0 +1,113 @@
+# LightSpeed Evaluation Framework Configuration — NetObserv Evals
+# OLS backend (api): model sent to OLS /query — must match olsconfig default_model.
+# Judge (llm): OpenAI scores responses (same key as OLS when using olsconfig-openai.yaml).
+#
+# Credentials: export OPENAI_API_KEY, or create ../../openai_api_key.txt (repo root).
+
+core:
+  max_threads: 5
+
+llm:
+  provider: "openai"
+  model: "gpt-4o-mini"
+  temperature: 0.0
+  max_tokens: 5000
+  timeout: 300
+  num_retries: 3
+  cache_enabled: false
+
+api:
+  enabled: true
+  api_base: http://localhost:8080
+  endpoint_type: query
+  timeout: 600
+  # Must match llm_providers[].name in the active olsconfig (e.g. openai).
+  provider: "openai"
+  model: "gpt-4o-mini"
+  no_tools: null
+  system_prompt: null
+  cache_enabled: false
+  extra_request_params:
+    mode: troubleshooting
+
+embedding:
+  cache_enabled: false
+
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: false
+
+    "geval:generic_troubleshooting_experience":
+      description: "Evidence-based NetObserv investigation using real cluster data from tools"
+      criteria: |
+        The agent is investigating a network observability problem with NetObserv (Prometheus
+        netobserv_* metrics, Loki flow logs, alerts). Evaluate:
+          - The response must use real data from tool calls (metrics, flows, alerts), not generic advice
+          - Evidence should reference NetObserv-specific signals (metric names, flow fields, namespaces)
+          - Generic Kubernetes troubleshooting without NetObserv data must be penalized
+          - If data is missing, the agent should state that clearly and mention required FlowCollector features
+      evaluation_params:
+        - query
+        - response
+        - contexts
+      evaluation_steps:
+        - "Step 1: Check if the response cites real NetObserv tool output (metrics, flows, alerts) or only generic suggestions."
+        - "Step 2: Check if the analysis addresses the network observability symptom in the query."
+        - "Step 3: Check if namespaces, workloads, or metric/log values from the cluster are named in the response."
+        - "Step 4: If data is absent, check whether the agent explains missing NetObserv features or export config."
+
+  conversation_level:
+    "deepeval:conversation_completeness":
+      default: false
+
+    "deepeval:conversation_relevancy":
+      default: false
+
+    "deepeval:knowledge_retention":
+      default: false
+
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:
+    - csv
+    - json
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+visualization:
+  figsize: [12, 8]
+  dpi: 300
+  enabled_graphs:
+    - "score_distribution"
+    - "status_breakdown"
+
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+logging:
+  source_level: INFO
+  package_level: ERROR
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING

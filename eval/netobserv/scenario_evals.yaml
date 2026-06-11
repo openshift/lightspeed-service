@@ -1,0 +1,164 @@
+# NetObserv evaluation scenarios — requires live cluster + NetObserv + obs-mcp
+
+# --- DNS latency (DNSTracking) ---
+- conversation_group_id: dns_latency
+  tag: dns_latency
+  description: "NetObserv DNS latency — investigate slow DNS using netobserv metrics or flow logs"
+
+  turns:
+    - turn_id: dns_latency
+      query: >
+        Applications in namespace netobserv-eval-dns-latency report slow DNS lookups over
+        the last hour. Use NetObserv network observability data to investigate DNS latency
+        and identify which workloads or queries are affected.
+      contexts:
+        - "Agent should use Prometheus netobserv_* metrics (e.g. netobserv_namespace_dns_latency_seconds) and/or Loki flow logs with DnsLatencyMs when DNSTracking is enabled."
+        - "DNSTracking must be enabled in FlowCollector spec.agent.ebpf.features for DNS latency metrics."
+        - "For Loki flow logs use SrcK8S_Namespace/DstK8S_Namespace and tenant network on OpenShift — not kubernetes_namespace_name."
+        - "If no data is present, state that clearly and mention required NetObserv features or export configuration."
+      expected_response: >
+        Evidence-based investigation using NetObserv: queries netobserv_namespace_dns_latency_seconds
+        or related DNS metrics, or Loki flow fields (DnsLatencyMs, DnsName). Identifies namespaces
+        or workloads with elevated latency, cites concrete metric values or log patterns, and mentions
+        DNSTracking or missing metrics if data is unavailable.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/dns_latency/setup.sh
+  cleanup_script: scenarios/dns_latency/cleanup.sh
+
+# --- DNS NXDOMAIN / DNS errors ---
+- conversation_group_id: dns_nxdomain
+  tag: dns_nxdomain
+  description: "NetObserv DNS errors — NXDOMAIN and DNS failure investigation"
+
+  turns:
+    - turn_id: dns_nxdomain
+      query: >
+        Namespace netobserv-eval-dns-nxdomain has DNS resolution failures. Check NetObserv
+        for DNS-related errors such as NXDOMAIN or elevated DNS error rates in the last hour
+        and tell me what is failing.
+      contexts:
+        - "NetObserv health rules include DNSErrors and DNSNxDomain when DNSTracking is enabled."
+        - "Flow log fields include DnsErrno, DnsFlagsResponseCode, DnsName — use Loki with correct indexed labels."
+        - "Should check firing alerts (DNSErrors, DNSNxDomain) via Prometheus/Alertmanager when available."
+      expected_response: >
+        Uses NetObserv data to find DNS failures: alerts (DNSErrors/DNSNxDomain), metrics, or
+        flow logs showing error response codes / errno. Names affected DNS names or namespaces,
+        provides evidence from tool output, and suggests whether the issue is misconfiguration,
+        upstream DNS, or missing records.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/dns_nxdomain/setup.sh
+  cleanup_script: scenarios/dns_nxdomain/cleanup.sh
+
+# --- Kernel packet drops ---
+- conversation_group_id: packet_drops_kernel
+  tag: packet_drops_kernel
+  description: "NetObserv packet drops — kernel-level drops (PacketDropsByKernel)"
+
+  turns:
+    - turn_id: packet_drops_kernel
+      query: >
+        Network traffic in namespace netobserv-eval-drops-kernel shows packet loss. Investigate
+        kernel-level packet drops using NetObserv metrics and flow logs. Which nodes or workloads
+        are affected and what drop causes appear?
+      contexts:
+        - "PacketDrop eBPF feature must be enabled for drop metrics and PktDrop* flow fields."
+        - "Metrics include netobserv_namespace_drop_packets_total, netobserv_node_drop_packets_total; health rule PacketDropsByKernel."
+        - "Flow logs may show PktDropLatestDropCause, PktDropPackets, PktDropLatestState."
+      expected_response: >
+        Investigates kernel packet drops with NetObserv: PacketDropsByKernel alert or
+        netobserv_*_drop_* metrics, optionally Loki flows with drop fields. Identifies nodes,
+        namespaces, or interfaces with drops, cites drop causes from flow data when available,
+        and distinguishes kernel drops from policy drops.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/packet_drops_kernel/setup.sh
+  cleanup_script: scenarios/packet_drops_kernel/cleanup.sh
+
+# --- Network policy packet drops ---
+- conversation_group_id: packet_drops_policy
+  tag: packet_drops_policy
+  description: "NetObserv packet drops — network policy denials (NetpolDenied)"
+
+  turns:
+    - turn_id: packet_drops_policy
+      query: >
+        In namespace netobserv-eval-drops-policy, pods cannot reach each other and we suspect
+        NetworkPolicy is blocking traffic. Use NetObserv to find network policy related drops
+        or denials in the last hour.
+      contexts:
+        - "NetObserv health rule NetpolDenied and metric netobserv_namespace_network_policy_events_total require NetworkEvents feature."
+        - "Flow logs may include NetworkEvents with action drop and policy feature acl."
+        - "Distinguish policy drops from kernel buffer drops (PacketDropsByKernel)."
+      expected_response: >
+        Uses NetObserv to identify policy-related denials: NetpolDenied alert, network policy
+        event metrics, or flow log NetworkEvents showing drop actions. Names source/destination
+        namespaces and policies involved when visible in data, and recommends NetworkPolicy
+        review rather than only kernel tuning.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/packet_drops_policy/setup.sh
+  cleanup_script: scenarios/packet_drops_policy/cleanup.sh
+
+# --- TLS / HTTPS / ingress connectivity ---
+- conversation_group_id: tls_issues
+  tag: tls_issues
+  description: "NetObserv TLS and ingress errors — HTTPS failures and IPsec issues"
+
+  turns:
+    - turn_id: tls_issues
+      query: >
+        Namespace netobserv-eval-tls has HTTPS and TLS connection problems between workloads
+        over the last hour. Use NetObserv metrics and flows to investigate failed connections,
+        TLS errors, or related ingress/IPsec issues.
+      contexts:
+        - "Ingress5xxErrors health rule relates to ingress HTTP errors; check netobserv metrics and alerts."
+        - "IPsecErrors health rule applies when IPSec eBPF feature is enabled (netobserv_node_ipsec_flows_total)."
+        - "May combine flow logs (Proto=6, DstPort=443) with metrics; cite evidence from tools."
+      expected_response: >
+        Investigates TLS/HTTPS/connectivity using NetObserv: Ingress5xxErrors or related alerts,
+        elevated error rates on ingress paths, IPsecErrors if applicable, and flow evidence for
+        TCP:443 or failed connections. Explains whether the issue appears to be ingress/TLS
+        termination, backend unreachable, or IPsec misconfiguration based on available data.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/tls_issues/setup.sh
+  cleanup_script: scenarios/tls_issues/cleanup.sh
+
+# --- Slow TCP RTT ---
+- conversation_group_id: tcp_rtt
+  tag: tcp_rtt
+  description: "NetObserv TCP RTT — high round-trip latency (FlowRTT)"
+
+  turns:
+    - turn_id: tcp_rtt
+      query: >
+        Application teams report slow TCP connections and high network latency between
+        services in namespace netobserv-eval-tcp-rtt. Use NetObserv to analyze TCP round-trip
+        time trends in the last hour.
+      contexts:
+        - "FlowRTT feature enables netobserv_namespace_rtt_seconds and TimeFlowRttNs in flows."
+        - "Health rule LatencyHighTrend flags rising RTT; use histogram_quantile on RTT metrics when present."
+        - "Prefer namespace-level metrics before high-cardinality workload series."
+      expected_response: >
+        Analyzes TCP RTT using NetObserv: netobserv_namespace_rtt_seconds or LatencyHighTrend
+        alert, with PromQL such as histogram_quantile on RTT histograms when applicable.
+        Identifies namespaces or paths with elevated RTT, cites numeric evidence, and notes
+        if FlowRTT is disabled when metrics are missing.
+      turn_metrics:
+        - custom:answer_correctness
+        - geval:generic_troubleshooting_experience
+
+  setup_script: scenarios/tcp_rtt/setup.sh
+  cleanup_script: scenarios/tcp_rtt/cleanup.sh

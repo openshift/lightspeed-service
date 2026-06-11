@@ -1,0 +1,54 @@
+---
+# OLS configuration for troubleshooting evals — RHEL AI vLLM provider
+#
+# Prerequisites:
+#   1. Store your vLLM API token in a file:
+#        echo "$RHELAI_API_TOKEN" > rhelai_api_key.txt
+#   2. Set your vLLM inference endpoint URL and model name below
+#   3. Start port-forwards (see TROUBLESHOOTING_EVALS_SETUP.md)
+#   4. Run OLS:
+#        OLS_CONFIG_FILE=eval/troubleshooting/olsconfig/olsconfig-rhelai-vllm.yaml uv run make run
+#
+# Eval system config: eval/troubleshooting/system_rhelai_vllm.yaml
+# The model name must match the alias registered in your vLLM deployment.
+
+llm_providers:
+  - name: rhelai_vllm
+    type: rhelai_vllm
+    url: "https://<your-vllm-endpoint>/v1"  # replace with your RHEL AI vLLM endpoint
+    credentials_path: rhelai_api_key.txt
+    models:
+      - name: granite-3.1-8b-instruct  # replace with your deployed model name
+
+mcp_servers:
+  - name: obs-mcp
+    url: "http://127.0.0.1:9100/mcp"
+    headers:
+      kubernetes-authorization: kubernetes
+    timeout: 5
+  - name: openshift-mcp-server
+    url: "http://127.0.0.1:8089/mcp"
+    timeout: 5
+
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    app_log_level: info
+    lib_log_level: warning
+    uvicorn_log_level: info
+  default_provider: rhelai_vllm
+  default_model: granite-3.1-8b-instruct  # must match model name above
+  authentication_config:
+    module: "noop-with-token"
+  user_data_collection:
+    feedback_disabled: true
+    transcripts_disabled: true
+
+dev_config:
+  enable_dev_ui: true
+  disable_tls: true
+  enable_system_prompt_override: true
+  uvicorn_port_number: 8080
