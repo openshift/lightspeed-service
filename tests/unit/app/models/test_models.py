@@ -66,6 +66,18 @@ class TestLLM:
         assert llm_request.model == model
 
     @staticmethod
+    def test_llm_request_available_tool_ui_ids():
+        """Test available_tool_ui_ids field on LLMRequest."""
+        request = LLMRequest(query="test")
+        assert request.available_tool_ui_ids is None
+
+        request = LLMRequest(query="test", available_tool_ui_ids=["perses-dashboard"])
+        assert request.available_tool_ui_ids == ["perses-dashboard"]
+
+        request = LLMRequest(query="test", available_tool_ui_ids=[])
+        assert request.available_tool_ui_ids == []
+
+    @staticmethod
     def test_llm_request_provider_and_model():
         """Test the LLMRequest model with provider and model."""
         # model set and provider not
