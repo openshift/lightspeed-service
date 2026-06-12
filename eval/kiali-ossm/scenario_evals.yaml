@@ -1,0 +1,221 @@
+# Evaluation conversations for OSSM + LightSpeed troubleshooting evaluation.
+# Simplified version of scenarios/conversations.yaml — no tool_calls or expected_tool_calls.
+
+# ── check_mesh_status ─────────────────────────────────────────────────────────
+- conversation_group_id: check_mesh_status
+  tag: check_mesh_Status
+  description: "Check the status of the mesh and identify any issues."
+
+  turns:
+    - turn_id: diagnose
+      query: >
+        Check the status of the mesh and identify any issues.
+      expected_response: >
+        The agent should use Kiali/OSSM MCP tools to provide a structured Istio mesh health
+        assessment organized as: (1) control plane — report istiod version and health;
+        (2) observability stack — list each component (Prometheus, Grafana, Tempo/Jaeger)
+        with Healthy or Unreachable status; (3) data plane — report the overall health
+        of monitored namespaces with any DEGRADED or UNHEALTHY namespaces called out.
+        For each issue found, the agent should cite specific evidence from tool output
+        (error rates, log lines, pod status, graph edges), explain the likely root cause,
+        and provide a concrete remediation step. The response should be well-structured,
+        grounded in observed Kiali and Kubernetes data, and end with a prioritized
+        action list.
+      turn_metrics:
+        - custom:answer_correctness
+
+# ── fix_bookinfo_routing ──────────────────────────────────────────────────────
+- conversation_group_id: fix_bookinfo_routing
+  tag: fix_bookinfo_routing
+  description: "Multi-turn: reviews-v3 has weight 0 so never gets traffic. Agent investigates, identifies the routing issue, and fixes weights."
+
+  turns:
+    - turn_id: investigate
+      query: >
+        In our Bookinfo app, the product page only ever shows black or no stars.It never shows red stars.  All Istio resources and services are deployed in the 'bookinfo' namespace. Can you investigate and fix it?
+      expected_response: >
+        The agent should inspect workloads, the reviews VirtualService, and the
+        reviews DestinationRule in the bookinfo namespace. It should identify that
+        the reviews VirtualService routes 0% of traffic to subset v3 (weight: 0),
+        meaning reviews-v3 — the version that renders red stars — never receives
+        requests. All workload pods should be confirmed as running and healthy. The
+        agent should apply a fix by patching the reviews VirtualService to send
+        traffic to v3 (either 100% to v3 or distributing across v1/v2/v3), confirm
+        the patch by reporting the updated spec, and explain that the product page
+        should now show red stars.
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: ../scenarios/fix_bookinfo_routing/setup.sh
+  cleanup_script: ../scenarios/fix_bookinfo_routing/cleanup.sh
+
+
+
+# ── fix_bookinfo_fault_injection ──────────────────────────────────────────────
+- conversation_group_id: fix_bookinfo_fault_injection
+  tag: fault_injection_bookinfo
+  description: "Multi-turn: a 100% fault injection on ratings causes 503 errors. Agent investigates, identifies root cause, and fixes it."
+
+  turns:
+    - turn_id: investigate_and_fix
+      query: >
+        Some users are seeing errors on the Bookinfo product page — it looks like
+        the ratings service is broken. All pods are running and mTLS / auth policies
+        are not the issue. All Istio resources are in the 'bookinfo' namespace.
+        Can you check the Istio VirtualService routing rules
+        for the ratings service and find what's causing the problem?
+      expected_response: >
+        The agent should find and cite the ratings VirtualService spec showing a
+        fault.abort block with httpStatus 503 and percentage value 100, applying to
+        all traffic with no match conditions. It should confirm the DestinationRule
+        for ratings is correctly defined and not contributing to the issue. It should
+        identify the 100% fault injection abort as the root cause of the 503 errors
+        seen on the product page, and may note this is typically used for chaos or
+        resilience testing. The agent should offer to remove the fault injection rule
+        (e.g. by deleting the abort block or setting percentage to 0) to restore
+        normal service, and may provide the corrected VirtualService spec.
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: ../scenarios/fix_bookinfo_fault_injection/setup.sh
+  cleanup_script: ../scenarios/fix_bookinfo_fault_injection/cleanup.sh
+
+
+
+
+# ── troubleshoot_latency_trace ────────────────────────────────────────────────
+- conversation_group_id: troubleshoot_latency_trace
+  tag: troubleshoot_latency_trace
+  description: "A 3-second delay fault is injected on the ratings service. The agent must identify the latency root cause using traces and fix the delay."
+
+  turns:
+    - turn_id: investigate_and_fix
+      query: >
+        The Bookinfo product page is loading very slow — requests to the page
+        are taking several seconds. All pods are running fine. Can you investigate
+        what is causing the latency and tell me which service is responsible?
+      expected_response: >
+        The agent should investigate service-to-service communication using distributed
+        traces or the Kiali traffic graph to map the full request path for the Bookinfo
+        application. It should report observed response times across the call chain
+        (e.g. ingressgateway → productpage ~7 s, productpage → reviews v2 ~4.8 s,
+        productpage → reviews v3 ~2.4 s, reviews v3 → ratings ~2.4 s) and identify
+        the reviews and ratings services as contributors to the overall latency.
+
+        The agent should then inspect Istio VirtualService resources in the bookinfo
+        namespace — not just one named "reviews" but all VirtualServices — and locate
+        the ratings VirtualService, which contains a fault injection delay rule:
+        fixedDelay of 3 s applied to 100% of traffic routed to the ratings v1 subset.
+        This is the root cause: the artificial delay cascades through the call chain,
+        making all upstream services (reviews, productpage) appear slow.
+
+        The agent should name ratings as the responsible service, cite the relevant
+        VirtualService spec (fault.delay.fixedDelay: 3s, percentage.value: 100),
+        explain that this pattern is typical of intentional chaos/resilience testing,
+        and offer to remove the fault injection block from the ratings VirtualService
+        to restore normal page load times.
+      turn_metrics:
+        - custom:answer_correctness
+
+  setup_script: ../scenarios/troubleshoot_latency_trace/setup.sh
+  cleanup_script: ../scenarios/troubleshoot_latency_trace/cleanup.sh
+
+
+# ── check_latency_bookinfo_issue ──────────────────────────────────────────────
+- conversation_group_id: check_latency_bookinfo_issue
+  tag: latency_bookinfo_issue
+  description: "Users are reporting that the Bookinfo productpage is occasionally taking 5+ seconds to load, but it doesn't happen on every request."
+
+  turns:
+    - turn_id: diagnose
+      query: >
+        Users are reporting that the Bookinfo productpage is occasionally taking 5+ seconds to load, but it doesn't happen on every request.
+      expected_response: >
+        The agent should investigate the reported intermittent latency using Kiali/OSSM
+        and Kubernetes tools. It should collect and cite: productpage service latency
+        metrics (P95/P99 values), the Kiali traffic graph showing response times and
+        error rates across the call chain (ingressgateway → productpage → reviews →
+        ratings), distributed traces for productpage, and pod or ingress logs.
+
+        If the latency is not currently reproducible (metrics and traces show normal
+        response times with no active errors), the agent should clearly state that,
+        identify the most likely intermittent causes (e.g. external edge path not
+        captured by server-side tracing, occasional downstream errors or retries,
+        resource pressure spikes), and provide actionable next steps such as
+        increasing trace sampling, checking Route or edge timeout configuration, and
+        adding explicit timeout and retry policies to the VirtualService.
+
+        If an active issue is found (e.g. failing edges in the traffic graph, errors
+        in pod logs), the agent should identify the root cause and recommend an
+        immediate mitigation plus a permanent fix.
+      turn_metrics:
+        - custom:answer_correctness
+
+# ── check_bookinfo_services ──────────────────────────────────────────────
+- conversation_group_id: check_bookinfo_services
+  tag: check_bookinfo_services
+  description: "Check my bookinfo namespace services in my servicemesh"
+
+  turns:
+    - turn_id: diagnose
+      query: >
+        Check my bookinfo namespace services in my servicemesh
+      expected_response: >
+        Using Kiali/OSSM MCP tools, the agent should provide a comprehensive health overview
+        of the bookinfo namespace covering: (1) overall namespace health status
+        (Healthy, DEGRADED, or UNHEALTHY) with availability and error rate figures;
+        (2) individual service health for all services present (details, productpage,
+        ratings, reviews, istio-ingressgateway) and the validity of Istio config
+        objects (Gateway, VirtualService); (3) the traffic graph showing
+        service-to-service call paths, mTLS status, and response times for each edge.
+        If the namespace is healthy with no errors, the agent should confirm this
+        clearly and may note any mesh-wide observability warnings (e.g. Grafana
+        Unreachable) as non-blocking. If issues are found, it should identify the
+        root cause with supporting evidence and offer concrete next steps.
+      turn_metrics:
+        - custom:answer_correctness
+
+# ---------------------------------------------------------------
+# Tests without kiali/ossm toolset available
+# ---------------------------------------------------------------
+# ── check_mesh_status_no_kiali ──────────────────────────────────────────────
+- conversation_group_id: check_mesh_status_no_kiali
+  tag: no_kiali
+  description: "Check the status of the mesh and identify any issues."
+
+  turns:
+    - turn_id: diagnose
+      query: >
+        Check the status of the mesh and identify any issues.
+      expected_response: >
+        Without Kiali/OSSM MCP tools, the agent should provide a structured Istio mesh health
+        assessment using Kubernetes-native tools (namespaces_list, resources_list,
+        pods_list, events_list, pods_log), typically organized as:
+
+        Control plane — verify istiod Deployment is available in istio-system and inspect
+        its logs for xDS push activity, sidecar injection events, and error patterns.
+        Report observability stack Deployment availability (Kiali, Prometheus, Jaeger).
+        Note gateway Deployments (ingressgateway, egressgateway) and their status.
+
+        Data plane — list pods in application namespaces (e.g. bookinfo) and verify
+        sidecars are injected (expected 2/2 containers Ready); check for mTLS labels
+        (e.g. security.istio.io/tlsMode=istio); inspect events for injection activity
+        and any transient or persistent errors.
+
+        Config/traffic management — inspect Istio config objects (Gateway, VirtualService)
+        to confirm routing is defined; verify Gateway selectors match the intended
+        ingressgateway and VirtualService hosts are correct.
+
+        Issues found — report numbered findings with severity when problems exist, each
+        including: concrete evidence from tool output (Deployment replicas, pod status,
+        log content, event messages), the impact on mesh operations, and a specific
+        remediation using kubectl (e.g. delete duplicate resources, patch labels).
+        Examples of findings: duplicate ingressgateway Deployments across namespaces,
+        image/label version mismatches, misconfigured Gateway selectors, or pods
+        missing sidecar injection.
+
+        Next steps and conclusion — provide kubectl commands to remediate identified
+        issues and conclude with the overall mesh status, clearly distinguishing what
+        is healthy from what needs action.
+      turn_metrics:
+        - custom:answer_correctness

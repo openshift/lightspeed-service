@@ -1,0 +1,17 @@
+# OpenShift MCP Server configuration for Kiali/OSSM evaluation
+#
+# Docs: https://github.com/openshift/openshift-mcp-server/blob/main/docs/KIALI.md
+#
+# Start the server:
+#   npx @openshift/openshift-mcp-server@latest --config eval/kiali-ossm/mcp-config.toml
+#   # or via port-forward (see README)
+
+toolsets = ["core", "ossm"]
+
+[toolset_configs.kiali]
+# Kiali console URL — adjust to match your cluster route or port-forward address
+url = "http://localhost:20001"
+# For HTTPS with a custom CA:
+# certificate_authority = "/path/to/ca.crt"
+# For non-production / self-signed certs:
+# insecure = true
