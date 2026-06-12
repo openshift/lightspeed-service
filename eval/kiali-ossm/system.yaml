@@ -1,0 +1,96 @@
+# LightSpeed Evaluation Framework Configuration — Troubleshooting Evals
+# OLS backend (api): model sent to OLS /query — must match cluster OLSConfig (e.g. gpt-4o-mini for lseval CR).
+# Judge (llm): OpenAI GPT-5-mini for scoring (GPT-5 family; avoid deprecated GPT-4 judge).
+#
+# api_base is overridden at runtime with the actual OLS cluster URL.
+# Requires OPENAI_API_KEY for the judge LLM.
+
+# Core Evaluation Configuration
+# Limits concurrent evaluations to avoid OpenAI API rate limiting.
+core:
+  max_threads: 5
+
+# Judge LLM — scores OLS responses against expected answers
+llm:
+  provider: "openai"
+  model: "gpt-5.4-mini"   # gpt-5-mini does not produce valid JSON for DeepEval metrics
+  temperature: 0.0
+  max_tokens: 5000
+  timeout: 300
+  num_retries: 3
+  cache_enabled: true
+
+# OLS API — the system under test (model must match OLSConfig, e.g. openai_lseval uses gpt-4o-mini)
+api:
+  enabled: true
+  api_base: http://localhost:8080
+  endpoint_type: query
+  timeout: 300
+  provider: "openai"
+  model: "gpt-5"   # must match olsconfig-openai.yaml default_model
+  no_tools: null
+  system_prompt: null
+  cache_enabled: false
+  extra_request_params:
+    mode: troubleshooting
+    
+# Metrics evaluated per conversation turn
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      # threshold intentionally omitted: no agreed baseline yet.
+      # Scores are recorded to track the trend over time; a threshold
+      # will be introduced once the average trend is established.
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true
+
+# Output Configuration
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:
+    - csv
+    - json
+
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8]
+  dpi: 300
+  enabled_graphs:
+    - "pass_rates"
+    - "score_distribution"
+    - "conversation_heatmap"
+    - "status_breakdown"
+
+# Environment Variables
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+# Logging Configuration
+logging:
+  source_level: INFO
+  package_level: ERROR
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING
