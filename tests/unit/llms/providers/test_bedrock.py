@@ -492,3 +492,31 @@ def test_build_sigv4_auth_with_role(
         RoleArn="arn:aws:iam::123456789012:role/TestRole",
         RoleSessionName="ols-bedrock",
     )
+
+
+def test_bedrock_picks_up_rotated_credentials(tmp_path: Path) -> None:
+    """Test that Bedrock provider re-reads credentials on each default_params access."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("initial-key")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(secret_file),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        }
+    )
+
+    bedrock_1 = Bedrock(
+        model="anthropic.claude-opus-4-7", params={}, provider_config=config
+    )
+    assert bedrock_1.default_params["api_key"] == "initial-key"
+
+    secret_file.write_text("rotated-key")
+
+    bedrock_2 = Bedrock(
+        model="anthropic.claude-opus-4-7", params={}, provider_config=config
+    )
+    assert bedrock_2.default_params["api_key"] == "rotated-key"

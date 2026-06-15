@@ -396,6 +396,8 @@ class ProviderConfig(BaseModel):
     certificates_store: Optional[str] = None
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
+    _credentials_path: Optional[str] = PrivateAttr(default=None)
+
     def __init__(
         self,
         data: Optional[dict] = None,
@@ -410,6 +412,7 @@ class ProviderConfig(BaseModel):
 
         self.set_provider_type(data)
         self.url = data.get("url", None)
+        self._credentials_path = data.get(constants.CREDENTIALS_PATH_SELECTOR)
         try:
             self.credentials = checks.read_secret(
                 data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
@@ -627,6 +630,24 @@ class ProviderConfig(BaseModel):
             raise checks.InvalidConfigurationError(
                 "provider URL is invalid, only http:// and https:// URLs are supported"
             )
+
+    def get_credentials(self) -> Optional[str]:
+        """Return current credentials, re-reading from disk when a path is configured.
+
+        When ``credentials_path`` was provided in the original configuration,
+        the credential file is re-read on every call so that secrets rotated
+        by Kubernetes (kubelet atomic symlink swap) or external CronJobs are
+        picked up without a pod restart.  Falls back to the cached value when
+        no path is available or the file cannot be read.
+        """
+        if self._credentials_path is not None:
+            fresh = checks.read_secret_from_path(
+                self._credentials_path, constants.API_TOKEN_FILENAME
+            )
+            if fresh is not None:
+                self.credentials = fresh
+                return fresh
+        return self.credentials
 
 
 class LLMProviders(BaseModel):

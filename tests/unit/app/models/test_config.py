@@ -4,6 +4,7 @@ import copy
 import errno
 import logging
 import os
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -4415,3 +4416,96 @@ def test_skills_config_validation():
         SkillsConfig(alpha=-0.1)
     with pytest.raises(ValidationError, match="less than or equal to 1"):
         SkillsConfig(alpha=1.1)
+
+
+def test_provider_config_get_credentials_returns_cached_when_no_path() -> None:
+    """Test get_credentials() returns cached value when no path is configured."""
+    provider_config = ProviderConfig()
+    provider_config.credentials = "cached-key"
+    assert provider_config.get_credentials() == "cached-key"
+
+
+def test_provider_config_get_credentials_rereads_from_disk(tmp_path: Path) -> None:
+    """Test get_credentials() re-reads credential file on every call."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("original-key")
+
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "url": "http://test.url",
+            "credentials_path": str(secret_file),
+            "models": [
+                {
+                    "name": "test_model",
+                    "url": "http://test.url/",
+                    "credentials_path": str(secret_file),
+                }
+            ],
+        }
+    )
+
+    assert provider_config.get_credentials() == "original-key"
+
+    secret_file.write_text("rotated-key")
+    assert provider_config.get_credentials() == "rotated-key"
+
+
+def test_provider_config_get_credentials_falls_back_on_read_failure(
+    tmp_path: Path,
+) -> None:
+    """Test get_credentials() falls back to cached value when file disappears."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("original-key")
+
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "url": "http://test.url",
+            "credentials_path": str(secret_file),
+            "models": [
+                {
+                    "name": "test_model",
+                    "url": "http://test.url/",
+                    "credentials_path": str(secret_file),
+                }
+            ],
+        }
+    )
+
+    assert provider_config.get_credentials() == "original-key"
+
+    secret_file.write_text("rotated-key")
+    assert provider_config.get_credentials() == "rotated-key"
+
+    secret_file.unlink()
+    assert provider_config.get_credentials() == "rotated-key"
+
+
+def test_provider_config_get_credentials_with_directory(tmp_path: Path) -> None:
+    """Test get_credentials() when credentials_path is a directory."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("dir-key")
+
+    provider_config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "url": "http://test.url",
+            "credentials_path": str(tmp_path),
+            "models": [
+                {
+                    "name": "test_model",
+                    "url": "http://test.url/",
+                    "credentials_path": str(secret_file),
+                }
+            ],
+        }
+    )
+
+    assert provider_config.get_credentials() == "dir-key"
+
+    secret_file.write_text("new-dir-key")
+    assert provider_config.get_credentials() == "new-dir-key"

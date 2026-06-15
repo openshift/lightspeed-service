@@ -25,7 +25,7 @@ class OpenAI(LLMProvider):
     def default_params(self) -> dict[str, Any]:
         """Construct and return structure with default LLM params."""
         self.url = str(self.provider_config.url or self.url)
-        self.credentials = self.provider_config.credentials
+        self.credentials = self.provider_config.get_credentials()
         # provider-specific configuration has precendence over regular configuration
         if self.provider_config.openai_config is not None:
             openai_config = self.provider_config.openai_config
