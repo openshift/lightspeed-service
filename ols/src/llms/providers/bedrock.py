@@ -34,7 +34,7 @@ class Bedrock(LLMProvider):
         """Construct and return default LLM params."""
         if self.provider_config.url is not None:
             self.url = str(self.provider_config.url).rstrip("/")
-        self.credentials = self.provider_config.credentials
+        self.credentials = self.provider_config.get_credentials()
 
         if not self.url:
             raise LLMConfigurationError(
