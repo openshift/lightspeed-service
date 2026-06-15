@@ -68,6 +68,38 @@ def read_secret(
         return None
 
 
+def read_secret_from_path(
+    path: str,
+    default_filename: str,
+) -> Optional[str]:
+    """Re-read a secret from a file path, resolving directories.
+
+    Unlike ``read_secret`` this function takes a concrete path string
+    (not a dict lookup) and is designed to be called on every LLM
+    request so that credential files rotated by Kubernetes (atomic
+    symlink swap) are picked up without a pod restart.
+
+    Args:
+        path: File path or directory containing the secret.
+        default_filename: Filename to append when *path* is a directory.
+
+    Returns:
+        The secret value with trailing whitespace stripped, or ``None``
+        when the file cannot be read.
+    """
+    filename = path
+    if os.path.isdir(path):
+        filename = os.path.join(path, default_filename)
+
+    try:
+        with open(filename, encoding="utf-8") as f:
+            return f.read().rstrip()
+    except OSError:
+        logger = logging.getLogger(__name__)
+        logger.warning("Failed to re-read credential from %s", filename)
+        return None
+
+
 def dir_check(path: FilePath, desc: str) -> None:
     """Check that path is a readable directory."""
     if not os.path.exists(path):
