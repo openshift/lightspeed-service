@@ -220,6 +220,25 @@ objects. Deserialization reads the `bytea` column as `memoryview`, converts to
   processes/pods.
 - **Connection decorator**: The `@connection` decorator on `PostgresBase`
   checks connection liveness and reconnects before each public method call.
+  It distinguishes connection errors (broken TCP, closed connection) from
+  operational errors (SQL failures on a live connection). On connection errors,
+  it attempts to re-establish via `connect()` before retrying the operation.
+  On operational errors, it wraps in `CacheError` and propagates immediately.
+  When a connection error is detected, it also immediately marks the shared
+  health status as unhealthy (dual-feed model, see `what/conversation-history.md`
+  Rule 23). [CHANGED: OLS-3221]
+- **Operation timeouts**: All PostgreSQL operations use `statement_timeout`
+  to prevent indefinite blocking on degraded databases. The `_tx_lock` mutex
+  uses bounded acquisition timeout to prevent application-level deadlocks
+  when a thread is stuck waiting on a hung PostgreSQL advisory lock.
+  [NEW: OLS-3221]
+- **Background health-check loop**: A background thread runs on a dedicated
+  connection (independent of the cache operation connection and `_tx_lock`)
+  to periodically verify PostgreSQL connectivity and attempt reconnection.
+  It is the sole component that restores health status to healthy after
+  confirming the database is reachable. The readiness and liveness probes
+  read this loop's status without performing their own DB queries.
+  [NEW: OLS-3221]
 
 ### Capacity Eviction (Postgres)
 

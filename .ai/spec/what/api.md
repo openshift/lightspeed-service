@@ -43,8 +43,8 @@ The REST API is the only external interface to the OpenShift LightSpeed service.
 ### Infrastructure Endpoints
 
 22. `POST /authorized` validates the caller's credentials and authorization. The authentication check itself is the purpose of this endpoint. No `/v1` prefix.
-23. `GET /readiness` checks three subsystems: RAG index loaded (if configured), default LLM reachable, and conversation cache ready. All three must pass. The LLM readiness result is cached for a configurable duration. Returns 503 with cause if any subsystem fails.
-24. `GET /liveness` always returns `alive: true` if the process is running.
+23. `GET /readiness` checks three subsystems: RAG index loaded (if configured), default LLM reachable, and conversation cache health status. All three must pass. When the PostgreSQL cache backend is configured, cache health is read from the background health-check loop's last-known status (see `what/conversation-history.md`, Rules 22–23) rather than performing a direct database query. This ensures the readiness probe is non-blocking and immune to deadlocks in the cache operation path. The LLM readiness result is cached for a configurable duration. Returns 503 with cause if any subsystem fails. [CHANGED: OLS-3221]
+24. `GET /liveness` checks that the process is running and, when the PostgreSQL cache backend is configured, reads the database health status from the background health-check loop. If the loop has recorded N consecutive unhealthy readings (configurable via `liveness_db_failure_threshold`, default 3), the probe returns HTTP 503 with `{"alive": false, "reason": "database unreachable"}`. If no PostgreSQL backend is configured (in-memory cache), the probe always returns `{"alive": true}`. This ensures the liveness probe is non-blocking and only triggers a pod restart after sustained failure that the background loop could not self-heal. [CHANGED: OLS-3221]
 25. `GET /metrics` returns Prometheus metrics in exposition format. Requires `ols-metrics-access` scope. No version prefix.
 
 ---
@@ -495,7 +495,7 @@ None required.
 
 Kubernetes readiness probe. No authentication required. No version prefix.
 
-Checks three subsystems: RAG index loaded (if configured), default LLM reachable and responsive, and conversation cache backend ready. All three must pass. The LLM readiness result is cached; once confirmed ready, subsequent calls may return the cached result for a configurable duration (`expire_llm_is_ready_persistent_state`).
+Checks three subsystems: RAG index loaded (if configured), default LLM reachable and responsive, and conversation cache health status. When the PostgreSQL cache backend is configured, cache health is read from the background health-check loop's last-known status rather than performing a direct database query. This ensures the readiness probe is non-blocking and immune to deadlocks in the cache operation path. All three subsystems must pass. The LLM readiness result is cached; once confirmed ready, subsequent calls may return the cached result for a configurable duration (`expire_llm_is_ready_persistent_state`). [CHANGED: OLS-3221]
 
 #### Response 200 (ReadinessResponse)
 
@@ -512,13 +512,20 @@ Structured error with cause indicating which subsystem is not ready: `"Index is 
 
 ### GET /liveness
 
-Kubernetes liveness probe. No authentication required. No version prefix. Always succeeds if the process is running.
+Kubernetes liveness probe. No authentication required. No version prefix. When the PostgreSQL cache backend is configured, reads the database health status from the background health-check loop's last-known status. Returns HTTP 503 after sustained database unavailability (configurable consecutive failure threshold). When no PostgreSQL backend is configured (in-memory cache), always succeeds if the process is running. [CHANGED: OLS-3221]
 
 #### Response 200 (LivenessResponse)
 
 | Field | Type    | Description |
 |-------|---------|-------------|
-| alive | boolean | Always `true` |
+| alive | boolean | `true` when process is running and DB health threshold is not exceeded |
+
+#### Response 503 (LivenessResponse)
+
+| Field  | Type    | Description |
+|--------|---------|-------------|
+| alive  | boolean | `false` |
+| reason | string  | `"database unreachable"` |
 
 ---
 
@@ -748,6 +755,8 @@ The service applies the following cross-cutting behaviors to all requests:
 - `ols_config.user_data_collection.transcripts_storage` -- filesystem path for transcript JSON files.
 - `ols_config.logging_config.suppress_metrics_in_log` -- suppress debug logging for `/metrics` requests.
 - `ols_config.expire_llm_is_ready_persistent_state` -- duration (seconds) to cache the LLM readiness check result. Negative or unset means cache indefinitely once ready.
+- `ols_config.liveness_db_failure_threshold` -- number of consecutive unhealthy readings from the background health-check loop before the liveness probe fails (default: 3). [NEW: OLS-3221]
+- `ols_config.cache_health_check_interval` -- interval in seconds for the background PostgreSQL health-check loop (default: 30). [NEW: OLS-3221]
 - `ols_config.reference_content` -- when set, the readiness probe checks that the RAG index is loaded.
 - `dev_config.disable_tls` -- disables TLS; affects whether HSTS header is added.
 - `dev_config.enable_dev_ui` -- mounts an embedded Gradio UI at the application root.
@@ -776,3 +785,4 @@ The service applies the following cross-cutting behaviors to all requests:
 - [PLANNED: OLS-2682] Remove `/v1/query` endpoint. The streaming endpoint becomes the sole query interface.
 - [PLANNED: OLS-2680] Add OpenAI `/responses` API compatibility layer.
 - [PLANNED: OLS-2684] Remove client MCP headers (`mcp_headers` field).
+- [PLANNED: OLS-3221] PostgreSQL resilience — liveness probe DB check via background health-check loop status, readiness probe reads loop status instead of direct DB query. See Rules 23–24.

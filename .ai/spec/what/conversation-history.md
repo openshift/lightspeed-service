@@ -40,6 +40,18 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 18. The in-memory cache must be a singleton: all threads within a process share one cache instance.
 
+### PostgreSQL Resilience [NEW: OLS-3221]
+
+19. Cache operations must distinguish between *connection errors* (broken TCP, connection refused, closed connection) and *operational errors* (SQL failures on a live connection such as constraint violations, disk full, or query syntax errors). Connection errors trigger the reconnection path via the `@connection` decorator. Operational errors are wrapped in `CacheError` and propagated immediately — reconnection would not resolve them.
+
+20. When a PostgreSQL cache operation fails due to a connection error, the `@connection` decorator must attempt to re-establish the connection transparently before retrying the operation. The decorator must detect closed or broken connections (via `psycopg2` connection status checks) and call `connect()` to obtain a fresh connection. If reconnection itself fails, the operation must raise a `CacheError` with the original cause preserved. Connection re-establishment must be idempotent and thread-safe; the existing `_tx_lock` mutex serializes reconnection attempts.
+
+21. All PostgreSQL operations (queries, advisory lock acquisitions) must have a statement-level timeout (`statement_timeout`). If an operation exceeds the timeout, it must be cancelled, the transaction rolled back, and a `CacheError` raised. This prevents indefinite blocking when PostgreSQL is degraded (e.g., hung transactions, slow I/O). The Python-level `_tx_lock` must use a bounded acquisition timeout. If the lock cannot be acquired within the timeout, the operation must raise a `CacheError` rather than blocking indefinitely.
+
+22. When the PostgreSQL cache backend is configured, the system must run a background health-check loop that periodically verifies database connectivity and attempts reconnection when the connection is lost. The loop runs every `cache_health_check_interval` seconds (default: 30). The loop must use a dedicated lightweight connection, independent of the connection and `_tx_lock` used by cache operations. This ensures the health-check loop remains responsive even when the cache operation path is blocked or deadlocked. When the connection is healthy, the loop records a healthy status and is otherwise a no-op. When the connection is broken, the loop attempts reconnection and logs the result.
+
+23. The health status maintained by the background health-check loop is the single source of truth for database health consumed by the readiness and liveness probes. Neither probe performs its own database query or acquires `_tx_lock`. The health status is an in-memory flag updated by two sources: (a) the background loop on each iteration, and (b) cache operations that encounter connection errors, which immediately mark the status as unhealthy (dual-feed model). Only the background loop may restore the status to healthy after successfully reconnecting on its independent connection. This ensures near-instant detection (first failed user query flips to unhealthy) and controlled recovery (background loop confirms before restoring healthy).
+
 ## Configuration Surface
 
 | Field path | Description |
@@ -55,6 +67,9 @@ The conversation history subsystem preserves prior exchanges within a conversati
 | `ols_config.conversation_cache.postgres.ca_cert_path` | Path to CA certificate for PostgreSQL TLS |
 | `ols_config.conversation_cache.postgres.max_entries` | Maximum total message entries for PostgreSQL cache |
 | `ols_config.history_compression_enabled` | Whether to use LLM-based history compression (default: true) |
+| `ols_config.cache_health_check_interval` | Interval in seconds for the background PostgreSQL health-check loop (default: 30) [NEW: OLS-3221] |
+| `ols_config.conversation_cache.postgres.statement_timeout` | Statement-level timeout in milliseconds for PostgreSQL operations (default: 5000) [NEW: OLS-3221] |
+| `ols_config.conversation_cache.postgres.lock_timeout` | Timeout in seconds for Python-level `_tx_lock` acquisition (default: 10) [NEW: OLS-3221] |
 
 ## Constraints
 
@@ -74,6 +89,7 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 ## Planned Changes
 
+- [PLANNED: OLS-3221] PostgreSQL resilience — auto-reconnection, background health-check loop, dual-feed health status, operation timeouts, and liveness probe DB check. See Rules 19–23.
 - [PLANNED: OLS-2713] Persistent chat -- UI-side conversation persistence, enabling users to resume conversations across browser sessions.
 - [PLANNED: OLS-141] Encrypting conversation state cache data, on disk and in memory.
 - [PLANNED: OLS-251] Scale Postgres Conversation Cache Backend for high-availability and multi-instance production deployments.
