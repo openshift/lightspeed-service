@@ -35,7 +35,7 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 | `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` | OpenAI-compatible, no default URL |
 | `google_vertex.py` | `GoogleVertex` | `"google_vertex"` | `ChatGoogleGenerativeAI` | Gemini / publisher models; credentials via `load_vertex_credentials` |
 | `google_vertex.py` | `GoogleVertexAnthropic` | `"google_vertex_anthropic"` | `ChatAnthropicVertex` | Claude on Vertex Model Garden; same module |
-| `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatAnthropic` / `ChatOpenAI` | Model-prefix routing to 3 Mantle API paths; see below |
+| `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatBedrockConverse` / `ChatOpenAI` | Model-prefix routing; dual auth (Bearer token / IAM+SigV4); see below |
 | `fake_provider.py` | `FakeProvider` | `"fake_provider"` | `FakeListLLM` / `FakeStreamingListLLM` | Testing only; monkey-patches `bind_tools` |
 
 ### `ols/src/llms/providers/utils.py` -- Shared utilities
@@ -167,15 +167,15 @@ WatsonX also passes `params=self.params` to `ChatWatsonx` (as a nested dict), un
 
 `bedrock.py` serves multiple model families behind the Bedrock Mantle gateway. `load()` inspects `self.model` to select the LangChain class and construct the correct Mantle endpoint URL:
 
-| Model prefix | LangChain class | Base URL suffix | Extra params |
+| Model prefix | LangChain class | API | Extra params |
 |---|---|---|---|
-| `anthropic.*` | `ChatAnthropic` | `/anthropic` | `anthropic_api_key` |
-| `openai.*` | `ChatOpenAI` | `/openai/v1` | `use_responses_api=True`, `openai_api_key` |
-| Everything else | `ChatOpenAI` | `/v1` | `openai_api_key` |
+| `anthropic.*` | `ChatBedrockConverse` | Bedrock Converse (native) | `model_id` with region prefix, `region_name` |
+| `openai.*` | `ChatOpenAI` | Mantle `/openai/v1` | `use_responses_api=True`, `openai_api_key` |
+| Everything else | `ChatOpenAI` | Mantle `/v1` | `openai_api_key` |
 
-`BedrockParameters` is a single union set covering kwargs from both `ChatAnthropic` and `ChatOpenAI`. `BedrockParametersMapping` maps `max_tokens_for_response` to `max_completion_tokens` (the OpenAI name). For the Anthropic branch, `load()` pops `max_completion_tokens` from params and passes `max_tokens` instead.
+`BedrockParameters` is a single union set covering kwargs from both `ChatBedrockConverse` and `ChatOpenAI`. `BedrockParametersMapping` maps `max_tokens_for_response` to `max_completion_tokens` (the OpenAI name). For the Anthropic branch, `load()` pops `max_completion_tokens` from params since `ChatBedrockConverse` uses `max_tokens` natively.
 
-Auth follows the Azure dual-auth pattern: `default_params` checks `self.credentials` (Bearer token). If present, it is used directly. If absent, the `else` branch raises an error (placeholder for future STS implementation).
+Auth supports two pathways: Bearer token (Bedrock API key via `credentials_path` file) and IAM credentials (`aws_access_key_id`, `aws_secret_access_key`, optional `role_arn` read from the `credentials_path` directory). `_has_aws_credentials()` selects the path. For IAM, Anthropic models pass a pre-configured boto3 client; OpenAI/DeepSeek models use `httpx-aws-auth` SigV4 signing injected into `http_client`/`http_async_client`.
 
 ### OpenAI reasoning model handling
 

@@ -124,5 +124,20 @@ Unknown parameters (not in the provider's `ProviderParameter` set) are silently 
 | `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` | `google_vertex.py` | `ChatAnthropicVertex` (Claude on Vertex) |
 | `PROVIDER_GOOGLE_VERTEX` | `google_vertex.py` | `ChatGoogleGenerativeAI` |
 | `PROVIDER_FAKE` | `fake_provider.py` | `FakeListLLM` / `FakeStreamingListLLM` |
+| `PROVIDER_BEDROCK` | `bedrock.py` | `ChatBedrockConverse` / `ChatOpenAI` (model-prefix routing) |
 
 Vertex AI in `olsconfig.yaml`: use `type: google_vertex_anthropic` with a `google_vertex_anthropic_config` block (`project`, `location`), or `type: google_vertex` with `google_vertex_config` (same shape). The file referenced by `credentials_path` may be either a **service account key** (`type: service_account`) or **user OAuth JSON** (`type: authorized_user` with `refresh_token`, `client_id`, and `client_secret`). Each file must include the `type` field. Credentials are scoped for Vertex with the cloud-platform OAuth scope.
+
+AWS Bedrock in `olsconfig.yaml`: use `type: bedrock` with `url` set to the Bedrock Mantle gateway (e.g. `https://bedrock-mantle.us-east-1.api.aws`). Model names must use the fully qualified Bedrock model ID (e.g. `anthropic.claude-opus-4-7`, `openai.gpt-5.4`, `deepseek.v3.1`) — the provider prefix determines which LangChain class to use:
+
+- `anthropic.*` → `ChatBedrockConverse` via native Bedrock Converse API (region prefix auto-prepended)
+- `openai.*` → `ChatOpenAI` via Responses API
+- All others → `ChatOpenAI` via Chat Completions API
+
+Two authentication methods are supported:
+
+1. **Bearer token** — store a Bedrock API key in `credentials_path` (standard `apitoken` file). The key is set via `AWS_BEARER_TOKEN_BEDROCK` env var for `ChatBedrockConverse` and passed as `openai_api_key` for `ChatOpenAI`.
+
+2. **IAM credentials** — set `credentials_path` to a directory containing `aws_access_key_id` and `aws_secret_access_key` files. Optional `role_arn` file triggers STS `assume_role()`. For `ChatBedrockConverse`, a pre-configured boto3 client is passed directly; for `ChatOpenAI`, SigV4 signing is injected via `httpx-aws-auth`.
+
+Fully qualified names are required because they match the Bedrock model IDs as reported by the AWS console and API. The region is extracted from the Mantle URL. See `docs/superpowers/bedrock-provider-findings.md` for research details.

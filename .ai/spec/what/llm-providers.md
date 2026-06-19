@@ -116,13 +116,13 @@ The following sections describe only what differs from the standard contract abo
 42. Uses the Bedrock Mantle gateway — a single endpoint exposing multiple model families (Anthropic Claude, OpenAI GPT, DeepSeek, etc.) via their native APIs. The base URL must be configured explicitly (region-specific, e.g., `https://bedrock-mantle.us-east-1.api.aws`). No default URL; the system must reject a Bedrock provider with no URL at configuration time.
 
 43. Must route to the correct LangChain class and Mantle API path based on model name prefix:
-    - `anthropic.*` → `ChatAnthropic` from `langchain-anthropic`, with base URL suffix `/anthropic`
+    - `anthropic.*` → `ChatBedrockConverse` from `langchain-aws`, via native Bedrock Converse API (region prefix auto-prepended to model ID)
     - `openai.*` → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/openai/v1` and `use_responses_api=True`
     - All other models → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/v1` (standard Chat Completions)
 
-44. Authentication: Bearer token read from `credentials_path` using the standard `apitoken` file pattern (identical to OpenAI). If no Bearer token is found and no STS configuration is present, the provider must raise a clear error. [PLANNED] STS/IAM role authentication following the Azure AD dual-auth pattern (absence of `apitoken` triggers the STS path, using `role_arn` and `region` from `bedrock_config`).
+44. Authentication: two pathways supported. (a) Bearer token — read from `credentials_path` file using the standard `apitoken` pattern; passed as `bedrock_api_key` to `ChatBedrockConverse` and as `openai_api_key` for `ChatOpenAI`. (b) IAM credentials — `aws_access_key_id`, `aws_secret_access_key`, and optional `role_arn` read from the `credentials_path` directory; for `ChatBedrockConverse` a pre-configured boto3 client is passed, for `ChatOpenAI` via `httpx-aws-auth` SigV4 signing. If neither path provides credentials, the provider raises a clear error.
 
-45. Uses a single `BedrockParameters` set — the union of `ChatAnthropic` and `ChatOpenAI` kwargs. `max_tokens_for_response` maps to `max_completion_tokens` in the generic parameter mapping; `load()` remaps to `max_tokens` for the Anthropic branch.
+45. Uses a single `BedrockParameters` set — the union of `ChatBedrockConverse` and `ChatOpenAI` kwargs. `max_tokens_for_response` maps to `max_completion_tokens` in the generic parameter mapping; `load()` pops `max_completion_tokens` for the Anthropic branch since `ChatBedrockConverse` uses `max_tokens` natively.
 
 46. Uses custom certificate store and httpx clients (same pattern as OpenAI). Supports TLS security profiles and proxy configuration.
 
@@ -161,7 +161,9 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].rhelai_vllm_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].google_vertex_config` -- Provider-specific: `project`, `location`.
 - `llm_providers[].google_vertex_anthropic_config` -- Provider-specific: `project`, `location`.
-- `llm_providers[].bedrock_config` -- Provider-specific: `url`, `credentials_path`. [PLANNED] STS fields: `role_arn`, `region`.
+- `llm_providers[].aws_access_key_id` -- Bedrock IAM: read from `credentials_path` directory at config load time.
+- `llm_providers[].aws_secret_access_key` -- Bedrock IAM: read from `credentials_path` directory at config load time.
+- `llm_providers[].role_arn` -- Bedrock IAM: optional STS assume-role ARN, read from `credentials_path` directory.
 - `llm_providers[].fake_provider_config` -- Testing: `stream`, `mcp_tool_call`, `response`, `chunks`, `sleep`.
 - `dev_config.llm_params` -- Admin/developer override parameters applied at highest precedence.
 - `ols_config.proxy_config.proxy_url` -- HTTP/HTTPS proxy URL for LLM traffic.

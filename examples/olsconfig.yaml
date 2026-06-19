@@ -50,6 +50,23 @@ llm_providers:
       location: us-east5
     models:
       - name: claude-opus-4-6
+  - name: my_bedrock
+    type: bedrock
+    url: "https://bedrock-mantle.us-east-1.api.aws"
+    # Bearer token auth — credentials_path is a file with the API key
+    credentials_path: bedrock_api_key.txt
+    models:
+      # use fully qualified Bedrock model IDs (e.g. anthropic.claude-opus-4-7,
+      # openai.gpt-5.4, deepseek.v3.1)
+      - name: anthropic.claude-opus-4-7
+  # - name: my_bedrock_iam
+  #   type: bedrock
+  #   url: "https://bedrock-mantle.us-east-1.api.aws"
+  #   # IAM auth — credentials_path is a directory with aws_access_key_id,
+  #   # aws_secret_access_key, and optionally role_arn files
+  #   credentials_path: /path/to/aws_creds_dir/
+  #   models:
+  #     - name: anthropic.claude-opus-4-7
   - name: instructlab
     type: openai
     url: "http://localhost:8000/v1"

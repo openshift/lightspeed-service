@@ -13,6 +13,7 @@ PROVIDER_RHELAI_VLLM = "rhelai_vllm"
 PROVIDER_FAKE = "fake_provider"
 PROVIDER_GOOGLE_VERTEX_ANTHROPIC = "google_vertex_anthropic"
 PROVIDER_GOOGLE_VERTEX = "google_vertex"
+PROVIDER_BEDROCK = "bedrock"
 SUPPORTED_PROVIDER_TYPES = frozenset(
     {
         PROVIDER_OPENAI,
@@ -23,6 +24,7 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
         PROVIDER_FAKE,
         PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
         PROVIDER_GOOGLE_VERTEX,
+        PROVIDER_BEDROCK,
     }
 )
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
@@ -189,6 +191,12 @@ AZURE_TENANT_ID_FILENAME = "tenant_id"
 
 # Default name of file containing client secret to Azure OpenAI
 AZURE_CLIENT_SECRET_FILENAME = "client_secret"  # noqa: S105  # nosec: B105
+
+BEDROCK_ACCESS_KEY_ID_FILENAME = "aws_access_key_id"
+BEDROCK_SECRET_ACCESS_KEY_FILENAME = (
+    "aws_secret_access_key"  # noqa: S105  # nosec: B105
+)
+BEDROCK_ROLE_ARN_FILENAME = "role_arn"
 
 # Selectors for fields from configuration structure
 CREDENTIALS_PATH_SELECTOR = "credentials_path"

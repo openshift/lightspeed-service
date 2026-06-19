@@ -1164,6 +1164,48 @@ def test_valid_config_with_watsonx_credentials_path_only_in_provider_config():
         pytest.fail(f"loading valid configuration failed: {e}")
 
 
+def test_valid_config_with_bedrock():
+    """Check if a valid configuration file with Bedrock is handled correctly."""
+    try:
+        config.reload_from_yaml_file("tests/config/valid_config_with_bedrock.yaml")
+
+        expected_config = Config(
+            {
+                "llm_providers": [
+                    {
+                        "name": "my_bedrock",
+                        "type": "bedrock",
+                        "url": "https://bedrock-mantle.us-east-1.api.aws",
+                        "credentials_path": "tests/config/secret/apitoken",
+                        "models": [
+                            {
+                                "name": "anthropic.claude-opus-4-7",
+                            },
+                        ],
+                    },
+                ],
+                "ols_config": {
+                    "conversation_cache": {
+                        "type": "memory",
+                        "memory": {
+                            "max_entries": 1000,
+                        },
+                    },
+                    "default_provider": "my_bedrock",
+                    "default_model": "anthropic.claude-opus-4-7",
+                },
+                "dev_config": {
+                    "disable_auth": True,
+                    "disable_tls": True,
+                },
+            }
+        )
+        assert config.config == expected_config
+    except Exception as e:
+        print(traceback.format_exc())
+        pytest.fail(f"loading valid configuration failed: {e}")
+
+
 def test_quota_limiters_property():
     """Check the quota handler property."""
     config.reload_empty()
