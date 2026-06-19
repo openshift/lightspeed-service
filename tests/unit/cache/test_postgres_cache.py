@@ -371,6 +371,10 @@ def test_insert_or_append_transaction_management():
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
+        # Mock transaction status - IDLE after successful commit
+        mock_connect.return_value.get_transaction_status.return_value = (
+            psycopg2.extensions.TRANSACTION_STATUS_IDLE
+        )
 
         config = PostgresConfig()
         cache = PostgresCache(config)
@@ -395,6 +399,10 @@ def test_insert_or_append_rollback_on_error():
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
+        # Mock transaction status - INERROR after exception
+        mock_connect.return_value.get_transaction_status.return_value = (
+            psycopg2.extensions.TRANSACTION_STATUS_INERROR
+        )
 
         config = PostgresConfig()
         cache = PostgresCache(config)
@@ -402,7 +410,8 @@ def test_insert_or_append_rollback_on_error():
         with pytest.raises(CacheError, match="insert failed"):
             cache.insert_or_append(user_id, conversation_id, cache_entry_1)
 
-    mock_connect.return_value.rollback.assert_called_once()
+    # Rollback called three times: before disabling autocommit, in except block, and in finally
+    assert mock_connect.return_value.rollback.call_count == 3
     assert mock_connect.return_value.autocommit is True
 
 
@@ -696,6 +705,10 @@ def test_delete_transaction_management():
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
+        # Mock transaction status - IDLE after successful commit
+        mock_connect.return_value.get_transaction_status.return_value = (
+            psycopg2.extensions.TRANSACTION_STATUS_IDLE
+        )
 
         config = PostgresConfig()
         cache = PostgresCache(config)
@@ -721,6 +734,10 @@ def test_delete_rollback_on_error():
         mock_connect.return_value.cursor.return_value.__enter__.return_value = (
             mock_cursor
         )
+        # Mock transaction status - INERROR after exception
+        mock_connect.return_value.get_transaction_status.return_value = (
+            psycopg2.extensions.TRANSACTION_STATUS_INERROR
+        )
 
         config = PostgresConfig()
         cache = PostgresCache(config)
@@ -728,7 +745,8 @@ def test_delete_rollback_on_error():
         with pytest.raises(CacheError, match="delete failed"):
             cache.delete(user_id, conversation_id)
 
-    mock_connect.return_value.rollback.assert_called_once()
+    # Rollback called three times: before disabling autocommit, in except block, and in finally
+    assert mock_connect.return_value.rollback.call_count == 3
     assert mock_connect.return_value.autocommit is True
 
 
