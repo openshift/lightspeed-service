@@ -111,6 +111,21 @@ The following sections describe only what differs from the standard contract abo
 
 38. Does not use httpx clients or custom certificate stores. `max_tokens_for_response` maps to `max_output_tokens`.
 
+### AWS Bedrock (`bedrock`)
+
+42. Uses the Bedrock Mantle gateway — a single endpoint exposing multiple model families (Anthropic Claude, OpenAI GPT, DeepSeek, etc.) via their native APIs. The base URL must be configured explicitly (region-specific, e.g., `https://bedrock-mantle.us-east-1.api.aws`). No default URL; the system must reject a Bedrock provider with no URL at configuration time.
+
+43. Must route to the correct LangChain class and Mantle API path based on model name prefix:
+    - `anthropic.*` → `ChatAnthropic` from `langchain-anthropic`, with base URL suffix `/anthropic`
+    - `openai.*` → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/openai/v1` and `use_responses_api=True`
+    - All other models → `ChatOpenAI` from `langchain-openai`, with base URL suffix `/v1` (standard Chat Completions)
+
+44. Authentication: Bearer token read from `credentials_path` using the standard `apitoken` file pattern (identical to OpenAI). If no Bearer token is found and no STS configuration is present, the provider must raise a clear error. [PLANNED] STS/IAM role authentication following the Azure AD dual-auth pattern (absence of `apitoken` triggers the STS path, using `role_arn` and `region` from `bedrock_config`).
+
+45. Uses a single `BedrockParameters` set — the union of `ChatAnthropic` and `ChatOpenAI` kwargs. `max_tokens_for_response` maps to `max_completion_tokens` in the generic parameter mapping; `load()` remaps to `max_tokens` for the Anthropic branch.
+
+46. Uses custom certificate store and httpx clients (same pattern as OpenAI). Supports TLS security profiles and proxy configuration.
+
 ### Fake Provider (`fake_provider`)
 
 39. Returns static preconfigured responses for testing. Supports a streaming mode that splits the response into chunks with a configurable sleep interval, and a non-streaming mode that returns the full response at once.
@@ -122,7 +137,7 @@ The following sections describe only what differs from the standard contract abo
 ## Configuration Surface
 
 - `llm_providers[].name` -- Provider instance name (used as the lookup key).
-- `llm_providers[].type` -- Provider type string (must match a registered type: `openai`, `azure_openai`, `watsonx`, `rhoai_vllm`, `rhelai_vllm`, `google_vertex`, `google_vertex_anthropic`, `fake_provider`). Defaults to the provider name if not specified.
+- `llm_providers[].type` -- Provider type string (must match a registered type: `openai`, `azure_openai`, `watsonx`, `rhoai_vllm`, `rhelai_vllm`, `google_vertex`, `google_vertex_anthropic`, `bedrock`, `fake_provider`). Defaults to the provider name if not specified.
 - `llm_providers[].url` -- Base URL for the LLM API endpoint.
 - `llm_providers[].credentials_path` -- Path to file or directory containing the API key/token.
 - `llm_providers[].project_id` -- Required for WatsonX; project identifier.
@@ -146,6 +161,7 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].rhelai_vllm_config` -- Provider-specific: `url`, `credentials_path`.
 - `llm_providers[].google_vertex_config` -- Provider-specific: `project`, `location`.
 - `llm_providers[].google_vertex_anthropic_config` -- Provider-specific: `project`, `location`.
+- `llm_providers[].bedrock_config` -- Provider-specific: `url`, `credentials_path`. [PLANNED] STS fields: `role_arn`, `region`.
 - `llm_providers[].fake_provider_config` -- Testing: `stream`, `mcp_tool_call`, `response`, `chunks`, `sleep`.
 - `dev_config.llm_params` -- Admin/developer override parameters applied at highest precedence.
 - `ols_config.proxy_config.proxy_url` -- HTTP/HTTPS proxy URL for LLM traffic.
@@ -174,7 +190,7 @@ The following sections describe only what differs from the standard contract abo
 
 ## Planned Changes
 
-- [PLANNED: OLS-1680] Support AWS Bedrock as an LLM provider, enabling models hosted on Amazon's managed inference service.
+- [PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider, following the Azure AD dual-auth pattern.
 - [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.

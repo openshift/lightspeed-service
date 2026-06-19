@@ -21,8 +21,8 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 - `LLMProvider(AbstractLLMProvider)` -- Concrete base. Constructor pipeline: `default_params` -> `_override_params` (merge caller params, then dev-config overrides) -> `_remap_to_llm_params` (generic-to-provider name translation) -> `_validate_parameters` (drop params not in the provider's allowed set).
 - `_construct_httpx_client(use_custom_certificate_store, use_async)` -- Builds `httpx.Client` or `httpx.AsyncClient` with proxy, TLS security profile, and custom certificate store support. Used by OpenAI-compatible providers.
 - `ProviderParameter(name, _type)` -- Frozen dataclass. The allowed-parameter sets use both name and type for validation (a parameter with the wrong type is rejected).
-- Parameter sets: `AzureOpenAIParameters`, `OpenAIParameters`, `RHOAIVLLMParameters`, `RHELAIVLLMParameters`, `WatsonxParameters`, `FakeProviderParameters`, `GoogleVertexAnthropicParameters`, `GoogleVertexParameters`. Collected in `available_provider_parameters` dict keyed by provider type string.
-- Generic-to-LLM mapping dicts: `AzureOpenAIParametersMapping`, `OpenAIParametersMapping`, `WatsonxParametersMapping`, etc. Collected in `generic_to_llm_parameters`.
+- Parameter sets: `AzureOpenAIParameters`, `OpenAIParameters`, `RHOAIVLLMParameters`, `RHELAIVLLMParameters`, `WatsonxParameters`, `BedrockParameters`, `FakeProviderParameters`, `GoogleVertexAnthropicParameters`, `GoogleVertexParameters`. Collected in `available_provider_parameters` dict keyed by provider type string.
+- Generic-to-LLM mapping dicts: `AzureOpenAIParametersMapping`, `OpenAIParametersMapping`, `WatsonxParametersMapping`, `BedrockParametersMapping`, etc. Collected in `generic_to_llm_parameters`.
 
 ### Provider implementations
 
@@ -35,6 +35,7 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 | `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` | OpenAI-compatible, no default URL |
 | `google_vertex.py` | `GoogleVertex` | `"google_vertex"` | `ChatGoogleGenerativeAI` | Gemini / publisher models; credentials via `load_vertex_credentials` |
 | `google_vertex.py` | `GoogleVertexAnthropic` | `"google_vertex_anthropic"` | `ChatAnthropicVertex` | Claude on Vertex Model Garden; same module |
+| `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatAnthropic` / `ChatOpenAI` | Model-prefix routing to 3 Mantle API paths; see below |
 | `fake_provider.py` | `FakeProvider` | `"fake_provider"` | `FakeListLLM` / `FakeStreamingListLLM` | Testing only; monkey-patches `bind_tools` |
 
 ### `ols/src/llms/providers/utils.py` -- Shared utilities
@@ -126,7 +127,7 @@ Each provider follows the same pattern: read generic fields from `ProviderConfig
 
 ### Constants
 
-- Provider type strings: `PROVIDER_OPENAI`, `PROVIDER_AZURE_OPENAI`, `PROVIDER_WATSONX`, `PROVIDER_RHOAI_VLLM`, `PROVIDER_RHELAI_VLLM`, `PROVIDER_FAKE`, `PROVIDER_GOOGLE_VERTEX`, `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` in `ols/constants.py`.
+- Provider type strings: `PROVIDER_OPENAI`, `PROVIDER_AZURE_OPENAI`, `PROVIDER_WATSONX`, `PROVIDER_RHOAI_VLLM`, `PROVIDER_RHELAI_VLLM`, `PROVIDER_BEDROCK`, `PROVIDER_FAKE`, `PROVIDER_GOOGLE_VERTEX`, `PROVIDER_GOOGLE_VERTEX_ANTHROPIC` in `ols/constants.py`.
 - `SUPPORTED_PROVIDER_TYPES` frozenset is checked during config validation (not by the registry).
 
 ### TLS and proxy
@@ -161,6 +162,20 @@ WatsonX uses IBM's `GenTextParamsMetaNames` constants for parameter keys instead
 | `temperature` | `TEMPERATURE` |
 
 WatsonX also passes `params=self.params` to `ChatWatsonx` (as a nested dict), unlike OpenAI-compatible providers that spread params as `**self.params`.
+
+### Bedrock model-prefix routing
+
+`bedrock.py` serves multiple model families behind the Bedrock Mantle gateway. `load()` inspects `self.model` to select the LangChain class and construct the correct Mantle endpoint URL:
+
+| Model prefix | LangChain class | Base URL suffix | Extra params |
+|---|---|---|---|
+| `anthropic.*` | `ChatAnthropic` | `/anthropic` | `anthropic_api_key` |
+| `openai.*` | `ChatOpenAI` | `/openai/v1` | `use_responses_api=True`, `openai_api_key` |
+| Everything else | `ChatOpenAI` | `/v1` | `openai_api_key` |
+
+`BedrockParameters` is a single union set covering kwargs from both `ChatAnthropic` and `ChatOpenAI`. `BedrockParametersMapping` maps `max_tokens_for_response` to `max_completion_tokens` (the OpenAI name). For the Anthropic branch, `load()` pops `max_completion_tokens` from params and passes `max_tokens` instead.
+
+Auth follows the Azure dual-auth pattern: `default_params` checks `self.credentials` (Bearer token). If present, it is used directly. If absent, the `else` branch raises an error (placeholder for future STS implementation).
 
 ### OpenAI reasoning model handling
 
