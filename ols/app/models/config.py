@@ -377,6 +377,9 @@ class ProviderConfig(BaseModel):
     type: Optional[str] = None
     url: Optional[AnyHttpUrl] = None
     credentials: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    role_arn: Optional[str] = None
     project_id: Optional[str] = None
     models: dict[str, ModelConfig] = Field(default_factory=dict)
     api_version: Optional[str] = None
@@ -411,10 +414,13 @@ class ProviderConfig(BaseModel):
                 data, constants.CREDENTIALS_PATH_SELECTOR, constants.API_TOKEN_FILENAME
             )
         except FileNotFoundError:
-            if ignore_llm_secrets:
+            if ignore_llm_secrets or self.type == constants.PROVIDER_BEDROCK:
                 self.credentials = None
             else:
                 raise
+
+        if self.type == constants.PROVIDER_BEDROCK:
+            self._read_bedrock_iam_credentials(data)
 
         # OLS-622: Provider-specific configuration parameters in configuration file
         self.project_id = data.get("project_id", None)
@@ -577,6 +583,30 @@ class ProviderConfig(BaseModel):
             config,
             constants.CREDENTIALS_PATH_SELECTOR,
             constants.API_TOKEN_FILENAME,
+            raise_on_error=False,
+        )
+
+    def _read_bedrock_iam_credentials(self, data: dict) -> None:
+        """Read AWS IAM credentials from credentials_path directory for Bedrock."""
+        self.aws_access_key_id = checks.read_secret(
+            data,
+            constants.CREDENTIALS_PATH_SELECTOR,
+            constants.BEDROCK_ACCESS_KEY_ID_FILENAME,
+            directory_name_expected=True,
+            raise_on_error=False,
+        )
+        self.aws_secret_access_key = checks.read_secret(
+            data,
+            constants.CREDENTIALS_PATH_SELECTOR,
+            constants.BEDROCK_SECRET_ACCESS_KEY_FILENAME,
+            directory_name_expected=True,
+            raise_on_error=False,
+        )
+        self.role_arn = checks.read_secret(
+            data,
+            constants.CREDENTIALS_PATH_SELECTOR,
+            constants.BEDROCK_ROLE_ARN_FILENAME,
+            directory_name_expected=True,
             raise_on_error=False,
         )
 

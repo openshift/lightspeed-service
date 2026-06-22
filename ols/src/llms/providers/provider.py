@@ -17,6 +17,7 @@ from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.constants import (
     PROVIDER_AZURE_OPENAI,
+    PROVIDER_BEDROCK,
     PROVIDER_FAKE,
     PROVIDER_GOOGLE_VERTEX,
     PROVIDER_GOOGLE_VERTEX_ANTHROPIC,
@@ -154,6 +155,15 @@ GoogleVertexParameters = {
     ProviderParameter("top_k", int),
 }
 
+BedrockParameters = {
+    ProviderParameter("api_key", str),
+    ProviderParameter("base_url", str),
+    ProviderParameter("model", str),
+    ProviderParameter("temperature", float),
+    ProviderParameter("max_tokens", int),
+    ProviderParameter("max_completion_tokens", int),
+}
+
 # available parameters for all supported LLM providers
 available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParameters,
@@ -164,6 +174,7 @@ available_provider_parameters: dict[str, set[ProviderParameter]] = {
     PROVIDER_FAKE: FakeProviderParameters,
     PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParameters,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParameters,
+    PROVIDER_BEDROCK: BedrockParameters,
 }
 
 # Generic to Azure OpenAI parameters mapping
@@ -207,6 +218,10 @@ GoogleVertexParametersMapping: dict[str, str] = {
     GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_output_tokens",
 }
 
+BedrockParametersMapping: dict[str, str] = {
+    GenericLLMParameters.MAX_TOKENS_FOR_RESPONSE: "max_tokens",
+}
+
 # mapping between generic parameters and LLM-specific parameters
 generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_AZURE_OPENAI: AzureOpenAIParametersMapping,
@@ -217,6 +232,7 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
     PROVIDER_FAKE: FakeProviderParametersMapping,
     PROVIDER_GOOGLE_VERTEX_ANTHROPIC: GoogleVertexAnthropicParametersMapping,
     PROVIDER_GOOGLE_VERTEX: GoogleVertexParametersMapping,
+    PROVIDER_BEDROCK: BedrockParametersMapping,
 }
 
 

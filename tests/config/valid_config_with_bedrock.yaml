@@ -1,0 +1,20 @@
+---
+llm_providers:
+  - name: my_bedrock
+    type: bedrock
+    url: "https://bedrock-mantle.us-east-1.api.aws"
+    credentials_path: tests/config/secret/apitoken
+    models:
+      - name: anthropic.claude-opus-4-7
+ols_config:
+  conversation_cache:
+    type: memory
+    memory:
+      max_entries: 1000
+  logging_config:
+    logging_level: INFO
+  default_provider: my_bedrock
+  default_model: anthropic.claude-opus-4-7
+dev_config:
+  disable_auth: true
+  disable_tls: true
