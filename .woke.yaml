@@ -5,6 +5,7 @@ ignore_files:
   - '**/*.cache'         # Exclude files ending with .cache
   - '__pycache__/**/*'   # Exclude Python cache directories
   - '.*'                 # Exclude all files starting with .
+  - 'embeddings_model/**/*'
   - ols/src/prompts/prompts.py
   - docs/openapi.json
   - eval/eval_data*

@@ -51,7 +51,7 @@ if __name__ == "__main__":
         "--model-path",
         required=False,
         help="path to the embedding model",
-        default="./embeddings_model",
+        default="./embeddings_model/all-mpnet-base-v2",
     )
     parser.add_argument(
         "-q",

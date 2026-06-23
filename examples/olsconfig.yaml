@@ -81,7 +81,7 @@ ols_config:
         product_docs_index_id: ocp-product-docs-4_17
       - product_docs_index_path: "./vector_db/user_application_docs/version_1"
         product_docs_index_id: user-application-docs-version_1
-    embeddings_model_path: "./embeddings_model"
+    embeddings_model_path: "./embeddings_model/all-mpnet-base-v2"
   conversation_cache:
     type: memory
     memory:

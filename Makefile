@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting images run format verify
+.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting images run format verify get-embeddings get-embeddings-byok get-embeddings-okp
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -144,12 +144,17 @@ requirements.txt:	pyproject.toml uv.lock ## Generate requirements.txt file conta
 verify-packages-completeness:	requirements.txt ## Verify that requirements.txt file contains complete list of packages
 	pip download -d /tmp/ --use-pep517 --verbose -r requirements.txt
 
-get-rag: ## Download a copy of the RAG embedding model and vector database
-	podman create --replace --name tmp-rag-container $$(grep 'ARG LIGHTSPEED_RAG_CONTENT_IMAGE' Containerfile | awk 'BEGIN{FS="="}{print $$2}') true
-	rm -rf vector_db embeddings_model
-	podman cp tmp-rag-container:/rag/vector_db vector_db
-	podman cp tmp-rag-container:/rag/embeddings_model embeddings_model
-	podman rm tmp-rag-container
+get-embeddings: get-embeddings-byok get-embeddings-okp ## Download all embedding model binaries
+
+get-embeddings-byok: ## Download BYOK/FAISS embedding model binary
+	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
+		-o embeddings_model/all-mpnet-base-v2/model.safetensors \
+		"https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors"
+
+get-embeddings-okp: ## Download OKP/Solr embedding model binary
+	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
+		-o embeddings_model/granite-embedding-30m-english/model.safetensors \
+		"https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors"
 
 config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
