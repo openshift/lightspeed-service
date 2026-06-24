@@ -2008,6 +2008,21 @@ def test_postgres_config_default_values():
     assert postgres_config.dbname == constants.POSTGRES_CACHE_DBNAME
     assert postgres_config.user == constants.POSTGRES_CACHE_USER
     assert postgres_config.max_entries == constants.POSTGRES_CACHE_MAX_ENTRIES
+    assert postgres_config.statement_timeout == constants.POSTGRES_STATEMENT_TIMEOUT
+    assert postgres_config.lock_timeout == constants.POSTGRES_LOCK_TIMEOUT
+    assert (
+        postgres_config.health_check_interval == constants.CACHE_HEALTH_CHECK_INTERVAL
+    )
+
+
+def test_postgres_config_custom_timeout_values():
+    """Test the PostgresConfig model with custom timeout values."""
+    postgres_config = PostgresConfig(
+        statement_timeout=10000, lock_timeout=30, health_check_interval=60
+    )
+    assert postgres_config.statement_timeout == 10000
+    assert postgres_config.lock_timeout == 30
+    assert postgres_config.health_check_interval == 60
 
 
 def test_postgres_config_correct_values():
@@ -2242,6 +2257,23 @@ def test_ols_config(tmpdir):
         ols_config.tool_round_cap_fraction == constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
     )
     assert ols_config.offload_storage_path == constants.DEFAULT_OFFLOAD_STORAGE_PATH
+    assert (
+        ols_config.liveness_db_failure_threshold
+        == constants.LIVENESS_DB_FAILURE_THRESHOLD
+    )
+
+
+def test_ols_config_with_custom_liveness_threshold():
+    """Test OLSConfig with custom liveness threshold."""
+    ols_config = OLSConfig(
+        {
+            "default_provider": "test_default_provider",
+            "default_model": "test_default_model",
+            "conversation_cache": {"type": "memory", "memory": {"max_entries": 100}},
+            "liveness_db_failure_threshold": 5,
+        }
+    )
+    assert ols_config.liveness_db_failure_threshold == 5
 
 
 def test_ols_config_with_custom_offload_storage_path():

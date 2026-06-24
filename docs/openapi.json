@@ -944,6 +944,16 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Service is not alive",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LivenessResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }

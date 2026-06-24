@@ -798,6 +798,9 @@ class PostgresConfig(BaseModel):
     gss_encmode: str = constants.POSTGRES_CACHE_GSSENCMODE
     ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
+    statement_timeout: int = constants.POSTGRES_STATEMENT_TIMEOUT
+    lock_timeout: int = constants.POSTGRES_LOCK_TIMEOUT
+    health_check_interval: int = constants.CACHE_HEALTH_CHECK_INTERVAL
     tls_security_profile: Optional["TLSSecurityProfile"] = None
 
     def __init__(self, **data: Any) -> None:
@@ -1160,6 +1163,8 @@ class OLSConfig(BaseModel):
 
     offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
 
+    liveness_db_failure_threshold: int = constants.LIVENESS_DB_FAILURE_THRESHOLD
+
     def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1232,6 +1237,10 @@ class OLSConfig(BaseModel):
 
         self.offload_storage_path = data.get(
             "offload_storage_path", constants.DEFAULT_OFFLOAD_STORAGE_PATH
+        )
+
+        self.liveness_db_failure_threshold = data.get(
+            "liveness_db_failure_threshold", constants.LIVENESS_DB_FAILURE_THRESHOLD
         )
 
     def _propagate_tls_profile(self) -> None:

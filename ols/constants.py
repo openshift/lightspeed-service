@@ -128,6 +128,8 @@ POSTGRES_CACHE_PORT = 5432
 POSTGRES_CACHE_DBNAME = "cache"
 POSTGRES_CACHE_USER = "postgres"
 POSTGRES_CACHE_MAX_ENTRIES = 1000
+POSTGRES_STATEMENT_TIMEOUT = 5000
+POSTGRES_LOCK_TIMEOUT = 10
 
 # look at https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
 # for all possible options
@@ -136,6 +138,9 @@ POSTGRES_CACHE_SSL_MODE = "require"
 # look at https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE
 # for all possible options
 POSTGRES_CACHE_GSSENCMODE = "prefer"
+
+CACHE_HEALTH_CHECK_INTERVAL = 30
+LIVENESS_DB_FAILURE_THRESHOLD = 3
 
 
 # default indentity for local testing and deployment
