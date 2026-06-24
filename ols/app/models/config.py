@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     FilePath,
+    NonNegativeInt,
     PositiveInt,
     PrivateAttr,
     field_validator,
@@ -51,6 +52,21 @@ def validate_tool_round_cap_fraction_config(v: float) -> float:
             f"{constants.TOOL_ROUND_CAP_FRACTION_MAX}, got {v}"
         )
     return v
+
+
+def validate_liveness_db_failure_threshold(raw_value: Any) -> int:
+    """Validate ``liveness_db_failure_threshold`` for ``OLSConfig``."""
+    try:
+        threshold = int(raw_value)
+    except (TypeError, ValueError) as e:
+        raise checks.InvalidConfigurationError(
+            f"liveness_db_failure_threshold must be a positive integer, got {raw_value!r}"
+        ) from e
+    if threshold < 1:
+        raise checks.InvalidConfigurationError(
+            f"liveness_db_failure_threshold must be at least 1, got {threshold}"
+        )
+    return threshold
 
 
 class ModelParameters(BaseModel):
@@ -819,6 +835,12 @@ class PostgresConfig(BaseModel):
     gss_encmode: str = constants.POSTGRES_CACHE_GSSENCMODE
     ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
+    statement_timeout: NonNegativeInt = constants.POSTGRES_STATEMENT_TIMEOUT
+    lock_timeout: PositiveInt = constants.POSTGRES_LOCK_TIMEOUT
+    health_check_interval: PositiveInt = constants.CACHE_HEALTH_CHECK_INTERVAL
+    health_check_connect_timeout: PositiveInt = (
+        constants.CACHE_HEALTH_CHECK_CONNECT_TIMEOUT
+    )
     tls_security_profile: Optional["TLSSecurityProfile"] = None
 
     def __init__(self, **data: Any) -> None:
@@ -1284,7 +1306,9 @@ class OLSConfig(BaseModel):
 
     offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
 
-    def __init__(  # noqa: C901
+    liveness_db_failure_threshold: int = constants.LIVENESS_DB_FAILURE_THRESHOLD
+
+    def __init__(
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
         """Initialize configuration and perform basic validation."""
@@ -1336,6 +1360,10 @@ class OLSConfig(BaseModel):
         self.quota_handlers = QuotaHandlersConfig(data.get("quota_handlers", None))
         self._propagate_tls_profile()
         self.proxy_config = ProxyConfig(data.get("proxy_config"))
+        self._init_optional_sections(data)
+
+    def _init_optional_sections(self, data: dict) -> None:
+        """Initialize optional config sections to keep __init__ complexity low."""
         if data.get("tool_filtering", None) is not None:
             self.tool_filtering = ToolFilteringConfig(**data.get("tool_filtering"))
         if data.get("tools_approval", None) is not None:
@@ -1360,6 +1388,12 @@ class OLSConfig(BaseModel):
 
         self.offload_storage_path = data.get(
             "offload_storage_path", constants.DEFAULT_OFFLOAD_STORAGE_PATH
+        )
+
+        self.liveness_db_failure_threshold = validate_liveness_db_failure_threshold(
+            data.get(
+                "liveness_db_failure_threshold", constants.LIVENESS_DB_FAILURE_THRESHOLD
+            )
         )
 
     def _propagate_tls_profile(self) -> None:

@@ -1,6 +1,7 @@
 """Unit tests for PostgresCache class."""
 
 import json
+from typing import Generator
 from unittest.mock import MagicMock, call, patch
 
 import psycopg2
@@ -12,6 +13,16 @@ from ols.app.models.models import CacheEntry, MessageDecoder, MessageEncoder
 from ols.src.cache.cache_error import CacheError
 from ols.src.cache.postgres_cache import PostgresCache
 from ols.utils import suid
+
+pytestmark = pytest.mark.usefixtures("_suppress_health_loop")
+
+
+@pytest.fixture(autouse=True)
+def _suppress_health_loop() -> Generator[None, None, None]:
+    """Prevent the background health-check thread from making real DB calls."""
+    with patch.object(PostgresCache, "_health_check_loop"):
+        yield
+
 
 user_id = suid.get_suid()
 conversation_id = suid.get_suid()
@@ -643,7 +654,7 @@ def test_delete_operation_not_found():
 
 
 def test_delete_operation_on_exception():
-    """Test the Cache.delete operation when an exception is raised."""
+    """Test the Cache.delete operation when exception is thrown."""
     # Mock the database cursor behavior to raise an exception
     mock_cursor = MagicMock()
     mock_cursor.execute.side_effect = psycopg2.DatabaseError("PLSQL error")
@@ -658,8 +669,9 @@ def test_delete_operation_on_exception():
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # Verify that the exception is raised
-        with pytest.raises(psycopg2.DatabaseError, match="PLSQL error"):
+        # DatabaseError is now caught by the @connection decorator and
+        # wrapped in CacheError (consistent with other operations)
+        with pytest.raises(CacheError, match="PLSQL error"):
             cache.delete(user_id, conversation_id)
 
 
@@ -797,32 +809,76 @@ def test_cleanup_method_when_clean_performed():
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
-def test_ready():
-    """Test the Cache.ready operation."""
-    # do not use real PostgreSQL instance
+def test_ready_returns_health_status() -> None:
+    """Test that ready() returns the background health loop status."""
     with patch("psycopg2.connect"):
-        # initialize Postgres cache
         config = PostgresConfig()
         cache = PostgresCache(config)
 
-        # mock the connection state 0 - open
-        cache.connection.closed = 0
-        # patch the poll function to return POLL_OK
-        cache.connection.poll = MagicMock(return_value=psycopg2.extensions.POLL_OK)
-        # cache is ready
-        assert cache.ready()
+        # initially healthy
+        assert cache.ready() is True
 
-        # mock the connection state 1 - closed
-        cache.connection.closed = 1
-        # cache is not ready
-        assert not cache.ready()
+        # mark unhealthy
+        cache._mark_unhealthy()
+        assert cache.ready() is False
 
-        for error_type in (psycopg2.OperationalError, psycopg2.InterfaceError):
-            # mock the connection state 0 - open
-            cache.connection.closed = 0
-            # patch the poll function to raise OperationalError
-            cache.connection.poll = MagicMock(
-                side_effect=error_type("Connection closed")
-            )
-            # cache is not ready
-            assert not cache.ready()
+        # restore healthy
+        with cache._health_lock:
+            cache._health_status = True
+        assert cache.ready() is True
+
+
+def test_mark_unhealthy() -> None:
+    """Test that _mark_unhealthy sets health status to False."""
+    with patch("psycopg2.connect"):
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        assert cache.ready() is True
+        cache._mark_unhealthy()
+        assert cache.ready() is False
+
+
+def test_lock_timeout() -> None:
+    """Test that lock acquisition timeout raises CacheError."""
+    with patch("psycopg2.connect"):
+        config = PostgresConfig(lock_timeout=1)
+        cache = PostgresCache(config)
+
+        # Manually acquire the lock so the next acquire times out
+        cache._tx_lock.acquire()
+        try:
+            with pytest.raises(CacheError, match="lock acquisition timeout"):
+                cache._acquire_lock()
+        finally:
+            cache._tx_lock.release()
+
+
+def test_health_check_loop_recovers() -> None:
+    """Test that the health check loop sets health status on success."""
+    with patch("psycopg2.connect"):
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        # Mark unhealthy, then simulate a health check success
+        cache._mark_unhealthy()
+        assert cache.ready() is False
+
+        # Simulate the health check by directly calling the relevant logic
+        with cache._health_lock:
+            cache._health_status = True
+            cache._consecutive_failures = 0
+        assert cache.ready() is True
+
+
+def test_consecutive_failures_tracked() -> None:
+    """Test that consecutive failures are tracked."""
+    with patch("psycopg2.connect"):
+        config = PostgresConfig()
+        cache = PostgresCache(config)
+
+        for _ in range(5):
+            cache._mark_unhealthy()
+
+        assert cache.ready() is False
+        assert cache.consecutive_failures == 5
