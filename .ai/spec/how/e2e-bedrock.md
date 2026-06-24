@@ -71,7 +71,7 @@ data:
 
 Modeled on `ensure_azure_entra_id_secret()` (lines 232–261 of `ols_installer.py`):
 
-```
+```python
 _BEDROCK_IAM_ENV_KEYS = ("BEDROCK_AWS_ACCESS_KEY_ID", "BEDROCK_AWS_SECRET_ACCESS_KEY")
 _BEDROCK_ROLE_ENV_KEYS = ("BEDROCK_ROLE_AWS_ACCESS_KEY_ID", "BEDROCK_ROLE_AWS_SECRET_ACCESS_KEY", "BEDROCK_ROLE_ARN")
 ```
@@ -167,7 +167,7 @@ Mirror the periodics entries. Whether all five suites or a subset run on PR CI i
 ### CR Template Selection
 
 The existing `adapt_ols_config.py` logic builds the CR filename as:
-```
+```text
 olsconfig.crd.{provider}  →  if suffix != "default": += _{suffix}
 ```
 
