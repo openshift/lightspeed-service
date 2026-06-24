@@ -192,7 +192,7 @@ The following sections describe only what differs from the standard contract abo
 
 ## Planned Changes
 
-- [PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider, following the Azure AD dual-auth pattern.
+- ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
 - [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.
