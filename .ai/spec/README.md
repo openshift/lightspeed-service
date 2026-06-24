@@ -42,6 +42,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [cache.md](how/cache.md) | Abstract cache interface, PostgreSQL schema, advisory locks, JSON serialization, in-memory LRU |
 | [auth.md](how/auth.md) | Strategy pattern, K8sClientSingleton, TokenReview/SubjectAccessReview, noop variants, endpoint wiring |
 | [quota.md](how/quota.md) | Limiter abstraction, PostgreSQL schema, factory, scheduler daemon thread, token usage history |
+| [e2e-bedrock.md](how/e2e-bedrock.md) | E2E test infrastructure for Bedrock: CR templates, IAM credential handling, CI suite entries |
 
 ## Scope
 
