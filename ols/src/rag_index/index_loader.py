@@ -2,10 +2,11 @@
 """Module for loading index."""
 
 import logging
+from pathlib import Path
 from typing import Any, Optional
 
 from ols.app.models.config import ReferenceContent
-from ols.constants import RAG_CONTENT_LIMIT
+from ols.constants import EMBEDDINGS_MODEL_BYOK_SUBDIR, RAG_CONTENT_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +134,35 @@ class IndexLoader:
             logger.warning("Indexes are not set in the config for reference content.")
         else:
 
-            self._embed_model_path = self._index_config.embeddings_model_path
+            self._embed_model_path = self._resolve_embeddings_path(
+                self._index_config.embeddings_model_path
+            )
             self._embed_model = self._get_embed_model()
             self._load_index()
+
+    @staticmethod
+    def _resolve_embeddings_path(path: object) -> Optional[str]:
+        """Resolve embeddings model path to an actual model directory.
+
+        If the given path does not contain a config.json (i.e. it is a parent
+        directory holding model subdirectories), look for the default model
+        subdirectory instead.
+        """
+        if path is None:
+            return None
+        path = Path(str(path))
+        config_file = path / "config.json"
+        if config_file.is_file():
+            return str(path)
+        candidate = path / EMBEDDINGS_MODEL_BYOK_SUBDIR
+        if (candidate / "config.json").is_file():
+            logger.info(
+                "Resolved embeddings path %s -> %s",
+                path,
+                candidate,
+            )
+            return str(candidate)
+        return str(path)
 
     def _get_embed_model(self) -> Any:
         """Get embed model according to configuration."""

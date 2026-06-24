@@ -22,7 +22,9 @@ local_testing/
 data
 vector_db
 vendor
-embeddings_model
+embeddings_model/*/model.safetensors
+embeddings_model/*/model.onnx
+embeddings_model/*/pytorch_model.bin
 .output
 
 # ignore credential files
