@@ -440,9 +440,26 @@ def install_ols() -> tuple[str, str, str]:  # pylint: disable=R0915, R0912  # no
             crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
 
         print(f"CRD path: {crd_yml_file}.")
-        cluster_utils.run_oc(
-            ["create", "-f", crd_yml_file], ignore_existing_resource=True
-        )
+
+        if "rhoai_vllm_lseval" in crd_yml_file:
+            print("Running envsubst on CR YAML (rhoai_vllm_lseval template)...")
+            if not os.environ.get("KSVC_URL"):
+                raise RuntimeError(
+                    "KSVC_URL environment variable is not set; "
+                    "required for rhoai_vllm_lseval CR template"
+                )
+            with open(crd_yml_file, encoding="utf-8") as fh:
+                raw = fh.read()
+            substituted = os.path.expandvars(raw)
+            cluster_utils.run_oc(
+                ["create", "-f", "-"],
+                command=substituted,
+                ignore_existing_resource=True,
+            )
+        else:
+            cluster_utils.run_oc(
+                ["create", "-f", crd_yml_file], ignore_existing_resource=True
+            )
 
     except subprocess.CalledProcessError as e:
         csv = cluster_utils.run_oc(

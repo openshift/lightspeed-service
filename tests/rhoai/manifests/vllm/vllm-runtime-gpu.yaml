@@ -1,0 +1,82 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    openshift.io/display-name: vLLM GPU
+  name: vllm-gpu
+  namespace: e2e-rhoai-dsc
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  builtInAdapter:
+    modelLoadingTimeoutMillis: 90000
+  containers:
+    - args:
+        - --model
+        - meta-llama/Llama-3.1-8B-Instruct
+        - --enable-auto-tool-choice
+        - --tool-call-parser 
+        - llama3_json
+        - --chat-template 
+        - /mnt/chat-template/tool_chat_template_llama3.1_json.jinja
+        - --download-dir
+        - /tmp/models-cache
+        - --port
+        - "8080"
+        - --max-model-len
+        - "35936"
+        - --gpu-memory-utilization
+        - "0.9"
+      image: ${VLLM_IMAGE}
+      name: kserve-container
+      env:
+        - name: HF_HUB_OFFLINE
+          value: "false"
+        - name: TRANSFORMERS_OFFLINE
+          value: "false"
+        - name: HF_DATASETS_OFFLINE
+          value: "false"
+        - name: HF_HOME
+          value: /mnt/models-cache/hf_home
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: token
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+      ports:
+        - containerPort: 8080
+          name: http1
+          protocol: TCP
+      volumeMounts:
+        - name: chat-template
+          mountPath: /mnt/chat-template
+        - name: models-cache
+          mountPath: /mnt/models-cache
+        - name: vllm-cache
+          mountPath: /.cache
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+          cpu: "6"
+          memory: 20Gi
+        requests:
+          nvidia.com/gpu: 1
+          cpu: "4"
+          memory: 16Gi
+  volumes:
+    - name: chat-template
+      configMap:
+        name: vllm-chat-template
+    - name: models-cache
+      emptyDir: {}
+    - name: vllm-cache
+      emptyDir: {}
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: vLLM

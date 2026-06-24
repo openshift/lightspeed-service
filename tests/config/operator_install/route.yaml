@@ -1,6 +1,8 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+ annotations:
+   haproxy.router.openshift.io/timeout: 300s
  labels:
    app: ols
  name: ols

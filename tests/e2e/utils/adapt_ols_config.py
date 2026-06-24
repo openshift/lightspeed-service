@@ -33,11 +33,26 @@ def apply_olsconfig(provider_list: list[str]) -> None:
         ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
         if ols_config_suffix != "default":
             crd_yml_name += f"_{ols_config_suffix}"
+        crd_yml_file = f"tests/config/operator_install/{crd_yml_name}.yaml"
         print(f"Applying olsconfig CR from {crd_yml_name}.yaml")
-        cluster_utils.run_oc(
-            ["apply", "-f", f"tests/config/operator_install/{crd_yml_name}.yaml"],
-            ignore_existing_resource=False,
-        )
+        if "rhoai_vllm_lseval" in crd_yml_file:
+            if not os.environ.get("KSVC_URL"):
+                raise RuntimeError(
+                    "KSVC_URL environment variable is not set; "
+                    "required for rhoai_vllm_lseval CR template"
+                )
+            with open(crd_yml_file, encoding="utf-8") as fh:
+                substituted = os.path.expandvars(fh.read())
+            cluster_utils.run_oc(
+                ["apply", "-f", "-"],
+                command=substituted,
+                ignore_existing_resource=False,
+            )
+        else:
+            cluster_utils.run_oc(
+                ["apply", "-f", crd_yml_file],
+                ignore_existing_resource=False,
+            )
     else:
         print("Applying evaluation olsconfig CR for multiple providers")
         cluster_utils.run_oc(
