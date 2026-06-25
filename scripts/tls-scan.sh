@@ -6,6 +6,7 @@ OLS_PORT=8443
 SCANNER_IMAGE="${SCANNER_IMAGE:-quay.io/openshift-lightspeed/ols-qe:tls-scanner}"
 OLS_PID=""
 FAILURES=0
+TOTAL_CHECKS=0
 
 log() {
     echo "[tls-scan] $*"
@@ -91,7 +92,7 @@ start_ols() {
     local profile_type="$1"
     local config_file="${SCAN_DIR}/config-${profile_type}.yaml"
     log "Starting OLS with ${profile_type} profile..."
-    OLS_CONFIG_FILE="${config_file}" .venv/bin/python runner.py > "${SCAN_DIR}/ols-${profile_type}.log" 2>&1 &
+    OLS_CONFIG_FILE="${config_file}" uv run python runner.py > "${SCAN_DIR}/ols-${profile_type}.log" 2>&1 &
     OLS_PID=$!
 }
 
@@ -158,7 +159,7 @@ run_pqc_check() {
 }
 
 report_results() {
-    local total=3
+    local total=${TOTAL_CHECKS}
     local passed=$((total - FAILURES))
     echo ""
     log "=== Results: ${passed}/${total} passed ==="
@@ -170,33 +171,31 @@ report_results() {
     log "All TLS scans passed"
 }
 
-# --- Main ---
 generate_certs
 extract_scanner
 
-PASS_NUM=0
 for profile in IntermediateType ModernType; do
-    PASS_NUM=$((PASS_NUM + 1))
-    log "=== Pass ${PASS_NUM}/3: ${profile} ==="
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+    log "=== Check ${TOTAL_CHECKS}: ${profile} ==="
     generate_config "${profile}"
     start_ols "${profile}"
     if wait_for_ols; then
         run_scan "${profile}"
+        if [[ "${profile}" == "ModernType" ]]; then
+            TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+            log "=== Check ${TOTAL_CHECKS}: ML-KEM (post-quantum) ==="
+            run_pqc_check
+        fi
     else
         log "FAIL: ${profile} (OLS did not start)"
         FAILURES=$((FAILURES + 1))
+        if [[ "${profile}" == "ModernType" ]]; then
+            TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+            log "FAIL: ML-KEM (OLS did not start)"
+            FAILURES=$((FAILURES + 1))
+        fi
     fi
     stop_ols
 done
-
-log "=== Pass 3/3: ML-KEM (post-quantum) ==="
-start_ols "ModernType"
-if wait_for_ols; then
-    run_pqc_check
-else
-    log "FAIL: ML-KEM (OLS did not start)"
-    FAILURES=$((FAILURES + 1))
-fi
-stop_ols
 
 report_results
