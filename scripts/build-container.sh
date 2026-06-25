@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Version
-OLS_VERSION=v1.1.1
+OLS_VERSION=v1.1.2
 
 # To build container for local use
 if [ -z "$OLS_NO_IMAGE_CACHE" ]; then
