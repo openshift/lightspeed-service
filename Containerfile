@@ -99,6 +99,7 @@ RUN if [ -d /cachi2/output/deps/generic ]; then \
     done
 
 # Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1
+USER root
 RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     case "$model_dir" in \
       all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
@@ -108,7 +109,8 @@ RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     mkdir -p "$repo_dir/snapshots/local" "$repo_dir/refs" && \
     echo "local" > "$repo_dir/refs/main" && \
     ln -sf "/app-root/embeddings_model/${model_dir}"/* "$repo_dir/snapshots/local/" ; \
-    done
+    done && \
+    chown -R 1001:0 /app-root/.cache
 
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY LICENSE /licenses/
