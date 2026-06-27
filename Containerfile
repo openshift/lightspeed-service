@@ -95,7 +95,11 @@ RUN if [ -d /cachi2/output/deps/generic ]; then \
       "embeddings_model/granite-embedding-30m-english/model.safetensors|https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors" \
     ; do \
       path="${f%%|*}" && url="${f##*|}" && \
-      [ -f "$path" ] || python3 -c "import urllib.request,sys; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "$url" "$path" ; \
+      if [ ! -f "$path" ]; then \
+        python3 -c "import urllib.request,sys; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "$url" "$path" || exit 1 ; \
+      fi && \
+      .venv/bin/python3 -c "import safetensors; safetensors.safe_open('$path', framework='pt'); print('OK:', '$path')" || \
+      { echo "ERROR: corrupt safetensors file: $path" ; exit 1 ; } ; \
     done
 
 # Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1
