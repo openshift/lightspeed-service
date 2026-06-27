@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from contextlib import nullcontext
 from typing import Any, AsyncGenerator, Coroutine, Optional
 
 from langchain_core.globals import set_debug
@@ -29,6 +30,7 @@ from ols.src.query_helpers.llm_execution_agent import (
 from ols.src.query_helpers.query_helper import QueryHelper
 from ols.src.skills.skills_rag import create_skill_support_tool
 from ols.src.tools.offloaded_content import OffloadManager
+from ols.utils.audit_logger import AuditContext
 from ols.utils.mcp_utils import ClientHeaders, build_mcp_config, get_mcp_tools
 from ols.utils.token_handler import (
     PromptTooLongError,
@@ -60,6 +62,7 @@ class DocsSummarizer(QueryHelper):
         user_token: Optional[str] = None,
         client_headers: ClientHeaders | None = None,
         streaming: bool = False,
+        audit_ctx: Optional[AuditContext] = None,
         **kwargs: object,
     ) -> None:
         """Initialize the DocsSummarizer.
@@ -68,10 +71,12 @@ class DocsSummarizer(QueryHelper):
             user_token: Optional user authentication token for tool access
             client_headers: Optional client-provided MCP headers for authentication
             streaming: Whether this summarizer is used for the streaming endpoint
+            audit_ctx: Audit context for structured event logging
             *args: Additional positional arguments passed to the parent class
             **kwargs: Additional keyword arguments passed to the parent class
         """
         super().__init__(*args, **kwargs)
+        self._audit_ctx = audit_ctx
         self._prepare_llm()
         self.verbose = config.ols_config.logging_config.app_log_level == logging.DEBUG
         self.streaming = streaming
@@ -112,6 +117,7 @@ class DocsSummarizer(QueryHelper):
             model_config=self.model_config,
             streaming=self.streaming,
             token_budget_tracker=self._tracker,
+            audit_ctx=self._audit_ctx,
         )
 
     def _prepare_llm(self) -> None:
@@ -162,26 +168,47 @@ class DocsSummarizer(QueryHelper):
         self._tracker.charge(TokenCategory.PROMPT, prompt_tokens)
 
         if rag_retriever:
-            retrieved_nodes = rag_retriever.retrieve(query)
-            logger.info("Retrieved %d documents from indexes", len(retrieved_nodes))
+            rag_span = (
+                self._audit_ctx.span("request.rag")
+                if self._audit_ctx
+                else nullcontext()
+            )
+            with rag_span as span:
+                retrieved_nodes = rag_retriever.retrieve(query)
+                logger.info("Retrieved %d documents from indexes", len(retrieved_nodes))
 
-            for i, node in enumerate(retrieved_nodes[:5]):
-                logger.info(
-                    "Retrieved doc #%d: title='%s', url='%s', index='%s', score=%.4f",
-                    i + 1,
-                    node.metadata.get("title", "unknown"),
-                    node.metadata.get("docs_url", "unknown"),
-                    node.metadata.get("index_origin", "unknown"),
-                    node.get_score(raise_error=False),
+                for i, node in enumerate(retrieved_nodes[:5]):
+                    logger.info(
+                        "Retrieved doc #%d: title='%s', url='%s', index='%s', score=%.4f",
+                        i + 1,
+                        node.metadata.get("title", "unknown"),
+                        node.metadata.get("docs_url", "unknown"),
+                        node.metadata.get("index_origin", "unknown"),
+                        node.get_score(raise_error=False),
+                    )
+
+                rag_chunks = self._tracker.token_handler.truncate_rag_context(
+                    retrieved_nodes, self._tracker.history_budget
                 )
+                rag_tokens = sum(
+                    self._tracker.count_tokens(chunk.text) for chunk in rag_chunks
+                )
+                self._tracker.charge(TokenCategory.RAG, rag_tokens)
 
-            rag_chunks = self._tracker.token_handler.truncate_rag_context(
-                retrieved_nodes, self._tracker.history_budget
-            )
-            rag_tokens = sum(
-                self._tracker.count_tokens(chunk.text) for chunk in rag_chunks
-            )
-            self._tracker.charge(TokenCategory.RAG, rag_tokens)
+                if self._audit_ctx and span:
+                    span.set_attribute("chunk_count", len(rag_chunks))
+                    self._audit_ctx.logger.rag_retrieved(
+                        self._audit_ctx.trace_id,
+                        self._audit_ctx.user_id,
+                        chunk_count=len(rag_chunks),
+                        scores=[
+                            node.get_score(raise_error=False)
+                            for node in retrieved_nodes[: len(rag_chunks)]
+                        ],
+                        source_documents=[
+                            chunk.doc_url or "unknown" for chunk in rag_chunks
+                        ],
+                    )
         else:
             logger.warning("Proceeding without RAG content. Check start up messages.")
             rag_chunks = []
@@ -341,21 +368,40 @@ class DocsSummarizer(QueryHelper):
 
         history: list[BaseMessage] = []
         truncated = False
+        compressed = False
         available_tokens = self._tracker.history_budget
-        async for item in prepare_history(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            skip_user_id_check=skip_user_id_check,
-            available_tokens=available_tokens,
-            provider=self.provider,
-            model=self.model,
-            bare_llm=self.bare_llm,
-            token_handler=self._tracker.token_handler,
-        ):
-            if isinstance(item, StreamedChunk):
-                yield item
-            else:
-                history, truncated = item
+        history_span = (
+            self._audit_ctx.span("request.history")
+            if self._audit_ctx
+            else nullcontext()
+        )
+        with history_span as span:
+            async for item in prepare_history(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                skip_user_id_check=skip_user_id_check,
+                available_tokens=available_tokens,
+                provider=self.provider,
+                model=self.model,
+                bare_llm=self.bare_llm,
+                token_handler=self._tracker.token_handler,
+            ):
+                if isinstance(item, StreamedChunk):
+                    if item.type == StreamChunkType.HISTORY_COMPRESSION_END:
+                        compressed = True
+                    yield item
+                else:
+                    history, truncated = item
+
+            if self._audit_ctx and span:
+                span.set_attribute("turn_count", len(history) // 2)
+                self._audit_ctx.logger.history_retrieved(
+                    self._audit_ctx.trace_id,
+                    self._audit_ctx.user_id,
+                    turn_count=len(history) // 2,
+                    compressed=compressed,
+                    truncated=truncated,
+                )
 
         for msg in history:
             if isinstance(msg.content, str):
