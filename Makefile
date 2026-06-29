@@ -151,11 +151,6 @@ get-embeddings-byok: ## Download BYOK/FAISS embedding model binary
 		-o embeddings_model/all-mpnet-base-v2/model.safetensors \
 		"https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors"
 
-get-embeddings-okp: ## Download OKP/Solr embedding model binary
-	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
-		-o embeddings_model/granite-embedding-30m-english/model.safetensors \
-		"https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors"
-
 config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml

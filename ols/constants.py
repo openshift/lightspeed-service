@@ -30,7 +30,7 @@ SUPPORTED_PROVIDER_TYPES = frozenset(
 DEFAULT_AZURE_API_VERSION = "2024-02-15-preview"
 
 EMBEDDINGS_MODEL_BYOK_SUBDIR = "all-mpnet-base-v2"
-EMBEDDINGS_MODEL_OKP_SUBDIR = "granite-embedding-30m-english"
+# EMBEDDINGS_MODEL_OKP_SUBDIR = "granite-embedding-30m-english"
 
 
 # models
