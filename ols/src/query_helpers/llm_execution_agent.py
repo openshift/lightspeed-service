@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, TypeAlias
 
@@ -20,6 +21,7 @@ from ols.app.metrics.token_counter import GenericTokenCounter
 from ols.app.models.config import ModelConfig
 from ols.app.models.models import RagChunk, StreamChunkType, StreamedChunk
 from ols.src.tools.tools import enforce_tool_token_budget, execute_tool_calls_stream
+from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenBudgetTracker, TokenCategory
 
 if TYPE_CHECKING:
@@ -64,6 +66,8 @@ class RoundLLMResult:
     tool_call_chunks: list[AIMessageChunk] = field(default_factory=list)
     all_chunks: list[AIMessageChunk] = field(default_factory=list)
     should_stop: bool = False
+    collected_text: list[str] = field(default_factory=list)
+    collected_thinking: list[str] = field(default_factory=list)
 
 
 def skip_special_chunk(
@@ -123,6 +127,7 @@ class LLMExecutionAgent:
         model_config: ModelConfig,
         streaming: bool,
         token_budget_tracker: TokenBudgetTracker,
+        audit_ctx: Optional[AuditContext] = None,
     ) -> None:
         """Initialize the tool calling agent.
 
@@ -134,6 +139,7 @@ class LLMExecutionAgent:
             model_config: Model configuration (token budgets).
             streaming: Whether the request uses the streaming endpoint.
             token_budget_tracker: Shared per-request token budget tracker.
+            audit_ctx: Audit context for structured event logging.
         """
         self.bare_llm = bare_llm
         self.model = model
@@ -142,6 +148,7 @@ class LLMExecutionAgent:
         self.model_config = model_config
         self.streaming = streaming
         self._tracker = token_budget_tracker
+        self._audit_ctx = audit_ctx
 
     async def execute(
         self,
@@ -238,6 +245,45 @@ class LLMExecutionAgent:
         self._tracker.charge(TokenCategory.TOOL_DEFINITIONS, defs_tokens)
         logger.debug("Tool definitions consume %d tokens", defs_tokens)
 
+    def _emit_turn_audit(
+        self,
+        round_result: "RoundLLMResult",
+        turn_index: int,
+        token_counter: GenericTokenCounter,
+        prev_input_tokens: int,
+        prev_output_tokens: int,
+    ) -> tuple[int, int]:
+        """Emit audit events for a completed LLM turn and return updated token counters."""
+        if not self._audit_ctx:
+            return prev_input_tokens, prev_output_tokens
+        cur_input = token_counter.token_counter.input_tokens
+        cur_output = (
+            token_counter.token_counter.output_tokens
+            + token_counter.token_counter.reasoning_tokens
+        )
+        thinking = "".join(round_result.collected_thinking)
+        text = "".join(round_result.collected_text)
+        if thinking:
+            self._audit_ctx.logger.llm_thinking(
+                self._audit_ctx.trace_id,
+                self._audit_ctx.user_id,
+                content=thinking,
+            )
+        if text:
+            self._audit_ctx.logger.llm_text(
+                self._audit_ctx.trace_id,
+                self._audit_ctx.user_id,
+                content=text,
+            )
+        self._audit_ctx.logger.llm_turn(
+            self._audit_ctx.trace_id,
+            self._audit_ctx.user_id,
+            turn_index=turn_index,
+            input_tokens=cur_input - prev_input_tokens,
+            output_tokens=cur_output - prev_output_tokens,
+        )
+        return cur_input, cur_output
+
     async def _iterate_with_tools(
         self,
         messages: ChatPromptTemplate,
@@ -267,21 +313,39 @@ class LLMExecutionAgent:
         all_tools_dict, duplicate_tool_names = self._dedupe_tools_by_name(all_mcp_tools)
         self._charge_tool_definitions_tokens(all_mcp_tools, tool_definitions_tokens)
 
+        prev_input_tokens = 0
+        prev_output_tokens = 0
+
         for i in range(1, max_rounds + 1):
             is_final_round = (not all_mcp_tools) or (i == max_rounds)
             logger.debug("Tool calling round %s (final: %s)", i, is_final_round)
 
             round_result = RoundLLMResult()
-            async for chunk in self._collect_round_llm_chunks(
-                messages=messages,
-                llm_input_values=llm_input_values,
-                all_mcp_tools=all_mcp_tools,
-                is_final_round=is_final_round,
-                token_counter=token_counter,
-                round_index=i,
-                result=round_result,
-            ):
-                yield chunk
+            turn_span = (
+                self._audit_ctx.span("llm.turn", turn_index=i)
+                if self._audit_ctx
+                else nullcontext()
+            )
+            with turn_span:
+                async for chunk in self._collect_round_llm_chunks(
+                    messages=messages,
+                    llm_input_values=llm_input_values,
+                    all_mcp_tools=all_mcp_tools,
+                    is_final_round=is_final_round,
+                    token_counter=token_counter,
+                    round_index=i,
+                    result=round_result,
+                ):
+                    yield chunk
+
+                prev_input_tokens, prev_output_tokens = self._emit_turn_audit(
+                    round_result,
+                    i,
+                    token_counter,
+                    prev_input_tokens,
+                    prev_output_tokens,
+                )
+
             if round_result.should_stop:
                 log_tool_loop_iteration(self._tracker, i, max_rounds, "llm_stream_stop")
                 return
@@ -529,7 +593,7 @@ class LLMExecutionAgent:
                     )
         return result
 
-    async def _collect_round_llm_chunks(  # noqa: C901
+    async def _collect_round_llm_chunks(  # noqa: C901  # pylint: disable=R0912
         self,
         messages: ChatPromptTemplate,
         llm_input_values: dict[str, str],
@@ -591,6 +655,7 @@ class LLMExecutionAgent:
                             case str() as text if text and not skip_special_chunk(
                                 text, chunk_counter, self.model, is_final_round
                             ):
+                                result.collected_text.append(text)
                                 yield StreamedChunk(
                                     type=StreamChunkType.TEXT, text=text
                                 )
@@ -598,6 +663,10 @@ class LLMExecutionAgent:
                                 for sc in self._streamed_chunks_from_list_content(
                                     blocks, chunk_counter, is_final_round
                                 ):
+                                    if sc.type == StreamChunkType.TEXT:
+                                        result.collected_text.append(sc.text)
+                                    elif sc.type == StreamChunkType.REASONING:
+                                        result.collected_thinking.append(sc.text)
                                     yield sc
                             case str():
                                 pass
@@ -762,7 +831,8 @@ class LLMExecutionAgent:
         for tool_call in tool_calls:
             enriched: dict[str, Any] = {**tool_call}
             tool_name = str(tool_call.get("name", "unknown"))
-            self._enrich_with_tool_metadata(enriched, all_tools_dict.get(tool_name))
+            resolved_tool = all_tools_dict.get(tool_name)
+            self._enrich_with_tool_metadata(enriched, resolved_tool)
             logger.debug(
                 json.dumps(
                     {
@@ -808,6 +878,7 @@ class LLMExecutionAgent:
                     remaining,
                     streaming=self.streaming,
                     offload_manager=offload_manager,
+                    audit_ctx=self._audit_ctx,
                 ):
                     match execution_event.event:
                         case StreamChunkType.APPROVAL_REQUIRED:

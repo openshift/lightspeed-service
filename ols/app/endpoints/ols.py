@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Generator, Optional, Union
@@ -38,6 +39,8 @@ from ols.src.query_helpers.docs_summarizer import DocsSummarizer
 from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
+from ols.utils.audit_logger import AuditContext, AuditLogger
+from ols.utils.otel import clear_conversation_trace_id, set_conversation_trace_id
 from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
@@ -118,121 +121,115 @@ def conversation_request(
     """
     processed_request = process_request(auth, llm_request)
 
-    summarizer_response: SummarizerResponse | Generator
+    audit_ctx = processed_request.audit_ctx
+    lifecycle_cm = audit_ctx.span("request.lifecycle") if audit_ctx else nullcontext()
 
-    client_headers = llm_request.mcp_headers
+    try:
+        with lifecycle_cm:
+            summarizer_response: SummarizerResponse | Generator
 
-    summarizer_response = generate_response(
-        processed_request.conversation_id,
-        llm_request,
-        processed_request.user_id,
-        processed_request.skip_user_id_check,
-        streaming=False,
-        user_token=processed_request.user_token,
-        client_headers=client_headers,
-    )
+            client_headers = llm_request.mcp_headers
 
-    processed_request.timestamps["generate response"] = time.time()
-
-    # Log assistant's answer in JSON format
-    logger.info(
-        json.dumps(
-            {
-                "event": "assistant_answer",
-                "answer": summarizer_response.response.strip(),
-                "conversation_id": processed_request.conversation_id,
-                "user": processed_request.user_id,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
-
-    # Log tool calls for non-streaming endpoint
-    for tool_call in summarizer_response.tool_calls:
-        logger.info(
-            json.dumps(
-                {
-                    "event": "tool_call",
-                    "tool_name": tool_call.get("name", "unknown"),
-                    "arguments": tool_call.get("args", {}),
-                    "tool_id": tool_call.get("id", "unknown"),
-                },
-                ensure_ascii=False,
-                indent=2,
+            summarizer_response = generate_response(
+                processed_request.conversation_id,
+                llm_request,
+                processed_request.user_id,
+                processed_request.skip_user_id_check,
+                streaming=False,
+                user_token=processed_request.user_token,
+                client_headers=client_headers,
+                audit_ctx=audit_ctx,
             )
-        )
 
-    # Log tool results for non-streaming endpoint
-    for tool_result in summarizer_response.tool_results:
-        logger.info(
-            json.dumps(
-                {
-                    "event": "tool_result",
-                    "tool_id": tool_result.get("id", "unknown"),
-                    "status": tool_result.get("status", "unknown"),
-                    "output_snippet": str(tool_result.get("content", ""))[
-                        :1000
-                    ],  # Truncate to first 1000 chars
-                },
-                ensure_ascii=False,
-                indent=2,
+            processed_request.timestamps["generate response"] = time.time()
+
+            store_cm = audit_ctx.span("request.store") if audit_ctx else nullcontext()
+            with store_cm:
+                store_conversation_history(
+                    processed_request.user_id,
+                    processed_request.conversation_id,
+                    llm_request,
+                    summarizer_response.response,
+                    processed_request.attachments,
+                    processed_request.timestamps,
+                    processed_request.skip_user_id_check,
+                    tool_calls=summarizer_response.tool_calls,
+                    tool_results=summarizer_response.tool_results,
+                )
+
+                if config.ols_config.user_data_collection.transcripts_disabled:
+                    logger.debug("transcripts collections is disabled in configuration")
+                else:
+                    store_transcript(
+                        processed_request.user_id,
+                        processed_request.conversation_id,
+                        processed_request.query_without_attachments,
+                        llm_request,
+                        summarizer_response.response,
+                        summarizer_response.rag_chunks,
+                        summarizer_response.history_truncated,
+                        summarizer_response.tool_calls,
+                        summarizer_response.tool_results,
+                        processed_request.attachments,
+                    )
+
+            processed_request.timestamps["store transcripts"] = time.time()
+
+            referenced_documents = ReferencedDocument.from_rag_chunks(
+                summarizer_response.rag_chunks
             )
-        )
 
-    store_conversation_history(
-        processed_request.user_id,
-        processed_request.conversation_id,
-        llm_request,
-        summarizer_response.response,
-        processed_request.attachments,
-        processed_request.timestamps,
-        processed_request.skip_user_id_check,
-        tool_calls=summarizer_response.tool_calls,
-        tool_results=summarizer_response.tool_results,
-    )
+            processed_request.timestamps["add references"] = time.time()
+            log_processing_durations(processed_request.timestamps)
 
-    if config.ols_config.user_data_collection.transcripts_disabled:
-        logger.debug("transcripts collections is disabled in configuration")
-    else:
-        store_transcript(
-            processed_request.user_id,
-            processed_request.conversation_id,
-            processed_request.query_without_attachments,
-            llm_request,
-            summarizer_response.response,
-            summarizer_response.rag_chunks,
-            summarizer_response.history_truncated,
-            summarizer_response.tool_calls,
-            summarizer_response.tool_results,
-            processed_request.attachments,
-        )
+            input_tokens = calc_tokens(
+                summarizer_response.token_counter, "input_tokens"
+            )
+            output_tokens = calc_tokens(
+                summarizer_response.token_counter, "output_tokens"
+            )
 
-    processed_request.timestamps["store transcripts"] = time.time()
+            consume_tokens(
+                config.quota_limiters,
+                config.token_usage_history,
+                processed_request.user_id,
+                input_tokens,
+                output_tokens,
+                llm_request.provider or config.ols_config.default_provider,
+                llm_request.model or config.ols_config.default_model,
+            )
 
-    referenced_documents = ReferencedDocument.from_rag_chunks(
-        summarizer_response.rag_chunks
-    )
+            available_quotas = get_available_quotas(
+                config.quota_limiters, processed_request.user_id
+            )
 
-    processed_request.timestamps["add references"] = time.time()
-    log_processing_durations(processed_request.timestamps)
-
-    input_tokens = calc_tokens(summarizer_response.token_counter, "input_tokens")
-    output_tokens = calc_tokens(summarizer_response.token_counter, "output_tokens")
-
-    consume_tokens(
-        config.quota_limiters,
-        config.token_usage_history,
-        processed_request.user_id,
-        input_tokens,
-        output_tokens,
-        llm_request.provider or config.ols_config.default_provider,
-        llm_request.model or config.ols_config.default_model,
-    )
-
-    available_quotas = get_available_quotas(
-        config.quota_limiters, processed_request.user_id
-    )
+            if audit_ctx:
+                reasoning_tokens = calc_tokens(
+                    summarizer_response.token_counter, "reasoning_tokens"
+                )
+                audit_ctx.logger.request_completed(
+                    audit_ctx.trace_id,
+                    audit_ctx.user_id,
+                    total_turns=getattr(
+                        summarizer_response.token_counter, "llm_calls", 1
+                    ),
+                    total_input_tokens=input_tokens,
+                    total_output_tokens=output_tokens + reasoning_tokens,
+                    referenced_documents=[
+                        doc.doc_url for doc in referenced_documents if doc.doc_url
+                    ],
+                )
+    except Exception as request_error:
+        if audit_ctx:
+            audit_ctx.logger.request_failed(
+                audit_ctx.trace_id,
+                audit_ctx.user_id,
+                error=type(request_error).__name__,
+            )
+        raise
+    finally:
+        if audit_ctx:
+            clear_conversation_trace_id()
 
     return LLMResponse(
         conversation_id=processed_request.conversation_id,
@@ -325,56 +322,67 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
         )
     timestamps["retrieve conversation"] = time.time()
 
-    skip_user_id_check = retrieve_skip_user_id_check(auth)
-
-    user_token = retrieve_user_token(auth)
-
-    # Important note: Redact the query before attempting to do any
-    # logging of the query to avoid leaking PII into logs.
-
-    # Redact the query
-    llm_request = redact_query(conversation_id, llm_request)
-    timestamps["redact query"] = time.time()
-
-    # Log incoming request (after redaction) in JSON format
-    logger.info(
-        json.dumps(
-            {
-                "event": "user_question",
-                "question": llm_request.query,
-                "user": user_id,
-                "conversation_id": conversation_id,
-            },
-            ensure_ascii=False,
-            indent=2,
+    trace_id = suid.conversation_id_to_trace_id(conversation_id)
+    audit_logger = AuditLogger(enabled=config.ols_config.audit.enabled)
+    set_conversation_trace_id(trace_id)
+    try:
+        audit_ctx = AuditContext(
+            trace_id=trace_id, user_id=user_id, logger=audit_logger
         )
-    )
 
-    # Retrieve attachments from the request
-    attachments = retrieve_attachments(llm_request)
+        with audit_ctx.span("request.auth"):
+            audit_ctx.logger.request_auth(audit_ctx.trace_id, audit_ctx.user_id)
 
-    # Redact all attachments
-    attachments = redact_attachments(conversation_id, attachments)
+        skip_user_id_check = retrieve_skip_user_id_check(auth)
 
-    # All attachments should be appended to query - but store original
-    # query for later use in transcript storage
-    query_without_attachments = llm_request.query
-    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
-    timestamps["append attachments"] = time.time()
+        user_token = retrieve_user_token(auth)
 
-    validate_requested_provider_model(llm_request)
+        # Important note: Redact the query before attempting to do any
+        # logging of the query to avoid leaking PII into logs.
 
-    check_tokens_available(config.quota_limiters, user_id)
-    return ProcessedRequest(
-        user_id=user_id,
-        conversation_id=conversation_id,
-        query_without_attachments=query_without_attachments,
-        attachments=attachments,
-        timestamps=timestamps,
-        skip_user_id_check=skip_user_id_check,
-        user_token=user_token,
-        mode=llm_request.mode,
-    )
+        # Redact the query
+        llm_request = redact_query(conversation_id, llm_request)
+        timestamps["redact query"] = time.time()
+
+        # Retrieve attachments from the request
+        attachments = retrieve_attachments(llm_request)
+
+        # Redact all attachments
+        attachments = redact_attachments(conversation_id, attachments)
+
+        audit_ctx.logger.request_started(
+            audit_ctx.trace_id,
+            audit_ctx.user_id,
+            mode=llm_request.mode,
+            query=llm_request.query,
+            attachments=[a.model_dump() for a in attachments],
+            provider=llm_request.provider,
+            model=llm_request.model,
+        )
+
+        # All attachments should be appended to query - but store original
+        # query for later use in transcript storage
+        query_without_attachments = llm_request.query
+        llm_request.query = append_attachments_to_query(llm_request.query, attachments)
+        timestamps["append attachments"] = time.time()
+
+        validate_requested_provider_model(llm_request)
+
+        check_tokens_available(config.quota_limiters, user_id)
+        return ProcessedRequest(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            query_without_attachments=query_without_attachments,
+            attachments=attachments,
+            timestamps=timestamps,
+            skip_user_id_check=skip_user_id_check,
+            user_token=user_token,
+            mode=llm_request.mode,
+            audit_ctx=audit_ctx,
+        )
+    except Exception:
+        clear_conversation_trace_id()
+        raise
 
 
 def check_tokens_available(
@@ -505,6 +513,7 @@ def generate_response(
     streaming: bool = False,
     user_token: Optional[str] = None,
     client_headers: dict[str, dict[str, str]] | None = None,
+    audit_ctx: Optional["AuditContext"] = None,
 ) -> Union[SummarizerResponse, Generator]:
     """Generate response based on validation result and model output.
 
@@ -516,6 +525,7 @@ def generate_response(
         streaming: The flag indicating if the response should be streamed.
         user_token: The user token used for authorization.
         client_headers: Client-provided MCP headers for authentication.
+        audit_ctx: Audit context for structured event logging.
 
     Returns:
         SummarizerResponse or Generator, depending on the streaming flag.
@@ -529,6 +539,7 @@ def generate_response(
             user_token=user_token,
             client_headers=client_headers,
             streaming=streaming,
+            audit_ctx=audit_ctx,
         )
         if streaming:
             return docs_summarizer.generate_response(

@@ -14,6 +14,7 @@ from pydantic.dataclasses import dataclass
 from ols.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT, QueryMode
 from ols.src.prompts.prompts import QUERY_SYSTEM_INSTRUCTION
 from ols.utils import suid
+from ols.utils.audit_logger import AuditContext
 
 
 class Attachment(BaseModel):
@@ -978,6 +979,8 @@ class ProcessedRequest(BaseModel):
         mode: The query mode controlling which system prompt is used.
     """
 
+    model_config = {"arbitrary_types_allowed": True}
+
     user_id: str
     conversation_id: str
     query_without_attachments: str
@@ -986,6 +989,7 @@ class ProcessedRequest(BaseModel):
     skip_user_id_check: bool
     user_token: str
     mode: QueryMode
+    audit_ctx: Optional[AuditContext] = None
 
 
 class StreamChunkType(StrEnum):

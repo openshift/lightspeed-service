@@ -1089,6 +1089,39 @@ class UserDataCollection(BaseModel):
         return os.path.join(os.path.dirname(base_storage), "config_status")
 
 
+class AuditLoggingMode(StrEnum):
+    """Allowed values for audit logging mode."""
+
+    ENABLED = "Enabled"
+    DISABLED = "Disabled"
+
+
+class OtelTlsMode(StrEnum):
+    """Allowed values for OTEL TLS mode."""
+
+    SECURE = "Secure"
+    INSECURE = "Insecure"
+
+
+class OtelConfig(BaseModel):
+    """OTEL exporter configuration."""
+
+    endpoint: Optional[str] = None
+    tls_mode: OtelTlsMode = OtelTlsMode.SECURE
+
+
+class AuditConfig(BaseModel):
+    """Audit logging configuration."""
+
+    logging: AuditLoggingMode = AuditLoggingMode.ENABLED
+    otel: Optional[OtelConfig] = None
+
+    @property
+    def enabled(self) -> bool:
+        """Whether audit logging is enabled."""
+        return self.logging == AuditLoggingMode.ENABLED
+
+
 class SchedulerConfig(BaseModel):
     """Scheduler configuration."""
 
@@ -1186,6 +1219,8 @@ class OLSConfig(BaseModel):
 
     skills: Optional[SkillsConfig] = None
 
+    audit: AuditConfig = AuditConfig()
+
     tool_round_cap_fraction: float = constants.DEFAULT_TOOL_ROUND_CAP_FRACTION
 
     offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
@@ -1248,6 +1283,8 @@ class OLSConfig(BaseModel):
             self.tools_approval = ToolsApprovalConfig(**data.get("tools_approval"))
         if data.get("skills", None) is not None:
             self.skills = SkillsConfig(**data.get("skills"))
+
+        self.audit = AuditConfig(**data.get("audit", {}))
 
         raw_cap = data.get(
             "tool_round_cap_fraction", constants.DEFAULT_TOOL_ROUND_CAP_FRACTION

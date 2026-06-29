@@ -7,6 +7,7 @@ streaming queries.
 import json
 import logging
 import time
+from contextlib import ExitStack, nullcontext
 from typing import Any, AsyncGenerator, Generator, Optional, Union
 
 from fastapi import APIRouter, Depends, status
@@ -39,6 +40,8 @@ from ols.app.models.models import (
 from ols.constants import MEDIA_TYPE_TEXT
 from ols.src.auth.auth import get_auth_dependency
 from ols.utils import errors_parsing
+from ols.utils.audit_logger import AuditContext
+from ols.utils.otel import clear_conversation_trace_id
 from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
@@ -99,31 +102,43 @@ def conversation_request(
 
     client_headers = llm_request.mcp_headers
 
-    summarizer_response = generate_response(
-        processed_request.conversation_id,
-        llm_request,
-        processed_request.user_id,
-        processed_request.skip_user_id_check,
-        streaming=True,
-        user_token=processed_request.user_token,
-        client_headers=client_headers,
-    )
-
-    return StreamingResponse(
-        response_processing_wrapper(
-            summarizer_response,
-            processed_request.user_id,
+    try:
+        summarizer_response = generate_response(
             processed_request.conversation_id,
             llm_request,
-            processed_request.attachments,
-            processed_request.query_without_attachments,
-            llm_request.media_type,
-            processed_request.timestamps,
+            processed_request.user_id,
             processed_request.skip_user_id_check,
-        ),
-        status_code=status.HTTP_200_OK,
-        media_type=llm_request.media_type,
-    )
+            streaming=True,
+            user_token=processed_request.user_token,
+            client_headers=client_headers,
+            audit_ctx=processed_request.audit_ctx,
+        )
+
+        return StreamingResponse(
+            response_processing_wrapper(
+                summarizer_response,
+                processed_request.user_id,
+                processed_request.conversation_id,
+                llm_request,
+                processed_request.attachments,
+                processed_request.query_without_attachments,
+                llm_request.media_type,
+                processed_request.timestamps,
+                processed_request.skip_user_id_check,
+                audit_ctx=processed_request.audit_ctx,
+            ),
+            status_code=status.HTTP_200_OK,
+            media_type=llm_request.media_type,
+        )
+    except Exception as setup_error:
+        if processed_request.audit_ctx:
+            processed_request.audit_ctx.logger.request_failed(
+                processed_request.audit_ctx.trace_id,
+                processed_request.audit_ctx.user_id,
+                error=type(setup_error).__name__,
+            )
+            clear_conversation_trace_id()
+        raise
 
 
 def format_stream_data(d: dict[str, object]) -> str:
@@ -365,6 +380,7 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
     media_type: str,
     timestamps: dict[str, float],
     skip_user_id_check: bool,
+    audit_ctx: Optional[AuditContext] = None,
 ) -> AsyncGenerator[str, None]:
     """Process the response from the generator and handle metadata and errors.
 
@@ -378,159 +394,189 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
         media_type: Media type of the response (e.g. text or JSON).
         timestamps: Dictionary tracking timestamps for various stages.
         skip_user_id_check: Skip user_id usid check.
+        audit_ctx: Audit context for structured event logging.
 
     Yields:
         str: The response items or error messages.
     """
-    if media_type == constants.MEDIA_TYPE_JSON:
-        yield stream_start_event(conversation_id)
-
-    response: str = ""
-    rag_chunks: list[RagChunk] = []
-    tool_calls: list[dict[str, object]] = []
-    tool_results: list[dict[str, object]] = []
-    history_truncated: bool = False
-    idx: int = 0
-    was_reasoning: bool = False
-    token_counter: Optional[TokenCounter] = None
+    exit_stack = ExitStack()
+    if audit_ctx:
+        exit_stack.enter_context(audit_ctx.span("request.lifecycle"))
 
     try:
-        async for item in generator:
-            if not isinstance(item, StreamedChunk):
-                msg = f"Expecting StreamedChunk, but got {type(item)}: {item}"
-                logger.error(msg)
-                raise ValueError(msg)
-            match item.type:
-                case StreamChunkType.TOOL_CALL:
-                    tool_calls.append(item.data)
-                    yield stream_event(
-                        data=item.data,
-                        event_type=LLM_TOOL_CALL_EVENT,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.APPROVAL_REQUIRED:
-                    yield stream_event(
-                        data=item.data,
-                        event_type=StreamChunkType.APPROVAL_REQUIRED.value,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.TOOL_RESULT:
-                    tool_results.append(item.data)
-                    yield stream_event(
-                        data=item.data,
-                        event_type=LLM_TOOL_RESULT_EVENT,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.SKILL_SELECTED:
-                    yield stream_event(
-                        data=item.data,
-                        event_type=StreamChunkType.SKILL_SELECTED.value,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.HISTORY_COMPRESSION_START:
-                    yield stream_event(
-                        data=item.data,
-                        event_type=LLM_HISTORY_COMPRESSION_START_EVENT,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.HISTORY_COMPRESSION_END:
-                    yield stream_event(
-                        data=item.data,
-                        event_type=LLM_HISTORY_COMPRESSION_END_EVENT,
-                        media_type=media_type,
-                    )
-                case StreamChunkType.REASONING:
-                    was_reasoning = True
-                    yield stream_event(
-                        data={"id": idx, "reasoning": item.text},
-                        event_type=LLM_REASONING_EVENT,
-                        media_type=media_type,
-                    )
-                    idx += 1
-                case StreamChunkType.TEXT:
-                    if was_reasoning and media_type == MEDIA_TYPE_TEXT:
-                        yield "\n\n"
-                        was_reasoning = False
-                    response += item.text
-                    yield stream_event(
-                        data={"id": idx, "token": item.text},
-                        event_type=LLM_TOKEN_EVENT,
-                        media_type=media_type,
-                    )
-                    idx += 1
-                case StreamChunkType.END:
-                    rag_chunks = item.data["rag_chunks"]
-                    history_truncated = item.data["truncated"]
-                    token_counter = item.data["token_counter"]
-                case _:
-                    msg = (
-                        "Yielded unknown item type from streaming generator, "
-                        f"item: {item}"
-                    )
+        if media_type == constants.MEDIA_TYPE_JSON:
+            yield stream_start_event(conversation_id)
+
+        response: str = ""
+        rag_chunks: list[RagChunk] = []
+        tool_calls: list[dict[str, object]] = []
+        tool_results: list[dict[str, object]] = []
+        history_truncated: bool = False
+        idx: int = 0
+        was_reasoning: bool = False
+        token_counter: Optional[TokenCounter] = None
+
+        try:
+            async for item in generator:
+                if not isinstance(item, StreamedChunk):
+                    msg = f"Expecting StreamedChunk, but got {type(item)}: {item}"
                     logger.error(msg)
                     raise ValueError(msg)
-    except PromptTooLongError as summarizer_error:
-        yield prompt_too_long_error(summarizer_error, media_type)
-        return  # stop execution after error
+                match item.type:
+                    case StreamChunkType.TOOL_CALL:
+                        tool_calls.append(item.data)
+                        yield stream_event(
+                            data=item.data,
+                            event_type=LLM_TOOL_CALL_EVENT,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.APPROVAL_REQUIRED:
+                        yield stream_event(
+                            data=item.data,
+                            event_type=StreamChunkType.APPROVAL_REQUIRED.value,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.TOOL_RESULT:
+                        tool_results.append(item.data)
+                        yield stream_event(
+                            data=item.data,
+                            event_type=LLM_TOOL_RESULT_EVENT,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.SKILL_SELECTED:
+                        yield stream_event(
+                            data=item.data,
+                            event_type=StreamChunkType.SKILL_SELECTED.value,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.HISTORY_COMPRESSION_START:
+                        yield stream_event(
+                            data=item.data,
+                            event_type=LLM_HISTORY_COMPRESSION_START_EVENT,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.HISTORY_COMPRESSION_END:
+                        yield stream_event(
+                            data=item.data,
+                            event_type=LLM_HISTORY_COMPRESSION_END_EVENT,
+                            media_type=media_type,
+                        )
+                    case StreamChunkType.REASONING:
+                        was_reasoning = True
+                        yield stream_event(
+                            data={"id": idx, "reasoning": item.text},
+                            event_type=LLM_REASONING_EVENT,
+                            media_type=media_type,
+                        )
+                        idx += 1
+                    case StreamChunkType.TEXT:
+                        if was_reasoning and media_type == MEDIA_TYPE_TEXT:
+                            yield "\n\n"
+                            was_reasoning = False
+                        response += item.text
+                        yield stream_event(
+                            data={"id": idx, "token": item.text},
+                            event_type=LLM_TOKEN_EVENT,
+                            media_type=media_type,
+                        )
+                        idx += 1
+                    case StreamChunkType.END:
+                        rag_chunks = item.data["rag_chunks"]
+                        history_truncated = item.data["truncated"]
+                        token_counter = item.data["token_counter"]
+                    case _:
+                        msg = (
+                            "Yielded unknown item type from streaming generator, "
+                            f"item: {item}"
+                        )
+                        logger.error(msg)
+                        raise ValueError(msg)
+        except PromptTooLongError as summarizer_error:
+            if audit_ctx:
+                audit_ctx.logger.request_failed(
+                    audit_ctx.trace_id, audit_ctx.user_id, error="prompt_too_long"
+                )
+            yield prompt_too_long_error(summarizer_error, media_type)
+            return
+        except Exception as summarizer_error:
+            if audit_ctx:
+                audit_ctx.logger.request_failed(
+                    audit_ctx.trace_id,
+                    audit_ctx.user_id,
+                    error=type(summarizer_error).__name__,
+                )
+            yield generic_llm_error(summarizer_error, media_type)
+            return
 
-    except Exception as summarizer_error:
-        yield generic_llm_error(summarizer_error, media_type)
-        return  # stop execution after error
+        timestamps["generate response"] = time.time()
 
-    timestamps["generate response"] = time.time()
+        try:
+            store_cm = audit_ctx.span("request.store") if audit_ctx else nullcontext()
+            with store_cm:
+                store_data(
+                    user_id,
+                    conversation_id,
+                    llm_request,
+                    response,
+                    tool_calls,
+                    tool_results,
+                    attachments,
+                    query_without_attachments,
+                    rag_chunks,
+                    history_truncated,
+                    timestamps,
+                    skip_user_id_check,
+                )
 
-    # Log assistant's answer in JSON format
-    logger.info(
-        json.dumps(
-            {
-                "event": "assistant_answer",
-                "answer": response.strip(),
-                "conversation_id": conversation_id,
-                "user": user_id,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+            input_tokens = calc_tokens(token_counter, "input_tokens")
+            output_tokens = calc_tokens(token_counter, "output_tokens")
 
-    store_data(
-        user_id,
-        conversation_id,
-        llm_request,
-        response,
-        tool_calls,
-        tool_results,
-        attachments,
-        query_without_attachments,
-        rag_chunks,
-        history_truncated,
-        timestamps,
-        skip_user_id_check,
-    )
+            consume_tokens(
+                config.quota_limiters,
+                config.token_usage_history,
+                user_id,
+                input_tokens,
+                output_tokens,
+                llm_request.provider or config.ols_config.default_provider,
+                llm_request.model or config.ols_config.default_model,
+            )
 
-    input_tokens = calc_tokens(token_counter, "input_tokens")
-    output_tokens = calc_tokens(token_counter, "output_tokens")
+            available_quotas = get_available_quotas(config.quota_limiters, user_id)
 
-    consume_tokens(
-        config.quota_limiters,
-        config.token_usage_history,
-        user_id,
-        input_tokens,
-        output_tokens,
-        llm_request.provider or config.ols_config.default_provider,
-        llm_request.model or config.ols_config.default_model,
-    )
+            if audit_ctx:
+                referenced_documents = ReferencedDocument.from_rag_chunks(rag_chunks)
+                reasoning_tokens = calc_tokens(token_counter, "reasoning_tokens")
+                audit_ctx.logger.request_completed(
+                    audit_ctx.trace_id,
+                    audit_ctx.user_id,
+                    total_turns=getattr(token_counter, "llm_calls", 1),
+                    total_input_tokens=input_tokens,
+                    total_output_tokens=output_tokens + reasoning_tokens,
+                    referenced_documents=[
+                        doc.doc_url for doc in referenced_documents if doc.doc_url
+                    ],
+                )
 
-    available_quotas = get_available_quotas(config.quota_limiters, user_id)
+            yield stream_end_event(
+                build_referenced_docs(rag_chunks),
+                history_truncated,
+                media_type,
+                token_counter,
+                available_quotas,
+            )
 
-    yield stream_end_event(
-        build_referenced_docs(rag_chunks),
-        history_truncated,
-        media_type,
-        token_counter,
-        available_quotas,
-    )
+            timestamps["add references"] = time.time()
 
-    timestamps["add references"] = time.time()
-
-    log_processing_durations(timestamps)
+            log_processing_durations(timestamps)
+        except Exception as finalization_error:
+            if audit_ctx:
+                audit_ctx.logger.request_failed(
+                    audit_ctx.trace_id,
+                    audit_ctx.user_id,
+                    error=type(finalization_error).__name__,
+                )
+            raise
+    finally:
+        exit_stack.close()
+        if audit_ctx:
+            clear_conversation_trace_id()

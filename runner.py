@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
+from ols.app.models.config import OtelTlsMode
 from ols.constants import (
     CONFIGURATION_DUMP_FILE_NAME,
     CONFIGURATION_FILE_NAME_ENV_VARIABLE,
@@ -17,6 +18,7 @@ from ols.src.auth.auth import use_k8s_auth
 from ols.utils.certificates import generate_certificates_file
 from ols.utils.environments import configure_gradio_ui_envs, configure_hugging_face_envs
 from ols.utils.logging_configurator import configure_logging
+from ols.utils.otel import init_tracer
 from ols.utils.pyroscope import start_with_pyroscope_enabled
 from ols.version import __version__
 
@@ -73,6 +75,14 @@ if __name__ == "__main__":
 
     # init loading of query redactor
     config.query_redactor  # pylint: disable=W0104
+
+    # Initialize OTEL tracer for audit spans
+    otel_endpoint = None
+    otel_insecure = False
+    if config.ols_config.audit and config.ols_config.audit.otel:
+        otel_endpoint = config.ols_config.audit.otel.endpoint
+        otel_insecure = config.ols_config.audit.otel.tls_mode == OtelTlsMode.INSECURE
+    init_tracer(otel_endpoint, insecure=otel_insecure)
 
     if config.dev_config.pyroscope_url:
         start_with_pyroscope_enabled(config, logger)

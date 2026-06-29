@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncGenerator
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypedDict
 from uuid import uuid4
@@ -19,6 +21,7 @@ from ols.src.tools.approval import (
     normalize_tool_annotation,
     register_pending_approval,
 )
+from ols.utils.audit_logger import AuditContext
 from ols.utils.token_handler import TokenHandler
 
 if TYPE_CHECKING:
@@ -279,6 +282,7 @@ def _tool_result_event(
     tool_call_id: str,
     truncated: bool,
     structured_content: dict | None = None,
+    duration_ms: int | None = None,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
 
@@ -288,6 +292,7 @@ def _tool_result_event(
         tool_call_id: Correlation ID of the originating tool call.
         truncated: Whether tool output was truncated due to token limit.
         structured_content: Optional structured data from tool artifact (MCP Apps).
+        duration_ms: Wall-clock execution time in milliseconds.
 
     Returns:
         Tool result event containing a ToolMessage payload.
@@ -295,6 +300,8 @@ def _tool_result_event(
     additional_kwargs: dict = {"truncated": truncated}
     if structured_content is not None:
         additional_kwargs["structured_content"] = structured_content
+    if duration_ms is not None:
+        additional_kwargs["duration_ms"] = duration_ms
     return ToolResultEvent(
         data=ToolMessage(
             content=content,
@@ -365,6 +372,7 @@ async def _evaluate_and_emit_approval_event(
     tool: StructuredTool,
     tool_args: dict[str, object],
     streaming: bool,
+    audit_ctx: AuditContext | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Evaluate approval policy and emit approval events as needed.
 
@@ -373,6 +381,7 @@ async def _evaluate_and_emit_approval_event(
         tool: Tool being considered for execution.
         tool_args: Tool arguments included in approval-required payloads.
         streaming: Whether this call originated from the streaming endpoint.
+        audit_ctx: Audit context for structured event logging.
 
     Yields:
         Approval-required event immediately when approval is needed, followed
@@ -395,6 +404,15 @@ async def _evaluate_and_emit_approval_event(
 
     approval_id = str(uuid4())
     register_pending_approval(approval_id=approval_id)
+
+    if audit_ctx:
+        audit_ctx.logger.tool_approval_requested(
+            audit_ctx.trace_id,
+            audit_ctx.user_id,
+            tool_name=tool_name,
+            approval_id=approval_id,
+        )
+
     yield _approval_required_event(
         approval_id=approval_id,
         tool_name=tool_name,
@@ -406,6 +424,16 @@ async def _evaluate_and_emit_approval_event(
         approval_id=approval_id,
         timeout_seconds=config.tools_approval.approval_timeout,
     )
+
+    if audit_ctx:
+        audit_ctx.logger.tool_approval_decision(
+            audit_ctx.trace_id,
+            audit_ctx.user_id,
+            approval_id=approval_id,
+            decision=outcome,
+            tool_name=tool_name,
+        )
+
     if outcome != "approved":
         yield _approval_rejection_event(
             tool_name=tool_name,
@@ -479,6 +507,7 @@ async def _execute_single_tool_call_stream(
     tools_token_budget: int,
     streaming: bool = False,
     offload_manager: "OffloadManager | None" = None,
+    audit_ctx: AuditContext | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute a single tool call and emit execution events.
 
@@ -487,38 +516,71 @@ async def _execute_single_tool_call_stream(
         tools_token_budget: Remaining token budget for tool output truncation.
         streaming: Whether this call originated from the streaming endpoint.
         offload_manager: Optional manager for offloading large outputs to disk.
+        audit_ctx: Audit context for structured event logging.
 
     Yields:
         Approval-required or tool-result events.
     """
     tool_id, tool_args, tool = tool_call
+    tool_name = getattr(tool, "name", "unknown")
+    mcp_server = (getattr(tool, "metadata", None) or {}).get("mcp_server", "")
 
-    try:
-        async for approval_event in _evaluate_and_emit_approval_event(
-            tool_id=tool_id,
-            tool=tool,
-            tool_args=tool_args,
-            streaming=streaming,
-        ):
-            yield approval_event
-    except _ApprovalNotGrantedError:
-        return
+    tool_span = (
+        audit_ctx.span(f"tool.{tool_name}", mcp_server=mcp_server)
+        if audit_ctx
+        else nullcontext()
+    )
+    with tool_span:
+        if audit_ctx:
+            audit_ctx.logger.tool_call(
+                audit_ctx.trace_id,
+                audit_ctx.user_id,
+                tool_name=tool_name,
+                mcp_server=mcp_server or None,
+                arguments=list(tool_args.keys()),
+            )
 
-    status, tool_output, was_truncated, structured_content = (
-        await _execute_with_retries(
-            tool=tool,
-            tool_args=tool_args,
-            tools_token_budget=tools_token_budget,
-            offload_manager=offload_manager,
+        try:
+            async for approval_event in _evaluate_and_emit_approval_event(
+                tool_id=tool_id,
+                tool=tool,
+                tool_args=tool_args,
+                streaming=streaming,
+                audit_ctx=audit_ctx,
+            ):
+                yield approval_event
+        except _ApprovalNotGrantedError:
+            return
+
+        t0 = time.monotonic()
+        status, tool_output, was_truncated, structured_content = (
+            await _execute_with_retries(
+                tool=tool,
+                tool_args=tool_args,
+                tools_token_budget=tools_token_budget,
+                offload_manager=offload_manager,
+            )
         )
-    )
-    yield _tool_result_event(
-        content=tool_output,
-        status=status,
-        tool_call_id=tool_id,
-        truncated=was_truncated,
-        structured_content=structured_content,
-    )
+        duration_ms = int((time.monotonic() - t0) * 1000)
+
+        if audit_ctx:
+            audit_ctx.logger.tool_result(
+                audit_ctx.trace_id,
+                audit_ctx.user_id,
+                tool_name=tool_name,
+                output_length=len(tool_output),
+                success=status == "success",
+                duration_ms=duration_ms,
+            )
+
+        yield _tool_result_event(
+            content=tool_output,
+            status=status,
+            tool_call_id=tool_id,
+            truncated=was_truncated,
+            structured_content=structured_content,
+            duration_ms=duration_ms,
+        )
 
 
 async def execute_tool_calls_stream(
@@ -526,6 +588,7 @@ async def execute_tool_calls_stream(
     tools_token_budget: int,
     streaming: bool = False,
     offload_manager: "OffloadManager | None" = None,
+    audit_ctx: AuditContext | None = None,
 ) -> AsyncGenerator[ToolExecutionEvent, None]:
     """Execute tool calls in parallel and stream execution events."""
     if not tool_calls:
@@ -537,7 +600,7 @@ async def execute_tool_calls_stream(
     merged = stream.merge(
         *(
             _execute_single_tool_call_stream(
-                tc, per_tool_budget, streaming, offload_manager
+                tc, per_tool_budget, streaming, offload_manager, audit_ctx
             )
             for tc in tool_calls
         )
