@@ -87,12 +87,10 @@ COPY runner.py /app-root/runner.py
 COPY --from=lightspeed-rag-content /rag/vector_db/ocp_product_docs ./vector_db/ocp_product_docs
 COPY --chmod=775 embeddings_model ./embeddings_model
 RUN if [ -d /cachi2/output/deps/generic ]; then \
-    cp /cachi2/output/deps/generic/all-mpnet-base-v2-model.safetensors embeddings_model/all-mpnet-base-v2/model.safetensors && \
-    cp /cachi2/output/deps/generic/granite-embedding-30m-english-model.safetensors embeddings_model/granite-embedding-30m-english/model.safetensors ; \
+    cp /cachi2/output/deps/generic/all-mpnet-base-v2-model.safetensors embeddings_model/all-mpnet-base-v2/model.safetensors ; \
     fi && \
     for f in \
       "embeddings_model/all-mpnet-base-v2/model.safetensors|https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors" \
-      "embeddings_model/granite-embedding-30m-english/model.safetensors|https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors" \
     ; do \
       path="${f%%|*}" && url="${f##*|}" && \
       if [ ! -f "$path" ]; then \
@@ -107,7 +105,6 @@ USER root
 RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
     case "$model_dir" in \
       all-mpnet-base-v2) hf_id="sentence-transformers--all-mpnet-base-v2" ;; \
-      granite-embedding-30m-english) hf_id="ibm-granite--granite-embedding-30m-english" ;; \
     esac && \
     repo_dir="/app-root/.cache/huggingface/hub/models--${hf_id}" && \
     mkdir -p "$repo_dir/snapshots/local" "$repo_dir/refs" && \
