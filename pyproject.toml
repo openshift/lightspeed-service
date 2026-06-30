@@ -124,6 +124,8 @@ dependencies = [
     "kubernetes<34.1.0",
     "psycopg2-binary>=2.9.9",
     "azure-identity>=1.18.0",
+    # TODO: Remove upper bound once ragas fixes compatibility with langchain-community >= 0.4.2
+    # See: https://github.com/vibrantlabsai/ragas/issues/2741
     "langchain-community>=0.3.81,<0.4.2",
     "sqlalchemy>=2.0.35",
     "ibm-watsonx-ai>=1.3.6",
