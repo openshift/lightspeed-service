@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting images run format verify get-embeddings get-embeddings-byok get-embeddings-okp
+.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting images run format verify get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -176,6 +176,9 @@ shellcheck: ## Run shellcheck
 	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" | tar -xJv \
 	shellcheck --version
 	shellcheck -- */*.sh
+
+tls-scan: ## Run TLS profile compliance scan against OLS endpoints
+	./scripts/tls-scan.sh
 
 konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
 	./scripts/konflux_requirements.sh
