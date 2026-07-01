@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from starlette.datastructures import Headers
 from starlette.responses import StreamingResponse
-from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.routing import BaseRoute, Mount, Route, WebSocketRoute
 
 from ols import config, constants, version
 from ols.app import metrics, routers
@@ -191,11 +191,24 @@ async def log_requests_responses(
 
 routers.include_routers(app)
 
-app_routes_paths = [
-    route.path
-    for route in app.routes
-    if isinstance(route, (Mount, Route, WebSocketRoute))
-]
+
+def _collect_app_route_paths(routes: list[BaseRoute]) -> list[str]:
+    """Collect route paths for metrics middleware, including included routers."""
+    paths: list[str] = []
+    for route in routes:
+        if hasattr(route, "effective_candidates"):
+            for candidate in route.effective_candidates():
+                if hasattr(candidate, "effective_candidates"):
+                    paths.extend(_collect_app_route_paths([candidate]))
+                elif path := getattr(candidate, "path", None):
+                    paths.append(path)
+            continue
+        if isinstance(route, (Mount, Route, WebSocketRoute)) and route.path is not None:
+            paths.append(route.path)
+    return paths
+
+
+app_routes_paths = _collect_app_route_paths(app.routes)
 
 cleanup_offload_storage(config.ols_config.offload_storage_path)
 
