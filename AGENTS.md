@@ -16,6 +16,12 @@ OpenShift LightSpeed (OLS) is an AI-powered assistant service for OpenShift buil
 - **Python 3.12** - Target version py312 in all code
 - **uv** - Package manager (not pip/poetry/pdm)
 - **Dependencies** - Always check existing imports before adding new ones
+- **Konflux hermetic build** - The Konflux build installs from `requirements.hashes.source.txt` and `requirements.hashes.wheel.txt`, NOT from `uv.lock`. When adding new dependencies to `pyproject.toml`:
+  1. **Do NOT run `make konflux-requirements`** — full regeneration causes version drift that breaks hermeto prefetch
+  2. Instead, surgically append hash entries for new packages: `uv pip compile <pkg-file> --refresh --generate-hashes --python-version 3.12 --no-deps --no-annotate`
+  3. Put packages in `requirements.hashes.source.txt` (PyPI source) unless they match RHOAI index versions exactly
+  4. Check `requirements-build.txt` for build deps (e.g. `uv-build`, `hatchling`) — bump if a new package needs a newer version
+  5. Check transitive deps — if a new package pulls in deps not already in either hash file, add those too
 
 ### Code Quality Tools
 - **Ruff** - Linting (Google docstring convention)
