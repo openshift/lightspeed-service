@@ -136,7 +136,7 @@ tomlkit==0.14.0
     # via uv-dynamic-versioning
 trove-classifiers==2026.1.14.14
     # via hatchling
-uv-build==0.9.30
+uv-build==0.11.26
     # via llama-index-workflows
 uv-dynamic-versioning==0.14.0
     # via mcp
