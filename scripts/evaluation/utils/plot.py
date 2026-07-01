@@ -27,8 +27,7 @@ def plot_score(results_df, score_name, out_file_path=None):
         patch_artist=True,
         sym=".",
         widths=0.5,
-        # tick_labels=labels,
-        labels=labels,
+        tick_labels=labels,
         vert=False,
     )
     colors = list(BASE_COLORS.keys())[: len(labels)]
