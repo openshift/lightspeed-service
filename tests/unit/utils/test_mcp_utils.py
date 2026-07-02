@@ -9,6 +9,7 @@ from ols import constants
 from ols.app.models.config import MCPServerConfig
 from ols.utils.mcp_utils import (
     build_mcp_config,
+    filter_tools_by_available_ui,
     gather_mcp_tools,
     get_mcp_tools,
     get_servers_requiring_client_headers,
@@ -647,3 +648,76 @@ class TestGetMcpTools:
             result = await get_mcp_tools("test query")
 
             assert result == []
+
+
+class TestFilterToolsByAvailableUI:
+    """Tests for filter_tools_by_available_ui function."""
+
+    @staticmethod
+    def _make_tool(name: str, metadata: dict | None = None) -> MagicMock:
+        tool = MagicMock(spec=StructuredTool)
+        tool.name = name
+        tool.metadata = metadata
+        return tool
+
+    def test_none_available_ids_returns_all(self):
+        """When available_ui_ids is None, all tools pass through."""
+        tool_with_ui = self._make_tool(
+            "perses", {"_meta": {"olsUi": {"id": "perses-dashboard"}}}
+        )
+        tool_without_ui = self._make_tool("kubectl", {"mcp_server": "k8s"})
+        result = filter_tools_by_available_ui([tool_with_ui, tool_without_ui], None)
+        assert len(result) == 2
+
+    def test_empty_list_excludes_tools_with_ui_id(self):
+        """Empty available list excludes tools that declare olsUi.id."""
+        tool_with_ui = self._make_tool(
+            "perses", {"_meta": {"olsUi": {"id": "perses-dashboard"}}}
+        )
+        tool_without_ui = self._make_tool("kubectl", {"mcp_server": "k8s"})
+        result = filter_tools_by_available_ui([tool_with_ui, tool_without_ui], [])
+        assert len(result) == 1
+        assert result[0].name == "kubectl"
+
+    def test_matching_id_passes(self):
+        """Tool with matching olsUi.id passes the filter."""
+        tool = self._make_tool(
+            "perses", {"_meta": {"olsUi": {"id": "perses-dashboard"}}}
+        )
+        result = filter_tools_by_available_ui([tool], ["perses-dashboard"])
+        assert len(result) == 1
+        assert result[0].name == "perses"
+
+    def test_non_matching_id_excluded(self):
+        """Tool with non-matching olsUi.id is excluded."""
+        tool = self._make_tool(
+            "perses", {"_meta": {"olsUi": {"id": "perses-dashboard"}}}
+        )
+        result = filter_tools_by_available_ui([tool], ["other-ui"])
+        assert len(result) == 0
+
+    def test_tool_without_meta_passes(self):
+        """Tool without _meta always passes."""
+        tool = self._make_tool("kubectl", {"mcp_server": "k8s"})
+        result = filter_tools_by_available_ui([tool], [])
+        assert len(result) == 1
+
+    def test_tool_with_none_metadata_passes(self):
+        """Tool with None metadata always passes."""
+        tool = self._make_tool("kubectl", None)
+        result = filter_tools_by_available_ui([tool], [])
+        assert len(result) == 1
+
+    def test_tool_with_meta_but_no_ols_ui_passes(self):
+        """Tool with _meta but no olsUi field always passes."""
+        tool = self._make_tool(
+            "kubectl", {"_meta": {"ui": {"resourceUri": "ui://foo"}}}
+        )
+        result = filter_tools_by_available_ui([tool], [])
+        assert len(result) == 1
+
+    def test_tool_with_none_ols_ui_passes(self):
+        """Tool with olsUi set to None always passes."""
+        tool = self._make_tool("kubectl", {"_meta": {"olsUi": None}})
+        result = filter_tools_by_available_ui([tool], [])
+        assert len(result) == 1

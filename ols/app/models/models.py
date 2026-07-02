@@ -92,6 +92,7 @@ class LLMRequest(BaseModel):
     media_type: Optional[str] = MEDIA_TYPE_TEXT
     mcp_headers: Optional[dict[str, dict[str, str]]] = None
     mode: QueryMode = QueryMode.ASK
+    available_tool_ui_ids: Optional[list[str]] = Field(default=None, max_length=256)
 
     # provides examples for /docs endpoint
     model_config = {
