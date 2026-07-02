@@ -1,0 +1,54 @@
+# RBAC configuration for cluster-updates evaluation tests
+#
+# This manifest creates a ServiceAccount with the necessary permissions for OLS
+# to access cluster resources through MCP (Model Context Protocol) servers during
+# cluster-updates evaluation tests.
+#
+# Apply this manifest before running cluster-updates evaluation:
+#   oc apply -f eval/rbac-cluster-updates.yaml
+#
+# Generate an API token for the service account:
+#   export API_KEY=$(oc create token cluster-update-user -n openshift-lightspeed --duration=24h)
+#
+# Then run the evaluation with this token in the API_KEY environment variable.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-update-user
+  namespace: openshift-lightspeed
+  labels:
+    app: ols
+    purpose: evaluation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-update-user-cluster-reader
+  labels:
+    app: ols
+    purpose: evaluation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-reader
+subjects:
+- kind: ServiceAccount
+  name: cluster-update-user
+  namespace: openshift-lightspeed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-update-user-monitoring
+  labels:
+    app: ols
+    purpose: evaluation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-edit
+subjects:
+- kind: ServiceAccount
+  name: cluster-update-user
+  namespace: openshift-lightspeed
