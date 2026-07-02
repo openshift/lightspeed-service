@@ -9,7 +9,7 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from langchain_core.messages.ai import AIMessage
 
 from ols import config
@@ -18,6 +18,7 @@ from ols.app.models.models import (
     NotAvailableResponse,
     ReadinessResponse,
 )
+from ols.src.cache.postgres_cache import PostgresCache
 from ols.src.llms.llm_loader import load_llm
 
 router = APIRouter(tags=["health"])
@@ -122,10 +123,22 @@ get_liveness_responses: dict[int | str, dict[str, Any]] = {
         "description": "Service is alive",
         "model": LivenessResponse,
     },
+    503: {
+        "description": "Service is not alive",
+        "model": LivenessResponse,
+    },
 }
 
 
 @router.get("/liveness", responses=get_liveness_responses)
-def liveness_probe_get_method() -> LivenessResponse:
+def liveness_probe_get_method(response: Response) -> LivenessResponse:
     """Live status of service."""
+    cache = config._conversation_cache
+    if isinstance(cache, PostgresCache):
+        threshold = config.ols_config.liveness_db_failure_threshold
+        with cache._health_lock:
+            failures = cache._consecutive_failures
+        if failures >= threshold:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            return LivenessResponse(alive=False, reason="database unreachable")
     return LivenessResponse(alive=True)
