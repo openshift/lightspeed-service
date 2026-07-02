@@ -1,0 +1,38 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - name: bedrock
+        type: bedrock
+        url: "https://bedrock-mantle.us-east-1.api.aws"
+        credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: deepseek.v3-v1:0
+  ols:
+    defaultModel: deepseek.v3-v1:0
+    defaultProvider: bedrock
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: DEBUG
+    queryFilters:
+      - name: foo_filter
+        pattern: '\b(?:foo)\b'
+        replaceWith: "deployment"
+      - name: bar_filter
+        pattern: '\b(?:bar)\b'
+        replaceWith: "openshift"
+    introspectionEnabled: true
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
