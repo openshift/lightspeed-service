@@ -184,6 +184,7 @@ class PostgresCache(Cache, PostgresBase):
     def _mark_unhealthy(self) -> None:
         """Mark health status as unhealthy (dual-feed from cache operations)."""
         with self._health_lock:
+            self._consecutive_failures += 1
             self._health_status = False
 
     def _connect_health(self) -> None:
@@ -203,10 +204,15 @@ class PostgresCache(Cache, PostgresBase):
             "sslmode": config.ssl_mode,
             "sslrootcert": config.ca_cert_path,
             "gssencmode": config.gss_encmode,
+            "connect_timeout": 10,
             **libpq_tls_params(config.tls_security_profile),
         }
         self._health_connection = psycopg2.connect(**connect_kwargs)
         self._health_connection.autocommit = True
+        with self._health_connection.cursor() as cursor:
+            cursor.execute(
+                "SET statement_timeout = %s", (str(config.statement_timeout),)
+            )
 
     def _health_check_loop(self) -> None:
         """Background loop that periodically checks DB connectivity."""
@@ -348,7 +354,7 @@ class PostgresCache(Cache, PostgresBase):
                     self._safe_rollback()
                     raise
                 except psycopg2.DatabaseError as e:
-                    self.connection.rollback()
+                    self._safe_rollback()
                     logger.error("PostgresCache.insert_or_append: %s", e)
                     raise CacheError("PostgresCache.insert_or_append", e) from e
                 finally:
@@ -387,7 +393,7 @@ class PostgresCache(Cache, PostgresBase):
                     self._safe_rollback()
                     raise
                 except psycopg2.DatabaseError as e:
-                    self.connection.rollback()
+                    self._safe_rollback()
                     logger.error("PostgresCache.delete: %s", e)
                     raise CacheError("PostgresCache.delete", e) from e
                 finally:

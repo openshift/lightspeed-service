@@ -9,7 +9,7 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from langchain_core.messages.ai import AIMessage
 
 from ols import config
@@ -131,7 +131,7 @@ get_liveness_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/liveness", responses=get_liveness_responses)
-def liveness_probe_get_method() -> LivenessResponse:
+def liveness_probe_get_method(response: Response) -> LivenessResponse:
     """Live status of service."""
     cache = config._conversation_cache
     if isinstance(cache, PostgresCache):
@@ -139,8 +139,6 @@ def liveness_probe_get_method() -> LivenessResponse:
         with cache._health_lock:
             failures = cache._consecutive_failures
         if failures >= threshold:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={"alive": False, "reason": "database unreachable"},
-            )
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            return LivenessResponse(alive=False, reason="database unreachable")
     return LivenessResponse(alive=True)

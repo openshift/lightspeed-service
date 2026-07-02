@@ -1,6 +1,7 @@
 """Unit tests for PostgresCache class."""
 
 import json
+from typing import Generator
 from unittest.mock import MagicMock, call, patch
 
 import psycopg2
@@ -17,7 +18,7 @@ pytestmark = pytest.mark.usefixtures("_suppress_health_loop")
 
 
 @pytest.fixture(autouse=True)
-def _suppress_health_loop():
+def _suppress_health_loop() -> Generator[None, None, None]:
     """Prevent the background health-check thread from making real DB calls."""
     with patch.object(PostgresCache, "_health_check_loop"):
         yield
@@ -789,7 +790,7 @@ def test_cleanup_method_when_clean_performed():
     mock_cursor.execute.assert_has_calls(calls, any_order=False)
 
 
-def test_ready_returns_health_status():
+def test_ready_returns_health_status() -> None:
     """Test that ready() returns the background health loop status."""
     with patch("psycopg2.connect"):
         config = PostgresConfig()
@@ -808,7 +809,7 @@ def test_ready_returns_health_status():
         assert cache.ready() is True
 
 
-def test_mark_unhealthy():
+def test_mark_unhealthy() -> None:
     """Test that _mark_unhealthy sets health status to False."""
     with patch("psycopg2.connect"):
         config = PostgresConfig()
@@ -819,7 +820,7 @@ def test_mark_unhealthy():
         assert cache.ready() is False
 
 
-def test_lock_timeout():
+def test_lock_timeout() -> None:
     """Test that lock acquisition timeout raises CacheError."""
     with patch("psycopg2.connect"):
         config = PostgresConfig(lock_timeout=0)
@@ -834,7 +835,7 @@ def test_lock_timeout():
             cache._tx_lock.release()
 
 
-def test_health_check_loop_recovers():
+def test_health_check_loop_recovers() -> None:
     """Test that the health check loop sets health status on success."""
     with patch("psycopg2.connect"):
         config = PostgresConfig()
@@ -851,7 +852,7 @@ def test_health_check_loop_recovers():
         assert cache.ready() is True
 
 
-def test_consecutive_failures_tracked():
+def test_consecutive_failures_tracked() -> None:
     """Test that consecutive failures are tracked."""
     with patch("psycopg2.connect"):
         config = PostgresConfig()

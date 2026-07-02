@@ -11,6 +11,7 @@ from pydantic import (
     BaseModel,
     Field,
     FilePath,
+    NonNegativeInt,
     PositiveInt,
     PrivateAttr,
     field_validator,
@@ -50,6 +51,21 @@ def validate_tool_round_cap_fraction_config(v: float) -> float:
             f"{constants.TOOL_ROUND_CAP_FRACTION_MAX}, got {v}"
         )
     return v
+
+
+def validate_liveness_db_failure_threshold(raw_value: Any) -> int:
+    """Validate ``liveness_db_failure_threshold`` for ``OLSConfig``."""
+    try:
+        threshold = int(raw_value)
+    except (TypeError, ValueError) as e:
+        raise checks.InvalidConfigurationError(
+            f"liveness_db_failure_threshold must be a positive integer, got {raw_value!r}"
+        ) from e
+    if threshold < 1:
+        raise checks.InvalidConfigurationError(
+            f"liveness_db_failure_threshold must be at least 1, got {threshold}"
+        )
+    return threshold
 
 
 class ModelParameters(BaseModel):
@@ -798,9 +814,9 @@ class PostgresConfig(BaseModel):
     gss_encmode: str = constants.POSTGRES_CACHE_GSSENCMODE
     ca_cert_path: Optional[FilePath] = None
     max_entries: PositiveInt = constants.POSTGRES_CACHE_MAX_ENTRIES
-    statement_timeout: int = constants.POSTGRES_STATEMENT_TIMEOUT
-    lock_timeout: int = constants.POSTGRES_LOCK_TIMEOUT
-    health_check_interval: int = constants.CACHE_HEALTH_CHECK_INTERVAL
+    statement_timeout: NonNegativeInt = constants.POSTGRES_STATEMENT_TIMEOUT
+    lock_timeout: NonNegativeInt = constants.POSTGRES_LOCK_TIMEOUT
+    health_check_interval: PositiveInt = constants.CACHE_HEALTH_CHECK_INTERVAL
     tls_security_profile: Optional["TLSSecurityProfile"] = None
 
     def __init__(self, **data: Any) -> None:
@@ -1239,8 +1255,10 @@ class OLSConfig(BaseModel):
             "offload_storage_path", constants.DEFAULT_OFFLOAD_STORAGE_PATH
         )
 
-        self.liveness_db_failure_threshold = data.get(
-            "liveness_db_failure_threshold", constants.LIVENESS_DB_FAILURE_THRESHOLD
+        self.liveness_db_failure_threshold = validate_liveness_db_failure_threshold(
+            data.get(
+                "liveness_db_failure_threshold", constants.LIVENESS_DB_FAILURE_THRESHOLD
+            )
         )
 
     def _propagate_tls_profile(self) -> None:

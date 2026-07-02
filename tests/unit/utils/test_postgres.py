@@ -78,7 +78,7 @@ class TestConnectionDecorator:
             """Raise DatabaseError (SQL error, no retry)."""
             raise psycopg2.DatabaseError("SQL syntax error")
 
-    def test_auto_reconnects_when_disconnected(self):
+    def test_auto_reconnects_when_disconnected(self) -> None:
         """Decorator calls connect() when not connected."""
         c = self.Connectable()
         c.disconnect()
@@ -88,7 +88,7 @@ class TestConnectionDecorator:
         assert c.connected() is True
         assert result == "done"
 
-    def test_does_not_reconnect_when_connected(self):
+    def test_does_not_reconnect_when_connected(self) -> None:
         """Decorator skips connect() when already connected."""
         c = self.Connectable()
         c.connect()
@@ -96,7 +96,7 @@ class TestConnectionDecorator:
             c.do_work()
             mock_connect.assert_not_called()
 
-    def test_propagates_exception_after_reconnect(self):
+    def test_propagates_exception_after_reconnect(self) -> None:
         """Decorator reconnects then lets the wrapped exception propagate."""
         c = self.Connectable(raise_on_call=True)
         c.disconnect()
@@ -105,7 +105,7 @@ class TestConnectionDecorator:
             c.do_work()
         assert c.connected() is True
 
-    def test_operational_error_triggers_reconnect_and_retry(self):
+    def test_operational_error_triggers_reconnect_and_retry(self) -> None:
         """OperationalError causes reconnect + retry, succeeding on second attempt."""
         c = self.Connectable()
         c.connect()
@@ -113,7 +113,7 @@ class TestConnectionDecorator:
         assert result == "recovered"
         assert c._unhealthy_marked is True
 
-    def test_interface_error_triggers_reconnect_and_retry(self):
+    def test_interface_error_triggers_reconnect_and_retry(self) -> None:
         """InterfaceError causes reconnect + retry, succeeding on second attempt."""
         c = self.Connectable()
         c.connect()
@@ -121,22 +121,24 @@ class TestConnectionDecorator:
         assert result == "recovered"
         assert c._unhealthy_marked is True
 
-    def test_database_error_wraps_in_cache_error_no_retry(self):
+    def test_database_error_wraps_in_cache_error_no_retry(self) -> None:
         """DatabaseError is wrapped in CacheError without reconnect attempt."""
         c = self.Connectable()
         c.connect()
-        with pytest.raises(CacheError, match="SQL syntax error"):
-            c.do_work_database_error()
+        with patch.object(c, "connect") as mock_connect:
+            with pytest.raises(CacheError, match="SQL syntax error"):
+                c.do_work_database_error()
+            mock_connect.assert_not_called()
+        assert c._unhealthy_marked is False
 
-    def test_connection_error_reconnect_failure_raises_cache_error(self):
+    def test_connection_error_reconnect_failure_raises_cache_error(self) -> None:
         """When reconnect fails after OperationalError, CacheError is raised."""
         c = self.Connectable()
         c.connect()
-        # Make connect() fail on reconnect attempt
         original_connect = c.connect
         call_count = [0]
 
-        def failing_connect():
+        def failing_connect() -> None:
             call_count[0] += 1
             if call_count[0] > 0:
                 raise psycopg2.OperationalError("cannot connect")

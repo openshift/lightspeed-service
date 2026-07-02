@@ -222,8 +222,9 @@ def test_readiness_probe_get_method_cache_not_ready():
 
 def test_liveness_probe_get_method():
     """Test the liveness_probe function when no postgres cache is configured."""
-    response = liveness_probe_get_method()
-    assert response == LivenessResponse(alive=True)
+    mock_response = Mock()
+    result = liveness_probe_get_method(mock_response)
+    assert result == LivenessResponse(alive=True)
 
 
 def test_liveness_probe_returns_alive_when_postgres_healthy():
@@ -239,8 +240,9 @@ def test_liveness_probe_returns_alive_when_postgres_healthy():
         patch.object(config, "_conversation_cache", cache),
         patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
     ):
-        response = liveness_probe_get_method()
-        assert response == LivenessResponse(alive=True)
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert result == LivenessResponse(alive=True)
 
 
 def test_liveness_probe_returns_503_when_postgres_unhealthy():
@@ -257,10 +259,10 @@ def test_liveness_probe_returns_503_when_postgres_unhealthy():
         patch.object(config, "_conversation_cache", cache),
         patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            liveness_probe_get_method()
-        assert exc_info.value.status_code == 503
-        assert exc_info.value.detail["reason"] == "database unreachable"
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert mock_response.status_code == 503
+        assert result == LivenessResponse(alive=False, reason="database unreachable")
 
 
 def test_liveness_probe_returns_alive_when_below_threshold():
@@ -276,5 +278,6 @@ def test_liveness_probe_returns_alive_when_below_threshold():
         patch.object(config, "_conversation_cache", cache),
         patch.object(config.ols_config, "liveness_db_failure_threshold", 3),
     ):
-        response = liveness_probe_get_method()
-        assert response == LivenessResponse(alive=True)
+        mock_response = Mock()
+        result = liveness_probe_get_method(mock_response)
+        assert result == LivenessResponse(alive=True)

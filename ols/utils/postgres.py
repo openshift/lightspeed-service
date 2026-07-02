@@ -104,8 +104,12 @@ class PostgresBase(ABC):
             raise
         self.connection.autocommit = True
         cursor = self.connection.cursor()
-        cursor.execute("SET statement_timeout = %s", (str(config.statement_timeout),))
-        cursor.close()
+        try:
+            cursor.execute(
+                "SET statement_timeout = %s", (str(config.statement_timeout),)
+            )
+        finally:
+            cursor.close()
 
     def connected(self) -> bool:
         """Check if the connection to Postgres is alive."""

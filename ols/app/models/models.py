@@ -475,6 +475,7 @@ class LivenessResponse(BaseModel):
 
     Attributes:
         alive: If app is alive.
+        reason: Optional reason when not alive.
 
     Example:
         ```python
@@ -483,6 +484,7 @@ class LivenessResponse(BaseModel):
     """
 
     alive: bool
+    reason: Optional[str] = None
 
     # provides examples for /docs endpoint
     model_config = {
