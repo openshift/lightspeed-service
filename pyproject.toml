@@ -78,12 +78,13 @@ dev = [
     "pybuild-deps>=0.5.0",
 ]
 
-# The following section is needed only for torch[cpu] variant on Linux,
-# because this variant need to be downloaded from external link, not from
-# standard Python package index:
-#
-# [tool.uv.sources]
-# torch = { url = "https://download.pytorch.org/whl/cpu/torch_stable.html" }
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [build-system]
 requires = ["hatchling"]
@@ -143,6 +144,7 @@ dependencies = [
     "opentelemetry-api>=1.20.0",  # For audit tracing
     "opentelemetry-sdk>=1.20.0",  # For audit tracing
     "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",  # For OTLP span export
+    "torch>=2.10.0",
 ]
 requires-python = ">=3.12,<3.13"
 readme = "README.md"

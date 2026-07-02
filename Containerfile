@@ -24,17 +24,15 @@ ENV UV_COMPILE_BYTECODE=0 \
 
 WORKDIR /app-root
 
-# Add explicit files and directories
-# (avoid accidental inclusion of local directories or env files or credentials)
-COPY runner.py requirements.hashes.wheel.txt requirements.hashes.source.txt pyproject.toml uv.lock LICENSE README.md ./
-
-COPY ols ./ols
+# Step 1: Copy only dependency metadata (not source code).
+# LICENSE and README.md are needed by hatchling for metadata resolution.
+COPY pyproject.toml uv.lock requirements.hashes.wheel.txt requirements.hashes.source.txt LICENSE README.md ./
 
 # Install uv package manager
 RUN pip install "uv>=0.8.15"
 
-# Bundle additional dependencies for library mode.
-# Source cachi2 environment for hermetic builds if available, otherwise use normal installation
+# Step 2: Install dependencies only (cached unless pyproject.toml/uv.lock change).
+# Source cachi2 environment for hermetic builds if available, otherwise use normal installation.
 # cachi2.env has these env vars:
 # PIP_FIND_LINKS=/cachi2/output/deps/pip
 # PIP_NO_INDEX=true
@@ -44,6 +42,15 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
     . .venv/bin/activate && \
     pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt ;\
     else \
+    uv sync --locked --no-dev --no-cache --no-install-project ;\
+    fi
+
+# Step 3: Copy source code (only this layer rebuilds on code changes).
+COPY runner.py ./
+COPY ols ./ols
+
+# Step 4: Install the project package itself (non-hermetic only).
+RUN if [ ! -f /cachi2/cachi2.env ]; then \
     uv sync --locked --no-dev --no-cache ;\
     fi
 
