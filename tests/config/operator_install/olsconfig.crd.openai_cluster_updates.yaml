@@ -1,0 +1,47 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  labels:
+    app.kubernetes.io/created-by: lightspeed-operator
+    app.kubernetes.io/instance: olsconfig-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: olsconfig
+    app.kubernetes.io/part-of: lightspeed-operator
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: gpt-4o-mini
+        name: openai
+        type: openai
+  ols:
+    defaultModel: gpt-4o-mini
+    defaultProvider: openai
+    deployment:
+      replicas: 1
+    disableAuth: false
+    logLevel: INFO
+    introspectionEnabled: false
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true
+    toolsApprovalConfig:
+      approvalType: tool_annotations
+      approvalTimeout: 5
+    toolFilteringConfig:
+      alpha: 0.8
+      topK: 10
+      threshold: 0.01
+  mcpServers:
+    - name: openshift-cluster
+      url: https://kubernetes.default.svc
+      headers:
+        - name: Authorization
+          valueFrom:
+            type: kubernetes
+  featureGates:
+    - MCPServer
+    - ToolFiltering

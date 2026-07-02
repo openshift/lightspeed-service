@@ -1,0 +1,306 @@
+# LightSpeed Evaluation Framework Configuration - CLUSTER-UPDATES OPTIMIZED
+# This configuration is specifically tuned for cluster-updates evaluation tests (conv_798-814)
+
+# Judge LLM Configuration
+# Uses OpenAI GPT-5-mini for evaluation scoring (separate from the OLS backend model being tested)
+llm:
+  provider: "openai"          # Judge LLM Provider (openai, gemini etc..)
+  model: "gpt-5-mini"         # Judge model for scoring responses
+  temperature: 1              # Generation temperature (gpt-5 requires temperature=1)
+  max_tokens: 2048            # Maximum tokens in response (increased for detailed cluster analysis)
+  timeout: 300                # Request timeout in seconds
+  num_retries: 3              # Retry attempts
+
+# API Configuration
+# Only query endpoint is supported
+api:
+  enabled: true                        # Enable API calls instead of using pre-filled data
+  api_base: http://localhost:8080      # Base API URL
+  endpoint_type: query                 # Use "streaming" or "query" endpoint
+  timeout: 300                         # API request timeout in seconds
+
+  # API input configuration
+  provider: "openai"                   # LLM provider for queries
+  model: "gpt-4.1-mini"                # Model to use for queries (must be valid for OLS API)
+  no_tools: null                       # Whether to bypass tools and MCP servers (optional)
+  system_prompt: null                  # System prompt (default None)
+
+  # Authentication
+  # Requires API_KEY environment variable with Kubernetes service account token
+  # The cluster-update-user service account is used for cluster-updates evaluation tests
+  # It has cluster-reader permissions to access cluster resources via MCP server
+  #
+  # To create the service account and RBAC (if not already created):
+  #   Run: eval/run_cluster_updates_tests.sh
+  #   Or manually apply the RBAC manifest
+  #
+  # To generate a token:
+  #   export API_KEY=$(oc create token cluster-update-user -n openshift-lightspeed --duration=24h)
+  #
+  # Note: MCP server RBAC validation is enabled (validation_enabled=true in openshift-mcp-server-config)
+  # This ensures proper permission checking before executing cluster operations
+
+# Metrics metadata - Optimized for cluster-updates evaluation
+metrics_metadata:
+  # Turn-level metrics metadata
+  turn_level:
+    # Standard custom metric (always enabled)
+    "custom:answer_correctness":
+      threshold: 0.7
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true  # This metric is applied by default when no turn_metrics specified
+
+    # Cluster-updates specific metrics (using GEval for custom criteria)
+    "geval:condition_status_accuracy":
+      threshold: 0.99
+      description: "Validates correct Kubernetes condition status interpretation"
+      default: false  # Enable explicitly in test metrics
+      criteria: |
+        Evaluate whether the response correctly interprets Kubernetes condition status fields.
+
+        CRITICAL REQUIREMENT: The response MUST understand that a condition's status field determines its meaning:
+        - Failing status=False → Cluster is NOT failing (healthy)
+        - Failing status=True → Cluster IS failing (problem)
+        - Available status=True → Component IS available (healthy)
+        - Available status=False → Component NOT available (problem)
+        - Progressing status=True → Update/reconciliation in progress
+        - Progressing status=False → Stable state
+
+        Score 1.0 if ALL condition interpretations are correct.
+        Score 0.0 if ANY condition is misinterpreted (e.g., treating "Failing=False" as a problem).
+      evaluation_params: [response, expected_response]
+
+    "geval:output_format_compliance":
+      threshold: 0.80
+      description: "Validates cluster-updates response format (Summary + TL;DR)"
+      default: false  # Enable explicitly in test metrics
+      criteria: |
+        Evaluate whether the response follows the required output format for cluster updates analysis:
+
+        REQUIRED SECTIONS:
+        1. ## Summary - Detailed analysis section
+        2. ## TL;DR - Quick facts section
+
+        REQUIRED FORMAT PATTERNS:
+        - Operator counts: Must use format "X of Y operators" (exact counts, not vague language)
+        - Version numbers: Must include actual version strings
+        - Status fields: Must quote actual Kubernetes status field values
+
+        Score 1.0 if both sections present with required format patterns.
+        Score 0.7 if sections present but format patterns not exact.
+        Score 0.3 if only one section present.
+        Score 0.0 if neither section present.
+      evaluation_params: [response]
+
+    "geval:technical_accuracy":
+      threshold: 0.80
+      description: "Validates OpenShift/Kubernetes domain technical correctness"
+      default: false  # Enable explicitly in test metrics
+      criteria: |
+        Evaluate the technical accuracy of OpenShift/Kubernetes concepts:
+
+        CHECK FOR:
+        - Correct ClusterVersion/ClusterOperator interpretation
+        - Accurate upgrade blocker identification
+        - Proper admin-ack gate handling
+        - Correct conditional update risk assessment
+        - Accurate node and MachineConfigPool status interpretation
+
+        Score 1.0 if all technical concepts are correct.
+        Score 0.7 if minor inaccuracies that don't affect main conclusion.
+        Score 0.3 if significant technical errors.
+        Score 0.0 if fundamentally wrong about core concepts.
+      evaluation_params: [query, response, expected_response]
+
+    "geval:actionable_guidance":
+      threshold: 0.7
+      description: "Validates response provides specific, actionable guidance"
+      default: false  # Enable explicitly in test metrics
+      criteria: |
+        Evaluate whether the response provides actionable guidance:
+
+        GOOD GUIDANCE:
+        - Specific remediation steps (not vague suggestions)
+        - Exact commands when needed (e.g., "oc patch clusterversion...")
+        - Conservative recommendations (investigate before aggressive actions)
+        - Links actual errors to root causes
+
+        BAD GUIDANCE:
+        - Generic advice ("check logs", "contact support")
+        - Vague recommendations ("some operators may need attention")
+        - Aggressive actions without investigation
+        - No clear next steps
+
+        Score 1.0 if guidance is specific and actionable.
+        Score 0.6 if somewhat helpful but could be more specific.
+        Score 0.2 if mostly generic advice.
+        Score 0.0 if no actionable guidance provided.
+      evaluation_params: [query, response]
+
+    # Other metrics available but not used by default
+    "ragas:response_relevancy":
+      threshold: 0.7
+      description: "How relevant the response is to the question"
+      default: false
+
+    "ragas:faithfulness":
+      threshold: 0.7
+      description: "How faithful the response is to the provided context"
+      default: false
+
+    "ragas:context_recall":
+      threshold: 0.7
+      description: "Did we fetch every fact the answer needs?"
+      default: false
+
+    "ragas:context_precision_with_reference":
+      threshold: 0.7
+      description: "How precise the retrieved context is (with reference)"
+      default: false
+
+    "ragas:context_precision_without_reference":
+      threshold: 0.7
+      description: "How precise the retrieved context is (without reference)"
+      default: false
+
+    "ragas:context_relevance":
+      threshold: 0.7
+      description: "Is what we retrieved actually relevant to user query?"
+      default: false
+
+    "custom:tool_eval":
+      description: "Tool call evaluation comparing expected vs actual tool calls"
+      default: false
+
+    # Multi-turn conversation metrics
+    "custom:context_retention":
+      threshold: 0.85
+      description: "Validates model remembers information from previous turns"
+      default: false
+      criteria: |
+        Evaluate whether the model retains and uses information from previous turns:
+
+        GOOD RETENTION:
+        - References specific findings from earlier turns (e.g., "Based on the 6 degraded operators identified earlier...")
+        - Doesn't re-query for information already obtained
+        - Builds on prior context with new user input
+        - Connects current analysis to previous diagnoses
+
+        POOR RETENTION:
+        - Asks user to repeat information already provided
+        - Re-queries cluster state unnecessarily
+        - Treats each turn as independent (no continuity)
+        - Ignores prior findings in later recommendations
+
+        Score 1.0 if all prior context is remembered and used appropriately.
+        Score 0.7 if most context retained but some gaps.
+        Score 0.4 if minimal context retention.
+        Score 0.0 if no evidence of remembering previous turns.
+      evaluation_params: [query, response, conversation_history]
+
+    "custom:progressive_refinement":
+      threshold: 0.80
+      description: "Validates guidance becomes more specific across turns"
+      default: false
+      criteria: |
+        Evaluate whether guidance becomes progressively more targeted:
+
+        PROGRESSIVE REFINEMENT:
+        - Turn 1: Broad diagnosis with multiple possibilities
+        - Turn 2: Narrows to specific area based on user input
+        - Turn 3: Provides exact remediation steps for confirmed issue
+
+        GOOD PROGRESSION:
+        - Each turn adds specificity without losing prior context
+        - Questions guide toward root cause
+        - Final turn provides actionable commands/steps
+        - Recommendations become increasingly concrete
+
+        POOR PROGRESSION:
+        - Repeats same level of detail across turns
+        - Doesn't narrow diagnosis despite new information
+        - Final turn still vague or exploratory
+
+        Score 1.0 if guidance clearly refines from general → specific → actionable.
+        Score 0.7 if some refinement but not consistent.
+        Score 0.4 if minimal progression in specificity.
+        Score 0.0 if no refinement across turns.
+      evaluation_params: [response, conversation_history]
+
+  # Conversation-level metrics metadata
+  conversation_level:
+    "deepeval:conversation_completeness":
+      threshold: 0.7
+      description: "How completely the conversation addresses user intentions"
+      default: false
+
+    "deepeval:conversation_relevancy":
+      threshold: 0.7
+      description: "How relevant the conversation is to the topic/context"
+      default: false
+
+    "deepeval:knowledge_retention":
+      threshold: 0.7
+      description: "How well the model retains information from previous turns"
+      default: false
+
+# Output Configuration
+output:
+  output_dir: "./results"  # Output to results/ for cluster-updates tests
+  base_filename: "evaluation"
+  enabled_outputs:          # Enable specific output types
+    - csv                   # Detailed results CSV
+    - json                  # Summary JSON with statistics
+    # - txt                   # Human-readable summary
+
+  # CSV columns to include
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8]            # Graph size (width, height)
+  dpi: 300                    # Image resolution
+
+  # Graph types to generate
+  enabled_graphs:
+    - "score_distribution"    # Score distribution box plot
+    - "status_breakdown"      # Pie chart for pass/fail/error breakdown
+
+# Environment Variables - Automatically get set before any imports
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"        # Disable DeepEval telemetry
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"     # Disable DeepEval progress bars
+
+  LITELLM_LOG: ERROR                       # Suppress LiteLLM verbose logging
+
+# Logging Configuration
+logging:
+  # Source code logging level
+  source_level: INFO          # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+  # Package logging level (imported libraries)
+  package_level: ERROR
+
+  # Log format and display options
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+
+  # Specific package log levels (override package_level for specific libraries)
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING

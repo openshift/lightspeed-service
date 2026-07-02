@@ -218,6 +218,17 @@ class PostgresCache(Cache, PostgresBase):
         # execute.  Disable autocommit for a real multi-statement transaction.
         # The lock serialises concurrent callers that share this connection.
         with self._tx_lock:
+            # This transaction status check is required for evaluation tests that use
+            # multi-turn conversations. Without it, rapid cache writes (appending each
+            # turn's messages) can leave an active transaction when autocommit=True is
+            # set in the finally block, causing psycopg2 to raise "set_session cannot
+            # be used inside a transaction". Rollback any active transaction to ensure
+            # clean autocommit mode transition.
+            if (
+                self.connection.get_transaction_status()
+                != psycopg2.extensions.TRANSACTION_STATUS_IDLE
+            ):
+                self.connection.rollback()
             self.connection.autocommit = False
             with self.connection.cursor() as cursor:
                 try:
@@ -252,6 +263,13 @@ class PostgresCache(Cache, PostgresBase):
                     logger.error("PostgresCache.insert_or_append: %s", e)
                     raise CacheError("PostgresCache.insert_or_append", e) from e
                 finally:
+                    # Ensure transaction is closed before setting autocommit
+                    # to avoid "set_session cannot be used inside a transaction" error
+                    if (
+                        self.connection.get_transaction_status()
+                        != psycopg2.extensions.TRANSACTION_STATUS_IDLE
+                    ):
+                        self.connection.rollback()
                     self.connection.autocommit = True
 
     @connection
@@ -270,6 +288,17 @@ class PostgresCache(Cache, PostgresBase):
 
         """
         with self._tx_lock:
+            # This transaction status check is required for evaluation tests that use
+            # multi-turn conversations. Without it, rapid cache writes (appending each
+            # turn's messages) can leave an active transaction when autocommit=True is
+            # set in the finally block, causing psycopg2 to raise "set_session cannot
+            # be used inside a transaction". Rollback any active transaction to ensure
+            # clean autocommit mode transition.
+            if (
+                self.connection.get_transaction_status()
+                != psycopg2.extensions.TRANSACTION_STATUS_IDLE
+            ):
+                self.connection.rollback()
             self.connection.autocommit = False
             with self.connection.cursor() as cursor:
                 try:
@@ -285,6 +314,13 @@ class PostgresCache(Cache, PostgresBase):
                     logger.error("PostgresCache.delete: %s", e)
                     raise CacheError("PostgresCache.delete", e) from e
                 finally:
+                    # Ensure transaction is closed before setting autocommit
+                    # to avoid "set_session cannot be used inside a transaction" error
+                    if (
+                        self.connection.get_transaction_status()
+                        != psycopg2.extensions.TRANSACTION_STATUS_IDLE
+                    ):
+                        self.connection.rollback()
                     self.connection.autocommit = True
 
     @connection
