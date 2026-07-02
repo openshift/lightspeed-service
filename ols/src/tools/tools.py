@@ -241,6 +241,8 @@ async def execute_tool_call(
     """
     structured_content: dict | None = None
     tool_name = tool.name
+    if tool.metadata is not None:
+        tool.metadata["tools_token_budget"] = tools_token_budget
     result = await tool.coroutine(**tool_args)  # type: ignore[misc]
 
     raw_output = result[0] if isinstance(result, tuple) and len(result) == 2 else result
