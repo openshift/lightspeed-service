@@ -8,6 +8,8 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 2. When a query-response exchange is stored, the system must either append it to an existing conversation (if one exists for the given user_id + conversation_id) or create a new conversation. Each stored exchange contains the user query (HumanMessage), the AI response (AIMessage), any attachments submitted with the query, any tool calls requested by the model, and any tool results returned from tool execution.
 
+3. [PLANNED: OLS-3442] The AI response stored in the cache must include both text and reasoning content accumulated during streaming. Reasoning chunks (`StreamChunkType.REASONING`) must be accumulated into the response string alongside text chunks, so the model has access to its own reasoning within the current conversation turn. The response is stored as a plain-string `AIMessage` — no structured reasoning blocks or provider-specific signatures are preserved. Cache schema changes for structured reasoning storage are deferred until testing and evals show they improve multi-turn quality.
+
 3. Retrieving history for a user_id + conversation_id must return all stored exchanges ordered oldest to newest. If no conversation exists for the given key, the system must return an empty result.
 
 4. Listing conversations for a user must return metadata for every conversation belonging to that user, ordered by last message timestamp (most recent first). Each entry includes: conversation_id, topic_summary, last_message_timestamp, and message_count.

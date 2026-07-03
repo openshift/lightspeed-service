@@ -109,7 +109,7 @@ Each provider entry under `llm_providers` supports:
 | Field Path | Type | Default | Purpose |
 |------------|------|---------|---------|
 | `llm_providers[].name` | string | (required) | Provider name |
-| `llm_providers[].type` | string | =name | Provider type (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, fake_provider) |
+| `llm_providers[].type` | string | =name | Provider type (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, bedrock, fake_provider). The default `=name` only applies when the provider name exactly matches one of the supported type values; if the name is an alias or does not match, `type` must be set explicitly or the provider will fail to start. |
 | `llm_providers[].url` | URL | none | Provider endpoint URL |
 | `llm_providers[].credentials_path` | string | none | Path to credential file or directory |
 | `llm_providers[].models[]` | list | (required, >= 1) | Model definitions |
@@ -117,9 +117,10 @@ Each provider entry under `llm_providers` supports:
 | `llm_providers[].models[].context_window_size` | int | 128000 | Context window size in tokens |
 | `llm_providers[].models[].parameters.max_tokens_for_response` | int | 4096 | Tokens reserved for response |
 | `llm_providers[].models[].parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window for tool outputs (0.1--0.6) |
-| `llm_providers[].models[].parameters.reasoning_effort` | enum | low | Reasoning effort level (low, medium, high) |
-| `llm_providers[].models[].parameters.reasoning_summary` | enum | concise | Reasoning summary style (auto, concise, detailed) |
-| `llm_providers[].models[].parameters.verbosity` | enum | low | General verbosity level (low, medium, high) |
+| `llm_providers[].models[].parameters.reasoning_config` | dict | none | [PLANNED: OLS-3442] Freeform dict of provider-specific reasoning/thinking parameters. See `what/llm-providers.md` rule 13 for valid keys per provider |
+| `llm_providers[].models[].parameters.reasoning_effort` | enum | low | [DEPRECATED: OLS-3442] Reasoning effort level (low, medium, high). Replaced by `reasoning_config` |
+| `llm_providers[].models[].parameters.reasoning_summary` | enum | concise | [DEPRECATED: OLS-3442] Reasoning summary style (auto, concise, detailed). Replaced by `reasoning_config` |
+| `llm_providers[].models[].parameters.verbosity` | enum | low | [DEPRECATED: OLS-3442] General verbosity level (low, medium, high). Replaced by `reasoning_config` |
 | `llm_providers[].models[].options` | dict | none | Arbitrary key-value model options |
 | `llm_providers[].<type>_config` | object | none | Provider-specific config (at most one per provider) |
 | `llm_providers[].tlsSecurityProfile` | object | none | TLS security profile for provider connection |
@@ -149,7 +150,7 @@ Each provider entry under `llm_providers` supports:
 13. `default_model` must name a model that exists within the default provider's model list.
 14. `conversation_cache.type` must be either `memory` or `postgres`. The corresponding sub-section (`memory` or `postgres`) must be present when the type is specified.
 15. `authentication_config.module` must be one of: `k8s`, `noop`, `noop-with-token`.
-16. Provider `type` must be one of the supported provider types: openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, fake_provider.
+16. Provider `type` must be one of the supported provider types: openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, bedrock, fake_provider.
 17. `project_id` is required when provider type is `watsonx`.
 
 ### Tool Budget Computation
