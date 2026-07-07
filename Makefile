@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting images run format verify get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
+.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -92,7 +92,7 @@ test-eval: ## Run evaluation tests - requires running OLS server
 	@echo "Running evaluation tests..."
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	uv run --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
-	--eval_out_dir ${ARTIFACT_DIR} -m "not lseval"
+	--eval_out_dir ${ARTIFACT_DIR} -m "not lseval and not cluster_updates"
 
 test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question dataset) - requires running OLS server with OpenAI keys
 	@echo "Running LSEval periodic evaluation..."
@@ -109,6 +109,12 @@ test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question datas
 
 test-lseval-troubleshooting: ## DISABLED: LSEval troubleshooting (uncomment Makefile to re-enable)
 	@echo "test-lseval-troubleshooting is disabled for now (troubleshooting LSEval commented out)." >&2
+
+test-cluster-updates: ## Run cluster-updates evaluation (18 conversations, 35 evaluations) - requires running OLS server with OpenAI keys
+	@echo "Running cluster-updates evaluation..."
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	--eval_out_dir ${ARTIFACT_DIR} -m cluster_updates
 
 coverage-report:	unit-tests-coverage-report integration-tests-coverage-report ## Export coverage reports into interactive HTML
 

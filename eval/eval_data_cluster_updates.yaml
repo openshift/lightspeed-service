@@ -1,0 +1,696 @@
+- conversation_group_id: conv_001
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: 'Response should provide a comprehensive pre-upgrade analysis with the following structure:
+
+
+      ## Summary
+
+      - Update Service Health: Cincinnati service status, last update check timestamp, update channel (stable-4.21), cluster ID
+
+      - Cluster History Context: Initial version, upgrade path, last completed upgrade, cluster age
+
+      - Available Updates: Count of recommended updates with version numbers, conditional updates analysis
+
+      - Upgrade Readiness Assessment: ClusterVersion conditions (Failing=False, Upgradeable=True/missing, Available=True, Progressing status, RetrievedUpdates=True)
+
+      - Admin-Ack Gates: List of defined gates and acknowledged gates status
+
+      - ClusterOperator Health: Total operator count, list of any operators with issues (Available=False, Degraded=True, Upgradeable=False)
+
+      - Infrastructure Health: MachineConfigPools status, Node status, Resource pressure, PDBs, CSRs
+
+      - Recent Events and Active Alerts if available
+
+
+      ## TL;DR
+
+      - Current Version: 4.21.14
+
+      - Available Updates: Specific count
+
+      - Upgrade Blocked: Yes/No with specific reasons
+
+      - Cluster health summary with operator counts
+
+      - Clear recommendation
+
+
+      The response must reference actual cluster data with real version numbers, timestamps, and condition statuses.'
+    query: "# OpenShift Cluster Upgrade Pre-Check Analysis\n\n<constraints>\n- LANGUAGE REQUIREMENT: Respond in English. All analysis, explanations, recommendations, and text must be in English.\n\n- YOU MUST ALWAYS CALL THE TOOLS TO GET THE INFORMATION. YOU SHOULD NEVER TREAT DATA FROM EXAMPLES AS REAL DATA.\n- YOU MUST ALWAYS REFERENCE REAL DATA FROM TOOL CALLS. IF REAL DATA IS NOT AVAILABLE, NOTIFY THE USER AND REFUSE TO ANSWER USING INCORRECT DATA BUT DO NOT USE PLACEHOLDER OR DUMMY DATA.\n- NEVER use placeholder or dummy data - only reference real data from tool calls.\n- ONLY report issues that are actually present in the data.\n- ONLY OUTPUT the Summary and TL;DR sections.\n- Be specific about the source of any issues identified.\n- CRITICAL: When counting available updates, count ALL array elements in status.availableUpdates AND status.conditionalUpdates separately.\n\n<scope_definition>\n**IN SCOPE - Issues that affect OCP cluster updates:**\n- ClusterVersion conditions that block\
+      \ or signal upgrade problems\n- ClusterOperator health that blocks operator-phase progression during upgrade\n- MachineConfigPool state that blocks node-phase rollout\n- Node conditions that prevent draining, rebooting, or rejoining during upgrade\n- PodDisruptionBudgets that prevent node draining during rolling MCP updates\n- Conditional update risks that apply to this specific cluster (Recommended=False)\n- Admin-ack gates required before minor-version upgrades\n- Deprecated API usage that will break after upgrade\n- Pending CSRs that will prevent nodes from rejoining post-reboot\n- OLM Subscription health for layered operators that must be compatible with target release\n- Update path validity (channel, skip-level, EUS constraints)\n- Resource pressure that prevents upgrade surge capacity\n- Active alerts directly relevant to upgrade readiness\n- Configuration overrides that mask CVO reconciliation\n\n**OUT OF SCOPE - Do NOT flag these unless they directly affect upgrades:**\n-\
+      \ General application performance issues\n- User workload errors unrelated to PDBs or node drain\n- Non-upgrade-related warnings or events\n- Cosmetic issues\n- Issues that are recovering on their own and are not blocking\n- Anything that does not have a documented effect on oc adm upgrade or the upgrade process\n\nIf you cannot tie an issue to a specific upgrade-blocking or upgrade-disrupting mechanism, do not report it.\n</scope_definition>\n**CRITICAL: Timeout and Error Handling**\n**Timeout Awareness:**\n- You have a 60-second timeout - manage your time wisely\n- Prioritize essential data (ClusterVersion, ClusterOperators, admin-acks/admin-gates) first\n- Track execution time and stop making new tool calls after 50 seconds\n- Provide analysis with available data rather than timing out trying to fetch everything\n**Error Handling Rules:**\n1. **Be specific about which tool failed** - don't give generic \"cannot retrieve data\" messages.\n2. **Explain what data you're missing** -\
+      \ e.g., \"Unable to fetch ClusterVersion resource\" vs \"Unable to retrieve data\".\n3. **Try alternative approaches**:\n   - If resources_list fails for all ClusterOperators, note this specifically.\n   - If nodes_top fails, continue with other analysis - it's optional.\n   - If get_alerts fails, skip it - alerts are optional.\n   - If events_list fails, continue without event data.\n   - If APIRequestCount fails or is unavailable on the cluster version, note it and skip.\n4. **Provide partial analysis** - If you get ClusterVersion but not operators, analyze what you have.\n5. **Give actionable troubleshooting** when tools fail:\n   - Check if OpenShift MCP server is running: 'oc get pods -n openshift-lightspeed'\n   - Verify cluster connectivity.\n   - Suggest checking MCP server logs for specific errors.\n6. **NEVER give up completely** - Always provide SOME analysis even with partial data.\n7. **RBAC and Permission Errors - Critical for cluster-wide resources**:\n   - If tool calls fail with \"Forbidden\" (403) or \"access denied\" errors, this means insufficient RBAC permissions.\n   - Be SPECIFIC about which resources are inaccessible (e.g., \"Cannot access ClusterVersion resource\", \"Cannot access Prometheus metrics\").\n   - Provide analysis based ONLY on accessible resources - DO NOT invent data.\n   - For comprehensive cluster analysis, state required permissions: \"For full upgrade analysis, the service account requires cluster-reader ClusterRoleBinding (ClusterVersion, ClusterOperator, Node access) and monitoring-edit ClusterRoleBinding (Prometheus and Alertmanager access). Apply: oc apply -f eval/rbac-cluster-updates.yaml\"\n**Example of good error handling:**\n- BAD: \"I cannot retrieve necessary data from the\
+      \ cluster\"\n- GOOD: \"Successfully retrieved ClusterVersion (current: 4.21.14, 7 updates available, 2 conditional updates with risks). However, unable to fetch ClusterOperator list (error: connection timeout). Based on ClusterVersion alone, the cluster reports Upgradeable=True and Failing=False. To complete operator health analysis, please verify the OpenShift MCP server is accessible.\"\n- GOOD (RBAC error): \"Successfully retrieved MachineConfigPools and namespace-scoped resources. However, cannot access ClusterVersion and ClusterOperator resources due to insufficient RBAC permissions (HTTP 403 Forbidden). For comprehensive upgrade readiness analysis, ensure the service account has cluster-reader and monitoring-edit ClusterRoleBindings. Apply: oc apply -f eval/rbac-cluster-updates.yaml\"\n**Example of good timeout handling:**\n- GOOD: \"Retrieved ClusterVersion, all 28 ClusterOperators, admin-acks, and admin-gates (execution time: 38 seconds). Skipping APIRequestCount and alerts to avoid timeout. All admin-ack gates are satisfied; cluster is on track for upgrade.\"\n**Tool Call Priority to Avoid Timeouts:**\n**PHASE 1 - ESSENTIAL (Always fetch, target under 25 seconds):**\n1. resources_get: ClusterVersion (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterVersion\", name: \"version\")\n   - Capture full status including: conditions, availableUpdates, conditionalUpdates, history,\
+      \ capabilities, desired\n2. resources_list: ClusterOperator (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterOperator\")\n3. resources_get: ConfigMap \"admin-gates\" in namespace \"openshift-config-managed\"\n   (lists upgrade-blocking gate keys defined by the cluster's components)\n4. resources_get: ConfigMap \"admin-acks\" in namespace \"openshift-config\"\n   (lists administrator acknowledgements)\n**PHASE 2 - IMPORTANT (Fetch if time permits, under 45 seconds total):**\n5. resources_list: Node (apiVersion: \"v1\", kind: \"Node\") - Quick check for NotReady nodes and pressure conditions\n6. resources_list: MachineConfigPool (apiVersion: \"machineconfiguration.openshift.io/v1\", kind: \"MachineConfigPool\")\n7. events_list: Get recent warning/error events from last 30 minutes in upgrade-relevant namespaces (openshift-cluster-version, openshift-machine-config-operator, openshift-etcd, openshift-kube-apiserver, openshift-apiserver, openshift-authentication, openshift-network-operator)\n\
+      **PHASE 3 - OPTIONAL (Only if under 50 seconds total):**\n8. nodes_top: Check node CPU/memory usage\n9. resources_list: PodDisruptionBudget (apiVersion: \"policy/v1\", kind: \"PodDisruptionBudget\") - Filter out openshift-*, kube-*\n10. resources_list: APIRequestCount (apiVersion: \"apiserver.openshift.io/v1\", kind: \"APIRequestCount\") - Identify deprecated APIs in use\n11. resources_list: CertificateSigningRequest (apiVersion: \"certificates.k8s.io/v1\", kind: \"CertificateSigningRequest\") - Filter for Pending state\n12. resources_list: MachineHealthCheck (apiVersion: \"machine.openshift.io/v1beta1\", kind: \"MachineHealthCheck\") - Check for unpaused MHCs\n13. resources_list: Subscription (apiVersion: \"operators.coreos.com/v1alpha1\", kind: \"Subscription\") - Layered operator health\n14. get_alerts: Check for critical/warning alerts\n**CRITICAL EFFICIENCY RULES:**\n- If approaching 50 seconds of execution time, STOP making new tool calls and provide analysis with data collected\n\
+      - NEVER let total execution exceed 55 seconds to avoid timeout\n- Prioritize breadth over depth: Get ClusterVersion + ClusterOperators + admin-acks fully before diving into logs/events\n- Skip optional data if essential data took longer than expected\n<language_validation>\nBEFORE providing your response, verify:\n1. Every word in your response is in the target language (except system identifiers like file paths, URLs, command names).\n2. Technical terms are translated or explained in the target language.\n3. No English phrases or mixed language content exists in your explanations.\n4. All section headers and content follow the target language requirements.\n</language_validation>\n</constraints>\n\n<context>\nThis is a pre-upgrade analysis for OpenShift cluster version 4.21.14. You have complete cluster data including ClusterVersion, all ClusterOperator resources, admin-acks/admin-gates ConfigMaps, and supporting infrastructure resources. Focus on identifying real blockers and risks\
+      \ that would prevent or disrupt cluster upgrades. Stay strictly within the upgrade-impact scope defined above.\n</context>\n\n<condition_checking_guide>\nCRITICAL: Understanding Kubernetes/OpenShift Conditions\n\nConditions have TWO important fields you MUST check:\n- **type**: The name of the condition (e.g., \"Failing\", \"Available\", \"Progressing\", \"Upgradeable\", \"Recommended\")\n- **status**: The state of the condition (ONLY these values: \"True\", \"False\", or \"Unknown\")\n**MANDATORY CHECKING PROCESS:**\nFor EVERY condition you analyze, you MUST:\n1. First, locate the condition by its type field.\n2. Second, read the EXACT value of the status field.\n3. Third, interpret based ONLY on the status field value:\n   - If status=\"True\" → The condition IS active/present.\n   - If status=\"False\" → The condition is NOT active/NOT present.\n   - If status=\"Unknown\" → The condition state is uncertain.\n**DO NOT report a problem unless status=\"True\" for negative conditions\
+      \ OR status=\"False\" for positive conditions!**\n**Critical Examples - MEMORIZE THESE:**\nClusterVersion / ClusterOperator / general:\n- {type: \"Failing\", status: \"False\"} → Cluster is NOT failing → NO PROBLEM\n- {type: \"Failing\", status: \"True\"} → Cluster IS failing → PROBLEM\n- {type: \"Available\", status: \"True\"} → Component IS available → NO PROBLEM\n- {type: \"Available\", status: \"False\"} → Component is NOT available → PROBLEM\n- {type: \"Degraded\", status: \"False\"} → NOT degraded → NO PROBLEM\n- {type: \"Degraded\", status: \"True\"} → IS degraded → PROBLEM\n- {type: \"Upgradeable\", status: \"True\"} or absent → Upgrades allowed → NO PROBLEM\n- {type: \"Upgradeable\", status: \"False\"} → Upgrades BLOCKED → PROBLEM (read message/reason)\n- {type: \"Progressing\", status: \"True\"} → Currently changing state. Only a problem if stuck (check lastTransitionTime and message for errors).\n- {type: \"RetrievedUpdates\", status: \"True\"} → Update service healthy →\
+      \ NO PROBLEM\n- {type: \"RetrievedUpdates\", status: \"False\"} → Cannot reach update service → PROBLEM\n- {type: \"ReleaseAccepted\", status: \"True\"} → Release image accepted → NO PROBLEM\n- {type: \"ReleaseAccepted\", status: \"False\"} → Release image rejected (signature/manifest issue) → PROBLEM\n- {type: \"ImplicitlyEnabledCapabilities\", status: \"False\"} → No capability surprise → NO PROBLEM\n- {type: \"ImplicitlyEnabledCapabilities\", status: \"True\"} → Disabled capability was implicitly enabled → INFORMATIONAL/WARNING\nConditional update entries (status.conditionalUpdates[].conditions[]):\n- {type: \"Recommended\", status: \"True\"} → Update IS recommended for this cluster → SAFE\n- {type: \"Recommended\", status: \"False\"} → Update has KNOWN RISK matching this cluster → REPORT RISK (name, message, url)\n- {type: \"Recommended\", status: \"Unknown\"} → CVO still evaluating → INFORMATIONAL\nNode conditions:\n- {type: \"Ready\", status: \"True\"} → Node is ready → NO PROBLEM\n\
+      - {type: \"Ready\", status: \"False\"} or \"Unknown\" → Node NotReady → PROBLEM (will block drain/upgrade on that node)\n- {type: \"MemoryPressure\", status: \"True\"} → Memory pressure → PROBLEM\n- {type: \"DiskPressure\", status: \"True\"} → Disk pressure → PROBLEM (often blocks image pulls during upgrade)\n- {type: \"PIDPressure\", status: \"True\"} → PID pressure → PROBLEM\n- {type: \"NetworkUnavailable\", status: \"True\"} → Network unavailable → PROBLEM\nMachineConfigPool conditions:\n- {type: \"Updated\", status: \"True\"} → Pool is at desired config → NO PROBLEM\n- {type: \"Updated\", status: \"False\"} → Pool not yet updated. Only a problem if stuck or paused inappropriately.\n- {type: \"Updating\", status: \"True\"} → Pool currently rolling. Acceptable mid-upgrade; problem if stuck for hours.\n- {type: \"Degraded\", status: \"True\"} → Pool degraded → PROBLEM (blocks further node updates)\n- {type: \"NodeDegraded\", status: \"True\"} → A node in pool failed config apply →\
+      \ PROBLEM\n- {type: \"RenderDegraded\", status: \"True\"} → Could not render config → PROBLEM (blocks any update for the pool)\n**VERIFICATION REQUIREMENT:**\nBefore making ANY conclusion about a condition, you MUST internally state:\n\"Condition type='X' has status='Y'\" and then interpret it correctly.\n**NEVER assume a condition is true just because the type exists - ALWAYS check the status field!**\n**The presence of a condition type does NOT mean it is active - check the status field!**\n</condition_checking_guide>\n\n<critical_analysis_requirements>\n### 1. Available Updates and Conditional Updates Analysis\n**Available updates (status.availableUpdates):**\n- Count EXACTLY how many items are in status.availableUpdates array.\n- For each entry, extract: version, image, channels[], url (errata).\n- Identify the latest recommended z-stream and the latest recommended y-stream (if any).\n**Conditional updates (status.conditionalUpdates) — REQUIRED:**\n- Count EXACTLY how many items\
+      \ are in status.conditionalUpdates array.\n- For each conditional update, locate the conditions[] entry with type=\"Recommended\":\n  - If status=\"False\": the cluster matches a known risk for this target. Extract:\n    - Target release.version and release.image\n    - The reason and message from the Recommended condition\n    - All risks[] entries: name, message, url (Red Hat KCS or bug link)\n  - If status=\"Unknown\": CVO has not finished evaluating risks yet — note as informational.\n  - If status=\"True\": cluster does NOT match any risk for this target — treat as effectively recommended.\n- Conditional update presence with Recommended=False is NOT itself an upgrade blocker, but it IS a risk the administrator must explicitly accept; surface it prominently.\n\n### 2. ClusterVersion Conditions - VERIFICATION REQUIRED\nFor each of the following, locate the condition in status.conditions[], read the status field, and interpret per <condition_checking_guide>. Quote the actual reason\
+      \ and message if reporting a problem.\na) **Failing**: status=\"True\" → reconciliation failure, report reason and message.\nb) **Upgradeable**: status=\"False\" → upgrades are explicitly blocked; report reason and message verbatim. Common reasons include AdminAckRequired, MultipleReasons, operator-specific reasons.\nc) **Available**: status=\"False\" → cluster operationally impaired.\nd) **Progressing**: status=\"True\" AND not currently in an admin-initiated upgrade → may indicate a stuck reconciliation.\ne) **RetrievedUpdates**: status=\"False\" → Cincinnati/update service unreachable; cluster cannot discover updates.\nf) **ReleaseAccepted**: status=\"False\" → desired release image was rejected (signature verification, manifest validation, or image pull failure).\ng) **ImplicitlyEnabledCapabilities**: status=\"True\" → a capability disabled in spec was implicitly enabled; surface as informational warning.\n\n### 3. Admin-Ack Gate Analysis (CRITICAL FOR MINOR UPGRADES)\nOpenShift\
+      \ requires administrators to acknowledge specific upgrade gates before minor-version upgrades. CVO sets Upgradeable=False with reason=AdminAckRequired until all applicable gates are acknowledged.\nProcedure:\n- Read keys from ConfigMap admin-gates in namespace openshift-config-managed. These are the gate keys the cluster's components have declared (example key shape: ack-4.13-kube-1.27-api-removals-in-4.14).\n- Read keys from ConfigMap admin-acks in namespace openshift-config. An acknowledgement is valid only if the value is the literal string \"true\".\n- For each key in admin-gates:\n  - If the same key exists in admin-acks with value \"true\" → ACKNOWLEDGED.\n  - If missing OR value is anything other than \"true\" → NOT ACKNOWLEDGED, and minor upgrade is blocked until administrator runs:\n    'oc -n openshift-config patch cm admin-acks --patch '{\"data\":{\"<gate-key>\":\"true\"}}' --type=merge'\n- Report each unacknowledged gate by its exact key name. Do NOT invent gate keys; only\
+      \ report what is actually present in admin-gates.\n- If admin-gates is empty or absent → no current admin-ack gates apply.\n- If either ConfigMap is unreadable, note it explicitly and indicate that gate state cannot be confirmed.\n\n### 4. ClusterOperator Health Check (per-operator condition matrix)\nFor each ClusterOperator, check status.conditions[]. Report as upgrade-impacting only when status fields match these patterns:\n- Available=False → BLOCKER. Operator is down, will block its phase of the upgrade.\n- Degraded=True → WARNING/POTENTIAL BLOCKER. Operator is reconciling with errors. If Available=True, upgrade may still proceed but with risk; if Available=False as well, treat as blocker.\n- Upgradeable=False → BLOCKER for minor (and sometimes z-stream) upgrades. Report exact reason and message.\n- Progressing=True for an extended period (no admin-initiated upgrade in flight) with error messages → POTENTIAL BLOCKER (stuck reconciliation).\n**Pay special attention to these critical\
+      \ operators** (failures here are upgrade-blocking by nature):\n- cluster-version (the CVO itself)\n- etcd — quorum and member health gate the entire control plane upgrade\n- kube-apiserver, kube-controller-manager, kube-scheduler — revision rollouts must converge before next phase\n- openshift-apiserver\n- machine-config — drives node-side updates\n- machine-api — provisions/replaces nodes\n- authentication\n- network — SDN/OVN health is required for any rolling reboot\n- dns\n- ingress\n- monitoring\n- image-registry\n- storage and any CSI driver operators\nFor each problematic operator, report: name, the failing condition (type and status), the reason, and the message.\n\n### 5. MachineConfigPool Status (Node Rollout Readiness)\nFor each MachineConfigPool (focus on master and worker, plus any custom pools):\n- spec.paused == true → Pool is paused. Paused master pool is almost always wrong. Paused worker pool is acceptable only as part of a documented EUS upgrade workflow; flag it\
+      \ for administrator awareness because paused pools block node-level updates and inhibit certificate rotation.\n- status.conditions[]:\n  - Degraded=True → BLOCKER for that pool's node updates. Report message.\n  - NodeDegraded=True → BLOCKER. A node in the pool failed to apply config; identify the node from the message.\n  - RenderDegraded=True → BLOCKER. The MCO cannot render a valid config for the pool.\n  - Updated=False AND Updating=False → Pool has pending changes but is not progressing — investigate.\n- Configuration drift: If status.observedGeneration != metadata.generation, the pool is behind; mention if the gap is significant.\n- status.machineCount, status.readyMachineCount, status.updatedMachineCount, status.degradedMachineCount — report if degradedMachineCount > 0 or if readyMachineCount < machineCount outside an active upgrade.\n\n### 6. Node Health and Resource Pressure\na) **Node Readiness and Pressure** (per Node, from status.conditions):\n   - Ready=False or Ready=Unknown\
+      \ → BLOCKER. The node cannot drain, reboot, and rejoin during a rolling update. Report node name and the condition's reason and message.\n   - MemoryPressure=True → BLOCKER/WARNING. Pods will be evicted and reschedule may not converge during upgrade surge; flag node name.\n   - DiskPressure=True → BLOCKER. Image pulls for new release content will fail. Flag node name and check /var/lib/containers if message indicates.\n   - PIDPressure=True → BLOCKER.\n   - NetworkUnavailable=True → BLOCKER.\n   - spec.unschedulable=true (cordoned) outside an active drain → flag for administrator awareness.\nb) **Resource Utilization** (using nodes_top, optional):\n   - Flag any node with CPU usage > 90% or memory usage > 90%.\n   - Explain impact: Rolling upgrades require surge capacity (control-plane revisions roll one node at a time; worker pools drain one node at a time). Saturated nodes can prevent successful drain and pod rescheduling.\n   - For control-plane nodes, memory pressure is especially\
+      \ impactful because etcd is sensitive to I/O contention.\n\n### 7. PodDisruptionBudget Analysis (User Workload Drain Blockers)\nPDBs become upgrade-relevant because the MachineConfigOperator drains worker nodes one at a time during rolling updates. A PDB that does not allow eviction will block the drain indefinitely.\nProcedure:\n- Query PDBs in ALL namespaces EXCEPT OpenShift system namespaces:\n  - All namespaces with prefix openshift-\n  - All namespaces with prefix kube-\n  - Namespaces default and openshift\n- For each remaining (user workload) PDB, evaluate as a drain blocker if ANY of the following are true:\n  - status.disruptionsAllowed == 0 AND status.currentHealthy <= status.desiredHealthy (eviction blocked right now)\n  - spec.minAvailable equals 100% (or equals status.expectedPods) — no pod can be evicted\n  - spec.maxUnavailable == 0 — explicitly forbids any disruption\n  - The PDB selector matches zero pods (status.expectedPods == 0) AND minAvailable >= 1 — misconfigured,\
+      \ will block drain\n- For each problematic PDB, report: namespace, name, the offending field, and status.disruptionsAllowed.\n- Ignore all PDBs in OpenShift system namespaces — these are managed by Red Hat.\n- If no problematic user workload PDBs exist, state \"No problematic user workload PDBs found\".\n\n### 8. Update Path Validation\na) **Channel correctness**:\n   - Read spec.channel (e.g., stable-4.21, fast-4.21, eus-4.18).\n   - Check status.desired.channels[] for channels available for the current version.\n   - If spec.channel is not present in status.desired.channels AND RetrievedUpdates=False, the channel may be invalid for this version — flag it.\nb) **Skip-level detection**:\n   - Examine status.history[0].version (current) vs any administrator-mentioned target.\n   - OpenShift does NOT support skipping minor versions (e.g., 4.18 → 4.20 directly). Upgrades must go through each intermediate minor, except via the EUS-to-EUS path where worker pools are paused.\n   - If the\
+      \ latest available update or conditional update is more than one minor ahead of the current version, surface this as an informational note about path constraints.\nc) **EUS path indicators**:\n   - If spec.channel starts with eus-, note that the cluster is on the EUS path and that worker MCP pause/unpause is part of the workflow.\n\n### 9. Deprecated API Usage (Affects Minor Upgrades)\nIf the APIRequestCount resource is available on this cluster (apiserver.openshift.io/v1):\n- List APIRequestCount objects.\n- For each, read status.removedInRelease. If a removal release is set AND the upcoming minor target matches or exceeds it:\n  - Read status.currentHour.byUser[] and status.last24h[].byUser[] to identify which clients are still calling the API.\n  - Report: API name (e.g., flowschemas.v1beta2.flowcontrol.apiserver.k8s.io), removedInRelease, and a deduplicated list of top callers (username and userAgent).\n- If no deprecated APIs are in use OR none are removed by the target release\
+      \ → state so explicitly.\n- If APIRequestCount is unavailable, skip with a note.\n\n### 10. Pending CertificateSigningRequests\nDuring upgrades, nodes that reboot must have their kubelet client and serving certificates approved. A backlog of pending CSRs can prevent nodes from rejoining the cluster.\n- List CertificateSigningRequest objects.\n- Filter to those with no Approved condition AND no Denied condition (i.e., still pending) OR with status.certificate empty.\n- Group by spec.signerName (e.g., kubernetes.io/kube-apiserver-client-kubelet, kubernetes.io/kubelet-serving).\n- If 5 or more node-related CSRs are pending, flag as a node rejoin risk and report counts and signer names.\n- Pending CSRs unrelated to nodes (custom signers) can be ignored unless explicitly tied to upgrade workflows.\n\n### 11. MachineHealthCheck Status\nActive MachineHealthChecks can interfere with upgrades by remediating nodes that are intentionally drained or rebooted as part of the upgrade. Red Hat documentation\
+      \ recommends pausing MHCs during upgrades.\n- List MachineHealthChecks.\n- For each, check metadata.annotations[\"cluster.x-k8s.io/paused\"] or metadata.annotations[\"machine.openshift.io/cluster-api-cluster\"] paused-style annotations. Different OCP versions use different paused annotations; if any pause annotation is present, treat as paused.\n- Report MHCs that are NOT paused and target node sets that will roll during the upgrade — surface as a recommendation, not a blocker.\n\n### 12. OLM Subscription Health (Layered Operators)\nLayered operators installed via OLM must be on a channel/version compatible with the target OpenShift release before upgrade.\n- List Subscriptions.\n- For each Subscription, examine status.conditions[]:\n  - CatalogSourcesUnhealthy=True → operator catalog cannot be reached (will block any operator updates)\n  - InstallPlanFailed=True or ResolutionFailed=True → operator cannot install/update; flag the operator\n  - InstallPlanPending=True AND not progressing\
+      \ → manual approval may be required before upgrade\n- Report by namespace and Subscription name. Do not flag healthy Subscriptions.\n\n### 13. Cluster Capabilities Assessment\n- Extract enabled capabilities from status.capabilities.enabledCapabilities.\n- Extract known capabilities from status.capabilities.knownCapabilities.\n- Disabled capabilities = known minus enabled. Note these.\n- If ImplicitlyEnabledCapabilities=True, surface that the upgrade target implicitly enables a capability that was disabled in spec.capabilities.\n- Capabilities themselves are rarely upgrade blockers, but capability transitions can change which operators are reconciled.\n\n### 14. Cincinnati Update Service Health\n- spec.upstream: if set, the cluster uses a custom update service; if unset, default Red Hat update service is used.\n- Verify RetrievedUpdates condition: status, lastTransitionTime, message.\n- If status.availableUpdates is empty AND RetrievedUpdates=True → cluster is on the latest known version\
+      \ in its channel.\n- If status.availableUpdates is empty AND RetrievedUpdates=False → update discovery is broken.\n- spec.clusterID: report for telemetry context.\n- spec.signatureStores: if present, custom signature stores are configured (relevant for disconnected clusters and ReleaseAccepted failures).\n\n### 15. Cluster Version History Context\n- Initial version: status.history[] last entry (oldest).\n- Most recent completed upgrade: most recent status.history[] entry with state=\"Completed\".\n- Any state=\"Partial\" entries indicate failed or interrupted upgrades — surface them.\n- Cluster age: derive from oldest history entry's startedTime or completionTime.\n\n### 16. Configuration Overrides\n- Review spec.overrides[]. Each entry with unmanaged=true means the CVO will not reconcile that resource.\n- Overrides are not upgrade blockers per se, but they can mask drift and cause post-upgrade inconsistencies. Surface any overrides as informational.\n\n### 17. Recent Events Analysis\
+      \ (Upgrade-Relevant Only)\n- Query events from last 30 minutes, type Warning or higher.\n- Restrict to upgrade-relevant namespaces: openshift-cluster-version, openshift-machine-config-operator, openshift-etcd, openshift-kube-apiserver, openshift-apiserver, openshift-authentication, openshift-network-operator, openshift-monitoring.\n- Group by reason and involvedObject to avoid noise.\n- Translate technical reasons into plain language:\n  - ImagePullBackOff → \"Operator pod cannot pull its container image — check registry connectivity or pull secrets\"\n  - FailedScheduling → \"Operator pod cannot be scheduled — check node taints, resources, or selectors\"\n  - Unhealthy (for etcd) → \"etcd member health check failing — investigate before upgrading\"\n- Skip events unrelated to upgrade readiness.\n\n### 18. Active Alerts (Optional)\nIf get_alerts is available:\n- Focus on severity=critical and severity=warning.\n- Prioritize alerts whose names indicate upgrade impact, including but\
+      \ not limited to: ClusterNotUpgradeable, ClusterOperatorDown, ClusterOperatorDegraded, KubeAPIDown, etcdMembersDown, etcdInsufficientMembers, KubePersistentVolumeFillingUp, NodeFilesystemSpaceFillingUp, KubeNodeNotReady, MachineConfigDaemonReboot-style alerts.\n- Translate each fired alert into an actionable recommendation.\n- If get_alerts is unavailable, skip this section.\n</critical_analysis_requirements>\n\n<output_format>\n## Summary\n**Update Service Health**\n- **Cincinnati Service**: [spec.upstream URL if configured, otherwise \"Default Red Hat update service\"]\n- **Service Status**: [RetrievedUpdates condition status and message]\n- **Last Update Check**: [From RetrievedUpdates condition lastTransitionTime]\n- **Update Channel**: [Current spec.channel]\n- **Channel Validity**: [Confirmed valid for current version, or flagged as not in status.desired.channels]\n- **Cluster ID**: [spec.clusterID]\n**Cluster History Context**\n- **Initial Version**: [First entry from status.history\
+      \ with date]\n- **Upgrade Path**: [Recent version progression from history]\n- **Last Completed Upgrade**: [Most recent Completed entry with timeframe]\n- **Partial/Failed Upgrade History**: [Any Partial entries, otherwise \"None\"]\n- **Cluster Age**: [Time since initial installation]\n**Available Updates**\n- **Recommended Updates**: [Count from status.availableUpdates with versions]\n- **Conditional Updates**: [Count from status.conditionalUpdates]\n- **Conditional Update Risk Analysis**: For each conditional update with Recommended=False, list:\n  - Target version, risk name, risk message, reference URL\n  - Otherwise: \"No conditional update risks apply to this cluster\"\n**Upgrade Readiness Assessment**\n\nYOU MUST explicitly state the status field value for each condition you check.\n**ClusterVersion Conditions:**\n- **Failing**: [type=\"Failing\" found with status=\"X\"] → [interpretation]\n- **Upgradeable**: [type=\"Upgradeable\" found with status=\"X\" OR not found] → [interpretation,\
+      \ including reason and message if status=\"False\"]\n- **Available**: [type=\"Available\" found with status=\"X\"] → [interpretation]\n- **Progressing**: [type=\"Progressing\" found with status=\"X\"] → [interpretation; only flag if stuck and not in admin-initiated upgrade]\n- **RetrievedUpdates**: [status=\"X\"] → [interpretation]\n- **ReleaseAccepted**: [status=\"X\"] → [interpretation]\n- **ImplicitlyEnabledCapabilities**: [status=\"X\"] → [interpretation]\n**Admin-Ack Gates (Minor Upgrade Prerequisite):**\n- **Defined Gates** (from openshift-config-managed/admin-gates): [list of keys, or \"None\"]\n- **Acknowledged** (from openshift-config/admin-acks with value \"true\"): [list of keys]\n- **Outstanding Gates Blocking Minor Upgrade**: [list of keys not acked, or \"None — all gates satisfied\"]\n- **Action**: For each outstanding gate, provide the exact oc patch command using the actual key name.\n**ClusterOperator Health:**\n- **Total Operators**: [count]\n- **Operators With Issues**:\
+      \ For each problematic operator, report:\n  - Name\n  - Failing condition (type and status)\n  - Reason and message\n- If none: \"All ClusterOperators report Available=True, Degraded=False, Upgradeable=True\"\n**Infrastructure Health:**\n- **MachineConfigPools**: For each pool, report state. Flag Degraded=True, NodeDegraded=True, RenderDegraded=True, paused=true, or readyMachineCount < machineCount outside active upgrade.\n- **Node Status**: Count of NotReady nodes with names and reasons. Count of nodes with MemoryPressure/DiskPressure/PIDPressure/NetworkUnavailable.\n- **Resource Pressure**: From nodes_top, list nodes with >90% CPU or memory.\n- **Pending CSRs**: Count and signer names if 5 or more pending node-related CSRs.\n- **MachineHealthChecks**: Count of unpaused MHCs (informational recommendation).\n- **User Workload PDBs**: Count of problematic non-OpenShift PDBs that could block node draining, with namespace/name and the offending field.\n**Deprecated API Usage:**\n- **Deprecated\
+      \ APIs Removed In Target**: For each, report API name, removedInRelease, and top callers (username/userAgent).\n- If none or APIRequestCount unavailable: state explicitly.\n**Layered Operator Health (OLM):**\n- **Subscriptions With Issues**: For each, namespace and Subscription name with the failing condition (CatalogSourcesUnhealthy, InstallPlanFailed, ResolutionFailed, etc.).\n- If none: \"All Subscriptions healthy\"\n**Recent Events** (Last 30 minutes, upgrade-relevant namespaces):\n- **Critical Events**: Count and grouped descriptions.\n- **Warning Events**: Count and grouped descriptions.\n- **User-Friendly Summary**: Translate technical events into plain language.\n- If none: \"No recent errors or warnings detected in upgrade-relevant components\"\n**Active Alerts** (if available):\n- **Critical Alerts**: Count and names.\n- **Warning Alerts**: Count and names.\n- **Impact on Upgrade**: For each, explain effect on upgrade readiness.\n- If unavailable: skip section.\n**Configuration:**\n\
+      - **Overrides**: Any spec.overrides entries with unmanaged=true.\n- **Capabilities**: Enabled count, disabled-but-known count with names, ImplicitlyEnabledCapabilities note if applicable.\n**Final Assessment:**\nBased ONLY on issues identified above:\n- If no upgrade-blocking conditions and no unaccepted conditional risks: \"Cluster appears ready for upgrade.\"\n- If only conditional update risks or warnings (no hard blockers): \"Cluster can upgrade after administrator review of: [list]. No hard blockers.\"\n- If hard blockers present: \"Upgrade blocked — must resolve [list of specific blockers] first.\"\nA \"hard blocker\" means at least one of:\n- ClusterVersion Upgradeable=False\n- ClusterVersion Failing=True\n- ClusterVersion ReleaseAccepted=False\n- Any ClusterOperator with Available=False or Upgradeable=False\n- Any MachineConfigPool with Degraded=True, NodeDegraded=True, or RenderDegraded=True\n- Any node with Ready=False (other than transient and self-recovering)\n- Any user-workload\
+      \ PDB blocking eviction (disruptionsAllowed=0 with no surge capacity)\n- Outstanding admin-ack gate (only blocks minor upgrades, not z-stream)\n- Deprecated API in active use that is removed in target minor\n## TL;DR\n- **Current Version**: 4.21.14\n- **Available Updates**: [count from status.availableUpdates]\n- **Latest Recommended Update**: [version with channels]\n- **Conditional Updates**: [count] ([N with Recommended=False risks applying to this cluster])\n- **Update Channel**: [current spec.channel] ([valid / not in status.desired.channels])\n- **Channel Options**: [available channels for current version]\n- **Capabilities**: [enabled count / disabled count with names]\n- **Initial Version**: [from history with date]\n- **Last Upgrade**: [most recent completed upgrade with date]\n- **Cincinnati Health**: [service status with timestamp]\n- **Admin-Ack Gates**: [satisfied | N outstanding: list of keys]\n- **Upgrade Blocked**: [Yes | No — only \"Yes\" if a hard blocker per definition\
+      \ above is present]\n- **Upgrade Blockers**: [specific list with status field values, or \"No blockers\"]\n- **Conditional Risks To Acknowledge**: [risk names with target versions, or \"None\"]\n- **Unhealthy ClusterOperators**: [count and names with the failing condition]\n- **Degraded MCPs**: [count and names with failing condition]\n- **Paused MCPs**: [names if any]\n- **Node Issues**: [count of NotReady or pressure-affected nodes with names]\n- **Resource Pressure**: [nodes with >90% CPU or memory]\n- **User Workload PDBs Blocking Drain**: [count with namespace/name]\n- **Pending Node CSRs**: [count if >= 5, else omit or \"None significant\"]\n- **Deprecated APIs In Use**: [count removed in target, with API names]\n- **Layered Operator Issues**: [count of unhealthy Subscriptions]\n- **Recent Events**: [count of upgrade-relevant errors/warnings in last 30 min]\n- **Active Alerts**: [count of critical/warning, skip if unavailable]\n- **Configuration Issues**: [overrides or capability\
+      \ concerns]\n- **Recommendation**: [Proceed with upgrade | Address warnings first | Blocked — resolve listed issues]\n</output_format>\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_002
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: 'Response should analyze the upgrade path from 4.21.16 to 4.21.22 with:
+
+
+      ## Summary
+
+      - Target Version Analysis: Whether 4.21.22 is available in availableUpdates or conditionalUpdates
+
+      - Conditional Updates Risk Analysis: All conditional update risks between 4.21.16 and 4.21.22, including intermediate versions
+
+      - Upgrade Readiness Assessment: ClusterVersion conditions and ClusterOperator health
+
+      - Infrastructure Health: MCPs, Nodes, PDBs
+
+      - Cincinnati Update Service Health
+
+      - Recent Events and Active Alerts
+
+
+      ## TL;DR
+
+      - Current Version: 4.21.16
+
+      - Target Version: 4.21.22
+
+      - Upgrade path analysis with all intermediate version risks
+
+      - Comprehensive risk assessment
+
+      - Clear recommendation
+
+
+      Must analyze ALL versions in the upgrade path, not just the target.'
+    query: "# OpenShift Cluster Upgrade Pre-Check Analysis\n\n<constraints>\n- LANGUAGE REQUIREMENT: Respond in English. All analysis, explanations, recommendations, and text must be in English.\n\n- YOU MUST ALWAYS CALL THE TOOLS TO GET THE INFORMATION. YOU SHOULD NEVER TREAT DATA FROM EXAMPLES AS REAL DATA.\n- YOU MUST ALWAYS REFERENCE REAL DATA FROM TOOL CALLS. IF REAL DATA IS NOT AVAILABLE, NOTIFY THE USER AND REFUSE TO ANSWER USING INCORRECT DATA BUT DO NOT USE PLACEHOLDER OR DUMMY DATA.\n**CRITICAL: Timeout and Error Handling**\n**Timeout Awareness:**\n- You have a 60-second timeout - manage your time wisely\n- Prioritize essential data (ClusterVersion, ClusterOperators) first\n- Track execution time and stop making new tool calls after 50 seconds\n- Provide analysis with available data rather than timing out trying to fetch everything\n**Error Handling Rules:**\n1. **Be specific about which tool failed**- don't give generic \"cannot retrieve data\" messages\n2. **Explain what data\
+      \ you're missing**- e.g., \"Unable to fetch ClusterVersion resource\" vs \"Unable to retrieve data\"\n3. **Try alternative approaches**:\n - If resources_list fails for all ClusterOperators, note this specifically\n - If nodes_top fails, continue with other analysis - it's optional\n - If get_alerts fails, skip it - alerts are optional\n - If events_list fails, continue without event data\n4. **Provide partial analysis** - If you get ClusterVersion but not operators, analyze what you have\n5. **Give actionable troubleshooting**when tools fail:\n - Check if OpenShift MCP server is running: 'oc get pods -n openshift-lightspeed'\n - Verify cluster connectivity\n - Suggest checking MCP server logs for specific errors\n6. **NEVER give up completely**- Always provide SOME analysis even with partial data\n7. **RBAC and Permission Errors - Critical for cluster-wide resources**:\n   - If tool calls fail with \"Forbidden\" (403) or \"access denied\" errors, this means insufficient RBAC permissions.\n   - Be SPECIFIC about which resources are inaccessible (e.g., \"Cannot access ClusterVersion resource\", \"Cannot access Prometheus metrics\").\n   - Provide analysis based ONLY on accessible resources - DO NOT invent data.\n   - For comprehensive cluster analysis, state required permissions: \"For full upgrade analysis, the service account requires cluster-reader ClusterRoleBinding (ClusterVersion, ClusterOperator, Node access) and monitoring-edit ClusterRoleBinding (Prometheus and Alertmanager access). Apply: oc apply -f eval/rbac-cluster-updates.yaml\"\n**Tool Call Priority to Avoid Timeouts:**\n**PHASE 1 - ESSENTIAL (Always fetch):**\n1. resources_get: ClusterVersion (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterVersion\", name:\
+      \ \"version\")\n2. resources_list: ClusterOperator (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterOperator\")\n**PHASE 2 - IMPORTANT (Fetch if time permits, under 45 seconds total):**\n3. resources_list: Node (apiVersion: \"v1\", kind: \"Node\") - Quick check for NotReady nodes\n4. events_list: Get recent warning/error events from last 30 minutes - High value for diagnostics\n**PHASE 3 - OPTIONAL (Only if under 50 seconds total):**\n5. resources_list: MachineConfigPool (apiVersion: \"machineconfiguration.openshift.io/v1\", kind: \"MachineConfigPool\")\n6. nodes_top: Check node CPU/memory usage\n7. resources_list: PodDisruptionBudget (apiVersion: \"policy/v1\", kind: \"PodDisruptionBudget\") - Filter out openshift-*, kube-*\n8. get_alerts: Check for critical/warning alerts\n**CRITICAL EFFICIENCY RULES:**\n- If approaching 50 seconds of execution time, STOP making new tool calls and provide analysis with data collected\n- NEVER let total execution exceed 55 seconds to avoid\
+      \ timeout\n- Prioritize breadth over depth: Get ClusterVersion + ClusterOperators fully before diving into logs/events\n- Skip optional data if essential data took longer than expected\n\n- NEVER use placeholder or dummy data - only reference real data from tool calls\n- ONLY report issues that are actually present in the data\n- ONLY OUTPUT the Summary and TL;DR sections\n- Be specific about the source of any issues identified\n- CRITICAL: When counting available updates, count ALL array elements in status.availableUpdates\n- CRITICAL: Check status.conditionalUpdates for ALL versions from 4.21.16 to 4.21.22 (inclusive)\n- CRITICAL: Analyze the COMPLETE upgrade path, not just the target version - intermediate versions matter!\n</constraints>\n\n<context>\nThis is a pre-upgrade analysis for OpenShift cluster upgrade from 4.21.16 to 4.21.22. You have complete cluster data including ClusterVersion and all ClusterOperator resources to analyze the feasibility and safety of this specific\
+      \ upgrade.\n\n**CRITICAL UPGRADE PATH ANALYSIS**: You must analyze ALL conditional update risks for every version between 4.21.16 and 4.21.22 (inclusive). This includes intermediate versions that may be part of the upgrade path. For example, if upgrading from 4.21.16 to 4.21.22, you must check for risks at 4.21.17, 4.21.18, 4.21.19, 4.21.20, 4.21.21, and 4.21.22. Users need to know about ALL risks they will encounter in the upgrade journey, not just risks at the final target version.\n</context>\n\n<condition_checking_guide>\nCRITICAL: Understanding Kubernetes/OpenShift Conditions\n\nConditions have TWO important fields you MUST check:\n- **type**: The name of the condition (e.g., \"Failing\", \"Available\", \"Progressing\")\n- **status**: The state of the condition (\"True\", \"False\", or \"Unknown\")\n\n**How to Correctly Check Conditions:**\n- A condition is TRUE when: type=\"X\" AND status=\"True\"\n- A condition is FALSE when: type=\"X\" AND status=\"False\"\n- A condition is\
+      \ UNKNOWN when: type=\"X\" AND status=\"Unknown\"\n\n**Examples:**\n- {type: \"Failing\", status: \"False\"} means the cluster is NOT failing (healthy)\n- {type: \"Failing\", status: \"True\"} means the cluster IS failing (problem)\n- {type: \"Upgradeable\", status: \"False\"} means upgrades are blocked (problem)\n- {type: \"Upgradeable\", status: \"True\"} means upgrades are allowed (healthy)\n**NEVER assume a condition is true just because the type exists - ALWAYS check the status field!**\n</condition_checking_guide>\n\n<critical_analysis_requirements>\n\n1. **Target Version Verification** (PRIORITY):\n - Look in status.availableUpdates array for 4.21.22\n - If found, extract its channels, url, and image information\n - If NOT found, report \"4.21.22 is not available for upgrade\"\n\n1a. **Conditional Updates Risk Analysis - All Risks Up to Target Version**:\n - **CRITICAL**: Analyze ALL conditional updates from 4.21.16 up to and including 4.21.22\n - **Version Range**: Parse version\
+      \ numbers to identify which conditional updates fall between current and target\n - **Example**: If current=4.21.16, target=4.21.22, analyze risks for: 4.21.17, 4.21.18, 4.21.19, 4.21.20, 4.21.21, 4.21.22\n - **Why This Matters**: Users may need to upgrade through intermediate versions to reach the target, so ALL risks in the path are relevant\n - For each conditional update in the version range, analyze the conditions array:\n * Look for conditions with type=\"Recommended\" AND status=\"False\" (indicates risks/concerns)\n * Extract risk details from the condition message field\n * Parse URLs in the message for documentation links\n - **Risk Assessment Process** (for each version in range):\n * Identify what triggers the risk (e.g., specific cluster configurations, network plugins)\n * Determine if the risk applies to THIS cluster based on current configuration\n * Assess severity: Does this block the upgrade or just require careful planning?\n * Note which version introduces the\
+      \ risk (important for upgrade path planning)\n - **User-Friendly Risk Explanation**:\n * Translate technical risk messages into plain language\n * Example: \"Recommended=False: OVN network disruption\" → \"This update may cause brief network interruptions (2-5 minutes) if your cluster uses OVN-Kubernetes networking. Plan for a maintenance window.\"\n * Show version where risk appears: \"Risk at 4.21.18: [description]\"\n - **Mitigation Recommendations**:\n * If risk applies: Suggest mitigation steps (maintenance window, backup procedures, etc.)\n * If risk doesn't apply: Clearly state \"This risk does not apply to your cluster\"\n * Provide decision guidance: \"Safe to proceed with caution\" vs \"Address concerns first\"\n - **Presentation Order**: List risks in version order (lowest to highest) to show the upgrade path chronologically\n\n2. **Cluster Upgrade Readiness** (Check BOTH type AND status):\n - Find condition where type=\"Upgradeable\" (may not exist)\n * If found AND status=\"\
+      False\": Report the specific reason - this blocks upgrades\n * If status=\"True\" or missing: Upgrades are allowed\n - Find condition where type=\"Failing\"\n * If found AND status=\"True\": Report details - this indicates problems\n * If status=\"False\" or missing: No failing condition (healthy)\n - Find condition where type=\"Available\"\n * If found AND status=\"False\": Report cluster operational issues\n * If status=\"True\": Cluster is available (healthy)\n\n3. **ClusterOperator Health Check** (Check BOTH type AND status):\n For each ClusterOperator, check conditions:\n - Available: If type=\"Available\" AND status=\"False\" → Operator unavailable (blocker)\n - Degraded: If type=\"Degraded\" AND status=\"True\" → Operator degraded (warning)\n - Upgradeable: If type=\"Upgradeable\" AND status=\"False\" → Blocks upgrades (blocker)\n - Report specific operator names and their issues for problematic conditions only\n - Focus on operators that would block upgrades\n\n4. **Current\
+      \ Cluster Configuration**:\n - Extract spec.channel (current update channel)\n - Extract spec.clusterID\n - Check if spec.upstream is configured (custom Cincinnati server)\n - Note status.conditions RetrievedUpdates condition\n\n5. **User Workload PDB Analysis** (IMPORTANT - Filter System PDBs):\n - Query PodDisruptionBudgets in ALL namespaces EXCEPT these OpenShift system namespaces:\n * openshift-* (all openshift- prefixed namespaces)\n * kube-* (all kube- prefixed namespaces)\n * default, openshift\n - ONLY flag user workload PDBs where:\n * minAvailable >= 1 AND it covers critical user applications\n * maxUnavailable = 0 AND it covers critical user applications\n - IGNORE all PDBs in OpenShift system namespaces - these are managed by Red Hat\n - If no problematic user workload PDBs exist, state \"No problematic user workload PDBs found\"\n\n6. **MachineConfigPool Status** (Check BOTH type AND status):\n For each MachineConfigPool:\n - Check conditions for Degraded: If type=\"Degraded\"\
+      \ AND status=\"True\" → MCP has issues\n - Check conditions for Updated: If type=\"Updated\" AND status=\"False\" → MCP not updated\n - Check spec.paused=true → MCP manually paused (blocks node updates)\n - Check observedGeneration ≠ metadata.generation → Configuration drift\n - Focus on master and worker MCPs which are critical for upgrade success\n - Report specific MCP names and their issues\n\n7. **Node Health and Resource Pressure**:\n a) **Node Readiness:**\n - Check each Node for Ready condition: If type=\"Ready\" AND status=\"False\" → Node not ready (blocker)\n - Check for other node conditions: MemoryPressure, DiskPressure, PIDPressure (status=\"True\" is problem)\n - Report NotReady nodes with their conditions and reasons\n\n b) **Resource Utilization (using nodes_top):**\n - Check CPU usage: Flag if any node >90% CPU utilization\n - Check memory usage: Flag if any node >90% memory utilization\n - Explain impact: High resource usage can slow upgrades or cause failures\n\
+      \ - Recommend: Consider scaling down workloads before upgrading to 4.21.22 if resources are constrained\n\n8. **Cincinnati Update Service Health**:\n - Check spec.upstream (if configured) or note \"using default Red Hat update service\"\n - Verify status.conditions for type=\"RetrievedUpdates\" status and timestamp\n - Confirm status.availableUpdates or status.conditionalUpdates contains 4.21.22\n - Cluster ID for telemetry (spec.clusterID)\n - Signature verification status (spec.signatureStores if present, otherwise default stores)\n\n9. **Recent Events Analysis** (using events_list):\n - Query recent events from last 30 minutes\n - Focus on Warning and Error type events\n - Filter for upgrade-related namespaces: openshift-cluster-version, openshift-*\n - Look for patterns: repeated errors, failing pods, configuration issues\n - **User-Friendly Explanation**: Translate technical events into plain language\n - Report only events that are relevant to upgrade readiness for 4.21.22\n\
+      \ - Group similar events to avoid overwhelming users\n\n10. **Active Alerts Assessment** (using get_alerts - if available):\n - Query Alertmanager for active alerts\n - Focus on Critical and Warning severity alerts\n - **Upgrade Impact Analysis**:\n * Critical alerts → Likely upgrade blockers, must resolve first\n * Warning alerts → May cause issues, recommend resolving\n * Info alerts → Monitor but don't block\n - **User-Friendly Translation**: Explain what each alert means in simple terms\n - Provide actionable recommendations for each alert\n - If get_alerts tool not available: Skip this check (gracefully handle tool absence)\n\n</critical_analysis_requirements>\n\n<output_format>\n## Summary\n\nProvide a clear assessment based ONLY on real data from tool calls (resources_get and resources_list). Be specific about:\n- **Whether 4.21.22 is available for upgrade** (found in status.availableUpdates or status.conditionalUpdates)\n- **ALL conditional update risks in the upgrade path\
+      \ from 4.21.16 to 4.21.22** (analyze status.conditionalUpdates for ALL versions in range)\n- **Current cluster upgrade readiness** (check Upgradeable=False, Failing=True, degraded operators)\n- **Any problematic USER WORKLOAD PDBs** (not OpenShift system PDBs)\n- **Infrastructure issues**that would prevent the upgrade to 4.21.22\n\n**CRITICAL INSTRUCTION**: Parse version numbers from status.conditionalUpdates and identify which versions fall between 4.21.16 and 4.21.22. Report risks for ALL of these versions, not just 4.21.22.\n\n**Target Version Analysis**\n- **Availability**: [Whether 4.21.22 is in availableUpdates or conditionalUpdates]\n- **Channels**: [Channels available for 4.21.22]\n- **Release Information**: [URL and metadata for 4.21.22 if available]\n\n**Conditional Updates Risk Analysis - Upgrade Path from 4.21.16 to 4.21.22**:\n- **Version Range Analyzed**: [List all versions between 4.21.16 and 4.21.22 that have conditional update risks]\n- **Total Risks in Upgrade Path**:\
+      \ [Count of all risk conditions across all versions in the range]\n- **Risk Details by Version** (in chronological order from lowest to highest version):\n\n For each version with risks in the upgrade path:\n * **Version**: [e.g., 4.21.18]\n * **Risk Conditions**: [List conditions with Recommended=False for this version]\n   - Risk: [Human-readable risk description from condition message]\n   - Applies to this cluster: [Yes/No with explanation]\n   - Severity: [Blocker / Requires Planning / Minor Concern]\n   - Mitigation: [Specific steps to address this risk]\n   - Documentation: [URL from message if available]\n\n- **Cumulative Risk Assessment for Upgrade Path**:\n * If no risks in path: \"No conditional update risks from 4.21.16 to 4.21.22\"\n * If risks don't apply: \"Conditional updates exist but risks do not apply to this cluster configuration\"\n * If risks apply but manageable: \"Upgrade path has manageable risks - schedule maintenance window and review all mitigations\"\n\
+      \ * If risks are severe: \"Review all risks carefully before proceeding - multiple versions in upgrade path have concerns\"\n * **Planning Guidance**: \"You will encounter [X] risk conditions across [Y] versions in the upgrade path from 4.21.16 to 4.21.22\"\n\n**Upgrade Readiness Assessment**\n\nYOU MUST explicitly state the status field value for each condition you check:\n**ClusterVersion Conditions:**\n- **Failing Condition**: [type=\"Failing\" found with status=\"X\"] → [Interpretation: if status=\"False\" then NOT failing/healthy, if status=\"True\" then failing/problem]\n- **Upgradeable Condition**: [type=\"Upgradeable\" found with status=\"X\" OR not found] → [Interpretation: if status=\"False\" then upgrades blocked, if status=\"True\" or missing then upgrades allowed]\n- **Available Condition**: [type=\"Available\" found with status=\"X\"] → [Interpretation: if status=\"True\" then available/healthy, if status=\"False\" then not available/problem]\n**ClusterOperator Health:**\n\
+      - Verify ClusterOperator resources in config.openshift.io/v1 API group\n- For each operator, check status.conditions and explicitly state status field values\n- Flag operators with: Available status=\"False\" OR Degraded status=\"True\" OR Upgradeable status=\"False\"\n- Include their message and reason fields\n**Infrastructure Health:**\n- **MachineConfigPools**: [Count and status of MCPs - report Degraded, Paused, or out-of-sync pools]\n- **Node Status**: [Count NotReady nodes with their reasons]\n- **Resource Pressure**: [From nodes_top - report nodes with >90% CPU or memory usage]\n- **User Workload PDBs**: [Count of problematic non-OpenShift PDBs that could block node draining]\n**Cincinnati Update Service Health**:\n- **Service Configuration**: [spec.upstream URL if configured, otherwise \"Default Red Hat update service\"]\n- **Service Status**: [RetrievedUpdates condition status and message]\n- **Last Update Check**: [From RetrievedUpdates condition lastTransitionTime]\n- **Update\
+      \ Channel**: [Current spec.channel]\n- **Cluster ID**: [spec.clusterID for telemetry]\n**Recent Events** (Last 30 minutes):\n- **Critical Events**: [Count and description of error events]\n- **Warning Events**: [Count and description of warning events]\n- **User-Friendly Summary**: [Translate technical events into plain language explanation]\n- **Example**: \"3 ImagePullBackOff events in openshift-authentication - operator unable to download container images\"\n- If no concerning events: \"No recent errors or warnings detected\"\n**Active Alerts** (if available):\n- **Critical Alerts**: [Count and names of firing critical alerts]\n- **Warning Alerts**: [Count and names of firing warning alerts]\n- **Impact on Upgrade**: [Explain how these alerts affect upgrade readiness to 4.21.22]\n- **User-Friendly Explanation**: [Translate alert names into actionable recommendations]\n- **Example**: \"KubePersistentVolumeFillingUp: Storage volume is 85% full - free up space before upgrading\"\n\
+      - If alerts not available: Skip this section\n\n**Final Assessment**:\nIf 4.21.22 is available and no critical issues are found:\n- If no conditional risks in upgrade path: Clearly state the cluster appears ready for upgrade to 4.21.22\n- If conditional risks exist but don't apply: State the upgrade path is clear despite conditional updates existing\n- If conditional risks apply: Explain ALL risks across the upgrade path and provide comprehensive mitigation guidance\n\n**Upgrade Path Summary**:\n- List ALL versions with conditional update risks between 4.21.16 and 4.21.22\n- For multi-hop upgrades, clarify that risks at intermediate versions will be encountered\n- Provide consolidated recommendation considering ALL risks in the path, not just target version\n\nIf 4.21.22 is not available, recommend the closest available version and analyze risks for that path instead.\n\n## TL;DR\n- **Current Version**: 4.21.16\n- **Target Version**: 4.21.22\n- **Target Available**: [Yes in availableUpdates\
+      \ / Yes in conditionalUpdates with risks / No]\n- **Upgrade Path**: [4.21.16 → 4.21.22, list intermediate versions if applicable]\n- **Conditional Risks in Upgrade Path**: [Total count of risk conditions across ALL versions from 4.21.16 to 4.21.22, or \"None\"]\n- **Versions with Risks**: [List versions in upgrade path that have conditional update risks, e.g., \"4.21.18, 4.21.20\" or \"None\"]\n- **Risks Apply to Cluster**: [Yes/No - if ANY conditional risks in upgrade path apply to this cluster configuration]\n- **Risk Severity**: [If risks exist: Blocker / Requires Planning / Minor Concern / Does Not Apply]\n- **Target Channels**: [Channels for 4.21.22 if available]\n- **Current Channel**: [spec.channel from ClusterVersion]\n- **Cincinnati Health**: [Update service status, e.g., \"Default service healthy (RetrievedUpdates=True)\" or \"Custom upstream: URL (status)\"]\n- **Upgrade Blocked**: [Yes if blocked / No if not blocked - ONLY report \"Yes\" if: Upgradeable condition has status=\"\
+      False\" OR Failing condition has status=\"True\" OR operators have Available status=\"False\" or Upgradeable status=\"False\"]\n- **Upgrade Blockers**: [if blockers exist with specific reason - MUST include the actual status field value you read, e.g., \"Upgradeable condition status=False: reason message\" OR \"No blockers - all conditions healthy\"]\n- **Unhealthy ClusterOperators**: [count and names if any]\n- **User Workload PDBs**: [count of problematic NON-OpenShift PDBs]\n- **Degraded MCPs**: [count and names if any]\n- **Node Issues**: [count of NotReady nodes if any, include Ready=False reason]\n- **Resource Pressure**: [nodes with >90% CPU or memory usage]\n- **Recent Events**: [count of error/warning events in last 30 min, user-friendly summary]\n- **Active Alerts**: [count of critical/warning alerts, skip if tool unavailable]\n- **Recommendation**: [Proceed with upgrade to 4.21.22 | Address risks/warnings first | Blocked - resolve issues | Target not available - use X.X.X\
+      \ instead]\n</output_format>\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_003
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: 'Response should provide a health assessment with:
+
+
+      ## Summary
+
+      - Overall Health Status: Assessment of cluster operational health
+
+      - System Component Status: Core services health, degraded operators list, progressing operators
+
+      - Administrator Action Items: Immediate, maintenance, and monitoring items categorized
+
+      - Future Update Readiness: Upgradeable condition status, any blockers
+
+
+      ## TL;DR
+
+      - Overall Status: Healthy/Minor issues/Attention needed
+
+      - System Health: Count of healthy vs degraded operators
+
+      - Core Platform: Status of essential operators
+
+      - Action Items: Count and categorization
+
+      - Update Readiness: Ready or specific issues to resolve
+
+
+      Should focus on operational health when no updates are available.'
+    query: "# OpenShift Cluster Health Assessment\n\n<constraints>\n- YOU MUST ALWAYS CALL THE TOOLS TO GET THE INFORMATION. YOU SHOULD NEVER TREAT DATA FROM EXAMPLES AS REAL DATA.\n- YOU MUST ALWAYS REFERENCE REAL DATA FROM TOOL CALLS. IF REAL DATA IS NOT AVAILABLE, NOTIFY THE USER AND REFUSE TO ANSWER USING INCORRECT DATA BUT DO NOT USE PLACEHOLDER OR DUMMY DATA.\n- Use resources_get to fetch the ClusterVersion resource (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterVersion\", name: \"version\")\n- Use resources_list to fetch all ClusterOperator resources (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterOperator\")\n- Assess ONLY the actual cluster state from tool call data\n- Distinguish between system health and user workload issues\n- Provide actionable recommendations for administrators\n- ONLY OUTPUT the Summary and TL;DR sections\n- LANGUAGE REQUIREMENT: Respond in English. All analysis, explanations, recommendations, and text must be in English.\n</constraints>\n\
+      \n<context>\nHealth assessment for OpenShift cluster with no available updates. You have complete cluster data including ClusterVersion and all ClusterOperator resources for comprehensive health analysis.\nFocus on operational health and readiness for future updates.\n</context>\n\n<condition_checking_guide>\nCRITICAL: Understanding Kubernetes/OpenShift Conditions\n\nConditions have TWO important fields you MUST check:\n- **type**: The name of the condition (e.g., \"Failing\", \"Available\", \"Progressing\")\n- **status**: The state of the condition (\"True\", \"False\", or \"Unknown\")\n\n**How to Correctly Check Conditions:**\n- A condition is TRUE when: type=\"X\" AND status=\"True\"\n- A condition is FALSE when: type=\"X\" AND status=\"False\"\n- A condition is UNKNOWN when: type=\"X\" AND status=\"Unknown\"\n\n**Examples:**\n- {type: \"RetrievedUpdates\", status: \"True\"} means updates were retrieved (healthy)\n- {type: \"RetrievedUpdates\", status: \"False\"} means update retrieval\
+      \ failed (problem)\n- {type: \"Failing\", status: \"False\"} means the cluster is NOT failing (healthy)\n- {type: \"Available\", status: \"True\"} means the cluster IS available (healthy)\n**NEVER assume a condition is true just because the type exists - ALWAYS check the status field!**\n</condition_checking_guide>\n\n<health_assessment_requirements>\n\n1. **Current Version and Update Status Analysis** (Check BOTH type AND status):\n - Extract and report current cluster version from status.desired.version\n - Verify status.availableUpdates array is empty (confirming no updates available)\n - Find condition where type=\"RetrievedUpdates\" AND status=\"True\" (confirms update service is working)\n - Analyze why no updates are available (end of channel, latest version, etc.)\n\n2. **Cluster Capabilities Configuration Assessment**:\n - Extract enabled capabilities from status.capabilities.enabledCapabilities\n - Extract known capabilities from status.capabilities.knownCapabilities\n -\
+      \ Identify disabled capabilities (known but not enabled)\n - Assess capability configuration health and consistency\n - Check spec.capabilities.baselineCapabilitySet and additionalEnabledCapabilities\n\n3. **Update Service and Channel Health**:\n - Check spec.upstream (if configured) or note \"using default Red Hat update service\"\n - Verify status.conditions for type=\"RetrievedUpdates\" status and timestamp\n - Confirm update service connectivity is working despite no available updates\n - Current channel from spec.channel\n - Cluster ID for telemetry (spec.clusterID)\n - Signature verification status (spec.signatureStores if present, otherwise default stores)\n\n4. **Cluster Version History Context**:\n - Extract initial cluster version from status.history (first entry)\n - Identify upgrade path from history entries\n - Last completed upgrade and timeframe\n - Total cluster age and upgrade frequency\n - Historical upgrade success pattern\n\n5. **System Component Health** (Check\
+      \ BOTH type AND status for each operator):\n For each ClusterOperator, check conditions:\n - **Available**: If type=\"Available\" AND status=\"False\" → Requires immediate intervention\n - **Degraded**: If type=\"Degraded\" AND status=\"True\" → Degraded state, lower quality of service\n - **Progressing**: If type=\"Progressing\" AND status=\"True\" with errors → Component stuck\n - **Upgradeable**: If type=\"Upgradeable\" AND status=\"False\" → Blocks minor upgrades\n - Verify core platform operators (console, authentication, ingress, etc.) are healthy\n - Check ClusterVersion status.conditions for overall cluster health\n - Report specific operator names and their condition messages for problematic conditions only\n - IMPORTANT: Available=True, Degraded=False, Upgradeable=True are healthy states\n\n6. **Future Update Readiness Assessment** (Check BOTH type AND status):\n - Find condition where type=\"Upgradeable\" (OPTIONAL - may not exist)\n * If found AND status=\"False\": This\
+      \ IS an upgrade blocker - report reason\n * If status=\"True\", missing, or status=\"Unknown\": Future upgrades are allowed\n - Find condition where type=\"Failing\"\n * If found AND status=\"True\": Cluster issues that must be resolved\n * If status=\"False\" or missing: No failing condition (healthy)\n - Review spec.overrides for any unmanaged components that might block future upgrades\n - Identify maintenance items to address proactively\n - User workload PDB analysis for potential upgrade blockers\n\n7. **Operational Health and Recommendations**:\n - Identify issues that affect user applications\n - Focus on problems that cluster administrators can/should address\n - Provide specific, actionable guidance for maintaining cluster health\n - Distinguish from normal system maintenance activities\n - Avoid recommendations for normal system behavior\n\n</health_assessment_requirements>\n\n<output_format>\n## Summary\n**Overall Health Status**\n[Assessment based on actual cluster state\
+      \ data]\n**System Component Status**\n- **Core Services**: [List core platform operators and their health status]\n- **Degraded Operators**: [Any operators with Available=False or Degraded=True]\n- **Progressing Operators**: [Operators currently updating or progressing]\n- **Infrastructure**: [Overall cluster-level status and configuration]\n**Administrator Action Items**\n- **Immediate**: [Issues requiring prompt attention]\n- **Maintenance**: [Items to address during maintenance windows]\n- **Monitoring**: [Things to watch for trends]\n**Future Update Readiness**\n[Assessment of readiness for next OpenShift updates]\n\n## TL;DR\n- **Overall Status**: [Healthy | Minor issues | Attention needed]\n- **System Health**: [Count of healthy vs degraded operators]\n- **Core Platform**: [Status of essential operators: console, authentication, ingress, etc.]\n- **Degraded Components**: [Count and names of any unhealthy operators]\n- **User Impact**: [Any operator issues affecting workloads]\n\
+      - **Action Items**: [Count of items needing administrator attention]\n- **Update Readiness**: [Ready | Operator issues need resolution]\n- **Next Review**: [Recommended reassessment timeframe]\n</output_format>\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:technical_accuracy
+- conversation_group_id: conv_004
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: Response should analyze upgrade progress monitoring with real-time cluster state showing upgrade in progress or completion status, including ClusterVersion conditions, ClusterOperator progression, and infrastructure state.
+    query: "# OpenShift Cluster Upgrade Progress Monitor\n\n<constraints>\n- YOU MUST ALWAYS CALL THE TOOLS TO GET THE INFORMATION. YOU SHOULD NEVER TREAT DATA FROM EXAMPLES AS REAL DATA.\n- YOU MUST ALWAYS REFERENCE REAL DATA FROM TOOL CALLS. IF REAL DATA IS NOT AVAILABLE, NOTIFY THE USER AND REFUSE TO ANSWER USING INCORRECT DATA BUT DO NOT USE PLACEHOLDER OR DUMMY DATA.\n**CRITICAL: Timeout and Error Handling**\n\n**Timeout Awareness (60 second limit):**\n- Progress monitoring needs to be FAST - users expect quick updates\n- ClusterVersion + ClusterOperators gives you operator progress (X of Y) - sufficient for basic progress\n- Events and other data add context but aren't required\n- Target: Complete analysis in under 40 seconds for responsive UX\n- If approaching 50 seconds, provide progress summary immediately\n**Error Handling for Tool Failures:**\n1. **Core data is essential**- ClusterVersion and ClusterOperators are required for progress tracking\n2. **If core resources fail** -\
+      \ Explain specifically what failed and provide troubleshooting\n3. **Optional data can be skipped**- nodes_top, events_list, get_alerts are nice-to-have\n4. **Provide progress with available data**- Even without events, you can show operator progress\n5. **Never give up**- Always show some progress information, even if incomplete\n**Tool Call Priority to Avoid Timeouts:**\n**PHASE 1 - ESSENTIAL (Always fetch - target: 25 seconds):**\n1. resources_get: ClusterVersion (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterVersion\", name: \"version\")\n2. resources_list: ClusterOperator (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterOperator\")\n**PHASE 2 - HELPFUL CONTEXT (Only if under 45 seconds):**\n3. events_list: Get recent events (last 30 minutes) - Quick way to spot warnings\n4. resources_list: MachineConfigPool - Shows node update progress\n**PHASE 3 - NICE-TO-HAVE (Only if under 50 seconds):**\n5. nodes_top: Monitor node resource usage during upgrade\n6. get_alerts:\
+      \ Check for warning alerts (if available)\n**CRITICAL EFFICIENCY RULES:**\n- Progress monitoring is time-sensitive - provide fast updates\n- ClusterVersion + ClusterOperators is sufficient for basic progress (X of Y operators)\n- Events and MCPs add context but aren't required\n- NEVER exceed 55 seconds - better to show quick progress than timeout\n- Users can refresh for updated progress - speed > completeness\n\n- Monitor ONLY actual upgrade progress from tool call data\n- Report specific progress indicators and timelines using EXACT operator counts from the data\n- Use the format \"X of Y operators\" consistently throughout the output\n- Calculate precise percentages: (15 / 28) * 100\n- Format durations in human-readable terms (e.g., \"Approximately 1 hour and 20 minutes\")\n- Use specific operator counts in all sections, not generic descriptions\n- Identify potential issues early with conservative recommendations\n- ONLY OUTPUT the Summary and TL;DR sections exactly as specified\
+      \ in the output format\n- LANGUAGE REQUIREMENT: Respond in English. All analysis, explanations, recommendations, and text must be in English.\n</constraints>\n\n<context>\nMonitor upgrade progress from 4.21.14 to 4.21.17. You have complete cluster data including ClusterVersion and all ClusterOperator resources to analyze upgrade progress and detect issues.\nFocus on detecting issues early while avoiding false alarms.\n</context>\n\n<condition_checking_guide>\nCRITICAL: Understanding Kubernetes/OpenShift Conditions\n\nConditions have TWO important fields you MUST check:\n- **type**: The name of the condition (e.g., \"Failing\", \"Available\", \"Progressing\")\n- **status**: The state of the condition (\"True\", \"False\", or \"Unknown\")\n\n**How to Correctly Check Conditions:**\n- A condition is TRUE when: type=\"X\" AND status=\"True\"\n- A condition is FALSE when: type=\"X\" AND status=\"False\"\n- A condition is UNKNOWN when: type=\"X\" AND status=\"Unknown\"\n\n**Examples:**\n\
+      - {type: \"Progressing\", status: \"True\"} means the cluster IS progressing (upgrading)\n- {type: \"Progressing\", status: \"False\"} means the cluster is NOT progressing (stable)\n- {type: \"Failing\", status: \"False\"} means the cluster is NOT failing (healthy)\n- {type: \"Failing\", status: \"True\"} means the cluster IS failing (problem)\n**NEVER assume a condition is true just because the type exists - ALWAYS check the status field!**\n</condition_checking_guide>\n\n<progress_monitoring_requirements>\n\n1. **Upgrade State Verification** (Check BOTH type AND status):\n - Confirm spec.desiredUpdate.version matches 4.21.17\n - Find condition where type=\"Progressing\" AND status=\"True\" - extract progress details\n - Verify no conditions where type=\"Failing\" AND status=\"True\" are present\n\n2. **Component Progress Tracking** (CRITICAL - Use Provided Operator Counts):\n - You are provided with pre-calculated operator counts: 28 total, 15 updated, 5 updating, 8 pending, 0 failed\n\
+      \ - ALWAYS use the \"X of Y operators\" format consistently:\n * \"**Updated Operators**: 15 of 28 operators at target version 4.21.17\"\n * \"**Updating Operators**: 5 of 28 operators progressing toward target\"\n * \"**Pending Operators**: 8 of 28 operators waiting to start\"\n * \"**Failed Operators**: 0 of 28 operators with issues\"\n - Calculate upgrade completion percentage using the exact formula: (15 / 28) * 100\n - In TL;DR section, use format: \"15 of 28 operators at target version ([X% complete])\"\n - For pending components, combine counts: \"5 updating + 8 pending operators\"\n - NEVER use vague terms like \"several\" or \"most\" - always use exact counts provided\n\n3. **Timeline and ETA Analysis - CRITICAL INSTRUCTIONS**:\n**FINDING THE CORRECT START TIME:**\n - Look in status.history array - it's ordered with MOST RECENT first (index 0)\n - The CURRENT upgrade is the FIRST entry where state=\"Partial\" (in-progress upgrade)\n - Use the startedTime field from that Partial\
+      \ entry ONLY\n - Example: If history[0].state=\"Partial\" and history[0].startedTime=\"2026-05-04T16:59:26Z\", use \"2026-05-04T16:59:26Z\"\n - DO NOT use startedTime from older entries with state=\"Completed\" - those are PREVIOUS upgrades!\n**FORMATTING AND CALCULATIONS:**\n - Format the startedTime as human-readable (e.g., \"May 4, 2026, 4:59:26 PM UTC\")\n - Calculate elapsed time from startedTime to current time\n - Format elapsed time as human-readable duration (e.g., \"Approximately 1 hour and 20 minutes\")\n - Extract progress details from Progressing condition message if available\n - Calculate progress percentage: (15 / 28) * 100\n - Calculate ETA based on current progress rate\n**OUTPUT FORMAT:**\n * \"Upgrade started: [human-readable start time from the Partial entry]\"\n * \"Elapsed time: [Human-readable duration since startedTime]\"\n * \"Current progress: [X% complete]\"\n * \"Estimated completion: [Time remaining]\"\n * \"Progress rate: [On track | Ahead of schedule\
+      \ | Behind schedule]\"\n\n4. **Upgrade Target Analysis**:\n - Current upgrade target from status.desired.version\n - Target release metadata from status.desired (url, channels)\n - Upgrade path validation from current to target version\n - Any upgrade risks or compatibility notes\n\n5. **Cluster History Context During Upgrade**:\n - Previous completed upgrade and duration for comparison\n - Upgrade frequency pattern analysis\n - Any historical upgrade failures or issues\n - Progress comparison with typical upgrade patterns\n\n6. **Early Issue Detection**:\n - Look for warning signs in status.conditions\n - Check for stalled progress indicators in cluster conditions\n - Report specific issues using exact operator counts: \"0 operators with issues\"\n - If no issues: \"No problems requiring immediate attention\"\n - Use format in TL;DR: \"**Issues**: [0 operators with issues if any, otherwise \"No problems requiring immediate attention\"]\"\n - Monitor for unexpected delays compared\
+      \ to historical patterns and report as \"On track\", \"Delayed\", or \"Issues detected\"\n\n</progress_monitoring_requirements>\n\n<output_format>\n## Summary\n**Upgrade Status**\n- **Current Phase**: [Extract from Progressing condition message, e.g., \"Progressing (Working towards 4.21.17: X of Y done (Z% complete))\"]\n- **Elapsed Time**: [Human-readable duration from upgrade start to current time]\n- **Progress Indicators**: [Specific progress details and any operators currently updating]\n**Component Status** (Total: 28 ClusterOperators)\n- **Updated Operators**: 15 of 28 operators at target version 4.21.17\n- **Updating Operators**: 5 of 28 operators progressing toward target\n- **⏸ Pending Operators**: 8 of 28 operators waiting to start\n- **Failed Operators**: 0 of 28 operators with issues\n**Upgrade Target Details**\n- **Target Version**: [4.21.17 from status.desired.version]\n- **Target Release Info**: [Errata URL from status.desired.url if available, format as markdown link]\n\
+      - **Target Channels**: [List available channels from status.desired.channels, comma-separated]\n- **Upgrade Path**: Current version [4.21.14] → Target version [4.21.17]\n**Historical Context**\n- **Previous Upgrade**: [Most recent completed upgrade version and completion timestamp from status.history]\n- **Upgrade Pattern**: [Upgrade frequency analysis and historical success pattern]\n- **Duration Comparison**: [Current upgrade timeline compared to previous upgrade durations and typical patterns]\n**Infrastructure Health During Upgrade**\n- **MachineConfigPool Progress**: [Status of MCPs - are they updating, stuck, or complete?]\n- **Node Resource Pressure**: [From nodes_top - any nodes with high CPU/memory usage?]\n - Example: \"All nodes healthy - CPU usage 45-60%, memory usage 55-70%\"\n - Example: \" Warning: master-0 at 92% memory - monitor for slowdowns\"\n**Recent Progress Events** (Last 30 minutes):\n- **Event Summary**: [Count of events related to upgrade progress]\n- **Warning\
+      \ Signs**: [Any warning events that might slow progress]\n - Example: \"ImagePullBackOff in 3 operators - image download issues may slow upgrade\"\n - Example: \"No concerning events - upgrade progressing normally\"\n- **Positive Indicators**: [Events showing healthy progress]\n - Example: \"12 operators successfully updated to target version\"\n**Health Indicators**\n- **Issues Detected**: [Any warning signs, delays, or specific operator issues requiring attention]\n- **Cluster Status**: [Overall cluster condition health based on ClusterVersion conditions]\n- **Active Alerts**: [Warning/critical alerts during upgrade, if available]\n- **Timeline Analysis**:\n * Upgrade started: [Find the FIRST entry in status.history where state=\"Partial\" - this is the CURRENT upgrade. Use ONLY its startedTime field. Convert from ISO timestamp (e.g., \"2026-05-04T16:59:26Z\") to human-readable (e.g., \"May 4, 2026, 4:59:26 PM UTC\"). DO NOT use startedTime from Completed entries!]\n * Elapsed time:\
+      \ [Calculate duration from the Partial entry's startedTime to current time in human-readable format]\n * Current progress: [X% complete based on operator completion ratio]\n * Estimated completion: [Time remaining calculation based on progress rate]\n * Progress rate: [Assessment: \"On track\", \"Ahead of schedule\", or \"Behind schedule\" compared to typical upgrade window]\n\n## TL;DR\n- **Progress**: [X% complete - (15 Updated Operators / 28 Total Operators) * 100]\n- **Target Version**: [4.21.17 with release info if available]\n- **Target Channels**: [Available channels for target release]\n- **Upgrade Duration**: [Elapsed time from upgrade start]\n- **Status**: [On track | Delayed | Issues detected]\n- **Updated Components**: 15 of 28 operators at target version ([X% complete])\n- **Pending Components**: 5 updating + 8 pending operators\n- **Historical Comparison**: [How current upgrade compares to previous ones]\n- **Issues**: [0 operators with issues if any, otherwise \"No problems\
+      \ requiring immediate attention\"]\n- **Resource Pressure**: [Node CPU/memory status - any nodes >90% usage?]\n- **MCP Status**: [MachineConfigPool progress - all updating normally?]\n- **Recent Events**: [Count of warning events in last 30 min, user-friendly summary]\n- **Alerts**: [Warning/critical alerts during upgrade, if available]\n- **ETA**: [Estimated time remaining based on current progress rate]\n- **Action Required**: [Continue monitoring | Investigate delays | Address operator issues]\n</output_format>\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_005
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: 'Response should provide troubleshooting analysis based on actual cluster state:
+
+
+      **If cluster is healthy (Failing=False, no degraded operators):**
+
+      ## Summary
+
+      - Root Cause Analysis: Indicate no active upgrade failure detected
+
+      - Current State: Report actual cluster version and health status
+
+      - ClusterOperator Status: All operators Available=True, Degraded=False
+
+      - Upgrade Capability: Confirm cluster is Upgradeable or identify any blockers
+
+      - Available Updates: List available target versions
+
+
+      ## TL;DR
+
+      - No upgrade failure detected
+
+      - Current version and health status
+
+      - All operators healthy
+
+      - Cluster ready for upgrade or specific reasons if not
+
+
+      **If cluster has failures (Failing=True or degraded operators):**
+
+      ## Summary
+
+      - Root Cause Analysis: Specific failure reasons from ClusterVersion Failing condition with actual error messages
+
+      - Component Analysis: Failed ClusterOperators with specific error messages from pod logs
+
+      - Failed Upgrade Context: Target version, release information, upgrade path
+
+      - Remediation Steps: Specific actionable steps based on actual errors
+
+      - Infrastructure Issues: MCPs, Nodes, Events contributing to failure
+
+      - Event Timeline: Sequence of events showing failure progression
+
+
+      ## TL;DR
+
+      - Specific failure type and root cause
+
+      - Failed operators with error messages
+
+      - Concrete remediation steps
+
+      - Recovery time estimate
+
+
+      Response must match actual cluster state - don''t report failures if cluster is healthy.'
+    query: "# OpenShift Cluster Upgrade Troubleshoot Analysis\n\n<constraints>\n- YOU MUST ALWAYS CALL THE TOOLS TO GET THE INFORMATION. YOU SHOULD NEVER TREAT DATA FROM EXAMPLES AS REAL DATA.\n- YOU MUST ALWAYS REFERENCE REAL DATA FROM TOOL CALLS. IF REAL DATA IS NOT AVAILABLE, NOTIFY THE USER AND REFUSE TO ANSWER USING INCORRECT DATA BUT DO NOT USE PLACEHOLDER OR DUMMY DATA.\n**CRITICAL: Timeout and Error Handling**\n\n**Timeout Awareness (60 second limit):**\n- Prioritize ClusterVersion + ClusterOperators first (essential for failure diagnosis)\n- Fetch events_list early - often explains failures quickly without needing logs\n- Limit pod log fetching - logs are SLOW, only fetch 1-2 critical operators\n- If approaching 50 seconds, STOP and analyze what you have\n- Partial diagnosis is better than timeout\n\n**Error Handling for Tool Failures:**\n1. **Try core resources first** - ClusterVersion and ClusterOperators are essential\n2. **If core resources fail** - Provide specific error and\
+      \ troubleshooting steps\n3. **If optional tools fail** (pods_log, events_list, get_alerts) - Continue with available data\n4. **Provide partial analysis** - Analyze whatever data you successfully retrieved\n5. **Be specific** - \"Unable to fetch operator pod logs from openshift-authentication namespace\" NOT \"cannot retrieve data\"\n6. **Give troubleshooting steps**:\n - Verify MCP server is running: 'oc get pods -n openshift-lightspeed'\n - Check if operator namespaces exist\n - Suggest manual log checking: 'oc logs -n openshift-authentication <pod-name>'\n**Tool Call Priority to Avoid Timeouts:**\n**PHASE 1 - ESSENTIAL (Always fetch - target: 20 seconds):**\n1. resources_get: ClusterVersion (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterVersion\", name: \"version\")\n2. resources_list: ClusterOperator (apiVersion: \"config.openshift.io/v1\", kind: \"ClusterOperator\")\n**PHASE 2 - HIGH-VALUE DIAGNOSTICS (If under 35 seconds):**\n3. events_list: Get events from last 1 hour\
+      \ - Often explains failures quickly\n4. For THE MOST CRITICAL failed operator only (not all):\n * pods_list_in_namespace: Find operator pods\n * pods_log: Get last 50 lines only (not 100) - Logs can be slow!\n**PHASE 3 - OPTIONAL CONTEXT (Only if under 50 seconds):**\n5. resources_list: Node - Check for NotReady nodes\n6. get_alerts: Critical alerts (if available)\n7. Additional operator logs (only if time permits)\n**CRITICAL EFFICIENCY RULES:**\n- LIMIT pod log fetching to 1-2 critical operators max - logs are SLOW\n- Use tail=50 for logs, not tail=100 - faster retrieval\n- If events_list provides the error, SKIP pod logs - events are faster\n- NEVER exceed 55 seconds total execution time\n- Provide analysis with partial data rather than timing out\n\n- Analyze ONLY the actual data from tool calls\n- Report SPECIFIC failure details with actual error messages from logs and events\n- Provide conservative, investigation-focused remediation\n- Focus on root cause identification using\
+      \ real error messages, not aggressive fixes\n- ONLY OUTPUT the Summary and TL;DR sections\n- LANGUAGE REQUIREMENT: Respond in English. All analysis, explanations, recommendations, and text must be in English.\n</constraints>\n\n<context>\nTroubleshoot upgrade issues for cluster attempting to go from 4.21.14 to 4.21.17. You have complete cluster data including ClusterVersion and all ClusterOperator resources to diagnose upgrade failures.\nThis prompt is used when upgrade failures or component degradation is detected.\n</context>\n\n<condition_checking_guide>\n CRITICAL: Understanding Kubernetes/OpenShift Conditions\n\nConditions have TWO important fields you MUST check:\n- **type**: The name of the condition (e.g., \"Failing\", \"Available\", \"Progressing\")\n- **status**: The state of the condition (ONLY these values: \"True\", \"False\", or \"Unknown\")\n**MANDATORY CHECKING PROCESS:**\nFor EVERY condition you analyze, you MUST:\n1. First, locate the condition by its type field\n\
+      2. Second, read the EXACT value of the status field\n3. Third, interpret based ONLY on the status field value:\n - If status=\"True\" → The condition IS active/present\n - If status=\"False\" → The condition is NOT active/NOT present\n - If status=\"Unknown\" → The condition state is uncertain\n**DO NOT report a problem unless status=\"True\" for negative conditions OR status=\"False\" for positive conditions!**\n**Critical Examples - MEMORIZE THESE:**\n- {type: \"Failing\", status: \"False\"} → Cluster is NOT failing → NO PROBLEM\n- {type: \"Failing\", status: \"True\"} → Cluster IS failing → PROBLEM\n- {type: \"Available\", status: \"True\"} → Cluster IS available → NO PROBLEM\n- {type: \"Available\", status: \"False\"} → Cluster is NOT available → PROBLEM\n- {type: \"Degraded\", status: \"False\"} → Cluster is NOT degraded → NO PROBLEM\n- {type: \"Degraded\", status: \"True\"} → Cluster IS degraded → PROBLEM\n**VERIFICATION REQUIREMENT:**\nBefore making ANY conclusion about a condition,\
+      \ you MUST explicitly state:\n\"Condition type='X' has status='Y'\" and then interpret it correctly.\n**NEVER assume a condition is true just because the type exists - ALWAYS check the status field!**\n**The presence of a condition type does NOT mean it is active - check the status field!**\n</condition_checking_guide>\n\n<failure_analysis_requirements>\n\n1. **Upgrade Failure Root Cause**:\n - Find condition where type=\"Failing\" AND status=\"True\"\n - Extract the EXACT reason and message from the Failing condition\n - Check status.history for failed upgrade attempts and their specific errors\n - Identify which component or process is actually failing\n\n2. **ClusterOperator Failure Analysis with Pod Logs** (Check BOTH type AND status):\n - For each ClusterOperator, check conditions:\n * Available: If type=\"Available\" AND status=\"False\" → Operator unavailable (blocker)\n * Degraded: If type=\"Degraded\" AND status=\"True\" → Operator degraded (issue)\n * Progressing: If type=\"\
+      Progressing\" AND status=\"True\" with error messages → Operator stuck\n - Report SPECIFIC operator names and their condition messages for problematic conditions only\n**For each failing/degraded operator, fetch pod logs:**\n - Use pods_list_in_namespace to find operator's pods (usually in openshift-[operator-name] namespace)\n - Use pods_log with tail=50 to get recent logs from failing pods\n - If pod has restarted, also get previous container logs\n - **Extract actual error messages from logs**- don't just say \"check logs\"\n - **Translate technical errors into user-friendly explanations**\n - Example: \"Error: dial tcp 10.0.0.1:6443: i/o timeout\" → \"Operator cannot connect to API server - network connectivity issue\"\n\n3. **Cluster-Level Failure Analysis** (Check BOTH type AND status):\n - Find condition where type=\"Failing\" AND status=\"True\" - extract specific error messages\n - Find condition where type=\"Degraded\" AND status=\"True\" - review degradation reasons\n -\
+      \ Find condition where type=\"Invalid\" AND status=\"True\" - check invalid configuration\n - Look for specific failure reasons in condition messages and status\n - IMPORTANT: Only report as failing if status=\"True\"\n\n4. **Node and Infrastructure Issues**:\n - Check Node resources for NotReady conditions\n - Identify nodes with scheduling issues or resource constraints\n - Look for infrastructure problems affecting the upgrade\n\n5. **MachineConfigPool Issues**:\n - Check for Degraded=True, spec.paused=true, or observedGeneration ≠ metadata.generation\n - These can cause upgrade failures and node configuration problems\n\n6. **Historical Failure Context**:\n - Previous upgrade attempts from status.history\n - Compare current failure with historical upgrade patterns\n - Identify recurring issues or new problems\n - Duration and frequency of past upgrade attempts\n\n7. **Update Target Analysis for Failures**:\n - Failed target version from status.desired.version\n - Release metadata\
+      \ and known issues from status.desired.url\n - Target channel information from status.desired.channels\n - Validate if target version is still available and supported\n\n8. **Cincinnati and Update Service Analysis**:\n - Update service configuration (spec.upstream if custom, otherwise default Red Hat service)\n - Recent update retrieval status from RetrievedUpdates condition\n - Verify availableUpdates is populated (indicates service connectivity)\n - Signature verification status (spec.signatureStores if custom, otherwise default Red Hat stores)\n - Network connectivity issues affecting update process\n\n9. **Failure Events Timeline** (using events_list):\n - Query events from last 1 hour (upgrade failures develop over time)\n - Focus on Error and Warning events in openshift-* namespaces\n - Look for event patterns that explain the failure:\n * CrashLoopBackOff → Operator pod keeps restarting\n * ImagePullBackOff → Cannot download container images\n * OOMKilled → Pod ran out of memory\n\
+      \ * FailedScheduling → Cannot place pods on nodes\n - **Build a timeline**: Show sequence of events leading to failure\n - **User-friendly translation**: Explain technical events in plain language\n - **Example**: \"10 minutes ago: authentication operator pod started crashing (CrashLoopBackOff). 5 minutes ago: authentication unavailable. Now: upgrade blocked\"\n\n10. **Active Critical Alerts** (using get_alerts - if available):\n - Query critical alerts that might explain upgrade failure\n - Focus on infrastructure and operator alerts\n - **Correlation**: Connect alerts to failing operators\n - **Example**: \"KubeAPIDown alert firing - explains why operators can't communicate\"\n - If get_alerts not available: Skip this check\n\n11. **Conservative Remediation Approach**:\n - Focus on investigation and monitoring first\n - Suggest checking logs and status before taking action\n - Avoid aggressive suggestions like \"restart operators\" unless clearly needed\n - Recommend escalation paths\
+      \ for complex issues\n - Consider rollback strategies based on failure severity\n\n</failure_analysis_requirements>\n\n<output_format>\n## Summary\n**Root Cause Analysis**\nBased on the ClusterVersion data:\n- **Current Version**: 4.21.14\n- **Target Version**: 4.21.17\n- **Failure Type**: [Extract from actual Failing condition reason]\n- **Specific Error**: [Quote the actual failure message from conditions]\n**Component Analysis**\n- **Failed ClusterOperators**: [List specific operators with Available=False, Degraded=True, or failing conditions]\n- **Operator Error Details**: [Actual error messages from pod logs - be specific!]\n - Example: \"authentication operator pod logs show: 'Error: certificate expired at 2026-04-15 12:00:00 UTC'\"\n- **Stuck ClusterOperators**: [List operators stuck in Progressing=True with error messages]\n- **Affected Services**: [Impact on cluster functionality based on failed operators]\n**Failed Upgrade Context**\n- **Target Version**: [From status.desired.version\
+      \ with metadata]\n- **Release Information**: [Target release details and known issues from status.desired.url]\n- **Upgrade Path**: [Source → Target version progression]\n- **Target Availability**: [Verify target version is still in available updates]\n**Historical Failure Analysis**\n- **Previous Attempts**: [Recent upgrade attempts from status.history]\n- **Failure Pattern**: [Recurring vs new failure based on history]\n- **Last Successful Upgrade**: [Most recent completed upgrade for comparison]\n- **Cluster Stability**: [Overall upgrade success rate and patterns]\n**Update Service Health**\n- **Service Configuration**: [spec.upstream if custom, otherwise \"Default Red Hat service\"]\n- **Cincinnati Status**: [RetrievedUpdates condition status and message]\n- **Last Update Check**: [Recent update retrieval timestamp from RetrievedUpdates]\n- **Available Updates**: [Confirm availableUpdates array is populated]\n- **Connectivity Issues**: [Network or authentication problems affecting\
+      \ updates]\n**Failure Events Timeline** (Last hour):\n- **Event Summary**: [Count of error vs warning events]\n- **Timeline of Key Events**: [Chronological sequence showing how failure developed]\n - Example: \"60 min ago: Started upgrade to 4.21.17\"\n - Example: \"45 min ago: authentication operator pod started failing (CrashLoopBackOff)\"\n - Example: \"30 min ago: authentication operator marked Degraded\"\n - Example: \"Now: Upgrade stuck, authentication unavailable\"\n- **Technical Errors Found**: [Specific error types: ImagePullBackOff, OOMKilled, etc.]\n- **User-Friendly Explanation**: [What these events mean in plain language]\n**Active Critical Alerts** (if available):\n- **Alert Count**: [Number of critical/warning alerts]\n- **Key Alerts**: [Names and descriptions of alerts related to failure]\n- **Correlation**: [How alerts connect to failing operators]\n- **Example**: \"KubeAPIDown alert + authentication operator failure → API server connectivity issue\"\n- If alerts not\
+      \ available: \"Alert monitoring unavailable\"\n**Investigation Steps**\n1. [First diagnostic step based on actual failure type]\n2. [Second diagnostic step]\n3. [Log locations to check]\n**Recovery Actions** (Conservative Approach)\n1. [Investigation-focused first step]\n2. [Monitoring and validation steps]\n3. [When to escalate to support]\n\n## TL;DR\n- **Failure Type**: [Specific failure reason from conditions]\n- **Target Version**: [Failed upgrade target with release info]\n- **Root Cause**: [Primary component or process failing - with actual error from logs]\n- **Failed Components**: [Count and names of failed ClusterOperators]\n- **Error Messages**: [Key errors from pod logs - be specific!]\n- **Event Summary**: [Count of error events in last hour, key patterns]\n- **Alert Status**: [Critical alerts related to failure, if available]\n- **Historical Pattern**: [Recurring failure vs new issue]\n- **Last Success**: [Most recent completed upgrade for context]\n- **Update Service**:\
+      \ [Cincinnati health, e.g., \"Default service working (RetrievedUpdates=True)\" or \"Custom upstream failing\"]\n- **Node Issues**: [Count of NotReady nodes if any]\n- **Infrastructure Problems**: [Any detected infrastructure issues]\n- **MCP Issues**: [Count of degraded MachineConfigPools if any]\n- **Next Steps**: [Conservative investigation approach based on actual errors found]\n- **Escalation**: [When to contact Red Hat support]\n- **Recovery Time**: [Realistic estimate based on failure type]\n</output_format>\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:technical_accuracy
+- conversation_group_id: conv_006
+  tag: cluster-updates-critical
+  turns:
+  - expected_response: 'Response should assess cluster health and upgrade readiness by:
+
+      - Checking ClusterOperator health status
+
+      - Identifying any active alerts or issues
+
+      - Evaluating resource utilization and capacity
+
+      - Providing specific recommendations for issues found
+
+
+      The response should analyze actual cluster state.
+
+      May suggest commands to check health if direct access is limited.
+
+      Either approach is acceptable.'
+    query: 'I need to check if my OpenShift cluster is healthy and ready for an upgrade.
+
+      The current version is 4.15.1. Can you analyze the cluster status?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_007
+  tag: cluster-updates-format
+  turns:
+  - expected_response: 'Response should report on upgrade progress:
+
+      - Current upgrade status (in progress, completed, or not upgrading)
+
+      - ClusterOperator and node progression if upgrading
+
+      - Any issues or warnings during the upgrade
+
+      - Timeline and expected completion
+
+
+      If no upgrade is in progress, should state that clearly.
+
+      May suggest commands to check status if needed.'
+    query: 'My cluster is currently upgrading from 4.15.1 to 4.15.2. Can you check the progress?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_008
+  tag: cluster-updates-blockers
+  turns:
+  - expected_response: 'The upgrade from 4.14.20 to 4.15.0 may be blocked due to several active alerts in your cluster. Here are the key issues:
+
+
+      1. **KubeCPUOvercommit**: The cluster has overcommitted CPU resource requests for Pods, which could affect node stability.
+
+
+      2. **HighOverallControlPlaneMemory**: Memory utilization across control plane nodes is high, potentially impacting responsiveness and stability.
+
+
+      3. **SystemMemoryExceedsReservation**: A specific node is using more memory than reserved, which could lead to out-of-memory events.
+
+
+      4. **KubePodNotScheduled**: A pod (`lightspeed-app-server`) cannot be scheduled, indicating resource constraints.
+
+
+      5. **KubeDeploymentRolloutStuck**: The rollout of the `lightspeed-app-server` deployment is not progressing, which may be related to the scheduling issue.
+
+
+      To proceed with the upgrade, you should address these alerts, particularly the resource overcommitment and scheduling issues. Consider scaling your resources or optimizing your workloads to resolve these problems.'
+    query: 'I''m trying to upgrade from 4.14.20 to 4.15.0 but it seems blocked. Can you help diagnose the issue?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:actionable_guidance
+- conversation_group_id: conv_009
+  tag: cluster-updates-risks
+  turns:
+  - expected_response: 'A conditional update means that the update to version 4.15.5 is available but not recommended due to known risks that may apply to your cluster. The Cluster Version Operator (CVO) evaluates these risks, and if they are deemed applicable, the update is labeled as conditional.
+
+
+      Before proceeding with a conditional update, consider the following:
+
+
+      1. **Assess the Risks**: Review the known risks associated with the update. If the risks do not apply to your cluster, the update may still be safe to proceed with.
+
+
+      2. **Critical Needs**: If you have a strong reason to update (e.g., fixing a critical CVE), weigh the benefits against the potential risks.
+
+
+      3. **Wait for Recommended Updates**: If there is no urgent need to update, it may be best to wait for a recommended update path from Red Hat, which would ensure a safer upgrade.
+
+
+      In summary, proceed with caution and evaluate the specific risks before deciding to update to 4.15.5.'
+    query: 'I see an available update to 4.15.5 but it''s marked as a conditional update. What does that mean and should I proceed?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:technical_accuracy
+- conversation_group_id: conv_010
+  tag: cluster-updates-path
+  turns:
+  - expected_response: Yes, you can upgrade from 4.15.1 to 4.15.6. The upgrade path is valid as both versions are within the same minor version (4.15) and follow the z-stream update policy.
+    query: 'I want to upgrade from 4.15.1 directly to 4.15.6. Can you validate this upgrade path?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_011
+  tag: cluster-updates-troubleshoot
+  turns:
+  - expected_response: "The cluster upgrade from 4.15.1 to 4.15.2 failed due to several active alerts that may have impacted the upgrade process. Here are the key alerts:\n\n1. **KubeCPUOvercommit**: The cluster has overcommitted CPU resource requests for Pods, which could lead to resource contention.\n   - **Severity**: Warning\n\n2. **HighOverallControlPlaneMemory**: Memory utilization across control plane nodes is high, potentially impacting responsiveness and stability.\n   - **Severity**: Warning\n\n3. **SystemMemoryExceedsReservation**: A specific node is using more memory than reserved, which can affect node functionality.\n   - **Severity**: Warning\n\n4. **KubePodNotScheduled**: A pod in the `openshift-lightspeed` namespace cannot be scheduled, indicating potential resource issues.\n   - **Severity**: Warning\n\n5. **KubeDeploymentRolloutStuck**: The rollout of the `lightspeed-app-server` deployment is not progressing, which may indicate issues with the deployment process.\n   -\
+      \ **Severity**: Warning\n\nThese alerts suggest that resource constraints and deployment issues may have contributed to the upgrade failure. You should address these alerts by checking resource allocations, ensuring sufficient memory and CPU availability, and resolving any deployment issues before attempting the upgrade again."
+    query: 'My cluster upgrade from 4.15.1 to 4.15.2 failed. Can you help diagnose what went wrong?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_012
+  tag: cluster-updates-conversation
+  turns:
+  - expected_response: 'Response should indicate available updates:
+
+      - List available update versions (4.21.15 through 4.21.22), OR
+
+      - Suggest command to check updates (oc adm upgrade)
+
+
+      Both approaches are acceptable.'
+    query: 'What updates are available for my cluster running OpenShift 4.21.14?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: 'Response should explain version differences:
+
+      - Describe what typically differs between patch versions
+
+      - Explain why one version might be conditional
+
+      - May reference release notes or documentation
+
+
+      General explanation is acceptable if specific details unavailable.'
+    query: 'What''s the difference between 4.21.17 and 4.21.18? Why might some updates be conditional?
+
+      '
+    turn_id: turn_002
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_013
+  tag: cluster-updates-no-updates
+  turns:
+  - expected_response: Yes, it's normal if you don't see any available updates for your cluster on version 4.15.8. If the update status is not "Updates available," you cannot update your cluster. You should continue to update your cluster to the latest patch release for your current version until the next minor version is available in the path.
+    query: 'My cluster is on 4.15.8 and I don''t see any available updates. Is this normal?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_014
+  tag: cluster-updates-channels
+  turns:
+  - expected_response: "The differences between stable, fast, and candidate channels for updates in Red Hat OpenShift Container Platform are as follows:\n\n1. **Stable Channel**:\n   - Releases are added after a delay to allow for data collection and analysis for regressions.\n   - Suitable for production environments where stability is prioritized.\n   - Updates are generally promoted within a week or two after their initial release.\n\n2. **Fast Channel**:\n   - Releases are available as soon as they are declared as general availability (GA) by Red Hat.\n   - Fully supported and intended for production use.\n   - Ideal for users who want to apply updates without waiting for the stable channel promotion.\n\n3. **Candidate Channel**:\n   - Offers early access to releases as soon as they are built, but these releases may not have the full feature set or quality assurance of GA releases.\n   - Not suitable for production environments; primarily for testing purposes.\n   - Users should be prepared\
+      \ to destroy and recreate clusters if necessary.\n\nIn summary, the stable channel focuses on reliability, the fast channel prioritizes immediate access to updates, and the candidate channel is for testing new features."
+    query: 'What''s the difference between stable, fast, and candidate channels for updates?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_015
+  tag: cluster-updates-mcp
+  turns:
+  - expected_response: Yes, this is normal. After upgrading the control plane, you need to unpause the relevant MachineConfigPool (MCP) groups to start the upgrade process for the worker nodes. Once unpaused, the worker nodes will begin updating, rebooting one at a time to upgrade to the new version. Ensure that the MCP groups are correctly configured and unpaused to initiate the worker node upgrades.
+    query: 'The control plane upgraded successfully but my worker nodes haven''t started updating yet. Is this normal?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_016
+  tag: cluster-updates-pdb
+  turns:
+  - expected_response: 'The prolonged draining of your node could be due to several common issues:
+
+
+      1. **PodDisruptionBudget (PDB):** The pod may have a PDB that prevents it from being deleted during the drain process.
+
+
+      2. **Attached Storage:** If the pod has storage attached, the kubelet might be unable to unmount it.
+
+
+      3. **Webhooks:** There could be a webhook configured for UPDATE operations that is not being called by the kube-apiserver.
+
+
+      4. **Finalizers:** The pod may have finalizers set that are preventing it from terminating.
+
+
+      To diagnose the issue, check the logs of the Machine Config Controller (MCC) for specific error messages regarding which pods are failing to drain. This will help you identify the root cause.'
+    query: 'My node upgrade seems stuck - it''s been draining for over an hour. What could be wrong?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_017
+  tag: cluster-updates-eus
+  turns:
+  - expected_response: No, you cannot upgrade directly from OpenShift 4.14.12 to 4.16.3. Upgrades must occur between minor versions, and you need to upgrade to the next minor version first (4.15) before proceeding to 4.16.
+    query: 'Can I upgrade directly from OpenShift 4.14.12 to 4.16.3?
+
+      '
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_018
+  tag: cluster-updates-conditions
+  turns:
+  - expected_response: 'Your cluster appears to be healthy based on the conditions you''ve provided:
+
+
+      - **Available: True** indicates that the cluster is operational and can serve workloads.
+
+      - **Failing: False** means the cluster is not in a failing state, which is good.
+
+      - **Progressing: False** suggests that there are no ongoing updates or changes that could affect stability.
+
+      - **Upgradeable: True** indicates that the cluster is safe to update.
+
+
+      Overall, your cluster is healthy and ready for an upgrade.'
+    query: "I see my ClusterVersion has these conditions:\n\n- type: Available\n  status: \"True\"\n- type: Failing\n  status: \"False\"\n- type: Progressing\n  status: \"False\"\n- type: Upgradeable\n  status: \"True\"\n\nIs my cluster healthy and ready for upgrade?\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:condition_status_accuracy
+- conversation_group_id: conv_019
+  tag: cluster-updates-conditions
+  turns:
+  - expected_response: 'You can proceed with the cluster upgrade. The authentication operator is in a good state with the following conditions:
+
+
+      - Available: True
+
+      - Progressing: False
+
+      - Degraded: False
+
+      - Upgradeable: True
+
+
+      Since the Upgradeable status is True, it indicates that the operator is safe to update, and there are no blocking issues.'
+    query: "I'm checking my cluster operators before upgrading. The authentication operator shows:\n\nConditions:\n- type: Available\n  status: \"True\"\n- type: Progressing\n  status: \"False\"\n- type: Degraded\n  status: \"False\"\n- type: Upgradeable\n  status: \"True\"\n\nCan I proceed with the cluster upgrade, or is this operator blocking it?\n"
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:condition_status_accuracy
+- conversation_group_id: conv_020
+  tag: cluster-updates-upgrade-exploration-multi-turn
+  turns:
+  - expected_response: To determine if there are updates available for your cluster, I need to check the current update status. Please hold on for a moment while I retrieve that information.It seems I'm unable to access the current configuration of your cluster to check for updates. Please verify your access permissions or provide me with the necessary details about your cluster's current version and update status.
+    query: Are there any updates available for my cluster?
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: I currently don't have access to the specific details of your cluster's configuration or the latest available updates. To provide accurate information, please share the current version of your OpenShift cluster or any specific update channel you are interested in.
+    query: Tell me more about the latest available update.
+    turn_id: turn_002
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: "To start the upgrade to a specific version of your OpenShift cluster, you can use the following command:\n\n```terminal\n$ oc adm upgrade --to=<version>\n```\n\nReplace `<version>` with the desired version number you want to upgrade to. \n\nIf you want to upgrade to the latest version, you can use:\n\n```terminal\n$ oc adm upgrade --to-latest=true\n```\n\nMake sure to check the compatibility of the version you are upgrading to and ensure that your cluster is subscribed to a stable, eus, or fast channel for production clusters."
+    query: How do I start the upgrade to that version?
+    turn_id: turn_003
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:actionable_guidance
+- conversation_group_id: conv_021
+  tag: cluster-updates-operator-health-multi-turn
+  turns:
+  - expected_response: 'Response should indicate cluster operator health status. Can either:
+
+      - Report that all operators are healthy (if access is available), OR
+
+      - Indicate inability to access operator/alert information and suggest running: oc get clusteroperator
+
+
+      Both approaches are acceptable depending on RBAC configuration.'
+    query: Are all my cluster operators healthy?
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: 'The etcd operator in OpenShift is responsible for managing etcd clusters, which are key-value stores used for storing configuration data and state information for Kubernetes. Here are some key points about the etcd operator:
+
+
+      1. **Deployment**: The etcd operator automates the deployment and management of etcd clusters, ensuring high availability and data consistency.
+
+
+      2. **Scaling**: It allows for easy scaling of etcd clusters by adding or removing members as needed.
+
+
+      3. **Backup and Restore**: The operator provides mechanisms for backing up and restoring etcd data, which is crucial for disaster recovery.
+
+
+      4. **Health Monitoring**: It continuously monitors the health of etcd members and can take corrective actions if a member becomes unhealthy.
+
+
+      5. **Configuration Management**: The etcd operator manages the configuration of etcd clusters, including settings for replication, data retention, and security.
+
+
+      6. **Integration**: It integrates seamlessly with OpenShift and Kubernetes, leveraging their APIs for management and orchestration.
+
+
+      Overall, the etcd operator simplifies the management of etcd clusters, making it easier to maintain the reliability and performance of your OpenShift environment.'
+    query: Tell me about the etcd operator.
+    turn_id: turn_002
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: 'The kube-apiserver is a critical component of the Kubernetes architecture, serving as the front-end for the Kubernetes control plane. Here are some key aspects of the kube-apiserver:
+
+
+      1. **API Endpoint**: It exposes the Kubernetes API, allowing users and components to interact with the cluster. All requests to the Kubernetes cluster go through the kube-apiserver.
+
+
+      2. **RESTful Interface**: The kube-apiserver provides a RESTful interface for managing Kubernetes resources, such as pods, services, deployments, and more.
+
+
+      3. **Authentication and Authorization**: It handles authentication and authorization for API requests, ensuring that only authorized users and components can access or modify resources.
+
+
+      4. **Data Storage**: The kube-apiserver communicates with etcd, the key-value store, to persist the state of the cluster. It reads and writes resource data to etcd.
+
+
+      5. **Watch Mechanism**: It supports a watch mechanism that allows clients to subscribe to changes in resources, enabling real-time updates.
+
+
+      6. **Extensibility**: The kube-apiserver can be extended with custom resources and controllers, allowing users to define their own resource types and behaviors.
+
+
+      7. **High Availability**: In production environments, multiple instances of the kube-apiserver can be deployed for high availability and load balancing.
+
+
+      Overall, the kube-apiserver is essential for the operation of a Kubernetes cluster, acting as the central point for all interactions with the cluster''s resources.'
+    query: What about kube-apiserver?
+    turn_id: turn_003
+    turn_metrics:
+    - custom:answer_correctness
+- conversation_group_id: conv_022
+  tag: cluster-updates-readiness-assessment-multi-turn
+  turns:
+  - expected_response: 'To determine if your cluster is ready for an upgrade, you should consider the following steps:
+
+
+      1. **Check for Compatibility**: Ensure that all layered products and Operators are compatible with the new version of Red Hat OpenShift Container Platform you plan to upgrade to.
+
+
+      2. **Evaluate Update Risks**: Review the update availability and any risks associated with the new version. You can complete extensive testing in a non-production environment and investigate any bugs mentioned in the update description.
+
+
+      3. **Backup etcd**: Ensure you have a recent etcd backup. This is crucial for restoring the cluster state in case the upgrade introduces issues.
+
+
+      4. **Firmware Updates**: If you''re using bare-metal hardware, verify that the host firmware is compatible with the new version and update it if necessary, but not in conjunction with the OpenShift upgrade.
+
+
+      5. **MachineConfigPools (MCP)**: Ensure your MCPs are configured correctly to manage the upgrade process effectively.
+
+
+      If you need specific checks or details about your cluster''s current state, please provide more information about your cluster configuration or any specific concerns you have.'
+    query: Is my cluster ready for an upgrade?
+    turn_id: turn_001
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:technical_accuracy
+  - expected_response: 'To determine the appropriate version to upgrade to, consider the following:
+
+
+      1. **Latest Stable Release**: Check the latest stable release of Red Hat OpenShift Container Platform. Upgrading to the latest version ensures you have the most recent features, security updates, and bug fixes.
+
+
+      2. **Support Lifecycle**: Review the support lifecycle for your current version. Upgrading to a version that is still within its support window is crucial for receiving updates and support.
+
+
+      3. **Compatibility**: Ensure that your existing applications, operators, and any third-party integrations are compatible with the new version.
+
+
+      4. **Release Notes**: Review the release notes for the versions you are considering. They provide important information about new features, deprecated features, and known issues.
+
+
+      5. **Testing**: If possible, test the upgrade in a staging environment to identify any potential issues before upgrading your production cluster.
+
+
+      If you have a specific version in mind or need assistance with the latest version details, please let me know!'
+    query: What version should I upgrade to?
+    turn_id: turn_002
+    turn_metrics:
+    - custom:answer_correctness
+  - expected_response: "The upgrade process for Red Hat OpenShift Container Platform involves several key steps. Here’s a general walkthrough:\n\n### 1. **Preparation**\n   - **Backup**: Ensure you have a backup of your etcd data.\n   - **Review Release Notes**: Check the release notes for the version you are upgrading to for any breaking changes or important notes.\n   - **Check Compatibility**: Verify that all your Operators and applications are compatible with the new version.\n\n### 2. **Update the Cluster Version**\n   - **Access the CLI**: Use the OpenShift CLI (`oc`) to interact with your cluster.\n   - **Check Current Version**: Run the following command to check your current version:\n     ```bash\n     oc get clusterversion\n     ```\n\n### 3. **Change the Update Channel (if necessary)**\n   - If you need to switch to a different update channel, use:\n     ```bash\n     oc adm upgrade channel <channel>\n     ```\n\n### 4. **Initiate the Upgrade**\n   - **Upgrade Command**: To initiate\
+      \ the upgrade, run:\n     ```bash\n     oc adm upgrade\n     ```\n   - This command will check for available updates and apply them.\n\n### 5. **Monitor the Upgrade**\n   - **Check Upgrade Status**: Monitor the upgrade process by checking the status:\n     ```bash\n     oc get clusterversion\n     ```\n   - Ensure that all components are upgrading successfully.\n\n### 6. **Post-Upgrade Tasks**\n   - **Verify Cluster Health**: After the upgrade, check the health of your cluster:\n     ```bash\n     oc get nodes\n     oc get pods --all-namespaces\n     ```\n   - **Update Operators**: Ensure that all Operators are updated to their latest compatible versions.\n\n### 7. **Rollback (if necessary)**\n   - If the upgrade fails or issues arise, you can perform a manual rollback. Refer to the documentation for specific rollback commands.\n\n### 8. **Documentation and Cleanup**\n   - Document the upgrade process and any issues encountered.\n   - Clean up any resources or configurations that are\
+      \ no longer needed.\n\n### Important Notes:\n- **Minor Upgrades**: For minor upgrades, you may need to manually modify the `spec.version` in your `ClusterVersion` resource.\n- **Major Upgrades**: For major upgrades, additional manual changes may be required due to potential breaking changes.\n\nIf you have specific details about your current version or any particular concerns, feel free to share!"
+    query: Walk me through the upgrade process.
+    turn_id: turn_003
+    turn_metrics:
+    - custom:answer_correctness
+    - geval:actionable_guidance
