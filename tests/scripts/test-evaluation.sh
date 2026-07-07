@@ -18,7 +18,7 @@ DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/utils.sh"
 
-# install operator-sdk 
+# install operator-sdk
 export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
 export OS=$(uname | awk '{print tolower($0)}')
 export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.36.1
@@ -36,11 +36,11 @@ function run_suites() {
 
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image os_config_suffix
-  run_suite "model_eval" "" "watsonx openai azure_openai" "$WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "ibm/granite-4-h-small gpt-4.1-mini gpt-4.1-mini" "$OLS_IMAGE" "default"
+  run_suite "model_eval" "" "watsonx openai azure_openai" "$WATSONX_PROVIDER_KEY_PATH $OPENAI_PROVIDER_KEY_PATH $AZUREOPENAI_PROVIDER_KEY_PATH" "ibm/granite-4-h-small gpt-4o-mini gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
   set -e
 
-  cleanup_ols_operator 
+  cleanup_ols_operator
 
   return $rc
 }

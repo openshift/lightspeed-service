@@ -1,5 +1,5 @@
 #!/bin/bash
-# CI job: run cluster-updates eval (18 conversations, 35 evaluations) against OLS using OpenAI GPT-4o-mini + GPT-4.1-mini judge.
+# CI job: run cluster-updates eval (18 conversations, 35 evaluations) against OLS using OpenAI GPT-4o-mini + gpt-4o-mini judge.
 #
 # Input environment variables:
 #   OPENAI_PROVIDER_KEY_PATH  - path to file containing the OpenAI API key

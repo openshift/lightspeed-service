@@ -21,7 +21,7 @@ api:
 
   # API input configuration
   provider: "openai"                   # LLM provider for queries
-  model: "gpt-4.1-mini"                # Model to use for queries (must be valid for OLS API)
+  model: "gpt-4o-mini"                # Model to use for queries (must be valid for OLS API)
   no_tools: null                       # Whether to bypass tools and MCP servers (optional)
   system_prompt: null                  # System prompt (default None)
 

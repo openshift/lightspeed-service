@@ -15,12 +15,12 @@ spec:
         type: azure_openai
         credentialsSecretRef:
           name: llmcreds
-        deploymentName: gpt-4.1-mini
+        deploymentName: gpt-4o-mini
         models:
-          - name: gpt-4.1-mini
+          - name: gpt-4o-mini
         url: 'https://ols-test.openai.azure.com/'
   ols:
-    defaultModel: gpt-4.1-mini
+    defaultModel: gpt-4o-mini
     defaultProvider: azure_openai
     deployment:
       replicas: 1

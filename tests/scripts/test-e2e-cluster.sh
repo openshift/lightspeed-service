@@ -18,7 +18,7 @@ DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/utils.sh"
 
-# install operator-sdk 
+# install operator-sdk
 export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
 export OS=$(uname | awk '{print tolower($0)}')
 export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.36.1
@@ -37,14 +37,14 @@ function run_suites() {
   # runsuite arguments:
   # suiteid test_tags provider provider_keypath model ols_image os_config_suffix
   # empty test_tags means run all tests
-  run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+  run_suite "azure_openai" "not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
-  run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "default"
+  run_suite "openai" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "default"
   (( rc = rc || $? ))
 
   # MCP e2e: run early while CR is still default openai shape; avoids races after tool_calling (introspection true).
-  run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "mcp"
+  run_suite "openai_mcp" "mcp" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "mcp"
   (( rc = rc || $? ))
 
   run_suite "google_vertex" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-2.5-flash-lite" "$OLS_IMAGE" "default"
@@ -66,9 +66,9 @@ function run_suites() {
 
   # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
   # Run tool calling - Enable tool_calling
-  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
+  run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
-  run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
+  run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
   # run_suite "google_vertex_tool_calling" "tool_calling" "google_vertex" "$VERTEX_PROVIDER_KEY_PATH" "gemini-2.5-flash-lite" "$OLS_IMAGE" "tool_calling"
   # (( rc = rc || $? ))
@@ -84,14 +84,14 @@ function run_suites() {
   (( rc = rc || $? ))
 
   # quota limits tests, independent of provider therefore only testing one
-  run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "quota"
+  run_suite "quota_limits" "quota_limits" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "quota"
   (( rc = rc || $? ))
 
   # exporter test
-  run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "data_export"
+  run_suite "data_export" "data_export" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "data_export"
   (( rc = rc || $? ))
 
-  cleanup_ols_operator 
+  cleanup_ols_operator
 
   set -e
 

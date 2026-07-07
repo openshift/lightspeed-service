@@ -1,4 +1,4 @@
-"""Cluster-updates evaluation tests using OpenAI GPT-4o-mini and GPT-4.1-mini judge."""
+"""Cluster-updates evaluation tests using OpenAI GPT-4o-mini and gpt-4o-mini judge."""
 
 import json
 import os
@@ -143,7 +143,7 @@ def _run_lseval(eval_data: Path, out_dir: Path) -> None:
 def test_cluster_updates(request: pytest.FixtureRequest) -> None:
     """Run cluster-updates eval suite (18 conversations, 35 evaluations).
 
-    Uses GPT-4o-mini and GPT-4.1-mini judge.
+    Uses GPT-4o-mini and gpt-4o-mini judge.
     """
     out_dir_base = request.config.option.eval_out_dir or str(
         EVAL_DIR / "results-cluster-updates"
