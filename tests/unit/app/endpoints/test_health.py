@@ -172,7 +172,7 @@ def test_readiness_probe_get_method_index_is_ready():
     ):
         # simulate that the index is loaded
         config._rag_index_loader = Mock(vector_indexes=["idx"])
-        config.ols_config.reference_content = "some content"
+        config.ols_config.reference_content = Mock(indexes=["idx_cfg"])
         assert index_is_ready()
         response = readiness_probe_get_method()
         assert response == ReadinessResponse(ready=True, reason="service is ready")
@@ -185,12 +185,20 @@ def test_readiness_probe_get_method_index_is_ready():
         response = readiness_probe_get_method()
         assert response == ReadinessResponse(ready=True, reason="service is ready")
 
+        # reference_content present but no indexes — should still be ready
+        config._rag_index_loader = None
+        config.ols_config.reference_content = Mock(indexes=None)
+        assert index_is_ready()
+
+        config.ols_config.reference_content = Mock(indexes=[])
+        assert index_is_ready()
+
 
 def test_readiness_probe_get_method_index_not_ready():
     """Test the readiness_probe function when index is not loaded."""
     with patch("ols.app.endpoints.health.llm_is_ready_persistent_state", new=True):
         config._rag_index_loader = Mock(vector_indexes=None)
-        config.ols_config.reference_content = "something else than None"
+        config.ols_config.reference_content = Mock(indexes=["idx_cfg"])
 
         assert not index_is_ready()
         with pytest.raises(HTTPException, match="Service is not ready"):

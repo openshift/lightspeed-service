@@ -975,19 +975,17 @@ class LoggingConfig(BaseModel):
 
 
 class ReferenceContentIndex(BaseModel):
-    """One on-disk FAISS / vector index (e.g. BYOK or other local RAG stores).
+    """One on-disk FAISS / vector index for BYOK RAG stores.
 
     Field names are historical: ``product_docs_*`` is used for any persisted
-    LlamaIndex vector store path, not only shipped product documentation. Managed
-    OpenShift product docs are typically retrieved via ``ols_config.solr_hybrid``
-    instead of a second index here. When ``solr_hybrid`` is enabled, any local index
-    listed alongside it must set ``byok_index: true`` (see ``OLSConfig.validate_yaml``).
+    LlamaIndex vector store path. Managed OpenShift product docs are served
+    exclusively via ``ols_config.solr_hybrid`` (OKP); this class is only for
+    user-supplied BYOK indexes.
     """
 
     product_docs_index_path: Optional[FilePath] = None
     product_docs_index_id: Optional[str] = None
     product_docs_origin: Optional[str] = None
-    byok_index: bool = False
 
     def __init__(self, data: Optional[dict] = None) -> None:
         """Initialize configuration and perform basic validation."""
@@ -997,34 +995,17 @@ class ReferenceContentIndex(BaseModel):
         self.product_docs_index_path = data.get("product_docs_index_path", None)
         self.product_docs_index_id = data.get("product_docs_index_id", None)
         self.product_docs_origin = data.get("product_docs_origin", None)
-        self.byok_index = bool(data.get("byok_index", False))
 
     def validate_yaml(self) -> None:
         """Validate reference content index config."""
         if self.product_docs_index_path is not None:
-            try:
-                checks.dir_check(
-                    self.product_docs_index_path, "Reference content index path"
-                )
-            except checks.InvalidConfigurationError as e_original:
-                # special case for OCP documents not having the current version.
-                # we use the "latest" version from the vector store directory.
-                default_path = os.path.join(
-                    os.path.dirname(self.product_docs_index_path), "latest"
-                )
-                try:
-                    checks.dir_check(default_path, "Reference content index path")
-                    self.product_docs_index_path = FilePath(default_path)
-                    # we don't know the index_id for "latest" so ignore what
-                    # the config says and load whatever index is there
-                    self.product_docs_index_id = None
-                except checks.InvalidConfigurationError:
-                    raise e_original
-        else:
-            if self.product_docs_index_id is not None:
-                raise checks.InvalidConfigurationError(
-                    "product_docs_index_id is specified but product_docs_index_path is missing"
-                )
+            checks.dir_check(
+                self.product_docs_index_path, "Reference content index path"
+            )
+        elif self.product_docs_index_id is not None:
+            raise checks.InvalidConfigurationError(
+                "product_docs_index_id is specified but product_docs_index_path is missing"
+            )
 
 
 class ReferenceContent(BaseModel):
@@ -1414,24 +1395,6 @@ class OLSConfig(BaseModel):
             self.proxy_config.validate_yaml()
         if self.solr_hybrid is not None:
             self.solr_hybrid.validate_yaml()
-        self._validate_solr_hybrid_vs_reference_indexes()
-
-    def _validate_solr_hybrid_vs_reference_indexes(self) -> None:
-        """Reject Solr hybrid together with local indexes that are not BYOK-only."""
-        solr = self.solr_hybrid
-        if solr is None:
-            return
-        rc = self.reference_content
-        if rc is None or not rc.indexes:
-            return
-        if any(not idx.byok_index for idx in rc.indexes):
-            raise checks.InvalidConfigurationError(
-                "ols_config.solr_hybrid is enabled together with "
-                "ols_config.reference_content.indexes entries that are not marked "
-                "BYOK-only. Remove local product vector indexes when using Solr, or set "
-                "byok_index: true on each index that is intentionally kept with Solr "
-                "(e.g. BYOK)."
-            )
 
 
 class DevConfig(BaseModel):

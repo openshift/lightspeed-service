@@ -212,10 +212,6 @@ data:
           - name: <model-name-2>
     ols_config:
       max_workers: 1
-      reference_content:
-        indexes:
-          - product_docs_index_path: "./vector_db/ocp_product_docs/4.15"
-            product_docs_index_id: ocp-product-docs-4_15
       conversation_cache:
         type: memory
         memory:

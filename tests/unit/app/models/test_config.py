@@ -2336,60 +2336,6 @@ def test_ols_config_validate_yaml_solr_hybrid_rejects_invalid_base_url():
         ols_config.validate_yaml(disable_tls=True)
 
 
-def test_ols_config_validate_yaml_rejects_solr_with_non_byok_indexes(tmp_path):
-    """Solr enabled with local indexes requires byok_index on each index row."""
-    idx_dir = tmp_path / "idx"
-    idx_dir.mkdir()
-    ols_config = OLSConfig(
-        {
-            "default_provider": "p",
-            "default_model": "m",
-            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
-            "logging_config": {"logging_level": "INFO"},
-            "solr_hybrid": {
-                "solr_http_base": "https://solr.example.com",
-            },
-            "reference_content": {
-                "indexes": [
-                    {
-                        "product_docs_index_path": str(idx_dir),
-                        "product_docs_index_id": "idx1",
-                    }
-                ],
-            },
-        }
-    )
-    with pytest.raises(InvalidConfigurationError, match="byok_index"):
-        ols_config.validate_yaml(disable_tls=True)
-
-
-def test_ols_config_validate_yaml_allows_solr_with_byok_indexes(tmp_path):
-    """Solr plus BYOK-marked local indexes passes validation."""
-    idx_dir = tmp_path / "idx"
-    idx_dir.mkdir()
-    ols_config = OLSConfig(
-        {
-            "default_provider": "p",
-            "default_model": "m",
-            "conversation_cache": {"type": "memory", "memory": {"max_entries": 10}},
-            "logging_config": {"logging_level": "INFO"},
-            "solr_hybrid": {
-                "solr_http_base": "https://solr.example.com",
-            },
-            "reference_content": {
-                "indexes": [
-                    {
-                        "product_docs_index_path": str(idx_dir),
-                        "product_docs_index_id": "idx1",
-                        "byok_index": True,
-                    }
-                ],
-            },
-        }
-    )
-    ols_config.validate_yaml(disable_tls=True)
-
-
 def test_ols_config_tool_round_cap_fraction():
     """tool_round_cap_fraction is on OLSConfig and uses TOOL_ROUND_CAP_FRACTION bounds."""
     base = {
@@ -3208,16 +3154,6 @@ def test_reference_content_index_constructor():
     )
     assert reference_content_index.product_docs_index_id == "id"
     assert reference_content_index.product_docs_index_path == "/path/"
-    assert reference_content_index.byok_index is False
-
-    byok = ReferenceContentIndex(
-        {
-            "product_docs_index_id": "id2",
-            "product_docs_index_path": "/path2/",
-            "byok_index": True,
-        }
-    )
-    assert byok.byok_index is True
 
 
 def test_reference_content_index_equality():
@@ -3346,12 +3282,8 @@ def test_reference_content_yaml_validation():
         reference_content.validate_yaml()
 
 
-def test_reference_content_yaml_validation_fallback_to_default_dir(tmp_path):
-    """Test the ReferenceContent YAML validation method fallback to default dir."""
-    default_dir = tmp_path / "latest"
-    default_dir.mkdir()
-
-    # index path to inexistent dir in the temp dir should fallback to "default" dir
+def test_reference_content_yaml_validation_nonexistent_dir(tmp_path):
+    """Test that validation raises for a non-existent index directory."""
     inexistent_dir = tmp_path / "non_existing_dir"
     reference_content = ReferenceContent()
     reference_content.indexes = [
@@ -3359,12 +3291,6 @@ def test_reference_content_yaml_validation_fallback_to_default_dir(tmp_path):
             {"product_docs_index_id": "foo", "product_docs_index_path": inexistent_dir}
         )
     ]
-    reference_content.validate_yaml()
-    assert reference_content.indexes[0].product_docs_index_path == default_dir
-    assert reference_content.indexes[0].product_docs_index_id is None
-
-    # exception should be raised if the default dir does not exist, either
-    default_dir.rmdir()
     with pytest.raises(
         InvalidConfigurationError,
         match=r"Reference content index path '.+' does not exist",

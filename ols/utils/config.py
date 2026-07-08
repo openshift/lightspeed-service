@@ -159,10 +159,11 @@ class AppConfig:
     @property
     def rag_index_loader(self) -> Optional[IndexLoader]:
         """Return the RAG index loader, or ``None`` when no reference content is configured."""
-        if self.config.ols_config.reference_content is None:  # type: ignore[attr-defined]
+        ref = self.config.ols_config.reference_content  # type: ignore[attr-defined]
+        if ref is None or not ref.indexes:
             return None
         if self._rag_index_loader is None:
-            self._rag_index_loader = IndexLoader(self.ols_config.reference_content)
+            self._rag_index_loader = IndexLoader(ref)
         return self._rag_index_loader
 
     def _byok_embed_model(self) -> Any:

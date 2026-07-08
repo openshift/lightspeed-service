@@ -78,13 +78,11 @@ ols_config:
   # Product docs via Solr hybrid (OKP).  Omit solr_hybrid to disable.
   solr_hybrid:
     solr_http_base: "https://solr.example.com:8983"
-  # BYOK / local FAISS indexes.
-  # With solr_hybrid present, every index must set byok_index: true.
+  # BYOK / local FAISS indexes (user-supplied content only).
   reference_content:
     indexes:
       - product_docs_index_path: "./vector_db/user_application_docs/version_1"
         product_docs_index_id: user-application-docs-version_1
-        byok_index: true
   conversation_cache:
     type: memory
     memory:
