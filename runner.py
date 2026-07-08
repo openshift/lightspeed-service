@@ -58,7 +58,7 @@ if __name__ == "__main__":
     configure_logging(config.ols_config.logging_config)
     logger.info("Config loaded from %s", Path(cfg_file).resolve())
     logger.info("Running on Python version %s", sys.version)
-    configure_hugging_face_envs(config.ols_config)
+    configure_hugging_face_envs()
 
     # generate certificates file from all certificates from certifi package
     # merged with explicitly specified certificates
@@ -91,6 +91,10 @@ if __name__ == "__main__":
             "Pyroscope url is not specified. To enable profiling please set `pyroscope_url` "
             "in the `dev_config` section of the configuration file."
         )
+    # Eagerly initialize Solr hybrid search so OCP version resolution
+    # (requires OCP_CLUSTER_VERSION and a reachable Solr) fails fast.
+    config.solr_hybrid_search  # pylint: disable=W0104
+
     # create and start the rag_index_thread - allows loading index in
     # parallel with starting the Uvicorn server
     rag_index_thread = threading.Thread(target=load_index)

@@ -161,6 +161,24 @@ class NonDictStructuredContentTool(StructuredTool):
         )
 
 
+class RefDocsOutputTool(StructuredTool):
+    """Tool that returns referenced_documents in its metadata tuple."""
+
+    def __init__(self, name: str, ref_docs: list):
+        """Initialize mock tool with referenced documents."""
+
+        async def _coro(**kwargs: Any) -> tuple[Any, Any]:
+            return ("ok", {"referenced_documents": ref_docs})
+
+        super().__init__(
+            name=name,
+            description=f"Ref docs tool {name}",
+            func=lambda **kwargs: "unused",
+            coroutine=_coro,
+            args_schema=FakeSchema,
+        )
+
+
 async def _collect_tool_messages(
     tool_calls: list[tuple[str, dict[str, Any], StructuredTool]],
     tools_token_budget: int = 4000,
@@ -178,13 +196,14 @@ async def _collect_tool_messages(
 @pytest.mark.asyncio
 async def test_execute_tool_call_success() -> None:
     """Test execute_tool_call success path."""
-    status, output, was_truncated, structured_content = await execute_tool_call(
-        FakeTool("fake_tool"), {"a": 1}, _LARGE_TOKEN_BUDGET
+    status, output, was_truncated, structured_content, ref_docs = (
+        await execute_tool_call(FakeTool("fake_tool"), {"a": 1}, _LARGE_TOKEN_BUDGET)
     )
     assert output == "fake_output_from_fake_tool"
     assert status == "success"
     assert was_truncated is False
     assert structured_content is None
+    assert ref_docs is None
 
 
 @pytest.mark.asyncio
@@ -249,7 +268,7 @@ async def test_execute_tool_calls_mixed_success_and_failure() -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_call_with_truncation() -> None:
     """Test large tool outputs are truncated."""
-    status, output, was_truncated, _ = await execute_tool_call(
+    status, output, was_truncated, _, _ = await execute_tool_call(
         LargeOutputTool(name="large_tool", output_size=5000),
         {},
         tools_token_budget=100,
@@ -262,7 +281,7 @@ async def test_execute_tool_call_with_truncation() -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_call_no_truncation_small_output() -> None:
     """Test small outputs are not truncated."""
-    status, output, was_truncated, _ = await execute_tool_call(
+    status, output, was_truncated, _, _ = await execute_tool_call(
         LargeOutputTool(name="small_tool", output_size=10),
         {},
         tools_token_budget=1000,
@@ -404,7 +423,7 @@ def test_extract_text_from_tool_output_list_with_unknown_item() -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_call_with_content_blocks() -> None:
     """Test execute_tool_call handles content block output."""
-    status, output, was_truncated, _ = await execute_tool_call(
+    status, output, was_truncated, _, _ = await execute_tool_call(
         ContentBlockTool(name="content_tool"),
         {},
         _LARGE_TOKEN_BUDGET,
@@ -417,29 +436,62 @@ async def test_execute_tool_call_with_content_blocks() -> None:
 @pytest.mark.asyncio
 async def test_execute_tool_call_with_content_and_artifact_tuple() -> None:
     """Test execute_tool_call handles content+artifact tuple output."""
-    status, output, was_truncated, structured_content = await execute_tool_call(
-        TupleOutputTool(name="tuple_tool"),
-        {},
-        _LARGE_TOKEN_BUDGET,
+    status, output, was_truncated, structured_content, ref_docs = (
+        await execute_tool_call(
+            TupleOutputTool(name="tuple_tool"),
+            {},
+            _LARGE_TOKEN_BUDGET,
+        )
     )
     assert status == "success"
     assert output == "tuple content"
     assert was_truncated is False
     assert structured_content is None
+    assert ref_docs is None
 
 
 @pytest.mark.asyncio
 async def test_execute_tool_call_non_dict_structured_content_becomes_none() -> None:
     """Non-dict structured_content in artifact is ignored."""
-    status, output, was_truncated, structured_content = await execute_tool_call(
-        NonDictStructuredContentTool(name="bad_struct"),
-        {},
-        _LARGE_TOKEN_BUDGET,
+    status, output, was_truncated, structured_content, ref_docs = (
+        await execute_tool_call(
+            NonDictStructuredContentTool(name="bad_struct"),
+            {},
+            _LARGE_TOKEN_BUDGET,
+        )
     )
     assert status == "success"
     assert output == "ok"
     assert was_truncated is False
     assert structured_content is None
+    assert ref_docs is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_passes_referenced_documents() -> None:
+    """Test referenced_documents from tool tuple are returned."""
+    sentinel = [{"doc_url": "https://example.com", "doc_title": "Example"}]
+    status, _, _, structured_content, ref_docs = await execute_tool_call(
+        RefDocsOutputTool(name="ref_tool", ref_docs=sentinel),
+        {},
+        _LARGE_TOKEN_BUDGET,
+    )
+    assert status == "success"
+    assert ref_docs is sentinel
+    assert structured_content is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_call_referenced_documents_in_additional_kwargs() -> None:
+    """Test referenced_documents ends up in ToolMessage additional_kwargs via stream."""
+    sentinel = [{"doc_url": "https://example.com", "doc_title": "Example"}]
+    tool_calls = [
+        ("call_ref", {}, RefDocsOutputTool(name="ref_tool", ref_docs=sentinel))
+    ]
+    results = await _collect_tool_messages(tool_calls)
+    assert len(results) == 1
+    msg = results[0]
+    assert msg.additional_kwargs.get("referenced_documents") is sentinel
 
 
 def test_is_transient_tool_error_branches() -> None:
@@ -599,12 +651,12 @@ async def test_execute_tool_calls_stream_retries_retryable_then_succeeds(
         tool_args: dict[str, Any],
         tools_token_budget: int,
         offload_manager: Any = None,
-    ) -> tuple[str, str, bool, dict | None]:
+    ) -> tuple[str, str, bool, dict | None, list | None]:
         count = getattr(_execute_with_one_retry, "count", 0) + 1
         _execute_with_one_retry.count = count
         if count == 1:
             raise TimeoutError("temporary timeout")
-        return "success", "retried-ok", False, None
+        return "success", "retried-ok", False, None, None
 
     async def _no_sleep(*args: Any, **kwargs: Any) -> None:
         return None
@@ -751,7 +803,7 @@ async def test_execute_tool_calls_stream_divides_budget_per_tool(
 
     async def _spy_execute(
         *, tool, tool_args, tools_token_budget, offload_manager=None
-    ) -> tuple[str, str, bool, dict | None]:
+    ) -> tuple[str, str, bool, dict | None, list | None]:
         budgets_seen.append(tools_token_budget)
         return await original_execute_with_retries(
             tool=tool, tool_args=tool_args, tools_token_budget=tools_token_budget

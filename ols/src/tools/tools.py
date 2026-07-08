@@ -227,8 +227,8 @@ async def execute_tool_call(
     tool_args: dict[str, object],
     tools_token_budget: int,
     offload_manager: "OffloadManager | None" = None,
-) -> tuple[str, str, bool, dict | None]:
-    """Execute a tool call and return output, status, truncation flag, and structured content.
+) -> tuple[str, str, bool, dict | None, list | None]:
+    """Execute a tool call and return output, status, truncation flag, and metadata.
 
     Args:
         tool: Tool instance to execute.
@@ -237,16 +237,22 @@ async def execute_tool_call(
         offload_manager: Optional manager for offloading large outputs to disk.
 
     Returns:
-        Tuple of (status, tool_output, was_truncated, structured_content).
+        Tuple of (status, tool_output, was_truncated, structured_content,
+        referenced_documents).
     """
     structured_content: dict | None = None
+    referenced_documents: list | None = None
     tool_name = tool.name
+    if tool.metadata is not None:
+        tool.metadata["tools_token_budget"] = tools_token_budget
     result = await tool.coroutine(**tool_args)  # type: ignore[misc]
 
     raw_output = result[0] if isinstance(result, tuple) and len(result) == 2 else result
     if isinstance(result, tuple) and len(result) == 2 and isinstance(result[1], dict):
         raw = result[1].get("structured_content")
         structured_content = raw if isinstance(raw, dict) else None
+        raw_refs = result[1].get("referenced_documents")
+        referenced_documents = raw_refs if isinstance(raw_refs, list) else None
 
     if offload_manager is not None:
         raw_text = _convert_tool_output_to_text(raw_output)
@@ -272,7 +278,7 @@ async def execute_tool_call(
         was_truncated,
         structured_content is not None,
     )
-    return status, tool_output, was_truncated, structured_content
+    return status, tool_output, was_truncated, structured_content, referenced_documents
 
 
 def _tool_result_event(
@@ -282,6 +288,7 @@ def _tool_result_event(
     tool_call_id: str,
     truncated: bool,
     structured_content: dict | None = None,
+    referenced_documents: list | None = None,
     duration_ms: int | None = None,
 ) -> ToolExecutionEvent:
     """Build a tool_result event payload.
@@ -292,6 +299,7 @@ def _tool_result_event(
         tool_call_id: Correlation ID of the originating tool call.
         truncated: Whether tool output was truncated due to token limit.
         structured_content: Optional structured data from tool artifact (MCP Apps).
+        referenced_documents: Optional list of RagChunk objects for the API response.
         duration_ms: Wall-clock execution time in milliseconds.
 
     Returns:
@@ -300,6 +308,8 @@ def _tool_result_event(
     additional_kwargs: dict = {"truncated": truncated}
     if structured_content is not None:
         additional_kwargs["structured_content"] = structured_content
+    if referenced_documents is not None:
+        additional_kwargs["referenced_documents"] = referenced_documents
     if duration_ms is not None:
         additional_kwargs["duration_ms"] = duration_ms
     return ToolResultEvent(
@@ -449,7 +459,7 @@ async def _execute_with_retries(
     tool_args: dict[str, object],
     tools_token_budget: int,
     offload_manager: "OffloadManager | None" = None,
-) -> tuple[str, str, bool, dict | None]:
+) -> tuple[str, str, bool, dict | None, list | None]:
     """Execute one tool call with retry policy.
 
     Args:
@@ -459,7 +469,8 @@ async def _execute_with_retries(
         offload_manager: Optional manager for offloading large outputs to disk.
 
     Returns:
-        Tuple of (status, tool_output, was_truncated, structured_content).
+        Tuple of (status, tool_output, was_truncated, structured_content,
+        referenced_documents).
     """
     tool_name = tool.name
     attempts = MAX_TOOL_CALL_RETRIES + 1
@@ -467,12 +478,12 @@ async def _execute_with_retries(
 
     for attempt in range(attempts):
         try:
-            _status, tool_output, was_truncated, structured_content = (
+            _status, tool_output, was_truncated, structured_content, ref_docs = (
                 await execute_tool_call(
                     tool, tool_args, tools_token_budget, offload_manager
                 )
             )
-            return "success", tool_output, was_truncated, structured_content
+            return "success", tool_output, was_truncated, structured_content, ref_docs
         except Exception as error:
             last_error_text = str(error)
             is_rate_limited_error = _is_rate_limited_tool_error(error)
@@ -499,7 +510,7 @@ async def _execute_with_retries(
         reason = f"{reason[:217]}..."
     tool_output = f"Tool '{tool_name}' failed: {reason}"
     logger.error(tool_output)
-    return "error", tool_output, False, None
+    return "error", tool_output, False, None, None
 
 
 async def _execute_single_tool_call_stream(
@@ -553,7 +564,7 @@ async def _execute_single_tool_call_stream(
             return
 
         t0 = time.monotonic()
-        status, tool_output, was_truncated, structured_content = (
+        status, tool_output, was_truncated, structured_content, ref_docs = (
             await _execute_with_retries(
                 tool=tool,
                 tool_args=tool_args,
@@ -579,6 +590,7 @@ async def _execute_single_tool_call_stream(
             tool_call_id=tool_id,
             truncated=was_truncated,
             structured_content=structured_content,
+            referenced_documents=ref_docs,
             duration_ms=duration_ms,
         )
 

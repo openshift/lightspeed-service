@@ -151,15 +151,11 @@ def update_ols_config() -> None:
         old_rag_config = olsconfig["ols_config"]["reference_content"]
         product_docs_index_id = ""
         product_docs_index_path = ""
-        embeddings_model_path = ""
-        if "embeddings_model_path" in old_rag_config:
-            embeddings_model_path = old_rag_config["embeddings_model_path"]
         if "product_docs_index_id" in old_rag_config:
             product_docs_index_id = old_rag_config["product_docs_index_id"]
         if "product_docs_index_path" in old_rag_config:
             product_docs_index_path = old_rag_config["product_docs_index_path"]
         olsconfig["ols_config"]["reference_content"] = {
-            "embeddings_model_path": embeddings_model_path,
             "indexes": [
                 {
                     "product_docs_index_id": product_docs_index_id,

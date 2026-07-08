@@ -389,3 +389,49 @@ def test_generate_prompt_skill_content_none_has_no_effect(model):
         prompt_with_none.messages[0].prompt.template
         == prompt_without.messages[0].prompt.template
     )
+
+
+def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
+    """Solr docs tool prompt supplements attach in ask mode when enabled."""
+    prompt, llm_input_values = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.ASK,
+        solr_docs_tool_guidance=True,
+    ).generate_prompt("gpt-4o-mini")
+    template = prompt.messages[0].prompt.template
+    assert "Solr docs tool:" in template
+    assert "Grounded answers (passages from" in template
+    assert "search_openshift_documentation" in template
+    assert prompt.format(**llm_input_values).startswith("System: SYS")
+
+
+def test_solr_docs_tool_guidance_not_appended_for_troubleshooting():
+    """Solr docs supplements are ask-only; troubleshooting keeps cluster agent text."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.TROUBLESHOOTING,
+        solr_docs_tool_guidance=True,
+    ).generate_prompt("gpt-4o-mini")
+    assert "Solr docs tool:" not in prompt.messages[0].prompt.template
+
+
+def test_solr_docs_tool_guidance_false_omits_supplement():
+    """When guidance flag is off, supplements are not added."""
+    prompt, _ = GeneratePrompt(
+        query,
+        [],
+        [],
+        "SYS",
+        tool_call=True,
+        mode=QueryMode.ASK,
+        solr_docs_tool_guidance=False,
+    ).generate_prompt("gpt-4o-mini")
+    assert "Grounded answers (passages from" not in prompt.messages[0].prompt.template

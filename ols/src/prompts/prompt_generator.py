@@ -32,6 +32,7 @@ class GeneratePrompt:
         mode: QueryMode = QueryMode.ASK,
         cluster_version: str = "unknown",
         skill_content: Optional[str] = None,
+        solr_docs_tool_guidance: bool = False,
     ) -> None:
         """Initialize prompt generator."""
         self._query = query
@@ -42,6 +43,7 @@ class GeneratePrompt:
         self._mode = mode
         self._cluster_version = cluster_version
         self._skill_content = skill_content
+        self._solr_docs_tool_guidance = solr_docs_tool_guidance
 
     def _get_agent_instructions(self, model: str) -> str:
         """Return agent instructions based on mode and model family."""
@@ -68,6 +70,12 @@ class GeneratePrompt:
 
         if self._tool_call:
             agent_instructions = self._get_agent_instructions(model)
+            if self._solr_docs_tool_guidance and self._mode == QueryMode.ASK:
+                agent_instructions = (
+                    agent_instructions
+                    + "\n"
+                    + prompts.SOLR_DOCS_TOOL_SUPPLEMENT.strip()
+                )
             sys_intruction = sys_intruction + "\n" + agent_instructions
 
         if len(self._rag_context) > 0:
