@@ -46,14 +46,14 @@ function run_suites() {
   set +e
   echo "=== Running cluster_updates evaluation suite ==="
   echo "  Provider: openai"
-  echo "  Model: gpt-4o-mini"
+  echo "  Model: gpt-4.1-mini"
   echo "  Config suffix: cluster_updates"
   echo "  Artifact dir: $ARTIFACT_DIR"
 
   # Deploy OLS with OpenAI GPT-4o-mini and run cluster-updates evaluation (18 conversations, 35 evaluations).
   # run_suite arguments: suiteid test_tags provider provider_keypath model ols_image ols_config_suffix
   # OLS_CONFIG_SUFFIX="cluster_updates" → ols_installer builds: olsconfig.crd.openai_cluster_updates.yaml
-  run_suite "cluster_updates" "cluster_updates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4o-mini" "$OLS_IMAGE" "cluster_updates"
+  run_suite "cluster_updates" "cluster_updates" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "cluster_updates"
   rc=$?
 
   if [ $rc -ne 0 ]; then
