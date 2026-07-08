@@ -22,6 +22,8 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 9. Tool calling is enabled when Solr hybrid is configured, even without MCP servers. This ensures OKP retrieval works in non-agentic deployments.
 
+10. [PLANNED: OLS-1894] When the `OLS_ROSA_PRODUCT` environment variable is set (by the operator on ROSA clusters), the Solr `chunk_filter_query` must include the ROSA product alongside `openshift_container_platform`. The filter becomes a compound OR: `(product:openshift_container_platform AND product_version:<ocp_resolved>) OR (product:<rosa_product> AND product_version:<rosa_resolved>)`. ROSA product version resolution uses the same facet-query + clamp-to-nearest mechanism as OCP: extract the major version from `OCP_CLUSTER_VERSION`, query Solr for available versions of the ROSA product, and clamp to nearest. When `OLS_ROSA_PRODUCT` is absent, the filter is OCP-only (no change from current behavior).
+
 ## Behavioral Rules — BYOK Retrieval (Customer Content)
 
 1. BYOK FAISS vector indexes are built offline from customer-supplied Markdown documentation. Indexes are loaded from the local filesystem at startup and are never built or modified at runtime.
@@ -120,6 +122,7 @@ Customers can supply their own documentation as additional RAG indexes, so that 
 
 ## Planned Changes
 
+- [PLANNED: OLS-1894] ROSA-aware OKP retrieval — extend `chunk_filter_query` to include ROSA product docs when `OLS_ROSA_PRODUCT` env var is set by the operator.
 - [PLANNED: OLS-2704] RAG as a service / MCP — externalize RAG retrieval behind an MCP interface.
 - [PLANNED: OLS-1872] BYOK — internal web source integration (Git, Confluence).
 - [PLANNED: OLS-1812] Add embedding model path to CRD for each index, enabling per-index embedding model configuration through the operator.
