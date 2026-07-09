@@ -217,7 +217,7 @@ All pipeline output flows through `StreamedChunk(type, text, data)`. The `Stream
 | Type | When emitted | Payload |
 |---|---|---|
 | `TEXT` | LLM text tokens | `text` field |
-| `REASONING` | Model reasoning tokens (e.g. OpenAI o-series) | `text` field |
+| `REASONING` | Model reasoning tokens. Source varies by provider: LangChain `content_blocks` (OpenAI, Gemini, Anthropic) or `additional_kwargs["reasoning_content"]` (vLLM via `ChatVLLMReasoning`). [PLANNED: OLS-3442] | `text` field |
 | `TOOL_CALL` | Before tool execution | `data`: tool name, args, id, server metadata |
 | `APPROVAL_REQUIRED` | Tool requires user approval | `data`: approval request details |
 | `TOOL_RESULT` | After tool execution | `data`: id, name, status, content, round, structured_content |
@@ -297,7 +297,9 @@ The budget is calculated once in `DocsSummarizer.__init__` via `TokenBudgetTrack
 
 ### How streaming chunks interleave during tool calling
 
-In non-final rounds, `LLMExecutionAgent._invoke_llm()` binds tools to the LLM (no `tool_choice` constraint). `_collect_round_llm_chunks()` accumulates all chunks from one LLM invocation, separating tool-call chunks from text/reasoning chunks. Text chunks are yielded immediately for streaming. After the LLM stream ends, `_process_tool_calls_for_round()` emits `TOOL_CALL` events, executes the tools, then emits `TOOL_RESULT` events. The AI message (including any reasoning content) and all tool messages are appended to the prompt template for the next round.
+In non-final rounds, `LLMExecutionAgent._invoke_llm()` binds tools to the LLM (no `tool_choice` constraint). `_collect_round_llm_chunks()` accumulates all chunks from one LLM invocation, separating tool-call chunks from text/reasoning chunks. Text chunks are yielded immediately for streaming. REASONING chunks are also yielded immediately to the client (so the user sees thinking), but currently only `StreamChunkType.TEXT` chunks are accumulated into the `response` string in `streaming_ols.py` — REASONING content is not yet stored in conversation history (see PLANNED note below). [PLANNED: OLS-3442] For vLLM providers, reasoning arrives via `chunk.additional_kwargs["reasoning_content"]` (captured by `ChatVLLMReasoning`) rather than `content_blocks` — a check for this source is added after the existing `match chunk.content` block. After the LLM stream ends, `_process_tool_calls_for_round()` emits `TOOL_CALL` events, executes the tools, then emits `TOOL_RESULT` events. The AI message (including any reasoning content) and all tool messages are appended to the prompt template for the next round.
+
+[PLANNED: OLS-3442] In `streaming_ols.py`, both `StreamChunkType.TEXT` and `StreamChunkType.REASONING` chunks will be accumulated into the `response` string. Currently only TEXT chunks are accumulated, causing reasoning to be lost from the stored conversation history.
 
 On the final round (round == max_rounds or no tools available), the LLM is invoked with `tool_choice="none"` and `strict=False` to force a text-only response. The Granite model family requires special handling: the first 6 chunks of a tool call (`"", "<", "tool", "_", "call", ">"`) are suppressed via `skip_special_chunk()` to avoid leaking tool-call markup to the user.
 

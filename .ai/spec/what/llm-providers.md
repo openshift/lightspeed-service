@@ -33,13 +33,20 @@ Every provider must satisfy all of the following:
 
 ### Reasoning Model Support
 
-11. Models must be classified as reasoning-capable or standard based on their name. A model is reasoning-capable if its name contains `gpt-5` or starts with `o` (the OpenAI o-series pattern).
+11. Reasoning enablement is an explicit per-model configuration decision, not auto-detected from the model name. When a model's `parameters.reasoning_config` is present (a freeform `dict[str, Any]`), the provider must apply provider-specific reasoning/thinking parameters to the LLM invocation and must not set standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`). When `reasoning_config` is absent, the provider must apply standard sampling defaults. If `reasoning_config` is present alongside deprecated fields (`reasoning_effort`, `reasoning_summary`, `verbosity`), `reasoning_config` takes precedence and the deprecated fields are ignored — this ensures deterministic payload shape during migration.
 
-12. For reasoning-capable models, the provider must set reasoning-specific parameters (`reasoning_effort`, `reasoning_summary`, `verbosity`) drawn from the model's `parameters` configuration. Standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`) must not be set.
+12. Each provider interprets the keys within `reasoning_config` according to its own backend API. Invalid keys produce a clear error from the provider API — OLS does not validate model-reasoning compatibility. The operator is responsible for correct configuration. [PLANNED: OLS-3442]
 
-13. For standard (non-reasoning) models, the provider must set sampling parameters with sensible defaults (`temperature`, `top_p`, `frequency_penalty`). Reasoning parameters must not be set.
+13. The valid `reasoning_config` keys vary by provider and model generation:
+    - **OpenAI / Azure OpenAI**: `effort` (low/medium/high), `summary` (auto/concise/detailed), `verbosity` (low/medium/high). Passed as the `reasoning` dict and `verbosity` param to `ChatOpenAI` / `AzureChatOpenAI`.
+    - **Gemini 3 (Vertex)**: `thinking_level` (low/medium/high), `include_thoughts` (bool). Passed as kwargs to `ChatGoogleGenerativeAI`.
+    - **Gemini 2.5 (Vertex)**: `thinking_budget` (int token count), `include_thoughts` (bool). `thinking_budget` and `thinking_level` are mutually exclusive at the Gemini API level.
+    - **Anthropic (Vertex)**: `type` (enabled/adaptive), `display` (omitted/summarized), optionally `budget_tokens` (int). Passed as the `thinking` dict to `ChatAnthropicVertex`.
+    - **Bedrock (Anthropic models)**: `type` (adaptive). Passed as thinking configuration to `ChatBedrockConverse`.
+    - **Bedrock (OpenAI models)**: `effort` (low/medium/high), `summary` (auto/concise/detailed). Passed as the `reasoning` dict to `ChatOpenAI`.
+    - **vLLM (RHELAI / RHOAI)**: `enabled` (bool). When `true`, triggers use of the `ChatVLLMReasoning` subclass instead of `ChatOpenAI`.
 
-14. `reasoning_effort` and `verbosity` accept values `low`, `medium`, or `high`. `reasoning_summary` accepts `auto`, `concise`, or `detailed`.
+14. Provider APIs return 400 errors if reasoning parameters are sent to non-reasoning models. There is no reliable cross-provider API to auto-detect reasoning capability at startup. [PLANNED: OLS-3442]
 
 ### HTTP Client Requirements
 
@@ -57,7 +64,7 @@ The following sections describe only what differs from the standard contract abo
 
 ### OpenAI (`openai`)
 
-19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. No deviations from the standard contract. Uses custom certificate store.
+19. Default URL: `https://api.openai.com/v1`. Uses `ChatOpenAI` from LangChain. Uses custom certificate store. When `reasoning_config` is present, passes it as the `reasoning` dict and `verbosity` param; skips temperature/top_p/frequency_penalty. [PLANNED: OLS-3442 — replace current model-name detection with reasoning_config]
 
 ### Azure OpenAI (`azure_openai`)
 
@@ -89,27 +96,44 @@ The following sections describe only what differs from the standard contract abo
 
 30. Uses the OpenAI-compatible API via `ChatOpenAI`. No default URL is defined (falls back to `https://api.openai.com/v1` but the admin must configure the actual endpoint). Uses custom certificate store.
 
-31. Sets standard sampling defaults (`temperature`, `top_p`, `frequency_penalty`) regardless of model name -- no reasoning model detection.
+31. Sets standard sampling defaults (`temperature`, `top_p`, `frequency_penalty`) when `reasoning_config` is absent.
+
+32. [PLANNED: OLS-3442] When `reasoning_config` is present with `enabled: true`, uses `ChatVLLMReasoning` (a `BaseChatOpenAI` subclass) instead of `ChatOpenAI`. `ChatVLLMReasoning` captures the `reasoning_content` (or `reasoning`) field from vLLM responses that `ChatOpenAI` drops. LangChain's `ChatOpenAI` explicitly does not preserve non-standard response fields from third-party providers; the LangChain team closed this feature request as "not planned." The subclass follows the same pattern used by `ChatDeepSeek` from `langchain-deepseek`. No new Python dependencies are required.
 
 ### RHELAI vLLM (`rhelai_vllm`)
 
-32. Identical to RHOAI vLLM in behavior. Registered under a different type identifier (`rhelai_vllm`) to distinguish the deployment context in configuration.
+33. Identical to RHOAI vLLM in behavior. Registered under a different type identifier (`rhelai_vllm`) to distinguish the deployment context in configuration.
 
 ### Google Vertex AI - Gemini (`google_vertex`)
 
-33. Requires `credentials` as a JSON string containing a Google service account key. The JSON is parsed and used to create Google OAuth2 credentials scoped to `https://www.googleapis.com/auth/cloud-platform`.
+34. Requires `credentials` as a JSON string containing a Google service account key. The JSON is parsed and used to create Google OAuth2 credentials scoped to `https://www.googleapis.com/auth/cloud-platform`.
 
-34. `project` and `location` are configured via `google_vertex_config`. Default location: `global`. Uses `ChatGoogleGenerativeAI` from LangChain with `vertexai=True`.
+35. `project` and `location` are configured via `google_vertex_config`. Default location: `global`. Uses `ChatGoogleGenerativeAI` from LangChain with `vertexai=True`.
 
-35. Does not use httpx clients or custom certificate stores. `max_tokens_for_response` maps to `max_output_tokens`.
+36. Does not use httpx clients or custom certificate stores. `max_tokens_for_response` maps to `max_output_tokens`.
+
+37. [PLANNED: OLS-3442] When `reasoning_config` is present, unpacks it as kwargs (`thinking_level`, `thinking_budget`, `include_thoughts`, etc.) into the `ChatGoogleGenerativeAI` constructor. Gemini 2.5 uses `thinking_budget` (int token count); Gemini 3+ uses `thinking_level` (low/medium/high). These are mutually exclusive at the Gemini API level — sending both returns a 400 error.
 
 ### Google Vertex AI - Anthropic/Claude (`google_vertex_anthropic`)
 
-36. Same credential handling as Google Vertex (Gemini): requires JSON service account key, same OAuth2 scope.
+38. Same credential handling as Google Vertex (Gemini): requires JSON service account key, same OAuth2 scope.
 
-37. `project` and `location` are configured via `google_vertex_anthropic_config`. Default location: `us-east5`. Uses `ChatAnthropicVertex` from LangChain.
+39. `project` and `location` are configured via `google_vertex_anthropic_config`. Default location: `us-east5`. Uses `ChatAnthropicVertex` from LangChain.
 
-38. Does not use httpx clients or custom certificate stores. `max_tokens_for_response` maps to `max_output_tokens`.
+40. Does not use httpx clients or custom certificate stores. `max_tokens_for_response` maps to `max_output_tokens`.
+
+41. [PLANNED: OLS-3442] When `reasoning_config` is present, passes it as the `thinking` dict to `ChatAnthropicVertex`. Anthropic extended thinking requires thinking blocks with cryptographic signatures to be round-tripped in subsequent messages. The current cache stores plain-string `AIMessage` objects which do not preserve these signatures. This is acceptable for now — Anthropic's API automatically handles prior-turn thinking blocks, and cache schema changes are deferred until evals show they're needed.
+
+### AWS Bedrock (`bedrock`)
+
+42. Requires `url` (Mantle gateway URL, e.g., `https://bedrock-mantle.us-east-1.api.aws`). Region is extracted from the URL hostname. Supports two authentication modes: API key via `credentials_path`, or IAM credentials via `aws_access_key_id` and `aws_secret_access_key` files with optional STS assume-role via `role_arn`.
+
+43. Routes to different LangChain classes based on model prefix:
+    - **Anthropic models** (`anthropic.*`): Uses `ChatBedrockConverse` from `langchain-aws`. Model ID is prefixed with the region (e.g., `us.anthropic.claude-sonnet-4-6-20250514-v1:0`).
+    - **OpenAI models** (`openai.*`): Uses `ChatOpenAI` with `use_responses_api=True` pointed at the Mantle gateway's `/openai/v1` path.
+    - **Other models**: Uses `ChatOpenAI` pointed at the Mantle gateway's `/v1` path.
+
+44. [PLANNED: OLS-3442] When `reasoning_config` is present: for Anthropic models, passes as thinking configuration to `ChatBedrockConverse`; for OpenAI models, passes as the `reasoning` dict to `ChatOpenAI`.
 
 ### AWS Bedrock (`bedrock`)
 
@@ -148,9 +172,10 @@ The following sections describe only what differs from the standard contract abo
 - `llm_providers[].models[].context_window_size` -- Token context window (default: 128000).
 - `llm_providers[].models[].credentials_path` -- Model-level credential override.
 - `llm_providers[].models[].parameters.max_tokens_for_response` -- Max tokens reserved for the LLM response (default: 4096).
-- `llm_providers[].models[].parameters.reasoning_effort` -- Reasoning effort level: `low`, `medium`, or `high` (default: `low`).
-- `llm_providers[].models[].parameters.reasoning_summary` -- Reasoning summary mode: `auto`, `concise`, or `detailed` (default: `concise`).
-- `llm_providers[].models[].parameters.verbosity` -- Verbosity for reasoning models: `low`, `medium`, or `high` (default: `low`).
+- `llm_providers[].models[].parameters.reasoning_config` -- [PLANNED: OLS-3442] Freeform dict of provider-specific reasoning/thinking parameters. Keys vary by provider and model generation (see rule 13). When absent, no reasoning params are sent to the provider.
+- `llm_providers[].models[].parameters.reasoning_effort` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning effort level: `low`, `medium`, or `high` (default: `low`).
+- `llm_providers[].models[].parameters.reasoning_summary` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Reasoning summary mode: `auto`, `concise`, or `detailed` (default: `concise`).
+- `llm_providers[].models[].parameters.verbosity` -- [DEPRECATED: OLS-3442 — replaced by `reasoning_config`] Verbosity for reasoning models: `low`, `medium`, or `high` (default: `low`).
 - `llm_providers[].models[].parameters.tool_budget_ratio` -- Fraction of context window reserved for tool outputs (default: 0.25, range: 0.1--0.6).
 - `llm_providers[].models[].options` -- Arbitrary key-value options dict passed through to the model.
 - `llm_providers[].tlsSecurityProfile` -- TLS security profile with `type`, `minTLSVersion`, and `ciphers`.
@@ -193,6 +218,7 @@ The following sections describe only what differs from the standard contract abo
 ## Planned Changes
 
 - ~~[PLANNED: OLS-1680] STS/IAM role authentication for the AWS Bedrock provider~~ — Implemented in OLS-1895. IAM credentials (access key + secret key) and STS assume-role supported. E2E coverage tracked by [OLS-3327](https://redhat.atlassian.net/browse/OLS-3327).
+- [PLANNED: OLS-3442] Reasoning token support: per-model `reasoning_config` for all providers, vLLM `ChatVLLMReasoning` subclass, remove model-name detection from OpenAI/Azure providers. Replaces `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
 - [PLANNED: OLS-2776] Support Anthropic as a direct LLM provider (not via Google Vertex), communicating with the Anthropic API natively. Anthropic models are currently available through the Google Vertex Anthropic provider.
 - [PLANNED: OLS-1320] Support short-lived (rotating) tokens for all providers, replacing static API keys with tokens that are refreshed periodically.
 - [PLANNED: OLS-1999] Support IBM WatsonX short-lived token authentication, enabling token-based auth that refreshes automatically rather than using a static API key.

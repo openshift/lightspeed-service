@@ -28,14 +28,15 @@ The LLM provider subsystem translates a (provider name, model name) pair from co
 
 | File | Class | Decorator key | LangChain class | Notes |
 |---|---|---|---|---|
-| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Reasoning params for o-series/gpt-5 models |
-| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` | Entra ID token caching; see below |
+| `openai.py` | `OpenAI` | `"openai"` | `ChatOpenAI` | Reasoning via `reasoning_config`; [PLANNED: OLS-3442 — replace model-name detection] |
+| `azure_openai.py` | `AzureOpenAI` | `"azure_openai"` | `AzureChatOpenAI` | Entra ID token caching; reasoning via `reasoning_config` [PLANNED: OLS-3442] |
 | `watsonx.py` | `Watsonx` | `"watsonx"` | `ChatWatsonx` | IBM-specific parameter names; see below |
-| `rhoai_vllm.py` | `RHOAIVLLM` | `"rhoai_vllm"` | `ChatOpenAI` | OpenAI-compatible, no default URL |
-| `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` | OpenAI-compatible, no default URL |
-| `google_vertex.py` | `GoogleVertex` | `"google_vertex"` | `ChatGoogleGenerativeAI` | Gemini / publisher models; credentials via `load_vertex_credentials` |
-| `google_vertex.py` | `GoogleVertexAnthropic` | `"google_vertex_anthropic"` | `ChatAnthropicVertex` | Claude on Vertex Model Garden; same module |
-| `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatBedrockConverse` / `ChatOpenAI` | Model-prefix routing; dual auth (Bearer token / IAM+SigV4); see below |
+| `rhoai_vllm.py` | `RHOAIVLLM` | `"rhoai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. [PLANNED: OLS-3442 — `ChatVLLMReasoning` when `reasoning_config.enabled`] |
+| `rhelai_vllm.py` | `RHELAIVLLM` | `"rhelai_vllm"` | `ChatOpenAI` or `ChatVLLMReasoning` | OpenAI-compatible, no default URL. [PLANNED: OLS-3442 — `ChatVLLMReasoning` when `reasoning_config.enabled`] |
+| `google_vertex.py` | `GoogleVertex` | `"google_vertex"` | `ChatGoogleGenerativeAI` | Gemini / publisher models; credentials via `load_vertex_credentials`. [PLANNED: OLS-3442 — thinking config via `reasoning_config`] |
+| `google_vertex.py` | `GoogleVertexAnthropic` | `"google_vertex_anthropic"` | `ChatAnthropicVertex` | Claude on Vertex Model Garden; same module. [PLANNED: OLS-3442 — thinking config via `reasoning_config`] |
+| `bedrock.py` | `Bedrock` | `"bedrock"` | `ChatBedrockConverse` or `ChatOpenAI` | AWS Bedrock via Mantle gateway; routes by model prefix (`anthropic.*` → Converse, `openai.*` → Responses API). [PLANNED: OLS-3442 — reasoning config] |
+| `vllm_reasoning.py` | `ChatVLLMReasoning` | (not registered) | N/A | [PLANNED: OLS-3442] `BaseChatOpenAI` subclass that captures `reasoning_content`/`reasoning` from vLLM responses. Not a provider — used by vLLM providers when reasoning is enabled |
 | `fake_provider.py` | `FakeProvider` | `"fake_provider"` | `FakeListLLM` / `FakeStreamingListLLM` | Testing only; monkey-patches `bind_tools` |
 
 ### `ols/src/llms/providers/utils.py` -- Shared utilities
@@ -177,9 +178,23 @@ WatsonX also passes `params=self.params` to `ChatWatsonx` (as a nested dict), un
 
 Auth supports two pathways: Bearer token (Bedrock API key via `credentials_path` file) and IAM credentials (`aws_access_key_id`, `aws_secret_access_key`, optional `role_arn` read from the `credentials_path` directory). `_has_aws_credentials()` selects the path. For IAM, Anthropic models pass a pre-configured boto3 client; OpenAI/DeepSeek models use `httpx-aws-auth` SigV4 signing injected into `http_client`/`http_async_client`.
 
-### OpenAI reasoning model handling
+### Reasoning model handling
 
-Both `openai.py` and `azure_openai.py` detect o-series and gpt-5 models by name pattern (`self.model.startswith("o")` or `"gpt-5" in self.model`). For these models, temperature/top_p/frequency_penalty are omitted and reasoning parameters (effort, summary) are set instead. The `ModelParameters` config class provides `reasoning_effort`, `reasoning_summary`, and `verbosity` fields.
+[PLANNED: OLS-3442] Currently, `openai.py` and `azure_openai.py` detect o-series and gpt-5 models by name pattern (`self.model.startswith("o")` or `"gpt-5" in self.model`). This model-name detection will be replaced by config-driven enablement via `reasoning_config`.
+
+When `reasoning_config` is present in a model's `ModelParameters`, the provider reads provider-specific keys from it and passes them to the LangChain adapter. Standard sampling parameters (`temperature`, `top_p`, `frequency_penalty`) are skipped. When `reasoning_config` is absent, the provider applies standard sampling defaults.
+
+The existing `ModelParameters` fields `reasoning_effort`, `reasoning_summary`, and `verbosity` will be removed and replaced by the freeform `reasoning_config` dict.
+
+### vLLM reasoning subclass (`ChatVLLMReasoning`)
+
+[PLANNED: OLS-3442] `ChatVLLMReasoning` in `vllm_reasoning.py` subclasses `BaseChatOpenAI` (same base as `ChatDeepSeek` from `langchain-deepseek`) and overrides two methods:
+
+1. **`_create_chat_result()`** — non-streaming. Calls `super()`, extracts `reasoning_content` or `reasoning` from the raw `openai.BaseModel` response (which preserves unknown fields via Pydantic `extra="allow"`), stores in `message.additional_kwargs["reasoning_content"]`.
+
+2. **`_convert_chunk_to_generation_chunk()`** — streaming. Calls `super()`, extracts reasoning from `chunk["choices"][0]["delta"]` dict, stores in `message.additional_kwargs["reasoning_content"]`.
+
+Both vLLM field names (`reasoning_content` and `reasoning`) are checked to handle the vLLM rename (RFC #27755). Output is normalized to `additional_kwargs["reasoning_content"]` regardless of source field. No new Python dependencies required.
 
 ### HTTP client setup
 
