@@ -70,6 +70,17 @@ RUN echo "Verifying dependencies installation..." && \
     TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" && \
     echo "All dependencies installed and verified successfully!"
 
+# Step 5: Reassemble embedding model safetensors from compressed chunks and validate.
+COPY --chmod=775 embeddings_model ./embeddings_model
+RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
+      cat "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* | \
+        tar xzf - --no-same-owner -C "embeddings_model/${model_dir}" || \
+      { echo "ERROR: failed to extract embeddings_model/${model_dir}/model.safetensors from chunks" ; exit 1 ; } && \
+      rm -f "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* && \
+      python3 -c "import safetensors; safetensors.safe_open('embeddings_model/${model_dir}/model.safetensors', framework='pt'); print('OK:', '${model_dir}')" || \
+      { echo "ERROR: corrupt safetensors file: embeddings_model/${model_dir}/model.safetensors" ; exit 1 ; } ; \
+    done
+
 FROM ${RUNTIME_BASE_IMAGE}
 ARG APP_ROOT=/app-root
 
@@ -94,22 +105,7 @@ COPY --from=builder /app-root/.venv .venv
 COPY --from=builder /app-root/.tiktoken_cache .tiktoken_cache
 COPY ols ./ols
 COPY runner.py /app-root/runner.py
-COPY --chmod=775 embeddings_model ./embeddings_model
-RUN if [ -d /cachi2/output/deps/generic ]; then \
-    cp /cachi2/output/deps/generic/all-mpnet-base-v2-model.safetensors embeddings_model/all-mpnet-base-v2/model.safetensors ; \
-    cp /cachi2/output/deps/generic/granite-embedding-30m-english-model.safetensors embeddings_model/granite-embedding-30m-english/model.safetensors ; \
-    fi && \
-    for f in \
-      "embeddings_model/all-mpnet-base-v2/model.safetensors|https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors" \
-      "embeddings_model/granite-embedding-30m-english/model.safetensors|https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors" \
-    ; do \
-      path="${f%%|*}" && url="${f##*|}" && \
-      if [ ! -f "$path" ]; then \
-        python3 -c "import urllib.request,sys; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "$url" "$path" || exit 1 ; \
-      fi && \
-      .venv/bin/python3 -c "import safetensors; safetensors.safe_open('$path', framework='pt'); print('OK:', '$path')" || \
-      { echo "ERROR: corrupt safetensors file: $path" ; exit 1 ; } ; \
-    done
+COPY --chmod=775 --from=builder /app-root/embeddings_model ./embeddings_model
 
 # Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1.
 # Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and
