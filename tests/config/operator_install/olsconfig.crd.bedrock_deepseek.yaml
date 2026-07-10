@@ -17,9 +17,9 @@ spec:
         credentialsSecretRef:
           name: llmcreds
         models:
-          - name: deepseek.v3-v1:0
+          - name: us.deepseek.r1-v1:0
   ols:
-    defaultModel: deepseek.v3-v1:0
+    defaultModel: us.deepseek.r1-v1:0
     defaultProvider: bedrock
     deployment:
       replicas: 1
