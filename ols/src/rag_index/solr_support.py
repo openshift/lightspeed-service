@@ -353,10 +353,15 @@ class SolrHybridSearch:
 
     _OCP_CLUSTER_VERSION_ENV = "OCP_CLUSTER_VERSION"
     _OCP_PRODUCT = "openshift_container_platform"
+    _ROSA_PRODUCT_ENV = "OLS_ROSA_PRODUCT"
 
     @staticmethod
     def _resolve_chunk_filter_query(solr_http_base: str, timeout_s: float) -> str:
         """Build ``chunk_filter_query`` from the cluster's OCP version.
+
+        When ``OLS_ROSA_PRODUCT`` is set (by the operator on ROSA clusters),
+        the filter becomes a compound OR including both OCP and ROSA product
+        documentation.
 
         Raises:
             InvalidConfigurationError: If ``OCP_CLUSTER_VERSION`` is not set
@@ -370,34 +375,77 @@ class SolrHybridSearch:
             )
 
         env_version = env_version.strip()
-        available = SolrHybridSearch._fetch_available_ocp_versions(
-            solr_http_base, timeout_s
+        ocp_resolved = SolrHybridSearch._resolve_product_version(
+            SolrHybridSearch._OCP_PRODUCT, solr_http_base, timeout_s, env_version
+        )
+
+        ocp_filter = (
+            f"(product:{SolrHybridSearch._OCP_PRODUCT}"
+            f" AND product_version:{ocp_resolved})"
+        )
+
+        rosa_product = os.environ.get(SolrHybridSearch._ROSA_PRODUCT_ENV, "").strip()
+        if rosa_product:
+            try:
+                rosa_resolved = SolrHybridSearch._resolve_product_version(
+                    rosa_product, solr_http_base, timeout_s, env_version
+                )
+            except InvalidConfigurationError:
+                logger.warning(
+                    "ROSA product '%s' not found in Solr — falling back to OCP-only",
+                    rosa_product,
+                )
+            else:
+                rosa_filter = (
+                    f"(product:{rosa_product} AND product_version:{rosa_resolved})"
+                )
+                logger.info(
+                    "ROSA product detected: product=%s, resolved_version=%s",
+                    rosa_product,
+                    rosa_resolved,
+                )
+                return f"is_chunk:true AND ({ocp_filter} OR {rosa_filter})"
+
+        return f"is_chunk:true AND {ocp_filter}"
+
+    @staticmethod
+    def _resolve_product_version(
+        product: str,
+        solr_http_base: str,
+        timeout_s: float,
+        env_version: str,
+    ) -> str:
+        """Resolve the best available Solr version for *product*.
+
+        Queries Solr for available versions of the given product, then clamps
+        ``env_version`` to the nearest available major.minor.
+        """
+        available = SolrHybridSearch._fetch_available_product_versions(
+            product, solr_http_base, timeout_s
         )
         if not available:
             raise InvalidConfigurationError(
-                "Cannot fetch available OCP versions from Solr at "
-                f"{solr_http_base} — service cannot start"
+                f"Cannot fetch available versions for product '{product}' "
+                f"from Solr at {solr_http_base} — service cannot start"
             )
         resolved = SolrHybridSearch._clamp_version(env_version, available)
         logger.info(
-            "OCP version resolved: env=%s, available=%s, resolved=%s",
+            "Product version resolved: product=%s, env=%s, available=%s, resolved=%s",
+            product,
             env_version,
             available,
             resolved,
         )
-        return (
-            f"is_chunk:true AND product:{SolrHybridSearch._OCP_PRODUCT}"
-            f" AND product_version:{resolved}"
-        )
+        return resolved
 
     _SOLR_STARTUP_RETRIES = 24
     _SOLR_STARTUP_BACKOFF_S = 5
 
     @staticmethod
-    def _fetch_available_ocp_versions(
-        solr_http_base: str, timeout_s: float
+    def _fetch_available_product_versions(
+        product: str, solr_http_base: str, timeout_s: float
     ) -> list[str]:
-        """Query Solr for available ``product_version`` values for OCP.
+        """Query Solr for available ``product_version`` values for *product*.
 
         Retries up to ``_SOLR_STARTUP_RETRIES`` times with
         ``_SOLR_STARTUP_BACKOFF_S`` seconds between attempts to tolerate
@@ -407,7 +455,7 @@ class SolrHybridSearch:
         select_url = f"{base}/solr/{_SOLR_COLLECTION}/select"
         params = {
             "q": "*:*",
-            "fq": f"product:{SolrHybridSearch._OCP_PRODUCT}",
+            "fq": f"product:{product}",
             "rows": "0",
             "facet": "true",
             "facet.field": "product_version",
@@ -435,7 +483,9 @@ class SolrHybridSearch:
                 )
                 time.sleep(SolrHybridSearch._SOLR_STARTUP_BACKOFF_S)
         logger.error(
-            "Failed to fetch OCP versions from Solr after all retries: %s", last_error
+            "Failed to fetch versions for product '%s' from Solr after all retries: %s",
+            product,
+            last_error,
         )
         return []
 

@@ -598,3 +598,84 @@ def test_resolve_builds_filter_with_clamped_version() -> None:
         result = SolrHybridSearch._resolve_chunk_filter_query("http://solr:8080", 10.0)
     assert "product_version:4.19" in result
     assert "openshift_container_platform" in result
+    assert " OR " not in result
+
+
+def test_resolve_builds_compound_filter_with_rosa_product() -> None:
+    """OLS_ROSA_PRODUCT env var adds a compound OR filter for ROSA docs."""
+    facet_response = httpx.Response(
+        200,
+        json={
+            "facet_counts": {
+                "facet_fields": {"product_version": ["4.18", 10, "4.19", 5]}
+            }
+        },
+        request=httpx.Request("GET", "http://solr:8080/solr/portal-rag/select"),
+    )
+    env = {
+        "OCP_CLUSTER_VERSION": "4.19.7",
+        "OLS_ROSA_PRODUCT": "red_hat_openshift_service_on_aws",
+    }
+    with (
+        patch.dict("os.environ", env),
+        patch("ols.src.rag_index.solr_support.httpx.get", return_value=facet_response),
+    ):
+        result = SolrHybridSearch._resolve_chunk_filter_query("http://solr:8080", 10.0)
+    assert "openshift_container_platform" in result
+    assert "red_hat_openshift_service_on_aws" in result
+    assert " OR " in result
+    assert result.startswith("is_chunk:true AND (")
+
+
+def test_resolve_falls_back_to_ocp_when_rosa_product_missing_from_solr() -> None:
+    """ROSA product absent from Solr falls back to OCP-only filter."""
+    ocp_response = httpx.Response(
+        200,
+        json={
+            "facet_counts": {
+                "facet_fields": {"product_version": ["4.18", 10, "4.19", 5]}
+            }
+        },
+        request=httpx.Request("GET", "http://solr:8080/solr/portal-rag/select"),
+    )
+    rosa_response = httpx.Response(
+        200,
+        json={"facet_counts": {"facet_fields": {"product_version": []}}},
+        request=httpx.Request("GET", "http://solr:8080/solr/portal-rag/select"),
+    )
+    env = {
+        "OCP_CLUSTER_VERSION": "4.19.7",
+        "OLS_ROSA_PRODUCT": "red_hat_openshift_service_on_aws",
+    }
+    with (
+        patch.dict("os.environ", env),
+        patch(
+            "ols.src.rag_index.solr_support.httpx.get",
+            side_effect=[ocp_response, rosa_response],
+        ),
+    ):
+        result = SolrHybridSearch._resolve_chunk_filter_query("http://solr:8080", 10.0)
+    assert "openshift_container_platform" in result
+    assert "red_hat_openshift_service_on_aws" not in result
+    assert " OR " not in result
+
+
+def test_resolve_ignores_empty_rosa_product() -> None:
+    """Empty OLS_ROSA_PRODUCT is treated as absent — OCP-only filter."""
+    facet_response = httpx.Response(
+        200,
+        json={
+            "facet_counts": {
+                "facet_fields": {"product_version": ["4.18", 10, "4.19", 5]}
+            }
+        },
+        request=httpx.Request("GET", "http://solr:8080/solr/portal-rag/select"),
+    )
+    env = {"OCP_CLUSTER_VERSION": "4.19.7", "OLS_ROSA_PRODUCT": "  "}
+    with (
+        patch.dict("os.environ", env),
+        patch("ols.src.rag_index.solr_support.httpx.get", return_value=facet_response),
+    ):
+        result = SolrHybridSearch._resolve_chunk_filter_query("http://solr:8080", 10.0)
+    assert " OR " not in result
+    assert "openshift_container_platform" in result
