@@ -187,7 +187,6 @@ class "ReferenceContentIndex" as ols.app.models.config.ReferenceContentIndex {
   product_docs_index_id : Optional[str]
   product_docs_index_path : Optional[FilePath]
   product_docs_origin : Optional[str]
-  byok_index : bool
   validate_yaml() -> None
 }
 class "SchedulerConfig" as ols.app.models.config.SchedulerConfig {

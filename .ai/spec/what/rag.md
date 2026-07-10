@@ -34,7 +34,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 4. Each index must be loaded independently. If one index fails to load, the remaining indexes must continue loading and the service must operate with whatever indexes succeeded. Partial load must be logged as a warning.
 
-5. When a configured index path does not exist, the system must attempt to locate a `latest` directory in the parent of the configured path. If found, the system must use that path and clear the configured `product_docs_index_id` (since the actual index identity is unknown). If neither the configured path nor the `latest` fallback exists, the index must fail to load.
+5. When a configured index path does not exist, validation must fail immediately with a hard configuration error. There is no fallback logic — BYOK users supply their own paths and are responsible for ensuring they exist.
 
 6. The embedding model used for BYOK vector similarity is configurable via a filesystem path to a HuggingFace-compatible model (`embeddings_model_path`). If no path is configured, the service must fall back to the default model (`sentence-transformers/all-mpnet-base-v2`), which is bundled directly in the service image. The chosen model must be redistributable under an Apache 2.0 compatible license. [PLANNED: OLS-1812 — operator CRD support for per-index embedding model path]
 
@@ -53,7 +53,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
     - If no reference content is configured, RAG libraries must never be loaded.
     - Type annotations for RAG-specific types must be aliased to `Any` at module scope to avoid import-time dependencies.
 
-13. The readiness probe must check whether the BYOK index has finished loading. If reference content is configured but the index has not yet loaded, the service must report not ready (HTTP 503) with cause "Index is not ready". If no reference content is configured (BYOK is absent and only OKP is active), the index check must pass — BYOK RAG is optional. The service must not accept user queries until any configured BYOK index is fully loaded.
+13. The readiness probe must check whether the BYOK index has finished loading. If reference content is configured with a non-empty indexes list but the index has not yet loaded, the service must report not ready (HTTP 503) with cause "Index is not ready". If no reference content is configured, or if reference content is present but has no indexes (empty list or None), the index check must pass — BYOK RAG is optional. The service must not accept user queries until any configured BYOK index is fully loaded.
 
 ## Behavioral Rules — Tool & Skill Filtering (Hybrid RAG)
 
