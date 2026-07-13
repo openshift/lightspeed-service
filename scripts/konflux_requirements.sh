@@ -16,7 +16,7 @@ RHOAI_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-u
 
 # extra wheels to be included in the wheel list,
 # often come from build-time dependencies, or source are not available on pypi.org
-EXTRA_WHEELS="uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25"
+EXTRA_WHEELS="uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25,ormsgpack"
 # packages to exclude from the wheel list
 NO_WHEEL_PACKAGES="markupsafe,python-dotenv"
 # packages to exclude from pybuild-deps (causes RecursionError due to circular build dep chain)
