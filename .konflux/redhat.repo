@@ -1,6 +1,6 @@
-[codeready-builder-for-rhel-9-$basearch-eus-rpms]
-name = Red Hat CodeReady Linux Builder for RHEL 9 $basearch - Extended Update Support (RPMs)
-baseurl = https://cdn.redhat.com/content/eus/rhel9/9.6/$basearch/codeready-builder/os
+[rhel-9-for-$basearch-baseos-eus-rpms]
+name = Red Hat Enterprise Linux 9 for $basearch - BaseOS - Extended Update Support (RPMs)
+baseurl = https://cdn.redhat.com/content/eus/rhel9/9.6/$basearch/baseos/os
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
@@ -26,9 +26,9 @@ enabled_metadata = 0
 sslclientkey = $SSL_CLIENT_KEY
 sslclientcert = $SSL_CLIENT_CERT
 
-[rhel-9-for-$basearch-baseos-eus-rpms]
-name = Red Hat Enterprise Linux 9 for $basearch - BaseOS - Extended Update Support (RPMs)
-baseurl = https://cdn.redhat.com/content/eus/rhel9/9.6/$basearch/baseos/os
+[codeready-builder-for-rhel-9-$basearch-eus-rpms]
+name = Red Hat CodeReady Linux Builder for RHEL 9 $basearch - Extended Update Support (RPMs)
+baseurl = https://cdn.redhat.com/content/eus/rhel9/9.6/$basearch/codeready-builder/os
 enabled = 1
 gpgcheck = 1
 gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release

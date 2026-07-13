@@ -1,0 +1,3 @@
+# Packages that only have wheel distributions on PyPI (no sdist).
+# The script auto-detects and warns about such packages, but listing
+# them here suppresses the warning and classifies them explicitly.

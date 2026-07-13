@@ -23,7 +23,7 @@ reviews:
     - '!requirements.hashes.source.txt'
     - '!requirements.hashes.wheel.txt'
     # RPM lockfile for Konflux hermetic builds
-    - '!rpms.lock.yaml'
+    - '!.konflux/rpms.lock.yaml'
     # Local IDE metadata
     - '!.idea/**'
 

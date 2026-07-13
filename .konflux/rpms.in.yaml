@@ -6,7 +6,7 @@ packages:
   - cmake
   - cargo
 contentOrigin:
-  repofiles: ["./redhat.repo"]
+  repofiles: ["redhat.repo"]
 arches:
   - aarch64
   - x86_64

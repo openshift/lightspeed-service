@@ -187,7 +187,7 @@ tls-scan: ## Run TLS profile compliance scan against OLS endpoints
 	./scripts/tls-scan.sh
 
 konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
-	./scripts/konflux_requirements.sh
+	python3 scripts/konflux_resolve.py --profile cpu
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for konflux build
 	./scripts/generate-rpm-lock.sh -a ${ACTIVATION_KEY} -g ${ORG_ID}
