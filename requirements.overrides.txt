@@ -12,6 +12,7 @@ google-genai==1.59.0
 grpcio==1.76.0
 grpcio-status==1.76.0
 hf-xet==1.2.0
+hpack==4.1.0
 jiter==0.12
 numpy==2.3.5
 orjson==3.11.5
