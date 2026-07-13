@@ -541,10 +541,9 @@ def generate_response(
             streaming=streaming,
             audit_ctx=audit_ctx,
         )
+        rag_index_loader = config.rag_index_loader
         rag_retriever = (
-            config.rag_index_loader.get_retriever()
-            if config.ols_config.reference_content is not None
-            else None
+            rag_index_loader.get_retriever() if rag_index_loader is not None else None
         )
         if streaming:
             return docs_summarizer.generate_response(
