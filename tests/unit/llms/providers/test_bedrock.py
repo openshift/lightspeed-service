@@ -1,7 +1,7 @@
 """Unit tests for AWS Bedrock provider."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -355,7 +355,7 @@ def test_load_anthropic_model_iam(
     assert call_kwargs["region_name"] == "us-east-1"
     assert call_kwargs["client"] is mock_client
     assert "bedrock_api_key" not in call_kwargs
-    mock_build_session.assert_called_once_with("us-east-1")
+    mock_build_session.assert_called_once_with("us-east-1", ANY)
     mock_build_session.return_value.client.assert_called_once_with("bedrock-runtime")
 
 
@@ -384,7 +384,7 @@ def test_load_openai_model_iam(
     assert call_kwargs["use_responses_api"] is True
     assert "http_client" in call_kwargs
     assert "http_async_client" in call_kwargs
-    _mock_sigv4.assert_called_once_with("us-east-1")
+    _mock_sigv4.assert_called_once_with("us-east-1", ANY)
 
 
 @patch(
@@ -543,11 +543,11 @@ def test_bedrock_iam_picks_up_rotated_credentials(tmp_path: Path) -> None:
 
     access_key, secret_key, _ = config.get_aws_credentials()
     assert access_key == "original_access"
-    assert secret_key == "original_secret"
+    assert secret_key == "original_secret"  # noqa: S105
 
     (creds_dir / "aws_access_key_id").write_text("rotated_access")
     (creds_dir / "aws_secret_access_key").write_text("rotated_secret")
 
     access_key, secret_key, _ = config.get_aws_credentials()
     assert access_key == "rotated_access"
-    assert secret_key == "rotated_secret"
+    assert secret_key == "rotated_secret"  # noqa: S105

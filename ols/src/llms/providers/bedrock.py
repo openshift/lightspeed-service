@@ -73,9 +73,15 @@ class Bedrock(LLMProvider):
             "expected format: https://bedrock-mantle.<region>.api.aws"
         )
 
-    def _build_boto3_session(self, region: str) -> boto3.Session:
+    def _build_boto3_session(
+        self,
+        region: str,
+        aws_creds: tuple[Optional[str], Optional[str], Optional[str]] | None = None,
+    ) -> boto3.Session:
         """Build a boto3 session from IAM credentials, with optional STS assume-role."""
-        access_key, secret_key, role_arn = self.provider_config.get_aws_credentials()
+        if aws_creds is None:
+            aws_creds = self.provider_config.get_aws_credentials()
+        access_key, secret_key, role_arn = aws_creds
         session = boto3.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
@@ -83,9 +89,9 @@ class Bedrock(LLMProvider):
         )
         if role_arn:
             sts = session.client("sts")
-            assumed = sts.assume_role(
-                RoleArn=role_arn, RoleSessionName="ols-bedrock"
-            )["Credentials"]
+            assumed = sts.assume_role(RoleArn=role_arn, RoleSessionName="ols-bedrock")[
+                "Credentials"
+            ]
             session = boto3.Session(
                 aws_access_key_id=assumed["AccessKeyId"],
                 aws_secret_access_key=assumed["SecretAccessKey"],
@@ -94,9 +100,13 @@ class Bedrock(LLMProvider):
             )
         return session
 
-    def _build_sigv4_auth(self, region: str) -> AwsSigV4Auth:
+    def _build_sigv4_auth(
+        self,
+        region: str,
+        aws_creds: tuple[Optional[str], Optional[str], Optional[str]] | None = None,
+    ) -> AwsSigV4Auth:
         """Build a SigV4 auth handler from IAM credentials."""
-        session = self._build_boto3_session(region)
+        session = self._build_boto3_session(region, aws_creds)
         frozen = session.get_credentials().get_frozen_credentials()
         creds = AwsCredentials(
             access_key=frozen.access_key,
@@ -110,7 +120,8 @@ class Bedrock(LLMProvider):
         params = {**self.params}
         api_key = params.pop("api_key")
         model = params.pop("model")
-        use_iam = self._has_aws_credentials()
+        aws_creds = self.provider_config.get_aws_credentials()
+        use_iam = aws_creds[0] is not None and aws_creds[1] is not None
 
         if model.startswith(ANTHROPIC_MODEL_PREFIX):
             params.pop("max_completion_tokens", None)
@@ -119,7 +130,7 @@ class Bedrock(LLMProvider):
             model_id = f"{region_prefix}.{model}"
 
             if use_iam:
-                session = self._build_boto3_session(region)
+                session = self._build_boto3_session(region, aws_creds)
                 params["client"] = session.client("bedrock-runtime")
             else:
                 params["bedrock_api_key"] = api_key
@@ -145,7 +156,7 @@ class Bedrock(LLMProvider):
 
         if use_iam:
             region = self._region_from_url()
-            auth = self._build_sigv4_auth(region)
+            auth = self._build_sigv4_auth(region, aws_creds)
             params["openai_api_key"] = "unused"
             params["http_client"] = httpx.Client(auth=auth)
             params["http_async_client"] = httpx.AsyncClient(auth=auth)
