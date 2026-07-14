@@ -69,13 +69,17 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 | `gen_ai.tool.call.id` | Recommended | Tool call ID from MCP response |
 | `network.transport` | Recommended | `stdio` or `sse` |
 
-12. Non-MCP tools MUST get only the standard `gen_ai.tool.*` attributes from rule 10.
+12. Non-MCP tools MUST carry all attributes from rule 10 (including `gen_ai.operation.name`) and MUST NOT add MCP-specific attributes from rule 11.
 
 ### Span Events
 
-13. Text output from the LLM MUST be recorded as a `gen_ai.content.completion` span event attached to the `chat {gen_ai.request.model}` span. The event carries a `gen_ai.completion` attribute with the text content.
+13. Text output from the LLM MUST be recorded as a `gen_ai.choice` span event attached to the `chat {gen_ai.request.model}` span. The event carries a `gen_ai.completion` attribute with the text content. This aligns with OTel GenAI Semantic Conventions.
 
-14. Thinking/reasoning output from the LLM MUST be recorded as a `gen_ai.agent.thinking` span event attached to the `chat {gen_ai.request.model}` span. The event carries a `content` attribute with the thinking content.
+14. Thinking/reasoning output from the LLM MUST be recorded as a `gen_ai.choice` span event with an additional `gen_ai.reasoning_content` attribute attached to the `chat {gen_ai.request.model}` span. When the model emits both completion and thinking content, they MAY be combined into a single `gen_ai.choice` event with both attributes.
+
+### Content Capture Policy
+
+14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) contain LLM output that may include PII or sensitive data. Recording these attributes MUST be opt-in, controlled by an `audit.capture_content` configuration flag (default: `false`). When `capture_content` is `false`, `gen_ai.choice` events are still emitted but the content attributes are omitted. This aligns with the OTel GenAI semantic convention requirement level of Opt-In for content attributes.
 
 ### Single-Emission Rule
 
@@ -101,6 +105,7 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 ols_config:
   audit:
     enabled: true             # default: true (audit on even if section is absent)
+    capture_content: false    # default: false; opt-in to record LLM output in span events
     otel:
       endpoint: ""            # optional OTLP gRPC endpoint; no-op exporter when empty/absent
       tls_mode: Secure        # Secure (default) | Insecure
@@ -121,7 +126,7 @@ request.lifecycle               [root, INTERNAL, gen_ai.conversation.id=<conv_id
 ├── request.history             [INTERNAL]
 ├── chat gpt-4o                 [CLIENT, repeats per LLM turn]
 │   ├── execute_tool search     [INTERNAL, repeats per tool call]
-│   └── (span events: gen_ai.content.completion, gen_ai.agent.thinking)
+│   └── (span events: gen_ai.choice)
 └── request.store               [INTERNAL]
 ```
 

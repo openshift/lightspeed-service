@@ -18,7 +18,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
    | `ols_llm_token_received_total` | Counter | `provider`, `model` | Cumulative output tokens received from LLMs. |
    | `ols_llm_reasoning_token_total` | Counter | `provider`, `model` | Cumulative reasoning summary tokens received from LLMs. |
    | `ols_provider_model_configuration` | Gauge | `provider`, `model` | Configured provider/model combinations. Value `1` for the default, `0` for others. |
-   | `gen_ai.client.token.usage` | Histogram | `gen_ai.token.type` (input/output/reasoning), `gen_ai.request.model`, `gen_ai.provider.name` | Per-request token usage distribution per OTel GenAI semantic conventions. Bucket boundaries: [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536]. Unit: `{token}`. |
+   | `gen_ai.client.token.usage` | Histogram | `gen_ai.operation.name`, `gen_ai.token.type` (input/output), `gen_ai.request.model`, `gen_ai.provider.name` | Per-request token usage distribution per OTel GenAI semantic conventions. Bucket boundaries: [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]. Unit: `{token}`. Reasoning tokens are tracked separately via `gen_ai.usage.reasoning_tokens` span attribute on `chat` spans, not as a `gen_ai.token.type` value. |
    | `gen_ai.client.operation.duration` | Histogram | `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name` | LLM inference call duration per OTel GenAI semantic conventions. Unit: `s`. |
    | `gen_ai.execute_tool.duration` | Histogram | `gen_ai.tool.name` | Tool execution duration per OTel GenAI semantic conventions. Unit: `s`. |
 
@@ -104,7 +104,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 ## Constraints
 
-1. Existing metrics use the `ols_` prefix. New OTel GenAI semantic convention metrics use the `gen_ai.` prefix. No other prefix is permitted.
+1. Existing metrics use the `ols_` prefix. New OTel semantic convention metrics use their standard prefix: `gen_ai.` for GenAI metrics, `mcp.` for MCP metrics (planned). No other prefix is permitted.
 2. The six redacted header names (`authorization`, `proxy-authorization`, `cookie`, `www-authenticate`, `proxy-authenticate`, `set-cookie`) are defined as frozen sets and must not be logged in plaintext under any log level.
 3. Enabling feedback or transcripts without providing the corresponding `*_storage` path is a validation error at startup.
 4. Sentiment values are restricted to exactly `-1` or `1`; any other integer is rejected with a validation error.
