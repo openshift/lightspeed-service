@@ -397,15 +397,18 @@ class ProviderConfig(BaseModel):
     tls_security_profile: Optional[TLSSecurityProfile] = None
 
     _credentials_path: Optional[str] = PrivateAttr(default=None)
+    _credential_hot_reload: bool = PrivateAttr(default=False)
 
     def __init__(
         self,
         data: Optional[dict] = None,
         ignore_llm_secrets: bool = False,
         certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
+        credential_hot_reload: bool = False,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
+        self._credential_hot_reload = credential_hot_reload
         if data is None:
             return
         self.name = data.get("name", None)
@@ -632,15 +635,8 @@ class ProviderConfig(BaseModel):
             )
 
     def get_credentials(self) -> Optional[str]:
-        """Return current credentials, re-reading from disk when a path is configured.
-
-        When ``credentials_path`` was provided in the original configuration,
-        the credential file is re-read on every call so that secrets rotated
-        by Kubernetes (kubelet atomic symlink swap) or external CronJobs are
-        picked up without a pod restart.  Falls back to the cached value when
-        no path is available or the file cannot be read.
-        """
-        if self._credentials_path is not None:
+        """Return current credentials, re-reading from disk when hot-reload is enabled."""
+        if self._credential_hot_reload and self._credentials_path is not None:
             fresh = checks.read_secret_from_path(
                 self._credentials_path, constants.API_TOKEN_FILENAME
             )
@@ -648,6 +644,28 @@ class ProviderConfig(BaseModel):
                 self.credentials = fresh
                 return fresh
         return self.credentials
+
+    def get_aws_credentials(
+        self,
+    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """Return AWS IAM credentials, re-reading from disk when hot-reload is enabled."""
+        if self._credential_hot_reload and self._credentials_path is not None:
+            access_key = checks.read_secret_from_path(
+                self._credentials_path, constants.BEDROCK_ACCESS_KEY_ID_FILENAME
+            )
+            secret_key = checks.read_secret_from_path(
+                self._credentials_path, constants.BEDROCK_SECRET_ACCESS_KEY_FILENAME
+            )
+            role_arn = checks.read_secret_from_path(
+                self._credentials_path, constants.BEDROCK_ROLE_ARN_FILENAME
+            )
+            if access_key is not None:
+                self.aws_access_key_id = access_key
+            if secret_key is not None:
+                self.aws_secret_access_key = secret_key
+            if role_arn is not None:
+                self.role_arn = role_arn
+        return self.aws_access_key_id, self.aws_secret_access_key, self.role_arn
 
 
 class LLMProviders(BaseModel):
@@ -660,6 +678,7 @@ class LLMProviders(BaseModel):
         data: Optional[dict] = None,
         ignore_llm_secrets: bool = False,
         certificate_directory: str = constants.DEFAULT_CERTIFICATE_DIRECTORY,
+        credential_hot_reload: bool = False,
     ) -> None:
         """Initialize configuration and perform basic validation."""
         super().__init__()
@@ -668,7 +687,9 @@ class LLMProviders(BaseModel):
         for p in data:
             if "name" not in p:
                 raise checks.InvalidConfigurationError("provider name is missing")
-            provider = ProviderConfig(p, ignore_llm_secrets, certificate_directory)
+            provider = ProviderConfig(
+                p, ignore_llm_secrets, certificate_directory, credential_hot_reload
+            )
             self.providers[p["name"]] = provider
 
     def validate_yaml(self) -> None:
@@ -1305,6 +1326,8 @@ class OLSConfig(BaseModel):
 
     offload_storage_path: str = constants.DEFAULT_OFFLOAD_STORAGE_PATH
 
+    credential_hot_reload: bool = False
+
     def __init__(  # noqa: C901
         self, data: Optional[dict] = None, ignore_missing_certs: bool = False
     ) -> None:
@@ -1323,6 +1346,7 @@ class OLSConfig(BaseModel):
         self.default_model = data.get("default_model", None)
         self.max_iterations = data.get("max_iterations")
         self.history_compression_enabled = data.get("history_compression_enabled", True)
+        self.credential_hot_reload = data.get("credential_hot_reload", False)
         self.max_workers = data.get("max_workers", 1)
         self.expire_llm_is_ready_persistent_state = data.get(
             "expire_llm_is_ready_persistent_state", -1
@@ -1458,7 +1482,10 @@ class Config(BaseModel):
         v = data.get("llm_providers")
         if v is not None:
             self.llm_providers = LLMProviders(
-                v, ignore_llm_secrets, self.ols_config.certificate_directory
+                v,
+                ignore_llm_secrets,
+                self.ols_config.certificate_directory,
+                self.ols_config.credential_hot_reload,
             )
         else:
             raise checks.InvalidConfigurationError(

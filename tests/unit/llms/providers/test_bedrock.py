@@ -495,7 +495,7 @@ def test_build_sigv4_auth_with_role(
 
 
 def test_bedrock_picks_up_rotated_credentials(tmp_path: Path) -> None:
-    """Test that Bedrock provider re-reads credentials on each default_params access."""
+    """Test that Bedrock provider re-reads credentials when hot-reload is enabled."""
     secret_file = tmp_path / "apitoken"
     secret_file.write_text("initial-key")
 
@@ -506,7 +506,8 @@ def test_bedrock_picks_up_rotated_credentials(tmp_path: Path) -> None:
             "url": "https://bedrock-mantle.us-east-1.api.aws",
             "credentials_path": str(secret_file),
             "models": [{"name": "anthropic.claude-opus-4-7"}],
-        }
+        },
+        credential_hot_reload=True,
     )
 
     bedrock_1 = Bedrock(
@@ -520,3 +521,33 @@ def test_bedrock_picks_up_rotated_credentials(tmp_path: Path) -> None:
         model="anthropic.claude-opus-4-7", params={}, provider_config=config
     )
     assert bedrock_2.default_params["api_key"] == "rotated-key"
+
+
+def test_bedrock_iam_picks_up_rotated_credentials(tmp_path: Path) -> None:
+    """Test that Bedrock IAM credentials are re-read when hot-reload is enabled."""
+    creds_dir = tmp_path / "aws_creds"
+    creds_dir.mkdir()
+    (creds_dir / "aws_access_key_id").write_text("original_access")
+    (creds_dir / "aws_secret_access_key").write_text("original_secret")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": str(creds_dir),
+            "models": [{"name": "anthropic.claude-opus-4-7"}],
+        },
+        credential_hot_reload=True,
+    )
+
+    access_key, secret_key, _ = config.get_aws_credentials()
+    assert access_key == "original_access"
+    assert secret_key == "original_secret"
+
+    (creds_dir / "aws_access_key_id").write_text("rotated_access")
+    (creds_dir / "aws_secret_access_key").write_text("rotated_secret")
+
+    access_key, secret_key, _ = config.get_aws_credentials()
+    assert access_key == "rotated_access"
+    assert secret_key == "rotated_secret"

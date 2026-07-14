@@ -4426,7 +4426,7 @@ def test_provider_config_get_credentials_returns_cached_when_no_path() -> None:
 
 
 def test_provider_config_get_credentials_rereads_from_disk(tmp_path: Path) -> None:
-    """Test get_credentials() re-reads credential file on every call."""
+    """Test get_credentials() re-reads credential file when hot-reload is enabled."""
     secret_file = tmp_path / "apitoken"
     secret_file.write_text("original-key")
 
@@ -4443,7 +4443,8 @@ def test_provider_config_get_credentials_rereads_from_disk(tmp_path: Path) -> No
                     "credentials_path": str(secret_file),
                 }
             ],
-        }
+        },
+        credential_hot_reload=True,
     )
 
     assert provider_config.get_credentials() == "original-key"
@@ -4472,7 +4473,8 @@ def test_provider_config_get_credentials_falls_back_on_read_failure(
                     "credentials_path": str(secret_file),
                 }
             ],
-        }
+        },
+        credential_hot_reload=True,
     )
 
     assert provider_config.get_credentials() == "original-key"
@@ -4502,7 +4504,8 @@ def test_provider_config_get_credentials_with_directory(tmp_path: Path) -> None:
                     "credentials_path": str(secret_file),
                 }
             ],
-        }
+        },
+        credential_hot_reload=True,
     )
 
     assert provider_config.get_credentials() == "dir-key"

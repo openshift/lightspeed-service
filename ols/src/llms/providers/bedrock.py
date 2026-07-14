@@ -59,8 +59,8 @@ class Bedrock(LLMProvider):
 
     def _has_aws_credentials(self) -> bool:
         """Check whether IAM credentials are available."""
-        pc = self.provider_config
-        return pc.aws_access_key_id is not None and pc.aws_secret_access_key is not None
+        access_key, secret_key, _ = self.provider_config.get_aws_credentials()
+        return access_key is not None and secret_key is not None
 
     def _region_from_url(self) -> str:
         """Extract AWS region from the Mantle gateway URL."""
@@ -75,16 +75,16 @@ class Bedrock(LLMProvider):
 
     def _build_boto3_session(self, region: str) -> boto3.Session:
         """Build a boto3 session from IAM credentials, with optional STS assume-role."""
-        pc = self.provider_config
+        access_key, secret_key, role_arn = self.provider_config.get_aws_credentials()
         session = boto3.Session(
-            aws_access_key_id=pc.aws_access_key_id,
-            aws_secret_access_key=pc.aws_secret_access_key,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
             region_name=region,
         )
-        if pc.role_arn:
+        if role_arn:
             sts = session.client("sts")
             assumed = sts.assume_role(
-                RoleArn=pc.role_arn, RoleSessionName="ols-bedrock"
+                RoleArn=role_arn, RoleSessionName="ols-bedrock"
             )["Credentials"]
             session = boto3.Session(
                 aws_access_key_id=assumed["AccessKeyId"],
