@@ -1,5 +1,7 @@
 """Entry point to FastAPI-based web service."""
 
+# Dummy change to trigger CI and verify main branch health.
+
 import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
 
