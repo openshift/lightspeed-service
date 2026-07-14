@@ -656,15 +656,20 @@ class ProviderConfig(BaseModel):
             secret_key = checks.read_secret_from_path(
                 self._credentials_path, constants.BEDROCK_SECRET_ACCESS_KEY_FILENAME
             )
-            role_arn = checks.read_secret_from_path(
-                self._credentials_path, constants.BEDROCK_ROLE_ARN_FILENAME
-            )
             if access_key is not None:
                 self.aws_access_key_id = access_key
             if secret_key is not None:
                 self.aws_secret_access_key = secret_key
-            if role_arn is not None:
-                self.role_arn = role_arn
+            # role_arn is optional — only re-read when the file exists
+            role_arn_path = os.path.join(
+                self._credentials_path, constants.BEDROCK_ROLE_ARN_FILENAME
+            )
+            if os.path.isfile(role_arn_path):
+                role_arn = checks.read_secret_from_path(
+                    self._credentials_path, constants.BEDROCK_ROLE_ARN_FILENAME
+                )
+                if role_arn is not None:
+                    self.role_arn = role_arn
         return self.aws_access_key_id, self.aws_secret_access_key, self.role_arn
 
 
