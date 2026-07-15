@@ -543,7 +543,7 @@ def generate_response(
         )
         rag_retriever = (
             config.rag_index_loader.get_retriever()
-            if config.ols_config.reference_content is not None
+            if config.rag_index_loader is not None
             else None
         )
         if streaming:
