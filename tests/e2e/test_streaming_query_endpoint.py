@@ -216,6 +216,9 @@ def test_valid_question() -> None:
         )
 
 
+@pytest.mark.skip(
+    reason="OLS-3591 RAG e2e tests need redesign for OKP tool-based retrieval"
+)
 @pytest.mark.rag
 def test_ocp_docs_version_same_as_cluster_version() -> None:
     """Check that the version of OCP docs matches the cluster we're on."""
@@ -339,6 +342,9 @@ def test_token_counters_for_query_call_with_improper_payload() -> None:
         response_utils.check_content_type(response, constants.MEDIA_TYPE_JSON)
 
 
+@pytest.mark.skip(
+    reason="OLS-3591 RAG e2e tests need redesign for OKP tool-based retrieval"
+)
 @pytest.mark.tool_calling
 @pytest.mark.rag
 @retry(max_attempts=3, wait_between_runs=60)
