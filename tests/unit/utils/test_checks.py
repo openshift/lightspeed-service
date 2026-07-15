@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from ols.constants import NOOP_WITH_TOKEN_AUTHENTICATION_MODULE
-from ols.utils.checks import resolve_headers
+from ols.utils.checks import read_secret_from_path, resolve_headers
 
 
 def test_resolve_headers_empty() -> None:
@@ -152,3 +152,38 @@ def test_resolve_headers_kubernetes_with_no_auth_module(caplog) -> None:
     assert result == {}
     assert "kubernetes" in caplog.text.lower()
     assert "skipped" in caplog.text.lower()
+
+
+def test_read_secret_from_path_file(tmp_path: Path) -> None:
+    """Test reading a secret from a file path."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("my-api-key\n")
+
+    result = read_secret_from_path(str(secret_file), "apitoken")
+    assert result == "my-api-key"
+
+
+def test_read_secret_from_path_directory(tmp_path: Path) -> None:
+    """Test reading a secret when path is a directory."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("dir-api-key")
+
+    result = read_secret_from_path(str(tmp_path), "apitoken")
+    assert result == "dir-api-key"
+
+
+def test_read_secret_from_path_nonexistent() -> None:
+    """Test reading from a nonexistent path returns None."""
+    result = read_secret_from_path("/nonexistent/path", "apitoken")
+    assert result is None
+
+
+def test_read_secret_from_path_picks_up_rotation(tmp_path: Path) -> None:
+    """Test that re-reading picks up rotated credential values."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("original-key")
+
+    assert read_secret_from_path(str(secret_file), "apitoken") == "original-key"
+
+    secret_file.write_text("rotated-key")
+    assert read_secret_from_path(str(secret_file), "apitoken") == "rotated-key"

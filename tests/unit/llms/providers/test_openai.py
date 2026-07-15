@@ -1,6 +1,7 @@
 """Unit tests for OpenAI provider."""
 
 import os
+from pathlib import Path
 
 import httpx
 import pytest
@@ -270,3 +271,69 @@ def test_gpt5_and_o_series_models_parameter_exclusion(
     assert "model" in openai.default_params
     assert "max_completion_tokens" in openai.default_params
     assert openai.default_params["model"] == model_name
+
+
+def test_openai_picks_up_rotated_credentials(
+    tmp_path: Path, fake_certifi_store: str
+) -> None:
+    """Test that OpenAI provider re-reads credentials when hot-reload is enabled."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("initial-key")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "url": "http://test.url",
+            "credentials_path": str(secret_file),
+            "models": [
+                {
+                    "name": "test_model",
+                    "url": "http://test.url/",
+                    "credentials_path": str(secret_file),
+                }
+            ],
+        },
+        credential_hot_reload=True,
+    )
+
+    openai_1 = OpenAI(model="test_model", provider_config=config)
+    assert openai_1.default_params["openai_api_key"] == "initial-key"
+
+    secret_file.write_text("rotated-key")
+
+    openai_2 = OpenAI(model="test_model", provider_config=config)
+    assert openai_2.default_params["openai_api_key"] == "rotated-key"
+
+
+def test_openai_returns_cached_credentials_when_hot_reload_disabled(
+    tmp_path: Path, fake_certifi_store: str
+) -> None:
+    """Test that credentials are cached (not re-read) when hot-reload is disabled."""
+    secret_file = tmp_path / "apitoken"
+    secret_file.write_text("initial-key")
+
+    config = ProviderConfig(
+        {
+            "name": "test_provider",
+            "type": "openai",
+            "url": "http://test.url",
+            "credentials_path": str(secret_file),
+            "models": [
+                {
+                    "name": "test_model",
+                    "url": "http://test.url/",
+                    "credentials_path": str(secret_file),
+                }
+            ],
+        },
+        credential_hot_reload=False,
+    )
+
+    openai_1 = OpenAI(model="test_model", provider_config=config)
+    assert openai_1.default_params["openai_api_key"] == "initial-key"
+
+    secret_file.write_text("rotated-key")
+
+    openai_2 = OpenAI(model="test_model", provider_config=config)
+    assert openai_2.default_params["openai_api_key"] == "initial-key"
