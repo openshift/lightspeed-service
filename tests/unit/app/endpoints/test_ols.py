@@ -657,6 +657,34 @@ def test_generate_response_passes_mode_to_summarizer():
 
 
 @pytest.mark.usefixtures("_load_config")
+def test_generate_response_without_rag_index():
+    """Test generate_response when no RAG index is configured."""
+    mock_response = "Kubernetes is a container orchestration platform."
+    with (
+        patch.object(config.config.ols_config, "reference_content", None),
+        patch.object(config, "_rag_index_loader", None),
+        patch("ols.app.endpoints.ols.DocsSummarizer") as mock_docs_summarizer,
+    ):
+        mock_docs_summarizer.return_value.create_response.return_value = (
+            SummarizerResponse(
+                mock_response,
+                [],
+                False,
+                token_counter=None,
+            )
+        )
+
+        conversation_id = suid.get_suid()
+        llm_request = LLMRequest(query="Tell me about Kubernetes")
+
+        response = ols.generate_response(conversation_id, llm_request, "user-id")
+
+        assert "Kubernetes" in response.response
+        call_args = mock_docs_summarizer.return_value.create_response.call_args
+        assert call_args[0][1] is None
+
+
+@pytest.mark.usefixtures("_load_config")
 def test_generate_response_on_summarizer_error():
     """Test how generate_response function checks validation results."""
     with patch(
