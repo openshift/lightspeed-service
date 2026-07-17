@@ -4,7 +4,7 @@
 INSCOPE_MODELS = {
     "watsonx+ibm/granite-3-8b-instruct": ("watsonx", "ibm/granite-3-8b-instruct"),
     "watsonx+ibm/granite-4-h-small": ("watsonx", "ibm/granite-4-h-small"),
-    "openai+gpt-4.1-mini": ("openai", "gpt-4.1-mini"),
+    "openai+gpt-5.4-mini": ("openai", "gpt-5.4-mini"),
     "openai+gpt-5.1": ("openai", "gpt-5.1"),
     "azure_openai+gpt-4.1-mini": ("azure_openai", "gpt-4.1-mini"),
     "azure_openai+gpt-5.1": ("azure_openai", "gpt-5.1"),
