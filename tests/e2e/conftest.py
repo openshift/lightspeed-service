@@ -260,7 +260,7 @@ def pytest_addoption(parser):
         nargs="+",
         default=[
             "watsonx+ibm/granite-4-h-small",
-            "openai+gpt-4.1-mini",
+            "openai+gpt-5.4-mini",
             "azure_openai+gpt-4.1-mini",
         ],
         type=str,
