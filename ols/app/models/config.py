@@ -1010,7 +1010,9 @@ class ReferenceContentIndex(BaseModel):
                     os.path.dirname(self.product_docs_index_path), "latest"
                 )
                 try:
-                    checks.dir_check(fallback, "Reference content index path (fallback)")
+                    checks.dir_check(
+                        fallback, "Reference content index path (fallback)"
+                    )
                     logger.warning(
                         "Configured index path '%s' not found, using fallback '%s'",
                         self.product_docs_index_path,

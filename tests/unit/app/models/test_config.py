@@ -4,6 +4,7 @@ import copy
 import errno
 import logging
 import os
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -3288,20 +3289,23 @@ def test_reference_content_yaml_validation():
     assert reference_content.indexes is None
 
 
-def test_reference_content_yaml_validation_nonexistent_dir(tmp_path):
+def test_validate_yaml_nonexistent_dir(tmp_path: Path) -> None:
     """Test that validation skips non-existent index directories."""
     inexistent_dir = tmp_path / "non_existing_dir"
     reference_content = ReferenceContent()
     reference_content.indexes = [
         ReferenceContentIndex(
-            {"product_docs_index_id": "foo", "product_docs_index_path": str(inexistent_dir)}
+            {
+                "product_docs_index_id": "foo",
+                "product_docs_index_path": str(inexistent_dir),
+            }
         )
     ]
     reference_content.validate_yaml()
     assert reference_content.indexes is None
 
 
-def test_reference_content_yaml_validation_skips_missing_paths(tmp_path):
+def test_validate_yaml_skips_missing_paths(tmp_path: Path) -> None:
     """Test that validation keeps valid indexes and skips missing ones."""
     valid_dir = tmp_path / "valid_index"
     valid_dir.mkdir()
@@ -3312,7 +3316,10 @@ def test_reference_content_yaml_validation_skips_missing_paths(tmp_path):
             {"product_docs_index_id": "good", "product_docs_index_path": str(valid_dir)}
         ),
         ReferenceContentIndex(
-            {"product_docs_index_id": "bad", "product_docs_index_path": "/nonexistent/path"}
+            {
+                "product_docs_index_id": "bad",
+                "product_docs_index_path": "/nonexistent/path",
+            }
         ),
     ]
     reference_content.validate_yaml()
@@ -3321,7 +3328,7 @@ def test_reference_content_yaml_validation_skips_missing_paths(tmp_path):
     assert reference_content.indexes[0].product_docs_index_path == str(valid_dir)
 
 
-def test_reference_content_has_usable_content():
+def test_has_usable_content_states() -> None:
     """Test has_usable_content method."""
     reference_content = ReferenceContent()
     assert reference_content.has_usable_content() is False

@@ -34,7 +34,9 @@ def wait_for_ols(url, timeout=300, interval=10):
             if response.status_code == requests.codes.ok:
                 print("OLS is ready")
                 return True
-            print(f"OLS not ready, status code: {response.status_code}, body: {response.text}")
+            print(
+                f"OLS not ready, status code: {response.status_code}, body: {response.text}"
+            )
         except SSLError as e:
             print(f"SSL error detected: {e}")
             print("Retrying without SSL verification")
