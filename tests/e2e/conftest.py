@@ -187,7 +187,7 @@ def pytest_addoption(parser):
         default=[
             "watsonx+ibm/granite-4-h-small",
             "openai+gpt-5.4-mini",
-            "azure_openai+gpt-4.1-mini",
+            "azure_openai+gpt-5.4-mini",
         ],
         type=str,
         help="Identifier for Provider/Model to be used for model eval.",

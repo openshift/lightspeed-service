@@ -1,5 +1,5 @@
 # LightSpeed Evaluation Framework Configuration
-# OLS Provider: Azure OpenAI gpt-4.1-mini (model being evaluated)
+# OLS Provider: Azure OpenAI gpt-5.4-mini (model being evaluated)
 # Judge LLM: OpenAI GPT-5-mini (scoring responses)
 
 # Core Evaluation Configuration
@@ -21,7 +21,7 @@ llm:
   num_retries: 3
 
 # OLS API Configuration
-# Targets the OLS /query endpoint using Azure OpenAI gpt-4.1-mini as the backend LLM.
+# Targets the OLS /query endpoint using Azure OpenAI gpt-5.4-mini as the backend LLM.
 # api_base is overridden at runtime with the actual OLS service URL.
 # Requires OLS to be configured with an azure_openai provider (credentials + deployment URL in olsconfig).
 # Override the model via LSEVAL_OLS_MODEL env var if your Azure deployment uses a different model.
@@ -31,7 +31,7 @@ api:
   endpoint_type: query
   timeout: 300
   provider: "azure_openai"
-  model: "gpt-4.1-mini"
+  model: "gpt-5.4-mini"
   no_tools: null
   system_prompt: null
 
