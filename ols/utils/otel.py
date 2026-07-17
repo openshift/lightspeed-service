@@ -39,7 +39,9 @@ _id_generator = _ConversationIdGenerator()
 
 
 def init_tracer(
-    otel_endpoint: Optional[str] = None, insecure: bool = False
+    otel_endpoint: Optional[str] = None,
+    insecure: bool = False,
+    certificate_file: Optional[str] = None,
 ) -> trace.Tracer:
     """Initialize the OTEL tracer with OTLP exporter or no-op."""
     resource = Resource.create({"service.name": "lightspeed-service"})
@@ -52,7 +54,16 @@ def init_tracer(
             BatchSpanProcessor,
         )
 
-        exporter = OTLPSpanExporter(endpoint=otel_endpoint, insecure=insecure)
+        credentials = None
+        if not insecure and certificate_file:
+            import grpc  # pylint: disable=C0415
+
+            with open(certificate_file, "rb") as f:
+                credentials = grpc.ssl_channel_credentials(root_certificates=f.read())
+
+        exporter = OTLPSpanExporter(
+            endpoint=otel_endpoint, insecure=insecure, credentials=credentials
+        )
         provider.add_span_processor(BatchSpanProcessor(exporter))
         logger.info("OTEL tracer configured with endpoint: %s", otel_endpoint)
     else:
