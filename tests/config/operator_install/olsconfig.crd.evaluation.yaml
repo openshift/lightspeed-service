@@ -15,9 +15,9 @@ spec:
         type: azure_openai
         credentialsSecretRef:
           name: azure-openaicreds
-        deploymentName: gpt-4.1-mini
+        deploymentName: gpt-5.4-mini
         models:
-          - name: gpt-4.1-mini
+          - name: gpt-5.4-mini
         url: 'https://ols-test.openai.azure.com/'
       - credentialsSecretRef:
           name: openaicreds
