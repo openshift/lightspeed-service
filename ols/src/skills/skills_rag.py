@@ -157,6 +157,7 @@ def create_skill_support_tool(skill: Skill) -> StructuredTool:
             "Retrieve additional support files for the matched skill. "
             "Pass a list of relative file paths from the manifest."
         ),
+        metadata={"annotations": {"readOnlyHint": True}},
     )
 
 

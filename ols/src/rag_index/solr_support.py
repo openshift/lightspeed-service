@@ -812,7 +812,10 @@ def get_openshift_docs_tool(client: SolrHybridSearch) -> StructuredTool:
             "{text, score, title, docs_url}, or [] if no hits, or an object with "
             "error on failure. Cite docs_url when using a passage."
         ),
-        metadata={"tools_token_budget": 0},
+        metadata={
+            "tools_token_budget": 0,
+            "annotations": {"readOnlyHint": True},
+        },
     )
     tool_ref.append(tool)
     return tool
