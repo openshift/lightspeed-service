@@ -32,13 +32,19 @@ def _ok_response(payload: dict[str, Any]) -> httpx.Response:
     return httpx.Response(200, json=payload, request=_FAKE_REQUEST)
 
 
-def _patch_httpx_client(fake_post, fake_get=None):
-    """Patch Solr hybrid search to use a mock persistent ``httpx.AsyncClient``."""
+def _patch_httpx_client(
+    fake_post: AsyncMock, fake_get: AsyncMock | None = None
+) -> patch:
+    """Patch ``httpx.AsyncClient`` context manager to use a mock client."""
     mock_client = AsyncMock()
     mock_client.post = fake_post
     mock_client.get = fake_get if fake_get is not None else AsyncMock()
-    mock_client.is_closed = False
-    return patch.object(SolrHybridSearch, "_get_http_client", return_value=mock_client)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    return patch(
+        "ols.src.rag_index.solr_support.httpx.AsyncClient",
+        return_value=mock_client,
+    )
 
 
 def test_normalize_solr_hybrid_query_strips_common_stopwords() -> None:
@@ -423,13 +429,8 @@ async def test_solr_search_expands_chunks_when_budget_provided() -> None:
     async def fake_get(url: str, *, params: Any) -> Any:
         return _ok_response(family_docs)
 
-    mock_client = AsyncMock()
-    mock_client.post = fake_post
-    mock_client.get = fake_get
-    mock_client.is_closed = False
-
     with (
-        patch.object(SolrHybridSearch, "_get_http_client", return_value=mock_client),
+        _patch_httpx_client(fake_post, fake_get),
         _PATCH_RESOLVE,
     ):
         client = SolrHybridSearch(SolrHybridSettings(max_results=3), encode_fn)
@@ -476,8 +477,8 @@ async def test_solr_hybrid_search_max_expansion_neighbors_zero_with_budget() -> 
 
 
 @pytest.mark.asyncio
-async def test_solr_hybrid_search_reuses_async_http_client() -> None:
-    """Repeated searches reuse one ``httpx.AsyncClient`` instance."""
+async def test_solr_hybrid_search_creates_fresh_client_per_search() -> None:
+    """Each search creates a fresh ``httpx.AsyncClient`` (no stale pool)."""
     clients_created: list[AsyncMock] = []
 
     def encode_fn(text: str) -> list[float]:
@@ -503,7 +504,8 @@ async def test_solr_hybrid_search_reuses_async_http_client() -> None:
         mock = AsyncMock()
         mock.post = fake_post
         mock.get = AsyncMock()
-        mock.is_closed = False
+        mock.__aenter__ = AsyncMock(return_value=mock)
+        mock.__aexit__ = AsyncMock(return_value=False)
         clients_created.append(mock)
         return mock
 
@@ -517,8 +519,9 @@ async def test_solr_hybrid_search_reuses_async_http_client() -> None:
         client = SolrHybridSearch(SolrHybridSettings(), encode_fn)
         await client.search("q1")
         await client.search("q2")
-        await client.aclose()
-    assert len(clients_created) == 1
+    assert len(clients_created) == 2
+    for mock in clients_created:
+        mock.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.asyncio
