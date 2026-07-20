@@ -569,6 +569,10 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
 
             log_processing_durations(timestamps)
         except Exception as finalization_error:
+            logger.error(
+                "Error during response finalization: %s",
+                finalization_error,
+            )
             if audit_ctx:
                 audit_ctx.logger.request_failed(
                     audit_ctx.trace_id,
