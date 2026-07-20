@@ -24,7 +24,7 @@ WORKDIR /app-root
 
 # Step 1: Copy only dependency metadata (not source code).
 # LICENSE and README.md are needed by hatchling for metadata resolution.
-COPY pyproject.toml uv.lock requirements.hashes.wheel.txt requirements.hashes.source.txt LICENSE README.md ./
+COPY pyproject.toml uv.lock .konflux/requirements.hashes.wheel.txt .konflux/requirements.hashes.source.txt .konflux/requirements.hashes.wheel.pypi.txt .konflux/requirements.hermetic.txt LICENSE README.md ./
 
 # Install uv package manager
 RUN pip install "uv>=0.8.15"
@@ -36,9 +36,12 @@ RUN pip install "uv>=0.8.15"
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
-    uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
-    . .venv/bin/activate && \
-    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt ;\
+    uv venv && \
+    # uv cannot handle multiple index URLs
+    for f in requirements.hashes.wheel.txt requirements.hashes.source.txt requirements.hashes.wheel.pypi.txt; do \
+        sed -i '/^--index-url /d' "$f"; \
+    done && \
+    uv pip install --python .venv/bin/python --no-cache --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt -r requirements.hashes.wheel.pypi.txt ;\
     else \
     uv sync --locked --no-dev --no-cache --no-install-project ;\
     fi
@@ -56,9 +59,9 @@ RUN if [ ! -f /cachi2/cachi2.env ]; then \
 ENV PATH="/app-root/.venv/bin:$PATH"
 
 # Pre-warm tiktoken encoding cache to a stable, version-agnostic location.
-RUN src=$(find .venv/lib -path "*/llama_index/core/_static/tiktoken_cache" -type d) && \
+RUN src=$(find .venv/lib -path "*tiktoken_cache" -type d | head -1) && \
     mkdir -p /app-root/.tiktoken_cache && \
-    cp "$src"/[0-9a-f]* /app-root/.tiktoken_cache/
+    if [ -n "$src" ]; then cp "$src"/[0-9a-f]* /app-root/.tiktoken_cache/; fi
 
 # Verify all dependencies are installed correctly
 RUN echo "Verifying dependencies installation..." && \

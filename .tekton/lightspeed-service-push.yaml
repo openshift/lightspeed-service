@@ -41,19 +41,20 @@ spec:
          },
          {
            "type": "rpm",
-           "path": "."
+           "path": ".konflux"
          },
          {
            "type": "pip",
            "path": ".",
            "requirements_files": [
-             "requirements.hashes.wheel.txt",
-             "requirements.hashes.source.txt",
-             "requirements.hermetic.txt"
+             ".konflux/requirements.hashes.wheel.txt",
+             ".konflux/requirements.hashes.source.txt",
+             ".konflux/requirements.hashes.wheel.pypi.txt",
+             ".konflux/requirements.hermetic.txt"
            ],
-           "requirements_build_files": ["requirements-build.txt"],
+           "requirements_build_files": [".konflux/requirements-build.txt"],
            "binary": {
-             "packages": "aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-types,anyio,attrs,certifi,cffi,colorama,cryptography,dataclasses-json,deprecated,distlib,distro,docstring-parser,durationpy,faiss-cpu,filetype,frozenlist,google-crc32c,google-genai,grpcio,grpcio-status,h11,h2,hf-xet,hpack,httpcore,httpx,httpx-sse,hyperframe,idna,iniconfig,jinja2,jiter,jmespath,joblib,jsonpatch,jsonschema,jsonschema-specifications,langchain-community,markdown-it-py,marshmallow,mdurl,mpmath,multidict,mypy-extensions,nest-asyncio,networkx,numexpr,numpy,oauthlib,orjson,packaging,pandas,pillow,pluggy,portalocker,prometheus-client,propcache,psycopg2-binary,py-cpuinfo,pyarrow,pyasn1-modules,pycparser,pydantic,pydantic-core,pytest,python-dateutil,pyyaml,referencing,requests-oauthlib,requests-toolbelt,rpds-py,safetensors,scikit-learn,scipy,setuptools,six,sniffio,sqlalchemy,sympy,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,triton,typing-extensions,typing-inspect,typing-inspection,urllib3,uuid-utils,websocket-client,websockets,xxhash,yarl,zipp,zstandard,uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25",
+             "packages": "aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,attrs,azure-core,azure-identity,banks,boto3,botocore,cachetools,certifi,cffi,charset-normalizer,click,colorama,cryptography,dataclasses-json,defusedxml,deprecated,dirtyjson,distlib,distro,docstring-parser,faiss-cpu,fastapi,filelock,filetype,frozenlist,fsspec,google-api-core,google-auth,google-cloud-aiplatform,google-cloud-bigquery,google-cloud-core,google-cloud-resource-manager,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffe,griffecli,griffelib,grpc-google-iam-v1,grpcio,h11,hf-xet,httpcore,httpx,httpx-sse,huggingface-hub,idna,jinja2,jiter,joblib,json-repair,jsonpatch,jsonpointer,jsonschema,jsonschema-specifications,kubernetes,langchain,langchain-community,langchain-core,langchain-google-genai,langchain-openai,langchain-protocol,langgraph,langgraph-checkpoint,langgraph-prebuilt,langgraph-sdk,langsmith,llama-index,llama-index-core,llama-index-embeddings-openai,llama-index-instrumentation,llama-index-llms-openai,llama-index-workflows,markdown-it-py,markupsafe,marshmallow,maturin,mcp,mdurl,mpmath,msal,msal-extensions,multidict,mypy-extensions,nest-asyncio,networkx,nltk,numpy,oauthlib,openai,opentelemetry-api,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,orjson,ormsgpack,packaging,pandas,pillow,platformdirs,portalocker,prometheus-client,propcache,proto-plus,protobuf,psycopg2-binary,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,python-dateutil,python-discovery,python-dotenv,python-multipart,pytz,pyyaml,qdrant-client,rank-bm25,referencing,regex,requests,requests-oauthlib,requests-toolbelt,rich,rpds-py,s3transfer,safetensors,scikit-learn,scipy,sentence-transformers,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,sympy,tabulate,tenacity,threadpoolctl,tiktoken,tinytag,tokenizers,torch,tqdm,transformers,triton,typer,typing-extensions,typing-inspect,typing-inspection,tzdata,urllib3,uuid-utils,uv,uv-build,uvicorn,virtualenv,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
              "os": "linux",
              "arch": "x86_64,aarch64",
              "py_version": 312
@@ -226,7 +227,7 @@ spec:
         - name: name
           value: prefetch-dependencies-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.3@sha256:92956e75cd4714286f9c0c043f5301d1c0df1d750884edeceee87e0a91cc1975
+          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.4.1@sha256:ba1a3975a1e7b12ee1d11c4885930bf3540f532ddb57b5b66bb8b1122f41fa65
         - name: kind
           value: task
         resolver: bundles
