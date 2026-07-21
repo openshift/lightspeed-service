@@ -36,10 +36,6 @@ spec:
     value:  |
       [
          {
-           "type": "generic",
-           "path": "."
-         },
-         {
            "type": "rpm",
            "path": ".konflux"
          },

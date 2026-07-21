@@ -152,10 +152,21 @@ verify-packages-completeness:	requirements.txt ## Verify that requirements.txt f
 
 get-embeddings: get-embeddings-byok get-embeddings-okp ## Download all embedding model binaries
 
-get-embeddings-byok: ## Download BYOK/FAISS embedding model binary
+get-embeddings-byok: ## Download and split BYOK/FAISS embedding model binary
 	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
 		-o embeddings_model/all-mpnet-base-v2/model.safetensors \
 		"https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors"
+	cd embeddings_model/all-mpnet-base-v2 && \
+		rm -f model.safetensors.tar.gz.* && \
+		tar czf - model.safetensors | split -b 95M - model.safetensors.tar.gz.
+
+get-embeddings-okp: ## Download and split OKP/RAG embedding model binary
+	curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 15 \
+		-o embeddings_model/granite-embedding-30m-english/model.safetensors \
+		"https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors"
+	cd embeddings_model/granite-embedding-30m-english && \
+		rm -f model.safetensors.tar.gz.* && \
+		tar czf - model.safetensors | split -b 95M - model.safetensors.tar.gz.
 
 config.puml: ## Generate PlantUML class diagram for configuration
 	pyreverse ols/app/models/config.py --output puml --output-directory=docs/
