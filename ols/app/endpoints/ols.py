@@ -40,7 +40,6 @@ from ols.src.quota.quota_limiter import QuotaLimiter
 from ols.src.quota.token_usage_history import TokenUsageHistory
 from ols.utils import errors_parsing, suid
 from ols.utils.audit_logger import AuditContext, AuditLogger
-from ols.utils.otel import clear_conversation_trace_id, set_conversation_trace_id
 from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
@@ -124,8 +123,17 @@ def conversation_request(
     audit_ctx = processed_request.audit_ctx
     lifecycle_cm = audit_ctx.span("request.lifecycle") if audit_ctx else nullcontext()
 
-    try:
-        with lifecycle_cm:
+    with lifecycle_cm:
+        try:
+            if audit_ctx:
+                audit_ctx.logger.request_started(
+                    mode=llm_request.mode,
+                    query=llm_request.query,
+                    attachments=[a.model_dump() for a in processed_request.attachments],
+                    provider=llm_request.provider,
+                    model=llm_request.model,
+                    capture_content=audit_ctx.capture_content,
+                )
             summarizer_response: SummarizerResponse | Generator
 
             client_headers = llm_request.mcp_headers
@@ -208,8 +216,6 @@ def conversation_request(
                     summarizer_response.token_counter, "reasoning_tokens"
                 )
                 audit_ctx.logger.request_completed(
-                    audit_ctx.trace_id,
-                    audit_ctx.user_id,
                     total_turns=getattr(
                         summarizer_response.token_counter, "llm_calls", 1
                     ),
@@ -219,17 +225,12 @@ def conversation_request(
                         doc.doc_url for doc in referenced_documents if doc.doc_url
                     ],
                 )
-    except Exception as request_error:
-        if audit_ctx:
-            audit_ctx.logger.request_failed(
-                audit_ctx.trace_id,
-                audit_ctx.user_id,
-                error=type(request_error).__name__,
-            )
-        raise
-    finally:
-        if audit_ctx:
-            clear_conversation_trace_id()
+        except Exception as request_error:
+            if audit_ctx:
+                audit_ctx.logger.request_failed(
+                    error=type(request_error).__name__,
+                )
+            raise
 
     return LLMResponse(
         conversation_id=processed_request.conversation_id,
@@ -322,67 +323,51 @@ def process_request(auth: Any, llm_request: LLMRequest) -> ProcessedRequest:
         )
     timestamps["retrieve conversation"] = time.time()
 
-    trace_id = suid.conversation_id_to_trace_id(conversation_id)
     audit_logger = AuditLogger(enabled=config.ols_config.audit.enabled)
-    set_conversation_trace_id(trace_id)
-    try:
-        audit_ctx = AuditContext(
-            trace_id=trace_id, user_id=user_id, logger=audit_logger
-        )
+    audit_ctx = AuditContext(
+        conversation_id=conversation_id, user_id=user_id, logger=audit_logger
+    )
 
-        with audit_ctx.span("request.auth"):
-            audit_ctx.logger.request_auth(audit_ctx.trace_id, audit_ctx.user_id)
+    with audit_ctx.span("request.auth"):
+        audit_ctx.logger.request_auth()
 
-        skip_user_id_check = retrieve_skip_user_id_check(auth)
+    skip_user_id_check = retrieve_skip_user_id_check(auth)
 
-        user_token = retrieve_user_token(auth)
+    user_token = retrieve_user_token(auth)
 
-        # Important note: Redact the query before attempting to do any
-        # logging of the query to avoid leaking PII into logs.
+    # Important note: Redact the query before attempting to do any
+    # logging of the query to avoid leaking PII into logs.
 
-        # Redact the query
-        llm_request = redact_query(conversation_id, llm_request)
-        timestamps["redact query"] = time.time()
+    # Redact the query
+    llm_request = redact_query(conversation_id, llm_request)
+    timestamps["redact query"] = time.time()
 
-        # Retrieve attachments from the request
-        attachments = retrieve_attachments(llm_request)
+    # Retrieve attachments from the request
+    attachments = retrieve_attachments(llm_request)
 
-        # Redact all attachments
-        attachments = redact_attachments(conversation_id, attachments)
+    # Redact all attachments
+    attachments = redact_attachments(conversation_id, attachments)
 
-        audit_ctx.logger.request_started(
-            audit_ctx.trace_id,
-            audit_ctx.user_id,
-            mode=llm_request.mode,
-            query=llm_request.query,
-            attachments=[a.model_dump() for a in attachments],
-            provider=llm_request.provider,
-            model=llm_request.model,
-        )
+    # All attachments should be appended to query - but store original
+    # query for later use in transcript storage
+    query_without_attachments = llm_request.query
+    llm_request.query = append_attachments_to_query(llm_request.query, attachments)
+    timestamps["append attachments"] = time.time()
 
-        # All attachments should be appended to query - but store original
-        # query for later use in transcript storage
-        query_without_attachments = llm_request.query
-        llm_request.query = append_attachments_to_query(llm_request.query, attachments)
-        timestamps["append attachments"] = time.time()
+    validate_requested_provider_model(llm_request)
 
-        validate_requested_provider_model(llm_request)
-
-        check_tokens_available(config.quota_limiters, user_id)
-        return ProcessedRequest(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            query_without_attachments=query_without_attachments,
-            attachments=attachments,
-            timestamps=timestamps,
-            skip_user_id_check=skip_user_id_check,
-            user_token=user_token,
-            mode=llm_request.mode,
-            audit_ctx=audit_ctx,
-        )
-    except Exception:
-        clear_conversation_trace_id()
-        raise
+    check_tokens_available(config.quota_limiters, user_id)
+    return ProcessedRequest(
+        user_id=user_id,
+        conversation_id=conversation_id,
+        query_without_attachments=query_without_attachments,
+        attachments=attachments,
+        timestamps=timestamps,
+        skip_user_id_check=skip_user_id_check,
+        user_token=user_token,
+        mode=llm_request.mode,
+        audit_ctx=audit_ctx,
+    )
 
 
 def check_tokens_available(

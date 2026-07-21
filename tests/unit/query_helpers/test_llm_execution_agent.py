@@ -8,6 +8,7 @@ import pytest
 from langchain_core.messages import ToolMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.tools.structured import StructuredTool
+from opentelemetry.trace import SpanKind
 from pydantic import BaseModel
 
 from ols import config
@@ -21,6 +22,7 @@ from ols.src.query_helpers.llm_execution_agent import (  # noqa: E402
     RoundLLMResult,
 )
 from ols.src.tools.tools import ApprovalRequiredEvent, ToolResultEvent  # noqa: E402
+from ols.utils.audit_logger import AuditContext, AuditLogger  # noqa: E402
 from ols.utils.token_handler import (  # noqa: E402
     TokenBudgetTracker,
     TokenCategory,
@@ -28,6 +30,7 @@ from ols.utils.token_handler import (  # noqa: E402
 )
 from tests.mock_classes.mock_llm_loader import MockLLMLoader  # noqa: E402
 from tests.mock_classes.mock_tools import mock_tools_map  # noqa: E402
+from tests.unit.conftest import make_audit_ctx  # noqa: E402
 
 
 class SampleTool(StructuredTool):
@@ -723,3 +726,129 @@ async def test_execute_emits_end_chunk_with_rag_and_truncated():
     assert chunks[1].data["rag_chunks"] is rag_chunks
     assert chunks[1].data["truncated"] is True
     assert "token_counter" in chunks[1].data
+
+
+class TestGenAISpanNaming:
+    """Verify LLM turn spans use GenAI semantic convention names and attributes."""
+
+    def test_emit_turn_audit_emits_genai_events(self, otel_setup) -> None:
+        """Verify _emit_turn_audit emits gen_ai.choice events and token attributes."""
+        audit_ctx = make_audit_ctx(otel_setup)
+        agent = _make_agent(audit_ctx=audit_ctx)
+
+        token_counter = MagicMock()
+        token_counter.token_counter.input_tokens = 100
+        token_counter.token_counter.output_tokens = 40
+        token_counter.token_counter.reasoning_tokens = 10
+
+        result = RoundLLMResult()
+        result.collected_thinking = ["thinking hard"]
+        result.collected_text = ["the answer"]
+
+        with audit_ctx.span("chat mock_model", kind=SpanKind.CLIENT):
+            agent._emit_turn_audit(result, 1, token_counter, 0, 0)
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        events = {e.name: e for e in span.events}
+        assert "gen_ai.choice" in events
+        choice_events = [e for e in span.events if e.name == "gen_ai.choice"]
+        reasoning_events = [
+            e for e in choice_events if "gen_ai.reasoning_content" in e.attributes
+        ]
+        completion_events = [
+            e for e in choice_events if "gen_ai.completion" in e.attributes
+        ]
+        assert len(reasoning_events) == 1
+        assert (
+            reasoning_events[0].attributes["gen_ai.reasoning_content"]
+            == "thinking hard"
+        )
+        assert len(completion_events) == 1
+        assert completion_events[0].attributes["gen_ai.completion"] == "the answer"
+        assert span.attributes["gen_ai.usage.input_tokens"] == 100
+        assert span.attributes["gen_ai.usage.output_tokens"] == 50
+
+    def test_emit_turn_audit_skips_empty_thinking(self, otel_setup) -> None:
+        """Verify _emit_turn_audit skips thinking event when no reasoning content."""
+        audit_ctx = make_audit_ctx(otel_setup)
+        agent = _make_agent(audit_ctx=audit_ctx)
+
+        token_counter = MagicMock()
+        token_counter.token_counter.input_tokens = 50
+        token_counter.token_counter.output_tokens = 20
+        token_counter.token_counter.reasoning_tokens = 0
+
+        result = RoundLLMResult()
+        result.collected_thinking = []
+        result.collected_text = ["just text"]
+
+        with audit_ctx.span("chat mock_model", kind=SpanKind.CLIENT):
+            agent._emit_turn_audit(result, 1, token_counter, 0, 0)
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        choice_events = [e for e in span.events if e.name == "gen_ai.choice"]
+        assert len(choice_events) == 1
+        assert "gen_ai.completion" in choice_events[0].attributes
+        assert all(
+            "gen_ai.reasoning_content" not in e.attributes for e in choice_events
+        )
+
+    def test_chat_span_has_genai_attributes(self, otel_setup) -> None:
+        """Verify the chat span carries gen_ai.* attributes and correct kind."""
+        audit_ctx = make_audit_ctx(otel_setup)
+        with audit_ctx.span(
+            "chat gpt-4",
+            kind=SpanKind.CLIENT,
+            **{
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": "gpt-4",
+                "gen_ai.provider.name": "openai",
+            },
+            turn_index=1,
+        ):
+            pass
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        assert span.name == "chat gpt-4"
+        assert span.kind == SpanKind.CLIENT
+        assert span.attributes["gen_ai.operation.name"] == "chat"
+        assert span.attributes["gen_ai.request.model"] == "gpt-4"
+        assert span.attributes["gen_ai.provider.name"] == "openai"
+        assert span.attributes["gen_ai.conversation.id"] == "conv-test"
+        assert span.attributes["user_id"] == "user-test"
+        assert span.attributes["turn_index"] == 1
+
+    def test_emit_turn_audit_respects_capture_content_false(self, otel_setup) -> None:
+        """Verify gen_ai.choice events omit content when capture_content is False."""
+        _, tracer = otel_setup
+        audit_ctx = AuditContext(
+            conversation_id="conv-test",
+            user_id="user-test",
+            logger=AuditLogger(enabled=True),
+            tracer=tracer,
+            capture_content=False,
+        )
+        agent = _make_agent(audit_ctx=audit_ctx)
+
+        token_counter = MagicMock()
+        token_counter.token_counter.input_tokens = 10
+        token_counter.token_counter.output_tokens = 5
+        token_counter.token_counter.reasoning_tokens = 0
+
+        result = RoundLLMResult()
+        result.collected_thinking = ["secret thoughts"]
+        result.collected_text = ["secret answer"]
+
+        with audit_ctx.span("chat mock_model", kind=SpanKind.CLIENT):
+            agent._emit_turn_audit(result, 1, token_counter, 0, 0)
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        choice_events = [e for e in span.events if e.name == "gen_ai.choice"]
+        assert len(choice_events) == 2
+        for e in choice_events:
+            assert "gen_ai.completion" not in e.attributes
+            assert "gen_ai.reasoning_content" not in e.attributes

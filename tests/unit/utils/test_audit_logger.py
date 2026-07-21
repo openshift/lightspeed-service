@@ -1,265 +1,291 @@
-"""Unit tests for the structured audit logger."""
+"""Unit tests for the structured audit logger (OTel span events)."""
 
 import json
-import logging
 
 import pytest
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.trace import SpanKind
 
 from ols.utils.audit_logger import AuditContext, AuditLogger
+from ols.utils.otel import OTLPJsonStdoutExporter
+from tests.unit.conftest import make_audit_ctx
 
 
 @pytest.fixture()
-def captured_records(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Capture JSON strings emitted by the ols.audit logger."""
-    records: list[str] = []
-    audit_log = logging.getLogger("ols.audit")
-
-    class _Capture(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            records.append(record.getMessage())
-
-    handler = _Capture()
-    monkeypatch.setattr(audit_log, "handlers", [handler])
-    return records
+def audit_ctx(otel_setup):
+    """Create an AuditContext wired to the test provider."""
+    return make_audit_ctx(otel_setup, conversation_id="conv-123", user_id="user@test")
 
 
-class TestAuditLoggerEmit:
-    """Verify _emit produces valid JSON with required fields."""
+def _get_spans(otel_setup):
+    """Return collected spans from the otel_setup fixture."""
+    exporter, _ = otel_setup
+    return exporter.spans
 
-    def test_emit_produces_valid_json(self, captured_records: list[str]) -> None:
-        """Test _emit produces valid JSON with all required fields."""
-        logger = AuditLogger(enabled=True)
-        logger._emit("test.event", "abc123", "user@test", foo="bar")
 
-        assert len(captured_records) == 1
-        record = json.loads(captured_records[0])
-        assert record["event"] == "test.event"
-        assert record["trace_id"] == "abc123"
-        assert record["user_id"] == "user@test"
-        assert record["foo"] == "bar"
-        assert record["level"] == "info"
-        assert "timestamp" in record
+class TestAuditLoggerDisabled:
+    """Verify disabled logger emits nothing."""
 
-    def test_disabled_logger_emits_nothing(self, captured_records: list[str]) -> None:
-        """Test disabled logger emits no records."""
-        logger = AuditLogger(enabled=False)
-        logger._emit("test.event", "abc123", "user@test")
-        assert len(captured_records) == 0
-
-    def test_emit_nan_does_not_crash(self, captured_records: list[str]) -> None:
-        """Test _emit with NaN value logs warning instead of crashing."""
-        logger = AuditLogger(enabled=True)
-        logger._emit("test.event", "abc123", "user@test", score=float("nan"))
-        assert len(captured_records) == 0
+    def test_disabled_logger_emits_nothing(self, otel_setup) -> None:
+        """Verify all methods are no-ops when logger is disabled."""
+        exporter, tracer = otel_setup
+        ctx = AuditContext(
+            conversation_id="c1",
+            user_id="u1",
+            logger=AuditLogger(enabled=False),
+            tracer=tracer,
+        )
+        with ctx.span("test"):
+            ctx.logger.request_started(
+                mode="chat", query="q", attachments=[], provider="p", model="m"
+            )
+            ctx.logger.request_auth()
+            ctx.logger.llm_turn(turn_index=1, input_tokens=0, output_tokens=0)
+            ctx.logger.request_completed(
+                total_turns=1,
+                total_input_tokens=0,
+                total_output_tokens=0,
+                referenced_documents=[],
+            )
+        spans = exporter.spans
+        assert len(spans) == 1
+        assert len(spans[0].events) == 0
 
 
 class TestAuditLoggerMethods:
-    """Verify each typed method emits the correct event name."""
+    """Verify each method emits the correct span event or attributes."""
 
-    def test_request_started(self, captured_records: list[str]) -> None:
-        """Test request_started emits correct event."""
-        logger = AuditLogger()
-        logger.request_started(
-            "t1",
-            "u1",
-            mode="chat",
-            query="hello",
-            attachments=[{"type": "log"}],
-            provider="openai",
-            model="gpt-4",
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.request.started"
-        assert record["mode"] == "chat"
-        assert record["query"] == "hello"
-        assert record["attachments"] == [{"type": "log"}]
-        assert record["provider"] == "openai"
-        assert record["model"] == "gpt-4"
+    def test_request_started(self, audit_ctx, otel_setup) -> None:
+        """Verify request_started emits span event with request metadata."""
+        with audit_ctx.span("request.lifecycle"):
+            audit_ctx.logger.request_started(
+                mode="chat",
+                query="hello",
+                attachments=[{"type": "log"}],
+                provider="openai",
+                model="gpt-4",
+            )
+        span = _get_spans(otel_setup)[0]
+        assert len(span.events) == 1
+        assert span.events[0].name == "request.started"
+        assert span.events[0].attributes["mode"] == "chat"
+        assert span.events[0].attributes["query"] == "hello"
+        assert span.events[0].attributes["provider"] == "openai"
 
-    def test_request_auth(self, captured_records: list[str]) -> None:
-        """Test request_auth emits correct event."""
-        logger = AuditLogger()
-        logger.request_auth("t1", "u1")
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.request.auth"
+    def test_request_started_no_capture(self, audit_ctx, otel_setup) -> None:
+        """Verify request_started omits query when capture_content is False."""
+        with audit_ctx.span("request.lifecycle"):
+            audit_ctx.logger.request_started(
+                mode="chat",
+                query="hello",
+                attachments=[],
+                provider="openai",
+                model="gpt-4",
+                capture_content=False,
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "request.started"
+        assert "query" not in span.events[0].attributes
 
-    def test_rag_retrieved(self, captured_records: list[str]) -> None:
-        """Test rag_retrieved emits correct event."""
-        logger = AuditLogger()
-        logger.rag_retrieved(
-            "t1", "u1", chunk_count=3, scores=[0.9, 0.8], source_documents=["doc1"]
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.rag.retrieved"
-        assert record["chunk_count"] == 3
-        assert record["scores"] == [0.9, 0.8]
-        assert record["source_documents"] == ["doc1"]
+    def test_request_auth_is_noop(self, audit_ctx, otel_setup) -> None:
+        """Verify request_auth emits no events."""
+        with audit_ctx.span("request.auth"):
+            audit_ctx.logger.request_auth()
+        assert len(_get_spans(otel_setup)[0].events) == 0
 
-    def test_history_retrieved(self, captured_records: list[str]) -> None:
-        """Test history_retrieved emits correct event."""
-        logger = AuditLogger()
-        logger.history_retrieved(
-            "t1", "u1", turn_count=5, compressed=True, truncated=False
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.history.retrieved"
-        assert record["turn_count"] == 5
-        assert record["compressed"] is True
-        assert record["truncated"] is False
+    def test_rag_retrieved(self, audit_ctx, otel_setup) -> None:
+        """Verify rag_retrieved sets attributes and adds event."""
+        with audit_ctx.span("request.rag"):
+            audit_ctx.logger.rag_retrieved(
+                chunk_count=3,
+                scores=[0.9, 0.8],
+                source_documents=["doc1", "doc2"],
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["chunk_count"] == 3
+        assert span.events[0].name == "rag.retrieved"
+        assert span.events[0].attributes["scores"] == (0.9, 0.8)
 
-    def test_llm_turn(self, captured_records: list[str]) -> None:
-        """Test llm_turn emits correct event with token counts."""
-        logger = AuditLogger()
-        logger.llm_turn("t1", "u1", turn_index=1, input_tokens=100, output_tokens=50)
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.llm.turn"
-        assert record["tokens_in"] == 100
-        assert record["tokens_out"] == 50
+    def test_history_retrieved(self, audit_ctx, otel_setup) -> None:
+        """Verify history_retrieved sets attributes and adds event."""
+        with audit_ctx.span("request.history"):
+            audit_ctx.logger.history_retrieved(
+                turn_count=5, compressed=True, truncated=False
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["turn_count"] == 5
+        assert span.events[0].name == "history.retrieved"
 
-    def test_llm_thinking(self, captured_records: list[str]) -> None:
-        """Test llm_thinking emits correct event."""
-        logger = AuditLogger()
-        logger.llm_thinking("t1", "u1", content="thinking...")
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.llm.thinking"
-        assert record["content"] == "thinking..."
+    def test_llm_turn(self, audit_ctx, otel_setup) -> None:
+        """Verify llm_turn sets GenAI token usage attributes."""
+        with audit_ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            audit_ctx.logger.llm_turn(turn_index=1, input_tokens=100, output_tokens=50)
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["gen_ai.usage.input_tokens"] == 100
+        assert span.attributes["gen_ai.usage.output_tokens"] == 50
 
-    def test_llm_text(self, captured_records: list[str]) -> None:
-        """Test llm_text emits correct event."""
-        logger = AuditLogger()
-        logger.llm_text("t1", "u1", content="response text")
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.llm.text"
-        assert record["content"] == "response text"
+    def test_llm_thinking(self, audit_ctx, otel_setup) -> None:
+        """Verify llm_thinking emits gen_ai.choice event with reasoning content."""
+        with audit_ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            audit_ctx.logger.llm_thinking(content="thinking...")
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "gen_ai.choice"
+        assert span.events[0].attributes["gen_ai.reasoning_content"] == "thinking..."
 
-    def test_tool_call(self, captured_records: list[str]) -> None:
-        """Test tool_call emits correct event."""
-        logger = AuditLogger()
-        logger.tool_call(
-            "t1", "u1", tool_name="my_tool", mcp_server="srv", arguments=["a"]
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.tool.call"
-        assert record["tool_name"] == "my_tool"
-        assert record["mcp_server"] == "srv"
-        assert record["arguments"] == ["a"]
+    def test_llm_thinking_no_capture(self, audit_ctx, otel_setup) -> None:
+        """Verify llm_thinking omits content when capture_content is False."""
+        with audit_ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            audit_ctx.logger.llm_thinking(content="thinking...", capture_content=False)
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "gen_ai.choice"
+        assert "gen_ai.reasoning_content" not in span.events[0].attributes
 
-    def test_tool_result(self, captured_records: list[str]) -> None:
-        """Test tool_result emits correct event."""
-        logger = AuditLogger()
-        logger.tool_result(
-            "t1",
-            "u1",
-            tool_name="my_tool",
-            output_length=2,
-            success=True,
-            duration_ms=42,
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.tool.result"
-        assert record["tool_name"] == "my_tool"
-        assert record["output_length"] == 2
-        assert record["success"] is True
-        assert record["duration_ms"] == 42
+    def test_llm_text(self, audit_ctx, otel_setup) -> None:
+        """Verify llm_text emits gen_ai.choice event with completion text."""
+        with audit_ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            audit_ctx.logger.llm_text(content="response text")
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "gen_ai.choice"
+        assert span.events[0].attributes["gen_ai.completion"] == "response text"
 
-    def test_tool_approval_requested(self, captured_records: list[str]) -> None:
-        """Test tool_approval_requested emits correct event."""
-        logger = AuditLogger()
-        logger.tool_approval_requested(
-            "t1", "u1", tool_name="my_tool", approval_id="ap1"
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.tool.approval.requested"
-        assert record["tool_name"] == "my_tool"
-        assert record["approval_id"] == "ap1"
+    def test_llm_text_no_capture(self, audit_ctx, otel_setup) -> None:
+        """Verify llm_text omits content when capture_content is False."""
+        with audit_ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            audit_ctx.logger.llm_text(content="response text", capture_content=False)
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "gen_ai.choice"
+        assert "gen_ai.completion" not in span.events[0].attributes
 
-    def test_tool_approval_decision(self, captured_records: list[str]) -> None:
-        """Test tool_approval_decision emits correct event."""
-        logger = AuditLogger()
-        logger.tool_approval_decision(
-            "t1", "u1", approval_id="ap1", decision="approved", tool_name="my_tool"
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.tool.approval.decision"
-        assert record["approval_id"] == "ap1"
-        assert record["decision"] == "approved"
-        assert record["tool_name"] == "my_tool"
+    def test_tool_call(self, audit_ctx, otel_setup) -> None:
+        """Verify tool_call emits tool.call span event."""
+        with audit_ctx.span("execute_tool my_tool"):
+            audit_ctx.logger.tool_call(
+                tool_name="my_tool", mcp_server="srv", arguments=["a"]
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "tool.call"
+        assert span.events[0].attributes["tool_name"] == "my_tool"
 
-    def test_request_failed(self, captured_records: list[str]) -> None:
-        """Test request_failed emits correct event."""
-        logger = AuditLogger()
-        logger.request_failed("t1", "u1", error="prompt_too_long")
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.request.failed"
-        assert record["error"] == "prompt_too_long"
+    def test_tool_result(self, audit_ctx, otel_setup) -> None:
+        """Verify tool_result sets span attributes."""
+        with audit_ctx.span("execute_tool my_tool"):
+            audit_ctx.logger.tool_result(output_length=2, success=True, duration_ms=42)
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["output_length"] == 2
+        assert span.attributes["success"] is True
+        assert span.attributes["duration_ms"] == 42
 
-    def test_request_completed(self, captured_records: list[str]) -> None:
-        """Test request_completed emits correct event."""
-        logger = AuditLogger()
-        logger.request_completed(
-            "t1",
-            "u1",
-            total_turns=3,
-            total_input_tokens=500,
-            total_output_tokens=200,
-            referenced_documents=["https://docs.example.com"],
-        )
-        record = json.loads(captured_records[0])
-        assert record["event"] == "audit.request.completed"
-        assert record["total_turns"] == 3
-        assert record["total_tokens_in"] == 500
-        assert record["total_tokens_out"] == 200
-        assert record["referenced_documents"] == ["https://docs.example.com"]
+    def test_tool_approval_requested(self, audit_ctx, otel_setup) -> None:
+        """Verify tool_approval_requested emits approval.requested event."""
+        with audit_ctx.span("execute_tool my_tool"):
+            audit_ctx.logger.tool_approval_requested(
+                tool_name="my_tool", approval_id="ap1"
+            )
+        assert _get_spans(otel_setup)[0].events[0].name == "approval.requested"
 
-    def test_disabled_methods_are_noop(self, captured_records: list[str]) -> None:
-        """Test all methods are no-ops when disabled."""
-        logger = AuditLogger(enabled=False)
-        logger.request_started(
-            "t1", "u1", mode="chat", query="q", attachments=[], provider="p", model="m"
-        )
-        logger.request_auth("t1", "u1")
-        logger.rag_retrieved("t1", "u1", chunk_count=1, scores=[], source_documents=[])
-        logger.history_retrieved(
-            "t1", "u1", turn_count=0, compressed=False, truncated=False
-        )
-        logger.llm_turn("t1", "u1", turn_index=1, input_tokens=0, output_tokens=0)
-        logger.request_completed(
-            "t1",
-            "u1",
-            total_turns=1,
-            total_input_tokens=0,
-            total_output_tokens=0,
-            referenced_documents=[],
-        )
-        assert len(captured_records) == 0
+    def test_tool_approval_decision(self, audit_ctx, otel_setup) -> None:
+        """Verify tool_approval_decision emits approval.decision event."""
+        with audit_ctx.span("execute_tool my_tool"):
+            audit_ctx.logger.tool_approval_decision(
+                approval_id="ap1", decision="approved", tool_name="my_tool"
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.events[0].name == "approval.decision"
+        assert span.events[0].attributes["decision"] == "approved"
+
+    def test_request_failed(self, audit_ctx, otel_setup) -> None:
+        """Verify request_failed sets error status and emits event."""
+        with audit_ctx.span("request.lifecycle"):
+            audit_ctx.logger.request_failed(error="prompt_too_long")
+        span = _get_spans(otel_setup)[0]
+        assert span.status.status_code.name == "ERROR"
+        assert span.events[0].name == "request.failed"
+        assert span.events[0].attributes["error"] == "prompt_too_long"
+
+    def test_request_completed(self, audit_ctx, otel_setup) -> None:
+        """Verify request_completed sets attributes and emits event."""
+        with audit_ctx.span("request.lifecycle"):
+            audit_ctx.logger.request_completed(
+                total_turns=3,
+                total_input_tokens=500,
+                total_output_tokens=200,
+                referenced_documents=["https://docs.example.com"],
+            )
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["total_turns"] == 3
+        assert span.attributes["total_input_tokens"] == 500
+        assert span.events[0].name == "request.completed"
 
 
 class TestAuditContext:
     """Verify AuditContext is frozen and carries the right fields."""
 
     def test_frozen_dataclass(self) -> None:
-        """Test AuditContext is immutable."""
-        ctx = AuditContext(trace_id="abc", user_id="user1", logger=AuditLogger())
-        assert ctx.trace_id == "abc"
+        """Verify AuditContext is immutable."""
+        ctx = AuditContext(
+            conversation_id="conv-abc", user_id="user1", logger=AuditLogger()
+        )
+        assert ctx.conversation_id == "conv-abc"
         assert ctx.user_id == "user1"
         with pytest.raises(AttributeError):
-            ctx.trace_id = "new"  # type: ignore[misc]
+            ctx.conversation_id = "new"  # type: ignore[misc]
+
+    def test_span_injects_conversation_id_and_user_id(self, otel_setup) -> None:
+        """Verify span() auto-injects gen_ai.conversation.id and user_id."""
+        _, tracer = otel_setup
+        ctx = AuditContext(
+            conversation_id="conv-xyz",
+            user_id="user42",
+            logger=AuditLogger(),
+            tracer=tracer,
+        )
+        with ctx.span("test.span"):
+            pass
+        span = _get_spans(otel_setup)[0]
+        assert span.attributes["gen_ai.conversation.id"] == "conv-xyz"
+        assert span.attributes["user_id"] == "user42"
+
+    def test_span_kind(self, otel_setup) -> None:
+        """Verify span() respects SpanKind parameter."""
+        _, tracer = otel_setup
+        ctx = AuditContext(
+            conversation_id="c1",
+            user_id="u1",
+            logger=AuditLogger(),
+            tracer=tracer,
+        )
+        with ctx.span("chat gpt-4", kind=SpanKind.CLIENT):
+            pass
+        assert _get_spans(otel_setup)[0].kind == SpanKind.CLIENT
 
 
-class TestConversationIdToTraceId:
-    """Verify UUID to trace ID conversion."""
+class TestOTLPJsonStdoutExporter:
+    """Verify OTLP JSON stdout exporter produces single-line JSON."""
 
-    def test_strips_hyphens(self) -> None:
-        """Test UUID hyphens are stripped to produce 32-char hex."""
-        from ols.utils.suid import conversation_id_to_trace_id
+    def test_exports_single_line_json(self, capsys) -> None:
+        """Verify exporter writes valid single-line OTLP JSON to stdout."""
+        provider = TracerProvider(
+            resource=Resource.create({"service.name": "test-stdout"})
+        )
+        stdout_exporter = OTLPJsonStdoutExporter()
+        provider.add_span_processor(SimpleSpanProcessor(stdout_exporter))
 
-        result = conversation_id_to_trace_id("550e8400-e29b-41d4-a716-446655440000")
-        assert result == "550e8400e29b41d4a716446655440000"
-        assert len(result) == 32
+        tracer = provider.get_tracer("test")
+        with tracer.start_as_current_span("test.span", kind=SpanKind.CLIENT):
+            pass
 
-    def test_already_stripped(self) -> None:
-        """Test already-stripped IDs pass through unchanged."""
-        from ols.utils.suid import conversation_id_to_trace_id
-
-        result = conversation_id_to_trace_id("550e8400e29b41d4a716446655440000")
-        assert result == "550e8400e29b41d4a716446655440000"
+        provider.force_flush()
+        captured = capsys.readouterr()
+        lines = [x for x in captured.out.strip().split("\n") if x]
+        assert len(lines) >= 1
+        parsed = json.loads(lines[-1])
+        assert "resourceSpans" in parsed
+        span = parsed["resourceSpans"][0]["scopeSpans"][0]["spans"][0]
+        assert len(span["traceId"]) == 32
+        assert all(c in "0123456789abcdef" for c in span["traceId"])
+        assert len(span["spanId"]) == 16
+        assert all(c in "0123456789abcdef" for c in span["spanId"])
+        assert isinstance(span["kind"], int)
+        provider.shutdown()
