@@ -24,7 +24,7 @@ WORKDIR /app-root
 
 # Step 1: Copy only dependency metadata (not source code).
 # LICENSE and README.md are needed by hatchling for metadata resolution.
-COPY pyproject.toml uv.lock requirements.hashes.wheel.txt requirements.hashes.source.txt LICENSE README.md ./
+COPY pyproject.toml uv.lock .konflux/requirements.hashes.wheel.txt .konflux/requirements.hashes.source.txt .konflux/requirements.hashes.wheel.pypi.txt .konflux/requirements.hermetic.txt LICENSE README.md ./
 
 # Install uv package manager
 RUN pip install "uv>=0.8.15"
@@ -36,9 +36,12 @@ RUN pip install "uv>=0.8.15"
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
-    uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
-    . .venv/bin/activate && \
-    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt ;\
+    uv venv && \
+    # uv cannot handle multiple index URLs
+    for f in requirements.hashes.wheel.txt requirements.hashes.source.txt requirements.hashes.wheel.pypi.txt; do \
+        sed -i '/^--index-url /d' "$f"; \
+    done && \
+    uv pip install --python .venv/bin/python --no-cache --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt -r requirements.hashes.wheel.pypi.txt ;\
     else \
     uv sync --locked --no-dev --no-cache --no-install-project ;\
     fi
@@ -56,9 +59,9 @@ RUN if [ ! -f /cachi2/cachi2.env ]; then \
 ENV PATH="/app-root/.venv/bin:$PATH"
 
 # Pre-warm tiktoken encoding cache to a stable, version-agnostic location.
-RUN src=$(find .venv/lib -path "*/llama_index/core/_static/tiktoken_cache" -type d) && \
+RUN src=$(find .venv/lib -path "*tiktoken_cache" -type d | head -1) && \
     mkdir -p /app-root/.tiktoken_cache && \
-    cp "$src"/[0-9a-f]* /app-root/.tiktoken_cache/
+    if [ -n "$src" ]; then cp "$src"/[0-9a-f]* /app-root/.tiktoken_cache/; fi
 
 # Verify all dependencies are installed correctly
 RUN echo "Verifying dependencies installation..." && \
@@ -66,6 +69,17 @@ RUN echo "Verifying dependencies installation..." && \
     python -c "import yaml, fastapi, langchain, llama_index, uvicorn, pydantic" && \
     TIKTOKEN_CACHE_DIR=/app-root/.tiktoken_cache python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')" && \
     echo "All dependencies installed and verified successfully!"
+
+# Step 5: Reassemble embedding model safetensors from compressed chunks and validate.
+COPY --chmod=775 embeddings_model ./embeddings_model
+RUN for model_dir in all-mpnet-base-v2 granite-embedding-30m-english; do \
+      cat "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* | \
+        tar xzf - --no-same-owner -C "embeddings_model/${model_dir}" || \
+      { echo "ERROR: failed to extract embeddings_model/${model_dir}/model.safetensors from chunks" ; exit 1 ; } && \
+      rm -f "embeddings_model/${model_dir}"/model.safetensors.tar.gz.* && \
+      python3 -c "import safetensors; safetensors.safe_open('embeddings_model/${model_dir}/model.safetensors', framework='pt'); print('OK:', '${model_dir}')" || \
+      { echo "ERROR: corrupt safetensors file: embeddings_model/${model_dir}/model.safetensors" ; exit 1 ; } ; \
+    done
 
 FROM ${RUNTIME_BASE_IMAGE}
 ARG APP_ROOT=/app-root
@@ -91,22 +105,7 @@ COPY --from=builder /app-root/.venv .venv
 COPY --from=builder /app-root/.tiktoken_cache .tiktoken_cache
 COPY ols ./ols
 COPY runner.py /app-root/runner.py
-COPY --chmod=775 embeddings_model ./embeddings_model
-RUN if [ -d /cachi2/output/deps/generic ]; then \
-    cp /cachi2/output/deps/generic/all-mpnet-base-v2-model.safetensors embeddings_model/all-mpnet-base-v2/model.safetensors ; \
-    cp /cachi2/output/deps/generic/granite-embedding-30m-english-model.safetensors embeddings_model/granite-embedding-30m-english/model.safetensors ; \
-    fi && \
-    for f in \
-      "embeddings_model/all-mpnet-base-v2/model.safetensors|https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/model.safetensors" \
-      "embeddings_model/granite-embedding-30m-english/model.safetensors|https://huggingface.co/ibm-granite/granite-embedding-30m-english/resolve/main/model.safetensors" \
-    ; do \
-      path="${f%%|*}" && url="${f##*|}" && \
-      if [ ! -f "$path" ]; then \
-        python3 -c "import urllib.request,sys; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])" "$url" "$path" || exit 1 ; \
-      fi && \
-      .venv/bin/python3 -c "import safetensors; safetensors.safe_open('$path', framework='pt'); print('OK:', '$path')" || \
-      { echo "ERROR: corrupt safetensors file: $path" ; exit 1 ; } ; \
-    done
+COPY --chmod=775 --from=builder /app-root/embeddings_model ./embeddings_model
 
 # Pre-populate HuggingFace cache so models can be loaded by ID with TRANSFORMERS_OFFLINE=1.
 # Two cache trees are needed: the standard HF hub cache (used by huggingface_hub and

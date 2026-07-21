@@ -325,10 +325,7 @@ class AppConfig:
             if "skills_rag" in self.__dict__:
                 del self.__dict__["skills_rag"]
             if "solr_hybrid_search" in self.__dict__:
-                old = self.__dict__["solr_hybrid_search"]
                 del self.__dict__["solr_hybrid_search"]
-                if old is not None:
-                    old.close_http_client_sync()
         except Exception as e:
             print(f"Failed to load config file {config_file}: {e!s}")
             print(traceback.format_exc())

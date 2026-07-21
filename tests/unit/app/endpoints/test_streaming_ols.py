@@ -1,6 +1,7 @@
 """Unit tests for streaming_ols.py."""
 
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -20,11 +21,18 @@ from ols.app.endpoints.streaming_ols import (  # noqa:E402
     format_stream_data,
     generic_llm_error,
     prompt_too_long_error,
+    response_processing_wrapper,
     stream_end_event,
     stream_event,
     stream_start_event,
 )
-from ols.app.models.models import RagChunk, StreamChunkType, TokenCounter  # noqa:E402
+from ols.app.models.models import (  # noqa:E402
+    LLMRequest,
+    RagChunk,
+    StreamChunkType,
+    StreamedChunk,
+    TokenCounter,
+)
 from ols.utils import suid  # noqa:E402
 from ols.utils.errors_parsing import (  # noqa:E402
     _LLM_BACKEND_PREFIX,
@@ -310,3 +318,55 @@ def test_stream_end_event_with_reasoning_tokens():
     assert parsed["data"]["reasoning_tokens"] == 30
     assert parsed["data"]["input_tokens"] == 10
     assert parsed["data"]["output_tokens"] == 20
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_load_config")
+async def test_response_processing_wrapper_finalization_error_yields_error_event() -> (
+    None
+):
+    """Verify that a finalization failure yields an error event instead of crashing."""
+
+    async def _fake_generator():
+        yield StreamedChunk(type=StreamChunkType.TEXT, text="hello")
+        yield StreamedChunk(
+            type=StreamChunkType.END,
+            data={"rag_chunks": [], "truncated": False, "token_counter": None},
+        )
+
+    llm_request = LLMRequest(query="test")
+
+    with patch(
+        "ols.app.endpoints.streaming_ols.store_data",
+        side_effect=RuntimeError("db connection lost"),
+    ):
+        events = await drain_generator(
+            response_processing_wrapper(
+                _fake_generator(),
+                user_id="test-user",
+                conversation_id=conversation_id,
+                llm_request=llm_request,
+                attachments=[],
+                query_without_attachments="test",
+                media_type=constants.MEDIA_TYPE_JSON,
+                timestamps={},
+                skip_user_id_check=True,
+            )
+        )
+
+    event_types = []
+    error_event = None
+    for item in events:
+        if item.startswith("data: "):
+            parsed = json.loads(item[6:].strip())
+            event_types.append(parsed.get("event"))
+            if parsed.get("event") == "error":
+                error_event = parsed
+
+    assert "start" in event_types
+    assert "token" in event_types
+    assert "error" in event_types
+    assert "end" not in event_types
+    assert error_event is not None
+    assert "internal error" in error_event["data"]["response"].lower()
+    assert "LLM" not in error_event["data"]["response"]

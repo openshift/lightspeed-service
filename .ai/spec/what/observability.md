@@ -18,6 +18,11 @@ The service exposes Prometheus metrics, records conversation transcripts and use
    | `ols_llm_token_received_total` | Counter | `provider`, `model` | Cumulative output tokens received from LLMs. |
    | `ols_llm_reasoning_token_total` | Counter | `provider`, `model` | Cumulative reasoning summary tokens received from LLMs. |
    | `ols_provider_model_configuration` | Gauge | `provider`, `model` | Configured provider/model combinations. Value `1` for the default, `0` for others. |
+   | `gen_ai.client.token.usage` | Histogram | `gen_ai.operation.name`, `gen_ai.token.type` (input/output), `gen_ai.request.model`, `gen_ai.provider.name` | Per-request token usage distribution per OTel GenAI semantic conventions. Bucket boundaries: [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]. Unit: `{token}`. Reasoning tokens are tracked separately via `gen_ai.usage.reasoning_tokens` span attribute on `chat` spans, not as a `gen_ai.token.type` value. |
+   | `gen_ai.client.operation.duration` | Histogram | `gen_ai.request.model`, `gen_ai.provider.name`, `gen_ai.operation.name` | LLM inference call duration per OTel GenAI semantic conventions. Unit: `s`. |
+   | `gen_ai.execute_tool.duration` | Histogram | `gen_ai.tool.name` | Tool execution duration per OTel GenAI semantic conventions. Unit: `s`. |
+
+   The `gen_ai.*` histogram metrics follow OTel GenAI Semantic Conventions v1.41. They complement the existing `ols_*` counter metrics: `gen_ai.client.token.usage` provides per-request distribution analysis (p50/p95/p99) while `ols_llm_token_sent_total`/`ols_llm_token_received_total` provide cumulative totals. Both are emitted.
 
 2. The `_created` timestamp metadata on all counters must be suppressed (via `disable_created_metrics()`).
 
@@ -99,7 +104,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 ## Constraints
 
-1. All metric names use the `ols_` prefix. No other prefix is permitted.
+1. Existing metrics use the `ols_` prefix. New OTel semantic convention metrics use their standard prefix: `gen_ai.` for GenAI metrics, `mcp.` for MCP metrics (planned). No other prefix is permitted.
 2. The six redacted header names (`authorization`, `proxy-authorization`, `cookie`, `www-authenticate`, `proxy-authenticate`, `set-cookie`) are defined as frozen sets and must not be logged in plaintext under any log level.
 3. Enabling feedback or transcripts without providing the corresponding `*_storage` path is a validation error at startup.
 4. Sentiment values are restricted to exactly `-1` or `1`; any other integer is rejected with a validation error.
@@ -108,5 +113,7 @@ The service exposes Prometheus metrics, records conversation transcripts and use
 
 ## Planned Changes
 
-- [PLANNED: OLS-1279] The `ols_response_duration_seconds` histogram currently measures total request handling time, not isolated LLM call duration. A dedicated LLM-only duration metric is needed.
+- [PLANNED: OLS-1279] Subsumed by `gen_ai.client.operation.duration` histogram which measures isolated LLM call duration. The existing `ols_response_duration_seconds` measures total HTTP request handling time (different scope).
 - [PLANNED: OLS-1805] Transcripts should be enhanced to include per-request token usage (input, output, reasoning token counts).
+- [PLANNED] Streaming metrics `gen_ai.client.operation.time_to_first_chunk` and `gen_ai.client.operation.time_per_output_chunk` (Histogram, unit `s`) for OLS when streaming is the default path.
+- [PLANNED] MCP metrics `mcp.client.operation.duration` and `mcp.client.session.duration` (Histogram, unit `s`) pending sufficient usage data.

@@ -253,3 +253,4 @@ solely on general knowledge.
 | OLS-2684 | Remove client MCP headers -- eliminate the `"client"` header placeholder mechanism |
 | OLS-2491 | MCP client improvements -- transport and reliability enhancements |
 | OLS-1797 | Block sensitive tool args -- reject tool calls whose arguments match blocked patterns before execution |
+| OLS-3526 | Operator may later move OpenShift MCP from localhost sidecar to a standalone HTTPS service. Still in refinement — not near-term. No service code changes expected when it lands (URL/CA via `olsconfig.yaml`; Rule 5). |
