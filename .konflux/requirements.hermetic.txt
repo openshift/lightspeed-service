@@ -1,2 +1,4 @@
-uv==0.9.16
-uv-build==0.9.16
+--index-url https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/
+maturin==1.13.1
+uv==0.11.6
+uv-build==0.11.8

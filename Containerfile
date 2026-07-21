@@ -24,10 +24,7 @@ WORKDIR /app-root
 
 # Step 1: Copy only dependency metadata (not source code).
 # LICENSE and README.md are needed by hatchling for metadata resolution.
-COPY pyproject.toml uv.lock .konflux/requirements.hashes.wheel.txt .konflux/requirements.hashes.source.txt .konflux/requirements.hashes.wheel.pypi.txt .konflux/requirements.hermetic.txt LICENSE README.md ./
-
-# Install uv package manager
-RUN pip install "uv>=0.8.15"
+COPY pyproject.toml uv.lock .konflux/requirements.hashes.wheel.txt .konflux/requirements.hashes.source.txt .konflux/requirements.hashes.wheel.pypi.txt .konflux/requirements.hermetic.txt .konflux/rank_bm25_version.py LICENSE README.md ./
 
 # Step 2: Install dependencies only (cached unless pyproject.toml/uv.lock change).
 # Source cachi2 environment for hermetic builds if available, otherwise use normal installation.
@@ -36,13 +33,25 @@ RUN pip install "uv>=0.8.15"
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
+    pip install --no-cache-dir --no-index --find-links ${PIP_FIND_LINKS} uv && \
     uv venv && \
-    # uv cannot handle multiple index URLs
     for f in requirements.hashes.wheel.txt requirements.hashes.source.txt requirements.hashes.wheel.pypi.txt; do \
         sed -i '/^--index-url /d' "$f"; \
     done && \
-    uv pip install --python .venv/bin/python --no-cache --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt -r requirements.hashes.wheel.pypi.txt ;\
+    for sdist in ${PIP_FIND_LINKS}/rank_bm25-*.tar.gz; do \
+        if [ -f "$sdist" ]; then \
+            tmpdir=$(mktemp -d) && \
+            tar -xzf "$sdist" -C "$tmpdir" && \
+            setupdir=$(find "$tmpdir" -name setup.py -exec dirname {} \;) && \
+            cp rank_bm25_version.py "$setupdir/version.py" && \
+            (cd "$tmpdir" && tar -czf "$sdist" *) && \
+            rm -rf "$tmpdir"; \
+        fi; \
+    done && \
+    sed -i '/^rank-bm25/,/^[^ ]/{ /^rank-bm25/d; /^    --hash/d; }' requirements.hashes.source.txt && \
+    uv pip install --python .venv/bin/python --no-cache --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt -r requirements.hashes.wheel.pypi.txt rank-bm25 ;\
     else \
+    pip install "uv>=0.8.15" && \
     uv sync --locked --no-dev --no-cache --no-install-project ;\
     fi
 
