@@ -27,10 +27,9 @@ STREAMING_QUERY_ENDPOINT = "/v1/streaming_query"
 
 
 def post_with_defaults(endpoint, **kwargs):
-    """Send POST request with HTTP/1.0 header and timeout."""
+    """Send POST request with timeout."""
     return pytest.client.post(
         endpoint,
-        headers={"Connection": "close"},
         timeout=kwargs.pop("timeout", LLM_REST_API_TIMEOUT),
         **kwargs,
     )

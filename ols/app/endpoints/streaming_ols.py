@@ -575,7 +575,17 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                     audit_ctx.user_id,
                     error=type(finalization_error).__name__,
                 )
-            raise
+            logger.exception(
+                "Finalization failed after streaming response: %s",
+                finalization_error,
+            )
+            msg = "An internal error occurred after the response was generated."
+            if media_type == MEDIA_TYPE_TEXT:
+                yield msg
+            else:
+                yield format_stream_data(
+                    {"event": "error", "data": {"response": msg, "cause": ""}}
+                )
     finally:
         exit_stack.close()
         if audit_ctx:
