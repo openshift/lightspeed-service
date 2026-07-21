@@ -21,6 +21,7 @@ from ols.src.tools.tools import (
     get_tool_by_name,
 )
 from ols.utils.token_handler import TokenHandler
+from tests.unit.conftest import make_audit_ctx
 
 _LARGE_TOKEN_BUDGET = 100_000
 
@@ -833,3 +834,113 @@ async def test_execute_tool_calls_stream_divides_budget_per_tool(
             f"Tool received budget {budget}, expected {expected_per_tool} "
             f"(total {total_budget} / 3 tools)"
         )
+
+
+class TestExecuteToolGenAISpans:
+    """Verify execute_tool_calls_stream creates spans with GenAI semantic attributes."""
+
+    @pytest.mark.asyncio
+    async def test_tool_span_name_and_attributes(self, otel_setup) -> None:
+        """Verify tool span is named 'execute_tool {name}' with GenAI attributes."""
+        audit_ctx = make_audit_ctx(
+            otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
+        )
+        tool = FakeTool("my_tool")
+        tool_calls = [("call-123", {"arg": "val"}, tool)]
+
+        _ = [
+            event
+            async for event in execute_tool_calls_stream(
+                tool_calls,
+                tools_token_budget=_LARGE_TOKEN_BUDGET,
+                streaming=False,
+                audit_ctx=audit_ctx,
+            )
+        ]
+
+        exporter, _ = otel_setup
+        spans = exporter.spans
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "execute_tool my_tool"
+        assert span.attributes["gen_ai.operation.name"] == "execute_tool"
+        assert span.attributes["gen_ai.tool.name"] == "my_tool"
+        assert span.attributes["gen_ai.tool.call.id"] == "call-123"
+        assert span.attributes["gen_ai.tool.type"] == "function"
+        assert span.attributes["gen_ai.conversation.id"] == "conv-tool-test"
+        assert span.attributes["user_id"] == "user-tool-test"
+
+    @pytest.mark.asyncio
+    async def test_tool_span_emits_tool_call_event(self, otel_setup) -> None:
+        """Verify tool span contains a tool.call span event."""
+        audit_ctx = make_audit_ctx(
+            otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
+        )
+        tool = FakeTool("check_pods")
+        tool_calls = [("call-456", {"ns": "default"}, tool)]
+
+        _ = [
+            event
+            async for event in execute_tool_calls_stream(
+                tool_calls,
+                tools_token_budget=_LARGE_TOKEN_BUDGET,
+                streaming=False,
+                audit_ctx=audit_ctx,
+            )
+        ]
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        event_names = [e.name for e in span.events]
+        assert "tool.call" in event_names
+        call_event = next(e for e in span.events if e.name == "tool.call")
+        assert call_event.attributes["tool_name"] == "check_pods"
+
+    @pytest.mark.asyncio
+    async def test_tool_span_emits_result_attributes(self, otel_setup) -> None:
+        """Verify tool span has result attributes after execution."""
+        audit_ctx = make_audit_ctx(
+            otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
+        )
+        tool = FakeTool("get_logs")
+        tool_calls = [("call-789", {}, tool)]
+
+        _ = [
+            event
+            async for event in execute_tool_calls_stream(
+                tool_calls,
+                tools_token_budget=_LARGE_TOKEN_BUDGET,
+                streaming=False,
+                audit_ctx=audit_ctx,
+            )
+        ]
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        assert span.attributes["success"] is True
+        assert span.attributes["output_length"] > 0
+        assert "duration_ms" in span.attributes
+
+    @pytest.mark.asyncio
+    async def test_tool_span_includes_mcp_server(self, otel_setup) -> None:
+        """Verify tool span includes mcp_server attribute when present."""
+        audit_ctx = make_audit_ctx(
+            otel_setup, conversation_id="conv-tool-test", user_id="user-tool-test"
+        )
+        tool = FakeTool("remote_tool")
+        tool.metadata = {"mcp_server": "my-mcp-server"}
+        tool_calls = [("call-mcp", {}, tool)]
+
+        _ = [
+            event
+            async for event in execute_tool_calls_stream(
+                tool_calls,
+                tools_token_budget=_LARGE_TOKEN_BUDGET,
+                streaming=False,
+                audit_ctx=audit_ctx,
+            )
+        ]
+
+        exporter, _ = otel_setup
+        span = exporter.spans[0]
+        assert span.attributes["mcp_server"] == "my-mcp-server"

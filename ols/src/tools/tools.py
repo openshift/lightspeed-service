@@ -417,8 +417,6 @@ async def _evaluate_and_emit_approval_event(
 
     if audit_ctx:
         audit_ctx.logger.tool_approval_requested(
-            audit_ctx.trace_id,
-            audit_ctx.user_id,
             tool_name=tool_name,
             approval_id=approval_id,
         )
@@ -437,8 +435,6 @@ async def _evaluate_and_emit_approval_event(
 
     if audit_ctx:
         audit_ctx.logger.tool_approval_decision(
-            audit_ctx.trace_id,
-            audit_ctx.user_id,
             approval_id=approval_id,
             decision=outcome,
             tool_name=tool_name,
@@ -537,15 +533,22 @@ async def _execute_single_tool_call_stream(
     mcp_server = (getattr(tool, "metadata", None) or {}).get("mcp_server", "")
 
     tool_span = (
-        audit_ctx.span(f"tool.{tool_name}", mcp_server=mcp_server)
+        audit_ctx.span(
+            f"execute_tool {tool_name}",
+            **{
+                "gen_ai.operation.name": "execute_tool",
+                "gen_ai.tool.name": tool_name,
+                "gen_ai.tool.call.id": tool_id,
+                "gen_ai.tool.type": "function",
+            },
+            mcp_server=mcp_server,
+        )
         if audit_ctx
         else nullcontext()
     )
     with tool_span:
         if audit_ctx:
             audit_ctx.logger.tool_call(
-                audit_ctx.trace_id,
-                audit_ctx.user_id,
                 tool_name=tool_name,
                 mcp_server=mcp_server or None,
                 arguments=list(tool_args.keys()),
@@ -576,9 +579,6 @@ async def _execute_single_tool_call_stream(
 
         if audit_ctx:
             audit_ctx.logger.tool_result(
-                audit_ctx.trace_id,
-                audit_ctx.user_id,
-                tool_name=tool_name,
                 output_length=len(tool_output),
                 success=status == "success",
                 duration_ms=duration_ms,
