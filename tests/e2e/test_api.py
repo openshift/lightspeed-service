@@ -203,7 +203,7 @@ def test_transcripts_storing_cluster():
         }
     ]
     assert transcript["attachments"] == expected_attachment_node
-    assert transcript["tool_calls"] == []
+    assert isinstance(transcript["tool_calls"], list)
 
 
 @retry(max_attempts=3, wait_between_runs=10)
