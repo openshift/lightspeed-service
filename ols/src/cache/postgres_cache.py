@@ -17,6 +17,7 @@ from ols.app.models.models import (
 from ols.src.cache.cache import Cache
 from ols.src.cache.cache_error import CacheError
 from ols.utils.postgres import PostgresBase, connection
+from ols.utils.ssl import libpq_tls_params
 
 logger = logging.getLogger(__name__)
 
@@ -154,8 +155,23 @@ class PostgresCache(Cache, PostgresBase):
     def __init__(self, config: PostgresConfig) -> None:
         """Create a new instance of Postgres cache."""
         self._tx_lock = threading.Lock()
+        self._lock_timeout = config.lock_timeout
         self.capacity = config.max_entries
+
+        self._health_status = True
+        self._consecutive_failures = 0
+        self._health_lock = threading.Lock()
+        self._health_check_interval = config.health_check_interval
+        self._health_check_connect_timeout = config.health_check_connect_timeout
+        self._health_connection: Any = None
+        self._shutdown_event = threading.Event()
+
         super().__init__(config)
+
+        self._health_thread = threading.Thread(
+            target=self._health_check_loop, daemon=True
+        )
+        self._health_thread.start()
 
     @property
     def _ddl_statements(self) -> list[str]:
@@ -165,6 +181,120 @@ class PostgresCache(Cache, PostgresBase):
             self.CREATE_CONVERSATIONS_TABLE,
             self.CREATE_INDEX,
         ]
+
+    def _mark_unhealthy(self) -> None:
+        """Mark health status as unhealthy (dual-feed from cache operations)."""
+        with self._health_lock:
+            self._consecutive_failures += 1
+            self._health_status = False
+
+    def _mark_healthy(self) -> None:
+        """Mark health status as healthy after a successful reconnect."""
+        with self._health_lock:
+            if not self._health_status:
+                logger.info("Database connection recovered via cache operation")
+            self._health_status = True
+            self._consecutive_failures = 0
+
+    def _connect_health(self) -> None:
+        """Establish a dedicated lightweight connection for health checks."""
+        if self._health_connection is not None:
+            try:
+                self._health_connection.close()
+            except Exception as close_err:
+                logger.debug("Failed to close old health connection: %s", close_err)
+            self._health_connection = None
+        config = self.connection_config
+        connect_kwargs: dict[str, Any] = {
+            "host": config.host,
+            "port": config.port,
+            "user": config.user,
+            "password": config.password,
+            "dbname": config.dbname,
+            "sslmode": config.ssl_mode,
+            "sslrootcert": config.ca_cert_path,
+            "gssencmode": config.gss_encmode,
+            "connect_timeout": self._health_check_connect_timeout,
+            **libpq_tls_params(config.tls_security_profile),
+        }
+        self._health_connection = psycopg2.connect(**connect_kwargs)
+        self._health_connection.autocommit = True
+        with self._health_connection.cursor() as cursor:
+            cursor.execute(
+                "SET statement_timeout = %s", (str(config.statement_timeout),)
+            )
+
+    def shutdown(self) -> None:
+        """Stop the health-check thread and close its connection."""
+        self._shutdown_event.set()
+        self._health_thread.join(timeout=self._health_check_connect_timeout)
+        if self._health_connection is not None:
+            try:
+                self._health_connection.close()
+            except Exception as close_err:
+                logger.debug(
+                    "Failed to close health connection on shutdown: %s", close_err
+                )
+            self._health_connection = None
+
+    def _health_check_loop(self) -> None:
+        """Background loop that periodically checks DB connectivity."""
+        first_check = True
+        while not self._shutdown_event.is_set():
+            try:
+                if self._health_connection is None or self._health_connection.closed:
+                    self._connect_health()
+                with self._health_connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                with self._health_lock:
+                    if not self._health_status:
+                        logger.info("Database connection recovered")
+                    self._health_status = True
+                    self._consecutive_failures = 0
+            except Exception as e:
+                if first_check:
+                    logger.info("Initial health check failed, will retry: %s", e)
+                else:
+                    with self._health_lock:
+                        self._consecutive_failures += 1
+                        self._health_status = False
+                        failures = self._consecutive_failures
+                    logger.warning(
+                        "Health check failed (consecutive=%d): %s",
+                        failures,
+                        e,
+                    )
+                try:
+                    self._connect_health()
+                except Exception as reconnect_err:
+                    logger.debug("Health reconnect attempt failed: %s", reconnect_err)
+            first_check = False
+            self._shutdown_event.wait(self._health_check_interval)
+
+    def _safe_rollback(self) -> None:
+        """Rollback the current transaction, ignoring errors on dead connections."""
+        try:
+            self.connection.rollback()
+        except Exception as e:
+            logger.debug("Rollback failed on dead connection: %s", e)
+
+    def _safe_set_autocommit(self) -> None:
+        """Restore autocommit, ignoring errors on dead connections."""
+        try:
+            if (
+                self.connection.get_transaction_status()
+                != psycopg2.extensions.TRANSACTION_STATUS_IDLE
+            ):
+                self.connection.rollback()
+            self.connection.autocommit = True
+        except Exception as e:
+            logger.debug("Failed to restore autocommit: %s", e)
+
+    def _acquire_lock(self) -> None:
+        """Acquire _tx_lock with bounded timeout."""
+        # pylint: disable-next=consider-using-with
+        if not self._tx_lock.acquire(timeout=self._lock_timeout):
+            raise CacheError("lock acquisition timeout")
 
     @connection
     def get(
@@ -183,7 +313,8 @@ class PostgresCache(Cache, PostgresBase):
         # just check if user_id and conversation_id are UUIDs
         super().construct_key(user_id, conversation_id, skip_user_id_check)
 
-        with self._tx_lock:
+        self._acquire_lock()
+        try:
             with self.connection.cursor() as cursor:
                 try:
                     value = PostgresCache._select(cursor, user_id, conversation_id)
@@ -191,9 +322,13 @@ class PostgresCache(Cache, PostgresBase):
                         return []
                     history = [CacheEntry.from_dict(ce) for ce in value]
                     return history
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    raise
                 except psycopg2.DatabaseError as e:
                     logger.error("PostgresCache.get %s", e)
                     raise CacheError("PostgresCache.get", e) from e
+        finally:
+            self._tx_lock.release()
 
     @connection
     def insert_or_append(
@@ -217,13 +352,8 @@ class PostgresCache(Cache, PostgresBase):
         # pg_advisory_xact_lock would be released immediately after the first
         # execute.  Disable autocommit for a real multi-statement transaction.
         # The lock serialises concurrent callers that share this connection.
-        with self._tx_lock:
-            # This transaction status check is required for evaluation tests that use
-            # multi-turn conversations. Without it, rapid cache writes (appending each
-            # turn's messages) can leave an active transaction when autocommit=True is
-            # set in the finally block, causing psycopg2 to raise "set_session cannot
-            # be used inside a transaction". Rollback any active transaction to ensure
-            # clean autocommit mode transition.
+        self._acquire_lock()
+        try:
             if (
                 self.connection.get_transaction_status()
                 != psycopg2.extensions.TRANSACTION_STATUS_IDLE
@@ -258,19 +388,17 @@ class PostgresCache(Cache, PostgresBase):
                     )
                     PostgresCache._cleanup(cursor, self.capacity)
                     self.connection.commit()
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    self._safe_rollback()
+                    raise
                 except psycopg2.DatabaseError as e:
-                    self.connection.rollback()
+                    self._safe_rollback()
                     logger.error("PostgresCache.insert_or_append: %s", e)
                     raise CacheError("PostgresCache.insert_or_append", e) from e
                 finally:
-                    # Ensure transaction is closed before setting autocommit
-                    # to avoid "set_session cannot be used inside a transaction" error
-                    if (
-                        self.connection.get_transaction_status()
-                        != psycopg2.extensions.TRANSACTION_STATUS_IDLE
-                    ):
-                        self.connection.rollback()
-                    self.connection.autocommit = True
+                    self._safe_set_autocommit()
+        finally:
+            self._tx_lock.release()
 
     @connection
     def delete(
@@ -287,13 +415,8 @@ class PostgresCache(Cache, PostgresBase):
             bool: True if the conversation was deleted, False if not found.
 
         """
-        with self._tx_lock:
-            # This transaction status check is required for evaluation tests that use
-            # multi-turn conversations. Without it, rapid cache writes (appending each
-            # turn's messages) can leave an active transaction when autocommit=True is
-            # set in the finally block, causing psycopg2 to raise "set_session cannot
-            # be used inside a transaction". Rollback any active transaction to ensure
-            # clean autocommit mode transition.
+        self._acquire_lock()
+        try:
             if (
                 self.connection.get_transaction_status()
                 != psycopg2.extensions.TRANSACTION_STATUS_IDLE
@@ -309,19 +432,17 @@ class PostgresCache(Cache, PostgresBase):
                     )
                     self.connection.commit()
                     return deleted
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    self._safe_rollback()
+                    raise
                 except psycopg2.DatabaseError as e:
-                    self.connection.rollback()
+                    self._safe_rollback()
                     logger.error("PostgresCache.delete: %s", e)
                     raise CacheError("PostgresCache.delete", e) from e
                 finally:
-                    # Ensure transaction is closed before setting autocommit
-                    # to avoid "set_session cannot be used inside a transaction" error
-                    if (
-                        self.connection.get_transaction_status()
-                        != psycopg2.extensions.TRANSACTION_STATUS_IDLE
-                    ):
-                        self.connection.rollback()
-                    self.connection.autocommit = True
+                    self._safe_set_autocommit()
+        finally:
+            self._tx_lock.release()
 
     @connection
     def list(
@@ -338,7 +459,8 @@ class PostgresCache(Cache, PostgresBase):
             topic_summary, last_message_timestamp, and message_count.
 
         """
-        with self._tx_lock:
+        self._acquire_lock()
+        try:
             with self.connection.cursor() as cursor:
                 try:
                     cursor.execute(
@@ -354,9 +476,13 @@ class PostgresCache(Cache, PostgresBase):
                         )
                         for row in rows
                     ]
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    raise
                 except psycopg2.DatabaseError as e:
                     logger.error("PostgresCache.list: %s", e)
                     raise CacheError("PostgresCache.list", e) from e
+        finally:
+            self._tx_lock.release()
 
     @connection
     def set_topic_summary(
@@ -374,35 +500,39 @@ class PostgresCache(Cache, PostgresBase):
             topic_summary: The topic summary to store.
             skip_user_id_check: Skip user_id suid check.
         """
-        with self._tx_lock:
+        self._acquire_lock()
+        try:
             with self.connection.cursor() as cursor:
                 try:
                     cursor.execute(
                         PostgresCache.INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT,
                         (user_id, conversation_id, topic_summary),
                     )
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    raise
                 except psycopg2.DatabaseError as e:
                     logger.error("PostgresCache.set_topic_summary: %s", e)
                     raise CacheError("PostgresCache.set_topic_summary", e) from e
+        finally:
+            self._tx_lock.release()
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Return the number of consecutive health-check failures (thread-safe)."""
+        with self._health_lock:
+            return self._consecutive_failures
 
     def ready(self) -> bool:
         """Check if the cache is ready.
 
-        Postgres cache checks if the connection is alive.
+        Returns the background health loop's last-known status.
+        Non-blocking and deadlock-immune.
 
         Returns:
             True if the cache is ready, False otherwise.
         """
-        # TODO: when the connection is closed and the database is back online,
-        # we need to reestablish the connection => implement this
-        if not self.connection or self.connection.closed == 1:
-            return False
-        try:
-            return self.connection.poll() == psycopg2.extensions.POLL_OK
-        except (psycopg2.OperationalError, psycopg2.InterfaceError):
-            # OperationalError - the once alive connection is closed
-            # InterfaceError - cannot reach the database server
-            return False
+        with self._health_lock:
+            return self._health_status
 
     @staticmethod
     def _select(

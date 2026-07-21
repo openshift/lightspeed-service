@@ -944,6 +944,16 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "Service is not alive",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LivenessResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1708,6 +1718,17 @@
                     "alive": {
                         "type": "boolean",
                         "title": "Alive"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reason"
                     }
                 },
                 "type": "object",
@@ -1715,7 +1736,7 @@
                     "alive"
                 ],
                 "title": "LivenessResponse",
-                "description": "Model representing a response to a liveness request.\n\nAttributes:\n    alive: If app is alive.\n\nExample:\n    ```python\n    liveness_response = LivenessResponse(alive=True)\n    ```",
+                "description": "Model representing a response to a liveness request.\n\nAttributes:\n    alive: If app is alive.\n    reason: Optional reason when not alive.\n\nExample:\n    ```python\n    liveness_response = LivenessResponse(alive=True)\n    ```",
                 "examples": [
                     {
                         "alive": true

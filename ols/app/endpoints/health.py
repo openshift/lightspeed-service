@@ -9,7 +9,7 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from langchain_core.messages.ai import AIMessage
 
 from ols import config
@@ -18,6 +18,7 @@ from ols.app.models.models import (
     NotAvailableResponse,
     ReadinessResponse,
 )
+from ols.src.cache.postgres_cache import PostgresCache
 from ols.src.llms.llm_loader import load_llm
 
 router = APIRouter(tags=["health"])
@@ -123,10 +124,40 @@ get_liveness_responses: dict[int | str, dict[str, Any]] = {
         "description": "Service is alive",
         "model": LivenessResponse,
     },
+    503: {
+        "description": "Service is not alive",
+        "model": LivenessResponse,
+    },
 }
 
 
+def _get_postgres_cache() -> PostgresCache | None:
+    """Return the conversation cache if it is a PostgresCache, None otherwise.
+
+    Uses the already-initialized cache if available, otherwise checks if
+    PostgresCache is configured and triggers initialization. Returns None
+    if the cache is not PostgresCache or if initialization fails.
+    """
+    cache = config._conversation_cache
+    if cache is not None:
+        return cache if isinstance(cache, PostgresCache) else None
+    cache_config = getattr(config.ols_config, "conversation_cache", None)
+    if cache_config is None or cache_config.type != "postgres":
+        return None
+    try:
+        cache = config.conversation_cache
+        return cache if isinstance(cache, PostgresCache) else None
+    except Exception:
+        return None
+
+
 @router.get("/liveness", responses=get_liveness_responses)
-def liveness_probe_get_method() -> LivenessResponse:
+def liveness_probe_get_method(response: Response) -> LivenessResponse:
     """Live status of service."""
+    cache = _get_postgres_cache()
+    if cache is not None:
+        threshold = config.ols_config.liveness_db_failure_threshold
+        if cache.consecutive_failures >= threshold:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            return LivenessResponse(alive=False, reason="database unreachable")
     return LivenessResponse(alive=True)
