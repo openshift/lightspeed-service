@@ -1,0 +1,12 @@
+packages:
+  - gcc
+  - gcc-c++
+  - jq
+  - patch
+  - cmake
+  - cargo
+contentOrigin:
+  repofiles: ["redhat.repo"]
+arches:
+  - aarch64
+  - x86_64

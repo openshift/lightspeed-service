@@ -47,7 +47,7 @@ REST_API_TIMEOUT = 120
 TIME_TO_BREATH = 10
 
 # Cut-off similarity score used for response evaluation.
-EVAL_THRESHOLD = 0.3  # low score is better
+EVAL_THRESHOLD = 0.4  # low score is better
 
 # Number of related questions to be generated.
 N_QUESTIONS = 3

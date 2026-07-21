@@ -1215,12 +1215,12 @@ The script also updates the Tekton pipeline configurations (`.tekton/lightspeed-
 
 **Steps:**
 
-1. **List your RPM packages** in `rpms.in.yaml` under the `packages` field
+1. **List your RPM packages** in `.konflux/rpms.in.yaml` under the `packages` field
 
 2. **If you changed the base image**, extract its repo file:
 ```shell
 # RHEL images
-podman run -it $BASE_IMAGE cat /etc/yum.repos.d/redhat.repo > redhat.repo
+podman run -it $BASE_IMAGE cat /etc/yum.repos.d/redhat.repo > .konflux/redhat.repo
 ```
 The base image is configured: 1. directly in the [ContainerFile](Containerfile) for Prow CI builds. 2. in [build.args](build.args) for Konflux builds.
 
@@ -1231,7 +1231,7 @@ dnf repolist
 ```
 Replace the architecture tag (`uname -m`) to `$basearch` so that rpm-lockfile-prototype can replace it with requested architecture names.
 ```shell
-sed -i "s/$(uname -m)/\$basearch/g" redhat.repo
+sed -i "s/$(uname -m)/\$basearch/g" .konflux/redhat.repo
 ```
 
 1. **Generate the lock file**:
@@ -1241,7 +1241,7 @@ REGISTRY_USERNAME=username REGISTRY_PASSWORD=password ACTIVATION_KEY=activation_
 REGISTRY_USERNAME and REGISTRY_PASSWORD are registry.redhat.io credentials.
 ACTIVATION_KEY and ORG_ID are for RHEL subscription manager. 
 
-This creates `rpms.lock.yaml` with pinned RPM versions.
+This creates `.konflux/rpms.lock.yaml` with pinned RPM versions.
 
 
 # Question and Answer Quality Evaluation

@@ -2,12 +2,12 @@
 
 set -e
 
-DEFAULT_BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3"
+DEFAULT_BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4"
 BUILD_ARGS_FILE="build.args"
-INPUT_FILE="rpms.in.yaml"
-OUTPUT_FILE="rpms.lock.yaml"
+INPUT_FILE=".konflux/rpms.in.yaml"
+OUTPUT_FILE=".konflux/rpms.lock.yaml"
 CONTAINER_IMAGE="registry.access.redhat.com/ubi9/ubi"
-REDHAT_REPO_FILE="redhat.repo"
+REDHAT_REPO_FILE=".konflux/redhat.repo"
 
 if command -v podman &>/dev/null; then
     CONTAINER_RUNTIME="podman"

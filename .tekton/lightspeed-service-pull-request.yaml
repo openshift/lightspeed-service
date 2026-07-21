@@ -37,24 +37,21 @@ spec:
     value:  |
       [
          {
-           "type": "generic",
-           "path": "."
-         },
-         {
            "type": "rpm",
-           "path": "."
+           "path": ".konflux"
          },
          {
            "type": "pip",
            "path": ".",
            "requirements_files": [
-             "requirements.hashes.wheel.txt",
-             "requirements.hashes.source.txt",
-             "requirements.hermetic.txt"
+             ".konflux/requirements.hashes.wheel.txt",
+             ".konflux/requirements.hashes.source.txt",
+             ".konflux/requirements.hashes.wheel.pypi.txt",
+             ".konflux/requirements.hermetic.txt"
            ],
-           "requirements_build_files": ["requirements-build.txt"],
+           "requirements_build_files": [".konflux/requirements-build.txt"],
            "binary": {
-             "packages": "aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-types,anyio,attrs,certifi,cffi,colorama,cryptography,dataclasses-json,deprecated,distlib,distro,docstring-parser,durationpy,faiss-cpu,filetype,frozenlist,google-crc32c,google-genai,grpcio,grpcio-status,h11,h2,hf-xet,hpack,httpcore,httpx,httpx-sse,hyperframe,idna,iniconfig,jinja2,jiter,jmespath,joblib,jsonpatch,jsonschema,jsonschema-specifications,langchain-community,markdown-it-py,marshmallow,mdurl,mpmath,multidict,mypy-extensions,nest-asyncio,networkx,numexpr,numpy,oauthlib,orjson,packaging,pandas,pillow,pluggy,portalocker,prometheus-client,propcache,psycopg2-binary,py-cpuinfo,pyarrow,pyasn1-modules,pycparser,pydantic,pydantic-core,pytest,python-dateutil,pyyaml,referencing,requests-oauthlib,requests-toolbelt,rpds-py,safetensors,scikit-learn,scipy,setuptools,six,sniffio,sqlalchemy,sympy,threadpoolctl,tiktoken,tokenizers,torch,tqdm,transformers,triton,typing-extensions,typing-inspect,typing-inspection,urllib3,uuid-utils,websocket-client,websockets,xxhash,yarl,zipp,zstandard,uv,uv-build,pip,maturin,griffe,griffecli,griffelib,rank_bm25",
+             "packages": "aiohappyeyeballs,aiohttp,aiosignal,aiosqlite,annotated-doc,annotated-types,anthropic,anyio,attrs,azure-core,azure-identity,banks,boto3,botocore,cachetools,certifi,cffi,charset-normalizer,click,colorama,cryptography,dataclasses-json,defusedxml,deprecated,dirtyjson,distlib,distro,docstring-parser,faiss-cpu,fastapi,filelock,filetype,frozenlist,fsspec,google-api-core,google-auth,google-cloud-aiplatform,google-cloud-bigquery,google-cloud-core,google-cloud-resource-manager,google-cloud-storage,google-crc32c,google-genai,google-resumable-media,googleapis-common-protos,greenlet,griffe,griffecli,griffelib,grpc-google-iam-v1,grpcio,h11,hf-xet,httpcore,httpx,httpx-sse,huggingface-hub,idna,jinja2,jiter,joblib,json-repair,jsonpatch,jsonpointer,jsonschema,jsonschema-specifications,kubernetes,langchain,langchain-community,langchain-core,langchain-google-genai,langchain-openai,langchain-protocol,langgraph,langgraph-checkpoint,langgraph-prebuilt,langgraph-sdk,langsmith,llama-index,llama-index-core,llama-index-embeddings-openai,llama-index-instrumentation,llama-index-llms-openai,llama-index-workflows,markdown-it-py,markupsafe,marshmallow,maturin,mcp,mdurl,mpmath,msal,msal-extensions,multidict,mypy-extensions,nest-asyncio,networkx,nltk,numpy,oauthlib,openai,opentelemetry-api,opentelemetry-exporter-otlp-proto-common,opentelemetry-exporter-otlp-proto-grpc,opentelemetry-proto,opentelemetry-sdk,opentelemetry-semantic-conventions,orjson,ormsgpack,packaging,pandas,pillow,platformdirs,portalocker,prometheus-client,propcache,proto-plus,protobuf,psycopg2-binary,pyarrow,pyasn1,pyasn1-modules,pycparser,pydantic,pydantic-core,pydantic-settings,pygments,pyjwt,python-dateutil,python-discovery,python-dotenv,python-multipart,pytz,pyyaml,qdrant-client,rank-bm25,referencing,regex,requests,requests-oauthlib,requests-toolbelt,rich,rpds-py,s3transfer,safetensors,scikit-learn,scipy,sentence-transformers,setuptools,shellingham,six,sniffio,sqlalchemy,sse-starlette,starlette,sympy,tabulate,tenacity,threadpoolctl,tiktoken,tinytag,tokenizers,torch,tqdm,transformers,triton,typer,typing-extensions,typing-inspect,typing-inspection,tzdata,urllib3,uuid-utils,uv,uv-build,uvicorn,virtualenv,websocket-client,websockets,wrapt,xxhash,yarl,zipp,zstandard",
              "os": "linux",
              "arch": "x86_64,aarch64",
              "py_version": 312
@@ -227,7 +224,7 @@ spec:
         - name: name
           value: prefetch-dependencies-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.3@sha256:92956e75cd4714286f9c0c043f5301d1c0df1d750884edeceee87e0a91cc1975
+          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.4.1@sha256:ba1a3975a1e7b12ee1d11c4885930bf3540f532ddb57b5b66bb8b1122f41fa65
         - name: kind
           value: task
         resolver: bundles
@@ -277,7 +274,7 @@ spec:
         - name: name
           value: buildah-remote-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.10@sha256:c77892be9e7217b9baa9abdbaf432c16ee49c30601b6b25cfbc9d704295c58ef
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.10@sha256:3cda9a4cf830879f52d07d764966c427067713d6ae192600c29968f00c19433c
         - name: kind
           value: task
         resolver: bundles
@@ -320,7 +317,7 @@ spec:
         - name: name
           value: source-build-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.3@sha256:7c5575ac8e292f27f57716c021ab0324460dc958e73946724c588c5228e5f372
+          value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.3@sha256:2dd5b3e88f2ff3ea5679dfae07a14ee840b828610edd0c2e1ff2d8b25e808fe2
         - name: kind
           value: task
         resolver: bundles
@@ -524,7 +521,7 @@ spec:
         - name: name
           value: apply-tags
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.3@sha256:3ab844157eccd68e95e4852adc06c3c4ea674edb7865a474b0a898227f2893d6
+          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.3@sha256:6387614ae4f9efa8abb7c4175db0ce5d958bc2b90665b4704880e46fbe0535bf
         - name: kind
           value: task
         resolver: bundles

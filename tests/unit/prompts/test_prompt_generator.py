@@ -406,6 +406,8 @@ def test_solr_docs_tool_guidance_appended_for_ask_tool_mode():
     assert "Solr docs tool:" in template
     assert "Grounded answers (passages from" in template
     assert "search_openshift_documentation" in template
+    assert "ALWAYS call" in template
+    assert "Do not rely on memory alone" in template
     assert prompt.format(**llm_input_values).startswith("System: SYS")
 
 

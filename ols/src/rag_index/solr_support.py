@@ -220,37 +220,9 @@ class SolrHybridSearch:
         """
         self._settings = settings
         self._encode_fn = encode_fn
-        self._http_client: httpx.AsyncClient | None = None
         self.chunk_filter_query: str = self._resolve_chunk_filter_query(
             settings.solr_http_base, settings.hybrid_solr_timeout_s
         )
-
-    def _get_http_client(self) -> httpx.AsyncClient:
-        """Return a persistent async HTTP client for Solr (connection pooling)."""
-        if self._http_client is None or self._http_client.is_closed:
-            self._http_client = httpx.AsyncClient(
-                timeout=self._settings.hybrid_solr_timeout_s
-            )
-        return self._http_client
-
-    async def aclose(self) -> None:
-        """Close the persistent HTTP client (e.g. on shutdown or config reload)."""
-        if self._http_client is not None and not self._http_client.is_closed:
-            await self._http_client.aclose()
-        self._http_client = None
-
-    def close_http_client_sync(self) -> None:
-        """Best-effort sync cleanup when tearing down or reloading config."""
-        client = self._http_client
-        if client is None or client.is_closed:
-            self._http_client = None
-            return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self.aclose())
-        else:
-            loop.create_task(self.aclose())  # noqa: RUF006
 
     async def search(self, query: str, token_budget: int = 0) -> list[RetrievedChunk]:
         """Run hybrid-search; return expanded passages capped at ``max_results``, or ``[]``.
@@ -284,68 +256,74 @@ class SolrHybridSearch:
             vec = self._encode_fn(cleaned)
             return [float(x) for x in (vec.tolist() if hasattr(vec, "tolist") else vec)]
 
-        query_embedding = await asyncio.to_thread(_encode)
+        loop = asyncio.get_running_loop()
+        # Use run_in_executor instead of asyncio.to_thread: to_thread copies
+        # contextvars (including OpenTelemetry span tokens) into the worker,
+        # which corrupts the OTEL context on detach and can crash the httpx
+        # connection pool with "Event loop is closed".
+        query_embedding = await loop.run_in_executor(None, _encode)
         vector_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
         form = self._build_hybrid_form(cleaned=cleaned, vector_str=vector_str)
-        client = self._get_http_client()
-        response = await client.post(
-            hybrid_url,
-            data=form,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-        response.raise_for_status()
-        payload = _solr_response_json(response, log_url=hybrid_url)
-        hybrid_docs = list(payload.get("response", {}).get("docs", []))
+        async with httpx.AsyncClient(timeout=cfg.hybrid_solr_timeout_s) as client:
+            response = await client.post(
+                hybrid_url,
+                data=form,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            response.raise_for_status()
+            payload = _solr_response_json(response, log_url=hybrid_url)
+            hybrid_docs = list(payload.get("response", {}).get("docs", []))
 
-        if not hybrid_docs:
-            logger.warning("No results (hybrid-search) for: %s", query)
-            return []
-
-        if cfg.hybrid_score_threshold > 0:
-            hybrid_docs = [
-                d
-                for d in hybrid_docs
-                if _safe_solr_score(d.get("score", 0.0)) >= cfg.hybrid_score_threshold
-            ]
             if not hybrid_docs:
-                logger.warning(
-                    "No docs above hybrid_score_threshold=%s for: %s",
-                    cfg.hybrid_score_threshold,
-                    query,
-                )
+                logger.warning("No results (hybrid-search) for: %s", query)
                 return []
 
-        deduped = self._dedupe_by_parent(hybrid_docs)[: cfg.max_results]
+            if cfg.hybrid_score_threshold > 0:
+                hybrid_docs = [
+                    d
+                    for d in hybrid_docs
+                    if _safe_solr_score(d.get("score", 0.0))
+                    >= cfg.hybrid_score_threshold
+                ]
+                if not hybrid_docs:
+                    logger.warning(
+                        "No docs above hybrid_score_threshold=%s for: %s",
+                        cfg.hybrid_score_threshold,
+                        query,
+                    )
+                    return []
 
-        per_chunk_budget = token_budget // len(deduped) if token_budget > 0 else 0
+            deduped = self._dedupe_by_parent(hybrid_docs)[: cfg.max_results]
 
-        expanded: list[RetrievedChunk] = []
-        for doc in deduped:
-            if per_chunk_budget > 0 and cfg.max_expansion_neighbors > 0:
-                family = await self._fetch_family(client, base, doc)
-                ordered = self._expand_around_match(
-                    family,
-                    doc.get("chunk_index", -1),
+            per_chunk_budget = token_budget // len(deduped) if token_budget > 0 else 0
+
+            expanded: list[RetrievedChunk] = []
+            for doc in deduped:
+                if per_chunk_budget > 0 and cfg.max_expansion_neighbors > 0:
+                    family = await self._fetch_family(client, base, doc)
+                    ordered = self._expand_around_match(
+                        family,
+                        doc.get("chunk_index", -1),
+                        per_chunk_budget,
+                        max_neighbors=cfg.max_expansion_neighbors,
+                    )
+                else:
+                    ordered = [doc]
+                chunk = self._assemble_chunk(doc, ordered)
+                logger.debug(
+                    "Chunk %s: expanded %d→%d siblings (family=%d, budget=%d)",
+                    doc.get("chunk_index", "?"),
+                    1,
+                    len(ordered),
+                    (
+                        len(family)
+                        if per_chunk_budget > 0 and cfg.max_expansion_neighbors > 0
+                        else 0
+                    ),
                     per_chunk_budget,
-                    max_neighbors=cfg.max_expansion_neighbors,
                 )
-            else:
-                ordered = [doc]
-            chunk = self._assemble_chunk(doc, ordered)
-            logger.debug(
-                "Chunk %s: expanded %d→%d siblings (family=%d, budget=%d)",
-                doc.get("chunk_index", "?"),
-                1,
-                len(ordered),
-                (
-                    len(family)
-                    if per_chunk_budget > 0 and cfg.max_expansion_neighbors > 0
-                    else 0
-                ),
-                per_chunk_budget,
-            )
-            expanded.append(chunk)
-        return expanded
+                expanded.append(chunk)
+            return expanded
 
     # ------------------------------------------------------------------
     # Startup: OCP version resolution and chunk_filter_query
@@ -812,10 +790,7 @@ def get_openshift_docs_tool(client: SolrHybridSearch) -> StructuredTool:
             "{text, score, title, docs_url}, or [] if no hits, or an object with "
             "error on failure. Cite docs_url when using a passage."
         ),
-        metadata={
-            "tools_token_budget": 0,
-            "annotations": {"readOnlyHint": True},
-        },
+        metadata={"tools_token_budget": 0, "annotations": {"readOnlyHint": True}},
     )
     tool_ref.append(tool)
     return tool
