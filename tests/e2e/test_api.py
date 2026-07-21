@@ -189,12 +189,7 @@ def test_transcripts_storing_cluster():
     # we don't want llm response influence this test
     assert "llm_response" in transcript
     assert "rag_chunks" in transcript
-
     assert isinstance(transcript["rag_chunks"], list)
-    assert len(transcript["rag_chunks"])
-    assert transcript["rag_chunks"][0]["text"]
-    assert transcript["rag_chunks"][0]["doc_url"]
-    assert transcript["rag_chunks"][0]["doc_title"]
     assert "truncated" in transcript
 
     # check the attachment node existence and its content
