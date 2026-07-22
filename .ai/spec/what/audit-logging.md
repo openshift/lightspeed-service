@@ -67,7 +67,7 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 | `mcp.session.id` | Recommended | MCP session identifier |
 | `mcp.protocol.version` | Recommended | MCP protocol version |
 | `gen_ai.tool.call.id` | Recommended | Tool call ID from MCP response |
-| `network.transport` | Recommended | `stdio` or `sse` |
+| `network.transport` | Recommended | OTel OSI-layer values: `tcp` (mapped from MCP transports `streamable_http`/`sse`) or `pipe` (mapped from `stdio`) |
 
 12. Non-MCP tools MUST carry all attributes from rule 10 (including `gen_ai.operation.name`) and MUST NOT add MCP-specific attributes from rule 11.
 
@@ -77,9 +77,13 @@ Implementation spec for compliance audit logging in lightspeed-service (OLS). Pa
 
 14. Thinking/reasoning output from the LLM MUST be recorded as a `gen_ai.choice` span event with an additional `gen_ai.reasoning_content` attribute attached to the `chat {gen_ai.request.model}` span. When the model emits both completion and thinking content, they MAY be combined into a single `gen_ai.choice` event with both attributes.
 
+### Tool Result Events
+
+14b. Tool execution output MUST be recorded as a `tool.result` span event attached to the `execute_tool {gen_ai.tool.name}` span. The event carries a `success` attribute (boolean). When `capture_content` is `true`, the event additionally carries an `output` attribute with the tool's text output. When `capture_content` is `false`, the `tool.result` event is still emitted with `success` but the `output` attribute is omitted.
+
 ### Content Capture Policy
 
-14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) contain LLM output that may include PII or sensitive data. Recording these attributes MUST be opt-in, controlled by an `audit.capture_content` configuration flag (default: `false`). When `capture_content` is `false`, `gen_ai.choice` events are still emitted but the content attributes are omitted. This aligns with the OTel GenAI semantic convention requirement level of Opt-In for content attributes.
+14a. Completion and thinking span event attributes (`gen_ai.completion`, `gen_ai.reasoning_content`) and tool output (`output` on `tool.result` events) contain LLM/tool output that may include PII or sensitive data. Recording these attributes MUST be opt-in, controlled by an `audit.capture_content` configuration flag (default: `false`). When `capture_content` is `false`, events are still emitted but content attributes are omitted. This aligns with the OTel GenAI semantic convention requirement level of Opt-In for content attributes.
 
 ### Single-Emission Rule
 
@@ -126,6 +130,7 @@ request.lifecycle               [root, INTERNAL, gen_ai.conversation.id=<conv_id
 ├── request.history             [INTERNAL]
 ├── chat gpt-4o                 [CLIENT, repeats per LLM turn]
 │   ├── execute_tool search     [INTERNAL, repeats per tool call]
+│   │   └── (span events: tool.result)
 │   └── (span events: gen_ai.choice)
 └── request.store               [INTERNAL]
 ```

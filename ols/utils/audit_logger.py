@@ -146,13 +146,18 @@ class AuditLogger:
         output_length: int,
         success: bool,
         duration_ms: Optional[int],
+        output_content: Optional[str] = None,
     ) -> None:
-        """Set tool result attributes on execute_tool span."""
+        """Set tool result attributes and emit tool.result event on execute_tool span."""
         self._set_span_attrs(
             output_length=output_length,
             success=success,
             duration_ms=duration_ms,
         )
+        attrs: dict[str, Any] = {"success": success}
+        if output_content is not None:
+            attrs["output"] = output_content
+        self._add_span_event("tool.result", **attrs)
 
     def tool_approval_requested(
         self,

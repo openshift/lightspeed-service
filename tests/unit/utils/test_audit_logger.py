@@ -169,13 +169,28 @@ class TestAuditLoggerMethods:
         assert span.events[0].attributes["tool_name"] == "my_tool"
 
     def test_tool_result(self, audit_ctx, otel_setup) -> None:
-        """Verify tool_result sets span attributes."""
+        """Verify tool_result sets span attributes and emits tool.result event."""
         with audit_ctx.span("execute_tool my_tool"):
-            audit_ctx.logger.tool_result(output_length=2, success=True, duration_ms=42)
+            audit_ctx.logger.tool_result(
+                output_length=2, success=True, duration_ms=42, output_content="ok"
+            )
         span = _get_spans(otel_setup)[0]
         assert span.attributes["output_length"] == 2
         assert span.attributes["success"] is True
         assert span.attributes["duration_ms"] == 42
+        result_event = span.events[0]
+        assert result_event.name == "tool.result"
+        assert result_event.attributes["success"] is True
+        assert result_event.attributes["output"] == "ok"
+
+    def test_tool_result_no_content(self, audit_ctx, otel_setup) -> None:
+        """Verify tool_result omits output when content not provided."""
+        with audit_ctx.span("execute_tool my_tool"):
+            audit_ctx.logger.tool_result(output_length=5, success=True, duration_ms=10)
+        span = _get_spans(otel_setup)[0]
+        result_event = span.events[0]
+        assert result_event.name == "tool.result"
+        assert "output" not in result_event.attributes
 
     def test_tool_approval_requested(self, audit_ctx, otel_setup) -> None:
         """Verify tool_approval_requested emits approval.requested event."""
