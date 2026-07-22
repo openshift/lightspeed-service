@@ -14,6 +14,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools.structured import StructuredTool
 
 from ols import config
+from ols.app.metrics.metrics import gen_ai_execute_tool_duration_seconds
 from ols.app.models.models import StreamChunkType
 from ols.src.tools.approval import (
     get_approval_decision,
@@ -572,7 +573,11 @@ async def _execute_single_tool_call_stream(
                 offload_manager=offload_manager,
             )
         )
-        duration_ms = int((time.monotonic() - t0) * 1000)
+        elapsed = time.monotonic() - t0
+        duration_ms = int(elapsed * 1000)
+        gen_ai_execute_tool_duration_seconds.labels(
+            gen_ai_tool_name=tool_name,
+        ).observe(elapsed)
 
         if audit_ctx:
             audit_ctx.logger.tool_result(
