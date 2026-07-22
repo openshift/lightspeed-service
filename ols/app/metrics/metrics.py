@@ -49,6 +49,45 @@ llm_reasoning_token_total = Counter(
     ["provider", "model"],
 )
 
+gen_ai_client_token_usage = Histogram(
+    "gen_ai_client_token_usage",
+    "Per-request token usage distribution (OTel GenAI semantic conventions)",
+    [
+        "gen_ai_operation_name",
+        "gen_ai_token_type",
+        "gen_ai_request_model",
+        "gen_ai_provider_name",
+    ],
+    buckets=(
+        1,
+        4,
+        16,
+        64,
+        256,
+        1024,
+        4096,
+        16384,
+        65536,
+        262144,
+        1048576,
+        4194304,
+        16777216,
+        67108864,
+    ),
+)
+
+gen_ai_client_operation_duration_seconds = Histogram(
+    "gen_ai_client_operation_duration_seconds",
+    "LLM inference call duration (OTel GenAI semantic conventions)",
+    ["gen_ai_request_model", "gen_ai_provider_name", "gen_ai_operation_name"],
+)
+
+gen_ai_execute_tool_duration_seconds = Histogram(
+    "gen_ai_execute_tool_duration_seconds",
+    "Tool execution duration (OTel GenAI semantic conventions)",
+    ["gen_ai_tool_name"],
+)
+
 # metric that indicates what provider + model customers are using so we can
 # understand what is popular/important
 provider_model_configuration = Gauge(
