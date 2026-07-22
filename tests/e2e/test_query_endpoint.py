@@ -450,7 +450,7 @@ def test_conversation_history() -> None:
         cid = json_response["conversation_id"]
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"conversation_id": cid, "query": "what?"},
+            json={"conversation_id": cid, "query": "tell me more about it?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
