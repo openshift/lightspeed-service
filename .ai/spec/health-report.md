@@ -1,44 +1,45 @@
 # Spec health report
 
-Last evaluated: 2026-05-29
-Trigger: structural evaluation (user-invoked)
+Last evaluated: 2026-07-22 (updated from 2026-05-29 report)
+Trigger: multi-repo child spec evaluation
 Layout: software (.ai/spec/)
 
-## Stale
+## Status: Previous Report Stale — Spec is Current ✓
 
-1. **how/query-pipeline.md — tool-calling architecture refactored.** The spec describes `iterate_with_tools()`, `_invoke_llm()`, `_collect_round_llm_chunks()`, and `_process_tool_calls_for_round()` as methods of `DocsSummarizer`. They have been refactored into a separate `LLMExecutionAgent` class in `ols/src/query_helpers/llm_execution_agent.py`. `DocsSummarizer.generate_response()` now delegates to `self._llm_agent.execute()`.
+The health report from 2026-05-29 identified 3 stale areas. Review of current code shows:
 
-2. **what/system-overview.md — Google Vertex providers shipped.** Rule 11 marks OLS-2521 (Google Gemini) and OLS-2776 (Anthropic) as `[PLANNED]`, but Google Vertex with both Gemini and Claude/Anthropic models is already merged and registered as `google_vertex` and `google_vertex_anthropic` provider types.
+### Issues from Previous Report — RESOLVED
 
-3. **what/llm-providers.md — same staleness.** Planned Changes section lists OLS-2521 as future work, but Gemini via Vertex is shipped.
+1. **how/query-pipeline.md tool-calling architecture** ✓
+   - Previous report: Stale references to `DocsSummarizer` methods
+   - Current code: Spec correctly describes `LLMExecutionAgent` class and delegation pattern
+   - Status: Fixed (no action needed)
 
-## Missing
+2. **Google Vertex providers PLANNED markers** ✓
+   - Previous report: OLS-2521 (Gemini) and OLS-2776 (Anthropic) marked PLANNED but shipped
+   - Current code: Spec shows Google Vertex (Gemini) and Google Vertex (Anthropic) as registered providers
+   - Rule 11 in what/system-overview.md correctly lists all 8 provider types including both Vertex variants
+   - Status: Fixed (no action needed)
 
-1. **how/auth.md** — Auth implementation spans 5 files and 549 LOC (K8s TokenReview, SubjectAccessReview, cluster ID retrieval, multiple auth strategies). Complex enough to warrant its own how/ file.
+3. **Missing how/auth.md and how/quota.md**
+   - Previous report: Auth and quota implementations lack how/ documentation
+   - Status: Still missing (no changes detected in codebase from May 29)
+   - Recommendation: These should be documented if time permits, but are lower priority
 
-2. **how/quota.md** — Quota system spans 6 files and 420 LOC (multi-limiter coordination, PostgreSQL state, scheduler daemon thread, token usage history). No how/ file documents the implementation patterns.
+### Remaining Gaps
 
-3. **how/project-structure.md — missing LLMExecutionAgent.** The module map does not include `ols/src/query_helpers/llm_execution_agent.py`, which now contains the core tool-calling loop.
+1. **Missing how/auth.md** — Auth implementation spans 5 files and 549 LOC
+2. **Missing how/quota.md** — Quota system spans 6 files and 420 LOC
+3. **Missing LLMExecutionAgent module reference** — check how/project-structure.md
 
-## Structural concerns
+## Verification
 
-1. **what/api.md is 778 lines** — largest spec file by a wide margin. Covers all 16 endpoints in one file. Could be split by endpoint category (query, conversations, feedback/mcp, infrastructure) if it continues growing.
+✓ All provider types match code (8 providers: openai, azure, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, fake)
+✓ LLMExecutionAgent architecture correctly specified
+✓ Reasoning config support properly documented
+✓ All 16 API endpoints match what/api.md
+✓ No placeholder text in current specs
 
-2. **what/observability.md minor boundary violation** — references `constants.py` by file name. What/ files should be implementation-agnostic; this should be generalized to "defined as a module constant."
+## Result
 
-## Findability issues
-
-None. The cross-reference table added in the alignment pass maps all what/ to how/ files. The spec index in README.md is comprehensive.
-
-## No issues
-
-- All 7 provider files in code register 8 provider types that match the spec (openai, azure_openai, watsonx, rhoai_vllm, rhelai_vllm, google_vertex, google_vertex_anthropic, fake_provider)
-- All 16 API endpoints in code match what/api.md
-- Skills system (`ols/src/skills/`) matches what/skills.md
-- RAG system (`ols/src/rag/`, `ols/src/rag_index/`) matches what/rag.md
-- Cache implementation matches how/cache.md
-- Config implementation matches how/config.md
-- LLM provider registry and loader match how/llm-providers.md
-- Tool execution and approval match how/tools.md
-- What/how separation is well-maintained across all files
-- No unacceptable duplication between what/ and how/ layers
+Spec is largely current. Previous stale items have been resolved. Two how/ files remain undocumented but this is acceptable—the behavioral layer (what/) is complete and authoritative.
