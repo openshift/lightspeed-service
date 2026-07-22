@@ -440,7 +440,7 @@ def test_conversation_history() -> None:
             STREAMING_QUERY_ENDPOINT,
             json={
                 "conversation_id": cid,
-                "query": "what?",
+                "query": "tell me more about it?",
                 "media_type": constants.MEDIA_TYPE_JSON,
             },
         )

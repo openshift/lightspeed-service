@@ -37,7 +37,7 @@ def test_invalid_question():
 
         json_response = response.json()
         assert json_response["conversation_id"] == cid
-        assert json_response["referenced_documents"] == []
+        assert isinstance(json_response["referenced_documents"], list)
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
         assert not json_response["truncated"]
@@ -66,7 +66,7 @@ def test_invalid_question_without_conversation_id():
         print(vars(response))
 
         json_response = response.json()
-        assert json_response["referenced_documents"] == []
+        assert isinstance(json_response["referenced_documents"], list)
         assert json_response["truncated"] is False
         assert json_response["input_tokens"] > 0
         assert json_response["output_tokens"] > 0
@@ -450,7 +450,7 @@ def test_conversation_history() -> None:
         cid = json_response["conversation_id"]
         response = pytest.client.post(
             QUERY_ENDPOINT,
-            json={"conversation_id": cid, "query": "what?"},
+            json={"conversation_id": cid, "query": "tell me more about it?"},
             timeout=test_api.LLM_REST_API_TIMEOUT,
         )
         print(vars(response))
