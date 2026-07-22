@@ -722,8 +722,8 @@ def patch_tekton_packages(yaml_path: str, package_names: list[str]) -> None:
 
     sorted_names = sorted(package_names)
     replacement = f'"packages": "{",".join(sorted_names)}"'
-    new_content = re.sub(r'"packages":\s*"[^"]*"', replacement, content)
-    if new_content == content:
+    new_content, count = re.subn(r'"packages":\s*"[^"]*"', replacement, content)
+    if count == 0:
         raise RuntimeError(f"No 'packages' pattern found in {yaml_path}")
 
     with open(yaml_path, "w", encoding="utf-8") as f:
@@ -1015,6 +1015,7 @@ def _classify_resolved(
 def _generate_build_deps(
     buckets: dict[str, dict[str, dict[str, Any]]],
     suffix: str,
+    bootstrap_packages: list[str] | None = None,
 ) -> str:
     """Generate build dependencies via pybuild-deps."""
     sdist_names = list(buckets["pypi_sdist"].keys())
@@ -1042,11 +1043,33 @@ def _generate_build_deps(
                 os.remove(tmp_sdist_file)
 
         rhoai_names = set(buckets["rhoai_wheel"].keys())
+        if bootstrap_packages:
+            rhoai_names |= {normalize_name(p) for p in bootstrap_packages}
         _strip_rhoai_duplicates_from_build_deps(build_output, rhoai_names)
     else:
         with open(build_output, "w", encoding="utf-8") as f:
             f.write("# No sdist packages — no build dependencies needed.\n")
     return build_output
+
+
+def _add_bootstrap_packages(
+    buckets: dict[str, dict[str, dict[str, Any]]],
+    rhoai: RhoaiIndex,
+    rhoai_index_url: str,
+    bootstrap_packages: list[str],
+    suffix: str,
+) -> None:
+    """Add bootstrap packages to requirements.hermetic.txt from RHOAI."""
+    hermetic_path = os.path.join(KONFLUX_DIR, f"requirements.hermetic{suffix}.txt")
+    hermetic_lines = [f"--index-url {rhoai_index_url}\n"]
+    for pkg in bootstrap_packages:
+        norm = normalize_name(pkg)
+        match = rhoai.find_best(norm, "")
+        if match:
+            hermetic_lines.append(f"{norm}=={match['version']}\n")
+            logger.info("Bootstrap: %s==%s (from RHOAI)", norm, match["version"])
+    with open(hermetic_path, "w", encoding="utf-8") as f:
+        f.writelines(hermetic_lines)
 
 
 def _print_summary(
@@ -1123,6 +1146,10 @@ def main() -> None:
 
     buckets = classify_packages(resolved, wheel_only)
 
+    _add_bootstrap_packages(buckets, rhoai, rhoai_index_url, bootstrap_packages, suffix)
+
+    build_output = _generate_build_deps(buckets, suffix, bootstrap_packages)
+
     write_hashed_requirements(
         buckets["rhoai_wheel"],
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel{suffix}.txt"),
@@ -1138,8 +1165,6 @@ def main() -> None:
         os.path.join(KONFLUX_DIR, f"requirements.hashes.wheel.pypi{suffix}.txt"),
         "https://pypi.org/simple",
     )
-
-    build_output = _generate_build_deps(buckets, suffix)
 
     wheel_package_names = sorted(
         set(

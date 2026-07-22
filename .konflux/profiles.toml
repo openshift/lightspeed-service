@@ -1,7 +1,7 @@
 [common]
 python_version = "3.12"
 platforms = ["x86_64", "aarch64"]
-bootstrap_packages = ["maturin", "griffe", "griffecli", "griffelib", "rank-bm25", "uv", "uv-build"]
+bootstrap_packages = ["maturin", "uv", "uv-build"]
 
 [profiles.cpu]
 rhoai_index_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
