@@ -1,0 +1,25 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: deepseek-r1
+        name: bedrock
+        type: bedrock
+        url: "https://bedrock-mantle.us-east-1.api.aws"
+  ols:
+    defaultModel: deepseek-r1
+    defaultProvider: bedrock
+    deployment:
+      replicas: 1
+    disableAuth: false
+    introspectionEnabled: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true

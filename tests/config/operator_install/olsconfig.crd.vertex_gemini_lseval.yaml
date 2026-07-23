@@ -1,0 +1,28 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: gemini-3.5-flash
+        name: google_vertex
+        type: google_vertex
+        googleVertexConfig:
+          projectID: "openshift-lightspeed-tests"
+          location: "us-central1"
+        url: https://us-central1-aiplatform.googleapis.com/
+  ols:
+    defaultModel: gemini-3.5-flash
+    defaultProvider: google_vertex
+    deployment:
+      replicas: 1
+    disableAuth: false
+    introspectionEnabled: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true

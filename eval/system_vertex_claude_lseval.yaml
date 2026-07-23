@@ -1,0 +1,95 @@
+# LightSpeed Evaluation Framework Configuration
+# OLS Provider: Google Vertex Anthropic claude-opus-4-6 (model being evaluated)
+# Judge LLM: OpenAI GPT-5-mini (scoring responses)
+
+# Core Evaluation Configuration
+# Limits concurrent evaluations to avoid OpenAI API rate limiting on the judge LLM.
+# Each thread issues one OLS call and one judge LLM call, so 5 threads produce
+# at most 10 concurrent external API requests at any time.
+core:
+  max_threads: 5
+
+# Judge LLM Configuration
+# Uses OpenAI GPT-5-mini for evaluation scoring.
+# Requires OPENAI_API_KEY environment variable.
+llm:
+  provider: "openai"
+  model: "gpt-5-mini"
+  temperature: 1
+  max_tokens: 4096
+  timeout: 300
+  num_retries: 3
+
+# OLS API Configuration
+# Targets the OLS /query endpoint using Google Vertex Anthropic claude-opus-4-6 as the backend LLM.
+# api_base is overridden at runtime with the actual OLS service URL.
+# Requires OLS to be configured with a google_vertex_anthropic provider (Vertex AI credentials in olsconfig).
+# Override the model via LSEVAL_OLS_MODEL env var if your Vertex deployment uses a different model.
+api:
+  enabled: true
+  api_base: http://localhost:8080
+  endpoint_type: query
+  timeout: 300
+  provider: "google_vertex_anthropic"
+  model: "claude-opus-4-6"
+  no_tools: null
+  system_prompt: null
+
+# Metrics evaluated per conversation turn
+metrics_metadata:
+  turn_level:
+    "custom:answer_correctness":
+      # threshold intentionally omitted: no agreed baseline yet.
+      # Scores are recorded to track the trend over time; a threshold
+      # will be introduced once the average trend is established.
+      description: "Correctness vs expected answer using custom LLM evaluation"
+      default: true
+
+# Output Configuration
+output:
+  output_dir: "./eval_output"
+  base_filename: "evaluation"
+  enabled_outputs:
+    - csv
+    - json
+
+  csv_columns:
+    - "conversation_group_id"
+    - "turn_id"
+    - "metric_identifier"
+    - "score"
+    - "threshold"
+    - "result"
+    - "reason"
+    - "query"
+    - "response"
+    - "execution_time"
+
+# Visualization settings
+visualization:
+  figsize: [12, 8]
+  dpi: 300
+  enabled_graphs:
+    - "score_distribution"
+    - "status_breakdown"
+
+# Environment Variables
+environment:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_DISABLE_PROGRESS_BAR: "YES"
+  LITELLM_LOG: ERROR
+
+# Logging Configuration
+logging:
+  source_level: INFO
+  package_level: ERROR
+  log_format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  show_timestamps: true
+  package_overrides:
+    httpx: ERROR
+    urllib3: ERROR
+    requests: ERROR
+    matplotlib: ERROR
+    LiteLLM: WARNING
+    DeepEval: WARNING
+    ragas: WARNING
