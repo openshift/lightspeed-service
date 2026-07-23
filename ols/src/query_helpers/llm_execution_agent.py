@@ -14,6 +14,7 @@ from langchain_core.messages.ai import AIMessageChunk
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools.structured import StructuredTool
 from langchain_openai import ChatOpenAI
+from opentelemetry.trace import SpanKind
 
 from ols import constants
 from ols.app.metrics import TokenMetricUpdater
@@ -255,7 +256,7 @@ class LLMExecutionAgent:
         prev_input_tokens: int,
         prev_output_tokens: int,
     ) -> tuple[int, int]:
-        """Emit audit events for a completed LLM turn and return updated token counters."""
+        """Emit audit span events for a completed LLM turn."""
         if not self._audit_ctx:
             return prev_input_tokens, prev_output_tokens
         cur_input = token_counter.token_counter.input_tokens
@@ -263,23 +264,16 @@ class LLMExecutionAgent:
             token_counter.token_counter.output_tokens
             + token_counter.token_counter.reasoning_tokens
         )
+        capture = self._audit_ctx.capture_content
         thinking = "".join(round_result.collected_thinking)
         text = "".join(round_result.collected_text)
         if thinking:
             self._audit_ctx.logger.llm_thinking(
-                self._audit_ctx.trace_id,
-                self._audit_ctx.user_id,
-                content=thinking,
+                content=thinking, capture_content=capture
             )
         if text:
-            self._audit_ctx.logger.llm_text(
-                self._audit_ctx.trace_id,
-                self._audit_ctx.user_id,
-                content=text,
-            )
+            self._audit_ctx.logger.llm_text(content=text, capture_content=capture)
         self._audit_ctx.logger.llm_turn(
-            self._audit_ctx.trace_id,
-            self._audit_ctx.user_id,
             turn_index=turn_index,
             input_tokens=cur_input - prev_input_tokens,
             output_tokens=cur_output - prev_output_tokens,
@@ -324,7 +318,16 @@ class LLMExecutionAgent:
 
             round_result = RoundLLMResult()
             turn_span = (
-                self._audit_ctx.span("llm.turn", turn_index=i)
+                self._audit_ctx.span(
+                    f"chat {self.model}",
+                    kind=SpanKind.CLIENT,
+                    **{
+                        "gen_ai.operation.name": "chat",
+                        "gen_ai.request.model": self.model,
+                        "gen_ai.provider.name": self.provider,
+                    },
+                    turn_index=i,
+                )
                 if self._audit_ctx
                 else nullcontext()
             )

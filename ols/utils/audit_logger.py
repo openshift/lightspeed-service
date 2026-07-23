@@ -1,57 +1,18 @@
-"""Structured JSON audit logger for compliance audit events."""
+"""Structured audit logger emitting OTel span events for compliance."""
 
-import json
 import logging
-import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Generator, Optional
 
 from opentelemetry import trace
-
-JsonScalar = str | int | float | bool | None
-JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
-
-
-def _normalize_json(value: Any) -> JsonValue:
-    """Coerce a value to a JSON-safe type."""
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    if isinstance(value, dict):
-        return {str(k): _normalize_json(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_normalize_json(item) for item in value]
-    return str(value)
-
+from opentelemetry.trace import SpanKind, StatusCode
 
 _fallback_logger = logging.getLogger(__name__)
 
 
-class _AuditJsonFormatter(logging.Formatter):
-    """Formatter that passes through pre-formatted JSON strings."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        return record.getMessage()
-
-
-def _setup_audit_logger() -> logging.Logger:
-    """Create and configure the ols.audit logger with JSON output to stdout."""
-    logger = logging.getLogger("ols.audit")
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(_AuditJsonFormatter())
-    logger.addHandler(handler)
-    return logger
-
-
-_audit_logger = _setup_audit_logger()
-
-
 class AuditLogger:
-    """Emits structured JSON audit events to stdout.
+    """Emits audit data as OTel span events.
 
     When disabled, all methods are no-ops.
     """
@@ -60,83 +21,75 @@ class AuditLogger:
         """Initialize the audit logger."""
         self._enabled = enabled
 
-    def _emit(
-        self, event: str, trace_id: str, user_id: str, **fields: JsonValue
-    ) -> None:
+    def _add_span_event(self, name: str, **attrs: Any) -> None:
         if not self._enabled:
             return
-        try:
-            record: dict[str, Any] = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "level": "info",
-                "event": event,
-                "trace_id": trace_id,
-                "user_id": user_id,
-            }
-            record.update({k: _normalize_json(v) for k, v in fields.items()})
-            _audit_logger.info(json.dumps(record, ensure_ascii=False, allow_nan=False))
-        except Exception:
-            _fallback_logger.warning(
-                "Failed to emit audit event %s", event, exc_info=True
-            )
+        span = trace.get_current_span()
+        if span is None or not span.is_recording():
+            return
+        filtered = {k: v for k, v in attrs.items() if v is not None}
+        span.add_event(name, attributes=filtered)
+
+    def _set_span_attrs(self, **attrs: Any) -> None:
+        if not self._enabled:
+            return
+        span = trace.get_current_span()
+        if span is None or not span.is_recording():
+            return
+        for k, v in attrs.items():
+            if v is not None:
+                span.set_attribute(k, v)
 
     def request_started(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         mode: str,
         query: str,
         attachments: list[dict[str, Any]],
         provider: Optional[str],
         model: Optional[str],
+        capture_content: bool = True,
     ) -> None:
-        """Emit audit.request.started event."""
-        self._emit(
-            "audit.request.started",
-            trace_id,
-            user_id,
+        """Emit request.started span event on request.lifecycle span."""
+        self._add_span_event(
+            "request.started",
             mode=mode,
-            query=query,
-            attachments=attachments,
-            provider=provider,
-            model=model,
+            query=query if capture_content else None,
+            attachment_count=len(attachments),
+            provider=provider or "",
+            model=model or "",
         )
 
-    def request_auth(self, trace_id: str, user_id: str) -> None:
-        """Emit audit.request.auth event."""
-        self._emit("audit.request.auth", trace_id, user_id)
+    def request_auth(self) -> None:
+        """No-op — auth is tracked by its own span."""
 
     def rag_retrieved(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         chunk_count: int,
         scores: list[float],
         source_documents: list[str],
     ) -> None:
-        """Emit audit.rag.retrieved event."""
-        self._emit(
-            "audit.rag.retrieved",
-            trace_id,
-            user_id,
+        """Set RAG attributes on request.rag span."""
+        self._set_span_attrs(chunk_count=chunk_count)
+        self._add_span_event(
+            "rag.retrieved",
             chunk_count=chunk_count,
-            scores=scores,
+            scores=[round(s, 4) for s in scores],
             source_documents=source_documents,
         )
 
     def history_retrieved(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         turn_count: int,
         compressed: bool,
         truncated: bool,
     ) -> None:
-        """Emit audit.history.retrieved event."""
-        self._emit(
-            "audit.history.retrieved",
-            trace_id,
-            user_id,
+        """Set history attributes on request.history span."""
+        self._set_span_attrs(turn_count=turn_count)
+        self._add_span_event(
+            "history.retrieved",
             turn_count=turn_count,
             compressed=compressed,
             truncated=truncated,
@@ -144,63 +97,58 @@ class AuditLogger:
 
     def llm_turn(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         turn_index: int,
         input_tokens: int,
         output_tokens: int,
     ) -> None:
-        """Emit audit.llm.turn event."""
-        self._emit(
-            "audit.llm.turn",
-            trace_id,
-            user_id,
-            turn_index=turn_index,
-            tokens_in=input_tokens,
-            tokens_out=output_tokens,
+        """Set token usage attributes on the chat span."""
+        self._set_span_attrs(
+            **{
+                "gen_ai.usage.input_tokens": input_tokens,
+                "gen_ai.usage.output_tokens": output_tokens,
+                "turn_index": turn_index,
+            }
         )
 
-    def llm_thinking(self, trace_id: str, user_id: str, content: str) -> None:
-        """Emit audit.llm.thinking event."""
-        self._emit("audit.llm.thinking", trace_id, user_id, content=content)
+    def llm_thinking(self, *, content: str, capture_content: bool = True) -> None:
+        """Emit gen_ai.choice span event for reasoning content."""
+        attrs: dict[str, Any] = {}
+        if capture_content:
+            attrs["gen_ai.reasoning_content"] = content
+        self._add_span_event("gen_ai.choice", **attrs)
 
-    def llm_text(self, trace_id: str, user_id: str, content: str) -> None:
-        """Emit audit.llm.text event."""
-        self._emit("audit.llm.text", trace_id, user_id, content=content)
+    def llm_text(self, *, content: str, capture_content: bool = True) -> None:
+        """Emit gen_ai.choice span event for completion text."""
+        attrs: dict[str, Any] = {}
+        if capture_content:
+            attrs["gen_ai.completion"] = content
+        self._add_span_event("gen_ai.choice", **attrs)
 
     def tool_call(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         tool_name: str,
         mcp_server: Optional[str],
         arguments: list[str],
     ) -> None:
-        """Emit audit.tool.call event."""
-        self._emit(
-            "audit.tool.call",
-            trace_id,
-            user_id,
+        """Emit tool.call span event on execute_tool span."""
+        self._add_span_event(
+            "tool.call",
             tool_name=tool_name,
-            mcp_server=mcp_server,
+            mcp_server=mcp_server or "",
             arguments=arguments,
         )
 
     def tool_result(
         self,
-        trace_id: str,
-        user_id: str,
-        tool_name: str,
+        *,
         output_length: int,
         success: bool,
         duration_ms: Optional[int],
     ) -> None:
-        """Emit audit.tool.result event."""
-        self._emit(
-            "audit.tool.result",
-            trace_id,
-            user_id,
-            tool_name=tool_name,
+        """Set tool result attributes on execute_tool span."""
+        self._set_span_attrs(
             output_length=output_length,
             success=success,
             duration_ms=duration_ms,
@@ -208,59 +156,61 @@ class AuditLogger:
 
     def tool_approval_requested(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         tool_name: str,
         approval_id: str,
     ) -> None:
-        """Emit audit.tool.approval.requested event."""
-        self._emit(
-            "audit.tool.approval.requested",
-            trace_id,
-            user_id,
+        """Emit approval.requested span event."""
+        self._add_span_event(
+            "approval.requested",
             tool_name=tool_name,
             approval_id=approval_id,
         )
 
     def tool_approval_decision(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         approval_id: str,
         decision: str,
         tool_name: str,
     ) -> None:
-        """Emit audit.tool.approval.decision event."""
-        self._emit(
-            "audit.tool.approval.decision",
-            trace_id,
-            user_id,
+        """Emit approval.decision span event."""
+        self._add_span_event(
+            "approval.decision",
             approval_id=approval_id,
             decision=decision,
             tool_name=tool_name,
         )
 
-    def request_failed(self, trace_id: str, user_id: str, error: str) -> None:
-        """Emit audit.request.failed event."""
-        self._emit("audit.request.failed", trace_id, user_id, error=error)
+    def request_failed(self, *, error: str) -> None:
+        """Set error status and event on request.lifecycle span."""
+        if not self._enabled:
+            return
+        span = trace.get_current_span()
+        if span is None or not span.is_recording():
+            return
+        span.set_status(StatusCode.ERROR, error)
+        span.add_event("request.failed", attributes={"error": error})
 
     def request_completed(
         self,
-        trace_id: str,
-        user_id: str,
+        *,
         total_turns: int,
         total_input_tokens: int,
         total_output_tokens: int,
         referenced_documents: list[str],
     ) -> None:
-        """Emit audit.request.completed event."""
-        self._emit(
-            "audit.request.completed",
-            trace_id,
-            user_id,
+        """Set completion attributes on request.lifecycle span."""
+        self._set_span_attrs(
             total_turns=total_turns,
-            total_tokens_in=total_input_tokens,
-            total_tokens_out=total_output_tokens,
+            total_input_tokens=total_input_tokens,
+            total_output_tokens=total_output_tokens,
+        )
+        self._add_span_event(
+            "request.completed",
+            total_turns=total_turns,
+            total_input_tokens=total_input_tokens,
+            total_output_tokens=total_output_tokens,
             referenced_documents=referenced_documents,
         )
 
@@ -269,13 +219,21 @@ class AuditLogger:
 class AuditContext:
     """Immutable context for audit logging throughout a request lifecycle."""
 
-    trace_id: str
+    conversation_id: str
     user_id: str
     logger: AuditLogger
+    capture_content: bool = True
     tracer: trace.Tracer = field(default_factory=lambda: trace.get_tracer("ols.audit"))
 
     @contextmanager
-    def span(self, name: str, **attrs: Any) -> Generator[trace.Span, None, None]:
-        """Start an OTEL span independent of the logging toggle (per spec rule 3)."""
-        with self.tracer.start_as_current_span(name, attributes=attrs) as s:
+    def span(
+        self,
+        name: str,
+        kind: SpanKind = SpanKind.INTERNAL,
+        **attrs: Any,
+    ) -> Generator[trace.Span, None, None]:
+        """Start an OTEL span with conversation_id and user_id auto-injected."""
+        attrs.setdefault("gen_ai.conversation.id", self.conversation_id)
+        attrs.setdefault("user_id", self.user_id)
+        with self.tracer.start_as_current_span(name, kind=kind, attributes=attrs) as s:
             yield s

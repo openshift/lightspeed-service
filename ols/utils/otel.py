@@ -1,57 +1,95 @@
 """OpenTelemetry tracing setup for audit spans."""
 
 import atexit
-import contextvars
+import base64
+import json
 import logging
-from typing import Optional
+import sys
+import threading
+from typing import Any, Optional, Sequence
 
+from google.protobuf.json_format import MessageToDict
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.id_generator import IdGenerator, RandomIdGenerator
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ReadableSpan,
+    SimpleSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
 
 logger = logging.getLogger(__name__)
 
 _TRACER_NAME = "ols.audit"
 
-_trace_id_var: contextvars.ContextVar[Optional[int]] = contextvars.ContextVar(
-    "_trace_id_var", default=None
-)
+
+def _b64_to_hex(val: str) -> str:
+    """Decode a base64-encoded protobuf bytes field to lowercase hex."""
+    return base64.b64decode(val).hex()
 
 
-class _ConversationIdGenerator(IdGenerator):
-    """Id generator that uses a context-local trace_id override when set."""
-
-    def __init__(self) -> None:
-        self._random = RandomIdGenerator()
-
-    def generate_span_id(self) -> int:
-        return self._random.generate_span_id()
-
-    def generate_trace_id(self) -> int:
-        override = _trace_id_var.get()
-        if override is not None:
-            return override
-        return self._random.generate_trace_id()
+_ID_KEYS = ("traceId", "spanId", "parentSpanId")
 
 
-_id_generator = _ConversationIdGenerator()
+def _hex_ids(obj: dict[str, Any], keys: tuple[str, ...]) -> None:
+    """Convert base64-encoded ID fields to hex in-place."""
+    for k in keys:
+        if k in obj:
+            obj[k] = _b64_to_hex(obj[k])
+
+
+def _proto_to_otlp_json(d: dict[str, Any]) -> dict[str, Any]:
+    """Fix ProtoJSON → OTLP JSON: hex traceId/spanId, already int enums."""
+    for rs in d.get("resourceSpans", []):
+        for ss in rs.get("scopeSpans", []):
+            for span in ss.get("spans", []):
+                _hex_ids(span, _ID_KEYS)
+                for link in span.get("links", []):
+                    _hex_ids(link, ("traceId", "spanId"))
+    return d
+
+
+_stdout_lock = threading.Lock()
+
+
+class OTLPJsonStdoutExporter(SpanExporter):
+    """Write OTLP-encoded spans as single-line JSON to stdout."""
+
+    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        """Encode spans to OTLP proto, convert to dict, and write as single-line JSON."""
+        try:
+            pb = encode_spans(spans)
+            d = MessageToDict(pb, use_integers_for_enums=True)
+            line = json.dumps(_proto_to_otlp_json(d))
+            with _stdout_lock:
+                sys.stdout.write(line + "\n")
+                sys.stdout.flush()
+        except Exception:
+            logger.warning("Failed to export audit spans to stdout", exc_info=True)
+            return SpanExportResult.FAILURE
+        return SpanExportResult.SUCCESS
 
 
 def init_tracer(
     otel_endpoint: Optional[str] = None,
     insecure: bool = False,
     certificate_file: Optional[str] = None,
+    audit_enabled: bool = False,
 ) -> trace.Tracer:
-    """Initialize the OTEL tracer with OTLP exporter or no-op."""
+    """Initialize the OTEL tracer with exporters based on configuration."""
     resource = Resource.create({"service.name": "lightspeed-service"})
-    provider = TracerProvider(resource=resource, id_generator=_id_generator)
+    provider = TracerProvider(resource=resource)
+
+    if audit_enabled:
+        provider.add_span_processor(SimpleSpanProcessor(OTLPJsonStdoutExporter()))
+        logger.info("OTEL stdout JSON exporter enabled for audit compliance")
+
     if otel_endpoint:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # pylint: disable=C0415
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # pylint: disable=import-outside-toplevel
             OTLPSpanExporter,
-        )
-        from opentelemetry.sdk.trace.export import (  # pylint: disable=C0415
-            BatchSpanProcessor,
         )
 
         credentials = None
@@ -66,19 +104,9 @@ def init_tracer(
         )
         provider.add_span_processor(BatchSpanProcessor(exporter))
         logger.info("OTEL tracer configured with endpoint: %s", otel_endpoint)
-    else:
+    elif not audit_enabled:
         logger.info("OTEL tracer configured with no-op exporter (no endpoint)")
 
     trace.set_tracer_provider(provider)
     atexit.register(provider.shutdown)
     return trace.get_tracer(_TRACER_NAME)
-
-
-def set_conversation_trace_id(trace_id_hex: str) -> None:
-    """Set the trace_id override for the current context."""
-    _trace_id_var.set(int(trace_id_hex, 16))
-
-
-def clear_conversation_trace_id() -> None:
-    """Clear the trace_id override for the current context."""
-    _trace_id_var.set(None)

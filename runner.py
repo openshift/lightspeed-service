@@ -90,7 +90,13 @@ if __name__ == "__main__":
             )
             if os.path.isfile(ca_bundle):
                 ca_cert_path = ca_bundle
-    init_tracer(otel_endpoint, insecure=otel_insecure, certificate_file=ca_cert_path)
+    audit_enabled = bool(config.ols_config.audit and config.ols_config.audit.enabled)
+    init_tracer(
+        otel_endpoint,
+        insecure=otel_insecure,
+        certificate_file=ca_cert_path,
+        audit_enabled=audit_enabled,
+    )
 
     if config.dev_config.pyroscope_url:
         start_with_pyroscope_enabled(config, logger)

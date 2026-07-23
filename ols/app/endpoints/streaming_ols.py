@@ -41,7 +41,6 @@ from ols.constants import MEDIA_TYPE_TEXT
 from ols.src.auth.auth import get_auth_dependency
 from ols.utils import errors_parsing
 from ols.utils.audit_logger import AuditContext
-from ols.utils.otel import clear_conversation_trace_id
 from ols.utils.token_handler import PromptTooLongError
 
 logger = logging.getLogger(__name__)
@@ -133,11 +132,8 @@ def conversation_request(
     except Exception as setup_error:
         if processed_request.audit_ctx:
             processed_request.audit_ctx.logger.request_failed(
-                processed_request.audit_ctx.trace_id,
-                processed_request.audit_ctx.user_id,
                 error=type(setup_error).__name__,
             )
-            clear_conversation_trace_id()
         raise
 
 
@@ -404,6 +400,15 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
         exit_stack.enter_context(audit_ctx.span("request.lifecycle"))
 
     try:
+        if audit_ctx:
+            audit_ctx.logger.request_started(
+                mode=llm_request.mode,
+                query=llm_request.query,
+                attachments=[a.model_dump() for a in attachments],
+                provider=llm_request.provider,
+                model=llm_request.model,
+                capture_content=audit_ctx.capture_content,
+            )
         if media_type == constants.MEDIA_TYPE_JSON:
             yield stream_start_event(conversation_id)
 
@@ -493,16 +498,12 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                         raise ValueError(msg)
         except PromptTooLongError as summarizer_error:
             if audit_ctx:
-                audit_ctx.logger.request_failed(
-                    audit_ctx.trace_id, audit_ctx.user_id, error="prompt_too_long"
-                )
+                audit_ctx.logger.request_failed(error="prompt_too_long")
             yield prompt_too_long_error(summarizer_error, media_type)
             return
         except Exception as summarizer_error:
             if audit_ctx:
                 audit_ctx.logger.request_failed(
-                    audit_ctx.trace_id,
-                    audit_ctx.user_id,
                     error=type(summarizer_error).__name__,
                 )
             yield generic_llm_error(summarizer_error, media_type)
@@ -547,8 +548,6 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                 referenced_documents = ReferencedDocument.from_rag_chunks(rag_chunks)
                 reasoning_tokens = calc_tokens(token_counter, "reasoning_tokens")
                 audit_ctx.logger.request_completed(
-                    audit_ctx.trace_id,
-                    audit_ctx.user_id,
                     total_turns=getattr(token_counter, "llm_calls", 1),
                     total_input_tokens=input_tokens,
                     total_output_tokens=output_tokens + reasoning_tokens,
@@ -571,8 +570,6 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
         except Exception as finalization_error:
             if audit_ctx:
                 audit_ctx.logger.request_failed(
-                    audit_ctx.trace_id,
-                    audit_ctx.user_id,
                     error=type(finalization_error).__name__,
                 )
             logger.exception(
@@ -588,5 +585,3 @@ async def response_processing_wrapper(  # noqa: C901  # pylint: disable=R0912,R0
                 )
     finally:
         exit_stack.close()
-        if audit_ctx:
-            clear_conversation_trace_id()
