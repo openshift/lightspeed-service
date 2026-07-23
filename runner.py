@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ols.app.models.config import OtelTlsMode
 from ols.constants import (
+    CERTIFICATE_STORAGE_FILENAME,
     CONFIGURATION_DUMP_FILE_NAME,
     CONFIGURATION_FILE_NAME_ENV_VARIABLE,
     DEFAULT_CONFIGURATION_FILE,
@@ -79,10 +80,17 @@ if __name__ == "__main__":
     # Initialize OTEL tracer for audit spans
     otel_endpoint = None
     otel_insecure = False
+    ca_cert_path = None
     if config.ols_config.audit and config.ols_config.audit.otel:
         otel_endpoint = config.ols_config.audit.otel.endpoint
         otel_insecure = config.ols_config.audit.otel.tls_mode == OtelTlsMode.INSECURE
-    init_tracer(otel_endpoint, insecure=otel_insecure)
+        if not otel_insecure and config.ols_config.certificate_directory:
+            ca_bundle = os.path.join(
+                config.ols_config.certificate_directory, CERTIFICATE_STORAGE_FILENAME
+            )
+            if os.path.isfile(ca_bundle):
+                ca_cert_path = ca_bundle
+    init_tracer(otel_endpoint, insecure=otel_insecure, certificate_file=ca_cert_path)
 
     if config.dev_config.pyroscope_url:
         start_with_pyroscope_enabled(config, logger)
