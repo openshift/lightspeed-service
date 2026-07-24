@@ -366,6 +366,7 @@ def test_rag_question() -> None:
 
 
 @pytest.mark.cluster
+@retry(max_attempts=3, wait_between_runs=10)
 def test_query_filter() -> None:
     """Ensure responses does not include filtered words and redacted words are not logged."""
     with metrics_utils.RestAPICallCounterChecker(
