@@ -141,6 +141,12 @@ def update_ols_config() -> None:
     # logs beying redacted/removed completely - we need log at info level
     olsconfig["ols_config"]["logging_config"]["lib_log_level"] = "INFO"
 
+    # The operator auto-generates reference_content pointing to a RAG index
+    # that doesn't exist in the CI image; strip it for cluster_updates tests
+    # which evaluate MCP tool calling, not RAG document retrieval.
+    if os.getenv("OLS_CONFIG_SUFFIX") == "cluster_updates":
+        olsconfig["ols_config"].pop("reference_content", None)
+
     # patch reference content config for new format
     # Todo: remove this when the operator PR is merged:
     # https://github.com/openshift/lightspeed-operator/pull/668

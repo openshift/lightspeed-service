@@ -24,7 +24,7 @@ spec:
       replicas: 1
     disableAuth: false
     logLevel: INFO
-    introspectionEnabled: false
+    introspectionEnabled: true
     userDataCollection:
       feedbackDisabled: true
       transcriptsDisabled: true
@@ -35,13 +35,3 @@ spec:
       alpha: 0.8
       topK: 10
       threshold: 0.01
-  mcpServers:
-    - name: openshift-cluster
-      url: https://kubernetes.default.svc
-      headers:
-        - name: Authorization
-          valueFrom:
-            type: kubernetes
-  featureGates:
-    - MCPServer
-    - ToolFiltering
