@@ -257,6 +257,75 @@ def ensure_azure_entra_id_secret() -> None:
     )
 
 
+_BEDROCK_IAM_ENV_KEYS: tuple[str, ...] = (
+    "BEDROCK_AWS_ACCESS_KEY_ID",
+    "BEDROCK_AWS_SECRET_ACCESS_KEY",
+)
+
+_BEDROCK_ROLE_ENV_KEYS: tuple[str, ...] = (
+    "BEDROCK_ROLE_AWS_ACCESS_KEY_ID",
+    "BEDROCK_ROLE_AWS_SECRET_ACCESS_KEY",
+    "BEDROCK_ROLE_ARN",
+)
+
+
+def ensure_bedrock_iam_secret(creds: str) -> None:
+    """Create openshift-lightspeed/llmcreds with AWS IAM credentials for Bedrock.
+
+    Bedrock does not use an API token file like other providers. Instead, the
+    ``PROVIDER_KEY_PATH`` run_suite argument carries a discriminator string
+    (``"iam"`` or ``"iam_role"``) that selects which set of env vars to read.
+
+    Args:
+        creds: discriminator passed via ``PROVIDER_KEY_PATH`` —
+               ``"iam"`` for direct IAM credentials,
+               ``"iam_role"`` for STS assume-role credentials.
+    """
+    if creds == "iam_role":
+        env_keys = _BEDROCK_ROLE_ENV_KEYS
+    elif creds == "iam":
+        env_keys = _BEDROCK_IAM_ENV_KEYS
+    else:
+        raise ValueError(f"Unsupported Bedrock credentials mode: {creds}")
+
+    values = {k: os.getenv(k) for k in env_keys}
+    missing = [k for k in env_keys if not values[k]]
+    if missing:
+        print(
+            "Skipping Bedrock IAM secret creation (unset or empty): "
+            f"{', '.join(missing)}. "
+            "Bedrock provider will not work until these CI/Vault/Prow env vars "
+            "are set."
+        )
+        return
+
+    oc_args: list[str] = [
+        "create",
+        "secret",
+        "generic",
+        "llmcreds",
+    ]
+
+    if creds == "iam_role":
+        oc_args.extend(
+            [
+                f"--from-literal=aws_access_key_id={values['BEDROCK_ROLE_AWS_ACCESS_KEY_ID']}",
+                f"--from-literal=aws_secret_access_key={values['BEDROCK_ROLE_AWS_SECRET_ACCESS_KEY']}",
+                f"--from-literal=role_arn={values['BEDROCK_ROLE_ARN']}",
+            ]
+        )
+    else:
+        oc_args.extend(
+            [
+                f"--from-literal=aws_access_key_id={values['BEDROCK_AWS_ACCESS_KEY_ID']}",
+                f"--from-literal=aws_secret_access_key={values['BEDROCK_AWS_SECRET_ACCESS_KEY']}",
+            ]
+        )
+
+    print(f"Ensuring Bedrock IAM secret exists (mode={creds})...")
+    cluster_utils.run_oc(oc_args, ignore_existing_resource=True)
+
+
 def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
     """Create Kubernetes secrets needed for an LLM provider (API creds).
 
@@ -281,6 +350,9 @@ def create_secrets(provider_name: str, creds: str, provider_size: int) -> None:
         )
     except subprocess.CalledProcessError:
         print("llmcreds secret does not yet exist. Creating it.")
+    if provider_name.startswith("bedrock"):
+        ensure_bedrock_iam_secret(creds)
+        return
     if creds == "empty":
         cluster_utils.run_oc(
             [

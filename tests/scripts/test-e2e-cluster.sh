@@ -66,8 +66,25 @@ function run_suites() {
   # run_suite "rhelai_vllm" "smoketest" "rhelai_vllm" "$OPENAI_PROVIDER_KEY_PATH" "gpt-3.5-turbo" "$OLS_IMAGE" "default"
   # (( rc = rc || $? ))
 
+  # Bedrock suites — PROVIDER_KEY_PATH carries a discriminator ("iam" or
+  # "iam_role") instead of a credential file path; see
+  # ensure_bedrock_iam_secret() in ols_installer.py.
+  run_suite "bedrock_anthropic" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_anthropic" "iam" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
+  run_suite "bedrock_deepseek" "not azure_entra_id and not certificates and not (tool_calling and not smoketest and not rag) and not byok1 and not byok2 and not quota_limits and not data_export" "bedrock_deepseek" "iam" "deepseek.v3-v1:0" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
+  run_suite "bedrock_anthropic_iam_role" "smoketest" "bedrock_anthropic" "iam_role" "anthropic.claude-sonnet-4-6" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
+  run_suite "bedrock_deepseek_iam_role" "smoketest" "bedrock_deepseek" "iam_role" "deepseek.v3-v1:0" "$OLS_IMAGE" "default"
+  (( rc = rc || $? ))
+
   # TODO: Reduce execution time. Sequential execution will take more time. Parallel execution will have cluster claim issue.
   # Run tool calling - Enable tool_calling
+  run_suite "bedrock_deepseek_tool_calling" "tool_calling" "bedrock_deepseek" "iam" "deepseek.v3-v1:0" "$OLS_IMAGE" "tool_calling"
+  (( rc = rc || $? ))
   run_suite "azure_openai_tool_calling" "tool_calling" "azure_openai" "$AZUREOPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
   (( rc = rc || $? ))
   run_suite "openai_tool_calling" "tool_calling" "openai" "$OPENAI_PROVIDER_KEY_PATH" "gpt-4.1-mini" "$OLS_IMAGE" "tool_calling"
