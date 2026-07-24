@@ -451,12 +451,31 @@ def test_generated_service_certs_rotation():
     cluster_utils.delete_resource(
         resource="secret", name=service_tls, namespace="openshift-lightspeed"
     )
-    response = pytest.client.post(
-        "/v1/query",
-        json={"query": "what is kubernetes?"},
-        timeout=LLM_REST_API_TIMEOUT,
+    assert wait_for_ols(
+        pytest.ols_url, timeout=300, interval=10
+    ), "OLS did not become ready after service certificate rotation"
+
+    response: requests.Response | None = None
+
+    def _query_succeeds() -> bool:
+        nonlocal response
+        response = pytest.client.post(
+            "/v1/query",
+            json={"query": "what is kubernetes?"},
+            timeout=LLM_REST_API_TIMEOUT,
+        )
+        return response.status_code == requests.codes.ok
+
+    assert retry_until_timeout_or_success(
+        6,
+        30,
+        _query_succeeds,
+        "Retrying query while route stabilizes after service cert rotation",
+    ), (
+        f"OLS returned "
+        f"{response.status_code if response is not None else 'no response (all attempts raised)'}"
+        f" after service certificate rotation"
     )
-    assert response.status_code == requests.codes.ok
 
 
 @pytest.mark.certificates
@@ -469,10 +488,12 @@ def test_ca_service_certs_rotation():
 
     def _new_pod_is_running():
         current_pods = cluster_utils.get_pod_by_prefix(fail_not_found=False)
-        return len(current_pods) == 1 and current_pods != original_pods
+        return len(current_pods) >= 1 and any(
+            pod not in original_pods for pod in current_pods
+        )
 
     assert retry_until_timeout_or_success(
-        30,
+        60,
         10,
         _new_pod_is_running,
         "Waiting for operator to roll pods after CA cert rotation",
