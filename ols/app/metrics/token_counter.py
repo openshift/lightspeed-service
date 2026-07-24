@@ -7,6 +7,7 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.language_models.llms import LLM
 
 from ols.app.metrics.metrics import (
+    gen_ai_client_token_usage,
     llm_calls_total,
     llm_reasoning_token_total,
     llm_token_received_total,
@@ -114,6 +115,7 @@ class TokenMetricUpdater:
     - llm_token_received_total
     - llm_reasoning_token_total
     - llm_calls_total
+    - gen_ai_client_token_usage
 
     Example usage:
         ```python
@@ -162,3 +164,18 @@ class TokenMetricUpdater:
         llm_reasoning_token_total.labels(provider=self.provider, model=self.model).inc(
             self.token_counter.token_counter.reasoning_tokens
         )
+        input_tokens = self.token_counter.token_counter.input_tokens
+        output_tokens = self.token_counter.token_counter.output_tokens
+        labels = {
+            "gen_ai_operation_name": "chat",
+            "gen_ai_request_model": self.model,
+            "gen_ai_provider_name": self.provider,
+        }
+        if input_tokens:
+            gen_ai_client_token_usage.labels(
+                gen_ai_token_type="input", **labels  # noqa: S106
+            ).observe(input_tokens)
+        if output_tokens:
+            gen_ai_client_token_usage.labels(
+                gen_ai_token_type="output", **labels  # noqa: S106
+            ).observe(output_tokens)

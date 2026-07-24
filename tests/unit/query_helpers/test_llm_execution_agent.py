@@ -723,3 +723,42 @@ async def test_execute_emits_end_chunk_with_rag_and_truncated():
     assert chunks[1].data["rag_chunks"] is rag_chunks
     assert chunks[1].data["truncated"] is True
     assert "token_counter" in chunks[1].data
+
+
+@pytest.mark.asyncio
+async def test_invoke_llm_observes_duration_histogram():
+    """LLM invocation records gen_ai_client_operation_duration_seconds histogram."""
+    from langchain_core.prompts import ChatPromptTemplate
+
+    from ols.app.metrics.metrics import gen_ai_client_operation_duration_seconds
+    from ols.app.metrics.token_counter import GenericTokenCounter
+
+    agent = _make_agent()
+    token_counter = GenericTokenCounter(agent.bare_llm)
+
+    labeled = gen_ai_client_operation_duration_seconds.labels(
+        gen_ai_request_model="mock_model",
+        gen_ai_provider_name="mock_type",
+        gen_ai_operation_name="chat",
+    )
+    before = [s for s in labeled._samples() if s.name.endswith("_count")]
+    count_before = before[0].value if before else 0.0
+
+    messages = ChatPromptTemplate.from_messages(
+        [
+            ("system", "test"),
+            ("human", "{query}"),
+        ]
+    )
+    async for _ in agent._invoke_llm(
+        messages=messages,
+        llm_input_values={"query": "hello"},
+        tools_map=[],
+        is_final_round=False,
+        token_counter=token_counter,
+    ):
+        pass
+
+    after = [s for s in labeled._samples() if s.name.endswith("_count")]
+    count_after = after[0].value if after else 0.0
+    assert count_after - count_before == 1
