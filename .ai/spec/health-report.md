@@ -1,3 +1,5 @@
+> **Superseded.** All issues from this report (2026-05-29) have been resolved. See `verification/spec-verify-2026-07-23.md` for the current verification report.
+
 # Spec health report
 
 Last evaluated: 2026-05-29
