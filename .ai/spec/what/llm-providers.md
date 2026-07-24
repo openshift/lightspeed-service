@@ -126,17 +126,6 @@ The following sections describe only what differs from the standard contract abo
 
 ### AWS Bedrock (`bedrock`)
 
-42. Requires `url` (Mantle gateway URL, e.g., `https://bedrock-mantle.us-east-1.api.aws`). Region is extracted from the URL hostname. Supports two authentication modes: API key via `credentials_path`, or IAM credentials via `aws_access_key_id` and `aws_secret_access_key` files with optional STS assume-role via `role_arn`.
-
-43. Routes to different LangChain classes based on model prefix:
-    - **Anthropic models** (`anthropic.*`): Uses `ChatBedrockConverse` from `langchain-aws`. Model ID is prefixed with the region (e.g., `us.anthropic.claude-sonnet-4-6-20250514-v1:0`).
-    - **OpenAI models** (`openai.*`): Uses `ChatOpenAI` with `use_responses_api=True` pointed at the Mantle gateway's `/openai/v1` path.
-    - **Other models**: Uses `ChatOpenAI` pointed at the Mantle gateway's `/v1` path.
-
-44. [PLANNED: OLS-3442] When `reasoning_config` is present: for Anthropic models, passes as thinking configuration to `ChatBedrockConverse`; for OpenAI models, passes as the `reasoning` dict to `ChatOpenAI`.
-
-### AWS Bedrock (`bedrock`)
-
 42. Uses the Bedrock Mantle gateway — a single endpoint exposing multiple model families (Anthropic Claude, OpenAI GPT, DeepSeek, etc.) via their native APIs. The base URL must be configured explicitly (region-specific, e.g., `https://bedrock-mantle.us-east-1.api.aws`). No default URL; the system must reject a Bedrock provider with no URL at configuration time.
 
 43. Must route to the correct LangChain class and Mantle API path based on model name prefix:
@@ -152,11 +141,11 @@ The following sections describe only what differs from the standard contract abo
 
 ### Fake Provider (`fake_provider`)
 
-39. Returns static preconfigured responses for testing. Supports a streaming mode that splits the response into chunks with a configurable sleep interval, and a non-streaming mode that returns the full response at once.
+47. Returns static preconfigured responses for testing. Supports a streaming mode that splits the response into chunks with a configurable sleep interval, and a non-streaming mode that returns the full response at once.
 
-40. Accepts `bind_tools()` but ignores the tools (returns the same LLM instance unchanged).
+48. Accepts `bind_tools()` but ignores the tools (returns the same LLM instance unchanged).
 
-41. Not intended for production use. Configured via `fake_provider_config` with fields: `stream`, `mcp_tool_call`, `response`, `chunks`, `sleep`.
+49. Not intended for production use. Configured via `fake_provider_config` with fields: `stream`, `mcp_tool_call`, `response`, `chunks`, `sleep`.
 
 ## Configuration Surface
 
@@ -209,7 +198,7 @@ The following sections describe only what differs from the standard contract abo
 
 6. Credentials are never logged. Parameters containing keys, tokens, or HTTP client objects must be redacted from log output.
 
-7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM).
+7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM, Bedrock).
 
 8. Google Vertex providers require `credentials` to contain valid JSON representing a Google service account key. Non-JSON or non-object values must be rejected.
 

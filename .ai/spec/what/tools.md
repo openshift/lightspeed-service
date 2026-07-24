@@ -140,7 +140,7 @@ solely on general knowledge.
 ### Tool Approval Workflow
 
 27. Three approval strategies are supported, selected by
-    `tools_approval.strategy`:
+    `tools_approval.approval_type`:
     - `never` (default): all tool calls execute immediately without approval.
     - `always`: every tool call requires explicit user approval.
     - `tool_annotations`: approval is required by default, but tools that
@@ -206,7 +206,7 @@ solely on general knowledge.
 | `ols_config.tool_filtering.alpha` | float | 0.8 | Dense vs sparse retrieval weight (0.0--1.0) |
 | `ols_config.tool_filtering.top_k` | int | 10 | Number of tools to retrieve (1--50) |
 | `ols_config.tool_filtering.threshold` | float | 0.01 | Minimum similarity score (0.0--1.0) |
-| `tools_approval.strategy` | enum | `never` | Approval strategy: `never`, `always`, or `tool_annotations` |
+| `tools_approval.approval_type` | enum | `never` | Approval strategy: `never`, `always`, or `tool_annotations` |
 | `tools_approval.approval_timeout` | int | 600 | Seconds to wait for user approval decision (>= 1) |
 
 ## Constraints
