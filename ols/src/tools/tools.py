@@ -534,10 +534,27 @@ async def _execute_single_tool_call_stream(
     """
     tool_id, tool_args, tool = tool_call
     tool_name = getattr(tool, "name", "unknown")
-    mcp_server = (getattr(tool, "metadata", None) or {}).get("mcp_server", "")
+    metadata = getattr(tool, "metadata", None) or {}
+    mcp_server = metadata.get("mcp_server", "")
+
+    span_attrs: dict[str, str] = {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": tool_name,
+        "gen_ai.tool.call.id": tool_id,
+        "gen_ai.tool.type": "function",
+    }
+    if mcp_server:
+        span_attrs["mcp.method.name"] = "tools/call"
+        span_attrs["network.transport"] = metadata.get("mcp_transport", "")
+        session_id = metadata.get("mcp_session_id", "")
+        if session_id:
+            span_attrs["mcp.session.id"] = session_id
+        protocol_version = metadata.get("mcp_protocol_version", "")
+        if protocol_version:
+            span_attrs["mcp.protocol.version"] = protocol_version
 
     tool_span = (
-        audit_ctx.span(f"tool.{tool_name}", mcp_server=mcp_server)
+        audit_ctx.span(f"tool.{tool_name}", **span_attrs)
         if audit_ctx
         else nullcontext()
     )

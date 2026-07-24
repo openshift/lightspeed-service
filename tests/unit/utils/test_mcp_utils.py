@@ -509,6 +509,30 @@ class TestGatherMcpTools:
             assert result[0].metadata is not None
             assert result[0].metadata["mcp_server"] == "test-server"
 
+    async def test_gather_mcp_tools_metadata_capture(self) -> None:
+        """Verify MCP metadata capture."""
+        with patch("ols.utils.mcp_utils.MultiServerMCPClient") as mock_client_cls:
+            tool = MagicMock(spec=StructuredTool)
+            tool.name = "test_tool"
+            tool.metadata = {}
+            tool.args_schema = {"type": "object", "properties": {}}
+
+            mock_client = AsyncMock()
+            mock_client.get_tools.return_value = [tool]
+            mock_client_cls.return_value = mock_client
+
+            servers = {
+                "test-server": {"transport": "streamable_http", "url": "http://test"}
+            }
+            result = await gather_mcp_tools(servers)
+
+            assert len(result) == 1
+            assert result[0].metadata["mcp_server"] == "test-server"
+            assert "mcp_session_id" not in result[0].metadata
+            assert "mcp_protocol_version" not in result[0].metadata
+            assert "mcp_transport" in result[0].metadata
+            assert result[0].metadata["mcp_transport"] == "tcp"
+
 
 @pytest.mark.asyncio
 class TestGetMcpTools:

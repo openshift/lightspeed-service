@@ -833,3 +833,65 @@ async def test_execute_tool_calls_stream_divides_budget_per_tool(
             f"Tool received budget {budget}, expected {expected_per_tool} "
             f"(total {total_budget} / 3 tools)"
         )
+
+
+@pytest.mark.asyncio
+async def test_mcp_tool_span_carries_mcp_attributes():
+    """MCP-sourced tool span must carry mcp.* and gen_ai.tool.* attributes."""
+    from unittest.mock import MagicMock
+
+    tool = FakeTool(
+        "mcp_tool",
+        metadata={
+            "mcp_server": "ocp-mcp",
+            "mcp_transport": "tcp",
+        },
+    )
+    tool_calls = [("call_42", {}, tool)]
+
+    mock_audit = MagicMock()
+    mock_span = MagicMock()
+    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
+    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.logger = MagicMock()
+
+    async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
+        pass
+
+    mock_audit.span.assert_called_once()
+    call_kwargs = mock_audit.span.call_args
+    attrs = call_kwargs.kwargs or {}
+    assert call_kwargs.args[0] == "tool.mcp_tool"
+    assert attrs["mcp.method.name"] == "tools/call"
+    assert "mcp.session.id" not in attrs
+    assert "mcp.protocol.version" not in attrs
+    assert attrs["network.transport"] == "tcp"
+    assert attrs["gen_ai.tool.name"] == "mcp_tool"
+    assert attrs["gen_ai.tool.call.id"] == "call_42"
+    assert attrs["gen_ai.tool.type"] == "function"
+    assert attrs["gen_ai.operation.name"] == "execute_tool"
+
+
+@pytest.mark.asyncio
+async def test_non_mcp_tool_span_has_no_mcp_attributes():
+    """Non-MCP tool span must carry only gen_ai.tool.* attributes, no mcp.*."""
+    from unittest.mock import MagicMock
+
+    tool = FakeTool("builtin_tool", metadata={"mcp_server": ""})
+    tool_calls = [("call_99", {}, tool)]
+
+    mock_audit = MagicMock()
+    mock_span = MagicMock()
+    mock_audit.span.return_value.__enter__ = MagicMock(return_value=mock_span)
+    mock_audit.span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_audit.logger = MagicMock()
+
+    async for _ in execute_tool_calls_stream(tool_calls, 100_000, audit_ctx=mock_audit):
+        pass
+
+    call_kwargs = mock_audit.span.call_args
+    attrs = call_kwargs.kwargs or {}
+    assert "mcp.method.name" not in attrs
+    assert "mcp.session.id" not in attrs
+    assert attrs["gen_ai.tool.name"] == "builtin_tool"
+    assert attrs["gen_ai.tool.call.id"] == "call_99"
