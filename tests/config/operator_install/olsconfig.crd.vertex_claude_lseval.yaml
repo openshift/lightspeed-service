@@ -1,0 +1,28 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: llmcreds
+        models:
+          - name: claude-opus-4-6
+        name: google_vertex_anthropic
+        type: google_vertex_anthropic
+        googleVertexAnthropicConfig:
+          projectID: "openshift-lightspeed-tests"
+          location: "global"
+        url: https://aiplatform.googleapis.com/
+  ols:
+    defaultModel: claude-opus-4-6
+    defaultProvider: google_vertex_anthropic
+    deployment:
+      replicas: 1
+    disableAuth: false
+    introspectionEnabled: false
+    logLevel: DEBUG
+    userDataCollection:
+      feedbackDisabled: true
+      transcriptsDisabled: true

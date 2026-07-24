@@ -100,6 +100,12 @@ test-lseval-periodic: ## Run LSEval periodic evaluation (full 797-question datas
 	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation/test_lseval_periodic.py -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
 	--eval_out_dir ${ARTIFACT_DIR} -m lseval --lseval_provider ${PROVIDER}
 
+test-lseval-presubmit: ## Run LSEval presubmit evaluation (10-question short dataset) - requires running OLS server
+	@echo "Running LSEval presubmit evaluation..."
+	@echo "Reports will be written to ${ARTIFACT_DIR}"
+	uv run --extra lseval --extra evaluation pytest tests/e2e/evaluation/test_lseval_presubmit.py -vv -s --durations=0 -o junit_suite_name="${SUITE_ID}" --junit-prefix="${SUITE_ID}" --junit-xml="${ARTIFACT_DIR}/junit_e2e_${SUITE_ID}.xml" \
+	--eval_out_dir ${ARTIFACT_DIR} -m lseval --lseval_provider ${PROVIDER}
+
 # DISABLED: re-enable by uncommenting the recipe body below.
 # test-lseval-troubleshooting: ## Run LSEval troubleshooting evaluation (scenario + MCP suites) - requires running OLS server with OpenAI keys
 # 	@echo "Running LSEval troubleshooting evaluation..."
