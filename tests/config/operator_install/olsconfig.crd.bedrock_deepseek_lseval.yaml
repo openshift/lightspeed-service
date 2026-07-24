@@ -8,12 +8,12 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: deepseek-r1
+          - name: us.deepseek.r1-v1:0
         name: bedrock
         type: bedrock
         url: "https://bedrock-mantle.us-east-1.api.aws"
   ols:
-    defaultModel: deepseek-r1
+    defaultModel: us.deepseek.r1-v1:0
     defaultProvider: bedrock
     deployment:
       replicas: 1

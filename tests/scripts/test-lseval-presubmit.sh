@@ -66,7 +66,7 @@ function run_suites() {
 
   # Bedrock DeepSeek
   SUITE_ID="lseval_presubmit_bedrock_deepseek" run_suite \
-    "lseval_presubmit_bedrock_deepseek" "lseval" "bedrock_deepseek" "iam" "deepseek-r1" "$OLS_IMAGE" "lseval"
+    "lseval_presubmit_bedrock_deepseek" "lseval" "bedrock_deepseek" "iam" "us.deepseek.r1-v1:0" "$OLS_IMAGE" "lseval"
   (( rc = rc || $? ))
 
   set -e

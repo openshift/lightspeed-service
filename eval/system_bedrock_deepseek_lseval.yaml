@@ -1,5 +1,5 @@
 # LightSpeed Evaluation Framework Configuration
-# OLS Provider: Bedrock DeepSeek deepseek-r1 (model being evaluated)
+# OLS Provider: Bedrock DeepSeek us.deepseek.r1-v1:0 (model being evaluated)
 # Judge LLM: OpenAI GPT-5-mini (scoring responses)
 
 # Core Evaluation Configuration
@@ -21,7 +21,7 @@ llm:
   num_retries: 3
 
 # OLS API Configuration
-# Targets the OLS /query endpoint using Bedrock DeepSeek deepseek-r1 as the backend LLM.
+# Targets the OLS /query endpoint using Bedrock DeepSeek us.deepseek.r1-v1:0 as the backend LLM.
 # api_base is overridden at runtime with the actual OLS service URL.
 # Requires OLS to be configured with a bedrock provider (IAM credentials in olsconfig).
 # Override the model via LSEVAL_OLS_MODEL env var if your Bedrock deployment uses a different model.
@@ -31,7 +31,7 @@ api:
   endpoint_type: query
   timeout: 300
   provider: "bedrock"
-  model: "deepseek-r1"
+  model: "us.deepseek.r1-v1:0"
   no_tools: null
   system_prompt: null
 
