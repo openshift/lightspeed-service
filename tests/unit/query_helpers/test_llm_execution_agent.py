@@ -723,3 +723,34 @@ async def test_execute_emits_end_chunk_with_rag_and_truncated():
     assert chunks[1].data["rag_chunks"] is rag_chunks
     assert chunks[1].data["truncated"] is True
     assert "token_counter" in chunks[1].data
+
+
+@pytest.mark.asyncio
+async def test_collect_round_llm_chunks_generic_exception():
+    """Test _collect_round_llm_chunks catches generic exceptions and yields error chunk."""
+    agent = _make_agent()
+
+    async def _raise_invoke(*args, **kwargs):
+        raise ConnectionError("provider unavailable")
+        if False:
+            yield  # pragma: no cover  # make it an async generator
+
+    with patch.object(agent, "_invoke_llm", side_effect=_raise_invoke):
+        result = RoundLLMResult()
+        streamed = [
+            chunk
+            async for chunk in agent._collect_round_llm_chunks(
+                messages=[],
+                llm_input_values={},
+                all_mcp_tools=mock_tools_map,
+                is_final_round=False,
+                token_counter=AsyncMock(),
+                round_index=1,
+                result=result,
+            )
+        ]
+
+    assert result.should_stop is True
+    assert len(streamed) == 1
+    assert streamed[0].type == StreamChunkType.TEXT
+    assert "error occurred" in streamed[0].text

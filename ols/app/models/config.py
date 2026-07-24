@@ -21,6 +21,8 @@ from pydantic import (
 from ols import constants
 from ols.utils import checks, tls
 
+logger = logging.getLogger(__name__)
+
 
 class ReasoningLevel(StrEnum):
     """Allowed levels for reasoning effort and verbosity."""
@@ -983,7 +985,7 @@ class ReferenceContentIndex(BaseModel):
     user-supplied BYOK indexes.
     """
 
-    product_docs_index_path: Optional[FilePath] = None
+    product_docs_index_path: Optional[str] = None
     product_docs_index_id: Optional[str] = None
     product_docs_origin: Optional[str] = None
 
@@ -999,9 +1001,33 @@ class ReferenceContentIndex(BaseModel):
     def validate_yaml(self) -> None:
         """Validate reference content index config."""
         if self.product_docs_index_path is not None:
-            checks.dir_check(
-                self.product_docs_index_path, "Reference content index path"
-            )
+            try:
+                checks.dir_check(
+                    self.product_docs_index_path, "Reference content index path"
+                )
+            except (checks.InvalidConfigurationError, PermissionError):
+                fallback = os.path.join(
+                    os.path.dirname(self.product_docs_index_path), "latest"
+                )
+                try:
+                    checks.dir_check(
+                        fallback, "Reference content index path (fallback)"
+                    )
+                    logger.warning(
+                        "Configured index path '%s' not found, using fallback '%s'",
+                        self.product_docs_index_path,
+                        fallback,
+                    )
+                    self.product_docs_index_path = fallback
+                    self.product_docs_index_id = None
+                except (checks.InvalidConfigurationError, PermissionError):
+                    logger.warning(
+                        "Reference content index path '%s' is not accessible, "
+                        "skipping this index",
+                        self.product_docs_index_path,
+                    )
+                    self.product_docs_index_path = None
+                    self.product_docs_index_id = None
         elif self.product_docs_index_id is not None:
             raise checks.InvalidConfigurationError(
                 "product_docs_index_id is specified but product_docs_index_path is missing"
@@ -1033,6 +1059,13 @@ class ReferenceContent(BaseModel):
         if self.indexes is not None:
             for index in self.indexes:
                 index.validate_yaml()
+            self.indexes = [
+                idx for idx in self.indexes if idx.product_docs_index_path is not None
+            ] or None
+
+    def has_usable_content(self) -> bool:
+        """Return True when at least one usable index is configured."""
+        return self.indexes is not None and len(self.indexes) > 0
 
 
 class SolrHybridSettings(BaseModel):
@@ -1376,12 +1409,22 @@ class OLSConfig(BaseModel):
         if self.quota_handlers and self.quota_handlers.storage:
             self.quota_handlers.storage.tls_security_profile = self.tls_security_profile
 
+    def _validate_reference_content(self) -> None:
+        """Validate and possibly disable reference content."""
+        if self.reference_content is not None:
+            self.reference_content.validate_yaml()
+            if not self.reference_content.has_usable_content():
+                logger.warning(
+                    "No usable reference content indexes remain, "
+                    "disabling reference content."
+                )
+                self.reference_content = None
+
     def validate_yaml(self, disable_tls: bool = False) -> None:
         """Validate OLS config."""
         if self.conversation_cache is not None:
             self.conversation_cache.validate_yaml()
-        if self.reference_content is not None:
-            self.reference_content.validate_yaml()
+        self._validate_reference_content()
         if self.tls_config:
             self.tls_config.validate_yaml(disable_tls)
         if self.query_filters is not None:

@@ -692,6 +692,17 @@ class LLMExecutionAgent:
                 ),
             )
             result.should_stop = True
+        except Exception as exc:
+            logger.error(
+                "LLM chunk collection failed in round %s: %s",
+                round_index,
+                exc,
+            )
+            yield StreamedChunk(
+                type=StreamChunkType.TEXT,
+                text="An error occurred while generating the response. Please try again.",
+            )
+            result.should_stop = True
 
     @staticmethod
     def _enrich_with_tool_metadata(

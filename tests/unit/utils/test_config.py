@@ -435,8 +435,8 @@ ols_config:
 
 def test_invalid_config_improper_reference_content():
     """Test invalid config with improper reference content."""
-    check_expected_exception(
-        """
+    # invalid_dir case: should load successfully with reference_content set to None
+    loaded = config._load_config_from_yaml_stream(io.StringIO("""
 ---
 llm_providers:
   - name: p1
@@ -446,6 +446,8 @@ llm_providers:
       - name: m1
         credentials_path: tests/config/secret/apitoken
 ols_config:
+  default_provider: p1
+  default_model: m1
   reference_content:
     indexes:
     - product_docs_index_path: "./invalid_dir"
@@ -457,13 +459,13 @@ ols_config:
 dev_config:
   enable_dev_ui: true
   disable_auth: false
+  disable_tls: true
   pyroscope_url: https://pyroscope.pyroscope.svc.cluster.local:4040
 
-""",
-        InvalidConfigurationError,
-        "Reference content index path './invalid_dir' does not exist",
-    )
+"""))
+    assert loaded.ols_config.reference_content is None
 
+    # product_docs_index_id without path — should still raise
     check_expected_exception(
         """
 ---
@@ -491,8 +493,8 @@ dev_config:
         "product_docs_index_id is specified but product_docs_index_path is missing",
     )
 
-    check_expected_exception(
-        """
+    # file-not-dir case: should load successfully with reference_content set to None
+    loaded = config._load_config_from_yaml_stream(io.StringIO("""
 ---
 llm_providers:
   - name: p1
@@ -502,6 +504,8 @@ llm_providers:
       - name: m1
         credentials_path: tests/config/secret/apitoken
 ols_config:
+  default_provider: p1
+  default_model: m1
   reference_content:
     indexes:
     - product_docs_index_path: "tests/config/secret/apitoken"
@@ -512,11 +516,10 @@ ols_config:
 dev_config:
   enable_dev_ui: true
   disable_auth: false
+  disable_tls: true
 
-""",
-        InvalidConfigurationError,
-        "Reference content index path 'tests/config/secret/apitoken' is not a directory",
-    )
+"""))
+    assert loaded.ols_config.reference_content is None
 
 
 def test_valid_config_stream():

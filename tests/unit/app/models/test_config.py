@@ -4,6 +4,7 @@ import copy
 import errno
 import logging
 import os
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -3199,25 +3200,31 @@ def test_reference_content_index_yaml_validation():
     with pytest.raises(InvalidConfigurationError):
         reference_content_index.validate_yaml()
 
-    # non-existing docs index path
+    # non-existing docs index path — should warn and nullify
     reference_content_index.product_docs_index_path = "foo"
-    with pytest.raises(InvalidConfigurationError):
-        reference_content_index.validate_yaml()
+    reference_content_index.product_docs_index_id = "bar"
+    reference_content_index.validate_yaml()
+    assert reference_content_index.product_docs_index_path is None
+    assert reference_content_index.product_docs_index_id is None
 
     # docs index does not point to a proper directory
-    # but to special file
+    # but to special file — should warn and nullify
     reference_content_index.product_docs_index_path = "/dev/null"
-    with pytest.raises(InvalidConfigurationError):
-        reference_content_index.validate_yaml()
+    reference_content_index.product_docs_index_id = "bar"
+    reference_content_index.validate_yaml()
+    assert reference_content_index.product_docs_index_path is None
+    assert reference_content_index.product_docs_index_id is None
 
     # docs index point to a proper directory, that is not
-    # readable by the service
+    # readable by the service — should warn and nullify
     with mock.patch(
         "os.stat", side_effect=PermissionError(errno.EACCES, "Permission denied")
     ):
         reference_content_index.product_docs_index_path = "/root"
-        with pytest.raises(InvalidConfigurationError):
-            reference_content_index.validate_yaml()
+        reference_content_index.product_docs_index_id = "bar"
+        reference_content_index.validate_yaml()
+    assert reference_content_index.product_docs_index_path is None
+    assert reference_content_index.product_docs_index_id is None
 
 
 def test_reference_content_constructor():
@@ -3272,30 +3279,69 @@ def test_reference_content_yaml_validation():
     ]
     reference_content.validate_yaml()
 
-    # invalid indexes
+    # invalid indexes — should warn and filter out
     reference_content.indexes = [
         ReferenceContentIndex(
             {"product_docs_index_id": "foo", "product_docs_index_path": "/dev/null"}
         )
     ]
-    with pytest.raises(InvalidConfigurationError):
-        reference_content.validate_yaml()
+    reference_content.validate_yaml()
+    assert reference_content.indexes is None
 
 
-def test_reference_content_yaml_validation_nonexistent_dir(tmp_path):
-    """Test that validation raises for a non-existent index directory."""
+def test_validate_yaml_nonexistent_dir(tmp_path: Path) -> None:
+    """Test that validation skips non-existent index directories."""
     inexistent_dir = tmp_path / "non_existing_dir"
     reference_content = ReferenceContent()
     reference_content.indexes = [
         ReferenceContentIndex(
-            {"product_docs_index_id": "foo", "product_docs_index_path": inexistent_dir}
+            {
+                "product_docs_index_id": "foo",
+                "product_docs_index_path": str(inexistent_dir),
+            }
         )
     ]
-    with pytest.raises(
-        InvalidConfigurationError,
-        match=r"Reference content index path '.+' does not exist",
-    ):
-        reference_content.validate_yaml()
+    reference_content.validate_yaml()
+    assert reference_content.indexes is None
+
+
+def test_validate_yaml_skips_missing_paths(tmp_path: Path) -> None:
+    """Test that validation keeps valid indexes and skips missing ones."""
+    valid_dir = tmp_path / "valid_index"
+    valid_dir.mkdir()
+
+    reference_content = ReferenceContent()
+    reference_content.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "good", "product_docs_index_path": str(valid_dir)}
+        ),
+        ReferenceContentIndex(
+            {
+                "product_docs_index_id": "bad",
+                "product_docs_index_path": "/nonexistent/path",
+            }
+        ),
+    ]
+    reference_content.validate_yaml()
+    assert reference_content.indexes is not None
+    assert len(reference_content.indexes) == 1
+    assert reference_content.indexes[0].product_docs_index_path == str(valid_dir)
+
+
+def test_has_usable_content_states() -> None:
+    """Test has_usable_content method."""
+    reference_content = ReferenceContent()
+    assert reference_content.has_usable_content() is False
+
+    reference_content.indexes = []
+    assert reference_content.has_usable_content() is False
+
+    reference_content.indexes = [
+        ReferenceContentIndex(
+            {"product_docs_index_id": "foo", "product_docs_index_path": "."}
+        )
+    ]
+    assert reference_content.has_usable_content() is True
 
 
 def test_config_no_query_filter_node():
