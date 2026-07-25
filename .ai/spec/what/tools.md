@@ -197,7 +197,7 @@ solely on general knowledge.
 | `mcp_servers.servers[]` | list | [] | MCP server definitions |
 | `mcp_servers.servers[].name` | string | required | Unique server identifier |
 | `mcp_servers.servers[].url` | string | required | Server HTTP endpoint |
-| `mcp_servers.servers[].timeout` | int | 5 | Per-server request timeout in seconds |
+| `mcp_servers.servers[].timeout` | int | 30 | Per-server request timeout in seconds (matches `mcp-apps.md` Rule 21) |
 | `mcp_servers.servers[].headers` | map | {} | Authorization headers (values are file paths, `"kubernetes"`, or `"client"`) |
 | `model.parameters.tool_budget_ratio` | float | 0.25 | Fraction of context window reserved for tool traffic (0.10--0.60) |
 | `ols_config.tool_round_cap_fraction` | float | 0.6 | Fraction of remaining tool budget usable per round (0.3--0.8) |

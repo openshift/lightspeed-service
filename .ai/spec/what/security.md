@@ -96,9 +96,9 @@ The service must protect customer data, enforce transport-layer encryption, reda
 | `ols_config.query_filters[].name` | Human-readable name for a redaction filter |
 | `ols_config.query_filters[].pattern` | Regex pattern to match sensitive data |
 | `ols_config.query_filters[].replace_with` | Replacement string for matched data |
-| `llm_providers[].proxy_config.proxy_url` | HTTPS proxy URL for provider connections (falls back to `https_proxy`/`HTTPS_PROXY` env var) |
-| `llm_providers[].proxy_config.proxy_ca_cert_path` | CA certificate for the HTTPS proxy |
-| `llm_providers[].proxy_config.no_proxy_hosts` | List of hosts to bypass the proxy (falls back to `no_proxy` env var) |
+| `ols_config.proxy_config.proxy_url` | HTTPS proxy URL for provider connections (falls back to `https_proxy`/`HTTPS_PROXY` env var) |
+| `ols_config.proxy_config.proxy_ca_cert_path` | CA certificate for the HTTPS proxy |
+| `ols_config.proxy_config.no_proxy_hosts` | List of hosts to bypass the proxy (falls back to `no_proxy` env var) |
 | `llm_providers[].credentials_path` | Path to directory or file containing provider credentials |
 | `mcp_servers.servers[].headers` | Map of header names to file paths, `kubernetes`, or `client` |
 | `ols_config.tools_approval.approval_type` | Approval strategy: `never`, `always`, or `tool_annotations` |

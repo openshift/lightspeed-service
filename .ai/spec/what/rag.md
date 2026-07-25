@@ -57,9 +57,9 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 ## Behavioral Rules — Tool & Skill Filtering (Hybrid RAG)
 
-15. The hybrid retrieval system combines dense retrieval (cosine similarity via an in-memory Qdrant vector store) with sparse retrieval (BM25 keyword matching). Scores are fused using a weighted linear combination controlled by a configurable alpha parameter: alpha = 1.0 means pure dense retrieval, alpha = 0.0 means pure sparse retrieval. Results below a configurable similarity threshold must be discarded.
+14. The hybrid retrieval system combines dense retrieval (cosine similarity via an in-memory Qdrant vector store) with sparse retrieval (BM25 keyword matching). Scores are fused using a weighted linear combination controlled by a configurable alpha parameter: alpha = 1.0 means pure dense retrieval, alpha = 0.0 means pure sparse retrieval. Results below a configurable similarity threshold must be discarded.
 
-16. The tools hybrid RAG instance must only be created when tool filtering configuration is present and MCP servers are configured. The skills hybrid RAG instance must only be created when skills configuration is present and a skills directory containing valid skill definitions exists.
+15. The tools hybrid RAG instance must only be created when tool filtering configuration is present and MCP servers are configured. The skills hybrid RAG instance must only be created when skills configuration is present and a skills directory containing valid skill definitions exists.
 
 ## Configuration Surface
 

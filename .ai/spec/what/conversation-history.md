@@ -89,9 +89,12 @@ The conversation history subsystem preserves prior exchanges within a conversati
 
 7. When compression is disabled, history that exceeds the token budget is truncated by the token handler (newest messages kept, oldest dropped) with no summarization attempt.
 
+## Recently Completed
+
+- [DONE: OLS-3221] PostgreSQL resilience — auto-reconnection, background health-check loop, dual-feed health status, operation timeouts, and health-status-backed readiness/liveness probes. See Rules 20–24.
+
 ## Planned Changes
 
-- [PLANNED: OLS-3221] PostgreSQL resilience — auto-reconnection, background health-check loop, dual-feed health status, operation timeouts, and health-status-backed readiness/liveness probes. See Rules 20–24.
 - [PLANNED: OLS-2713] Persistent chat -- UI-side conversation persistence, enabling users to resume conversations across browser sessions.
 - [PLANNED: OLS-141] Encrypting conversation state cache data, on disk and in memory.
 - [PLANNED: OLS-251] Scale Postgres Conversation Cache Backend for high-availability and multi-instance production deployments.
