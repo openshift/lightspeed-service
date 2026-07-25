@@ -29,6 +29,7 @@ These specs define the requirements, behaviors, and architecture for the OLS lig
 | [observability.md](what/observability.md) | Prometheus metrics (exact names), transcripts, feedback, logging, profiling |
 | [prompts.md](what/prompts.md) | System prompts (full text), agent instructions, composition order, placeholders |
 | [mcp-apps.md](what/mcp-apps.md) | MCP apps UI integration: resource discovery, direct tool calls, client auth headers |
+| [audit-logging.md](what/audit-logging.md) | OTel-based audit logging: span hierarchy, GenAI attributes, content capture policy |
 
 ### how/ -- Architecture Specifications
 
@@ -85,6 +86,7 @@ When what/ and how/ file names don't match 1:1, this table maps behavioral specs
 | `observability.md` | _(see `how/project-structure.md` metrics section)_ |
 | `prompts.md` | _(see `how/query-pipeline.md` prompt generation)_ |
 | `mcp-apps.md` | _(see `how/tools.md` MCP client section)_ |
+| `audit-logging.md` | _(no dedicated how/ file)_ |
 
 ## Project History
 
