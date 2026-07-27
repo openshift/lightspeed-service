@@ -1,7 +1,7 @@
 # Put targets here if there is a risk that a target name might conflict with a filename.
 # this list is probably overkill right now.
 # See: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
+.PHONY: test test-unit test-e2e test-eval test-lseval-periodic test-lseval-troubleshooting test-cluster-updates images run format verify verify-hermetic-requirements get-embeddings get-embeddings-byok get-embeddings-okp tls-scan
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -134,12 +134,15 @@ format: ## Format the code into unified format
 	uv run black .
 	uv run ruff check . --fix
 
-verify:	install-woke install-deps-test ## Verify the code using various linters
+verify:	install-woke install-deps-test verify-hermetic-requirements ## Verify the code using various linters
 	uv run black . --check
 	uv run ruff check .
 	./woke . --exit-1-on-failure
 	uv run --extra evaluation pylint ols scripts tests runner.py
 	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs ols/
+
+verify-hermetic-requirements:	## Verify hermetic build hash files are in sync with uv.lock
+	bash scripts/verify_hermetic_requirements.sh
 
 schema:	## Generate OpenAPI schema file
 	uv run python scripts/generate_openapi_schema.py docs/openapi.json
