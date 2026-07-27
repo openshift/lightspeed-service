@@ -14,15 +14,15 @@ spec:
       - credentialsSecretRef:
           name: llmcreds
         models:
-          - name: gemini-2.5-flash-lite
+          - name: gemini-3.1-flash-lite
         name: google_vertex
         type: google_vertex
         googleVertexConfig:
           projectID: "openshift-lightspeed-tests"
-          location: "us-central1"
-        url: https://us-central1-aiplatform.googleapis.com/
+          location: "global"
+        url: https://aiplatform.googleapis.com/
   ols:
-    defaultModel: gemini-2.5-flash-lite
+    defaultModel: gemini-3.1-flash-lite
     defaultProvider: google_vertex
     deployment:
       replicas: 1
