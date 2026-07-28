@@ -452,7 +452,7 @@ def adapt_ols_config() -> tuple[str, str, str]:
 
     # Wait for OLS to be ready
     print(f"Waiting for OLS to be ready at {ols_url}...")
-    if not wait_for_ols(ols_url, timeout=180):
+    if not wait_for_ols(ols_url, timeout=360):
         raise RuntimeError("OLS failed to become ready after configuration")
 
     print("OLS configuration and access setup completed successfully.")

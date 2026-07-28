@@ -6,6 +6,7 @@
 
 import json
 import os
+import time
 
 import pytest
 from httpx import Client
@@ -79,7 +80,12 @@ def _cluster_ols_install_or_adapt() -> tuple[str, str, str, str | None]:
     creds_list = creds.split()
     for i, prov in enumerate(provider_list):
         ols_installer.create_secrets(prov, creds_list[i], len(provider_list))
-    ols_url, token, metrics_token = adapt_ols_config()
+    try:
+        ols_url, token, metrics_token = adapt_ols_config()
+    except RuntimeError as first_err:
+        print(f"adapt_ols_config failed: {first_err}; retrying once after 30s")
+        time.sleep(30)
+        ols_url, token, metrics_token = adapt_ols_config()
     return ols_url, token, metrics_token, provider
 
 

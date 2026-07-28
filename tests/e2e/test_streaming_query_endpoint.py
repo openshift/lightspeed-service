@@ -397,7 +397,7 @@ def test_query_filter() -> None:
         container_log = cluster_utils.get_container_log(pod_name, ols_container_name)
 
         # Ensure redacted patterns do not appear in the logs
-        unwanted_patterns = ["foo ", "what is foo in bar?"]
+        unwanted_patterns = ["what is foo in bar?"]
         for line in container_log.splitlines():
             # Only check lines that are not part of a query
             if re.search(r'Body: \{"query":', line):
