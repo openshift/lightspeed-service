@@ -27,9 +27,8 @@ from ols.version import __version__
 def load_index():
     """Load the index."""
     # Resolve Solr hybrid search (OCP version resolution) in the background
-    # so it does not block uvicorn startup.  The readiness endpoint gates on
-    # rag_index which is loaded right after, so the service stays 503 until
-    # both complete.
+    # so it does not block uvicorn startup.  Solr failure is non-fatal: the
+    # pod goes ready once rag_index loads and serves without hybrid search.
     config.solr_hybrid_search  # pylint: disable=W0104, E0606
     config.rag_index  # pylint: disable=W0104, E0606
 
