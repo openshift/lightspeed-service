@@ -451,20 +451,28 @@ def test_generated_service_certs_rotation():
     cluster_utils.delete_resource(
         resource="secret", name=service_tls, namespace="openshift-lightspeed"
     )
+    # Readiness gate only; verify=False fallback is acceptable here because
+    # the retried query below validates the service is functional end-to-end.
     assert wait_for_ols(
         pytest.ols_url, timeout=300, interval=10
     ), "OLS did not become ready after service certificate rotation"
 
     response: requests.Response | None = None
+    last_error: Exception | None = None
 
     def _query_succeeds() -> bool:
-        nonlocal response
-        response = pytest.client.post(
-            "/v1/query",
-            json={"query": "what is kubernetes?"},
-            timeout=LLM_REST_API_TIMEOUT,
-        )
-        return response.status_code == requests.codes.ok
+        nonlocal response, last_error
+        last_error = None
+        try:
+            response = pytest.client.post(
+                "/v1/query",
+                json={"query": "what is kubernetes?"},
+                timeout=LLM_REST_API_TIMEOUT,
+            )
+            return response.status_code == requests.codes.ok
+        except Exception as e:
+            last_error = e
+            raise
 
     assert retry_until_timeout_or_success(
         6,
@@ -472,9 +480,8 @@ def test_generated_service_certs_rotation():
         _query_succeeds,
         "Retrying query while route stabilizes after service cert rotation",
     ), (
-        f"OLS returned "
-        f"{response.status_code if response is not None else 'no response (all attempts raised)'}"
-        f" after service certificate rotation"
+        "OLS query failed after service cert rotation: "
+        f"{last_error or (f'status {response.status_code}' if response else 'unknown')}"
     )
 
 
@@ -500,20 +507,28 @@ def test_ca_service_certs_rotation():
     ), "Timed out waiting for pod rollout after CA certificate rotation"
 
     cluster_utils.wait_for_running_pod()
+    # Readiness gate only; verify=False fallback is acceptable here because
+    # the retried query below validates the service is functional end-to-end.
     assert wait_for_ols(
         pytest.ols_url, timeout=300, interval=10
     ), "OLS did not become ready after CA certificate rotation"
 
     response: requests.Response | None = None
+    last_error: Exception | None = None
 
     def _query_succeeds() -> bool:
-        nonlocal response
-        response = pytest.client.post(
-            "/v1/query",
-            json={"query": "what is kubernetes?"},
-            timeout=LLM_REST_API_TIMEOUT,
-        )
-        return response.status_code == requests.codes.ok
+        nonlocal response, last_error
+        last_error = None
+        try:
+            response = pytest.client.post(
+                "/v1/query",
+                json={"query": "what is kubernetes?"},
+                timeout=LLM_REST_API_TIMEOUT,
+            )
+            return response.status_code == requests.codes.ok
+        except Exception as e:
+            last_error = e
+            raise
 
     assert retry_until_timeout_or_success(
         6,
@@ -521,9 +536,8 @@ def test_ca_service_certs_rotation():
         _query_succeeds,
         "Retrying query while route stabilizes after CA cert rotation",
     ), (
-        f"OLS returned "
-        f"{response.status_code if response is not None else 'no response (all attempts raised)'}"
-        f" after CA certificate rotation"
+        "OLS query failed after CA cert rotation: "
+        f"{last_error or (f'status {response.status_code}' if response else 'unknown')}"
     )
 
 
