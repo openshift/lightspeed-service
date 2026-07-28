@@ -6,7 +6,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 1. OCP product documentation is retrieved via the `search_openshift_documentation` LangChain tool. The LLM decides when to invoke it during the tool-calling loop. This is tool-based retrieval, not direct RAG — passages are not merged into prompt context automatically.
 
-2. The tool connects to an RHOKP sidecar (Solr HTTP on localhost:8080) deployed by the operator alongside the service pod. The sidecar is a self-contained single-image appliance containing Solr and the OCP documentation corpus.
+2. [PLANNED: OLS-3697] The tool connects to the standalone RHOKP Service (Solr HTTPS at `https://lightspeed-rhokp.<ns>.svc:8443`) deployed by the operator as a separate Deployment. The service trusts the RHOKP service-ca cert via `extra_ca`. The RHOKP Deployment is a self-contained single-image appliance containing Solr and the OCP documentation corpus.
 
 3. Query normalization: before search, the query is normalized — stop words removed, IP/CIDR addresses and NIC names stripped, hyphenated terms quoted for stable Solr matching.
 
@@ -23,6 +23,8 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 9. Tool calling is enabled when Solr hybrid is configured, even without MCP servers. This ensures OKP retrieval works in non-agentic deployments.
 
 10. [OLS-1894] When the `OLS_ROSA_PRODUCT` environment variable is set (by the operator on ROSA clusters), the Solr `chunk_filter_query` includes the ROSA product alongside `openshift_container_platform`. The filter becomes a compound OR: `(product:openshift_container_platform AND product_version:<ocp_resolved>) OR (product:<rosa_product> AND product_version:<rosa_resolved>)`. ROSA product version resolution uses the same facet-query + clamp-to-nearest mechanism as OCP: extract the major version from `OCP_CLUSTER_VERSION`, query Solr for available versions of the ROSA product, and clamp to nearest. When `OLS_ROSA_PRODUCT` is absent, the filter is OCP-only (no change from current behavior). If the ROSA product is not found in Solr, the service logs a warning and falls back to OCP-only filtering.
+
+11. [PLANNED: OLS-3432] The `search_openshift_documentation` tool must support dynamic product filtering via an optional `additional_products` argument. At startup, available OpenShift-related products are discovered from Solr (facet query on `product:*openshift*`), excluding `openshift_container_platform` and ROSA products (`red_hat_openshift_service_on_aws`, `red_hat_openshift_service_on_aws_classic_architecture`). The discovered product names are listed in the tool description so the LLM can select relevant products per query. When `additional_products` is provided, the Solr `fq` becomes a compound OR: OCP (version-pinned) + each additional product (no version filter — layered products use independent versioning). Invalid product names are rejected. When `additional_products` is absent or empty, the filter is the static baseline (OCP-only, or OCP+ROSA on ROSA clusters). ROSA products are never in the dynamic list — they are handled by the static filter from OLS-1894.
 
 ## Behavioral Rules — BYOK Retrieval (Customer Content)
 
@@ -65,7 +67,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 ### OKP (Solr Hybrid)
 
-- `ols_config.solr_hybrid.solr_http_base` — Solr HTTP base URL (default `http://localhost:8080`, operator-generated).
+- `ols_config.solr_hybrid.solr_http_base` — Solr base URL (default `http://localhost:8080`; [PLANNED: OLS-3697] operator-generated as `https://lightspeed-rhokp.<ns>.svc:8443`).
 - `ols_config.solr_hybrid.max_results` — Max passages returned after parent dedup (default `RAG_CONTENT_LIMIT`).
 - `ols_config.solr_hybrid.chunk_filter_query` — Optional Solr `fq` for product/content filtering.
 - `ols_config.solr_hybrid.hybrid_vector_boost` — Vector weight in reranker (default 8.0).
@@ -108,7 +110,7 @@ The RAG subsystem augments LLM responses with relevant documentation so that ans
 
 6. Referenced document deduplication is by URL only. If two chunks from different indexes share the same URL but different titles, the first-seen title wins.
 
-7. OKP configuration (`solr_hybrid`) is operator-generated and not user-facing. It is always present when the RHOKP sidecar is deployed.
+7. OKP configuration (`solr_hybrid`) is operator-generated and not user-facing. It is always present when the RHOKP standalone operand is deployed.
 
 8. When RAG libraries are lazily loaded, the `index_loader` module is excluded from static type checking (mypy) because its types are only available after the deferred import executes.
 
@@ -127,5 +129,6 @@ Customers can supply their own documentation as additional RAG indexes, so that 
 - [PLANNED: OLS-1872] BYOK — internal web source integration (Git, Confluence).
 - [PLANNED: OLS-1812] Add embedding model path to CRD for each index, enabling per-index embedding model configuration through the operator.
 - [PENDING] OKP server-side embedding — if OKP team confirms, the granite model can be removed from the service image.
-- [PLANNED] Multi-product OKP filtering — product-scoped retrieval for OpenStack and other layered products.
+- [PLANNED: OLS-3697] RHOKP standalone HTTPS cutover — `solr_http_base` changes to HTTPS cluster DNS URL. No service code changes needed; HTTPS trust provided by operator-mounted `extra_ca`.
+- [PLANNED: OLS-3432] Dynamic product filtering — LLM-driven selection of additional OpenShift-related products (Pipelines, GitOps, Service Mesh, etc.) via tool argument. Depends on OLS-3310.
 - [PLANNED] Multi-version OKP support — query specific OCP version documentation.
