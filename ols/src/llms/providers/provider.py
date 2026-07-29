@@ -236,6 +236,30 @@ generic_to_llm_parameters: dict[str, dict[str, str]] = {
 }
 
 
+def _no_proxy_mount_key(host: str) -> str:
+    """Return the httpx mount-dict key for a no-proxy host entry.
+
+    Bare IPv6 addresses (e.g. ``::1``) are ambiguous in URL context: without
+    brackets the last colon-delimited segment is misread as a port number,
+    causing httpx to raise ``Invalid port: ':1'``.  IPv6 addresses are also
+    not domain names and have no subdomains, so they use an exact-match pattern
+    (no wildcard ``*`` prefix) with brackets as required by RFC 3986 §3.2.2.
+    All other entries (hostnames, IPv4 addresses, CIDR ranges) keep the
+    existing ``all://*<host>`` wildcard pattern.
+
+    Args:
+        host: A hostname, IP address, or CIDR range from the no-proxy list.
+
+    Returns:
+        An httpx-compatible URL pattern string for the mounts dict.
+    """
+    if host.count(":") >= 2:
+        # IPv6 address — bracket if bare, use exact-match (no wildcard)
+        bracketed = host if host.startswith("[") else f"[{host}]"
+        return f"all://{bracketed}"
+    return f"all://*{host}"
+
+
 class AbstractLLMProvider(abc.ABC):
     """Abstract class defining `LLMProvider` interface."""
 
@@ -410,7 +434,7 @@ class LLMProvider(AbstractLLMProvider):
                 config.ols_config.proxy_config.no_proxy_hosts,
             )
             mounts = {
-                f"all://*{host}": None
+                _no_proxy_mount_key(host): None
                 for host in config.ols_config.proxy_config.no_proxy_hosts
             }
 
