@@ -83,7 +83,7 @@ class LLMRequest(BaseModel):
         ```
     """
 
-    query: str
+    query: str = Field(max_length=32_000)
     conversation_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
