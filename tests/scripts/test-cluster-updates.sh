@@ -32,6 +32,11 @@ chmod +x operator-sdk_${OS}_${ARCH} && mv operator-sdk_${OS}_${ARCH} $HOME/.loca
 export PATH=$HOME/.local/bin:$PATH
 operator-sdk version
 
+# Grant cluster-reader and monitoring-edit RBAC so the MCP sidecar can
+# fetch ClusterVersion, ClusterOperators, Nodes, alerts, etc.
+oc create namespace openshift-lightspeed --dry-run=client -o yaml | oc apply -f -
+oc apply -f eval/rbac-cluster-updates.yaml
+
 # Export OpenAI key so the judge LLM can authenticate
 if [ ! -f "$OPENAI_PROVIDER_KEY_PATH" ]; then
     echo "ERROR: OPENAI_PROVIDER_KEY_PATH file not found: $OPENAI_PROVIDER_KEY_PATH" >&2
