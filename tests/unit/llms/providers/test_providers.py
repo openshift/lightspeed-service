@@ -170,43 +170,48 @@ def test_construct_httpx_client():
 # --- Tests for _no_proxy_mount_key ---
 
 
-def test_no_proxy_mount_key_bare_ipv6_loopback():
-    """Bare IPv6 loopback is bracketed and uses exact-match (no wildcard)."""
+def test_no_proxy_mount_key_bare_ipv6_loopback() -> None:
+    """Verify that a bare IPv6 loopback is bracketed and uses exact-match."""
     assert _no_proxy_mount_key("::1") == "all://[::1]"
 
 
-def test_no_proxy_mount_key_bare_ipv6_full():
-    """A full bare IPv6 address is bracketed and uses exact-match."""
+def test_no_proxy_mount_key_bare_ipv6_full() -> None:
+    """Verify that a full bare IPv6 address is bracketed and uses exact-match."""
     assert _no_proxy_mount_key("2001:db8::1") == "all://[2001:db8::1]"
 
 
-def test_no_proxy_mount_key_already_bracketed_ipv6():
-    """An already-bracketed IPv6 address is not double-bracketed."""
+def test_no_proxy_mount_key_already_bracketed_ipv6() -> None:
+    """Verify that an already-bracketed IPv6 address is not double-bracketed."""
     assert _no_proxy_mount_key("[::1]") == "all://[::1]"
 
 
-def test_no_proxy_mount_key_hostname():
-    """Plain hostnames use the wildcard suffix pattern."""
+def test_no_proxy_mount_key_hostname() -> None:
+    """Verify that plain hostnames use the wildcard suffix pattern."""
     assert _no_proxy_mount_key("example.com") == "all://*example.com"
 
 
-def test_no_proxy_mount_key_ipv4():
-    """IPv4 addresses use the wildcard suffix pattern."""
+def test_no_proxy_mount_key_ipv4() -> None:
+    """Verify that IPv4 addresses use the wildcard suffix pattern."""
     assert _no_proxy_mount_key("192.168.1.1") == "all://*192.168.1.1"
 
 
-def test_no_proxy_mount_key_cidr():
-    """CIDR ranges use the wildcard suffix pattern."""
+def test_no_proxy_mount_key_cidr() -> None:
+    """Verify that IPv4 CIDR ranges use the wildcard suffix pattern."""
     assert _no_proxy_mount_key("10.0.0.0/8") == "all://*10.0.0.0/8"
 
 
-def test_no_proxy_mount_key_host_with_port():
-    """host:port entries (single colon) are treated as plain hostnames, not IPv6."""
+def test_no_proxy_mount_key_ipv6_cidr() -> None:
+    """Verify that IPv6 CIDR ranges use the wildcard suffix pattern, not bracketed."""
+    assert _no_proxy_mount_key("2001:db8::/32") == "all://*2001:db8::/32"
+
+
+def test_no_proxy_mount_key_host_with_port() -> None:
+    """Verify that host:port entries are treated as plain hostnames, not IPv6."""
     assert _no_proxy_mount_key("internal-api:8443") == "all://*internal-api:8443"
 
 
-def test_construct_httpx_client_with_ipv6_in_no_proxy_hosts():
-    """httpx client construction must not crash when ::1 is in no_proxy_hosts.
+def test_construct_httpx_client_with_ipv6_in_no_proxy_hosts() -> None:
+    """Verify that httpx client construction does not raise when ::1 is in no_proxy_hosts.
 
     Regression test for OLS-3736: bare IPv6 in the cluster's no-proxy list
     caused httpx to raise 'Invalid port: :1' when the mounts dict was built
@@ -215,10 +220,12 @@ def test_construct_httpx_client_with_ipv6_in_no_proxy_hosts():
 
     class MyProvider(LLMProvider):
         @property
-        def default_params(self):
+        def default_params(self) -> dict:
+            """Return empty default parameter dict."""
             return {}
 
-        def load(self):
+        def load(self) -> FakeChatModel:
+            """Return a FakeChatModel instance."""
             return FakeChatModel()
 
     provider_config = ProviderConfig()
