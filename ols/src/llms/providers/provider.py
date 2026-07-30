@@ -424,7 +424,6 @@ class LLMProvider(AbstractLLMProvider):
                     self.provider_config.certificates_store,
                 )
                 custom_context = ssl.create_default_context()
-                custom_context.check_hostname = False
                 custom_context.load_verify_locations(
                     cafile=self.provider_config.certificates_store
                 )
