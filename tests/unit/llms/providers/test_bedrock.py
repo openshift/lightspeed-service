@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from ols import config
 from ols.app.models.config import ProviderConfig
 from ols.src.llms.llm_loader import LLMConfigurationError
 from ols.src.llms.providers.bedrock import Bedrock
@@ -383,6 +384,42 @@ def test_temperature_stripped_even_when_caller_passes_it(
     bedrock.load()
     call_kwargs = mock_chat.call_args[1]
     assert "temperature" not in call_kwargs
+
+
+@patch(
+    "ols.src.llms.providers.bedrock.ChatBedrockConverse",
+    autospec=True,
+)
+def test_temperature_stripped_when_set_via_dev_config(
+    mock_chat: MagicMock,
+) -> None:
+    """Test that dev_config temperature override is stripped when model does not support it."""
+    config.dev_config.llm_params = {"temperature": 0.7}
+    pc = ProviderConfig(
+        {
+            "name": "some_provider",
+            "type": "bedrock",
+            "url": "https://bedrock-mantle.us-east-1.api.aws",
+            "credentials_path": "tests/config/secret/apitoken",
+            "models": [
+                {
+                    "name": "anthropic.claude-sonnet-5",
+                    "parameters": {"temperature_supported": False},
+                }
+            ],
+        }
+    )
+    bedrock = Bedrock(
+        model="anthropic.claude-sonnet-5",
+        params={},
+        provider_config=pc,
+    )
+    assert "temperature" not in bedrock.params
+
+    bedrock.load()
+    call_kwargs = mock_chat.call_args[1]
+    assert "temperature" not in call_kwargs
+    config.dev_config.llm_params = {}
 
 
 def test_region_extraction(provider_config: ProviderConfig) -> None:
