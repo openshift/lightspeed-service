@@ -13,7 +13,6 @@ llm_providers:
         #   reasoning_effort: low      # low | medium | high (default: low)
         #   reasoning_summary: concise  # auto | concise | detailed (default: concise)
         #   verbosity: low             # low | medium | high (default: low)
-        #   temperature_supported: true  # set to false for models that reject temperature (default: true)
   - name: my_azure_openai
     type: azure_openai
     url: "https://myendpoint.openai.azure.com/"
@@ -60,6 +59,10 @@ llm_providers:
       # use fully qualified Bedrock model IDs (e.g. anthropic.claude-opus-4-7,
       # openai.gpt-5.4, deepseek.v3.1)
       - name: anthropic.claude-opus-4-7
+      # For models that reject the temperature parameter, set temperature_supported: false:
+      # - name: anthropic.claude-sonnet-5
+      #   parameters:
+      #     temperature_supported: false
   # - name: my_bedrock_iam
   #   type: bedrock
   #   url: "https://bedrock-mantle.us-east-1.api.aws"
