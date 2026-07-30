@@ -245,12 +245,19 @@ def pytest_addoption(parser):
         "--lseval_provider",
         default=None,
         type=str,
-        choices=["openai", "watsonx", "azure_openai", "rhoai_vllm"],
+        choices=[
+            "openai",
+            "watsonx",
+            "azure_openai",
+            "rhoai_vllm",
+            "vertex_gemini",
+            "vertex_claude",
+            "bedrock_deepseek",
+        ],
         help=(
-            "Run lseval periodic tests for a single provider only. "
+            "Run lseval periodic/presubmit tests for a single provider only. "
             "Runs the full matrix when omitted (each case may skip if PROVIDER "
-            "selects a different single backend). "
-            "Choices: openai, watsonx, azure_openai, rhoai_vllm."
+            "selects a different single backend)."
         ),
     )
 
