@@ -398,22 +398,22 @@ def check_tokens_available(
             quota_limiter.ensure_available_quota(subject_id=user_id)
     except psycopg2.Error as pg_error:
         message = "Error communicating with quota database backend"
-        logger.error(message)
+        logger.error("%s: %s", message, pg_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": message,
-                "cause": str(pg_error),
+                "cause": "Database connection error",
             },
         )
     except Exception as quota_exceed_error:
         message = "The quota has been exceeded"
-        logger.error(message)
+        logger.error("%s: %s", message, quota_exceed_error)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": message,
-                "cause": str(quota_exceed_error),
+                "cause": "Quota limit reached",
             },
         )
 
@@ -568,7 +568,7 @@ def generate_response(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail={
                 "response": "Prompt is too long",
-                "cause": str(summarizer_error),
+                "cause": "The input exceeds the model's context window",
             },
         )
     except Exception as summarizer_error:
@@ -677,7 +677,7 @@ def store_conversation_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error storing conversation",
-                "cause": str(e),
+                "cause": "Conversation storage failed",
             },
         )
 
@@ -700,7 +700,7 @@ def redact_query(conversation_id: str, llm_request: LLMRequest) -> LLMRequest:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error while redacting query",
-                "cause": str(redactor_error),
+                "cause": "Query redaction failed",
             },
         )
 
@@ -737,7 +737,7 @@ def redact_attachments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "response": "Error while redacting attachment",
-                "cause": str(redactor_error),
+                "cause": "Attachment redaction failed",
             },
         )
 
