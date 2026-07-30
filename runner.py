@@ -26,8 +26,10 @@ from ols.version import __version__
 
 def load_index():
     """Load the index."""
-    # accessing the config's rag_index property will trigger the loading
-    # of the index
+    # Resolve Solr hybrid search (OCP version resolution) in the background
+    # so it does not block uvicorn startup.  Solr failure is non-fatal: the
+    # pod goes ready once rag_index loads and serves without hybrid search.
+    config.solr_hybrid_search  # pylint: disable=W0104, E0606
     config.rag_index  # pylint: disable=W0104, E0606
 
 
@@ -99,9 +101,6 @@ if __name__ == "__main__":
             "Pyroscope url is not specified. To enable profiling please set `pyroscope_url` "
             "in the `dev_config` section of the configuration file."
         )
-    # Eagerly initialize Solr hybrid search so OCP version resolution
-    # (requires OCP_CLUSTER_VERSION and a reachable Solr) fails fast.
-    config.solr_hybrid_search  # pylint: disable=W0104
 
     # create and start the rag_index_thread - allows loading index in
     # parallel with starting the Uvicorn server

@@ -273,10 +273,10 @@ class AppConfig:
         try:
             embed_model = self._solr_hybrid_embed_model()
             encode_fn = embed_model.get_text_embedding
+            return SolrHybridSearch(settings, encode_fn)
         except Exception:
-            logger.exception("Failed to resolve embedding model for Solr hybrid RAG")
+            logger.exception("Failed to initialize Solr hybrid RAG")
             return None
-        return SolrHybridSearch(settings, encode_fn)
 
     @property
     def proxy_config(self) -> Optional[config_model.ProxyConfig]:

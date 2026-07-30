@@ -451,24 +451,9 @@ def wait_for_running_pod(
         if not pods:
             return False
 
-        ready_containers = len(
-            [
-                container
-                for container in get_container_ready_status(pods[0])
-                if container == "true"
-            ]
-        )
+        statuses = get_container_ready_status(pods[0])
+        return len(statuses) > 0 and all(s == "true" for s in statuses)
 
-        # Check for tool calling mode which needs 2 containers (API + MCP server)
-        ols_config_suffix = os.getenv("OLS_CONFIG_SUFFIX", "default")
-        tool_calling_enabled = "tool_calling" in ols_config_suffix
-
-        if tool_calling_enabled:
-            return ready_containers >= 2
-        return ready_containers >= 1
-
-    # wait for the containers in the server pod to become ready
-    # one container normally, two in case we're running tool calling (mcp server)
     r = retry_until_timeout_or_success(
         OC_COMMAND_RETRY_COUNT,
         5,
