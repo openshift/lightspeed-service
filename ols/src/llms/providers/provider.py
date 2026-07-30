@@ -253,8 +253,11 @@ def _no_proxy_mount_key(host: str) -> str:
     Returns:
         An httpx-compatible URL pattern string for the mounts dict.
     """
+    if "/" in host:
+        # CIDR range (IPv4 or IPv6) — use wildcard suffix
+        return f"all://*{host}"
     if host.count(":") >= 2:
-        # IPv6 address — bracket if bare, use exact-match (no wildcard)
+        # Bare IPv6 address — bracket if needed, use exact-match (no wildcard)
         bracketed = host if host.startswith("[") else f"[{host}]"
         return f"all://{bracketed}"
     return f"all://*{host}"
