@@ -12,6 +12,9 @@ from tests.e2e.utils.wait_for_ols import wait_for_ols
 OC_COMMAND_RETRY_COUNT = 120
 
 
+OC_SUBPROCESS_TIMEOUT = 120
+
+
 def run_oc(
     args: list[str], command=None, ignore_existing_resource=False
 ) -> subprocess.CompletedProcess:
@@ -23,11 +26,16 @@ def run_oc(
             text=True,
             check=True,
             input=command,
+            timeout=OC_SUBPROCESS_TIMEOUT,
         )
         return res
+    except subprocess.TimeoutExpired as e:
+        print(f"oc command timed out after {OC_SUBPROCESS_TIMEOUT}s: {args}")
+        raise RuntimeError(
+            f"oc command {args} timed out after {OC_SUBPROCESS_TIMEOUT}s"
+        ) from e
     except subprocess.CalledProcessError as e:
         if ignore_existing_resource:
-            # Check for various "already exists" error patterns in both stderr and stdout
             error_text = (e.stderr + " " + e.stdout).lower()
             if any(
                 pattern in error_text
@@ -475,8 +483,8 @@ def wait_for_running_pod(
     if not http_url.strip():
         http_url = get_ols_url("ols")
 
-    if not wait_for_ols(http_url, timeout=300, interval=5):
-        raise Exception(
+    if not wait_for_ols(http_url, timeout=360, interval=5):
+        raise RuntimeError(
             "Timed out waiting for OLS HTTP readiness after pod became ready"
         )
 

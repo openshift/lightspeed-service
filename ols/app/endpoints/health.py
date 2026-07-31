@@ -5,6 +5,7 @@ requests. Note that these endpoints can be accessed using GET or HEAD HTTP
 methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
+import concurrent.futures
 import logging
 import time
 from typing import Any
@@ -24,6 +25,8 @@ router = APIRouter(tags=["health"])
 logger = logging.getLogger(__name__)
 llm_is_ready_persistent_state: bool = False  # pylint: disable=C0103
 llm_is_ready_timestamp = 0  # pylint: disable=C0103
+
+LLM_READINESS_TIMEOUT = 30
 
 
 def llm_is_ready() -> bool:
@@ -48,13 +51,20 @@ def llm_is_ready() -> bool:
             config.ols_config.default_provider,
             config.ols_config.default_model,
         )
-        response = bare_llm.invoke(input="Hello there!")
-        # Watsonx replies as str and not as `AIMessage`
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(bare_llm.invoke, "Hello there!")
+        try:
+            response = future.result(timeout=LLM_READINESS_TIMEOUT)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
         if isinstance(response, (str, AIMessage)):
             logger.info("LLM connection checked - LLM is ready")
             llm_is_ready_persistent_state = True
             return True
         raise ValueError(f"Unexpected response from LLM: {response}")
+    except concurrent.futures.TimeoutError:
+        logger.error("LLM readiness check timed out after %ds", LLM_READINESS_TIMEOUT)
+        return False
     except Exception as e:
         logger.error("LLM connection check failed with - %s", e)
         return False
