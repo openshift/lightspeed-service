@@ -25,6 +25,7 @@ hatchling==1.32.4
     # via
     #   banks
     #   hatch-vcs
+    #   langchain-anthropic
     #   langchain-aws
     #   langchain-google-vertexai
     #   llama-index-embeddings-huggingface
