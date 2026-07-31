@@ -205,7 +205,7 @@ The following sections describe only what differs from the standard contract abo
 
 6. Credentials are never logged. Parameters containing keys, tokens, or HTTP client objects must be redacted from log output.
 
-7. The certificate store path is computed at startup and points to a PEM bundle file in the certificate directory. It is only used by OpenAI-family providers and direct Anthropic (OpenAI, Azure OpenAI, RHOAI vLLM, RHELAI vLLM, Anthropic, Bedrock).
+7. CA trust for all provider connections is handled globally via the `SSL_CERT_FILE` environment variable set by the operator. No per-provider certificate store is needed.
 
 8. Google Vertex providers require `credentials` to contain valid JSON representing a Google service account key. Non-JSON or non-object values must be rejected.
 
