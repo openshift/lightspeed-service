@@ -221,10 +221,7 @@ class DocsSummarizer(QueryHelper):
                 self._tracker.charge(TokenCategory.RAG, rag_tokens)
 
                 if self._audit_ctx and span:
-                    span.set_attribute("chunk_count", len(rag_chunks))
                     self._audit_ctx.logger.rag_retrieved(
-                        self._audit_ctx.trace_id,
-                        self._audit_ctx.user_id,
                         chunk_count=len(rag_chunks),
                         scores=[
                             node.get_score(raise_error=False)
@@ -420,10 +417,7 @@ class DocsSummarizer(QueryHelper):
                     history, truncated = item
 
             if self._audit_ctx and span:
-                span.set_attribute("turn_count", len(history) // 2)
                 self._audit_ctx.logger.history_retrieved(
-                    self._audit_ctx.trace_id,
-                    self._audit_ctx.user_id,
                     turn_count=len(history) // 2,
                     compressed=compressed,
                     truncated=truncated,
